@@ -395,9 +395,7 @@ class HAPHelper:
 
     async def set_hard_stop_after(self):
         """Calculate and set hard-stop-after configuration in HAProxy."""
-
-        cluster_items = get_cluster_items()
-        connection_retry = cluster_items['intervals']['worker']['connection_retry'] + 2
+        connection_retry = self.get_connection_retry()
 
         self.logger.debug(f'Waiting {connection_retry}s for workers connections...')
         await sleep(connection_retry)
@@ -415,6 +413,18 @@ class HAPHelper:
         if len(agents_id) > 0:
             self.logger.info(f'Reconnecting {len(agents_id)} agents.')
             await self.update_agent_connections(agent_list=agents_id)
+
+    @staticmethod
+    def get_connection_retry() -> int:
+        """Returns the connection retry value, from cluster.json, plus two seconds.
+
+        Returns
+        -------
+        int
+            The seconds of connection retry.
+        """
+        cluster_items = get_cluster_items()
+        return cluster_items['intervals']['worker']['connection_retry'] + 2
 
     @classmethod
     async def start(cls):
@@ -450,11 +460,9 @@ class HAPHelper:
             await helper.initialize_proxy()
 
             if helper.proxy.hard_stop_after is not None:
-                helper.logger.info(
-                    'Ensuring only exists one HAProxy process. '
-                    f'Sleeping {helper.proxy.hard_stop_after}s before start...'
-                )
-                await sleep(helper.proxy.hard_stop_after)
+                sleep_time = max(helper.proxy.hard_stop_after, cls.get_connection_retry())
+                helper.logger.info(f'Ensuring only exists one HAProxy process. Sleeping {sleep_time}s before start...')
+                await sleep(sleep_time)
 
             await helper.initialize_wazuh_cluster_configuration()
 
