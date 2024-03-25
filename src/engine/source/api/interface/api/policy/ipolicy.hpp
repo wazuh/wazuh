@@ -85,9 +85,9 @@ public:
      *
      * @param policyName Policy name to get the default parent from
      * @param namespaceId Namespace of the default parent
-     * @return base::RespOrError<base::Name> Default parent or an error
+     * @return base::RespOrError<std::list<base::Name>> Default parents or an error
      */
-    virtual base::RespOrError<base::Name> getDefaultParent(const base::Name& policyName,
+    virtual base::RespOrError<std::list<base::Name>> getDefaultParent(const base::Name& policyName,
                                                            const store::NamespaceId& namespaceId) const = 0;
 
     /**
