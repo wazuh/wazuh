@@ -150,11 +150,20 @@ jobs:
           if [ -z "$REVISION" ]; then REVISION=0; fi
           FLAGS="$(if [ ${{ inputs.release-package }} == 'yes' ]; then echo " --checksum --release-package" ; fi)"
           if [ ${{ inputs.debuggable-package }} == 'yes' ]; then FLAGS+=" --debug" ; fi
-          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -s /tmp -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} $FLAGS
+          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} $FLAGS
+
+      - name: Test install built manager
+        if: env.ABORT_JOB != 'yes'
+        run: |
+          if [ ${{ inputs.package-format }} == 'rpm' ]; then TESTING_DOCKER_IMAGE=redhat/ubi9:latest;
+          else TESTING_DOCKER_IMAGE=ubuntu:latest; ARCH=amd64; fi
+          package_name=$(find $GITHUB_WORKSPACE/packages/output/ -name "*manager*.${{ inputs.package-format }}" -exec basename {} \;)
+          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v $GITHUB_WORKSPACE/packages/output/:/testing_packages $ARCH/$TESTING_DOCKER_IMAGE bash /tests/install_component.sh /testing_packages/$package_name manager
 
       - name: Upload package to S3
         if: env.ABORT_JOB != 'yes'
+        working-directory: packages
         run: |
-          for file in /tmp/*manager*; do
+          for file in output/*manager*; do
             aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           done
