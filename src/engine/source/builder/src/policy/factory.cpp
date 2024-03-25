@@ -37,9 +37,8 @@ void addIntegrationSubgraph(PolicyData::AssetType assetType,
             auto assetNameStr = jName.getString();
             if (!assetNameStr)
             {
-                throw std::runtime_error(fmt::format("Invalid not string entry in '{}' array for integration '{}'",
-                                                     path,
-                                                     integrationName));
+                throw std::runtime_error(
+                    fmt::format("Invalid not string entry in '{}' array for integration '{}'", path, integrationName));
             }
 
             base::Name assetName;
@@ -191,39 +190,57 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
             fmt::format("Policy hash string attribute at '{}' is empty", syntax::policy::PATH_HASH));
     }
 
-    // Get default decoder parents
+    // Get default asset parents
     auto defaultParents = doc.getObject(syntax::policy::PATH_PARENTS);
     if (defaultParents)
     {
-        for (const auto& [ns, name] : defaultParents.value())
+        for (const auto& [assetType, nsIdParent] : defaultParents.value())
         {
-            auto decoderStr = name.getString();
-            if (!decoderStr)
+            auto nsIdParentObj = nsIdParent.getObject();
+            if (!nsIdParentObj)
             {
-                throw std::runtime_error(fmt::format("Default parent decoder in namespace '{}' is not a string", ns));
-            }
-            base::Name decoderName;
-            try
-            {
-                decoderName = base::Name(decoderStr.value());
-            }
-            catch (const std::runtime_error& e)
-            {
-                throw std::runtime_error(
-                    fmt::format("Invalid default parent decoder name '{}': {}", decoderStr.value(), e.what()));
-            }
-            if (!syntax::name::isDecoder(decoderName))
-            {
-                throw std::runtime_error(
-                    fmt::format("Default parent decoder '{}' in namespace '{}' is not a decoder", ns, decoderName));
+                throw std::runtime_error("Default parent asset is not a object");
             }
 
-            auto added = data.addDefaultParent(PolicyData::AssetType::DECODER, ns, decoderName);
-            if (!added)
+            for (const auto& [ns, name] : nsIdParentObj.value())
             {
-                throw std::runtime_error(fmt::format("Default parent decoder '{}' in namespace '{}' is duplicated",
-                                                     ns,
-                                                     decoderName));
+                auto assetStr = name.getString();
+                if (!assetStr)
+                {
+                    throw std::runtime_error(fmt::format("Default parent asset in namespace '{}' is not a string", ns));
+                }
+                base::Name assetName;
+                try
+                {
+                    assetName = base::Name(assetStr.value());
+                }
+                catch (const std::runtime_error& e)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Invalid default parent decoder name '{}': {}", assetStr.value(), e.what()));
+                }
+
+                PolicyData::AssetType assetType;
+                if (syntax::name::isDecoder(assetName))
+                {
+                    assetType = PolicyData::AssetType::DECODER;
+                }
+                else if (syntax::name::isRule(assetName))
+                {
+                    assetType = PolicyData::AssetType::RULE;
+                }
+                else
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Default parent decoder '{}' in namespace '{}' is neither a decoder nor a rule", ns, assetName));
+                }
+
+                auto added = data.addDefaultParent(assetType, ns, assetName);
+                if (!added)
+                {
+                    throw std::runtime_error(
+                        fmt::format("Default parent asset '{}' in namespace '{}' is duplicated", ns, assetName));
+                }
             }
         }
     }
@@ -396,7 +413,6 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
                 }
             }
         }
-
     }
 
     // 4. Check integrity

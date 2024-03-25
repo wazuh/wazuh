@@ -1887,10 +1887,34 @@ class DefaultParentGet_Response final :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kErrorFieldNumber = 2,
     kDataFieldNumber = 3,
+    kErrorFieldNumber = 2,
     kStatusFieldNumber = 1,
   };
+  // repeated string data = 3;
+  int data_size() const;
+  private:
+  int _internal_data_size() const;
+  public:
+  void clear_data();
+  const std::string& data(int index) const;
+  std::string* mutable_data(int index);
+  void set_data(int index, const std::string& value);
+  void set_data(int index, std::string&& value);
+  void set_data(int index, const char* value);
+  void set_data(int index, const char* value, size_t size);
+  std::string* add_data();
+  void add_data(const std::string& value);
+  void add_data(std::string&& value);
+  void add_data(const char* value);
+  void add_data(const char* value, size_t size);
+  const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>& data() const;
+  ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>* mutable_data();
+  private:
+  const std::string& _internal_data(int index) const;
+  std::string* _internal_add_data();
+  public:
+
   // optional string error = 2;
   bool has_error() const;
   private:
@@ -1907,24 +1931,6 @@ class DefaultParentGet_Response final :
   const std::string& _internal_error() const;
   inline PROTOBUF_ALWAYS_INLINE void _internal_set_error(const std::string& value);
   std::string* _internal_mutable_error();
-  public:
-
-  // optional string data = 3;
-  bool has_data() const;
-  private:
-  bool _internal_has_data() const;
-  public:
-  void clear_data();
-  const std::string& data() const;
-  template <typename ArgT0 = const std::string&, typename... ArgT>
-  void set_data(ArgT0&& arg0, ArgT... args);
-  std::string* mutable_data();
-  PROTOBUF_NODISCARD std::string* release_data();
-  void set_allocated_data(std::string* data);
-  private:
-  const std::string& _internal_data() const;
-  inline PROTOBUF_ALWAYS_INLINE void _internal_set_data(const std::string& value);
-  std::string* _internal_mutable_data();
   public:
 
   // .com.wazuh.api.engine.ReturnStatus status = 1;
@@ -1946,8 +1952,8 @@ class DefaultParentGet_Response final :
   struct Impl_ {
     ::PROTOBUF_NAMESPACE_ID::internal::HasBits<1> _has_bits_;
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
+    ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string> data_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr error_;
-    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr data_;
     int status_;
   };
   union { Impl_ _impl_; };
@@ -4408,72 +4414,79 @@ inline void DefaultParentGet_Response::set_allocated_error(std::string* error) {
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.DefaultParentGet_Response.error)
 }
 
-// optional string data = 3;
-inline bool DefaultParentGet_Response::_internal_has_data() const {
-  bool value = (_impl_._has_bits_[0] & 0x00000002u) != 0;
-  return value;
+// repeated string data = 3;
+inline int DefaultParentGet_Response::_internal_data_size() const {
+  return _impl_.data_.size();
 }
-inline bool DefaultParentGet_Response::has_data() const {
-  return _internal_has_data();
+inline int DefaultParentGet_Response::data_size() const {
+  return _internal_data_size();
 }
 inline void DefaultParentGet_Response::clear_data() {
-  _impl_.data_.ClearToEmpty();
-  _impl_._has_bits_[0] &= ~0x00000002u;
+  _impl_.data_.Clear();
 }
-inline const std::string& DefaultParentGet_Response::data() const {
-  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
-  return _internal_data();
-}
-template <typename ArgT0, typename... ArgT>
-inline PROTOBUF_ALWAYS_INLINE
-void DefaultParentGet_Response::set_data(ArgT0&& arg0, ArgT... args) {
- _impl_._has_bits_[0] |= 0x00000002u;
- _impl_.data_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
-  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
-}
-inline std::string* DefaultParentGet_Response::mutable_data() {
-  std::string* _s = _internal_mutable_data();
-  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+inline std::string* DefaultParentGet_Response::add_data() {
+  std::string* _s = _internal_add_data();
+  // @@protoc_insertion_point(field_add_mutable:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
   return _s;
 }
-inline const std::string& DefaultParentGet_Response::_internal_data() const {
-  return _impl_.data_.Get();
+inline const std::string& DefaultParentGet_Response::_internal_data(int index) const {
+  return _impl_.data_.Get(index);
 }
-inline void DefaultParentGet_Response::_internal_set_data(const std::string& value) {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  _impl_.data_.Set(value, GetArenaForAllocation());
+inline const std::string& DefaultParentGet_Response::data(int index) const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+  return _internal_data(index);
 }
-inline std::string* DefaultParentGet_Response::_internal_mutable_data() {
-  _impl_._has_bits_[0] |= 0x00000002u;
-  return _impl_.data_.Mutable(GetArenaForAllocation());
+inline std::string* DefaultParentGet_Response::mutable_data(int index) {
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+  return _impl_.data_.Mutable(index);
 }
-inline std::string* DefaultParentGet_Response::release_data() {
-  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
-  if (!_internal_has_data()) {
-    return nullptr;
-  }
-  _impl_._has_bits_[0] &= ~0x00000002u;
-  auto* p = _impl_.data_.Release();
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.data_.IsDefault()) {
-    _impl_.data_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  return p;
+inline void DefaultParentGet_Response::set_data(int index, const std::string& value) {
+  _impl_.data_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
 }
-inline void DefaultParentGet_Response::set_allocated_data(std::string* data) {
-  if (data != nullptr) {
-    _impl_._has_bits_[0] |= 0x00000002u;
-  } else {
-    _impl_._has_bits_[0] &= ~0x00000002u;
-  }
-  _impl_.data_.SetAllocated(data, GetArenaForAllocation());
-#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (_impl_.data_.IsDefault()) {
-    _impl_.data_.Set("", GetArenaForAllocation());
-  }
-#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+inline void DefaultParentGet_Response::set_data(int index, std::string&& value) {
+  _impl_.data_.Mutable(index)->assign(std::move(value));
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+}
+inline void DefaultParentGet_Response::set_data(int index, const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.data_.Mutable(index)->assign(value);
+  // @@protoc_insertion_point(field_set_char:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+}
+inline void DefaultParentGet_Response::set_data(int index, const char* value, size_t size) {
+  _impl_.data_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_set_pointer:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+}
+inline std::string* DefaultParentGet_Response::_internal_add_data() {
+  return _impl_.data_.Add();
+}
+inline void DefaultParentGet_Response::add_data(const std::string& value) {
+  _impl_.data_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+}
+inline void DefaultParentGet_Response::add_data(std::string&& value) {
+  _impl_.data_.Add(std::move(value));
+  // @@protoc_insertion_point(field_add:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+}
+inline void DefaultParentGet_Response::add_data(const char* value) {
+  GOOGLE_DCHECK(value != nullptr);
+  _impl_.data_.Add()->assign(value);
+  // @@protoc_insertion_point(field_add_char:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+}
+inline void DefaultParentGet_Response::add_data(const char* value, size_t size) {
+  _impl_.data_.Add()->assign(reinterpret_cast<const char*>(value), size);
+  // @@protoc_insertion_point(field_add_pointer:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+}
+inline const ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>&
+DefaultParentGet_Response::data() const {
+  // @@protoc_insertion_point(field_list:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+  return _impl_.data_;
+}
+inline ::PROTOBUF_NAMESPACE_ID::RepeatedPtrField<std::string>*
+DefaultParentGet_Response::mutable_data() {
+  // @@protoc_insertion_point(field_mutable_list:com.wazuh.api.engine.policy.DefaultParentGet_Response.data)
+  return &_impl_.data_;
 }
 
 // -------------------------------------------------------------------

@@ -1,0 +1,34 @@
+name: rule/integrations/0
+
+metadata:
+  title: Base rule.
+
+normalize:
+
+  - check: exists($client.ip) AND is_public_ip($client.ip)
+    map:
+      - client.geo: geoip($client.ip)
+      - client.as: as($client.ip)
+
+  - check: exists($destination.ip) AND is_public_ip($destination.ip)
+    map:
+      - destination.geo: geoip($destination.ip)
+      - destination.as: as($destination.ip)
+
+  - check: exists($source.ip) AND is_public_ip($source.ip)
+    map:
+      - source.geo: geoip($source.ip)
+      - source.as: as($source.ip)
+
+  - check: exists($server.ip) AND is_public_ip($server.ip)
+    map:
+      - server.geo: geoip($server.ip)
+      - server.as: as($server.ip)
+
+  #TODO: It is not contemplated in the schema, the navigation of an array
+  - map:
+      - _tmp_host_ip: $host.ip
+
+  - check: exists($host.ip) AND is_public_ip($_tmp_host_ip.0)
+    map:
+      - host.geo: geoip($_tmp_host_ip.0)

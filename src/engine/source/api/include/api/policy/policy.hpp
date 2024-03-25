@@ -96,7 +96,7 @@ public:
     /**
      * @copydoc IPolicy::getDefaultParent
      */
-    base::RespOrError<base::Name> getDefaultParent(const base::Name& policyName,
+    base::RespOrError<std::list<base::Name>> getDefaultParent(const base::Name& policyName,
                                                    const store::NamespaceId& namespaceId) const override;
 
     /**

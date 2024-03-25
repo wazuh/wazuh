@@ -62,6 +62,7 @@ load_policies() {
     "$ENGINE_SRC_DIR/build/main" policy --api_socket $ENVIRONMENT_DIR/queue/sockets/engine-api add -p policy/wazuh/0 -f
     "$ENGINE_SRC_DIR/build/main" policy --api_socket $ENVIRONMENT_DIR/queue/sockets/engine-api parent-set decoder/integrations/0
     "$ENGINE_SRC_DIR/build/main" policy --api_socket $ENVIRONMENT_DIR/queue/sockets/engine-api parent-set -n wazuh decoder/integrations/0
+    "$ENGINE_SRC_DIR/build/main" policy --api_socket $ENVIRONMENT_DIR/queue/sockets/engine-api parent-set -n wazuh rule/integrations/0
     "$ENGINE_SRC_DIR/build/main" policy --api_socket $ENVIRONMENT_DIR/queue/sockets/engine-api asset-add -n system integration/wazuh-core/0
     "$ENGINE_SRC_DIR/build/main" policy --api_socket $ENVIRONMENT_DIR/queue/sockets/engine-api asset-add -n wazuh integration/syslog/0
     "$ENGINE_SRC_DIR/build/main" policy --api_socket $ENVIRONMENT_DIR/queue/sockets/engine-api asset-add -n wazuh integration/system/0
