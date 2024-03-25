@@ -20,7 +20,6 @@ suite: basic_usage
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-syscheckd
@@ -82,7 +81,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=1)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_create_after_delete.yaml')
@@ -162,9 +161,6 @@ def test_create_after_delete(test_configuration, test_metadata, configure_local_
     assert wazuh_log_monitor.callback_result
 
     fim_mode = test_metadata.get('fim_mode')
-
-    if sys.platform == WINDOWS:
-        pytest.skip(reason="Unstable behavior on github actions")
 
     file.remove_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=60)

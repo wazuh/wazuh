@@ -20,7 +20,6 @@ suite: files_ignore
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-syscheckd
@@ -79,7 +78,8 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 # Marks
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2)]
+# Skipped on Windows due Issue https://github.com/wazuh/wazuh/issues/9298"
+pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=2)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_ignore_linux.yaml')

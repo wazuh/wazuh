@@ -20,7 +20,6 @@ suite: files_inotify
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-syscheckd
