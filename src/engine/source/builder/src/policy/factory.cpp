@@ -37,9 +37,8 @@ void addIntegrationSubgraph(PolicyData::AssetType assetType,
             auto assetNameStr = jName.getString();
             if (!assetNameStr)
             {
-                throw std::runtime_error(fmt::format("Invalid not string entry in '{}' array for integration '{}'",
-                                                     path,
-                                                     integrationName));
+                throw std::runtime_error(
+                    fmt::format("Invalid not string entry in '{}' array for integration '{}'", path, integrationName));
             }
 
             base::Name assetName;
@@ -191,14 +190,14 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
             fmt::format("Policy hash string attribute at '{}' is empty", syntax::policy::PATH_HASH));
     }
 
-    // Get default decoder parents
+    // Get default asset parents
     auto defaultParents = doc.getObject(syntax::policy::PATH_PARENTS);
     if (defaultParents)
     {
-        for (const auto& [ns, name] : defaultParents.value())
+        for (const auto& [assetType, nsIdParent] : defaultParents.value())
         {
-            auto decoderStr = name.getString();
-            if (!decoderStr)
+            auto nsIdParentObj = nsIdParent.getObject();
+            if (!nsIdParentObj)
             {
                 throw std::runtime_error(fmt::format("Default parent decoder in namespace '{}' is not a string", ns));
             }
@@ -218,8 +217,7 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
                     fmt::format("Default parent decoder '{}' in namespace '{}' is not a decoder", decoderName, ns));
             }
 
-            auto added = data.addDefaultParent(PolicyData::AssetType::DECODER, ns, decoderName);
-            if (!added)
+            for (const auto& [ns, name] : nsIdParentObj.value())
             {
                 throw std::runtime_error(fmt::format("Default parent decoder '{}' in namespace '{}' is duplicated",
                                                      decoderName,
@@ -396,7 +394,6 @@ Graph<base::Name, Asset> buildSubgraph(const std::string& subgraphName,
                 }
             }
         }
-
     }
 
     // 4. Check integrity

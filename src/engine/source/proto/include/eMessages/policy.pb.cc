@@ -166,8 +166,8 @@ PROTOBUF_CONSTEXPR DefaultParentGet_Response::DefaultParentGet_Response(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.data_)*/{}
   , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.data_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
   , /*decltype(_impl_.status_)*/0} {}
 struct DefaultParentGet_ResponseDefaultTypeInternal {
   PROTOBUF_CONSTEXPR DefaultParentGet_ResponseDefaultTypeInternal()
@@ -381,7 +381,7 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentGet_Response, _impl_.data_),
   ~0u,
   0,
-  1,
+  ~0u,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentPost_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentPost_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -504,32 +504,32 @@ const char descriptor_table_protodef_policy_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "ine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004"
   "data\030\003 \003(\tB\010\n\006_error\"`\n\030DefaultParentGet"
   "_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespa"
-  "ce\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace\"\211"
-  "\001\n\031DefaultParentGet_Response\0222\n\006status\030\001"
-  " \001(\0162\".com.wazuh.api.engine.ReturnStatus"
-  "\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\021\n\004data\030\003 \001(\tH\001\210\001\001B"
-  "\010\n\006_errorB\007\n\005_data\"\201\001\n\031DefaultParentPost"
-  "_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespa"
-  "ce\030\002 \001(\tH\001\210\001\001\022\023\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_p"
-  "olicyB\014\n\n_namespaceB\t\n\007_parent\"c\n\033Defaul"
-  "tParentDelete_Request\022\023\n\006policy\030\001 \001(\tH\000\210"
-  "\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n"
-  "\n_namespace\"\025\n\023PoliciesGet_Request\"v\n\024Po"
-  "liciesGet_Response\0222\n\006status\030\001 \001(\0162\".com"
-  ".wazuh.api.engine.ReturnStatus\022\022\n\005error\030"
-  "\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_error\"7\n\025Na"
-  "mespacesGet_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001"
-  "B\t\n\007_policy\"x\n\026NamespacesGet_Response\0222\n"
-  "\006status\030\001 \001(\0162\".com.wazuh.api.engine.Ret"
-  "urnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 "
-  "\003(\tB\010\n\006_errorb\006proto3"
+  "ce\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace\"{"
+  "\n\031DefaultParentGet_Response\0222\n\006status\030\001 "
+  "\001(\0162\".com.wazuh.api.engine.ReturnStatus\022"
+  "\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_er"
+  "ror\"\201\001\n\031DefaultParentPost_Request\022\023\n\006pol"
+  "icy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001\022\023"
+  "\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\014\n\n_names"
+  "paceB\t\n\007_parent\"c\n\033DefaultParentDelete_R"
+  "equest\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace"
+  "\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace\"\025\n\023"
+  "PoliciesGet_Request\"v\n\024PoliciesGet_Respo"
+  "nse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engi"
+  "ne.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004d"
+  "ata\030\003 \003(\tB\010\n\006_error\"7\n\025NamespacesGet_Req"
+  "uest\022\023\n\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007_policy\"x\n\026"
+  "NamespacesGet_Response\0222\n\006status\030\001 \001(\0162\""
+  ".com.wazuh.api.engine.ReturnStatus\022\022\n\005er"
+  "ror\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_errorb\006"
+  "proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_policy_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_policy_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_policy_2eproto = {
-    false, false, 1621, descriptor_table_protodef_policy_2eproto,
+    false, false, 1606, descriptor_table_protodef_policy_2eproto,
     "policy.proto",
     &descriptor_table_policy_2eproto_once, descriptor_table_policy_2eproto_deps, 1, 16,
     schemas, file_default_instances, TableStruct_policy_2eproto::offsets,
@@ -3067,9 +3067,6 @@ class DefaultParentGet_Response::_Internal {
   static void set_has_error(HasBits* has_bits) {
     (*has_bits)[0] |= 1u;
   }
-  static void set_has_data(HasBits* has_bits) {
-    (*has_bits)[0] |= 2u;
-  }
 };
 
 DefaultParentGet_Response::DefaultParentGet_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
@@ -3084,8 +3081,8 @@ DefaultParentGet_Response::DefaultParentGet_Response(const DefaultParentGet_Resp
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.data_){from._impl_.data_}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.data_){}
     , decltype(_impl_.status_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -3095,14 +3092,6 @@ DefaultParentGet_Response::DefaultParentGet_Response(const DefaultParentGet_Resp
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   if (from._internal_has_error()) {
     _this->_impl_.error_.Set(from._internal_error(), 
-      _this->GetArenaForAllocation());
-  }
-  _impl_.data_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.data_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  if (from._internal_has_data()) {
-    _this->_impl_.data_.Set(from._internal_data(), 
       _this->GetArenaForAllocation());
   }
   _this->_impl_.status_ = from._impl_.status_;
@@ -3116,17 +3105,13 @@ inline void DefaultParentGet_Response::SharedCtor(
   new (&_impl_) Impl_{
       decltype(_impl_._has_bits_){}
     , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.data_){arena}
     , decltype(_impl_.error_){}
-    , decltype(_impl_.data_){}
     , decltype(_impl_.status_){0}
   };
   _impl_.error_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.error_.Set("", GetArenaForAllocation());
-  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
-  _impl_.data_.InitDefault();
-  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
-    _impl_.data_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -3141,8 +3126,8 @@ DefaultParentGet_Response::~DefaultParentGet_Response() {
 
 inline void DefaultParentGet_Response::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.data_.~RepeatedPtrField();
   _impl_.error_.Destroy();
-  _impl_.data_.Destroy();
 }
 
 void DefaultParentGet_Response::SetCachedSize(int size) const {
@@ -3155,14 +3140,10 @@ void DefaultParentGet_Response::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
+  _impl_.data_.Clear();
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
-    if (cached_has_bits & 0x00000001u) {
-      _impl_.error_.ClearNonDefaultToEmpty();
-    }
-    if (cached_has_bits & 0x00000002u) {
-      _impl_.data_.ClearNonDefaultToEmpty();
-    }
+  if (cached_has_bits & 0x00000001u) {
+    _impl_.error_.ClearNonDefaultToEmpty();
   }
   _impl_.status_ = 0;
   _impl_._has_bits_.Clear();
@@ -3195,13 +3176,18 @@ const char* DefaultParentGet_Response::_InternalParse(const char* ptr, ::_pbi::P
         } else
           goto handle_unusual;
         continue;
-      // optional string data = 3;
+      // repeated string data = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
-          auto str = _internal_mutable_data();
-          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentGet_Response.data"));
+          ptr -= 1;
+          do {
+            ptr += 1;
+            auto str = _internal_add_data();
+            ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+            CHK_(ptr);
+            CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentGet_Response.data"));
+            if (!ctx->DataAvailable(ptr)) break;
+          } while (::PROTOBUF_NAMESPACE_ID::internal::ExpectTag<26>(ptr));
         } else
           goto handle_unusual;
         continue;
@@ -3252,14 +3238,14 @@ uint8_t* DefaultParentGet_Response::_InternalSerialize(
         2, this->_internal_error(), target);
   }
 
-  // optional string data = 3;
-  if (_internal_has_data()) {
+  // repeated string data = 3;
+  for (int i = 0, n = this->_internal_data_size(); i < n; i++) {
+    const auto& s = this->_internal_data(i);
     ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
-      this->_internal_data().data(), static_cast<int>(this->_internal_data().length()),
+      s.data(), static_cast<int>(s.length()),
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
       "com.wazuh.api.engine.policy.DefaultParentGet_Response.data");
-    target = stream->WriteStringMaybeAliased(
-        3, this->_internal_data(), target);
+    target = stream->WriteString(3, s, target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -3278,23 +3264,22 @@ size_t DefaultParentGet_Response::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
-    // optional string error = 2;
-    if (cached_has_bits & 0x00000001u) {
-      total_size += 1 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-          this->_internal_error());
-    }
-
-    // optional string data = 3;
-    if (cached_has_bits & 0x00000002u) {
-      total_size += 1 +
-        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
-          this->_internal_data());
-    }
-
+  // repeated string data = 3;
+  total_size += 1 *
+      ::PROTOBUF_NAMESPACE_ID::internal::FromIntSize(_impl_.data_.size());
+  for (int i = 0, n = _impl_.data_.size(); i < n; i++) {
+    total_size += ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+      _impl_.data_.Get(i));
   }
+
+  // optional string error = 2;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_error());
+  }
+
   // .com.wazuh.api.engine.ReturnStatus status = 1;
   if (this->_internal_status() != 0) {
     total_size += 1 +
@@ -3319,14 +3304,9 @@ void DefaultParentGet_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_m
   uint32_t cached_has_bits = 0;
   (void) cached_has_bits;
 
-  cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
-    if (cached_has_bits & 0x00000001u) {
-      _this->_internal_set_error(from._internal_error());
-    }
-    if (cached_has_bits & 0x00000002u) {
-      _this->_internal_set_data(from._internal_data());
-    }
+  _this->_impl_.data_.MergeFrom(from._impl_.data_);
+  if (from._internal_has_error()) {
+    _this->_internal_set_error(from._internal_error());
   }
   if (from._internal_status() != 0) {
     _this->_internal_set_status(from._internal_status());
@@ -3351,13 +3331,10 @@ void DefaultParentGet_Response::InternalSwap(DefaultParentGet_Response* other) {
   auto* rhs_arena = other->GetArenaForAllocation();
   _internal_metadata_.InternalSwap(&other->_internal_metadata_);
   swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  _impl_.data_.InternalSwap(&other->_impl_.data_);
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.error_, lhs_arena,
       &other->_impl_.error_, rhs_arena
-  );
-  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
-      &_impl_.data_, lhs_arena,
-      &other->_impl_.data_, rhs_arena
   );
   swap(_impl_.status_, other->_impl_.status_);
 }
