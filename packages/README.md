@@ -40,12 +40,15 @@ wazuh# cd packages
 | --dont-build-docker | Use a locally built Docker image (optional)      | no   |
 | --tag        | Tag to use with the Docker image (optional)             | -                     |
 | *--sources    | Path containing local Wazuh source code (optional)       | script path            |
-| --release-package | Use release name in package (optional)               | no                     |
+| **--release-package | Use release name in package (optional)               | no                     |
 | --src        | Generate the source package (optional)                 | no                     |
 | --package-format | Package format to build (optional): rpm, deb (default)| deb                    |
 | -h, --help   | Show this help message                                 | -                     |
 
-***Note:** If we don't use this flag, will the script use the current directory where *generate_package.sh* is located.
+***Note1:** If we don't use this flag, will the script use the current directory where *generate_package.sh* is located.
+
+****Note 2:** If the package is not a release package, a short hash commit based on the git command `git rev-parse --short HEAD` will be appended to the end of the name. The default length of the short hash is determined by the Git command [git rev-parse --short[=length]](https://git-scm.com/docs/git-rev-parse#Documentation/git-rev-parse.txt---shortlength:~:text=interpreted%20as%20usual.-,%2D%2Dshort%5B%3Dlength%5D,-Same%20as%20%2D%2Dverify).
+
 
 **Example Usage:**
 
@@ -97,7 +100,7 @@ Where the JSON looks like this:
 ## Generate packages
 
 ```json
-curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_WORKFLOW_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" -d "$JSON_AGENT" "https://api.github.com/repos/wazuh/wazuh/actions/workflows/packages-build-linux-agent.yml/dispatches"
+curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_WORKFLOW_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" --data-binary "@$(pwd)/wazuh-agent-test-amd64-rpm.json" "https://api.github.com/repos/wazuh/wazuh/actions/workflows/packages-build-linux-agent.yml/dispatches"
 ```
 
 Where the JSON looks like this:
