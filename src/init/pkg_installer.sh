@@ -7,14 +7,18 @@ if [ "${WAZUH_HOME}" = "/" ]; then
     exit 1
 fi
 
+LOCK=./var/upgrade/upgrade_in_progress_pid
+cat /dev/null >> $LOCK
+read UPGRADE_PID < $LOCK
+
 # Check if there is an upgrade in progress
-if [ -e "./var/upgrade/upgrade_in_progress" ]; then
+if [ ! -z "$UPGRADE_PID" -a -d /proc/$UPGRADE_PID ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - There is an upgrade in progress. Aborting..." >> ./logs/upgrade.log
     exit 1
 fi
 
 # Installing upgrade
-touch ./var/upgrade/upgrade_in_progress
+echo $$ > $LOCK
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
 
 OS=$(uname)
@@ -28,7 +32,7 @@ elif [[ "$OS" == "Linux" ]]; then
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
             echo -ne "2" > ./var/upgrade/upgrade_result
-            rm -f ./var/upgrade/upgrade_in_progress
+            rm -f $LOCK
             exit 1
         fi
     elif find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.deb" | read; then
@@ -37,7 +41,7 @@ elif [[ "$OS" == "Linux" ]]; then
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
             echo -ne "2" > ./var/upgrade/upgrade_result
-            rm -f ./var/upgrade/upgrade_in_progress
+            rm -f $LOCK
             exit 1
         fi
     else
@@ -47,14 +51,14 @@ elif [[ "$OS" == "Linux" ]]; then
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. No package or sources found." >> ./logs/upgrade.log
             echo -ne "2" > ./var/upgrade/upgrade_result
-            rm -f ./var/upgrade/upgrade_in_progress
+            rm -f $LOCK
             exit 1
         fi
     fi
 else
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Unsupported OS." >> ./logs/upgrade.log
     echo -ne "2" > ./var/upgrade/upgrade_result
-    rm -f ./var/upgrade/upgrade_in_progress
+    rm -f $LOCK
     exit 1
 fi
 
@@ -85,6 +89,6 @@ else
     echo -ne "2" > ./var/upgrade/upgrade_result
 fi
 
-rm -f ./var/upgrade/upgrade_in_progress
+rm -f $LOCK
 
 exit 0
