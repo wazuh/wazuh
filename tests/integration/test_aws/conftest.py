@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 """
-This module contain all necessary components (fixtures, classes, methods) to configure the test for its execution.
+This module contains all necessary components (fixtures, classes, methods) to configure the test for its execution.
 """
 
 import pytest
@@ -319,16 +319,14 @@ def create_test_log_group(log_groups_manager,
 
 
 @pytest.fixture()
-def create_test_log_stream(metadata: dict):
+def create_test_log_stream(metadata: dict) -> None:
     """Create a log stream.
 
     Parameters
     ----------
-        metadata (dict): Log group information.
+    metadata : dict
+        Log group information.
 
-    Returns
-    -------
-        None
     """
     # Get log group
     log_group_name = metadata['log_group_name']
@@ -362,16 +360,14 @@ def create_test_log_stream(metadata: dict):
 
 
 @pytest.fixture()
-def create_test_events(metadata: dict):
+def create_test_events(metadata: dict) -> None:
     """Create a log event in a log stream.
 
     Parameters
     ----------
-        metadata (dict): Log group information.
+    metadata : dict
+        Log group information.
 
-    Returns
-    -------
-        None
     """
     # Get log group name
     log_group_name = metadata["log_group_name"]
@@ -416,7 +412,7 @@ def create_test_events(metadata: dict):
 
 
 @pytest.fixture
-def set_test_sqs_queue(metadata: dict, sqs_manager):
+def set_test_sqs_queue(metadata: dict, sqs_manager) -> None:
     """Create a test sqs group
 
     Parameters
@@ -426,8 +422,6 @@ def set_test_sqs_queue(metadata: dict, sqs_manager):
     sqs_manager: fixture
         The SQS set for the test.
 
-    Returns
-    -------
     """
     # Get bucket name
     bucket_name = metadata["bucket_name"]
