@@ -84,7 +84,7 @@ public:
         m_unixAddr.sun_family = AF_UNIX;
         if (path.size() >= sizeof(m_unixAddr.sun_path))
         {
-            throw std::runtime_error {"Error setting socket path too long"};
+            throw std::runtime_error {"Error setting socket path (too long)"};
         }
 
         std::copy(path.begin(), path.end(), m_unixAddr.sun_path);
