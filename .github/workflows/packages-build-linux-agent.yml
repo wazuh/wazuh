@@ -107,49 +107,7 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-          aws-region: us-east-1
-
-      - name: Check if package already exists in AWS
-        run: |
-          echo "ABORT_JOB=no" >> $GITHUB_ENV
-          if [ ${{ inputs.package-format }} == 'rpm' ]; then
-            if [ ${{ inputs.arch }} = 'armhf' ]; then
-              arch_name="armv7hl"
-            elif [ ${{ inputs.arch }} = 'arm64' ]; then
-              arch_name="aarch64"
-            elif [ ${{ inputs.arch }} = 'amd64' ]; then
-              arch_name="x86_64"
-            else
-              arch_name=${{ inputs.arch }};
-            fi
-          else
-            arch_name=${{ inputs.arch }};
-          fi
-
-          version="$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)"
-          short_commit_hash="$(git -C $GITHUB_WORKSPACE rev-parse --short HEAD)"
-
-          if [ "${{ inputs.legacy }}" == "true" ]; then revision=${{ inputs.revision }}.el5;
-          else  revision=${{ inputs.revision }} ; fi
-
-          if [ "${{ inputs.release-package }}" == "true"  ]; then
-            pkg_name="wazuh-agent.$version.$revision.$arch_name.${{ inputs.package-format }}"
-          else
-            pkg_name="wazuh-agent.$version.$revision.$arch_name.$short_commit_hash.${{ inputs.package-format }}"
-          fi
-
-          if [ $(aws s3 ls s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/ --recursive | grep -c $pkg_name) -ge 1 ]; then
-            echo "::notice:: Package already exists in s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/$pkg_name";
-            echo "ABORT_JOB=yes" >> $GITHUB_ENV
-          fi
-
       - name: Set tag and container name
-        if: env.ABORT_JOB != 'yes'
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
@@ -162,12 +120,10 @@ jobs:
           fi
 
       - name: Download docker image for package building
-        if: env.ABORT_JOB != 'yes'
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
       - name: Build ${{ inputs.package-format }} wazuh-agent on ${{ inputs.arch }}
-        if: env.ABORT_JOB != 'yes'
         working-directory: packages
         run: |
           REVISION=${{ inputs.revision }}
@@ -181,7 +137,6 @@ jobs:
           bash generate_package.sh -a ${{ inputs.arch }} --tag ${{ env.TAG }} --package-format ${{ inputs.package-format }} $FLAGS
 
       - name: Set up AWS CLI
-        if: env.ABORT_JOB != 'yes'
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
@@ -189,7 +144,6 @@ jobs:
           aws-region: us-east-1
 
       - name: Upload package to S3
-        if: env.ABORT_JOB != 'yes'
         run: |
           for file in /tmp/*agent*; do
             aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
