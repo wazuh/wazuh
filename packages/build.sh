@@ -43,7 +43,6 @@ future_version() {
 
   local new_wazuh_dir="${build_folder}/${new_name}"
   cp -R ${wazuh_dir} "$new_wazuh_dir"
-  # TODO: Check using RPM/deb what change over the -o -name "*.spec"
   find "$new_wazuh_dir" "${specs_path}" \( -name "*VERSION*" -o -name "*changelog*" \
         -o -name "*.spec" \) -exec sed -i "s/${base_version}/${version}/g" {} \;
   sed -i "s/\$(VERSION)/${major}.${minor}/g" "$new_wazuh_dir/src/Makefile"
@@ -90,7 +89,7 @@ if [ ! -d "/wazuh-local-src" ] ; then
                           | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
 else
     if [ "${legacy}" = "no" ]; then
-      short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short HEAD)" # TODO: Aclarar en documentacion.
+      short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short HEAD)"
     else
       # Git package is not available in the CentOS 5 repositories.
       hash_commit=$(cat /wazuh-local-src/.git/refs/heads/$(cat /wazuh-local-src/.git/HEAD|cut -d"/" -f3))
