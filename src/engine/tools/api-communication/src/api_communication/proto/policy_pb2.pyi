@@ -65,10 +65,10 @@ class DefaultParentGet_Response(_message.Message):
     DATA_FIELD_NUMBER: _ClassVar[int]
     ERROR_FIELD_NUMBER: _ClassVar[int]
     STATUS_FIELD_NUMBER: _ClassVar[int]
-    data: str
+    data: _containers.RepeatedScalarFieldContainer[str]
     error: str
     status: _engine_pb2.ReturnStatus
-    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., data: _Optional[str] = ...) -> None: ...
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., data: _Optional[_Iterable[str]] = ...) -> None: ...
 
 class DefaultParentPost_Request(_message.Message):
     __slots__ = ["namespace", "parent", "policy"]
