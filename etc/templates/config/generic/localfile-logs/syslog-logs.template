@@ -1,7 +1,7 @@
-syslog:/var/log/messages
+journald:/var/log/messages
 syslog:/var/log/authlog
 journald:/var/log/auth.log
-syslog:/var/log/secure
+journald:/var/log/secure
 syslog:/var/log/secure.log
 syslog:/var/log/system.log
 journald:/var/log/syslog
@@ -23,7 +23,7 @@ journald:/var/log/mail.info
 journald:/var/log/mail.notice
 journald:/var/log/mail.err
 journald:/var/log/mail.log
-syslog:/var/log/maillog
+journald:/var/log/maillog
 syslog:/usr/local/squid/var/logs/access.log
 syslog:/var/log/squid/access.log
 syslog:/var/log/horde.log
