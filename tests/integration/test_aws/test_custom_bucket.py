@@ -5,20 +5,21 @@
 """
 This module will contain all cases for the custom bucket test suite
 """
-
 import pytest
+import time
 
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
+from .configurator import configurator
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
-configurator = TestConfigurator(module='custom_bucket_test_module')
+configurator.module = "custom_bucket_test_module"
 
 # -------------------------------------------- TEST_CUSTOM_BUCKETS_DEFAULTS -------------------------------------------
 # Configure T1 test
@@ -30,7 +31,8 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
 @pytest.mark.parametrize('configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_custom_bucket_defaults(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+def test_custom_bucket_defaults(configuration, metadata, create_test_bucket, set_test_sqs_queue,
+                                load_wazuh_basic_configuration, set_wazuh_configuration,
                                 configure_local_internal_options_function, truncate_monitored_files,
                                 restart_wazuh_function, file_monitoring
 ):
@@ -94,9 +96,9 @@ def test_custom_bucket_defaults(configuration, metadata, load_wazuh_basic_config
         'wodles/aws/aws-s3',
         '--subscriber', 'buckets',
         '--queue', metadata['sqs_name'],
-        '--aws_profile', 'qa',
         '--debug', '2'
     ]
+
     log_header = 'Launching S3 Subscriber Command: '
     expected_log = log_header + " ".join(parameters)
 
@@ -135,9 +137,10 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
 @pytest.mark.parametrize('configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
-                            configure_local_internal_options_function, truncate_monitored_files,
-                            restart_wazuh_function, file_monitoring, upload_and_delete_file_to_s3
+def test_custom_bucket_logs(configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
+                            load_wazuh_basic_configuration, set_wazuh_configuration,
+                            configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
+                            file_monitoring
 ):
     """
     description: Test the AWS S3 custom bucket module is invoked with the expected parameters and retrieve
@@ -209,7 +212,6 @@ def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configurat
         'wodles/aws/aws-s3',
         '--subscriber', 'buckets',
         '--queue', sqs_name,
-        '--aws_profile', 'qa',
         '--debug', '2'
     ]
     log_header = 'Launching S3 Subscriber Command: '
@@ -223,6 +225,9 @@ def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configurat
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_start']
 
+    # Give time to the queue to retrieve the messages.
+    time.sleep(30)
+
     # Check command was called correctly
     log_monitor.start(
         timeout=session_parameters.default_timeout,
@@ -232,7 +237,6 @@ def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configurat
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     retrieve_pattern = fr'.*Retrieving messages from: {sqs_name}'
-    message_pattern = fr'.*The message is: .*'
 
     # Check if the message was retrieved from the queue
     log_monitor.start(
@@ -241,6 +245,8 @@ def test_custom_bucket_logs(configuration, metadata, load_wazuh_basic_configurat
     )
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['failed_sqs_message_retrieval']
+
+    message_pattern = fr'.*The message is: .*'
 
     # Check if it processes the created file
     log_monitor.start(

@@ -9,7 +9,5 @@
             attributes:
               - type: SERVICE_TYPE
             elements:
-              - aws_profile:
-                  value: qa
               - regions:
                   value: us-east-1

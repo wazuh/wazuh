@@ -3,28 +3,34 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 """
-This module contains all necessary components (fixtures, classes, methods)to configure the test for its execution.
+This module contains all necessary components (fixtures, classes, methods) to configure the test for its execution.
 """
 
 import pytest
+from time import time
+from botocore.exceptions import ClientError
+from uuid import uuid4
 
 # qa-integration-framework imports
 from wazuh_testing.logger import logger
-from wazuh_testing.constants.aws import (
-    FAKE_CLOUDWATCH_LOG_GROUP,
-    PERMANENT_CLOUDWATCH_LOG_GROUP,
-)
 from wazuh_testing.modules.aws.utils import (
-    create_log_events,
+    create_bucket,
+    upload_log_events,
     create_log_group,
     create_log_stream,
+    delete_bucket,
     delete_log_group,
-    delete_log_stream,
-    delete_file,
-    file_exists,
-    upload_file
+    delete_s3_db,
+    delete_services_db,
+    upload_bucket_file,
+    generate_file,
+    create_sqs_queue,
+    get_sqs_queue_arn,
+    set_sqs_policy,
+    set_bucket_event_notification_configuration,
+    delete_sqs_queue,
+    delete_bucket_files
 )
-from wazuh_testing.modules.aws.utils import delete_s3_db, delete_services_db
 from wazuh_testing.utils.services import control_service
 
 
@@ -47,112 +53,414 @@ def restart_wazuh_function_without_exception(daemon=None):
     control_service('stop', daemon=daemon)
 
 
-# S3 fixtures
+"""Session fixtures"""
+
+
+@pytest.fixture(scope="session", autouse=True)
+def buckets_manager():
+    """Initializes a set to manage the creation and deletion of the buckets used throughout the test session.
+
+    Yields
+    ------
+    buckets : set
+        Set of buckets
+    """
+    # Create buckets set
+    buckets: set = set()
+
+    yield buckets
+
+    # Delete all buckets created during execution
+    for bucket in buckets:
+        try:
+            # Delete the bucket
+            delete_bucket(bucket_name=bucket)
+        except ClientError as error:
+            logger.error({
+                "message": "Client error deleting bucket, delete manually",
+                "resource_name": bucket,
+                "error": str(error)
+            })
+
+        except Exception as error:
+            logger.error({
+                "message": "Broad error deleting bucket, delete manually",
+                "resource_name": bucket,
+                "error": str(error)
+            })
+
+
+@pytest.fixture(scope="session", autouse=True)
+def log_groups_manager():
+    """Initializes a set to manage the creation and deletion of the log groups used throughout the test session.
+
+    Yields
+    ------
+    log_groups : set
+        Set of log groups.
+    """
+    # Create log groups set
+    log_groups: set = set()
+
+    yield log_groups
+
+    # Delete all resources created during execution
+    for log_group in log_groups:
+        try:
+            delete_log_group(log_group_name=log_group)
+        except ClientError as error:
+            logger.error({
+                "message": "Client error deleting log_group, delete manually",
+                "resource_name": log_group,
+                "error": str(error)
+            })
+            raise
+
+        except Exception as error:
+            logger.error({
+                "message": "Broad error deleting log_group, delete manually",
+                "resource_name": log_group,
+                "error": str(error)
+            })
+
+
+@pytest.fixture(scope="session", autouse=True)
+def sqs_manager():
+    """Initializes a set to manage the creation and deletion of the sqs queues used throughout the test session.
+
+    Yields
+    ------
+    buckets : set
+        Set of SQS queues
+    """
+    # Create buckets set
+    sqs_queues: set = set()
+
+    yield sqs_queues
+
+    # Delete all resources created during execution
+    for sqs in sqs_queues:
+        try:
+            delete_sqs_queue(sqs_queue_url=sqs)
+        except ClientError as error:
+            logger.error({
+                "message": "Client error deleting sqs queue, delete manually",
+                "resource_name": sqs,
+                "error": str(error)
+            })
+
+        except Exception as error:
+            logger.error({
+                "message": "Broad error deleting sqs queue, delete manually",
+                "resource_name": sqs,
+                "error": str(error)
+            })
+
+
+"""S3 fixtures"""
+
+
+@pytest.fixture()
+def create_test_bucket(buckets_manager,
+                       metadata: dict):
+    """Create a bucket.
+
+    Parameters
+    ----------
+    buckets_manager : fixture
+        Set of buckets.
+    metadata : dict
+        Bucket information.
+
+    """
+    bucket_name = metadata["bucket_name"]
+    bucket_type = metadata["bucket_type"]
+
+    try:
+        # Create bucket
+        create_bucket(bucket_name=bucket_name)
+        logger.debug(f"Created new bucket: type {bucket_name}")
+
+        # Append created bucket to resource set
+        buckets_manager.add(bucket_name)
+
+    except ClientError as error:
+        logger.error({
+            "message": "Client error creating bucket",
+            "bucket_name": bucket_name,
+            "bucket_type": bucket_type,
+            "error": str(error)
+        })
+        raise
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error creating bucket",
+            "bucket_name": bucket_name,
+            "bucket_type": bucket_type,
+            "error": str(error)
+        })
+        raise
+
 
 @pytest.fixture
-def upload_and_delete_file_to_s3(metadata):
+def manage_bucket_files(metadata: dict):
     """Upload a file to S3 bucket and delete after the test ends.
 
-    Args:
-        metadata (dict): Metadata to get the parameters.
+    Parameters
+    ----------
+    metadata : dict
+        Metadata to get the parameters.
     """
+    # Get bucket name
     bucket_name = metadata['bucket_name']
-    filename = upload_file(bucket_type=metadata['bucket_type'], bucket_name=metadata['bucket_name'])
-    if filename != '':
-        logger.debug('Uploaded file: %s to bucket "%s"', filename, bucket_name)
-        metadata['uploaded_file'] = filename
+
+    # Get bucket type
+    bucket_type = metadata['bucket_type']
+
+    # Generate file
+    data, key = generate_file(bucket_type=bucket_type,
+                                   bucket_name=bucket_name)
+
+    try:
+        # Upload file to bucket
+        upload_bucket_file(bucket_name=bucket_name,
+                           data=data,
+                           key=key)
+
+        logger.debug('Uploaded file: %s to bucket "%s"', key, bucket_name)
+
+        # Set filename for test execution
+        metadata['uploaded_file'] = key
+
+    except ClientError as error:
+        logger.error({
+            "message": "Client error uploading file to bucket",
+            "bucket_name": bucket_name,
+            "filename": key,
+            "error": str(error)
+        })
+        raise error
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error uploading file to bucket",
+            "bucket_name": bucket_name,
+            "filename": key,
+            "error": str(error)
+        })
+        raise error
 
     yield
 
-    if file_exists(filename=filename, bucket_name=bucket_name):
-        delete_file(filename=filename, bucket_name=bucket_name)
-        logger.debug('Deleted file: %s from bucket %s', filename, bucket_name)
+    try:
+        # Delete all bucket files
+        delete_bucket_files(bucket_name=bucket_name)
+    except ClientError as error:
+        logger.error({
+            "message": "Client error deleting files in bucket",
+            "bucket_name": bucket_name,
+            "filename": key,
+            "error": str(error)
+        })
+        raise error
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error deleting files in bucket",
+            "bucket_name": bucket_name,
+            "filename": key,
+            "error": str(error)
+        })
+        raise error
 
 
-@pytest.fixture
-def delete_file_from_s3(metadata):
-    """Delete a file from S3 bucket after the test ends.
+"""CloudWatch fixtures"""
 
-    Args:
-        metadata (dict): Metadata to get the parameters.
+
+@pytest.fixture()
+def create_test_log_group(log_groups_manager,
+                          metadata: dict) -> None:
+    """Create a bucket.
+
+    Parameters
+    ----------
+    log_groups_manager : fixture
+        Log groups set.
+    metadata : dict
+        Log group information.
     """
-    yield
+    # Get log group name
+    log_group_name = metadata["log_group_name"]
 
-    bucket_name = metadata['bucket_name']
-    filename = metadata.get('filename')
-    if filename is not None:
-        delete_file(filename=filename, bucket_name=bucket_name)
-        logger.debug('Deleted file: %s from bucket %s', filename, bucket_name)
+    try:
+        # Create log group
+        create_log_group(log_group_name=log_group_name)
+        logger.debug(f"Created log group: {log_group_name}")
+
+        # Append created bucket to resource list
+        log_groups_manager.add(log_group_name)
+
+    except ClientError as error:
+        logger.error({
+            "message": "Client error creating log group",
+            "log_group": log_group_name,
+            "error": str(error)
+        })
+        raise
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error creating log group",
+            "log_group": log_group_name,
+            "error": str(error)
+        })
+        raise
 
 
-# CloudWatch fixtures
+@pytest.fixture()
+def create_test_log_stream(metadata: dict) -> None:
+    """Create a log stream.
 
-@pytest.fixture(name='create_log_stream')
-def fixture_create_log_stream(metadata):
-    """Create a log stream with events and delete after the execution.
+    Parameters
+    ----------
+    metadata : dict
+        Log group information.
 
-    Args:
-        metadata (dict): Metadata to get the parameters.
     """
-    SKIP_LOG_GROUP_CREATION = [PERMANENT_CLOUDWATCH_LOG_GROUP, FAKE_CLOUDWATCH_LOG_GROUP]
-    log_group_names = [item.strip() for item in metadata['log_group_name'].split(',')]
-    for log_group_name in log_group_names:
-        if log_group_name in SKIP_LOG_GROUP_CREATION:
-            continue
-
-        logger.debug('Creating log group: %s', log_group_name)
-        create_log_group(log_group_name)
-        log_stream = create_log_stream(log_group_name)
-        logger.debug('Created log stream "%s" within log group "%s"', log_stream, log_group_name)
-        create_log_events(
-            log_stream=log_stream, log_group=log_group_name, event_number=metadata.get('expected_results', 1)
-        )
-        logger.debug('Created log events')
-        metadata['log_stream'] = log_stream
-
-    yield
-
-    for log_group_name in log_group_names:
-        if log_group_name in SKIP_LOG_GROUP_CREATION:
-            continue
-        delete_log_group(log_group_name)
-        logger.debug('Deleted log group: %s', log_group_name)
-
-
-@pytest.fixture
-def create_log_stream_in_existent_group(metadata):
-    """Create a log stream with events and delete after the execution.
-
-    Args:
-        metadata (dict): Metadata to get the parameters.
-    """
+    # Get log group
     log_group_name = metadata['log_group_name']
-    log_stream = create_log_stream(log_group_name)
-    logger.debug('Created log stream "%s" within log group "%s"', log_stream, log_group_name)
-    create_log_events(log_stream=log_stream, log_group=log_group_name)
-    logger.debug('Created log events')
-    metadata['log_stream'] = log_stream
 
-    yield
+    # Create random stream name
+    log_stream_name = str(uuid4())
 
-    delete_log_stream(log_stream=log_stream, log_group=log_group_name)
-    logger.debug('Deleted log stream: %s', log_stream)
+    try:
+        # Create log stream
+        create_log_stream(log_group=log_group_name,
+                          log_stream=log_stream_name)
+        logger.debug(f'Created log stream {log_stream_name} within log group {log_group_name}')
+
+        metadata['log_stream'] = log_stream_name
+
+    except ClientError as error:
+        logger.error({
+            "message": "Client error creating log stream",
+            "log_group": log_group_name,
+            "error": str(error)
+        })
+        raise
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error creating log stream",
+            "log_group": log_group_name,
+            "error": str(error)
+        })
+        raise
 
 
-@pytest.fixture(name='delete_log_stream')
-def fixture_delete_log_stream(metadata):
-    """Create a log stream with events and delete after the execution.
+@pytest.fixture()
+def create_test_events(metadata: dict) -> None:
+    """Create a log event in a log stream.
 
-    Args:
-        metadata (dict): Metadata to get the parameters.
+    Parameters
+    ----------
+    metadata : dict
+        Log group information.
+
     """
-    yield
-    log_stream = metadata['log_stream']
-    delete_log_stream(log_stream=log_stream)
-    logger.debug('Deleted log stream: %s', log_stream)
-    
+    # Get log group name
+    log_group_name = metadata["log_group_name"]
 
-# DB fixtures
+    # Get log stream name
+    log_stream_name = metadata["log_stream_name"]
+
+    # Get number of events
+    event_number = metadata["expected_results"]
+
+    # Generate event information
+    events = [
+        {'timestamp': int(time() * 1000), 'message': f"Test event number {i}"} for i in range(event_number)
+    ]
+
+    try:
+        # Insert log events in log group
+        upload_log_events(
+            log_stream=log_stream_name,
+            log_group=log_group_name,
+            events=events
+        )
+
+    except ClientError as error:
+        logger.error({
+            "message": "Client error creating log stream",
+            "log_group": log_group_name,
+            "error": str(error)
+        })
+        pass
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error creating log stream",
+            "log_group": log_group_name,
+            "error": str(error)
+        })
+        pass
+
+
+"""SQS fixtures"""
+
+
+@pytest.fixture
+def set_test_sqs_queue(metadata: dict, sqs_manager) -> None:
+    """Create a test sqs group
+
+    Parameters
+    ----------
+    metadata : dict
+        The metadata for the sqs queue.
+    sqs_manager: fixture
+        The SQS set for the test.
+
+    """
+    # Get bucket name
+    bucket_name = metadata["bucket_name"]
+    # Get SQS name
+    sqs_name = metadata["sqs_name"]
+
+    try:
+        # Create SQS and get URL
+        sqs_queue_url = create_sqs_queue(sqs_name=sqs_name)
+        # Add it to sqs set
+        sqs_manager.add(sqs_queue_url)
+
+        # Get SQS Queue ARN
+        sqs_queue_arn = get_sqs_queue_arn(sqs_url=sqs_queue_url)
+
+        # Set policy
+        set_sqs_policy(bucket_name=bucket_name,
+                       sqs_queue_url=sqs_queue_url,
+                       sqs_queue_arn=sqs_queue_arn)
+
+        # Set bucket notification configuration
+        set_bucket_event_notification_configuration(bucket_name=bucket_name,
+                                                    sqs_queue_arn=sqs_queue_arn)
+
+    except ClientError as error:
+        # Check if the sqs exist
+        if error.response['Error']['Code'] == 'ResourceNotFound':
+            logger.error(f"SQS Queue {sqs_name} already exists")
+            pass
+        else:
+            raise error
+
+    except Exception as error:
+        raise error
+
+
+"""DB fixtures"""
+
+
 @pytest.fixture
 def clean_s3_cloudtrail_db():
     """Delete the DB file before and after the test execution"""

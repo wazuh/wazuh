@@ -4,6 +4,7 @@
     BUCKET_TYPE: cloudtrail
     BUCKET_NAME: wazuh-cloudtrail-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: cloudtrail
     bucket_name: wazuh-cloudtrail-integration-tests
 
@@ -13,6 +14,7 @@
     BUCKET_TYPE: vpcflow
     BUCKET_NAME: wazuh-vpcflow-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: vpcflow
     bucket_name: wazuh-vpcflow-integration-tests
 
@@ -22,6 +24,7 @@
     BUCKET_TYPE: config
     BUCKET_NAME: wazuh-config-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: config
     bucket_name: wazuh-config-integration-tests
 
@@ -31,6 +34,7 @@
     BUCKET_TYPE: alb
     BUCKET_NAME: wazuh-alb-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: alb
     bucket_name: wazuh-alb-integration-tests
 
@@ -40,6 +44,7 @@
     BUCKET_TYPE: clb
     BUCKET_NAME: wazuh-clb-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: clb
     bucket_name: wazuh-clb-integration-tests
 
@@ -49,6 +54,7 @@
     BUCKET_TYPE: nlb
     BUCKET_NAME: wazuh-nlb-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: nlb
     bucket_name: wazuh-nlb-integration-tests
 
@@ -58,6 +64,7 @@
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-kms-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: custom
     bucket_name: wazuh-kms-integration-tests
 
@@ -67,6 +74,7 @@
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-macie-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: custom
     bucket_name: wazuh-macie-integration-tests
 
@@ -76,6 +84,7 @@
     BUCKET_TYPE: custom
     BUCKET_NAME: wazuh-trusted-advisor-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: custom
     bucket_name: wazuh-trusted-advisor-integration-tests
 
@@ -85,6 +94,7 @@
     BUCKET_TYPE: guardduty
     BUCKET_NAME: wazuh-guardduty-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: guardduty
     bucket_name: wazuh-guardduty-integration-tests
 
@@ -94,6 +104,7 @@
     BUCKET_TYPE: guardduty
     BUCKET_NAME: wazuh-native-guardduty-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: guardduty
     bucket_name: wazuh-native-guardduty-integration-tests
 
@@ -103,6 +114,7 @@
     BUCKET_TYPE: waf
     BUCKET_NAME: wazuh-waf-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: waf
     bucket_name: wazuh-waf-integration-tests
 
@@ -112,6 +124,7 @@
     BUCKET_TYPE: server_access
     BUCKET_NAME: wazuh-server-access-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: server_access
     bucket_name: wazuh-server-access-integration-tests
 
@@ -121,5 +134,6 @@
     BUCKET_TYPE: cisco_umbrella
     BUCKET_NAME: wazuh-umbrella-integration-tests
   metadata:
+    resource_type: bucket
     bucket_type: cisco_umbrella
     bucket_name: wazuh-umbrella-integration-tests

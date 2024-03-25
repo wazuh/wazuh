@@ -10,28 +10,28 @@ buckets and services.
 ```bash
 wazuh/tests/integration/test_aws
 ├── data
-│   ├── configuration_template
-│   │   ├── basic_test_module
-│   │   ├── custom_bucket_test_module
-│   │   ├── discard_regex_test_module
-│   │   ├── log_groups_test_module
-│   │   ├── only_logs_after_test_module
-│   │   ├── parser_test_module
-│   │   ├── path_suffix_test_module
-│   │   ├── path_test_module
-│   │   ├── regions_test_module
-│   │   └── remove_from_bucket_test_module
-│   └── test_cases
-│       ├── basic_test_module
-│       ├── custom_bucket_test_module
-│       ├── discard_regex_test_module
-│       ├── log_groups_test_module
-│       ├── only_logs_after_test_module
-│       ├── parser_test_module
-│       ├── path_suffix_test_module
-│       ├── path_test_module
-│       ├── regions_test_module
-│       └── remove_from_bucket_test_module
+│   ├── configuration_template
+│   │   ├── basic_test_module
+│   │   ├── custom_bucket_test_module
+│   │   ├── discard_regex_test_module
+│   │   ├── log_groups_test_module
+│   │   ├── only_logs_after_test_module
+│   │   ├── parser_test_module
+│   │   ├── path_suffix_test_module
+│   │   ├── path_test_module
+│   │   ├── regions_test_module
+│   │   └── remove_from_bucket_test_module
+│   └── test_cases
+│       ├── basic_test_module
+│       ├── custom_bucket_test_module
+│       ├── discard_regex_test_module
+│       ├── log_groups_test_module
+│       ├── only_logs_after_test_module
+│       ├── parser_test_module
+│       ├── path_suffix_test_module
+│       ├── path_test_module
+│       ├── regions_test_module
+│       └── remove_from_bucket_test_module
 ├── __init__.py
 ├── README.md
 ├── conftest.py
