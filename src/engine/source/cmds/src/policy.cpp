@@ -262,7 +262,10 @@ void runGetDefaultParent(std::shared_ptr<apiclnt::Client> client,
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
 
     // Print response
-    std::cout << eResponse.data() << std::endl;
+    for (const auto& parent : eResponse.data())
+    {
+        std::cout << parent << std::endl;
+    }
 }
 
 void runSetDefaultParent(std::shared_ptr<apiclnt::Client> client,
