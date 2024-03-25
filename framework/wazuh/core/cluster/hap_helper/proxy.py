@@ -1,4 +1,5 @@
 import ipaddress
+import json
 import logging
 from enum import Enum
 from typing import Literal, Optional, TypeAlias
@@ -8,7 +9,7 @@ from wazuh.core.cluster.utils import ClusterFilter, context_tag
 from wazuh.core.exception import WazuhHAPHelperError
 
 JSON_TYPE: TypeAlias = dict | list[dict]
-PROXY_API_RESPONSE: TypeAlias = JSON_TYPE
+PROXY_API_RESPONSE: TypeAlias = JSON_TYPE | None
 HTTP_PROTOCOL = Literal['http', 'https']
 
 
@@ -55,6 +56,8 @@ class ProxyServerState(Enum):
     READY = 'ready'
     MAINTENANCE = 'maint'
     DRAIN = 'drain'
+    DOWN = 'down'
+    UP = 'up'
 
 
 class CommunicationProtocol(Enum):
@@ -162,7 +165,11 @@ class ProxyAPI:
             raise WazuhHAPHelperError(3044, extra_message=str(request_exc))
 
         if response.is_success:
-            response = response.json()
+            try:
+                response = response.json()
+            except json.JSONDecodeError:
+                response = None
+
             if isinstance(response, dict) and version_key in response:
                 self.version = response[version_key]
             elif method != ProxyAPIMethod.GET and 'configuration' in endpoint:
