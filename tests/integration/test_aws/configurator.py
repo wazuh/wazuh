@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 """
-    This file contain the Test Configurator class that will manage all resources and configurations for each test
+    This file contains the Test Configurator class that will manage all resources and configurations for each test
     module.
 """
 from os.path import join
@@ -70,10 +70,12 @@ class TestConfigurator:
         """
         Configure and manage the resources for the test.
 
-        Params
-        ------
-        - configuration_file (str): The name of the configuration file.
-        - cases_file (str): The name of the test cases file.
+        Parameters
+        ----------
+        configuration_file : str
+            The name of the configuration file.
+        cases_file : str
+            The name of the test cases file.
         """
         # Set test cases yaml path
         cases_yaml_path = join(TEST_DATA_PATH, TEST_CASES_DIR, self.module, cases_file)
@@ -91,11 +93,12 @@ class TestConfigurator:
     def _load_configuration_template(self, configuration_file: str, parameters: str) -> None:
         """Set the configuration template of the test
 
-        Params
-        ------
-        - configuration_file (str): The name of the configuration file.
-        - parameters (str): The test parameters.
-
+        Parameters
+        ----------
+        configuration_file : str
+            The name of the configuration file.
+        parameters : str
+            The test parameters.
         """
         if configuration_file != "":
             # Set config path
@@ -111,10 +114,12 @@ class TestConfigurator:
     def _modify_metadata(self, parameters: list) -> None:
         """Modify raw data to add test session information
 
-        Params
-        ------
-        - parameters (list): The parameters of the test.
-        - metadata (list): The metadata of the test.
+        Parameters
+        ----------
+        parameters : list
+            The parameters of the test.
+        metadata : list
+            The metadata of the test.
         """
         # Add Suffix (_todelete) to alert a safe deletion of resource in case of errors.
         suffix = f"-{self._session_id}-todelete"
