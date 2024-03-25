@@ -514,8 +514,8 @@ INSTANTIATE_TEST_SUITE_P(
                      {
                          EXPECT_CALL(*policy,
                                      getDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}))
-                             .WillOnce(::testing::Return(base::Name {ASSET_NAME_A}));
-                         return JPayload().setString(ASSET_NAME_A, "/data");
+                             .WillOnce(::testing::Return(std::list<base::Name> {ASSET_NAME_A}));
+                         return JPayload().setArray("/data").appendString(ASSET_NAME_A, "/data");
                      })),
         // [policyDefaultParentPost]: Fail
         TestPolT(policyDefaultParentPost, R"( { "name": "test" } )", failure()),

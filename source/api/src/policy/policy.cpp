@@ -188,7 +188,7 @@ base::RespOrError<std::list<base::Name>> Policy::listAssets(const base::Name& po
     return policy.listAssets(namespaceId);
 }
 
-base::RespOrError<base::Name> Policy::getDefaultParent(const base::Name& policyName,
+base::RespOrError<std::list<base::Name>> Policy::getDefaultParent(const base::Name& policyName,
                                                        const store::NamespaceId& namespaceId) const
 {
     auto resp = read(policyName);

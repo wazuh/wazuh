@@ -84,7 +84,16 @@ base::Expression Builder::buildAsset(const base::Name& name) const
 base::OptError Builder::validateIntegration(const json::Json& json, const std::string& namespaceId) const
 {
     // TODO: Make factory so this can be implemented without duplicating code
-    policy::factory::PolicyData policyData({.name = "policy/fake/0", .hash = "fakehash"});
+    policy::factory::PolicyData policyData;
+    try
+    {
+        policyData = policy::factory::PolicyData({.name = "policy/fake/0", .hash = "fakehash"});
+    }
+    catch(const std::exception& e)
+    {
+        return base::Error {e.what()};
+    }
+    
     auto namePath = json::Json::formatJsonPath(syntax::asset::NAME_KEY);
     auto integrationNameResp = json.getString(namePath);
     if (!integrationNameResp)

@@ -475,7 +475,10 @@ api::HandlerSync policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& 
         }
 
         ResponseType eResponse;
-        eResponse.set_data(base::getResponse(err).fullName().c_str());
+        for (const auto& parent : base::getResponse(err))
+        {
+            eResponse.add_data(parent.fullName().c_str());
+        }
         eResponse.set_status(eEngine::ReturnStatus::OK);
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };

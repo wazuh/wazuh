@@ -2,6 +2,7 @@
 #define __API_POLICY_POLICYREP_HPP
 
 #include <map>
+#include <set>
 #include <sstream>
 
 #include <fmt/format.h>
@@ -21,10 +22,10 @@ namespace api::policy
 class Policy::PolicyRep
 {
 private:
-    base::Name m_name;                                         ///< Policy name
-    std::multimap<store::NamespaceId, base::Name> m_nss;       ///< Map of namespace and asset names
-    std::map<store::NamespaceId, base::Name> m_defaultParents; ///< Map of namespace and default parent
-    size_t m_hash;                                             ///< Hash of the policy
+    base::Name m_name;                                              ///< Policy name
+    std::multimap<store::NamespaceId, base::Name> m_nss;            ///< Map of namespace and asset names
+    std::multimap<store::NamespaceId, base::Name> m_defaultParents; ///< Map of namespace and default parent
+    size_t m_hash;                                                  ///< Hash of the policy
 
     /**
      * @brief Get a string from the m_nss map, used to calculate the hash
@@ -45,7 +46,7 @@ public:
     PolicyRep(base::Name&& name,
               std::multimap<store::NamespaceId, base::Name>&& nss,
               size_t hash,
-              std::map<store::NamespaceId, base::Name>&& defaultParents)
+              std::multimap<store::NamespaceId, base::Name>&& defaultParents)
         : m_name {std::move(name)}
         , m_nss {std::move(nss)}
         , m_hash {hash}
@@ -68,9 +69,9 @@ public:
         // Hash the policy nss and default parents
         std::hash<std::string> hasher;
         std::string str = nssToStr();
-        for (const auto& [nsId, parent] : m_defaultParents)
+        for (auto it = m_defaultParents.begin(); it != m_defaultParents.end(); ++it)
         {
-            str += nsId.name().fullName() + ":" + parent.fullName() + ";";
+            str += it->first.name().fullName() + ":" + it->second.fullName() + ";";
         }
         m_hash = hasher(str);
     }
@@ -216,7 +217,7 @@ public:
         size_t hash;
         ss >> hash;
         std::multimap<store::NamespaceId, base::Name> nss;
-        std::map<store::NamespaceId, base::Name> defaultParents;
+        std::multimap<store::NamespaceId, base::Name> defaultParents;
 
         // Assets
         auto assets = policyDoc.getArray(ASSETS_PATH);
@@ -240,11 +241,19 @@ public:
         if (defParents)
         {
             auto defParentsObj = std::move(defParents.value());
-            for (const auto& [nsName, parent] : defParentsObj)
+            for (const auto& [assetType, nsIdParent] : defParentsObj)
             {
-                auto nsId = store::NamespaceId {nsName};
-                auto parentName = base::Name {parent.getString().value()};
-                defaultParents.emplace(nsId, parentName);
+                auto nsIdParentObj = nsIdParent.getObject();
+                if (!nsIdParentObj)
+                {
+                    throw std::runtime_error("Default parent asset is not a object");
+                }
+                for (const auto& [ns, name] : nsIdParentObj.value())
+                {
+                    auto nsId = store::NamespaceId {ns};
+                    auto parentName = base::Name {name.getString().value()};
+                    defaultParents.emplace(nsId, parentName);
+                }
             }
         }
 
@@ -276,11 +285,33 @@ public:
             policyDoc.appendString(asset.fullName(), ASSETS_PATH);
         }
 
-        // Default parents
-        policyDoc.setObject(DEF_PARENTS_PATH);
-        for (const auto& [nsId, parent] : m_defaultParents)
+        std::map<std::string, std::map<std::string, std::string>> assetTypeNamespaceParent;
+        for (const auto& [namespaceId, parent] : m_defaultParents)
         {
-            policyDoc.setString(parent.fullName(), fmt::format("{}/{}", DEF_PARENTS_PATH, nsId.name().fullName()));
+            assetTypeNamespaceParent[parent.parts()[0]][namespaceId.str()] = parent;
+        }
+
+        // Default parents
+        json::Json tmp;
+        for (const auto& [namespaceId, parent] : assetTypeNamespaceParent["rule"])
+        {
+            auto key = "/rules" + json::Json::formatJsonPath(namespaceId);
+            tmp.setString(parent, key);
+        }
+
+        for (const auto& [namespaceId, parent] : assetTypeNamespaceParent["decoder"])
+        {
+            auto key = "/decoders" + json::Json::formatJsonPath(namespaceId);
+            tmp.setString(parent, key);
+        }
+        
+        if (!tmp.isEmpty())
+        {
+            policyDoc.set(DEF_PARENTS_PATH, tmp);
+        }
+        else
+        {
+            policyDoc.setObject(DEF_PARENTS_PATH);
         }
 
         return policyDoc;
@@ -347,41 +378,50 @@ public:
         return ss.str();
     }
 
-    base::RespOrError<base::Name> getDefaultParent(const store::NamespaceId& namespaceId) const
+    base::RespOrError<std::list<base::Name>> getDefaultParent(const store::NamespaceId& namespaceId) const
     {
-        auto it = m_defaultParents.find(namespaceId);
-        if (it != m_defaultParents.end())
+        auto range = m_defaultParents.equal_range(namespaceId);
+        std::list<base::Name> parents;
+        if (range.first == m_defaultParents.end())
         {
-            return it->second;
+            return base::Error {"Namespace not found or no default parent"};
         }
 
-        return base::Error {"Namespace not found or no default parent"};
+        for (auto it = range.first; it != range.second; ++it)
+        {
+            parents.push_back(it->second);
+        }
+        
+        return parents;
     }
 
     base::OptError setDefaultParent(const store::NamespaceId& namespaceId, const base::Name& parent)
     {
-        // If not exists, add it, and if exists, return error
-        auto it = m_defaultParents.find(namespaceId);
-        if (it != m_defaultParents.end())
+        auto range = m_defaultParents.equal_range(namespaceId);
+        for (auto it = range.first; it != range.second; ++it)
         {
-            return base::Error {"Namespace already has a default parent"};
+            if (it->second == parent)
+            {
+                return base::Error {"Namespace already has the provided default parent"};
+            }
         }
-        m_defaultParents[namespaceId] = parent;
+
+        m_defaultParents.emplace(namespaceId, parent);
         updateHash();
         return base::noError();
     }
 
     base::OptError delDefaultParent(const store::NamespaceId& namespaceId)
     {
-        auto it = m_defaultParents.find(namespaceId);
-        if (it != m_defaultParents.end())
+        auto range = m_defaultParents.equal_range(namespaceId);
+        if (range.first == m_defaultParents.end())
         {
-            m_defaultParents.erase(it);
-            updateHash();
-            return base::noError();
+            return base::Error {"Namespace not found  or no default parent"};
         }
 
-        return base::Error {"Namespace not found  or no default parent"};
+        m_defaultParents.erase(range.first, range.second);
+        updateHash();
+        return base::noError();
     }
 
     std::string getHash() const

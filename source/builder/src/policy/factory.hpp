@@ -82,7 +82,20 @@ public:
 
         for (const auto& [ns, name] : params.defaultParents)
         {
-            addDefaultParent(AssetType::DECODER, ns, name);
+            auto asset = base::Name {name};
+            
+            if (asset.parts()[0] == assetTypeStr(AssetType::DECODER))
+            {
+                addDefaultParent(AssetType::DECODER, ns, name);
+            }
+            else if (asset.parts()[0] == assetTypeStr(AssetType::RULE))
+            {
+                addDefaultParent(AssetType::RULE, ns, name);
+            }
+            else
+            {
+                throw std::runtime_error(fmt::format("name {} is not a valid type", asset.parts()[0]));
+            }
         }
 
         for (const auto& [assetType, subgraph] : params.assets)
