@@ -89,7 +89,14 @@ class HAPHelper:
         bool
             True if the node can be deleted, else False.
         """
-        node_downtime = (await self.proxy.get_wazuh_server_stats(server_name=node_name))['lastchg']
+        node_stats = await self.proxy.get_wazuh_server_stats(server_name=node_name)
+
+        node_status = node_stats['status']
+        node_downtime = node_stats['lastchg']
+
+        if node_status == ProxyServerState.UP.value.upper():
+            return False
+
         self.logger.debug2(f"Server '{node_name}' has been disconnected for {node_downtime}s")
 
         if node_downtime < self.remove_disconnected_node_after * 60:
