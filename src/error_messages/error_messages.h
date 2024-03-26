@@ -164,6 +164,12 @@
 #define LOGCOLLECTOR_MACOS_LOG_STREAM_EXEC_ERROR    "(1606): Error while trying to execute `log stream` as follows: %s."
 #define LOGCOLLECTOR_MACOS_LOG_CHILD_EXITED         "(1607): macOS 'log %s' process exited, pid: %d, exit value: %d."
 
+#define LOGCOLLECTOR_JOURNAL_LOG_DISABLING          "(1608): Failed to connect to the journal, disabling journal log."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_SEEK          "(1609): Failed to move to the end of the journal, disabling journal log: %s."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_NEXT          "(1610): Failed to get the next entry, disabling journal log: %s."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_GET           "(1611): Failed to get the message from the journal"
+
+
 /* remoted */
 #define NO_REM_CONN     "(1750): No remote connection configured. Exiting."
 #define NO_CLIENT_KEYS  "(1751): File client.keys not found or empty."

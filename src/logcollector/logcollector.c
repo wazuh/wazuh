@@ -415,11 +415,11 @@ void LogCollectorStart()
             w_journald_set_ofe(current->future);
 
             for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
-                mdebug1("Socket target for '%s' -> %s", JOURNALD_LOG, current->target[tg_idx]);
+                mdebug1(LOGCOLLECTOR_SOCKET_TARGET, JOURNALD_LOG, current->target[tg_idx]);
                 w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
             }
 #else
-            minfo("Journald log format is only available on Linux.");
+            minfo(LOGCOLLECTOR_JOURNALD_ONLY_LINUX);
             w_journal_log_config_free(&(current->journal_log));
 #endif
             os_free(current->file);
@@ -2114,7 +2114,7 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                         if (w_journald_can_read(thread_id)) {
                             current->read(current, &r, 0);
                         } else {
-                            mdebug2("Skipping is not the owner of the journal log");
+                            mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NOT_OWNER);
                         }
                     }
 #endif
