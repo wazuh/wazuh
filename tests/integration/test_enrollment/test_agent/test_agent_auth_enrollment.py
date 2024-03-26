@@ -66,13 +66,14 @@ config_parameters, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, config_parameters, test_metadata)
 
 # Test variables.
-log_monitor = FileMonitor(WAZUH_LOG_PATH)
 socket_listener = None
+
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
-def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_configuration, shutdown_agentd,
+def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module, shutdown_agentd,
                                set_keys, set_password, configure_socket_listener):
     """
     description:
@@ -94,6 +95,9 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
         - set_wazuh_configuration:
             type: fixture
             brief: Configure a custom environment for testing.
+        - daemons_handler_module:
+            type: fixture
+            brief: Handler of Wazuh daemons.
         - shutdown_agentd:
             type: fixture
             brief: Shutdown agentd to avoid interferences with agent-auth test
@@ -131,6 +135,7 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
         expected_error = expected_error_dict['agent-auth'] if 'agent-auth' in expected_error_dict else \
                                                               expected_error_dict
         try:
+            log_monitor = FileMonitor(WAZUH_LOG_PATH)
             log_monitor.start(timeout=10, callback=make_callback(expected_error, prefix='.*', escape=True))
         except Exception as error:
             expected_fail = test_metadata.get('expected_fail')
