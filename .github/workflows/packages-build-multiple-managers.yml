@@ -38,18 +38,16 @@ on:
           By default, it is set to "0" for development.'
         required: false
       release-package:
-        type: choice
+        type: boolean
         description: |
-          'Build packages with release format.
+          'Build package with release format.
            Checksum will be also generated.'
         required: false
-        options: 
-          - 'yes'
-          - 'no'
       debuggable-package:
-        type: string
-        description: 'Build packages with debug symbols.'
-        default: 'no'
+        type: boolean
+        description: |
+          Build the binaries with debug symbols.
+          By default: false
         required: false
 
 jobs:
