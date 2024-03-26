@@ -12,7 +12,7 @@ set -x
 CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
 WAZUH_PATH="$(cd $CURRENT_PATH/..; pwd -P)"
 ARCHITECTURE="amd64"
-PACKAGE_FORMAT="deb"
+SYSTEM="deb"
 OUTDIR="${CURRENT_PATH}/output/"
 BRANCH=""
 REVISION="0"
@@ -26,7 +26,7 @@ INSTALLATION_PATH="/var/ossec"
 CHECKSUM="no"
 FUTURE="no"
 LEGACY="no"
-IS_PACKAGE_RELEASE="no"
+IS_STAGE="no"
 
 
 trap ctrl_c INT
@@ -58,27 +58,27 @@ build_pkg() {
     if [ "$LEGACY" = "yes" ]; then
         REVISION="${REVISION}.el5"
         TAR_URL="https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
-        TAR_FILE="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy/centos-5-i386.tar.gz"
+        TAR_FILE="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy/centos-5-i386.tar.gz"
         if [ ! -f "$TAR_FILE" ]; then
-            download_file ${TAR_URL} "${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
+            download_file ${TAR_URL} "${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
         fi
-        DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
+        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
         # TODO: Remove the "pkg" appended to the container name.
         # This was necessary because we don't have permission to overwrite an existing container.
         # Also, ensure that the same adjustment is made in the else condition.
-        CONTAINER_NAME="pkg_${PACKAGE_FORMAT}_legacy_builder_${ARCHITECTURE}"
-        if [ "$PACKAGE_FORMAT" != "rpm"]; then
+        CONTAINER_NAME="pkg_${SYSTEM}_legacy_builder_${ARCHITECTURE}"
+        if [ "$SYSTEM" != "rpm"]; then
             echo "Legacy mode is only available for RPM packages."
             clean 1
         fi
     else
-        CONTAINER_NAME="pkg_${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
-        DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/${TARGET}"
+        CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
+        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
     fi
 
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
-    cp ${CURRENT_PATH}/${PACKAGE_FORMAT}s/utils/* ${DOCKERFILE_PATH}
+    cp ${CURRENT_PATH}/${SYSTEM}s/utils/* ${DOCKERFILE_PATH}
 
     # Build the Docker image
     if [[ ${BUILD_DOCKER} == "yes" ]]; then
@@ -87,11 +87,11 @@ build_pkg() {
 
     # Build the Debian package with a Docker container
     docker run -t --rm -v ${OUTDIR}:/var/local/wazuh:Z \
-        -e PACKAGE_FORMAT="$PACKAGE_FORMAT" \
+        -e SYSTEM="$SYSTEM" \
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
         -e INSTALLATION_PATH="${INSTALLATION_PATH}" \
-        -e IS_PACKAGE_RELEASE="${IS_PACKAGE_RELEASE}" \
+        -e IS_STAGE="${IS_STAGE}" \
         -e WAZUH_BRANCH="${BRANCH}" \
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} \
@@ -125,7 +125,8 @@ help() {
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default use the script path."
-    echo "    --release-package          [Optional] Use release name in package"
+    echo "    --is_stage                 [Optional] Use release name in package"
+    echo "    --system                   [Optional] Select Package OS [rpm, deb]. By default is 'deb'."
     echo "    --src                      [Optional] Generate the source package in the destination directory."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
     echo "    -h, --help                 Show this help."
@@ -233,16 +234,16 @@ main() {
             FUTURE="yes"
             shift 1
             ;;
-        "--release-package")
-            IS_PACKAGE_RELEASE="yes"
+        "--is_stage")
+            IS_STAGE="yes"
             shift 1
             ;;
         "--src")
             SRC="yes"
             shift 1
             ;;
-        "--package-format")
-            PACKAGE_FORMAT="$2"
+        "--system")
+            SYSTEM="$2"
             shift 2
             ;;
         *)
