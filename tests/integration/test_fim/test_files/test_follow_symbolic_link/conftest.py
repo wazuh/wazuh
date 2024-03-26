@@ -41,7 +41,7 @@ def symlink_new_target(test_metadata: dict) -> Path:
     if file.exists(path):
         file.remove_file(path)
 
-    if not '.' in path:
+    if not '\\.' in path:
         file.create_folder(path)
     else:
         file.write_file(path)
