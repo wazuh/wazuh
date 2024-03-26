@@ -57,7 +57,7 @@ from utils import launch_agent_auth
 
 
 # Marks
-pytestmark = [ pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_wazuh_enrollment.yaml')
@@ -82,7 +82,7 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
 
     wazuh_min_version: 4.6.0
 
-    tier: 0
+    tier: 1
 
     parameters:
         - test_configuration:
