@@ -2,10 +2,6 @@ name: Build multiple Wazuh Manager Packages - DEB|RPM - amd64|arm64
 on:
   workflow_dispatch:
     inputs:
-      branch:
-        description: 'Wazuh branch used while building a package'
-        required: false
-        default: master
       build-amd64-deb:
         type: choice
         description: 'Build .deb wazuh-manager on amd64 arch'
@@ -62,7 +58,6 @@ jobs:
     uses: ./.github/workflows/packages-build-manager.yml
     with:
         tag: auto
-        branch: ${{ inputs.branch }}
         arch: amd64
         package-format: deb
         revision: ${{ inputs.revision}}
@@ -76,7 +71,6 @@ jobs:
     uses: ./.github/workflows/packages-build-manager.yml
     with:
         tag: auto
-        branch: ${{ inputs.branch }}
         arch: amd64
         package-format: rpm
         revision: ${{ inputs.revision}}
@@ -90,7 +84,6 @@ jobs:
     uses: ./.github/workflows/packages-build-manager.yml
     with:
         tag: auto
-        branch: ${{ inputs.branch }}
         arch: arm64
         package-format: deb
         revision: ${{ inputs.revision}}
@@ -104,7 +97,6 @@ jobs:
     uses: ./.github/workflows/packages-build-manager.yml
     with:
         tag: auto
-        branch: ${{ inputs.branch }}
         arch: arm64
         package-format: rpm
         revision: ${{ inputs.revision}}

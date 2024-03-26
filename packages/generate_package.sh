@@ -10,8 +10,9 @@
 
 set -x
 CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
+WAZUH_PATH="$(cd $CURRENT_PATH/..; pwd -P)"
 ARCHITECTURE="amd64"
-PACKAGE_FORMAT="rpm"
+PACKAGE_FORMAT="deb"
 OUTDIR="${CURRENT_PATH}/output/"
 BRANCH=""
 REVISION="0"
@@ -34,7 +35,7 @@ clean() {
     exit_code=$1
 
     # Clean the files
-    rm -rf ${DOCKERFILE_PATH}/{*.sh,*.tar.gz,wazuh-*} ${SOURCES_DIRECTORY}
+    rm -rf ${DOCKERFILE_PATH}/{*.sh,*.tar.gz,wazuh-*}
 
     exit ${exit_code}
 }
@@ -62,15 +63,18 @@ build_pkg() {
             download_file ${TAR_URL} "${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
         fi
         DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/legacy"
+        # TODO: Remove the "pkg" appended to the container name.
+        # This was necessary because we don't have permission to overwrite an existing container.
+        # Also, ensure that the same adjustment is made in the else condition.
+        CONTAINER_NAME="pkg_${PACKAGE_FORMAT}_legacy_builder_${ARCHITECTURE}"
+        if [ "$PACKAGE_FORMAT" != "rpm"]; then
+            echo "Legacy mode is only available for RPM packages."
+            clean 1
+        fi
     else
+        CONTAINER_NAME="pkg_${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
         DOCKERFILE_PATH="${CURRENT_PATH}/${PACKAGE_FORMAT}s/${ARCHITECTURE}/${TARGET}"
     fi
-    if [ "$BUILD_DOCKER" = "no" ]; then
-        CONTAINER_NAME="pkg_${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
-    else
-        CONTAINER_NAME="${PACKAGE_FORMAT}_${TARGET}_builder_${ARCHITECTURE}"
-    fi
-    LOCAL_SPECS="${CURRENT_PATH}/${PACKAGE_FORMAT}s"
 
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
@@ -83,14 +87,14 @@ build_pkg() {
 
     # Build the Debian package with a Docker container
     docker run -t --rm -v ${OUTDIR}:/var/local/wazuh:Z \
-        -v ${LOCAL_SPECS}:/specs:Z \
         -e PACKAGE_FORMAT="$PACKAGE_FORMAT" \
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
         -e INSTALLATION_PATH="${INSTALLATION_PATH}" \
         -e IS_PACKAGE_RELEASE="${IS_PACKAGE_RELEASE}" \
+        -e WAZUH_BRANCH="${BRANCH}" \
         ${CUSTOM_CODE_VOL} \
-        ${CONTAINER_NAME}:${DOCKER_TAG} ${BRANCH} \
+        ${CONTAINER_NAME}:${DOCKER_TAG} \
         ${REVISION} ${JOBS} ${DEBUG} \
         ${CHECKSUM} ${FUTURE} ${LEGACY} ${SRC}|| return 1
 
@@ -108,7 +112,7 @@ help() {
     echo
     echo "Usage: $0 [OPTIONS]"
     echo
-    echo "    -b, --branch <branch>      [Required] Select Git branch [${BRANCH}]. By default: master."
+    echo "    -b, --branch <branch>      [Optional] Select Git branch [${BRANCH}]. By default: master."
     echo "    -t, --target <target>      [Required] Target package to build: manager or agent."
     echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/ppc64le/arm64/armhf]."
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
@@ -120,7 +124,7 @@ help() {
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
-    echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub."
+    echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default use the script path."
     echo "    --release-package          [Optional] Use release name in package"
     echo "    --src                      [Optional] Generate the source package in the destination directory."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
@@ -131,14 +135,12 @@ help() {
 
 
 main() {
-    BUILD="no"
     while [ -n "$1" ]
     do
         case "$1" in
         "-b"|"--branch")
             if [ -n "$2" ]; then
                 BRANCH="$2"
-                BUILD="yes"
                 shift 2
             else
                 help 1
@@ -248,13 +250,12 @@ main() {
         esac
     done
 
-    if [[ "$BUILD" != "no" ]]; then
-        build || clean 1
-    else
-        clean 1
+    if [ -z "${CUSTOM_CODE_VOL}" ]; then
+        CUSTOM_CODE_VOL="-v $WAZUH_PATH:/wazuh-local-src:Z"
     fi
 
-    clean 0
+    build && clean 0
+    clean 1
 }
 
 main "$@"

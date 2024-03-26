@@ -43,7 +43,6 @@ future_version() {
 
   local new_wazuh_dir="${build_folder}/${new_name}"
   cp -R ${wazuh_dir} "$new_wazuh_dir"
-  # TODO: Check using RPM/deb what change over the -o -name "*.spec"
   find "$new_wazuh_dir" "${specs_path}" \( -name "*VERSION*" -o -name "*changelog*" \
         -o -name "*.spec" \) -exec sed -i "s/${base_version}/${version}/g" {} \;
   sed -i "s/\$(VERSION)/${major}.${minor}/g" "$new_wazuh_dir/src/Makefile"
@@ -69,14 +68,13 @@ post_process() {
 # Main script body
 
 # Script parameters
-wazuh_branch="$1"
-export REVISION="${2}"
-export JOBS="$3"
-debug="$4"
-checksum="$5"
-future="$6"
-legacy="$7"
-src="$8"
+export REVISION="$1"
+export JOBS="$2"
+debug="$3"
+checksum="$4"
+future="$5"
+legacy="$6"
+src="$7"
 
 build_dir="/build_wazuh"
 
@@ -86,11 +84,17 @@ set -x
 
 # Download source code if it is not shared from the local host
 if [ ! -d "/wazuh-local-src" ] ; then
-    curl -sL https://github.com/wazuh/wazuh/tarball/${wazuh_branch} | tar zx
-    short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${wazuh_branch} \
-                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
+    curl -sL https://github.com/wazuh/wazuh/tarball/${WAZUH_BRANCH} | tar zx
+    short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
+                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
 else
-    short_commit_hash="local"
+    if [ "${legacy}" = "no" ]; then
+      short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short HEAD)"
+    else
+      # Git package is not available in the CentOS 5 repositories.
+      hash_commit=$(cat /wazuh-local-src/.git/refs/heads/$(cat /wazuh-local-src/.git/HEAD|cut -d"/" -f3))
+      short_commit_hash="$(cut -c 1-11 <<< $hash_commit)"
+    fi
 fi
 
 # Build directories

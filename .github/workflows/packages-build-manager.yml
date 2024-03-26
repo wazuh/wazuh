@@ -10,10 +10,6 @@ on:
           Default is 'auto'.
         required: false
         default: 'auto'
-      branch:
-        description: 'Wazuh branch used while building a package'
-        required: false
-        default: master
       arch:
         type: choice
         description: 'Architecture of the package [amd64, arm64]'
@@ -41,17 +37,20 @@ on:
            Checksum will be also generated.'
         required: false
       debuggable-package:
-        type: choice
-        description: 'Build package with debug symbols.'
+        type: boolean
+        description: |
+          Build the binaries with debug symbols.
+          By default: false
         required: false
-        options: 
-          - 'yes'
-          - 'no'
+      checksum:
+        type: boolean
+        description: Generate checksum on the same directory than the package.
+        required: false
       runner-machine:
         type: choice
-        description: 'Required runner type to build the package'
+        description: Required runner type to build the package
         required: true
-        options: 
+        options:
           - ubuntu-latest
           - self-hosted-arm
 
@@ -60,10 +59,6 @@ on:
       tag:
         required: false
         default: 'auto'
-        type: string
-      branch:
-        required: false
-        default: master
         type: string
       arch:
         type: string
@@ -75,11 +70,13 @@ on:
         type: string
         required: false
       release-package:
-        type: string
+        type: boolean
         required: false
       debuggable-package:
-        type: string
-        default: 'no'
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
         required: false
       runner-machine:
         type: string
@@ -102,34 +99,8 @@ jobs:
           skip_after_successful_duplicate: 'false'
 
       - uses: actions/checkout@v4
-        
-      - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-          aws-region: us-east-1
-        
-      - name: Check if package already exists in AWS
-        run: |
-          echo "ABORT_JOB=no" >> $GITHUB_ENV
-          if [ ${{ inputs.package-format }} == 'rpm' ]; then 
-            if [ ${{ inputs.arch }} == 'amd64' ]; then arch_name=x86_64;
-            else arch_name=aarch64; fi
-          else
-            arch_name=${{ inputs.arch }}
-          fi
-          if [ ${{ inputs.release-package }} != 'yes' ]; then 
-            short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${{ github.ref_name}} | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
-          fi
-          curl -O https://raw.githubusercontent.com/wazuh/wazuh/${{ inputs.branch }}/src/VERSION; echo "version=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/VERSION)";
-          if aws s3 ls s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/ --recursive | grep -q "wazuh-manager.*$version.*${{ inputs.revision }}.*$arch_name.*$short_commit_hash.*${{ inputs.package-format }}.*"; then
-            echo "::notice:: Package already exists in s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/"; 
-            echo "ABORT_JOB=yes" >> $GITHUB_ENV
-          fi
 
       - name: Set tag and container name
-        if: env.ABORT_JOB != 'yes'
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
@@ -138,30 +109,36 @@ jobs:
           echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_manager_builder_${{ inputs.arch }}" >> $GITHUB_ENV
 
       - name: Download docker image for package building
-        if: env.ABORT_JOB != 'yes'
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
       - name: Build ${{ inputs.package-format }} wazuh-manager on ${{ inputs.arch }}
-        if: env.ABORT_JOB != 'yes'
         working-directory: packages
         run: |
           REVISION=${{ inputs.revision }}
-          if [ -z "$REVISION" ]; then REVISION=0; fi
-          FLAGS="$(if [ ${{ inputs.release-package }} == 'yes' ]; then echo " --checksum --release-package" ; fi)"
-          if [ ${{ inputs.debuggable-package }} == 'yes' ]; then FLAGS+=" --debug" ; fi
-          bash generate_package.sh -b ${{ inputs.branch }} -j $(nproc) -t manager -a ${{ inputs.arch }} --dont-build-docker --tag ${{ env.TAG }} -r $REVISION --package-format ${{ inputs.package-format }} $FLAGS
+          FLAGS="-t manager --dont-build-docker -j $(nproc) "
+          if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
+          if [ "${{ inputs.release-package }}" == "true" ]; then FLAGS+="--release-package "; fi
+          if [ "${{ inputs.checksum }}" == "true" ] || [ ${{ inputs.release-package}} == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debuggable-package}}" == "true" ]; then FLAGS+="--debug "; fi
+          echo $FLAGS
+          bash generate_package.sh -a ${{ inputs.arch }} --tag ${{ env.TAG }} --package-format ${{ inputs.package-format }} $FLAGS
 
       - name: Test install built manager
-        if: env.ABORT_JOB != 'yes'
         run: |
           if [ ${{ inputs.package-format }} == 'rpm' ]; then TESTING_DOCKER_IMAGE=centos:latest;
           else TESTING_DOCKER_IMAGE=amd64/ubuntu:latest; fi
           package_name=$(find $GITHUB_WORKSPACE/packages/output/ -name "*manager*.${{ inputs.package-format }}" -exec basename {} \;)
           sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v $GITHUB_WORKSPACE/packages/output/:/packages $TESTING_DOCKER_IMAGE bash /tests/install_component.sh $package_name manager
 
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: us-east-1
+
       - name: Upload package to S3
-        if: env.ABORT_JOB != 'yes'
         working-directory: packages
         run: |
           for file in output/*manager*; do
