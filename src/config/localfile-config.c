@@ -525,7 +525,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             // Use always the same filter for all the conditions (First filter)
             if (!journald_add_condition_to_filter(node[i], &(logf[pl].journal_log->filters[0]))) {
-                mwarn("Cannot add filter, the block will be ignored");
+                mwarn(LOGCOLLECTOR_JOURNAL_CONFG_FAIL_FILTER);
                 w_clean_logreader(&logf[pl]);
                 return (0);
             }
@@ -555,8 +555,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             // Neceesary to check duplicated blocks
             os_strdup(MACOS, logf[pl].file);
         } else if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
-            mwarn("Missing 'location' element when using '%s' as 'log_format'. Default value will be used.",
-                  JOURNALD_LOG);
+            mwarn(LOGCOLLECTOR_JOURNAL_CONFG_MISSING_LOC, JOURNALD_LOG);
             os_strdup(JOURNALD_LOG, logf[pl].file);
         } else {
             merror(MISS_FILE);
@@ -573,9 +572,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         /* Verify journald log config*/
         if (strcmp(logf[pl].file, JOURNALD_LOG) != 0) {
             /* Invalid macos log configuration */
-            mwarn("Invalid location value '%s' when using '%s' as 'log_format'. Default value will be used.",
-                  logf[pl].file,
-                  JOURNALD_LOG);
+            mwarn(LOGCOLLECTOR_JOURNAL_CONFG_INVALID_LOC, logf[pl].file, JOURNALD_LOG);
             os_free(logf[pl].file);
             w_strdup(JOURNALD_LOG, logf[pl].file);
         }
@@ -613,7 +610,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 
     } else if (logf[pl].journal_log != NULL) {
         /* Only log format journald support journald log config */
-        mwarn("log_format '%s' does not support filter option. Will be ignored.", logf[pl].logformat);
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_NOT_JOURNAL_FILTER, logf[pl].logformat);
         w_journal_log_config_free(&(logf[pl].journal_log));
     }
 
@@ -1170,11 +1167,11 @@ bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** fil
     bool ignore_if_missing = false;
 
     if (field == NULL || *field == '\0') {
-        mwarn("The field for the journal filter cannot be empty");
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_FIELD);
         return false;
     }
     if (expression == NULL || *expression == '\0') {
-        mwarn("The expression for the journal filter cannot be empty");
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_EXPR);
         return false;
     }
 
@@ -1188,7 +1185,7 @@ bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** fil
     }
 
     if (w_journal_filter_add_condition(filter, field, expression, ignore_if_missing) != 0) {
-        mwarn("Error compiling the PCRE2 expression '%s' for field '%s' in journal filter", expression, field);
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_FILTER_EXP_FAIL, expression, field);
         return false;
     }
 
@@ -1444,8 +1441,7 @@ bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index) {
     // Disable filter is already disabled or if any don't have filters
     if (!src_has_filters || !dst_has_filters) {
         logr[dst_index].journal_log->disable_filters = true;
-        mwarn("The filters of the journald log will be disabled in the merge,"
-              "because one of the configuration does not have filters.");
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_DISABLE_FILTER);
     }
 
     // Move the filters from the src_index to the dst_index
