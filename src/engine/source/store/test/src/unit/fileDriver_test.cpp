@@ -24,17 +24,16 @@ void inline initLogging(void)
     {
         // Logging setup
         logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = "";
-        logging::loggingInit(logConfig);
+        logConfig.level = "off";
+        logging::start(logConfig);
         initialized = true;
     }
 }
 
 using namespace store::drivers;
 
-
-std::filesystem::path uniquePath() {
+std::filesystem::path uniquePath()
+{
     auto pid = getpid();
     auto tid = std::this_thread::get_id();
     std::stringstream ss;
@@ -42,12 +41,11 @@ std::filesystem::path uniquePath() {
     return TEST_PATH / ss.str();
 }
 
-
 class FileDriverTest : public ::testing::Test
 {
 protected:
-    std::filesystem::path  m_path;
-    std::filesystem::path  m_filePath;
+    std::filesystem::path m_path;
+    std::filesystem::path m_filePath;
 
     void SetUp() override
     {
@@ -58,14 +56,19 @@ protected:
         std::ofstream file(m_filePath);
     }
 
-    void TearDown() override { std::filesystem::remove_all(m_path); }
+    void TearDown() override
+    {
+        logging::stop();
+        std::filesystem::remove_all(m_path);
+    }
 };
 
 using BuildsT = std::tuple<bool, std::string, bool>; // shouldPass, path, create
-class BuildsTest : public FileDriverTest, public ::testing::WithParamInterface<BuildsT>
+class BuildsTest
+    : public FileDriverTest
+    , public ::testing::WithParamInterface<BuildsT>
 {
 };
-
 
 TEST_P(BuildsTest, Builds)
 {
@@ -83,17 +86,14 @@ TEST_P(BuildsTest, Builds)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    FileDriver,
-    BuildsTest,
-    ::testing::Values(
-        BuildsT(true, uniquePath().string(), false),
-        BuildsT(false, uniquePath().string() + TEST_FILE_PATH.string(), false),
-        BuildsT(true, uniquePath().string(), true),
-        BuildsT(true, uniquePath().string() + TEST_FILE_PATH.string(), true),
-        BuildsT(false, uniquePath().string() + "/notExisting", false),
-        BuildsT(true, uniquePath().string() + "/notExisting", true)
-));
+INSTANTIATE_TEST_SUITE_P(FileDriver,
+                         BuildsTest,
+                         ::testing::Values(BuildsT(true, uniquePath().string(), false),
+                                           BuildsT(false, uniquePath().string() + TEST_FILE_PATH.string(), false),
+                                           BuildsT(true, uniquePath().string(), true),
+                                           BuildsT(true, uniquePath().string() + TEST_FILE_PATH.string(), true),
+                                           BuildsT(false, uniquePath().string() + "/notExisting", false),
+                                           BuildsT(true, uniquePath().string() + "/notExisting", true)));
 
 TEST_F(FileDriverTest, Erase)
 {

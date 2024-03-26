@@ -28,7 +28,7 @@ ulimit -S -c unlimited
 sysctl -w kernel.core_pattern=/coredumps/core-%e-%E-%t-%s-%p
 
 # Start Engine daemon
-nohup $ENGINE_DIR/wazuh-engine server start >> $OUTPUT_FILE_PATH 2>&1 &
+nohup $ENGINE_DIR/wazuh-engine server --log_output $OUTPUT_FILE_PATH start &
 
 # Control file for wazuh-control, this file contains the wazuh-engine pid
 echo $! > $WAZUH_DIR/var/run/wazuh-engine-$!.pid

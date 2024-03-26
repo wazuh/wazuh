@@ -15,9 +15,8 @@ void inline initLogging(void)
     {
         // Logging setup
         logging::LoggingConfig logConfig;
-        logConfig.logLevel = "off";
-        logConfig.filePath = "";
-        logging::loggingInit(logConfig);
+        logConfig.level = "off";
+        logging::start(logConfig);
         initialized = true;
     }
 }
