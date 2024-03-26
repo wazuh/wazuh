@@ -9,7 +9,6 @@ import sys
 from typing import Any
 from pathlib import Path
 
-from wazuh_testing.constants.daemons import WAZUH_MANAGER
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH
@@ -76,8 +75,7 @@ def start_monitoring() -> None:
 def set_agent_config(request: pytest.FixtureRequest):
     if not hasattr(request.module, 'test_configuration'):
         return
-    if get_service() is WAZUH_MANAGER:
-        return
+
     configurations = getattr(request.module, 'test_configuration')
     agent_conf = {"section": "client", "elements": [
         {"server": {"elements": [
