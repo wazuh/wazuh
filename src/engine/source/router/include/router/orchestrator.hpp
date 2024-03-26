@@ -32,8 +32,12 @@ class Orchestrator
 {
 
 protected:
+    class EpsCounter;                         ///< PIMPL for the EPS counter
+    std::shared_ptr<EpsCounter> m_epsCounter; ///< Counter to measure the events per second processed by the router
+
     constexpr static const char* STORE_PATH_TESTER_TABLE = "router/tester/0"; ///< Default path for the tester state
     constexpr static const char* STORE_PATH_ROUTER_TABLE = "router/router/0"; ///< Default path for the router state
+    constexpr static const char* STORE_PATH_ROUTER_EPS = "router/eps/0";      ///< Default path for the EPS state
 
     // Workers synchronization
     std::list<std::shared_ptr<IWorker>> m_workers; ///< List of workers
@@ -53,8 +57,10 @@ protected:
     using WorkerOp = std::function<base::OptError(const std::shared_ptr<IWorker>&)>;
     base::OptError forEachWorker(const WorkerOp& f); ///< Apply the function f to each worker
 
-    void dumpTesters() const; ///< Dump the testers to the store
-    void dumpRouters() const; ///< Dump the routers to the store
+    void dumpTesters() const;                                                ///< Dump the testers to the store
+    void dumpRouters() const;                                                ///< Dump the routers to the store
+    void dumpEps() const;                                                    ///< Dump the EPS to the store
+    void loadEpsCounter(const std::weak_ptr<store::IStoreInternal>& wStore); ///< Load the EPS counter from the store
 
     /**
      * @brief Initialize a worker
@@ -171,6 +177,21 @@ public:
      * @copydoc router::IRouterAPI::postStrEvent
      */
     base::OptError postStrEvent(std::string_view event) override;
+
+    /**
+     * @copydoc router::IRouterAPI::changeEpsSettings
+     */
+    base::OptError changeEpsSettings(uint eps, uint refreshInterval) override;
+
+    /**
+     * @copydoc router::IRouterAPI::getEpsSettings
+     */
+    base::RespOrError<std::tuple<uint, uint, bool>> getEpsSettings() const override;
+
+    /**
+     * @copydoc router::IRouterAPI::activateEpsCounter
+     */
+    base::OptError activateEpsCounter(bool activate) override;
 
     /**************************************************************************
      * ITesterAPI

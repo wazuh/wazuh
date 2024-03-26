@@ -4,8 +4,8 @@
 #include <string>
 
 #include <CLI/CLI.hpp>
-#include <cmds/apiclnt/client.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
+#include <cmds/apiclnt/client.hpp>
 
 namespace cmd::router
 {
@@ -87,6 +87,36 @@ void runUpdate(std::shared_ptr<apiclnt::Client> client, const std::string& nameS
  * @param event The event to be ingested into the router.
  */
 void runIngest(std::shared_ptr<apiclnt::Client> client, const std::string& event);
+
+/**
+ * @brief Change the EPS limiter settings
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ * @param eps Number of events per second allowed to be processed
+ * @param intervalSec Interval window size in seconds for resetting the counter
+ */
+void runChangeEpsSettings(std::shared_ptr<apiclnt::Client> client, int eps, int intervalSec);
+
+/**
+ * @brief Get the EPS limiter settings
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ */
+void runGetEpsSettings(std::shared_ptr<apiclnt::Client> client);
+
+/**
+ * @brief Activate the EPS limiter
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ */
+void runActivateEps(std::shared_ptr<apiclnt::Client> client);
+
+/**
+ * @brief Deactivate the EPS limiter
+ *
+ * @param client A shared pointer to the apiclnt::Client instance.
+ */
+void runDeactivateEps(std::shared_ptr<apiclnt::Client> client);
 
 /**
  * @brief Configures the program using the provided CLI application instance.
