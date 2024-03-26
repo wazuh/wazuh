@@ -21,19 +21,3 @@
                     value: 1
                 - retry_interval:
                     value: 1
-            - enrollment:
-                elements:
-                - enabled:
-                    value: ENABLED
-                - agent_address:
-                    value: AGENT_ADDRESS
-                - manager_address:
-                    value: MANAGER_ADDRESS
-                - groups:
-                    value: GROUPS
-                - agent_name:
-                    value: AGENT_NAME
-                - use_source_ip:
-                    value: USE_SOURCE_IP
-                - port:
-                    value: PORT

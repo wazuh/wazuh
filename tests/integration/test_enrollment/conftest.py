@@ -22,6 +22,21 @@ def shutdown_agentd(request):
 
 
 @pytest.fixture()
+def restart_agentd(test_metadata):
+    """
+    Restart Agentd and control if it is expected to fail or not.
+    """
+    try:
+        control_service('restart', daemon=AGENT_DAEMON)
+    except Exception:
+        pass
+
+    yield
+
+    control_service('stop', daemon=AGENT_DAEMON)
+
+
+@pytest.fixture()
 def set_keys(test_metadata):
     """
     Writes the keys file with the content defined in the configuration.

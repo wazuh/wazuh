@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2021, Wazuh Inc.
+copyright: Copyright (C) 2015-2022, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -7,8 +7,7 @@ copyright: Copyright (C) 2015-2021, Wazuh Inc.
 
 type: integration
 
-brief: This module verifies the correct behavior of the agent-auth enrollment tool under different configurations
-
+brief: This module verifies the correct behavior of Wazuh Agentd during the enrollment under different configurations.
 components:
     - agentd
 
@@ -16,8 +15,7 @@ targets:
     - agent
 
 daemons:
-    - wazuh-authd
-
+    - wazuh-agentd
 os_platform:
     - linux
     - windows
@@ -39,6 +37,7 @@ os_version:
 tags:
     - enrollment
 '''
+
 import sys
 import pytest
 
@@ -50,18 +49,16 @@ from wazuh_testing.tools.monitors import queue_monitor
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import make_callback
 from wazuh_testing.utils.services import get_version
-from wazuh_testing.utils.sockets import get_host_name
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
-from utils import launch_agent_auth
 
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Cases metadata and its ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_wazuh_agent_auth.yaml')
-config_path = Path(CONFIGS_PATH, 'config_wazuh_agent_auth.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_wazuh_enrollment.yaml')
+config_path = Path(CONFIGS_PATH, 'config_wazuh_enrollment.yaml')
 config_parameters, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, config_parameters, test_metadata)
 
@@ -73,17 +70,17 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
-def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module,
-                               set_keys, set_password, configure_socket_listener):
+def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configuration, daemons_handler_module, shutdown_agentd,
+                           set_keys, set_password, configure_socket_listener, restart_agentd):
     """
     description:
-        "Check that different configuration generates the adequate enrollment message or the corresponding
-        error log. Agent-auth will be executed using the different parameters and with different keys and password
-        files scenarios as described in the test cases."
+        "Check that different configuration generates the adequate enrollment message or the corresponding error
+        log. The configuration, keys, and password files will be written with the different scenarios described
+        in the test cases. After this, Agentd is started to wait for the expected result."
 
-    wazuh_min_version: 4.6.0
+    wazuh_min_version: 4.2.0
 
-    tier: 1
+    tier: 0
 
     parameters:
         - test_configuration:
@@ -98,9 +95,6 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
         - daemons_handler_module:
             type: fixture
             brief: Handler of Wazuh daemons.
-        - shutdown_agentd:
-            type: fixture
-            brief: Shutdown agentd to avoid interferences with agent-auth test
         - set_keys:
             type: fixture
             brief: Write pre-existent keys into client.keys.
@@ -110,6 +104,9 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
         - configure_socket_listener:
             type: fixture
             brief: Configure MITM.
+            - restart_agentd:
+                type: fixture
+                brief: Restart Agentd and control if it is expected to fail or not.
 
     assertions:
         - The enrollment message is sent when the configuration is valid
@@ -125,12 +122,10 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
         - Error logs related to the wrong configuration block
     """
 
-    launch_agent_auth(test_metadata.get('configuration', {}))
-
     if 'expected_error' in test_metadata:
         expected_error_dict = test_metadata['expected_error']
-        expected_error = expected_error_dict['agent-auth'] if 'agent-auth' in expected_error_dict else \
-                                                              expected_error_dict
+        expected_error = expected_error_dict['agent-enrollment'] if 'agent-enrollment' in expected_error_dict else \
+                                                                    expected_error_dict
         try:
             log_monitor = FileMonitor(WAZUH_LOG_PATH)
             log_monitor.start(timeout=10, callback=make_callback(expected_error, prefix='.*', escape=True))
@@ -141,15 +136,15 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
                 xfail_reason = expected_fail.get('reason')
             else:
                 is_xfail = False
+
             if is_xfail:
                 pytest.xfail(f"Xfailing due to {xfail_reason}")
             else:
                 raise error
 
     else:
-        test_expected = test_metadata['message']['expected'].format(host_name=get_host_name(),
-                                                                    agent_version=get_version()).encode()
-        test_response = test_metadata['message']['response'].format(host_name=get_host_name()).encode()
+        test_expected = test_metadata['message']['expected'].format(agent_version=get_version()).encode()
+        test_response = test_metadata['message']['response'].encode()
 
         # Monitor MITM queue
         socket_monitor = queue_monitor.QueueMonitor(socket_listener.queue)
@@ -157,7 +152,7 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
 
         try:
             # Start socket monitoring
-            socket_monitor.start(timeout=10, accumulations=2, callback=lambda received_event: received_event.encode() in event)
+            socket_monitor.start(timeout=10,accumulations=2, callback=lambda received_event: received_event.encode() in event)
 
             assert socket_monitor.matches == 2
         except Exception as error:

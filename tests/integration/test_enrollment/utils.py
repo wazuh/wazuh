@@ -9,7 +9,7 @@ import platform
 from wazuh_testing.constants.paths.binaries import AGENT_AUTH_PATH
 from wazuh_testing.constants.platforms import LINUX
 
-AGENT_AUTH_LAUNCH_TIMEOUT = 2
+AGENT_AUTH_LAUNCH_TIMEOUT = 10
 MANAGER_ADDRESS = '127.0.0.1'
 
 
