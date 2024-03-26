@@ -2,100 +2,91 @@ name: Build Wazuh Agent Packages - DEB|RPM - amd64|i386|arm64|armhf
 on:
   workflow_dispatch:
     inputs:
-      tag:
+      docker_image_tag:
         description: |
-          Tag name of the Docker image to be downloaded.
+          Specify the docker tag used to build the package.
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
           Default is 'auto'.
         required: false
         default: 'auto'
-      arch:
+      architecture:
         type: choice
-        description: Architecture of the package [amd64, i386, arm64, armhf]
+        description: Package architecture [i386, x86_64, armv7hl, aarch64, amd64, armhf, arm64]
         required: true
+        default: amd64
         options:
           - amd64
+          - x86_64
           - i386
           - arm64
           - armhf
-      package-format:
+          - armv7hl
+          - aarch64
+      system:
         type: choice
-        description: Package format [deb, rpm]
+        description: Package os [deb, rpm]
         required: true
+        default: deb
         options:
           - deb
           - rpm
       revision:
         description: |
-          Set the value to "1" for packages in release format.
-          You can also add other values, such as issue numbers.
-          By default, it is set to "0" for development.
+          Package revision (name and metadata).
         required: false
-      release-package:
+        type: string
+        default: "0"
+      is_stage:
         type: boolean
-        description: Build packages with release format
+        description: Set development/production nomenclature
         required: false
       legacy:
         type: boolean
-        description: Only for RPM - Build package for CentOS 5.
+        description:  Use rpm5 resources
         required: false
-      debuggable-package:
+      debug:
         type: boolean
         description: |
-          Build the binaries with debug symbols.
-          By default: false
+          Build the binaries with debug symbols. By default: false
         required: false
       checksum:
         type: boolean
-        description: Generate checksum on the same directory than the package.
+        description: Generate package checksum
         required: false
-      runner-machine:
-        type: choice
-        description: Required runner type to build the package
-        required: true
-        options:
-          - ubuntu-latest
-          - self-hosted-arm
 
   workflow_call:
     inputs:
-      tag:
+      docker_image_tag:
         type: string
         required: false
         default: 'auto'
-      arch:
+      architecture:
         type: string
         required: true
-      package-format:
+      system:
         type: string
         required: true
       revision:
         type: string
         required: false
-      release-package:
+      is_stage:
         type: boolean
         required: false
       legacy:
         type: boolean
         required: false
-      debuggable-package:
+      debug:
         type: boolean
         required: false
       checksum:
         type: boolean
         required: false
-      runner-machine:
-        type: string
-        required: true
 
 jobs:
   Build-agent-linux-packages:
-    if: |
-      (${{ inputs.runner-machine == 'ubuntu-latest' }} && (${{ inputs.arch == 'amd64' }} || ${{ inputs.arch == 'i386' }})) ||
-      (${{ inputs.runner-machine == 'self-hosted-arm' }} && (${{ inputs.arch == 'arm64' }} || ${{ inputs.arch == 'armhf' }}))
-    runs-on: ${{ inputs.runner-machine }}
-    name: Build ${{ inputs.package-format }} wazuh-agent on ${{ inputs.arch }}
+    runs-on: ubuntu-latest
+    name: Build ${{ inputs.system }} wazuh-agent on ${{ inputs.architecture }}
 
     steps:
       - name: Cancel previous runs
@@ -107,34 +98,34 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Set tag and container name
+      - name: Set docker_image_tag and container name
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
-          else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
+          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
           if [ "${{ inputs.legacy }}" == "true" ]; then
-            echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_legacy_builder_${{ inputs.arch }}" >> $GITHUB_ENV
+            echo "CONTAINER_NAME=pkg_${{ inputs.system }}_legacy_builder_${{ inputs.architecture }}" >> $GITHUB_ENV
           else
-            echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_agent_builder_${{ inputs.arch }}" >> $GITHUB_ENV
+            echo "CONTAINER_NAME=pkg_${{ inputs.system }}_agent_builder_${{ inputs.architecture }}" >> $GITHUB_ENV
           fi
 
       - name: Download docker image for package building
         run: |
           bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $CONTAINER_NAME ${{ env.TAG }}
 
-      - name: Build ${{ inputs.package-format }} wazuh-agent on ${{ inputs.arch }}
+      - name: Build ${{ inputs.system }} wazuh-agent on ${{ inputs.architecture }}
         working-directory: packages
         run: |
           REVISION=${{ inputs.revision }}
           FLAGS="-t agent -s /tmp --dont-build-docker -j $(nproc) "
           if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
-          if [ "${{ inputs.release-package }}" == "true" ]; then FLAGS+="--release-package "; fi
+          if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.legacy }}" == "true" ]; then FLAGS+="--legacy "; fi
-          if [ "${{ inputs.checksum }}" == "true" ] || [ ${{ inputs.release-package}} == "true" ]; then FLAGS+="--checksum "; fi
-          if [ "${{ inputs.debuggable-package}}" == "true" ]; then FLAGS+="--debug "; fi
+          if [ "${{ inputs.checksum }}" == "true" ] && [ ${{ inputs.is_stage}} == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           echo $FLAGS
-          bash generate_package.sh -a ${{ inputs.arch }} --tag ${{ env.TAG }} --package-format ${{ inputs.package-format }} $FLAGS
+          bash generate_package.sh -a ${{ inputs.architecture }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1

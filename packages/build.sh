@@ -33,7 +33,7 @@ future_version() {
   local wazuh_dir="$2"
   local base_version="$3"
 
-  specs_path="$(find $wazuh_dir -name SPECS|grep $PACKAGE_FORMAT)"
+  specs_path="$(find $wazuh_dir -name SPECS|grep $SYSTEM)"
 
   local major=$(echo "$base_version" | cut -dv -f2 | cut -d. -f1)
   local minor=$(echo "$base_version" | cut -d. -f2)
@@ -105,7 +105,7 @@ wazuh_version="$(cat $source_dir/src/VERSION| cut -d 'v' -f 2)"
 # Changing the "-" to "_" between target and version breaks the convention for RPM or DEB packages.
 # For now, I added extra code that fixes it.
 package_name="wazuh-${BUILD_TARGET}-${wazuh_version}"
-specs_path="$(find $source_dir -name SPECS|grep $PACKAGE_FORMAT)"
+specs_path="$(find $source_dir -name SPECS|grep $SYSTEM)"
 
 setup_build "$source_dir" "$specs_path" "$build_dir" "$package_name" "$debug"
 
