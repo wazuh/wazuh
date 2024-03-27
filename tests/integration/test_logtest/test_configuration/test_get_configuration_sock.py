@@ -89,15 +89,18 @@ def test_get_configuration_sock(test_configuration, test_metadata, set_wazuh_con
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get configuration from the module.
-        - configure_environment:
+            brief: Configure a custom environment for testing.
+        - daemons_handler:
             type: fixture
-            brief: Configure a custom environment for testing
-        - restart_wazuh:
-            type: fixture
-            brief: Restart wazuh, ossec.log and start a new monitor.
+            brief: Handler of Wazuh daemons.
         - connect_to_sockets:
             type: fixture
             brief: Function scope version of 'connect_to_sockets' which connects to the specified sockets for the test.

@@ -7,15 +7,21 @@ brief: Wazuh-db is the daemon in charge of the databases with all the Wazuh pers
        to receive requests and provide information. The Wazuh core uses list-based databases to store information
        related to agent keys, and FIM/Rootcheck event data.
        This test checks the usage of the wazuhdb getconfig command used to get the current configuration
+
 tier: 0
+
 modules:
     - wazuh_db
+
 components:
     - manager
+
 daemons:
     - wazuh-db
+
 os_platform:
     - linux
+
 os_version:
     - Arch Linux
     - Amazon Linux 2
@@ -34,8 +40,10 @@ os_version:
     - Red Hat 8
     - Red Hat 7
     - Red Hat 6
+
 references:
     - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html
+
 tags:
     - wazuh_db
 '''

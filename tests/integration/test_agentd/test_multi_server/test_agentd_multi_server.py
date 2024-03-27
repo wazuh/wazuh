@@ -37,6 +37,9 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/registering/index.html

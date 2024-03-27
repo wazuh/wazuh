@@ -18,7 +18,7 @@ components:
 suite: configuration
 
 targets:
-    - manager
+    - agent
 
 daemons:
     - wazuh-analysisd
@@ -57,7 +57,7 @@ from wazuh_testing.utils.file import truncate_file
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_API.yaml')

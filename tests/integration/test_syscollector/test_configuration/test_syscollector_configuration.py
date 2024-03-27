@@ -17,7 +17,6 @@ components:
 suite: syscollector
 
 targets:
-    - manager
     - agent
 
 daemons:
@@ -28,12 +27,10 @@ daemons:
 os_platform:
     - linux
     - windows
-    - macos
 
 os_version:
     - CentOS 8
     - Ubuntu Bionic
-    - macOS Catalina
     - Windows Server 2016
     - Windows Server 2019
 
@@ -57,7 +54,7 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.tier(level=0), pytest.mark.linux, pytest.mark.win32]
+pytestmark = [pytest.mark.tier(level=0), pytest.mark.agent, pytest.mark.linux, pytest.mark.win32]
 
 # Variables
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}

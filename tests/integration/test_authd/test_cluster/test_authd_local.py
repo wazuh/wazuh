@@ -58,7 +58,6 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-log_monitor_paths = []
 receiver_sockets_params = [(AUTHD_SOCKET_PATH, 'AF_UNIX', 'TCP'), (WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 
 daemons_handler_configuration = {'all_daemons': True}

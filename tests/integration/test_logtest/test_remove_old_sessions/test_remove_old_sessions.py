@@ -103,18 +103,18 @@ def test_remove_old_session(configure_local_internal_options, test_configuration
         - configure_local_internal_options_module:
             type: fixture
             brief: Configure the local internal options file.
-        - get_configuration:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get configuration from the module.
-        - configure_environment:
+            brief: Configure a custom environment for testing.
+        - daemons_handler:
             type: fixture
-            brief: Configure a custom environment for testing. Restart Wazuh is needed for applying the configuration.
-        - file_monitoring:
-            type: fixture
-            brief: Handle the monitoring of a specified file.
-        - restart_required_logtest_daemons:
-            type: fixture
-            brief: Wazuh logtests daemons handler.
+            brief: Handler of Wazuh daemons.
         - wait_for_logtest_startup:
             type: fixture
             brief: Wait until logtest has begun.

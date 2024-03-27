@@ -40,7 +40,6 @@ import time
 from pathlib import Path
 
 import pytest
-from wazuh_testing.constants.paths.logs import WAZUH_CLUSTER_LOGS_PATH
 from wazuh_testing.constants.paths.sockets import MODULESD_C_INTERNAL_SOCKET_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, CLUSTER_DAEMON
@@ -62,7 +61,6 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 
 # Variables
-log_monitor_paths = [WAZUH_CLUSTER_LOGS_PATH]
 ossec_authd_socket_path = ("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT)
 receiver_sockets_params = [(ossec_authd_socket_path, 'AF_INET', 'SSL_TLSv1_2')]
 

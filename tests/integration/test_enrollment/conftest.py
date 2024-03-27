@@ -4,7 +4,8 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
         This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 '''
 import pytest
-import ssl
+import os
+import sys
 
 from wazuh_testing.constants.daemons import AGENT_DAEMON
 from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, DEFAULT_AUTHD_PASS_PATH

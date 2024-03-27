@@ -67,8 +67,6 @@ test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cas
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
 
 # Variables
-log_monitor_paths = []
-
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
 
 monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]

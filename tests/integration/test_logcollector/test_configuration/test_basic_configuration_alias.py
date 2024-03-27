@@ -23,7 +23,6 @@ suite: configuration
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-logcollector
@@ -31,6 +30,7 @@ daemons:
 
 os_platform:
     - linux
+    - macos
     - windows
 
 os_version:
@@ -41,6 +41,8 @@ os_version:
     - CentOS 7
     - Debian Buster
     - Red Hat 8
+    - macOS Catalina
+    - macOS Server
     - Ubuntu Focal
     - Ubuntu Bionic
     - Windows 10
@@ -60,7 +62,7 @@ import sys
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.platforms import WINDOWS, MACOS, SOLARIS
+from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from wazuh_testing.modules.agentd import configuration as agentd_configuration
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns
@@ -72,18 +74,15 @@ from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
 
 # Variables
 local_internal_options = {logcollector_configuration.LOGCOLLECTOR_DEBUG: '2', logcollector_configuration.LOGCOLLECTOR_REMOTE_COMMANDS: '1', agentd_configuration.AGENTD_WINDOWS_DEBUG: '2'}
 
 if sys.platform == WINDOWS:
     command = 'tasklist'
-    no_restart_windows_after_configuration_set = True
 elif sys.platform == MACOS:
     command = 'ps aux'
-elif sys.platform == SOLARIS:
-    command = 'ps aux -xww'
 else:
     command = 'ps -aux'
 

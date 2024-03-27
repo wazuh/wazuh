@@ -19,7 +19,7 @@ components:
 suite: configuration
 
 targets:
-    - manager
+    - agent
 
 daemons:
     - wazuh-analysisd
@@ -28,6 +28,7 @@ daemons:
 
 os_platform:
     - linux
+    - windows
 
 os_version:
     - Arch Linux
@@ -39,6 +40,9 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
 
 tags:
     - office365_configuration
@@ -56,7 +60,7 @@ from wazuh_testing.utils import callbacks
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_invalid_configuration.yaml')

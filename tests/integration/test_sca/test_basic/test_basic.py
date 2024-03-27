@@ -13,13 +13,14 @@ components:
     - sca
 
 targets:
-    - manager
     - agent
+
 daemons:
     - wazuh-modulesd
 
 os_platform:
     - linux
+    - windows
 
 os_version:
     - Arch Linux
@@ -31,6 +32,9 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
+    - Windows 10
+    - Windows Server 2019
+    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
@@ -53,7 +57,7 @@ from wazuh_testing.constants.platforms import WINDOWS
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
-pytestmark = [pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else MODULESD_DEBUG: '2'}
 
