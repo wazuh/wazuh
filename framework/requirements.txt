@@ -72,7 +72,7 @@ typing-inspect==0.7.1
 urllib3==1.26.18
 uvloop==0.17.0
 websocket-client==0.57.0
-Werkzeug==2.2.3
+Werkzeug==3.0.1
 xmltodict==0.12.0
 yarl==1.7.0
 zipp==3.3.2
