@@ -11,6 +11,7 @@ set -exf
 DESTINATION_PATH=$1
 SOURCES_PATH=$2
 BUILD_JOBS=$3
+DEBUG_ENABLED=$4
 INSTALLATION_SCRIPTS_DIR=${DESTINATION_PATH}/packages_files/agent_installation_scripts
 
 function configure() {
@@ -38,7 +39,7 @@ function build() {
     make -C ${SOURCES_PATH}/src deps TARGET=agent
 
     echo "Generating Wazuh executables"
-    make -j$JOBS -C ${SOURCES_PATH}/src DYLD_FORCE_FLAT_NAMESPACE=1 TARGET=agent build
+    make -j $BUILD_JOBS -C ${SOURCES_PATH}/src DYLD_FORCE_FLAT_NAMESPACE=1 DEBUG=$DEBUG_ENABLED TARGET=agent build
     fi
 
     echo "Running install script"

@@ -23,9 +23,11 @@ REVISION="1"                          # Package revision.
 BRANCH_TAG="master"                   # Branch that will be downloaded to build package.
 DESTINATION="${CURRENT_PATH}/output/" # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
-DEBUG="no"                            # Enables the full log by using `set -exf`.
+VERBOSE="no"                          # Enables the full log by using `set -exf`.
+DEBUG="no"                            # Enables debug symbols while compiling.
 CHECKSUMDIR=""                        # Directory to store the checksum of the package.
 CHECKSUM="no"                         # Enables the checksum generation.
+IS_STAGE="no"                         # Enables release package naming,
 CERT_APPLICATION_ID=""                # Apple Developer ID certificate to sign Apps and binaries.
 CERT_INSTALLER_ID=""                  # Apple Developer ID certificate to sign pkg.
 KEYCHAIN=""                           # Keychain where the Apple Developer ID certificate is.
@@ -130,7 +132,11 @@ function build_package() {
     VERSION=$(cat ${WAZUH_PATH}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
 
     # Define output package name
-    pkg_name="wazuh-agent_${VERSION}-${REVISION}_${ARCH}_${short_commit_hash}.pkg"
+    if [ $IS_STAGE == "no" ]; then
+        pkg_name="wazuh-agent_${VERSION}-${REVISION}_${ARCH}_${short_commit_hash}.pkg"
+    else
+        pkg_name="wazuh-agent_${VERSION}-${REVISION}.${ARCH}.pkg"
+    fi
 
     get_pkgproj_specs $VERSION
 
@@ -143,7 +149,7 @@ function build_package() {
         ${CURRENT_PATH}/uninstall.sh
     fi
 
-    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS}
+    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS} ${DEBUG}
 
     # sign the binaries and the libraries
     sign_binaries
@@ -172,13 +178,15 @@ function help() {
     echo "    -b, --branch <branch>         [Required] Select Git branch or tag e.g. $BRANCH"
     echo "    -s, --store-path <path>       [Optional] Set the destination absolute path of package."
     echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
+    echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
     echo "    -r, --revision <rev>          [Optional] Package revision that append to version e.g. x.x.x-rev"
+    echo "    -d, --debug                   [Optional] Build the binaries with debug symbols. By default: no."    
     echo "    -c, --checksum <path>         [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
+    echo "    --is_stage                    [Optional] Use release name in package"    
     echo "    -h, --help                    [  Util  ] Show this help."
     echo "    -i, --install-deps            [  Util  ] Install build dependencies (Packages)."
     echo "    -x, --install-xcode           [  Util  ] Install X-Code and brew. Can't be executed as root."
     echo "    -v, --verbose                 [  Util  ] Show additional information during the package generation."
-    echo
     echo "  Signing options:"
     echo "    --keychain                    [Optional] Keychain where the Certificates are installed."
     echo "    --keychain-password           [Optional] Password of the keychain."
@@ -304,6 +312,10 @@ function main() {
             install_xcode
             ;;
         "-v"|"--verbose")
+            VERBOSE="yes"
+            shift 1
+            ;;
+        "-d"|"--debug")
             DEBUG="yes"
             shift 1
             ;;
@@ -316,6 +328,10 @@ function main() {
                 CHECKSUM="yes"
                 shift 1
             fi
+            ;;
+        "--is_stage")
+            IS_STAGE="yes"
+            shift 1
             ;;
         "--keychain")
             if [ -n "$2" ]; then
@@ -390,7 +406,7 @@ function main() {
         esac
     done
 
-    if [ ${DEBUG} = "yes" ]; then
+    if [ ${VERBOSE} = "yes" ]; then
         set -exf
     fi
 
