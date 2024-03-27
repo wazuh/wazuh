@@ -643,6 +643,7 @@ endif
 build: ${TARGET}
 ifneq (${TARGET},failtarget)
 	${MAKE} settings
+	${MAKE} debug_symbols_mac
 	@echo
 	${QUIET_NOTICE}
 	@echo "Done building ${TARGET}"
@@ -802,6 +803,14 @@ ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME}: ${libgcc_s_path}
 	cp $< $@
 ifneq (${uname_S},AIX)
 	${STRIP_TOOL} -x $@
+endif
+
+.PHONY: debug_symbols_mac 
+debug_symbols_mac:
+ifeq (${uname_S}, Darwin)
+	$(eval EXECUTABLE_FILES:=$(shell find . -maxdepth 1 -type f -perm +111 -exec /bin/sh -c "file {} | grep 'executable' > /dev/null" \; -print))
+	$(eval EXECUTABLE_FILES += $(shell find . -type f -not -path "./external/*" -not -path "./symbols/*" -name "*.dylib" -print 2>/dev/null))
+	@$(foreach var, ${EXECUTABLE_FILES}, dsymutil -o symbols/$(var).dSYM $(var) 2>/dev/null && strip -S $(var);)
 endif
 
 .PHONY: server local hybrid agent selinux
