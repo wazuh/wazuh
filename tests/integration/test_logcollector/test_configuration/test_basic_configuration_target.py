@@ -22,7 +22,6 @@ suite: configuration
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-logcollector
@@ -30,7 +29,6 @@ daemons:
 os_platform:
     - linux
     - macos
-    - solaris
 
 os_version:
     - Arch Linux
@@ -40,8 +38,6 @@ os_version:
     - CentOS 7
     - Debian Buster
     - Red Hat 8
-    - Solaris 10
-    - Solaris 11
     - macOS Catalina
     - macOS Server
     - Ubuntu Focal
@@ -74,7 +70,7 @@ from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.darwin, pytest.mark.sunos5, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.darwin, pytest.mark.tier(level=0)]
 
 # Configuration
 cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_target.yaml')

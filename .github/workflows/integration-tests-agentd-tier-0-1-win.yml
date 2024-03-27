@@ -10,9 +10,10 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-agentd-tier-0-1-win.yml"
-        - "src/remoted/**"
         - "src/client-agent/**"
-        - "src/shared/enrollment_op.c"
+        - "src/config/buffer-config.c"
+        - "src/config/client-config.c"
+        - "src/config/client-config.h"
         - "src/win32/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"
@@ -83,7 +84,7 @@ jobs:
       - name: Install wazuh agent
         run: |
           cd  C:\wazuh\src\win32
-          .\wazuh-agent--.msi /q WAZUH_MANAGER="1.1.1.1"
+          .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |

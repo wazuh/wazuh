@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-office365-tier-0-1-win.yml"
+        - "src/config/wmodules-office365.c"
         - "src/wazuh_modules/wm_office365.h"
         - "src/wazuh_modules/wm_office365.c"
         - "src/win32/**"

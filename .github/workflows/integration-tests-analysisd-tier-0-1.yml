@@ -11,6 +11,10 @@ on:
     paths:
         - ".github/workflows/integration-tests-analysisd-tier-0-1.yml"
         - "src/analysisd/**"
+        - "src/config/alerts-config.c"
+        - "src/config/global-config.c"
+        - "src/config/global-config.h"
+        - "src/config/rules-config.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_analysisd/**"
