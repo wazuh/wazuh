@@ -80,7 +80,7 @@ LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.darwin, pytest.mark.tier(level=0)]
 
 # Configuration
 default_config_path = Path(CONFIGURATIONS_PATH, 'wazuh_basic_configuration_log_format_location.yaml')

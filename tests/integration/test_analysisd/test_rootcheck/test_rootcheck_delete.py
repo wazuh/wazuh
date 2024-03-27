@@ -52,7 +52,7 @@ from wazuh_testing.utils.db_queries import agent_db
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 test_configs_path = Path(CONFIGS_PATH, 'config_template.yaml')

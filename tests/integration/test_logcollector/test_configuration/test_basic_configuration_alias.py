@@ -74,7 +74,7 @@ from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.darwin, pytest.mark.tier(level=0)]
 
 # Variables
 local_internal_options = {logcollector_configuration.LOGCOLLECTOR_DEBUG: '2', logcollector_configuration.LOGCOLLECTOR_REMOTE_COMMANDS: '1', agentd_configuration.AGENTD_WINDOWS_DEBUG: '2'}

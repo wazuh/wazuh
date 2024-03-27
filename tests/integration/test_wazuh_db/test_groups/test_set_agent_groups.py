@@ -66,7 +66,7 @@ from wazuh_testing.utils.db_queries.global_db import get_agent_info
 from . import TEST_CASES_FOLDER_PATH
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configurations
 t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_set_agent_groups.yaml')

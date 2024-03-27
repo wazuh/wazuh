@@ -67,7 +67,7 @@ from . import TEST_CASES_FOLDER_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configuration
 test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_api_agent_registration.yaml')

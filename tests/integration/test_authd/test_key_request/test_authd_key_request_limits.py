@@ -65,7 +65,7 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER
 
 # Marks
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 
 # Configurations

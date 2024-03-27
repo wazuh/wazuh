@@ -75,7 +75,7 @@ from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.darwin, pytest.mark.tier(level=0)]
 
 # Configuration
 cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_label.yaml')

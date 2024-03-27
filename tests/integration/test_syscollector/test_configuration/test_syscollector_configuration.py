@@ -54,7 +54,7 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.tier(level=0), pytest.mark.agent, pytest.mark.linux, pytest.mark.win32]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Variables
 daemons_handler_configuration = {'all_daemons': True, 'ignore_errors': True}

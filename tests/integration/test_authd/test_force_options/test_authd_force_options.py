@@ -58,7 +58,7 @@ from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 AUTHD_KEY_REQUEST_TIMEOUT = 10
 

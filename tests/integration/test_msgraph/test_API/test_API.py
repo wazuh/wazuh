@@ -57,7 +57,7 @@ from wazuh_testing.utils.file import truncate_file
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_API.yaml')

@@ -58,7 +58,7 @@ from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=2)]
 
 # Configuration and cases data.
 test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_registry_events_win32.yaml')

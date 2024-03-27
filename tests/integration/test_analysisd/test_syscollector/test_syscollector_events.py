@@ -54,7 +54,7 @@ from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH, RULES_SAMPLE_PATH
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 test_cases_path = Path(TEST_CASES_PATH, 'cases_syscollector.yaml')

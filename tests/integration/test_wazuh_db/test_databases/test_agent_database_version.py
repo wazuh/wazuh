@@ -59,7 +59,7 @@ from wazuh_testing.tools.simulators import agent_simulator as ag
 
 
 # Marks
-pytestmark = [pytest.mark.tier(level=0), pytest.mark.linux, pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Variables
 expected_database_version = '13'

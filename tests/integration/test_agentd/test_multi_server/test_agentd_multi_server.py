@@ -65,7 +65,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = [pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'wazuh_conf.yaml')

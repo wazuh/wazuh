@@ -48,7 +48,7 @@ import pytest
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Variables
 receiver_sockets_params = [(WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]

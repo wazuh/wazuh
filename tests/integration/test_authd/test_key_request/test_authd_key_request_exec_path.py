@@ -67,7 +67,7 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH, SCRIPTS_FOLDER
 
 # Marks
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configurations
 test_configuration_path = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_key_request_exec_path.yaml')
