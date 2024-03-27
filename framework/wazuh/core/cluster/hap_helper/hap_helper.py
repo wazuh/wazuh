@@ -6,7 +6,7 @@ from math import ceil, floor
 from wazuh.core.cluster.hap_helper.configuration import parse_configuration
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
 from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhDAPI
-from wazuh.core.cluster.utils import ClusterFilter, context_tag
+from wazuh.core.cluster.utils import ClusterFilter, context_tag, get_cluster_items
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
 
@@ -89,7 +89,14 @@ class HAPHelper:
         bool
             True if the node can be deleted, else False.
         """
-        node_downtime = (await self.proxy.get_wazuh_server_stats(server_name=node_name))['lastchg']
+        node_stats = await self.proxy.get_wazuh_server_stats(server_name=node_name)
+
+        node_status = node_stats['status']
+        node_downtime = node_stats['lastchg']
+
+        if node_status == ProxyServerState.UP.value.upper():
+            return False
+
         self.logger.debug2(f"Server '{node_name}' has been disconnected for {node_downtime}s")
 
         if node_downtime < self.remove_disconnected_node_after * 60:
@@ -99,15 +106,6 @@ class HAPHelper:
             f"Server '{node_name}' has been disconnected for over {self.remove_disconnected_node_after} " 'minutes'
         )
         return True
-
-    # TODO: This must be deprecated
-    async def check_proxy_processes(self, auto_mode: bool = False, warn: bool = True) -> bool:
-        if not await self.proxy.is_proxy_process_single():
-            warn and self.logger.warning('Detected more than one Proxy processes')
-            if not auto_mode and input('  Do you wish to fix them? (y/N): ').lower() != 'y':
-                return False
-            await self.manage_proxy_processes()
-            return True
 
     async def backend_servers_state_healthcheck(self):
         """Checks if any backend server is in DRAIN state and changes to READY."""
@@ -196,16 +194,6 @@ class HAPHelper:
             await self.proxy.allow_server_new_connections(server_name=server_name)
         await sleep(self.SERVER_ADMIN_STATE_DELAY)
 
-    # TODO: This must be deprecated
-    async def manage_proxy_processes(self):
-        current_proxy_pid = (await self.proxy.api.get_runtime_info())['pid']
-        response = await self.proxy.api.kill_proxy_processes(pid_to_exclude=current_proxy_pid)
-
-        if response['error'] > 0:
-            self.logger.error("Could not manage all proxy processes: " f"{response['data']}")
-        elif len(response['data']) > 0:
-            self.logger.info('Managed proxy processes')
-
     async def migrate_old_connections(self, new_servers: list[str], deleted_servers: list[str]):
         """Reconnects agents to new servers.
 
@@ -262,8 +250,6 @@ class HAPHelper:
         if agents_to_balance:
             self.logger.info('Balancing exceeding connections after changes on the Wazuh backend')
             await self.update_agent_connections(agent_list=agents_to_balance)
-
-        await self.check_proxy_processes(auto_mode=True, warn=False)
 
         self.logger.info('Waiting for agent connections stability')
         self.logger.debug(f'Sleeping {self.agent_reconnection_stability_time}s...')
@@ -360,7 +346,6 @@ class HAPHelper:
             context_tag.set(self.tag)
             try:
                 await self.backend_servers_state_healthcheck()
-                await self.check_proxy_processes(auto_mode=True) and await sleep(self.AGENT_STATUS_SYNC_TIME)
                 current_wazuh_cluster = await self.wazuh_dapi.get_cluster_nodes()
                 current_proxy_backend = await self.proxy.get_current_backend_servers()
 
@@ -382,6 +367,8 @@ class HAPHelper:
                             manager_address=current_wazuh_cluster[node_to_add],
                             resolver=self.proxy.resolver,
                         )
+
+                    await self.set_hard_stop_after(wait_connection_retry=False, reconnect_agents=False)
                     await self.migrate_old_connections(new_servers=nodes_to_add, deleted_servers=nodes_to_remove)
                     continue
 
@@ -408,6 +395,48 @@ class HAPHelper:
                 )
                 await sleep(self.sleep_time)
 
+    async def set_hard_stop_after(self, wait_connection_retry: bool = True, reconnect_agents: bool = True):
+        """Calculate and set hard-stop-after configuration in HAProxy.
+
+        Parameters
+        ----------
+        wait_connection_retry : bool, optional
+            Wait for the workers connections, by default True.
+        reconnect_agents : bool, optional
+            Reconnect agents after set the hard-stop-after, by default True.
+        """
+
+        if wait_connection_retry:
+            connection_retry = self.get_connection_retry()
+            self.logger.debug(f'Waiting {connection_retry}s for workers connections...')
+            await sleep(connection_retry)
+
+        self.logger.info('Setting a value for `hard-stop-after` configuration.')
+        agents_distribution = await self.wazuh_dapi.get_agents_node_distribution()
+        agents_id = [item['id'] for agents in agents_distribution.values() for item in agents]
+
+        await self.proxy.set_hard_stop_after_value(
+            active_agents=len(agents_id),
+            chunk_size=self.agent_reconnection_chunk_size,
+            agent_reconnection_time=self.agent_reconnection_time,
+        )
+
+        if reconnect_agents and len(agents_id) > 0:
+            self.logger.info(f'Reconnecting {len(agents_id)} agents.')
+            await self.update_agent_connections(agent_list=agents_id)
+
+    @staticmethod
+    def get_connection_retry() -> int:
+        """Return the connection retry value, from cluster.json, plus two seconds.
+
+        Returns
+        -------
+        int
+            The seconds of connection retry.
+        """
+        cluster_items = get_cluster_items()
+        return cluster_items['intervals']['worker']['connection_retry'] + 2
+
     @classmethod
     async def start(cls):
         """Initialize and run HAPHelper."""
@@ -422,6 +451,7 @@ class HAPHelper:
                 tag=tag,
                 address=configuration['proxy']['api']['address'],
                 port=configuration['proxy']['api']['port'],
+                protocol=configuration['proxy']['api']['protocol'],
             )
             proxy = Proxy(
                 wazuh_backend=configuration['proxy']['backend'],
@@ -432,13 +462,23 @@ class HAPHelper:
             )
 
             wazuh_dapi = WazuhDAPI(
-                tag=tag, excluded_nodes=configuration['wazuh']['excluded_nodes'],
+                tag=tag,
+                excluded_nodes=configuration['wazuh']['excluded_nodes'],
             )
 
             helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, tag=tag, options=configuration['hap_helper'])
 
             await helper.initialize_proxy()
+
+            if helper.proxy.hard_stop_after is not None:
+                sleep_time = max(helper.proxy.hard_stop_after, cls.get_connection_retry())
+                helper.logger.info(f'Ensuring only exists one HAProxy process. Sleeping {sleep_time}s before start...')
+                await sleep(sleep_time)
+
             await helper.initialize_wazuh_cluster_configuration()
+
+            if helper.proxy.hard_stop_after is None:
+                await helper.set_hard_stop_after()
 
             helper.logger.info('Starting HAProxy Helper')
             await helper.manage_wazuh_cluster_nodes()
