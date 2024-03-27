@@ -42,35 +42,6 @@ function is_wazuh_installed
     }
 }
 
-# Forces Wazuh-Agent to stop
-function stop_wazuh_agent
-{
-    param (
-        $process_name
-    )
-
-    write-output "$(Get-Date -format u) - Trying to stop Wazuh service." >> .\upgrade\upgrade.log
-    Get-Service -Name "Wazuh" | Stop-Service -ErrorAction SilentlyContinue -Force
-    Start-Sleep 2
-    $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
-    $counter = 5
-
-    while($process_id -ne $null -And $counter -gt 0)
-    {
-        write-output "$(Get-Date -format u) - Trying to stop Wazuh service again. Remaining attempts: $counter." >> .\upgrade\upgrade.log
-        $counter--
-        Get-Service -Name "Wazuh" | Stop-Service
-        Start-Sleep 2
-        $process_id = (Get-Process $process_name -ErrorAction SilentlyContinue).id
-    }
-
-    if ($process_id -ne $null) {
-        write-output "$(Get-Date -format u) - Killing process." >> .\upgrade\upgrade.log
-        taskkill /pid $process_id /f /T
-        Start-Sleep 10
-    }
-}
-
 # Check new version and restart the Wazuh service
 function check-installation
 {
@@ -109,9 +80,8 @@ If (!(Test-Path ".\wazuh-agent.exe"))
     $current_process = "ossec-agent"
 }
 
-# Ensure implicated processes are stopped before launch the upgrade
+# Ensure no other instance of msiexec is running by stopping them
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
-stop_wazuh_agent($current_process)
 
 # Install
 install
