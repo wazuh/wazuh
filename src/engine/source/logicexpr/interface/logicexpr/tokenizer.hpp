@@ -222,8 +222,7 @@ public:
 
         if (res.failure())
         {
-            // TODO: Print all traces
-            throw std::runtime_error(fmt::format("Parsing error: {}", res.error()));
+            throw std::runtime_error(parsec::formatTrace(input, res.trace(), 0));
         }
 
         return res.value();

@@ -117,7 +117,8 @@ struct syntaxChecker
 };
 
 /**
- * @brief Transforms a queue of tokens in infix notation into a stack of tokens in postfix notation using the Shunting-Yard algorithm.
+ * @brief Transforms a queue of tokens in infix notation into a stack of tokens in postfix notation using the
+ * Shunting-Yard algorithm.
  *
  * @param infix Queue of tokens in infix notation.
  * @return std::stack<Token> Stack of tokens in postfix notation.
@@ -355,9 +356,9 @@ std::shared_ptr<Expression> parse(const std::string& rawExpression, TermParser&&
         auto postfix = infixToPostfix(tokens);
         expression = Expression::create(postfix);
     }
-    catch (...)
+    catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Failed to parse expression \"{}\"", rawExpression));
+        throw std::runtime_error(fmt::format("Expression parsing failed. {}", e.what()));
     }
 
     return expression;
