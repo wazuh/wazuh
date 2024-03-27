@@ -367,6 +367,8 @@ class HAPHelper:
                             manager_address=current_wazuh_cluster[node_to_add],
                             resolver=self.proxy.resolver,
                         )
+
+                    await self.set_hard_stop_after(wait_connection_retry=False, reconnect_agents=False)
                     await self.migrate_old_connections(new_servers=nodes_to_add, deleted_servers=nodes_to_remove)
                     continue
 
@@ -393,12 +395,21 @@ class HAPHelper:
                 )
                 await sleep(self.sleep_time)
 
-    async def set_hard_stop_after(self):
-        """Calculate and set hard-stop-after configuration in HAProxy."""
-        connection_retry = self.get_connection_retry()
+    async def set_hard_stop_after(self, wait_connection_retry: bool = True, reconnect_agents: bool = True):
+        """Calculate and set hard-stop-after configuration in HAProxy.
 
-        self.logger.debug(f'Waiting {connection_retry}s for workers connections...')
-        await sleep(connection_retry)
+        Parameters
+        ----------
+        wait_connection_retry : bool, optional
+            Wait for the workers connections, by default True.
+        reconnect_agents : bool, optional
+            Reconnect agents after set the hard-stop-after, by default True.
+        """
+
+        if wait_connection_retry:
+            connection_retry = self.get_connection_retry()
+            self.logger.debug(f'Waiting {connection_retry}s for workers connections...')
+            await sleep(connection_retry)
 
         self.logger.info('Setting a value for `hard-stop-after` configuration.')
         agents_distribution = await self.wazuh_dapi.get_agents_node_distribution()
@@ -410,13 +421,13 @@ class HAPHelper:
             agent_reconnection_time=self.agent_reconnection_time,
         )
 
-        if len(agents_id) > 0:
+        if reconnect_agents and len(agents_id) > 0:
             self.logger.info(f'Reconnecting {len(agents_id)} agents.')
             await self.update_agent_connections(agent_list=agents_id)
 
     @staticmethod
     def get_connection_retry() -> int:
-        """Returns the connection retry value, from cluster.json, plus two seconds.
+        """Return the connection retry value, from cluster.json, plus two seconds.
 
         Returns
         -------

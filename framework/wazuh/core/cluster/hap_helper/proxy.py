@@ -13,7 +13,7 @@ PROXY_API_RESPONSE: TypeAlias = JSON_TYPE | None
 HTTP_PROTOCOL = Literal['http', 'https']
 
 
-def _convert_to_seconds(milliseconds: int) -> float:
+def _convert_to_seconds(milliseconds: int) -> int:
     """Convert the given milliseconds to seconds.
 
     Parameters
@@ -26,7 +26,7 @@ def _convert_to_seconds(milliseconds: int) -> float:
     float
         The amount of seconds.
     """
-    return milliseconds / 1000
+    return int(milliseconds / 1000)
 
 
 def _convert_to_milliseconds(seconds: int) -> int:
@@ -42,7 +42,7 @@ def _convert_to_milliseconds(seconds: int) -> int:
     int
         The amount of milliseconds.
     """
-    return seconds * 1000
+    return int(seconds * 1000)
 
 
 class ProxyAPIMethod(Enum):
@@ -563,12 +563,13 @@ class Proxy:
         number_of_chunks = active_agents / chunk_size if active_agents > chunk_size else 1
         hard_stop_after = number_of_chunks * agent_reconnection_time
 
-        configuration = await self.api.get_global_configuration()
-        configuration['hard_stop_after'] = _convert_to_milliseconds(hard_stop_after)
+        if self.hard_stop_after is None or self.hard_stop_after != hard_stop_after:
+            configuration = await self.api.get_global_configuration()
+            configuration['hard_stop_after'] = _convert_to_milliseconds(hard_stop_after)
 
-        await self.api.update_global_configuration(new_configuration=configuration)
-        self.hard_stop_after = hard_stop_after
-        self.logger.info(f'Set `hard-stop-after` with {hard_stop_after} seconds.')
+            await self.api.update_global_configuration(new_configuration=configuration)
+            self.hard_stop_after = hard_stop_after
+            self.logger.info(f'Set `hard-stop-after` with {hard_stop_after} seconds.')
 
     async def get_current_pid(self) -> int:
         """Get the current HAProxy PID.
