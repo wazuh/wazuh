@@ -82,7 +82,7 @@ jobs:
       - name: Install wazuh agent
         run: |
           cd  C:\wazuh\src\win32
-          .\wazuh-agent--.msi /q WAZUH_MANAGER="1.1.1.1"
+          .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |
