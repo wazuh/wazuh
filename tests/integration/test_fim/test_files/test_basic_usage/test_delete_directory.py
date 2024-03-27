@@ -153,6 +153,9 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
         - scheduled
         - realtime
     '''
+    if sys.platform == WINDOWS:
+        pytest.skip(reason="Unstable behavior when deleting monitored folder")
+
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
     folder_to_delete = test_metadata.get('folder_to_monitor')

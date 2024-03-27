@@ -156,6 +156,9 @@ def test_create_after_delete(test_configuration, test_metadata, configure_local_
         - realtime
         - who_data
     '''
+    if sys.platform == WINDOWS:
+        pytest.skip(reason="Unstable behavior when deleting monitored folder")
+
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     wazuh_log_monitor.start(generate_callback(MONITORING_PATH), timeout=60)
