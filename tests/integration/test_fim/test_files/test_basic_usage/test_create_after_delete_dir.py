@@ -162,18 +162,17 @@ def test_create_after_delete(test_configuration, test_metadata, configure_local_
     assert wazuh_log_monitor.callback_result
 
     fim_mode = test_metadata.get('fim_mode')
+    folder_to_delete = test_metadata.get('folder_to_monitor')
+    filename = test_metadata.get('file_to_monitor')
 
-    if sys.platform == WINDOWS:
-        pytest.skip(reason="Strange behavior when deleting monitored folder")
-
-    file.remove_folder(folder_to_monitor)
+    file.remove_folder(folder_to_delete)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=60)
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
 
-    file.create_folder(folder_to_monitor)
+    file.create_folder(folder_to_delete)
     time.sleep(2)
-    file.write_file(file_to_monitor, 'content')
+    file.write_file(filename, 'content')
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
