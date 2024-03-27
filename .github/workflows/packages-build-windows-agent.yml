@@ -50,7 +50,7 @@ on:
         required: false
 
 jobs:
-  Build-agent-windows-exe:
+  Build-agent-windows-base:
     runs-on: ubuntu-latest
     steps:
       - name: Cancel previous runs
@@ -77,9 +77,9 @@ jobs:
         run: |
           COMMIT_HASH="$(git rev-parse --short HEAD)"
           if [ "${{ inputs.naming_format }}" == "release" ]; then
-            echo "ZIP_NAME=wazuh-agent-${{ env.VERSION }}-${{ inputs.revision }}" >> $GITHUB_ENV;
+            echo "ZIP_NAME=wazuh-agent-${{ env.VERSION }}-${{ inputs.revision }}.zip" >> $GITHUB_ENV;
           else
-            echo "ZIP_NAME=wazuh-agent_${{ env.VERSION }}-${{ inputs.revision }}_windows_${COMMIT_HASH}" >> $GITHUB_ENV;
+            echo "ZIP_NAME=wazuh-agent_${{ env.VERSION }}-${{ inputs.revision }}_windows_${COMMIT_HASH}.zip" >> $GITHUB_ENV;
           fi
 
       - name: Download docker image for package building
@@ -89,9 +89,9 @@ jobs:
       - name: Build Windows wazuh-agent
         working-directory: packages/windows
         run: |
-          FLAGS="-s /tmp --dont-build-docker -j $(nproc) -o ${{ env.ZIP_NAME }} -c "${{ inputs.ca_name }}"
+          FLAGS="-s /tmp --dont-build-docker -j $(nproc) -o ${{ env.ZIP_NAME }} "
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
-          bash generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification }} --tag ${{ env.TAG }}  "$FLAGS"
+          bash generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification }} --tag ${{ env.TAG }} -c "${{ inputs.ca_name }}" $FLAGS
 
       # todo Modify ZIP_NAME to MSI_NAME
       - name: Set up AWS CLI
@@ -103,8 +103,63 @@ jobs:
 
       - name: Upload package to S3
         run: |
-          if [ inputs.is_stage == 'true' && inputs.checksum == 'true'  ]; then
-            sha512sum "/tmp/${{ env.ZIP_NAME }}.zip" > "/tmp/${{ env.ZIP_NAME }}.sha512"
+          if [ inputs.checksum == 'true'  ]; then
+            sha512sum "/tmp/${{ env.ZIP_NAME }}" > "/tmp/${{ env.ZIP_NAME }}.sha512"
             aws s3 cp /tmp/${{ env.ZIP_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           fi
           aws s3 cp /tmp/${{ env.ZIP_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+
+          # - link_windows_agent_base: s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.ZIP_NAME }}
+
+  # check_upgrade_result:
+  #   runs-on: windows-latest
+  #   needs: Build-agent-windows-base
+  #   steps:
+  #     - name: Checkout Repo
+  #       uses: actions/checkout@v3
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version-file: ".github/workflows/.python-version"
+  #         architecture: x64
+  #     - name: Add WiX toolkit to PATH
+  #       shell: bash
+  #       run: echo "${WIX}bin" >> $GITHUB_PATH
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install -r src/win32/qa/requirements.txt
+  #     # - name: Download released .msi
+  #     #   run: |
+  #     #     mkdir C:\win-agent-released
+  #     #     python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released
+  #     # - name: Download base folder
+  #     #   uses: actions/download-artifact@v3
+  #     #   with:
+  #     #     name: win-agent-base.zip
+  #     #     path: C:\win-agent-base
+
+
+  #     - name: Unzip base folder
+  #       run: 7z x C:\win-agent-base\win-agent-base.zip -oC:\win-agent-base
+  #     - name: Create .msi package
+  #       run: |
+  #         cd C:\win-agent-base\src\win32
+  #         $VERSION = Get-Content ..\VERSION
+  #         .\wazuh-installer-build-msi.bat $VERSION 0
+  #         cp *.msi C:\win-agent-base\
+  #     - name: Run tests
+  #       run: |
+  #         cd src/win32/qa
+  #         python -m pytest -vv ./test_win_upgrade.py
+  #     - name: Upload release installation log
+  #       if: always()
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: release_log
+  #         path: C:\win-agent-released\win-agent-released.log
+  #     - name: Upload base installation log
+  #       if: always()
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: base_log
+  #         path: C:\win-agent-base\win-agent-base.log

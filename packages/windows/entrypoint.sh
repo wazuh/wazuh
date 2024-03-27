@@ -30,5 +30,4 @@ bash -c "make -C /wazuh-*/src TARGET=winagent ${FLAGS}"
 
 rm -rf /wazuh-*/src/external
 
-zip -r /${ZIP_NAME} /wazuh-*
-cp /${ZIP_NAME}.zip /shared
+zip -r /shared/${ZIP_NAME} /wazuh-*
