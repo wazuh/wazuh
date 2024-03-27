@@ -2,6 +2,8 @@
 
 #include "hlp_test.hpp"
 
+#include "date/tz.h"
+
 TEST_P(HlpBuildTest, Build)
 {
     auto [success, builder, params] = GetParam();
@@ -68,6 +70,8 @@ void parseTest(
 
 TEST_P(HlpParseTest, Parse)
 {
+    //date::set_install("/var/ossec/engine/tzdb");
+
     auto [success, input, expected, index, builder, params] = GetParam();
     auto parser = builder(params);
 
