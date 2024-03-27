@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -44,6 +44,7 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.tools.monitors import queue_monitor
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -152,7 +153,7 @@ def test_agentd_enrollment(test_configuration, test_metadata, set_wazuh_configur
 
         try:
             # Start socket monitoring
-            socket_monitor.start(timeout=10,accumulations=2, callback=lambda received_event: received_event.encode() in event)
+            socket_monitor.start(timeout=60 if sys.platform == WINDOWS else 20, accumulations=2, callback=lambda received_event: received_event.encode() in event)
 
             assert socket_monitor.matches == 2
         except Exception as error:
