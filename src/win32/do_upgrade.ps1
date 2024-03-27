@@ -19,29 +19,6 @@ if (Test-Path "$env:windir\sysnative") {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
 }
 
-# Check uninstall
-function is_wazuh_installed
-{
-    Start-NativePowerShell {
-
-        $retval = $FALSE
-        # Searching through the registry keys (Starting from $WAZUH_DEF_REG_START_PATH)
-        $path = Get-ChildItem $Env:WAZUH_DEF_REG_START_PATH
-        foreach ($subpaths in $path) {
-            $subpath = $subpaths | Get-ChildItem
-            foreach ($subsubpath in $subpath) {
-                if ($subsubpath -match "InstallProperties") {
-                    if ($subsubpath.GetValue("Publisher") -match $Env:WAZUH_PUBLISHER_VALUE) {
-                        $retval = $TRUE
-                    }
-                }
-            }
-        }
-
-        Write-Output $retval
-    }
-}
-
 # Check new version and restart the Wazuh service
 function check-installation
 {
