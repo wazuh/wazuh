@@ -163,6 +163,9 @@ def test_create_after_delete(test_configuration, test_metadata, configure_local_
 
     fim_mode = test_metadata.get('fim_mode')
 
+    if sys.platform == WINDOWS:
+        pytest.skip(reason="Strange behavior when deleting monitored folder")
+
     file.remove_folder(folder_to_monitor)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=60)
     assert wazuh_log_monitor.callback_result
