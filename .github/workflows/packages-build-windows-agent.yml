@@ -50,8 +50,10 @@ on:
         required: false
 
 jobs:
-  Build-agent-windows-base:
+  build-agent-windows-base:
     runs-on: ubuntu-latest
+    outputs:
+      zip_s3_url: ${{ steps.push_zip.outputs.s3_base_agent }}
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
@@ -93,7 +95,6 @@ jobs:
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           bash generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification }} --tag ${{ env.TAG }} -c "${{ inputs.ca_name }}" $FLAGS
 
-      # todo Modify ZIP_NAME to MSI_NAME
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -102,6 +103,7 @@ jobs:
           aws-region: us-east-1
 
       - name: Upload package to S3
+        id: push_zip
         run: |
           s3_packages_url="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages"
           if [ inputs.checksum == 'true'  ]; then
@@ -109,12 +111,11 @@ jobs:
             aws s3 cp /tmp/${{ env.ZIP_NAME }}.sha512 "${s3_packages_url}/"
           fi
           aws s3 cp /tmp/${{ env.ZIP_NAME }} "${s3_packages_url}/"
-
           echo "s3_base_agent=${s3_packages_url}/${{ env.ZIP_NAME }}" >> "$GITHUB_OUTPUT"
 
-  check_upgrade_result:
+  generate-msi-agent:
     runs-on: windows-latest
-    needs: Build-agent-windows-base
+    needs: build-agent-windows-base
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -140,20 +141,25 @@ jobs:
       - name: Download windows agent base from S3
         run: |
           mkdir C:\win-agent-base\
-          aws s3 cp ${{ needs.Build-agent-windows-base.outputs.s3_base_agent }} C:\win-agent-base\
+          aws s3 cp ${{ needs.build-agent-windows-base.outputs.zip_s3_url }} C:\win-agent-base\win-agent-base.zip
+          # $s3_packages_url = "s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages"
+          # aws s3 cp ${s3_packages_url}/wazuh-agent_4.9.0-0_windows_fff8611.zip  C:\win-agent-base\win-agent-base.zip
 
       - name: Unzip base folder
-        run: 7z x C:\win-agent-base\win-agent-base.zip -oC:\win-agent-base
+        run: |
+          7z x C:\win-agent-base\win-agent-base.zip -oC:\win-agent-base
 
       - name: Create .msi package
         run: |
-          cd C:\win-agent-base\src\win32
+          cd C:\win-agent-base\wazuh-local-src\src\win32
           $VERSION = Get-Content ..\VERSION
           .\wazuh-installer-build-msi.bat $VERSION 0
           cp *.msi C:\win-agent-base\
 
       - name: Upload msi to s3
         run: |
-          s3_packages_url="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages"
-          aws s3 cp C:\win-agent-base\*msi "${s3_packages_url}/"
-
+          $s3_packages_url = "s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages"
+          $msi_files = Get-ChildItem C:\win-agent-base\*.msi
+          foreach ($msi in $msi_files) {
+            aws s3 cp $msi.FullName "$s3_packages_url/"
+          }
