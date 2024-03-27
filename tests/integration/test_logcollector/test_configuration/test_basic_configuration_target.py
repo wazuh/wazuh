@@ -77,7 +77,6 @@ from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 pytestmark = [pytest.mark.linux, pytest.mark.darwin, pytest.mark.sunos5, pytest.mark.tier(level=0)]
 
 # Configuration
-no_restart_windows_after_configuration_set = True
 cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_target.yaml')
 config_path = Path(CONFIGURATIONS_PATH, 'wazuh_basic_configuration_target.yaml')
 local_internal_options = {logcollector_configuration.LOGCOLLECTOR_DEBUG: '2'}
