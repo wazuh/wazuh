@@ -359,7 +359,7 @@ int w_journal_context_next_newest_filtered(w_journal_context_t * ctx, w_journal_
     while ((ret = w_journal_context_next_newest(ctx)) > 0) {
         if (isDebug()) {
             char * ts = w_timestamp_to_journalctl_since(ctx->timestamp);
-            mdebug2("Checking filters for timestamp '%s'", ts == NULL ? "unknown" : ts);
+            mdebug2(LOGCOLLECTOR_JOURNAL_LOG_CHECK_FILTER, ts == NULL ? "unknown" : ts);
             os_free(ts);
         }
 
@@ -511,6 +511,7 @@ static inline char * create_plain_syslog(const char * timestamp,
  * @return w_journal_entry_t*
  */
 static inline char * entry_as_syslog(w_journal_context_t * ctx) {
+
     char * hostname = get_field_ptr(ctx, "_HOSTNAME");
     char * syslog_identifier = get_field_ptr(ctx, "SYSLOG_IDENTIFIER");
     char * message = get_field_ptr(ctx, "MESSAGE");
@@ -543,6 +544,7 @@ static inline char * entry_as_syslog(w_journal_context_t * ctx) {
 }
 
 w_journal_entry_t * w_journal_entry_dump(w_journal_context_t * ctx, w_journal_entry_dump_type_t type) {
+
     if (ctx == NULL || ctx->journal == NULL) {
         return NULL;
     }
@@ -577,6 +579,7 @@ w_journal_entry_t * w_journal_entry_dump(w_journal_context_t * ctx, w_journal_en
 }
 
 void w_journal_entry_free(w_journal_entry_t * entry) {
+
     if (entry == NULL) {
         return;
     }
@@ -595,6 +598,7 @@ void w_journal_entry_free(w_journal_entry_t * entry) {
 }
 
 char * w_journal_entry_to_string(w_journal_entry_t * entry) {
+
     if (entry == NULL) {
         return NULL;
     }
@@ -625,6 +629,7 @@ char * w_journal_entry_to_string(w_journal_entry_t * entry) {
  * @return int 1 if the entry matches the filter, 0 if it does not match, -1 on error
  */
 int w_journal_filter_apply(w_journal_context_t * ctx, w_journal_filter_t * filter) {
+
     if (ctx == NULL || filter == NULL) {
         return -1;
     }

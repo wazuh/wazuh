@@ -89,7 +89,6 @@ void test_w_journald_poc(void ** state) {
         {
             // fprintf(stderr, "No new entries\n");
             break;
-            sleep(1);
             continue; 
         }
 

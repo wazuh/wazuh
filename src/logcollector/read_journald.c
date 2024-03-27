@@ -70,7 +70,7 @@ bool w_journald_can_read(unsigned long owner_id) {
         gs_journald_global.owner_id = owner_id;
  
         if (gs_journald_global.journal_ctx == NULL && w_journal_context_create(&gs_journald_global.journal_ctx) != 0) {
-            mwarn("Failed to connect to the journal, disabling journal log");
+            merror(LOGCOLLECTOR_JOURNAL_LOG_DISABLING);
             gs_journald_global.is_disabled = true;
             return false;
         }
@@ -85,12 +85,12 @@ bool w_journald_can_read(unsigned long owner_id) {
                       : w_journal_context_seek_timestamp(gs_journald_global.journal_ctx, lr_ts);
 
         if (ret < 0) {
-            mwarn("Failed to move to the end of the journal, disabling journal log: %s", strerror(-ret));
+            merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_SEEK, strerror(-ret));
             gs_journald_global.is_disabled = true;
             return false;
         }
 
-        minfo("Monitoring the journal");
+        minfo(LOGCOLLECTOR_JOURNALD_MONITORING);
 
     } else if (gs_journald_global.owner_id != owner_id) {
         return false;
@@ -111,11 +111,11 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
         // Get the next entry
         int result_get_next = w_journal_context_next_newest_filtered(gs_journald_global.journal_ctx, filters);
         if (result_get_next < 0) {
-            merror("Failed to get next entry, disabling journal log: %s", strerror(-result_get_next));
+            merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_NEXT, strerror(-result_get_next));
             gs_journald_global.is_disabled = true;
             break;
         } else if (result_get_next == 0) {
-            mdebug2("No new entries in the journal");
+            mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NO_NEW);
             break;
         }
 
@@ -126,14 +126,14 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
         w_journal_entry_free(entry);
 
         if (entry_str == NULL) {
-            merror("Failed to get the message from the journal");
+            merror(LOGCOLLECTOR_JOURNAL_LOG_FAIL_GET);
             break;
         }
 
         // Copy the message to the buffer
         unsigned long entry_str_len = strlen(entry_str);
         if (entry_str_len > MAX_LINE_LEN) {
-            mdebug1("Message size > maximum allowed, The message will be truncated");
+            mdebug1(LOGCOLLECTOR_JOURNAL_LOG_TRUNCATED);
             entry_str_len = MAX_LINE_LEN;
         }
         strncpy(read_buffer, entry_str, entry_str_len);
@@ -141,7 +141,7 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
         os_free(entry_str);
 
         if (isDebug()) {
-            mdebug2("Reading from journal: %s", read_buffer);
+            mdebug2(LOGCOLLECTOR_JOURNAL_LOG_READING, read_buffer);
         }
 
         // Send the message to the manager
@@ -208,7 +208,7 @@ void w_journald_set_status_from_JSON(cJSON * global_json) {
     gs_journald_ofe.last_read_timestamp = timestamp_uint;
     pthread_mutex_unlock(&gs_journald_ofe.mutex);
 
-    mdebug2("Set last read timestamp from journald: %" PRIu64, timestamp_uint);
+    mdebug2(LOGCOLLECTOR_JOURNAL_LOG_SET_LAST, timestamp_uint);
 }
 
 #endif
