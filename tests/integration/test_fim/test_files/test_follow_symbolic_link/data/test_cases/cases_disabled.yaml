@@ -1,6 +1,6 @@
 - name: Symlink follow disabled - Real-time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -15,7 +15,7 @@
 
 - name: Symlink follow disabled - Real-time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -30,7 +30,7 @@
 
 - name: Symlink follow disabled - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -45,7 +45,7 @@
 
 - name: Symlink follow disabled - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -60,7 +60,7 @@
 
 - name: Symlink follow disabled - Schedule
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 3
@@ -75,7 +75,7 @@
 
 - name: Symlink follow disabled - Schedule
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir, symlink]
     FREQUENCY: 3

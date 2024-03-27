@@ -37,9 +37,6 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
-    - Windows 10
-    - Windows Server 2019
-    - Windows Server 2016
 
 references:
     - https://man7.org/linux/man-pages/man8/auditd.8.html
@@ -81,7 +78,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_checkers.yaml')
@@ -147,7 +144,7 @@ def test_checkers(test_configuration, test_metadata, set_wazuh_configuration, co
 
     input_description: The test cases are contained in external YAML file (cases_checkers.yaml) which includes
                        configuration parameters for the 'wazuh-syscheckd' daemon and testing directories to monitor.
-                       The configuration template is contained in another external YAML file 
+                       The configuration template is contained in another external YAML file
                        (configuration_basic.yaml).
 
     expected_output:

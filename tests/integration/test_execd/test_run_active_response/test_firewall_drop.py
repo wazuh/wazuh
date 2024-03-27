@@ -66,7 +66,7 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Test internal options and configurations.
-local_internal_options = {EXECD_DEBUG: '2'} 
+local_internal_options = {EXECD_DEBUG: '2'}
 daemons_handler_configuration = {'all_daemons': True}
 ar_conf = 'firewall-drop5 - firewall-drop - 5'
 

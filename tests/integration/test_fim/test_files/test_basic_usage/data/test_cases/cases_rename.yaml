@@ -1,6 +1,6 @@
 - name: Rename directory - Real-time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/, test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -15,7 +15,7 @@
 - name: Rename directory - Scheduled
   description: When a scheduled monitored directory es deleted
                or added FIM raises a log in the next scan, in
-               this case the scan are made every 3 secconds. 
+               this case the scan are made every 3 secconds.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/, test_dir]
     FREQUENCY: 3
@@ -29,7 +29,7 @@
 
 - name: Rename file - Real-time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/, test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -44,7 +44,7 @@
 - name: Rename file - Scheduled
   description: When a scheduled monitored directory es deleted
                or added FIM raises a log in the next scan, in
-               this case the scan are made every 3 secconds. 
+               this case the scan are made every 3 secconds.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/, test_dir]
     FREQUENCY: 3

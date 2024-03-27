@@ -1,6 +1,6 @@
 - name: Create update delete - Real-time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -13,7 +13,7 @@
 
 - name: Create update delete in nested folder - Real-time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -26,7 +26,7 @@
 
 - name: Create update delete - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -40,7 +40,7 @@
 
 - name: Create update delete in nested folder - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/symlink]
     FREQUENCY: 43200 # As default 12 hs
@@ -53,7 +53,7 @@
 
 - name: Create update delete - Schedule
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/symlink]
     FREQUENCY: 3
@@ -66,7 +66,7 @@
 
 - name: Create update delete in nested folder - scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/symlink]
     FREQUENCY: 3

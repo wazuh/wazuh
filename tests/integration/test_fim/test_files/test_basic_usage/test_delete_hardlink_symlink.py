@@ -37,9 +37,6 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
-    - Windows 10
-    - Windows Server 2019
-    - Windows Server 2016
 
 references:
     - https://man7.org/linux/man-pages/man8/auditd.8.html
@@ -79,7 +76,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_delete_hardlink_symlink.yaml')

@@ -1,6 +1,6 @@
 - name: Check None - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -15,7 +15,7 @@
 
 - name: Check All - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -33,7 +33,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -43,7 +43,7 @@
 
 - name: Check All but check_mtime - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -62,7 +62,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'inode'
@@ -71,7 +71,7 @@
 
 - name: Check All but check_size - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -89,7 +89,7 @@
       - 'hash_sha256'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -99,7 +99,7 @@
 
 - name: Check All but check_sha256sum - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -117,7 +117,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -127,7 +127,7 @@
 
 - name: Check All but check_md5sum - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -145,7 +145,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -155,7 +155,7 @@
 
 - name: Check All but check_sha1sum - Who-data
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200 # As default 12 hs
@@ -173,7 +173,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -183,7 +183,7 @@
 
 - name: Check None - Scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -198,7 +198,7 @@
 
 - name: Check All - Scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -216,7 +216,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -226,7 +226,7 @@
 
 - name: Check All but check_mtime - Scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -245,7 +245,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'inode'
@@ -254,7 +254,7 @@
 
 - name: Check All but check_size - Scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -272,7 +272,7 @@
       - 'hash_sha256'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -282,7 +282,7 @@
 
 - name: Check All but check_sha256sum - Scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -300,7 +300,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -310,7 +310,7 @@
 
 - name: Check All but check_md5sum - Scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -328,7 +328,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -338,7 +338,7 @@
 
 - name: Check All but check_sha1sum - Scheduled
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 3
@@ -356,7 +356,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -366,7 +366,7 @@
 
 - name: Check None - Real-Time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -381,7 +381,7 @@
 
 - name: Check All - Real-Time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -399,7 +399,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -409,7 +409,7 @@
 
 - name: Check All but check_mtime - Real-Time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -428,7 +428,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'inode'
@@ -437,7 +437,7 @@
 
 - name: Check All but check_size - Real-Time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -455,7 +455,7 @@
       - 'hash_sha256'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -465,7 +465,7 @@
 
 - name: Check All but check_sha256sum - Real-Time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -483,7 +483,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -493,7 +493,7 @@
 
 - name: Check All but check_md5sum - Real-Time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -511,7 +511,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'
@@ -521,7 +521,7 @@
 
 - name: Check All but check_sha1sum - Real-Time
   description: When a real-time monitored directory es deleted
-               or added FIM inmediately raises a log. 
+               or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
     FREQUENCY: 43200
@@ -539,7 +539,7 @@
       - 'size'
       - 'uid'
       - 'user_name'
-      - 'gid' 
+      - 'gid'
       - 'group_name'
       - 'perm'
       - 'mtime'

@@ -51,6 +51,9 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
+      - name: Add WiX toolkit to PATH
+        shell: bash
+        run: echo "${WIX}bin" >> $GITHUB_PATH
       # Download the compressed winagent build.
       - name: Download Artifact winagent
         uses: actions/download-artifact@v3
@@ -70,7 +73,7 @@ jobs:
       - name: Install wazuh agent
         run: |
           cd  C:\wazuh\src\win32
-          .\wazuh-agent--.msi /q WAZUH_MANAGER="1.1.1.1"
+          .\wazuh-agent--.msi /q WAZUH_MANAGER="127.0.0.1"
       # Download and install integration tests framework.
       - name: Download and install qa-integration-framework
         run: |

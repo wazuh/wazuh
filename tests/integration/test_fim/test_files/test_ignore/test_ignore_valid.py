@@ -26,7 +26,6 @@ daemons:
 
 os_platform:
     - linux
-    - windows
 
 os_version:
     - Arch Linux
@@ -38,9 +37,6 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
-    - Windows 10
-    - Windows Server 2019
-    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
@@ -79,7 +75,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 # Pytest marks to run on any service type on linux or windows.
 # Skipped on Windows due Issue https://github.com/wazuh/wazuh/issues/9298"
-pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=2)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=2)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_ignore_linux.yaml')

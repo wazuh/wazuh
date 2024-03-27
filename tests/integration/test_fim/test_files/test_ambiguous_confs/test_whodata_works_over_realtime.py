@@ -78,7 +78,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=2)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=2)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_whodata_works_over_realtime.yaml')
@@ -168,7 +168,7 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
     file.write_file(file_to_monitor)
     wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_ADDED))
 
-    callback_result = wazuh_log_monitor.callback_result 
+    callback_result = wazuh_log_monitor.callback_result
     assert callback_result
 
     event_data = get_fim_event_data(callback_result)
@@ -178,7 +178,7 @@ def test_whodata_works_over_realtime(test_configuration, test_metadata, set_wazu
     file.remove_file(file_to_monitor)
     wazuh_log_monitor.start(callback=generate_callback(EVENT_TYPE_DELETED))
 
-    callback_result = wazuh_log_monitor.callback_result 
+    callback_result = wazuh_log_monitor.callback_result
     assert callback_result
 
     event_data = get_fim_event_data(callback_result)
