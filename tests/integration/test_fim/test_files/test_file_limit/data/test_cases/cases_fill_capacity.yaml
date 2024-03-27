@@ -1,7 +1,8 @@
 - name: Default file limit fill 10% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -10,16 +11,20 @@
           - enabled:
               value: 'yes'
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100000
     files_amount: 10000
     fill_percentage: 10
     fim_mode: realtime
 
+
+
 - name: Default file limit fill 100% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -28,16 +33,18 @@
           - enabled:
               value: 'yes'
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100000
     files_amount: 100000
     fill_percentage: 100
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 50% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -48,16 +55,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 50
     fill_percentage: 50
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 79% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -68,16 +77,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 79
     fill_percentage: 79
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 80% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -88,16 +99,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 80
     fill_percentage: 80
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 85% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -108,16 +121,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 85
     fill_percentage: 80
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 90% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -128,16 +143,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 90
     fill_percentage: 90
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 99% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -148,16 +165,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 99
     fill_percentage: 90
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 100% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -168,16 +187,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 100
     fill_percentage: 100
     fim_mode: realtime
 
 - name: Max file limit of 100 fill 120% - Real-time
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -188,16 +209,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 120
     fill_percentage: 100
     fim_mode: realtime
 
 - name: Default file limit fill 10% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -206,16 +229,18 @@
           - enabled:
               value: 'yes'
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100000
     files_amount: 10000
     fill_percentage: 10
     fim_mode: whodata
 
 - name: Default file limit fill 100% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -224,16 +249,18 @@
           - enabled:
               value: 'yes'
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100000
     files_amount: 100000
     fill_percentage: 100
     fim_mode: whodata
 
 - name: Max file limit of 100 fill 50% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -244,16 +271,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 50
     fill_percentage: 50
     fim_mode: whodata
 
 - name: Max file limit of 100 fill 79% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -264,16 +293,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 79
     fill_percentage: 79
     fim_mode: whodata
 
 - name: Max file limit of 100 fill 80% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -284,16 +315,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 80
     fill_percentage: 80
     fim_mode: whodata
 
 - name: Max file limit of 100 fill 85% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -304,16 +337,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 85
     fill_percentage: 80
     fim_mode: whodata
 
 - name: Max file limit of 100 fill 90% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -324,16 +359,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 90
     fill_percentage: 90
     fim_mode: whodata
 
 - name: Max file limit of 100 fill 99% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -344,16 +381,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 99
     fill_percentage: 90
     fim_mode: whodata
 
 - name: Max file limit of 100 fill 100% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -364,16 +403,18 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 100
     fill_percentage: 100
     fim_mode: whodata
 
 - name: Default file limit fill 10% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -382,16 +423,18 @@
           - enabled:
               value: 'yes'
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100000
     files_amount: 10000
     fill_percentage: 10
     fim_mode: scheduled
 
 - name: Default file limit fill 100% - Who-data
-  description: '' 
+  description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -400,7 +443,8 @@
           - enabled:
               value: 'yes'
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100000
     files_amount: 100000
     fill_percentage: 100
@@ -409,7 +453,8 @@
 - name: Max file limit of 100 fill 50% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -420,7 +465,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 50
     fill_percentage: 50
@@ -429,7 +475,8 @@
 - name: Max file limit of 100 fill 79% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -440,7 +487,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 79
     fill_percentage: 79
@@ -449,7 +497,8 @@
 - name: Max file limit of 100 fill 80% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -460,7 +509,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 80
     fill_percentage: 80
@@ -469,7 +519,8 @@
 - name: Max file limit of 100 fill 85% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -480,7 +531,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 85
     fill_percentage: 80
@@ -489,7 +541,8 @@
 - name: Max file limit of 100 fill 90% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -500,7 +553,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 90
     fill_percentage: 90
@@ -509,7 +563,8 @@
 - name: Max file limit of 100 fill 99% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -520,7 +575,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 99
     fill_percentage: 90
@@ -529,7 +585,8 @@
 - name: Max file limit of 100 fill 100% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -540,7 +597,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 100
     fill_percentage: 100
@@ -549,7 +607,8 @@
 - name: Max file limit of 100 fill 120% - Scheduled
   description: ''
   configuration_parameters:
-    TEST_DIR: !!python/object/apply:os.path.join [/test_dir]
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -560,7 +619,8 @@
           - entries:
               value: 100
   metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join [/test_dir]
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
     max_files_entries: 100
     files_amount: 120
     fill_percentage: 100
