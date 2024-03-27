@@ -56,7 +56,7 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     amount = 2 if not amount else amount
 
     if not file.exists(path):
-        file.create_folder(path)
+        file.recursive_directory_creation(path)
 
     [file.write_file(Path(path, f'test{i}.log'), 'content') for i in range(amount)]
         # file.write_file(Path(path, f'test{i}.log'), 'content')
