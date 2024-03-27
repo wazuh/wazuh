@@ -1,5 +1,5 @@
 """
-Copyright (C) 2015-2023, Wazuh Inc.
+Copyright (C) 2015-2024, Wazuh Inc.
 Created by Wazuh, Inc. <info@wazuh.com>.
 This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
@@ -11,6 +11,7 @@ from typing import List
 
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
@@ -672,7 +673,7 @@ def set_environment_variables(request: pytest.FixtureRequest) -> None:
     if hasattr(request.module, 'environment_variables'):
         environment_variables = getattr(request.module, 'environment_variables')
         for env, value in environment_variables:
-            if sys.platform == 'win32':
+            if sys.platform == WINDOWS:
                 subprocess.call(['setx.exe', env, value, '/m'])
             else:
                 os.putenv(env, value)
