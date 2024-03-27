@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2023, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -26,6 +26,7 @@ daemons:
 
 os_platform:
     - linux
+    - windows
 
 os_version:
     - Arch Linux
@@ -67,7 +68,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import FILE_LIMIT_PERCENTAGE, INODE_ENTRIES_PATH_COUNT, FILE_LIMIT_AMOUNT
+from wazuh_testing.modules.fim.patterns import FILE_LIMIT_PERCENTAGE, INODE_ENTRIES_PATH_COUNT, FILE_LIMIT_AMOUNT, FILE_ENTRIES_PATH_COUNT
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -78,7 +79,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.linux, pytest.mark.agent, pytest.mark.win32, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_fill_capacity.yaml')
@@ -163,7 +164,11 @@ def test_fill_capacity(test_configuration, test_metadata, set_wazuh_configuratio
     assert int(log_monitor.callback_result[0]) == max_entries
 
     files_amount = files_amount if files_amount <= max_entries else max_entries
-    log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=60)
+    if sys.platform == WINDOWS:
+        log_monitor.start(generate_callback(FILE_ENTRIES_PATH_COUNT), timeout=300)
+    else:
+        log_monitor.start(generate_callback(INODE_ENTRIES_PATH_COUNT), timeout=60)
+
     assert int(log_monitor.callback_result[0]) == files_amount
 
     log_monitor.start(generate_callback(FILE_LIMIT_PERCENTAGE), timeout=60)
