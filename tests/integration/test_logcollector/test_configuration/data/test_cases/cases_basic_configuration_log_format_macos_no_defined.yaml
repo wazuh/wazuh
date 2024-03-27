@@ -1,5 +1,5 @@
-- name: Basic configuration log format macos no defined
-  description: Basic configuration log format macos no defined
+- name: Basic configuration log format macos location no defined
+  description: Basic configuration log format macos location no defined
   configuration_parameters:
     LOG_FORMAT: 'macos'
   metadata:

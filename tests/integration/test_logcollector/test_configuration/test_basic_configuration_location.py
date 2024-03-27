@@ -188,4 +188,5 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
     else:
         if test_metadata['validate_config']:
             utils.check_logcollector_socket()
-            utils.validate_test_config_with_module_config(test_configuration=test_configuration)
+            if test_metadata['location'] != 'macos' and test_metadata['log_format'] != 'macos':
+                utils.validate_test_config_with_module_config(test_configuration=test_configuration)

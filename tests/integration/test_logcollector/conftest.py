@@ -23,7 +23,7 @@ def stop_logcollector(request):
 
 @pytest.fixture()
 def wait_for_logcollector_start(request):
-    # Wait for integratord thread to start
+    # Wait for logcollector thread to start
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
     log_monitor.start(callback=callbacks.generate_callback(LOGCOLLECTOR_MODULE_START))
     assert (log_monitor.callback_result != None), f'Error logcollector start event not detected'

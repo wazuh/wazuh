@@ -184,7 +184,7 @@ def check_log_format_valid(test_configuration, test_metadata):
             assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_MISSING_LOCATION_VALUE
 
         wazuh_log_monitor.start(timeout=5,
-                                callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_OLD_LOGS,
+                                callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_LOGS,
                                                    {'command_path': MACOS_LOG_COMMAND_PATH}))
         assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_MACOS_LOG_NOT_PRODUCED
 
@@ -234,7 +234,7 @@ def check_log_file_duplicated():
                             callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_LOG_FILE_DUPLICATED))
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_LOG_FILE_DUPLICATED
     wazuh_log_monitor.start(timeout=LOG_COLLECTOR_GLOBAL_TIMEOUT,
-                            callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_OLD_LOGS,
+                            callback=callbacks.generate_callback(patterns.LOGCOLLECTOR_MACOS_MONITORING_LOGS,
                                                                  {'command_path': MACOS_LOG_COMMAND_PATH}))
     assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_ANALYZING_MACOS
 
