@@ -10,7 +10,6 @@ on:
       - "src/wazuh_modules/syscollector/**"
       - "src/Makefile"
       - ".github/workflows/rtr_syscollector.yml"
-      - ".github/actions/**"
 
 jobs:
   rtr:
