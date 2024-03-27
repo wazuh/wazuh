@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -60,7 +60,7 @@ from wazuh_testing.utils import configuration, callbacks
 from . import TEST_CASES_PATH
 
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=2)]
 
 # Configuration and cases data.
 test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events.yaml')

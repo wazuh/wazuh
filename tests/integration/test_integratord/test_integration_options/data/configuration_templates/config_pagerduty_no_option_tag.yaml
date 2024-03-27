@@ -1,6 +1,4 @@
-- tags:
-    - all
-  sections:
+- sections:
     - section: integration
       elements:
         - name:

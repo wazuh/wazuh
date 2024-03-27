@@ -23,7 +23,6 @@ suite: configuration
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-logcollector
@@ -31,6 +30,7 @@ daemons:
 
 os_platform:
     - linux
+    - macos
     - windows
 
 os_version:
@@ -41,6 +41,8 @@ os_version:
     - CentOS 7
     - Debian Buster
     - Red Hat 8
+    - macOS Catalina
+    - macOS Server
     - Ubuntu Focal
     - Ubuntu Bionic
     - Windows 10
@@ -73,7 +75,7 @@ from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.darwin, pytest.mark.tier(level=0)]
 
 # Configuration
 cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_label.yaml')

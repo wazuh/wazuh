@@ -23,7 +23,6 @@ modules:
 
 components:
     - agent
-    - manager
 
 daemons:
     - wazuh-logcollector
@@ -31,6 +30,7 @@ daemons:
 
 os_platform:
     - linux
+    - macos
     - windows
 
 os_version:
@@ -41,6 +41,8 @@ os_version:
     - CentOS 7
     - Debian Buster
     - Red Hat 8
+    - macOS Catalina
+    - macOS Server
     - Ubuntu Focal
     - Ubuntu Bionic
     - Windows 10
@@ -78,7 +80,7 @@ LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.darwin, pytest.mark.tier(level=0)]
 
 # Configuration
 default_config_path = Path(CONFIGURATIONS_PATH, 'wazuh_basic_configuration_log_format_location.yaml')

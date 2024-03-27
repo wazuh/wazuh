@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-remoted-tier-0-1.yml"
+        - "src/config/remote-config.c"
+        - "src/config/remote-config.h"
         - "src/remoted/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"

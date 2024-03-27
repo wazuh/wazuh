@@ -22,7 +22,6 @@ suite: configuration
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-logcollector
@@ -30,7 +29,6 @@ daemons:
 
 os_platform:
     - linux
-    - windows
 
 os_version:
     - Arch Linux
@@ -42,9 +40,6 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
-    - Windows 10
-    - Windows Server 2019
-    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/log-data-collection/index.html
@@ -66,13 +61,12 @@ from wazuh_testing.modules.logcollector import utils
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.utils.services import control_service
-from wazuh_testing.utils.file import truncate_file
 
 from . import TEST_CASES_PATH, CONFIGURATIONS_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration
 cases_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_out_format.yaml')
