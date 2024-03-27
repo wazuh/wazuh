@@ -1,0 +1,13 @@
+- name: Basic configuration log format macos duplicated
+  description: Basic configuration log format duplicated
+  configuration_parameters:
+    LOCATION1: 'macos'
+    LOG_FORMAT1: 'macos'
+    LOCATION2: 'macos'
+    LOG_FORMAT2: 'macos'
+  metadata:
+    location1: 'macos'
+    log_format1: 'macos'
+    location2: 'macos'
+    log_format2: 'macos'
+    valid_value: True
