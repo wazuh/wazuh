@@ -15,7 +15,7 @@ def path_to_edit(test_metadata: dict) -> str:
     is_directory = test_metadata.get('is_directory')
 
     if is_directory:
-        file.create_folder(to_edit)
+        file.recursive_directory_creation(to_edit)
         file.write_file(Path(to_edit, 'newfile'), 'test')
     else:
         file.write_file(to_edit, 'test')
@@ -24,4 +24,4 @@ def path_to_edit(test_metadata: dict) -> str:
 
     yield to_edit
 
-    file.remove_folder(to_edit)
+    file.delete_path_recursively(to_edit)

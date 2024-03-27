@@ -152,7 +152,7 @@ def test_num_watches(test_configuration, test_metadata, configure_local_internal
     assert watches == test_metadata['watches_before']
 
     if test_metadata['action'] == 'delete':
-        file.remove_folder(test_metadata['folder_to_monitor'])
+        file.delete_path_recursively(test_metadata['folder_to_monitor'])
     elif test_metadata['action'] == 'rename':
         file.rename(test_metadata['folder_to_monitor'], '/changed_name')
 
@@ -163,4 +163,4 @@ def test_num_watches(test_configuration, test_metadata, configure_local_internal
     assert watches == test_metadata['watches_after']
 
     if file.exists('/changed_name'):
-        file.remove_folder('/changed_name')
+        file.delete_path_recursively('/changed_name')
