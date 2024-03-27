@@ -155,12 +155,14 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
+    folder_to_delete = test_metadata.get('folder_to_monitor')
+    filename = test_metadata.get('file_to_monitor')
 
-    file.write_file(file_to_monitor, 'test')
+    file.write_file(filename, 'test')
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED))
     assert wazuh_log_monitor.callback_result
 
-    file.remove_folder(folder_to_monitor)
+    file.remove_folder(folder_to_delete)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
