@@ -1,0 +1,27 @@
+<decoder name="fortiweb-custom">
+	<prematch>^date=(\d\d\d\d-\d\d-\d\d) time=(\d\d:\d\d:\d\d)</prematch>
+</decoder>
+<decoder name="fortiweb-custom1">
+	<parent>fortiweb-custom</parent>
+	<regex>main_type="(\.*)" sub_type="(\.*)" </regex>
+	<order>type, sub_type</order>
+</decoder>
+<decoder name="fortiweb-custom1">
+	<parent>fortiweb-custom</parent>
+	<regex offset="after_regex">src=(\S+) src_port=\S+ dst=(\S+) dst_port=\S+ </regex>
+	<order>source, destination</order>
+</decoder>
+<decoder name="fortiweb-custom1">
+	<parent>fortiweb-custom</parent>
+	<regex offset="after_regex">http_url="(\S+)" http_host="(\S+)"</regex>
+	<order>url, host</order>
+</decoder>
+<decoder name="fortiweb-custom1">
+	<parent>fortiweb-custom</parent>
+	<regex offset="after_regex">matched_pattern="(\S+)"</regex>
+	<order>pattern</order>
+</decoder><decoder name="fortiweb-custom1">
+	<parent>fortiweb-custom</parent>
+	<regex>action=(\S+)</regex>
+	<order>action</order>
+</decoder>
