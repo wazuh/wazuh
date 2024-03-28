@@ -87,6 +87,44 @@ public:
         return {};
     }
 
+    /**
+     * @brief Checks if the cache is full.
+     *
+     * This function checks if the cache is full by comparing the current size of the cache
+     * with its capacity.
+     *
+     * @return true if the cache is full, false otherwise.
+     */
+    bool isFull()
+    {
+        return m_map.size() == m_capacity;
+    }
+
+    /**
+     * @brief Checks if a key exists in the cache.
+     *
+     * This function checks if a given key exists in the cache.
+     *
+     * @param key The key to be checked.
+     * @return true if the key exists in the cache, false otherwise.
+     */
+    bool isHit(const KeyType& key)
+    {
+        return m_map.find(key) != m_map.end();
+    }
+
+    /**
+     * @brief Returns a reference to the cache data.
+     *
+     * This function returns a reference to the underlying map storing the cache data.
+     *
+     * @return A reference to the map storing the cache data.
+     */
+    std::map<KeyType, ValueType>& getCacheData()
+    {
+        return m_map;
+    }
+
 private:
     std::map<KeyType, ValueType> m_map; ///< The internal map storing key-value pairs.
     std::list<KeyType> m_list;          ///< The list to manage the order of keys (LRU order).
