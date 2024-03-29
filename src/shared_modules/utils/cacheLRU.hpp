@@ -59,7 +59,7 @@ public:
         }
 
         // Insert the new key-value pair into the cache
-        m_map[key] = value;
+        m_map.emplace(key, std::move(value));
         // Move the new item to the front of the list (most recently used)
         refreshKey(key);
     }
