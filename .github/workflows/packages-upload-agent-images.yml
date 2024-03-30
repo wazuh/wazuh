@@ -8,14 +8,16 @@ on:
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
           Default is 'auto'.
-      arch:
+        required: false
+        default: 'auto'
+      architecture:
         type: choice
         description: 'Build .deb wazuh-agent on arm64 arch'
         required: true
         options:
           - 'amd64'
           - 'i386'
-      package-format:
+      system:
         type: choice
         description: 'Package format [deb, rpm]'
         required: true
@@ -26,6 +28,22 @@ on:
         type: boolean
         description: |
           'Only for RPM - Build package for CentOS 5.'
+        required: false
+
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        default: 'auto'
+        required: false
+      architecture:
+        type: string
+        required: true
+      system:
+        type: string
+        required: true
+      legacy:
+        type: boolean
         required: false
 
 jobs:
@@ -41,15 +59,33 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      - name: Set architecture
+        run: |
+          if [ ${{ inputs.system }} == 'rpm' ]; then
+            if [ "${{ env.architecture }}" = "armv7hl" ]; then
+                arch="armhf"
+            elif [ "${{ inputs.architecture }}" = "aarch64" ]; then
+                arch="arm64"
+            elif [ "${{ inputs.architecture }}" = "x86_64" ]; then
+                arch="amd64"
+            else
+                arch=${{ inputs.architecture }}
+            fi
+          else
+            arch=${{ inputs.architecture }}
+          fi
+          echo "ARCH=$arch" >> $GITHUB_ENV;
+
       - name: Set-env
         run: |
           if [ "${{ inputs.legacy }}" == "true" ]; then
-            echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_legacy_builder_${{ inputs.arch}}" >> $GITHUB_ENV
-            echo "DOCKERFILE_PATH=packages/${{ inputs.package-format }}s/${{ inputs.arch}}/legacy" >> $GITHUB_ENV
+            echo "CONTAINER_NAME=pkg_${{ inputs.system }}_legacy_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+            echo "DOCKERFILE_PATH=packages/${{ inputs.system }}s/${{ env.ARCH }}/legacy" >> $GITHUB_ENV
           else
-            echo "CONTAINER_NAME=pkg_${{ inputs.package-format }}_agent_builder_${{ inputs.arch}}" >> $GITHUB_ENV
-            echo "DOCKERFILE_PATH=packages/${{ inputs.package-format }}s/${{ inputs.arch}}/agent" >> $GITHUB_ENV
+            echo "CONTAINER_NAME=pkg_${{ inputs.system }}_agent_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+            echo "DOCKERFILE_PATH=packages/${{ inputs.system }}s/${{ env.ARCH}}/agent" >> $GITHUB_ENV
           fi
+
 
       - name: Set tag
         run: |
@@ -61,7 +97,7 @@ jobs:
       - name: Copy build.sh and utils to Dockerfile path
         run: |
           cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
-          cp $GITHUB_WORKSPACE/packages/${{ inputs.package-format }}s/utils/* $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
+          cp $GITHUB_WORKSPACE/packages/${{ inputs.system }}s/utils/* $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
 
       - name: Copy centos-5-i386.tar.gz to Dockerfile legacy path
         if: inputs.legacy == 'true' || inputs.legacy == true
