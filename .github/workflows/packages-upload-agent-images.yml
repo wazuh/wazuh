@@ -15,8 +15,10 @@ on:
         description: 'Build .deb wazuh-agent on arm64 arch'
         required: true
         options:
+          - 'x86_64'
           - 'amd64'
           - 'i386'
+          - 'aarch64'
       system:
         type: choice
         description: 'Package format [deb, rpm]'
