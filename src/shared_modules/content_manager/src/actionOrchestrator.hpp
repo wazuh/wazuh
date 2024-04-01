@@ -226,7 +226,7 @@ private:
         fullContentConfig.at("compressionType") = "zip";
 
         // Trigger orchestration.
-        FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
+        FactoryContentUpdater::create(fullContentConfig)->handleRequest(std::move(spUpdaterContext));
     }
 };
 

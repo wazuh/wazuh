@@ -195,7 +195,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (strcmp(node[i]->element, osvulndetector) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
             if ((modules & CWMODULE)) {
-                mwarn("%s configuration is deprecated. Use %s instead.", osvulndetector, osvulndetection);
+                mwarn(
+                    "The '%s' configuration is now obsolete and will not function. Please update your settings to use "
+                    "the new '%s' block for continued vulnerability management. See https://documentation.wazuh.com",
+                    osvulndetector,
+                    osvulndetection);
                 if (Read_Vulnerability_Detection(xml, chld_node, d1, true) < 0) {
                     goto fail;
                 }

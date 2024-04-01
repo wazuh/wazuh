@@ -17,8 +17,9 @@
 #include <condition_variable>
 #include <mutex>
 #include <string>
+#include <utility>
 
-auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {500};
+auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {5000};
 
 char constexpr DB_WRAPPER_OK[] = {"ok"};
 char constexpr DB_WRAPPER_ERROR[] = {"err"};
@@ -33,18 +34,19 @@ private:
     nlohmann::json m_response;
     nlohmann::json m_responsePartial;
     std::string m_exceptionStr;
-    std::mutex m_mutex;
+    std::mutex m_mutexMessage;
+    std::mutex m_mutexResponse;
     std::condition_variable m_conditionVariable;
+    std::string m_socketPath;
 
-public:
-    explicit SocketDBWrapper(const std::string& socketPath)
-        : m_dbSocket {
-              std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(socketPath)}
+    void initializeSocket()
     {
+        m_dbSocket =
+            std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(m_socketPath);
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char* header, uint32_t headerSize)
             {
-                std::lock_guard<std::mutex> lock {m_mutex};
+                std::lock_guard<std::mutex> lock {m_mutexResponse};
                 std::string responsePacket(body, bodySize);
 
                 if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_DUE) - 1, DB_WRAPPER_DUE))
@@ -96,7 +98,15 @@ public:
                                 }
                                 else
                                 {
-                                    m_response.push_back(responseParsed);
+                                    if (responseParsed.contains("status") &&
+                                        responseParsed.at("status") == "NOT_SYNCED")
+                                    {
+                                        m_exceptionStr = "DB query not synced";
+                                    }
+                                    else
+                                    {
+                                        m_response.push_back(responseParsed);
+                                    }
                                 }
                             }
                             catch (const nlohmann::detail::exception& ex)
@@ -116,20 +126,39 @@ public:
             });
     }
 
+public:
+    explicit SocketDBWrapper(std::string socketPath)
+        : m_socketPath(std::move(socketPath))
+    {
+        initializeSocket();
+    }
+
     void query(const std::string& query, nlohmann::json& response)
     {
+        // Acquire lock to avoid multiple threads sending queries at the same time
+        std::lock_guard<std::mutex> lockMessage {m_mutexMessage};
+
         // Acquire lock before clearing the response
-        std::unique_lock<std::mutex> lock {m_mutex};
+        std::unique_lock<std::mutex> lockResponse {m_mutexResponse};
+
+        if (!m_dbSocket)
+        {
+            initializeSocket();
+        }
 
         m_response.clear();
         m_responsePartial.clear();
         m_exceptionStr.clear();
 
         m_dbSocket->send(query.c_str(), query.size());
-        const auto res = m_conditionVariable.wait_for(lock, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
+        const auto res =
+            m_conditionVariable.wait_for(lockResponse, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
 
         if (res == std::cv_status::timeout)
         {
+            // Restart the socket connection to avoid the reception of old messages
+            m_dbSocket->stop();
+            initializeSocket();
             throw std::runtime_error("Timeout waiting for DB response");
         }
 
