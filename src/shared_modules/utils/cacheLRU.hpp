@@ -27,7 +27,7 @@
  * @tparam ValueType The type of the values associated with the keys.
  */
 template<typename KeyType, typename ValueType>
-class LRUCache
+class LRUCache final
 {
 public:
     /**
@@ -35,7 +35,7 @@ public:
      *
      * @param capacity The maximum number of key-value pairs the cache can hold.
      */
-    explicit LRUCache(size_t capacity)
+    explicit LRUCache(const size_t capacity)
         : m_capacity(capacity) {};
 
     /**
@@ -59,7 +59,7 @@ public:
         }
 
         // Insert the new key-value pair into the cache
-        m_map.emplace(key, std::move(value));
+        m_map[key] = value;
         // Move the new item to the front of the list (most recently used)
         refreshKey(key);
     }
