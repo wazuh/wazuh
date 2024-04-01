@@ -1487,8 +1487,12 @@ class SyncFiles(SyncTask):
                     self.logger.debug(f"Increasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f}"
                                       f" MB.")
 
-            # Remove local file.
-            os.unlink(compressed_data)
+            try:
+                # Remove local file.
+                os.unlink(compressed_data)
+            except FileNotFoundError:
+                self.logger.error(f"File {compressed_data} could not be removed/not found. "
+                                  f"May be due to a lost connection.")
 
 
 class SyncWazuhdb(SyncTask):
