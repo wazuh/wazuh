@@ -2,12 +2,14 @@ name: Packages - Upload WPK images
 on:
   workflow_dispatch:
     inputs:
-      tag:
+      docker_image_tag:
         description: |
-          Tag name of the Docker image to be uploaded.
+          Specify the docker tag used to build the package.
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
           Default is 'auto'.
+        required: false
+        default: 'auto'
 
 jobs:
   Upload-WPK-images:
@@ -38,9 +40,9 @@ jobs:
       - name: Set tag
         run: |
           VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ github.event.inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ github.event.inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
-          else echo "TAG=${{ github.event.inputs.tag }}" >> $GITHUB_ENV; fi
+          if [ "${{ github.event.inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ github.event.inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ github.event.inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
 
       - name: Build and push image ${{ matrix.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
         run:
