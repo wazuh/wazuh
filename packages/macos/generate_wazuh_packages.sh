@@ -107,6 +107,7 @@ function sign_pkg() {
 function get_pkgproj_specs() {
 
     VERSION="$1"
+    pkg_final_name="$2"
 
     pkg_file="${WAZUH_PACKAGES_PATH}/specs/wazuh-agent-${ARCH}.pkgproj"
 
@@ -115,7 +116,7 @@ function get_pkgproj_specs() {
         exit 1
     else
         echo "Modifiying ${pkg_file} to match revision."
-        sed -i -e "s:${VERSION}-.*<:${VERSION}-${REVISION}.${ARCH}<:g" "${pkg_file}"
+        sed -i -e "s:>.*${VERSION}-.*<:>${pkg_final_name}<:g" "${pkg_file}"
         cp "${pkg_file}" "${AGENT_PKG_FILE}"
     fi
 
@@ -133,12 +134,12 @@ function build_package() {
 
     # Define output package name
     if [ $IS_STAGE == "no" ]; then
-        pkg_name="wazuh-agent_${VERSION}-${REVISION}_${ARCH}_${short_commit_hash}.pkg"
+        pkg_name="wazuh-agent_${VERSION}-${REVISION}_${ARCH}_${short_commit_hash}"
     else
-        pkg_name="wazuh-agent_${VERSION}-${REVISION}.${ARCH}.pkg"
+        pkg_name="wazuh-agent-${VERSION}-${REVISION}.${ARCH}"
     fi
 
-    get_pkgproj_specs $VERSION
+    get_pkgproj_specs $VERSION $pkg_name
 
 
     if [ -d "${INSTALLATION_PATH}" ]; then
