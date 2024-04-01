@@ -245,7 +245,7 @@ async def test_rst_str_method(logger_mock, event_loop):
 
     def return_coro():
         return coro
-    
+
     with patch('wazuh.core.cluster.common.ReceiveStringTask.set_up_coro', side_effect = return_coro) as setup_coro_mock:
         string_task = cluster_common.ReceiveStringTask(cluster_common.WazuhCommon(), '', b"task", logger_mock)
         assert isinstance(string_task.__str__(), str)
@@ -566,7 +566,7 @@ async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, push_m
             await handler.send_request(b'some bytes', b'some data')
         read_mock.assert_awaited_once()
         assert handler.box[next_counter_mock.return_value] is None
-    
+
 
     msg_build_mock.assert_called_with(b'some bytes', 30, b'some data')
     next_counter_mock.assert_called_with()
@@ -1234,7 +1234,7 @@ async def test_handler_wait_for_file():
        The unlocking coroutine waits 0.5 seconds, while the timeout is set to 10 seconds
        The test must not raise any exception.
        '"""
-    
+
     async def unlock_file(event: asyncio.Event):
         await asyncio.sleep(0.5)
         event.set()
@@ -1263,11 +1263,11 @@ async def test_handler_wait_for_file_ko(send_request_mock):
             await handler.wait_for_file(file_event, 'test')
     send_request_mock.assert_called_once_with(command=b'cancel_task', data=ANY)
 
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):     
+    with pytest.raises(exception.WazuhClusterError, match=r".* 3040 .*"):
         with patch.object(file_event, 'wait', side_effect = Exception('any')):
             await handler.wait_for_file(file_event, "task_id")
     send_request_mock.assert_called_with(command=b'cancel_task', data=ANY)
-    
+
 
 # Test 'WazuhCommon' class methods
 
@@ -1895,3 +1895,14 @@ async def test_sync_files_sync_ko(send_request_mock):
     # Test first condition
     await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
     send_request_mock.assert_has_calls([call(command=b'cmd', data=b''), call(command=b'cmd_r', data=ANY)])
+
+    # Test FileNotFoundError raised when deleting compressed_data file
+    with patch('os.unlink', side_effect=FileNotFoundError):
+        compressed_data = "files/path/"
+        with patch("wazuh.core.cluster.cluster.compress_files", return_value=(compressed_data, {})):
+            send_request_mock.side_effect = None
+            logger = logging.getLogger('wazuh')
+            with patch.object(logger, "error") as logger_mock:
+                await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
+                logger_mock.assert_called_with(f"File {compressed_data} could not be removed/not found. "
+                                               f"May be due to a lost connection.")
