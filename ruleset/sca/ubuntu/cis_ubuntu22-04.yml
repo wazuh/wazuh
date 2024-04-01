@@ -771,498 +771,372 @@ checks:
       - "c:dpkg-query -s prelink -> r:package 'prelink' is not installed"
       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' prelink -> r:prelink\\s*\\t*unknown\\s*\\t*ok\\s*\\t*not-installed\\s*\\t*not-installed|no packages found matching prelink"
 
+  # 1.5.2 Ensure prelink is not installed. (Automated)
+  - id: 28530
+    title: "Ensure prelink is not installed."
+    description: "prelink is a program that modifies ELF shared libraries and ELF dynamically linked binaries in such a way that the time needed for the dynamic linker to perform relocations at startup significantly decreases."
+    rationale: "The prelinking feature can interfere with the operation of AIDE, because it changes binaries. Prelinking can also increase the vulnerability of the system if a malicious user is able to compromise a common library such as libc."
+    remediation: "Run the following command to restore binaries to normal: # prelink -ua Uninstall prelink using the appropriate package manager or manual installation: # apt purge prelink."
+    compliance:
+      - cis: ["1.5.2"]
+      - cis_csc_v8: ["3.14"]
+      - cis_csc_v7: ["14.9"]
+      - cmmc_v2.0: ["AC.L2-3.1.7"]
+      - hipaa: ["164.312(b)", "164.312(c)(1)", "164.312(c)(2)"]
+      - iso_27001-2013: ["A.12.4.3"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_techniques: ["T1055", "T1055.009", "T1065", "T1065.001"]
+      - nist_sp_800-53: ["AC-6(9)"]
+      - pci_dss_v3.2.1: ["10.2.1", "11.5"]
+      - pci_dss_v4.0: ["10.2.1", "10.2.1.1"]
+      - soc_2: ["CC6.1"]
+    condition: any
+    rules:
+      - "c:dpkg-query -s prelink -> r:package 'prelink' is not installed"
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' prelink -> r:prelink\\s*\\t*unknown\\s*\\t*ok\\s*\\t*not-installed\\s*\\t*not-installed|no packages found matching prelink"
+
   # 1.5.3 Ensure Automatic Error Reporting is not enabled. (Automated)
-   - id: 18539
-     title: "Ensure Automatic Error Reporting is not enabled."
-     description: "The Apport Error Reporting Service automatically generates crash reports for debugging."
-     rationale: "Apport collects potentially sensitive data, such as core dumps, stack traces, and log files. They can contain passwords, credit card numbers, serial numbers, and other private material."
-     remediation: "Edit /etc/default/apport and add or edit the enabled parameter to equal 0: enabled=0 Run the following commands to stop and disable the apport service # systemctl stop apport.service # systemctl --now disable apport.service -- OR -- Run the following command to remove the apport package: # apt purge apport."
-     compliance:
-       - cis: ["1.5.3"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
+  - id: 28531
+    title: "Ensure Automatic Error Reporting is not enabled."
+    description: "The Apport Error Reporting Service automatically generates crash reports for debugging."
+    rationale: "Apport collects potentially sensitive data, such as core dumps, stack traces, and log files. They can contain passwords, credit card numbers, serial numbers, and other private material."
+    remediation: "Edit /etc/default/apport and add or edit the enabled parameter to equal 0: enabled=0 Run the following commands to stop and disable the apport service # systemctl stop apport.service # systemctl --now disable apport.service -- OR -- Run the following command to remove the apport package: # apt purge apport."
+    compliance:
+      - cis: ["1.5.3"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:systemctl is-enabled apport.service -> r:disabled"
+      - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
+      - "not c:systemctl is-active apport.service -> r:active"
 
   # 1.5.4 Ensure core dumps are restricted. (Automated)
-   - id: 18540
-     title: "Ensure core dumps are restricted."
-     description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
-     rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5)). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
-     remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
-     references:
-       - 'http://wiki.apparmor.net/index.php/Documentation'
-       - 'https://help.ubuntu.com/community/AppArmor'
-       - 'https://www.suse.com/documentation/apparmor/'
-     compliance:
-       - cis: ["1.5.4"]
-       - mitre_tactics: ["TA0007"]
-       - mitre_techniques: ["T1005"]
-     condition:
-     rules:
+  - id: 28532
+    title: "Ensure core dumps are restricted."
+    description: "A core dump is the memory of an executable program. It is generally used to determine why a program aborted. It can also be used to glean confidential information from a core file. The system provides the ability to set a soft limit for core dumps, but this can be overridden by the user."
+    rationale: "Setting a hard limit on core dumps prevents users from overriding the soft variable. If core dumps are required, consider setting limits for user groups (see limits.conf(5)). In addition, setting the fs.suid_dumpable variable to 0 will prevent setuid programs from dumping core."
+    remediation: "Add the following line to /etc/security/limits.conf or a /etc/security/limits.d/* file: * hard core 0 Set the following parameter in /etc/sysctl.conf or a /etc/sysctl.d/* file: fs.suid_dumpable = 0 Run the following command to set the active kernel parameter: # sysctl -w fs.suid_dumpable=0 IF systemd-coredump is installed: edit /etc/systemd/coredump.conf and add/modify the following lines: Storage=none ProcessSizeMax=0 Run the command: systemctl daemon-reload."
+    references:
+      - "http://wiki.apparmor.net/index.php/Documentation"
+      - "https://help.ubuntu.com/community/AppArmor"
+      - "https://www.suse.com/documentation/apparmor/"
+    compliance:
+      - cis: ["1.5.4"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1005"]
+    condition: all
+    rules:
+      - "c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable = 0"
+      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
+      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
+      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
 
   # 1.6.1.1 Ensure AppArmor is installed. (Automated)
-   - id: 18541
-     title: "Ensure AppArmor is installed."
-     description: "AppArmor provides Mandatory Access Controls."
-     rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
-     remediation: "Install AppArmor. # apt install apparmor."
-     compliance:
-       - cis: ["1.6.1.1"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1026"]
-       - mitre_tactics: ["TA0003"]
-       - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  - id: 28533
+    title: "Ensure AppArmor is installed."
+    description: "AppArmor provides Mandatory Access Controls."
+    rationale: "Without a Mandatory Access Control system installed only the default Discretionary Access Control system will be available."
+    remediation: "Install AppArmor. # apt install apparmor."
+    compliance:
+      - cis: ["1.6.1.1"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' apparmor -> r:install\\s+ok\\s+installed"
 
   # 1.6.1.2 Ensure AppArmor is enabled in the bootloader configuration. (Automated)
-   - id: 18542
-     title: "Ensure AppArmor is enabled in the bootloader configuration."
-     description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
-     rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
-     remediation: "Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX=\"apparmor=1 security=apparmor\" Run the following command to update the grub2 configuration: # update-grub."
-     compliance:
-       - cis: ["1.6.1.2"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1026"]
-       - mitre_tactics: ["TA0003"]
-       - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  - id: 28534
+    title: "Ensure AppArmor is enabled in the bootloader configuration."
+    description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwritten by the bootloader boot parameters. Note: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+    rationale: "AppArmor must be enabled at boot time in your bootloader configuration to ensure that the controls it provides are not overridden."
+    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor" Run the following command to update the grub2 configuration: # update-grub.'
+    compliance:
+      - cis: ["1.6.1.2"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1026"]
+      - mitre_tactics: ["TA0003"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
-   - id: 18543
-     title: "Ensure all AppArmor Profiles are in enforce or complain mode."
-     description: "AppArmor profiles define what resources applications are able to access."
-     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
-     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
-     compliance:
-       - cis: ["1.6.1.3"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_tactics: ["TA0005"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  - id: 28535
+    title: "Ensure all AppArmor Profiles are in enforce or complain mode."
+    description: "AppArmor profiles define what resources applications are able to access."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* OR Run the following command to set all profiles to complain mode: # aa-complain /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    compliance:
+      - cis: ["1.6.1.3"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_tactics: ["TA0005"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
+      - "c:apparmor_status -> r:^0 processes are unconfined"
 
   # 1.6.1.4 Ensure all AppArmor Profiles are enforcing. (Automated)
-   - id: 18544
-     title: "Ensure all AppArmor Profiles are enforcing."
-     description: "AppArmor profiles define what resources applications are able to access."
-     rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
-     remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
-     compliance:
-       - cis: ["1.6.1.4"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_tactics: ["TA0005"]
-       - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  - id: 28536
+    title: "Ensure all AppArmor Profiles are enforcing."
+    description: "AppArmor profiles define what resources applications are able to access."
+    rationale: "Security configuration requirements vary from site to site. Some sites may mandate a policy that is stricter than the default policy, which is perfectly acceptable. This item is intended to ensure that any policies that exist on the system are activated."
+    remediation: "Run the following command to set all profiles to enforce mode: # aa-enforce /etc/apparmor.d/* Note: Any unconfined processes may need to have a profile created or activated for them and then be restarted."
+    compliance:
+      - cis: ["1.6.1.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1068", "T1565", "T1565.001", "T1565.003"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+loaded compare > 0'
+      - 'c:apparmor_status -> n:^(\d+)\s+profiles\s+are\s+in\s+enforce\s+mode compare > 0'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+kill\s+mode'
+      - 'c:apparmor_status -> r:^0\s+profiles\s+are\s+in\s+unconfined\s+mode'
+      - 'c:apparmor_status -> r:^0\s*profiles\s+are\s+in\s+complain\s+mode'
+      - 'c:apparmor_status -> r:^0\s*processes\s+are\s+unconfined'
 
   # 1.7.1 Ensure message of the day is configured properly. (Automated)
-   - id: 18545
-     title: "Ensure message of the day is configured properly."
-     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
-     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
-     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR if the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
-     compliance:
-       - cis: ["1.7.1"]
-       - mitre_tactics: ["TA0007"]
-       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
-     condition:
-     rules:
+  - id: 28537
+    title: "Ensure message of the day is configured properly."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR if the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd."
+    compliance:
+      - cis: ["1.7.1"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
+    condition: any
+    rules:
+      - 'not f:/etc/motd -> r:\\v|\\r|\\m|\s|Debian|Ubuntu'
+      - "not f:/etc/motd"
 
   # 1.7.2 Ensure local login warning banner is configured properly. (Automated)
-   - id: 18546
-     title: "Ensure local login warning banner is configured properly."
-     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
-     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
-     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
-     compliance:
-       - cis: ["1.7.2"]
-       - mitre_tactics: ["TA0007"]
-       - mitre_techniques: ["T1082", "T1592", "T1592.004"]
-     condition:
-     rules:
+  - id: 28538
+    title: "Ensure local login warning banner is configured properly."
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version - or the operating system's name."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue."
+    compliance:
+      - cis: ["1.7.2"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1082", "T1592", "T1592.004"]
+    condition: none
+    rules:
+      - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.3 Ensure remote login warning banner is configured properly. (Automated)
-   - id: 18547
-     title: "Ensure remote login warning banner is configured properly."
-     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
-     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
-     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
-     compliance:
-       - cis: ["1.7.3"]
-       - mitre_tactics: ["TA0007"]
-       - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
-     condition:
-     rules:
+  - id: 28539
+    title: "Ensure remote login warning banner is configured properly."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
+    remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net."
+    compliance:
+      - cis: ["1.7.3"]
+      - mitre_tactics: ["TA0007"]
+      - mitre_techniques: ["T1018", "T1082", "T1592", "T1592.004"]
+    condition: none
+    rules:
+      - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
 
   # 1.7.4 Ensure permissions on /etc/motd are configured. (Automated)
-   - id: 18548
-     title: "Ensure permissions on /etc/motd are configured."
-     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
-     rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-     remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
-     compliance:
-       - cis: ["1.7.4"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0005"]
-       - mitre_techniques: ["T1222", "T1222.002"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  - id: 28540
+    title: "Ensure permissions on /etc/motd are configured."
+    description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users."
+    rationale: "If the /etc/motd file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/motd : # chown root:root $(readlink -e /etc/motd) # chmod u-x,go-wx $(readlink -e /etc/motd) OR run the following command to remove the /etc/motd file: # rm /etc/motd."
+    compliance:
+      - cis: ["1.7.4"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: any
+    rules:
+      - 'c:stat /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
+      - "not f:/etc/motd"
 
   # 1.7.5 Ensure permissions on /etc/issue are configured. (Automated)
-   - id: 18549
-     title: "Ensure permissions on /etc/issue are configured."
-     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
-     rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-     remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue)."
-     compliance:
-       - cis: ["1.7.5"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0005"]
-       - mitre_techniques: ["T1222", "T1222.002"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  - id: 28541
+    title: "Ensure permissions on /etc/issue are configured."
+    description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals."
+    rationale: "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/issue : # chown root:root $(readlink -e /etc/issue) # chmod u-x,go-wx $(readlink -e /etc/issue)."
+    compliance:
+      - cis: ["1.7.5"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.7.6 Ensure permissions on /etc/issue.net are configured. (Automated)
-   - id: 18550
-     title: "Ensure permissions on /etc/issue.net are configured."
-     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
-     rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
-     remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)."
-     compliance:
-       - cis: ["1.7.6"]
-       - cis_csc_v8: ["3.3"]
-       - cis_csc_v7: ["14.6"]
-       - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-       - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-       - iso_27001-2013: ["A.9.1.1"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0005"]
-       - mitre_techniques: ["T1222", "T1222.002"]
-       - nist_sp_800-53: ["AC-5", "AC-6"]
-       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-       - pci_dss_v4.0: ["1.3.1", "7.1"]
-       - soc_2: ["CC5.2", "CC6.1"]
-     condition:
-     rules:
+  - id: 28542
+    title: "Ensure permissions on /etc/issue.net are configured."
+    description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services."
+    rationale: "If the /etc/issue.net file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information."
+    remediation: "Run the following commands to set permissions on /etc/issue.net : # chown root:root $(readlink -e /etc/issue.net) # chmod u-x,go-wx $(readlink -e /etc/issue.net)."
+    compliance:
+      - cis: ["1.7.6"]
+      - cis_csc_v8: ["3.3"]
+      - cis_csc_v7: ["14.6"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
+      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
+      - iso_27001-2013: ["A.9.1.1"]
+      - mitre_mitigations: ["M1022"]
+      - mitre_tactics: ["TA0005"]
+      - mitre_techniques: ["T1222", "T1222.002"]
+      - nist_sp_800-53: ["AC-5", "AC-6"]
+      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
+      - pci_dss_v4.0: ["1.3.1", "7.1"]
+      - soc_2: ["CC5.2", "CC6.1"]
+    condition: all
+    rules:
+      - 'c:stat /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*0/\s*root\)\s*\t*Gid:\s*\(\s*0/\s*root\)'
 
   # 1.8.1 Ensure GNOME Display Manager is removed. (Automated)
-   - id: 18551
-     title: "Ensure GNOME Display Manager is removed."
-     description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
-     rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
-     impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
-     remediation: "Run the following command to uninstall gdm3: # apt purge gdm3."
-     compliance:
-       - cis: ["1.8.1"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1543", "T1543.002"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
+  - id: 28543
+    title: "Ensure GNOME Display Manager is removed."
+    description: "The GNOME Display Manager (GDM) is a program that manages graphical display servers and handles graphical user logins."
+    rationale: "If a Graphical User Interface (GUI) is not required, it should be removed to reduce the attack surface of the system."
+    impact: "Removing the GNOME Display manager will remove the Graphical User Interface (GUI) from the system."
+    remediation: "Run the following command to uninstall gdm3: # apt purge gdm3."
+    compliance:
+      - cis: ["1.8.1"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_techniques: ["T1543", "T1543.002"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: all
+    rules:
+      - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' gdm3 -> r:gdm\\s+unknown\\s+ok\\s+not-installed|no\\s+packages\\s+found\\s+matching\\s+gdm3"
 
-  # 1.8.2 Ensure GDM login banner is configured. (Automated)
-   - id: 18552
-     title: "Ensure GDM login banner is configured."
-     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems."
-     rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place."
-     remediation: "Run the following script to verify that the banner message is enabled and set: #!/usr/bin/env bash { l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done if [ -n \"$l_pkgoutput\" ]; then l_gdmprofile=\"gdm\" # Set this to desired profile name IaW Local site policy l_bmessage=\"'Authorized uses only. All activity may be monitored and reported'\" # Set to desired banner message if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*banner-message-enable\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*; then l_kfile=\"/etc/dconf/db/$l_gdmprofile.d/01-banner-message\" echo -e \"\\n[org/gnome/login-screen]\\nbanner-message-enable=true\" >> \"$l_kfile\" else l_kfile=\"$(grep -Pil -- '^\\h*banner-message-enable\\h*=\\h*' /etc/dconf/db/$l_gdmprofile.d/*)\" ! grep -Pq '^\\h*\\[org\\/gnome\\/login-screen\\]' \"$l_kfile\" && sed -ri '/^\\s*banner- message-enable/ i\\[org/gnome/login-screen]' \"$l_kfile\" ! grep -Pq '^\\h*banner-message-enable\\h*=\\h*true\\b' \"$l_kfile\" && sed -ri 's/^\\s*(banner-message-enable\\s*=\\s*)(\\S+)(\\s*.*$)/\\1true \\3//' \"$l_kfile\" # sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\\\nbanner-message-enable=true' \"$l_kfile\" fi fi if ! grep -Piq \"^\\h*banner-message-text=[\\'\\\"]+\\S+\" \"$l_kfile\"; then sed -ri \"/^\\s*banner-message-enable/ a\\banner-message-text=$l_bmessage\" \"$l_kfile\" fi dconf update else echo -e \"\\n\\n - GNOME Desktop Manager isn't installed\\n - Recommendation is Not Applicable\\n - No remediation required\\n\" fi } Note: - There is no character limit for the banner message. gnome-shell autodetects longer stretches of text and enters two column mode. - The banner message cannot be read from an external file. OR Run the following command to remove the gdm3 package: # apt purge gdm3."
-     references:
-       - 'https://help.gnome.org/admin/system-admin-guide/stable/login-banner.html.en'
-     compliance:
-       - cis: ["1.8.2"]
-       - mitre_tactics: ["TA0007"]
-     condition:
-     rules:
-
-  # 1.8.3 Ensure GDM disable-user-list option is enabled. (Automated)
-   - id: 18553
-     title: "Ensure GDM disable-user-list option is enabled."
-     description: "GDM is the GNOME Display Manager which handles graphical login for GNOME based systems. The disable-user-list option controls if a list of users is displayed on the login screen."
-     rationale: "Displaying the user list eliminates half of the Userid/Password equation that an unauthorized person would need to log on."
-     remediation: "Run the following script to enable the disable-user-list option: Note: the l_gdm_profile variable in the script can be changed if a different profile name is desired in accordance with local site policy. #!/usr/bin/env bash { l_gdmprofile=\"gdm\" if [ ! -f \"/etc/dconf/profile/$l_gdmprofile\" ]; then echo \"Creating profile \\\"$l_gdmprofile\\\"\" echo -e \"user-db:user\\nsystem-db:$l_gdmprofile\\nfile- db:/usr/share/$l_gdmprofile/greeter-dconf-defaults\" > /etc/dconf/profile/$l_gdmprofile fi if [ ! -d \"/etc/dconf/db/$l_gdmprofile.d/\" ]; then echo \"Creating dconf database directory \\\"/etc/dconf/db/$l_gdmprofile.d/\\\"\" mkdir /etc/dconf/db/$l_gdmprofile.d/ fi if ! grep -Piq '^\\h*disable-user-list\\h*=\\h*true\\b' /etc/dconf/db/$l_gdmprofile.d/*; then echo \"creating gdm keyfile for machine-wide settings\" if ! grep -Piq -- '^\\h*\\[org\\/gnome\\/login-screen\\]' /etc/dconf/db/$l_gdmprofile.d/*; then echo -e \"\\n[org/gnome/login-screen]\\n# Do not show the user list\\ndisable-user-list=true\" >> /etc/dconf/db/$l_gdmprofile.d/00-login- screen else sed -ri '/^\\s*\\[org\\/gnome\\/login-screen\\]/ a\\# Do not show the user list\\ndisable-user-list=true' $(grep -Pil -- '^\\h*\\[org\\/gnome\\/login- screen\\]' /etc/dconf/db/$l_gdmprofile.d/*) fi fi dconf update } Note: When the user profile is created or changed, the user will need to log out and log in again before the changes will be applied. OR Run the following command to remove the GNOME package: # apt purge gdm3."
-     references:
-       - 'https://help.gnome.org/admin/system-admin-guide/stable/login-userlist-'
-     compliance:
-       - cis: ["1.8.3"]
-       - mitre_mitigations: ["M1028"]
-       - mitre_tactics: ["TA0007"]
-       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003", "T1087", "T1087.001", "T1087.002"]
-     condition:
-     rules:
-
-  # 1.8.4 Ensure GDM screen locks when the user is idle. (Automated)
-   - id: 18554
-     title: "Ensure GDM screen locks when the user is idle."
-     description: "GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time. - idle-delay=uint32 {n} - Number of seconds of inactivity before the screen goes blank - lock-delay=uint32 {n} - Number of seconds after the screen is blank before locking the screen Example key file: # Specify the dconf path [org/gnome/desktop/session] # Number of seconds of inactivity before the screen goes blank # Set to 0 seconds if you want to deactivate the screensaver. idle-delay=uint32 900 # Specify the dconf path [org/gnome/desktop/screensaver] # Number of seconds after the screen is blank before locking the screen lock-delay=uint32 5."
-     rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended."
-     remediation: "Create or edit a file in the /etc/dconf/profile/ and verify it includes the following: user-db:user system-db:{NAME_OF_DCONF_DATABASE} Note: local is the name of a dconf database used in the examples. Example: # echo -e '\\nuser-db:user\\nsystem-db:local' >> /etc/dconf/profile/user Create the directory /etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/ if it doesn't already exist: Example: # mkdir /etc/dconf/db/local.d Create the key file `/etc/dconf/db/{NAME_OF_DCONF_DATABASE}.d/{FILE_NAME} to provide information for the {NAME_OF_DCONF_DATABASE} database: Example script: #!/usr/bin/env bash { l_key_file=\"/etc/dconf/db/local.d/00-screensaver\" l_idmv=\"900\" # Set max value for idle-delay in seconds (between 1 and 900) l_ldmv=\"5\" # Set max value for lock-delay in seconds (between 0 and 5) { echo '# Specify the dconf path' echo '[org/gnome/desktop/session]' echo '' echo '# Number of seconds of inactivity before the screen goes blank' echo '# Set to 0 seconds if you want to deactivate the screensaver.' echo \"idle-delay=uint32 $l_idmv\" echo '' echo '# Specify the dconf path' echo '[org/gnome/desktop/screensaver]' echo '' echo '# Number of seconds after the screen is blank before locking the screen' echo \"lock-delay=uint32 $l_ldmv\" } > \"$l_key_file\" } Note: You must include the uint32 along with the integer key values as shown. Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
-     references:
-       - 'https://help.gnome.org/admin/system-admin-guide/stable/desktop-'
-     compliance:
-       - cis: ["1.8.4"]
-       - cis_csc_v8: ["4.3"]
-       - cis_csc_v7: ["16.11"]
-       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-       - hipaa: ["164.312(a)(2)(iii)"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-       - pci_dss_v3.2.1: ["8.1.8"]
-       - pci_dss_v4.0: ["8.2.8"]
-     condition:
-     rules:
-
-  # 1.8.5 Ensure GDM screen locks cannot be overridden. (Automated)
-   - id: 18555
-     title: "Ensure GDM screen locks cannot be overridden."
-     description: "GNOME Desktop Manager can make the screen lock automatically whenever the user is idle for some amount of time. By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory. Example Lock File: # Lock desktop screensaver settings /org/gnome/desktop/session/idle-delay /org/gnome/desktop/screensaver/lock-delay."
-     rationale: "Setting a lock-out value reduces the window of opportunity for unauthorized user access to another user's session that has been left unattended. Without locking down the system settings, user settings take precedence over the system settings."
-     remediation: "Run the following script to ensure screen locks can not be overridden: #!/usr/bin/env bash { # Check if GNMOE Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"y\" && echo -e \"\\n - Package: \\\"$l_pn\\\" exists on the system\\n - remediating configuration if needed\" done # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then # Look for idle-delay to determine profile in use, needed for remaining tests l_kfd=\"/etc/dconf/db/$(grep -Psril '^\\h*idle- delay\\h*=\\h*uint32\\h+\\d+\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF- 1),a,\".\");print a[1]}').d\" #set directory of key file to be locked # Look for lock-delay to determine profile in use, needed for remaining tests l_kfd2=\"/etc/dconf/db/$(grep -Psril '^\\h*lock- delay\\h*=\\h*uint32\\h+\\d+\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF- 1),a,\".\");print a[1]}').d\" #set directory of key file to be locked if [ -d \"$l_kfd\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Prilq '^\\h*\\/org\\/gnome\\/desktop\\/session\\/idle-delay\\b' \"$l_kfd\"; then echo \" - \\\"idle-delay\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org\\/gnome\\/desktop\\/session\\/idle-delay\\b' \"$l_kfd\")\\\"\" else echo \"creating entry to lock \\\"idle-delay\\\"\" [ ! -d \"$l_kfd\"/locks ] && echo \"creating directory $l_kfd/locks\" && mkdir \"$l_kfd\"/locks { echo -e '\\n# Lock desktop screensaver idle-delay setting' echo '/org/gnome/desktop/session/idle-delay' } >> \"$l_kfd\"/locks/00-screensaver fi else echo -e \" - \\\"idle-delay\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM screen locks when the user is idle\\\" and follow this Recommendation again\" fi if [ -d \"$l_kfd2\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Prilq '^\\h*\\/org\\/gnome\\/desktop\\/screensaver\\/lock- delay\\b' \"$l_kfd2\"; then echo \" - \\\"lock-delay\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org\\/gnome\\/desktop\\/screensaver\\/lock-delay\\b' \"$l_kfd2\")\\\"\" else echo \"creating entry to lock \\\"lock-delay\\\"\" [ ! -d \"$l_kfd2\"/locks ] && echo \"creating directory $l_kfd2/locks\" && mkdir \"$l_kfd2\"/locks { echo -e '\\n# Lock desktop screensaver lock-delay setting' echo '/org/gnome/desktop/screensaver/lock-delay' } >> \"$l_kfd2\"/locks/00-screensaver fi else echo -e \" - \\\"lock-delay\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM screen locks when the user is idle\\\" and follow this Recommendation again\" fi else echo -e \" - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi } Run the following command to update the system databases: # dconf update Note: Users must log out and back in again before the system-wide settings take effect."
-     references:
-       - 'https://help.gnome.org/admin/system-admin-guide/stable/desktop-'
-       - 'https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en'
-     compliance:
-       - cis: ["1.8.5"]
-       - cis_csc_v8: ["4.3"]
-       - cis_csc_v7: ["16.11"]
-       - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
-       - hipaa: ["164.312(a)(2)(iii)"]
-       - iso_27001-2013: ["A.8.1.3"]
-       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
-       - pci_dss_v3.2.1: ["8.1.8"]
-       - pci_dss_v4.0: ["8.2.8"]
-     condition:
-     rules:
-
-  # 1.8.6 Ensure GDM automatic mounting of removable media is disabled. (Automated)
-   - id: 18556
-     title: "Ensure GDM automatic mounting of removable media is disabled."
-     description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user."
-     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-     impact: "The use of portable hard drives is very common for workstation users. If your organization allows the use of portable storage or media on workstations and physical access controls to workstations is considered adequate there is little value add in turning off automounting."
-     remediation: "Run the following script to disable automatic mounting of media for all GNOME users: #!/usr/bin/env bash { l_pkgoutput=\"\" l_output=\"\" l_output2=\"\" l_gpbame=\"local\" # Set to desired dconf profile name (defaule is local) # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done echo -e \"$l_packageout\" # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then echo -e \"$l_pkgoutput\" # Look for existing settings and set variables if they exist l_kfile=\"$(grep -Prils -- '^\\h*automount\\b' /etc/dconf/db/*.d)\" l_kfile2=\"$(grep -Prils -- '^\\h*automount-open\\b' /etc/dconf/db/*.d)\" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f \"$l_kfile\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" elif [ -f \"$l_kfile2\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" fi # check for consistency (Clean up configuration if needed) if [ -f \"$l_kfile\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount\\s*=/s/^/# /\" \"$l_kfile\" l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media-automount\" fi if [ -f \"$l_kfile2\" ] && [ \"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile2\")\" != \"$l_gpname\" ]; then sed -ri \"/^\\s*automount-open\\s*=/s/^/# /\" \"$l_kfile2\" fi [ -n \"$l_kfile\" ] && l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media- automount\" # Check if profile file exists if grep -Pq -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*; then echo -e \"\\n - dconf database profile exists in: \\\"$(grep -Pl -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*)\\\"\" else [ ! -f \"/etc/dconf/profile/user\" ] && l_gpfile=\"/etc/dconf/profile/user\" || l_gpfile=\"/etc/dconf/profile/user2\" echo -e \" - creating dconf database profile\" { echo -e \"\\nuser-db:user\" echo \"system-db:$l_gpname\" } >> \"$l_gpfile\" fi # create dconf directory if it doesn't exists l_gpdir=\"/etc/dconf/db/$l_gpname.d\" if [ -d \"$l_gpdir\" ]; then echo \" - The dconf database directory \\\"$l_gpdir\\\" exists\" else echo \" - creating dconf database directory \\\"$l_gpdir\\\"\" mkdir \"$l_gpdir\" fi # check automount-open setting if grep -Pqs -- '^\\h*automount-open\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount-open\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount-open\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount-open=false' fi # check automount setting if grep -Pqs -- '^\\h*automount\\h*=\\h*false\\b' \"$l_kfile\"; then echo \" - \\\"automount\\\" is set to false in: \\\"$l_kfile\\\"\" else echo \" - creating \\\"automount\\\" entry in \\\"$l_kfile\\\"\" ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautomount=false' fi else echo -e \"\\n - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi # update dconf database dconf update } OR Run the following command to uninstall the GNOME desktop Manager package: # apt purge gdm3."
-     references:
-       - 'https://access.redhat.com/solutions/20107'
-     compliance:
-       - cis: ["1.8.6"]
-       - cis_csc_v8: ["10.3"]
-       - cis_csc_v7: ["8.5"]
-       - cmmc_v2.0: ["MP.L2-3.8.7"]
-       - hipaa: ["164.310(d)(1)"]
-       - iso_27001-2013: ["A.12.2.1"]
-     condition:
-     rules:
-
-  # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden. (Automated)
-   - id: 18557
-     title: "Ensure GDM disabling automatic mounting of removable media is not overridden."
-     description: "By default GNOME automatically mounts removable media when inserted as a convenience to the user By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory. Example Lock File: # Lock desktop screensaver settings /org/gnome/desktop/media-handling/automount /org/gnome/desktop/media-handling/automount-open."
-     rationale: "With automounting enabled anyone with physical access could attach a USB drive or disc and have its contents available in system even if they lacked permissions to mount it themselves."
-     impact: "The use of portable hard drives is very common for workstation users."
-     remediation: "Run the following script to lock disable automatic mounting of media for all GNOME users: #!/usr/bin/env bash { # Check if GNMOE Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space seporated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"y\" && echo -e \"\\n - Package: \\\"$l_pn\\\" exists on the system\\n - remediating configuration if needed\" done # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then # Look for automount to determine profile in use, needed for remaining tests l_kfd=\"/etc/dconf/db/$(grep -Psril '^\\h*automount\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF-1),a,\".\");print a[1]}').d\" #set directory of key file to be locked # Look for automount-open to determine profile in use, needed for remaining tests l_kfd2=\"/etc/dconf/db/$(grep -Psril '^\\h*automount-open\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF-1),a,\".\");print a[1]}').d\" #set directory of key file to be locked if [ -d \"$l_kfd\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Priq '^\\h*\\/org/gnome\\/desktop\\/media- handling\\/automount\\b' \"$l_kfd\"; then echo \" - \\\"automount\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/automount\\b' \"$l_kfd\")\\\"\" else echo \" - creating entry to lock \\\"automount\\\"\" [ ! -d \"$l_kfd\"/locks ] && echo \"creating directory $l_kfd/locks\" && mkdir \"$l_kfd\"/locks { echo -e '\\n# Lock desktop media-handling automount setting' echo '/org/gnome/desktop/media-handling/automount' } >> \"$l_kfd\"/locks/00-media-automount fi else echo -e \" - \\\"automount\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM automatic mounting of removable media is disabled\\\" and follow this Recommendation again\" fi if [ -d \"$l_kfd2\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Priq '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/automount- open\\b' \"$l_kfd2\"; then echo \" - \\\"automount-open\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/automount-open\\b' \"$l_kfd2\")\\\"\" else echo \" - creating entry to lock \\\"automount-open\\\"\" [ ! -d \"$l_kfd2\"/locks ] && echo \"creating directory $l_kfd2/locks\" && mkdir \"$l_kfd2\"/locks { echo -e '\\n# Lock desktop media-handling automount-open setting' echo '/org/gnome/desktop/media-handling/automount-open' } >> \"$l_kfd2\"/locks/00-media-automount fi else echo -e \" - \\\"automount-open\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM automatic mounting of removable media is disabled\\\" and follow this Recommendation again\" fi # update dconf database dconf update else echo -e \" - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi }."
-     references:
-       - 'https://help.gnome.org/admin/system-admin-guide/stable/dconf-lockdown.html.en'
-     compliance:
-       - cis: ["1.8.7"]
-     condition:
-     rules:
-
-  # 1.8.8 Ensure GDM autorun-never is enabled. (Automated)
-   - id: 18558
-     title: "Ensure GDM autorun-never is enabled."
-     description: "The autorun-never setting allows the GNOME Desktop Display Manager to disable autorun through GDM."
-     rationale: "Malware on removable media may taking advantage of Autorun features when the media is inserted into a system and execute."
-     remediation: "Run the following script to set autorun-never to true for GDM users: #!/usr/bin/env bash { l_pkgoutput=\"\" l_output=\"\" l_output2=\"\" l_gpname=\"local\" # Set to desired dconf profile name (default is local) # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space separated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"$l_pkgoutput\\n - Package: \\\"$l_pn\\\" exists on the system\\n - checking configuration\" done echo -e \"$l_pkgoutput\" # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then echo -e \"$l_pkgoutput\" # Look for existing settings and set variables if they exist l_kfile=\"$(grep -Prils -- '^\\h*autorun-never\\b' /etc/dconf/db/*.d)\" # Set profile name based on dconf db directory ({PROFILE_NAME}.d) if [ -f \"$l_kfile\" ]; then l_gpname=\"$(awk -F\\/ '{split($(NF-1),a,\".\");print a[1]}' <<< \"$l_kfile\")\" echo \" - updating dconf profile name to \\\"$l_gpname\\\"\" fi [ ! -f \"$l_kfile\" ] && l_kfile=\"/etc/dconf/db/$l_gpname.d/00-media- autorun\" # Check if profile file exists if grep -Pq -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*; then echo -e \"\\n - dconf database profile exists in: \\\"$(grep -Pl -- \"^\\h*system-db:$l_gpname\\b\" /etc/dconf/profile/*)\\\"\" else [ ! -f \"/etc/dconf/profile/user\" ] && l_gpfile=\"/etc/dconf/profile/user\" || l_gpfile=\"/etc/dconf/profile/user2\" echo -e \" - creating dconf database profile\" { echo -e \"\\nuser-db:user\" echo \"system-db:$l_gpname\" } >> \"$l_gpfile\" fi # create dconf directory if it doesn't exists l_gpdir=\"/etc/dconf/db/$l_gpname.d\" if [ -d \"$l_gpdir\" ]; then echo \" - The dconf database directory \\\"$l_gpdir\\\" exists\" else echo \" - creating dconf database directory \\\"$l_gpdir\\\"\" mkdir \"$l_gpdir\" fi # check autorun-never setting if grep -Pqs -- '^\\h*autorun-never\\h*=\\h*true\\b' \"$l_kfile\"; then echo \" - \\\"autorun-never\\\" is set to true in: \\\"$l_kfile\\\"\" else echo \" - creating or updating \\\"autorun-never\\\" entry in \\\"$l_kfile\\\"\" if grep -Psq -- '^\\h*autorun-never' \"$l_kfile\"; then sed -ri 's/(^\\s*autorun-never\\s*=\\s*)(\\S+)(\\s*.*)$/\\1true \\3/' \"$l_kfile\" else ! grep -Psq -- '\\^\\h*\\[org\\/gnome\\/desktop\\/media-handling\\]\\b' \"$l_kfile\" && echo '[org/gnome/desktop/media-handling]' >> \"$l_kfile\" sed -ri '/^\\s*\\[org\\/gnome\\/desktop\\/media-handling\\]/a \\\\nautorun-never=true' \"$l_kfile\" fi fi else echo -e \"\\n - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi # update dconf database dconf update }."
-     compliance:
-       - cis: ["1.8.8"]
-       - cis_csc_v8: ["10.3"]
-       - cis_csc_v7: ["8.5"]
-       - cmmc_v2.0: ["MP.L2-3.8.7"]
-       - hipaa: ["164.310(d)(1)"]
-       - iso_27001-2013: ["A.12.2.1"]
-       - mitre_techniques: ["T1091"]
-     condition:
-     rules:
-
-  # 1.8.9 Ensure GDM autorun-never is not overridden. (Automated)
-   - id: 18559
-     title: "Ensure GDM autorun-never is not overridden."
-     description: "The autorun-never setting allows the GNOME Desktop Display Manager to disable autorun through GDM. By using the lockdown mode in dconf, you can prevent users from changing specific settings. To lock down a dconf key or subpath, create a locks subdirectory in the keyfile directory. The files inside this directory contain a list of keys or subpaths to lock. Just as with the keyfiles, you may add any number of files to this directory. Example Lock File: # Lock desktop media-handling settings /org/gnome/desktop/media-handling/autorun-never."
-     rationale: "Malware on removable media may taking advantage of Autorun features when the media is inserted into a system and execute."
-     remediation: "Run the following script to ensure that autorun-never=true cannot be overridden: #!/usr/bin/env bash { # Check if GNOME Desktop Manager is installed. If package isn't installed, recommendation is Not Applicable\\n # determine system's package manager l_pkgoutput=\"\" if command -v dpkg-query > /dev/null 2>&1; then l_pq=\"dpkg-query -W\" elif command -v rpm > /dev/null 2>&1; then l_pq=\"rpm -q\" fi # Check if GDM is installed l_pcl=\"gdm gdm3\" # Space separated list of packages to check for l_pn in $l_pcl; do $l_pq \"$l_pn\" > /dev/null 2>&1 && l_pkgoutput=\"y\" && echo -e \"\\n - Package: \\\"$l_pn\\\" exists on the system\\n - remediating configuration if needed\" done # Check configuration (If applicable) if [ -n \"$l_pkgoutput\" ]; then # Look for autorun to determine profile in use, needed for remaining tests l_kfd=\"/etc/dconf/db/$(grep -Psril '^\\h*autorun-never\\b' /etc/dconf/db/*/ | awk -F'/' '{split($(NF-1),a,\".\");print a[1]}').d\" #set directory of key file to be locked if [ -d \"$l_kfd\" ]; then # If key file directory doesn't exist, options can't be locked if grep -Priq '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/autorun- never\\b' \"$l_kfd\"; then echo \" - \\\"autorun-never\\\" is locked in \\\"$(grep -Pril '^\\h*\\/org/gnome\\/desktop\\/media-handling\\/autorun-never\\b' \"$l_kfd\")\\\"\" else echo \" - creating entry to lock \\\"autorun-never\\\"\" [ ! -d \"$l_kfd\"/locks ] && echo \"creating directory $l_kfd/locks\" && mkdir \"$l_kfd\"/locks { echo -e '\\n# Lock desktop media-handling autorun-never setting' echo '/org/gnome/desktop/media-handling/autorun-never' } >> \"$l_kfd\"/locks/00-media-autorun fi else echo -e \" - \\\"autorun-never\\\" is not set so it can not be locked\\n - Please follow Recommendation \\\"Ensure GDM autorun-never is enabled\\\" and follow this Recommendation again\" fi # update dconf database dconf update else echo -e \" - GNOME Desktop Manager package is not installed on the system\\n - Recommendation is not applicable\" fi }."
-     compliance:
-       - cis: ["1.8.9"]
-       - cis_csc_v8: ["10.3"]
-       - cis_csc_v7: ["8.5"]
-       - cmmc_v2.0: ["MP.L2-3.8.7"]
-       - hipaa: ["164.310(d)(1)"]
-       - iso_27001-2013: ["A.12.2.1"]
-       - mitre_techniques: ["T1091"]
-     condition:
-     rules:
+  # 1.8.2 Ensure GDM login banner is configured (Automated) - Not implemented
+  # 1.8.3 Ensure GDM disable-user-list option is enabled (Automated) - Not implemented
+  # 1.8.4 Ensure GDM screen locks when the user is idle (Automated) - Not implemented
+  # 1.8.5 Ensure GDM screen locks cannot be overridden (Automated) - Not implemented
+  # 1.8.6 Ensure GDM automatic mounting of removable media is disabled (Automated) - Not implemented
+  # 1.8.7 Ensure GDM disabling automatic mounting of removable media is not overridden (Automated) - Not implemented
+  # 1.8.8 Ensure GDM autorun-never is enabled (Automated) -  Not implemented
+  # 1.8.9 Ensure GDM autorun-never is not overridden (Automated) - Not implemented
 
   # 1.8.10 Ensure XDCMP is not enabled. (Automated)
-   - id: 18560
-     title: "Ensure XDCMP is not enabled."
-     description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
-     rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
-     remediation: "Edit the file /etc/gdm3/custom.conf and remove the line: Enable=true."
-     compliance:
-       - cis: ["1.8.10"]
-       - cis_csc_v8: ["4.8"]
-       - cis_csc_v7: ["9.2"]
-       - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
-       - iso_27001-2013: ["A.13.1.3"]
-       - mitre_mitigations: ["M1050"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
-       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
-       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
-       - soc_2: ["CC6.3", "CC6.6"]
-     condition:
-     rules:
+  - id: 28544
+    title: "Ensure XDCMP is not enabled."
+    description: "X Display Manager Control Protocol (XDMCP) is designed to provide authenticated access to display management services for remote displays."
+    rationale: "XDMCP is inherently insecure. - XDMCP is not a ciphered protocol. This may allow an attacker to capture keystrokes entered by a user - XDMCP is vulnerable to man-in-the-middle attacks. This may allow an attacker to steal the credentials of legitimate users by impersonating the XDMCP server."
+    remediation: "Edit the file /etc/gdm3/custom.conf and remove the line: Enable=true."
+    compliance:
+      - cis: ["1.8.10"]
+      - cis_csc_v8: ["4.8"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.7", "CM.L2-3.4.8", "SC.L2-3.13.6"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - mitre_mitigations: ["M1050"]
+      - mitre_tactics: ["TA0002"]
+      - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
+      - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
+      - soc_2: ["CC6.3", "CC6.6"]
+    condition: any
+    rules:
+      - "not f:/etc/gdm3"
+      - 'not f:/etc/gdm3/custom.conf -> r:^\s*Enable\s*=\s*true'
 
-  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual)
-   - id: 18561
-     title: "Ensure updates, patches, and additional security software are installed."
-     description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-     rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-     remediation: "Run the following command to update all packages following local site policy guidance on applying updates and patches: # apt upgrade OR # apt dist-upgrade."
-     compliance:
-       - cis: ["1.9"]
-       - cis_csc_v8: ["7.3"]
-       - cis_csc_v7: ["3.4", "3.5"]
-       - cmmc_v2.0: ["SI.L1-3.14.1"]
-       - nist_sp_800-53: ["SI-2(2)"]
-       - pci_dss_v3.2.1: ["6.2"]
-       - soc_2: ["CC7.1"]
-     condition:
-     rules:
+  # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not implemented
 
-  # 2.1.1.1 Ensure a single time synchronization daemon is in use. (Automated)
-   - id: 18562
-     title: "Ensure a single time synchronization daemon is in use."
-     description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Note: - On virtual systems where host based time synchronization is available consult your virtualization software documentation and verify that host based synchronization is in use and follows local site policy. In this scenario, this section should be skipped - Only one time synchronization method should be in use on the system. Configuring multiple time synchronization methods could lead to unexpected or unreliable results."
-     rationale: "Time synchronization is important to support time sensitive security mechanisms and ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
-     remediation: "On physical systems, and virtual systems where host based time synchronization is not available. Select one of the three time synchronization daemons; chrony (1), systemd-timesyncd (2), or ntp (3), and following the remediation procedure for the selected daemon. Note: enabling more than one synchronization daemon could lead to unexpected or unreliable results: 1. chrony Run the following command to install chrony: # apt install chrony Run the following commands to stop and mask the systemd-timesyncd daemon: # systemctl stop systemd-timesyncd.service # systemctl --now mask systemd-timesyncd.service Run the following command to remove the ntp package: # apt purge ntp NOTE: - Subsection: Configure chrony should be followed - Subsections: Configure systemd-timesyncd and Configure ntp should be skipped 2. systemd-timesyncd Run the following command to remove the chrony package: # apt purge chrony Run the following command to remove the ntp package: # apt purge ntp NOTE: - Subsection: Configure systemd-timesyncd should be followed - Subsections: Configure chrony and Configure ntp should be skipped 3. ntp Run the following command to install ntp: # apt install ntp Run the following commands to stop and mask the systemd-timesyncd daemon: # systemctl stop systemd-timesyncd.service # systemctl --now mask systemd-timesyncd.service Run the following command to remove the chrony package: # apt purge chrony NOTE: - Subsection: Configure ntp should be followed - Subsections: Configure chrony and Configure systemd-timesyncd should be skipped."
-     compliance:
-       - cis: ["2.1.1.1"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - mitre_tactics: ["TA0005"]
-       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition:
-     rules:
-
-  # 2.1.2.1 Ensure chrony is configured with authorized timeserver. (Manual)
-   - id: 18563
-     title: "Ensure chrony is configured with authorized timeserver."
-     description: "- server o The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server’s system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. - pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
-     rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations."
-     remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool directive: pool time.nist.gov iburst maxsources 4 #The maxsources option is unique to the pool directive server directive: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run one of the following commands to load the updated time sources into chronyd running config: # systemctl restart chronyd - OR if sources are in a .sources file - # chronyc reload sources OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
-     compliance:
-       - cis: ["2.1.2.1"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - mitre_mitigations: ["M1022"]
-       - mitre_tactics: ["TA0002"]
-       - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition:
-     rules:
+  # 2.1.1.1 Ensure a single time synchronization daemon is in use (Automated) - Not implemented
+  # 2.1.2.1 Ensure chrony is configured with authorized timeserver (Manual) - Not implemented
 
   # 2.1.2.2 Ensure chrony is running as user _chrony. (Automated)
-   - id: 18564
-     title: "Ensure chrony is running as user _chrony."
-     description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
-     rationale: "The chronyd service should run with only the required privileges."
-     remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
-     compliance:
-       - cis: ["2.1.2.2"]
-       - cis_csc_v8: ["8.4"]
-       - cis_csc_v7: ["6.1"]
-       - cmmc_v2.0: ["AU.L2-3.3.7"]
-       - iso_27001-2013: ["A.12.4.4"]
-       - nist_sp_800-53: ["AU-7"]
-       - pci_dss_v3.2.1: ["10.4"]
-       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-       - soc_2: ["CC4.1", "CC5.2"]
-     condition:
-     rules:
+  - id: 28545
+    title: "Ensure chrony is running as user _chrony."
+    description: "The chrony package is installed with a dedicated user account _chrony. This account is granted the access required by the chronyd service."
+    rationale: "The chronyd service should run with only the required privileges."
+    remediation: "Add or edit the user line to /etc/chrony/chrony.conf or a file ending in .conf in /etc/chrony/conf.d/: user _chrony OR If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony."
+    compliance:
+      - cis: ["2.1.2.2"]
+      - cis_csc_v8: ["8.4"]
+      - cis_csc_v7: ["6.1"]
+      - cmmc_v2.0: ["AU.L2-3.3.7"]
+      - iso_27001-2013: ["A.12.4.4"]
+      - nist_sp_800-53: ["AU-7"]
+      - pci_dss_v3.2.1: ["10.4"]
+      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
+      - soc_2: ["CC4.1", "CC5.2"]
+    condition: any
+    rules:
+      - 'c:ps -ef -> r:_chrony\.+chronyd'
+      - "c:systemctl is-enabled systemd-timesyncd.service -> r:enabled"
 
   # 2.1.2.3 Ensure chrony is enabled and running. (Automated)
    - id: 18565
