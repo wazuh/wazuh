@@ -51,7 +51,7 @@ on:
 jobs:
   Build-agent-linux-packages:
     runs-on: macos-latest
-    name: Build wazuh-agent on ${{ inputs.architecture }}
+    name: Build Mac OS wazuh-agent on ${{ inputs.architecture }}
 
     steps:
       - name: Cancel previous runs
@@ -77,6 +77,11 @@ jobs:
           bash generate_wazuh_packages.sh -i
           sudo bash generate_wazuh_packages.sh -a ${{ inputs.architecture }} $FLAGS
 
+      - name: Test install built manager
+        working-directory: packages/macos/output
+        run: |
+            sudo installer -pkg *agent*pkg -target /
+        
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
