@@ -78,3 +78,10 @@ class MaxRequestsException(ProblemException):
         ext = {"code": exc.code}
         ext.update({"remediation": exc.remediation} if hasattr(exc, 'remediation') else {})
         super().__init__(status=429, title=exc.title, detail=exc.message, type=exc.type, ext=ext)
+
+class ExpectFailedException(ProblemException):
+    """Exception for failed expectation (status code 417)."""
+
+    def __init__(self, *, status=417, title=None, detail=None):
+        ext = {"code": 417}
+        super().__init__(status=status, title=title, detail=detail, ext=ext)

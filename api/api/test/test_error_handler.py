@@ -13,7 +13,7 @@ from freezegun import freeze_time
 from connexion.exceptions import HTTPException, ProblemException, BadRequestProblem, Unauthorized
 from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, jwt_error_handler, \
     http_error_handler, problem_error_handler, bad_request_error_handler, unauthorized_error_handler, \
-    ERROR_CONTENT_TYPE
+    expect_failed_error_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 
 
@@ -201,3 +201,23 @@ async def test_bad_request_error_handler(detail, mock_request):
     assert body == problem
     assert response.status_code == exc.status_code
     assert response.content_type == ERROR_CONTENT_TYPE
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('query_param_pretty, expected_detail', [
+    ('true', "Unknown Expect"),
+    ('false', "Unknown Expect"),
+])
+async def test_expect_failed_error_handler(query_param_pretty, expected_detail):
+    """Test expect failed error handler."""
+    request = MagicMock()
+    request.query_params = {'pretty': query_param_pretty}
+    response = await expect_failed_error_handler(request, None)
+
+    assert response.status_code == 417
+    assert response.content_type == "application/problem+json; charset=utf-8"
+
+    body = json.loads(response.body)
+    assert body["title"] == "Expectation failed"
+    assert body["detail"] == expected_detail
+    assert body["error"] == 417
