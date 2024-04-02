@@ -1300,22 +1300,22 @@ nlohmann::json Syscollector::getNetworkData()
 
                     // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
-                    protoTableData["iface"] = item.at("name");
+                    protoTableData["iface"]   = item.at("name");
                     protoTableData["gateway"] = item.at("gateway");
-                    protoTableData["type"] = IP_TYPE.at(IPV4);
-                    protoTableData["dhcp"] = item.at("IPv4").begin()->at("dhcp");
-                    protoTableData["metric"] = item.at("IPv4").begin()->at("metric");
-                    protoTableData["checksum"] = getItemChecksum(protoTableData);
-                    protoTableData["item_id"] = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
+                    protoTableData["type"]    = IP_TYPE.at(IPV4);
+                    protoTableData["dhcp"]    = item.at("IPv4").begin()->at("dhcp");
+                    protoTableData["metric"]  = item.at("IPv4").begin()->at("metric");
+                    protoTableData["checksum"]  = getItemChecksum(protoTableData);
+                    protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
                     protoTableDataList.push_back(std::move(protoTableData));
 
                     for (auto addressTableData : item.at("IPv4"))
                     {
                         // "dbsync_network_address" table data to update and notify
-                        addressTableData["iface"] = item.at("name");
-                        addressTableData["proto"] = IPV4;
-                        addressTableData["checksum"] = getItemChecksum(addressTableData);
-                        addressTableData["item_id"] = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        addressTableData["iface"]     = item.at("name");
+                        addressTableData["proto"]     = IPV4;
+                        addressTableData["checksum"]  = getItemChecksum(addressTableData);
+                        addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }
@@ -1324,22 +1324,22 @@ nlohmann::json Syscollector::getNetworkData()
                 {
                     // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
-                    protoTableData["iface"] = item.at("name");
+                    protoTableData["iface"]   = item.at("name");
                     protoTableData["gateway"] = item.at("gateway");
-                    protoTableData["type"] = IP_TYPE.at(IPV6);
-                    protoTableData["dhcp"] = item.at("IPv6").begin()->at("dhcp");
-                    protoTableData["metric"] = item.at("IPv6").begin()->at("metric");
-                    protoTableData["checksum"] = getItemChecksum(protoTableData);
-                    protoTableData["item_id"] = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
+                    protoTableData["type"]    = IP_TYPE.at(IPV6);
+                    protoTableData["dhcp"]    = item.at("IPv6").begin()->at("dhcp");
+                    protoTableData["metric"]  = item.at("IPv6").begin()->at("metric");
+                    protoTableData["checksum"]  = getItemChecksum(protoTableData);
+                    protoTableData["item_id"]   = getItemId(protoTableData, NETPROTO_ITEM_ID_FIELDS);
                     protoTableDataList.push_back(std::move(protoTableData));
 
                     for (auto addressTableData : item.at("IPv6"))
                     {
                         // "dbsync_network_address" table data to update and notify
-                        addressTableData["iface"] = item.at("name");
-                        addressTableData["proto"] = IPV6;
-                        addressTableData["checksum"] = getItemChecksum(addressTableData);
-                        addressTableData["item_id"] = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        addressTableData["iface"]     = item.at("name");
+                        addressTableData["proto"]     = IPV6;
+                        addressTableData["checksum"]  = getItemChecksum(addressTableData);
+                        addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }
