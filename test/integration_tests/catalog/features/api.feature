@@ -333,7 +333,19 @@ Feature: Catalog API Management
         name: decoder/testing/0
         check: helper_not_exist(field)
       """
-    Then I should receive a failed response indicating "Stage 'check' failed to build expression 'helper_not_exist(field)': Expression parsing failed. \nMain error: Unexpected token at 0\nhelper_not_exist(field)\n^\n\nList of errors:\nUnexpected token at 0\nhelper_not_exist(field)\n^\n""
+    Then I should receive a failed response indicating
+      """
+      Stage 'check' failed to build expression 'helper_not_exist(field)': Expression parsing failed.
+      Main error: Unexpected token at 0
+      helper_not_exist(field)
+      ^
+
+      List of errors:
+      Unexpected token at 0
+      helper_not_exist(field)
+      ^
+
+      """
 
 
   Scenario: Try to validate the resource that has a non-exist field en schema
