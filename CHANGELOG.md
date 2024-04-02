@@ -27,6 +27,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed command wodle to support UTF-8 characters on windows agent. ([#19146](https://github.com/wazuh/wazuh/pull/19146))
+- Fixed Windows agent to delete wazuh-agent.state file when stopped. ([#20425](https://github.com/wazuh/wazuh/pull/20425))
 
 #### Changed
 
