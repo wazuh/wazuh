@@ -95,7 +95,7 @@ public:
      *
      * @return true if the cache is full, false otherwise.
      */
-    bool isFull()
+    bool isFull() const
     {
         return m_map.size() == m_capacity;
     }
@@ -108,21 +108,22 @@ public:
      * @param key The key to be checked.
      * @return true if the key exists in the cache, false otherwise.
      */
-    bool isHit(const KeyType& key)
+    bool isHit(const KeyType& key) const
     {
         return m_map.find(key) != m_map.end();
     }
 
     /**
-     * @brief Returns a reference to the cache data.
+     * @brief Iterates over the cache data and applies a function to each key-value pair.
      *
-     * This function returns a reference to the underlying map storing the cache data.
-     *
-     * @return A reference to the map storing the cache data.
+     * @param handler The function to be applied to each key-value pair.
      */
-    std::map<KeyType, ValueType>& getCacheData()
+    void forEach(std::function<void(const KeyType&, const ValueType&)> handler) const
     {
-        return m_map;
+        for (const auto& [key, value] : m_map)
+        {
+            handler(key, value);
+        }
     }
 
 private:
