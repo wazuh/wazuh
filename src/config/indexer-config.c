@@ -22,11 +22,23 @@ static const char * special_array_keys[] = {
     NULL
 };
 
+static const char * valid_paths[] = {
+    "indexer.enabled",
+    "indexer.hosts",
+    "indexer.ssl",
+    "indexer.ssl.certificate_authorities",
+    "indexer.ssl.certificate",
+    "indexer.ssl.key",
+    NULL
+};
+
 cJSON * indexer_config = NULL;
 
-bool indexer_config_is_special_array_key(const char * keypath)
+bool key_is_in_array(const char * keypath, const char ** psearch)
 {
-    const char ** psearch = special_array_keys;
+    if(!psearch)
+        return false;
+
     while(*psearch)
     {
         if(strcmp(keypath, *psearch) == 0)
@@ -49,18 +61,17 @@ void indexer_config_special_array_subnode_read(XML_NODE node, cJSON *output_json
     }
 }
 
-void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_json, char * current_keypath)
+int indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output_json, char * current_keypath)
 {
     int i;
     xml_node **children;
     cJSON * subnode;
     cJSON * existing_item;
-    cJSON * array_item;
     char * subnode_keypath;
     size_t subnode_keypath_len;
 
     if (!node)
-        return;
+        return OS_SUCCESS;
 
     // Iterate over elements
     for (i = 0; node[i]; i++) {
@@ -68,7 +79,14 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
         os_calloc(1, subnode_keypath_len, subnode_keypath);
         snprintf(subnode_keypath, subnode_keypath_len, "%s.%s", current_keypath, node[i]->element);
 
-        if(indexer_config_is_special_array_key(subnode_keypath))
+       /* Unknown paths are ignored */
+        if(!key_is_in_array(subnode_keypath, valid_paths)){
+            mwarn(XML_INVELEM, subnode_keypath);
+            os_free(subnode_keypath);
+            continue;
+        }
+
+        if(key_is_in_array(subnode_keypath, special_array_keys))
         {
             if(cJSON_GetObjectItem(output_json, node[i]->element))
             {
@@ -82,6 +100,14 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
                 indexer_config_special_array_subnode_read(children, subnode);
                 OS_ClearNode(children);
             }
+
+            if(cJSON_GetArraySize(subnode) <= 0){
+                merror("%s is empty in module 'indexer'. Check configuration", subnode_keypath);
+                os_free(subnode_keypath);
+                os_free(subnode);
+                return OS_MISVALUE;
+            }
+
             cJSON_AddItemToObject(output_json, node[i]->element, subnode);
         }
         else
@@ -124,6 +150,8 @@ void indexer_config_subnode_read(const OS_XML *xml, XML_NODE node, cJSON *output
         }
         os_free(subnode_keypath);
     }
+
+    return OS_SUCCESS;
 }
 
 int Read_Indexer(const OS_XML *xml, XML_NODE nodes)
@@ -138,9 +166,7 @@ int Read_Indexer(const OS_XML *xml, XML_NODE nodes)
         return OS_SUCCESS;
     }
 
-    indexer_config_subnode_read(xml, nodes, indexer_config, "indexer");
-
-    return OS_SUCCESS;
+    return indexer_config_subnode_read(xml, nodes, indexer_config, "indexer");
 }
 
 #endif
