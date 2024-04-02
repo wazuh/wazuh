@@ -2,15 +2,15 @@ name: Packages - Build filebeat package
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version used to naming Filebeat package wazuh-filebeat-X.X.tar.gz'
+      revision:
+        description: 'Revision used to naming Filebeat package wazuh-filebeat-X.X.tar.gz'
         required: true
 
 jobs:
   Filebeat-module-generation:
     runs-on: ubuntu-latest
 
-    steps:      
+    steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
@@ -22,7 +22,7 @@ jobs:
 
       - name: Set package name
         run: |
-          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ github.event.inputs.version }}.tar.gz" >> $GITHUB_ENV
+          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ github.event.inputs.revision }}.tar.gz" >> $GITHUB_ENV
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
