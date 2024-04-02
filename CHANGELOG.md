@@ -8,6 +8,16 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed using memmove instead of memcpy to avoid unwanted behavior. ([#21595](https://github.com/wazuh/wazuh/pull/21595))
+- Fixed a crash in the agent due to a library incompatibility. ([#22210](https://github.com/wazuh/wazuh/pull/22210))
+- Fixed an error in the osquery integration on Windows that avoided loading osquery.conf. ([#21728](https://github.com/wazuh/wazuh/pull/21728))
+- Fixed a crash in the agent's Rootcheck component when using `<ignore>`. ([#22588](https://github.com/wazuh/wazuh/pull/22588))
+
+### Ruleset
+
+#### Fixed
+
+- Fixed audit decoders to parse the new heading field "node=". ([#22178](https://github.com/wazuh/wazuh/pull/22178))
+
 
 ## [v4.8.1]
 
