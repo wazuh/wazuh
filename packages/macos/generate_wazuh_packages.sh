@@ -10,17 +10,12 @@ set -x
 # Foundation.
 
 CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
-SOURCES_DIRECTORY="${CURRENT_PATH}/repository"
-WAZUH_PATH="${SOURCES_DIRECTORY}/wazuh"
-WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"
-WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
-export CONFIG="${WAZUH_PATH}/etc/preloaded-vars.conf"
-ENTITLEMENTS_PATH="${WAZUH_PACKAGES_PATH}/entitlements.plist"
 ARCH="intel64"
+WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
 INSTALLATION_PATH="/Library/Ossec"    # Installation path
 VERSION=""                            # Default VERSION (branch/tag)
 REVISION="1"                          # Package revision.
-BRANCH_TAG="master"                   # Branch that will be downloaded to build package.
+BRANCH_TAG=""                   # Branch that will be downloaded to build package.
 DESTINATION="${CURRENT_PATH}/output/" # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
 VERBOSE="no"                          # Enables the full log by using `set -exf`.
@@ -44,7 +39,11 @@ trap ctrl_c INT
 function clean_and_exit() {
     exit_code=$1
     rm -rf "${SOURCES_DIRECTORY}"
+    if [ -z "$BRANCH_TAG" ]; then
+        make -C $WAZUH_PATH/src clean clean-deps
+    fi
     ${CURRENT_PATH}/uninstall.sh
+    
     exit ${exit_code}
 }
 
@@ -126,9 +125,21 @@ function get_pkgproj_specs() {
 function build_package() {
 
     # Download source code
-    git clone --depth=1 -b ${BRANCH_TAG} ${WAZUH_SOURCE_REPOSITORY} "${WAZUH_PATH}"
-    short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${BRANCH_TAG} \
-                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
+    if [ -n "$BRANCH_TAG" ]; then
+        SOURCES_DIRECTORY="${CURRENT_PATH}/repository"
+        WAZUH_PATH="${SOURCES_DIRECTORY}/wazuh"
+        git clone --depth=1 -b ${BRANCH_TAG} ${WAZUH_SOURCE_REPOSITORY} "${WAZUH_PATH}"
+        short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
+                | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
+    else
+        WAZUH_PATH="${CURRENT_PATH}/../.."
+        short_commit_hash="$(git rev-parse --short HEAD)"
+    fi
+
+    export CONFIG="${WAZUH_PATH}/etc/preloaded-vars.conf"
+    WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"
+    AGENT_PKG_FILE="${WAZUH_PACKAGES_PATH}/package_files/wazuh-agent-${ARCH}.pkgproj"
+    ENTITLEMENTS_PATH="${WAZUH_PACKAGES_PATH}/entitlements.plist"
 
     VERSION=$(cat ${WAZUH_PATH}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
 
@@ -176,7 +187,7 @@ function help() {
     echo
     echo "  Build options:"
     echo "    -a, --architecture <arch>     [Optional] Target architecture of the package [intel64/arm64]. By Default: intel64."
-    echo "    -b, --branch <branch>         [Required] Select Git branch or tag e.g. $BRANCH"
+    echo "    -b, --branch <branch>         [Optional] Select Git branch [${BRANCH}]."
     echo "    -s, --store-path <path>       [Optional] Set the destination absolute path of package."
     echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
     echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
@@ -258,7 +269,7 @@ function check_root() {
 
 function main() {
 
-    BUILD="no"
+    BUILD="yes"
     while [ -n "$1" ]
     do
         case "$1" in
@@ -273,7 +284,6 @@ function main() {
         "-b"|"--branch")
             if [ -n "$2" ]; then
                 BRANCH_TAG="$2"
-                BUILD=yes
                 shift 2
             else
                 help 1
@@ -425,7 +435,6 @@ function main() {
 
     if [[ "${BUILD}" != "no" ]]; then
         check_root
-        AGENT_PKG_FILE="${WAZUH_PACKAGES_PATH}/package_files/wazuh-agent-${ARCH}.pkgproj"
         build_package
         "${CURRENT_PATH}/uninstall.sh"
     fi
