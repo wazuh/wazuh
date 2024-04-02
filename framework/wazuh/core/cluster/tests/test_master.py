@@ -30,7 +30,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cluster.master import DEFAULT_DATE
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
-        from wazuh.core.utils import get_utc_strptime
         from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 # Global variables
@@ -1417,14 +1416,19 @@ def test_master_handler_get_logger():
     assert master_handler.get_logger("random_tag") == "output"
 
 
+@pytest.mark.parametrize('worker_name', [
+    'worker1',
+    ''
+])
 @patch.object(logging.getLogger("wazuh"), "info")
 @patch("wazuh.core.cluster.master.server.AbstractServerHandler.connection_lost")
 @patch("wazuh.core.cluster.master.cluster.clean_up") 
-def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock):
+def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock, worker_name):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
 
     master_handler = get_master_handler()
     master_handler.logger = logging.getLogger("wazuh")
+    master_handler.name = worker_name
 
     class PendingTaskMock:
         """Auxiliary class."""
@@ -1449,7 +1453,10 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
         assert pending_task_mock.task.cancel_called
 
     connection_lost_mock.assert_called_once()
-    clean_up_mock.assert_called_once_with(node_name=master_handler.name)
+    if worker_name:
+        clean_up_mock.assert_called_once_with(node_name=worker_name)
+    else:
+        clean_up_mock.assert_not_called()
 
 
 # Test Master class

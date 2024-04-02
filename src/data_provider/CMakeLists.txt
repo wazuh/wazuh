@@ -222,7 +222,7 @@ target_link_libraries(sysinfo wazuhext)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   set(CURL_DEP "wazuhext")
-  target_link_libraries(sysinfo urlrequest)
+  target_link_libraries(sysinfo urlrequest db)
   if(CMAKE_CHECK_CENTOS5)
       set(USE_HTTP 1)
   endif(CMAKE_CHECK_CENTOS5)
