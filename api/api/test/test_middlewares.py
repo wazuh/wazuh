@@ -6,6 +6,8 @@ from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock, call
 import pytest
 
+from starlette.responses import Response
+
 from connexion import AsyncApp
 from connexion.testing import TestContext
 from connexion.exceptions import ProblemException
@@ -14,7 +16,8 @@ from freezegun import freeze_time
 
 from api.middlewares import check_rate_limit, check_blocked_ip, MAX_REQUESTS_EVENTS_DEFAULT, UNKNOWN_USER_STRING, \
     LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
-    SecureHeadersMiddleware, secure_headers, access_log
+    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
+from api.api_exception import ExpectFailedException
 
 @pytest.fixture
 def request_info(request):
@@ -305,3 +308,24 @@ async def test_check_block_ip_middleware(endpoint, method, call_check, mock_req)
             mock_block_ip.assert_not_called()
         dispatch_mock.assert_awaited_once_with(mock_req)
         assert ret_response == response
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("expect_value", ['test-value', '100-continue'])
+async def test_check_expect_header_middleware(expect_value):
+    """Test expect header."""
+    middleware = CheckExpectHeaderMiddleware(AsyncApp(__name__))
+
+    mock_request = MagicMock(headers={'Expect': expect_value})
+
+    response = Response("Success")
+
+    call_next_mock = AsyncMock(return_value=response)
+
+    if expect_value != '100-continue':
+        with pytest.raises(ExpectFailedException):
+            await middleware.dispatch(mock_request, call_next_mock)
+        call_next_mock.assert_not_called()
+    else:
+        returned_response = await middleware.dispatch(mock_request, call_next_mock)
+        call_next_mock.assert_called_once_with(mock_request)
+        assert returned_response == response
