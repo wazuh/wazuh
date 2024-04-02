@@ -77,6 +77,7 @@ int rootcheck_init(int test_config)
     rootcheck.basedir = NULL;
     rootcheck.unixaudit = NULL;
     rootcheck.ignore = NULL;
+    rootcheck.ignore_sregex = NULL;
     rootcheck.rootkit_files = NULL;
     rootcheck.rootkit_trojans = NULL;
     rootcheck.winaudit = NULL;
