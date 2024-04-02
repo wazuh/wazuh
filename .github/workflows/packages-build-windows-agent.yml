@@ -12,18 +12,26 @@ on:
         default: 'auto'
       revision:
         description: |
-          Revision used to naming Windows package.
+          Package revision (name and metadata)
           Default is '0'.
         required: false
         default: '0'
       is_stage:
+        description: |
+          Should set development/production nomenclature
+          True if WPK name should have production format.
+          False if WPK name should have developer format.
+          Default is 'false'.
         type: boolean
-        description: Should set development/production nomenclature. By default 'development'.
         required: false
+        default: false
       debug:
+        description: |
+          Activate debug mode in the compilation.
+          Default is 'false'.
         type: boolean
-        description: Activate debug mode in the compilation. By Default is 'false'.
         required: false
+        default: false
       trust_verification:
         type: choice
         description: |
@@ -45,15 +53,16 @@ on:
         required: false
         default: 'DigiCert Assured ID Root CA'
       checksum:
-        type: boolean
         description: Generate checksum on the same directory than the package.
+        type: boolean
         required: false
+        default: false
 
 jobs:
   build-agent-windows-base:
     runs-on: ubuntu-latest
     outputs:
-      zip_s3_url: ${{ steps.push_zip.outputs.s3_base_agent }}
+      PKG_NAME: ${{ steps.package_name_set_step.outputs.PKG_NAME }}
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
@@ -75,13 +84,14 @@ jobs:
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
 
-      - name: Set ZIP_NAME
+      - name: Set PKG_NAME
+        id: package_name_set_step
         run: |
           COMMIT_HASH="$(git rev-parse --short HEAD)"
-          if [ "${{ inputs.naming_format }}" == "release" ]; then
-            echo "ZIP_NAME=wazuh-agent-${{ env.VERSION }}-${{ inputs.revision }}.zip" >> $GITHUB_ENV;
+          if [ "${{ inputs.is_stage }}" == "true" ]; then
+            echo "PKG_NAME=wazuh-agent-${{ env.VERSION }}-${{ inputs.revision }}" | tee -a $GITHUB_OUTPUT $GITHUB_ENV;
           else
-            echo "ZIP_NAME=wazuh-agent_${{ env.VERSION }}-${{ inputs.revision }}_windows_${COMMIT_HASH}.zip" >> $GITHUB_ENV;
+            echo "PKG_NAME=wazuh-agent_${{ env.VERSION }}-${{ inputs.revision }}_windows_${COMMIT_HASH}" | tee -a $GITHUB_OUTPUT $GITHUB_ENV;
           fi
 
       - name: Download docker image for package building
@@ -91,75 +101,72 @@ jobs:
       - name: Build Windows wazuh-agent
         working-directory: packages/windows
         run: |
-          FLAGS="-s /tmp --dont-build-docker -j $(nproc) -o ${{ env.ZIP_NAME }} "
+          FLAGS="-s /tmp/windowsPKG --dont-build-docker -j $(nproc) -o ${{ env.PKG_NAME }}.zip "
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           bash generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification }} --tag ${{ env.TAG }} -c "${{ inputs.ca_name }}" $FLAGS
 
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: us-east-1
 
-      - name: Upload package to S3
-        id: push_zip
-        run: |
-          s3_packages_url="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages"
-          if [ inputs.checksum == 'true'  ]; then
-            sha512sum "/tmp/${{ env.ZIP_NAME }}" > "/tmp/${{ env.ZIP_NAME }}.sha512"
-            aws s3 cp /tmp/${{ env.ZIP_NAME }}.sha512 "${s3_packages_url}/"
-          fi
-          aws s3 cp /tmp/${{ env.ZIP_NAME }} "${s3_packages_url}/"
-          echo "s3_base_agent=${s3_packages_url}/${{ env.ZIP_NAME }}" >> "$GITHUB_OUTPUT"
+      - name: Upload package to artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windowsPKG
+          path: /tmp/windowsPKG
 
   generate-msi-agent:
     runs-on: windows-latest
     needs: build-agent-windows-base
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
+
       - name: Add WiX toolkit to PATH
         shell: bash
         run: echo "${WIX}bin" >> $GITHUB_PATH
+
       - name: Install dependencies
         run: |
           pip install -r src/win32/qa/requirements.txt
 
       - name: Set up AWS CLI
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
           aws-region: us-east-1
 
-      - name: Download windows agent base from S3
-        run: |
-          mkdir C:\win-agent-base\
-          aws s3 cp ${{ needs.build-agent-windows-base.outputs.zip_s3_url }} C:\win-agent-base\win-agent-base.zip
-          # $s3_packages_url = "s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages"
-          # aws s3 cp ${s3_packages_url}/wazuh-agent_4.9.0-0_windows_fff8611.zip  C:\win-agent-base\win-agent-base.zip
+      - name: Download package from artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windowsPKG
+          path: C:\
 
       - name: Unzip base folder
         run: |
-          7z x C:\win-agent-base\win-agent-base.zip -oC:\win-agent-base
+          7z x C:\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.zip -oC:\win-agent-base
 
       - name: Create .msi package
         run: |
           cd C:\win-agent-base\wazuh-local-src\src\win32
-          $VERSION = Get-Content ..\VERSION
-          .\wazuh-installer-build-msi.bat $VERSION 0
-          cp *.msi C:\win-agent-base\
+          .\generate_wazuh_msi.ps1 -OPTIONAL_REVISION ${{ inputs.revision }}
+          cp ${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi C:\win-agent-base\
 
       - name: Upload msi to s3
         run: |
-          $s3_packages_url = "s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages"
-          $msi_files = Get-ChildItem C:\win-agent-base\*.msi
-          foreach ($msi in $msi_files) {
-            aws s3 cp $msi.FullName "$s3_packages_url/"
-          }
+          aws s3 cp C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+
+      - name: Upload checksum to s3
+        if: inputs.checksum == 'true'
+        run: |
+          sha512sum "C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi" > "C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi.sha512"
+          aws s3 cp C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
