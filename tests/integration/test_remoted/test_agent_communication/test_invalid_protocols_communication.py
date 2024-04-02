@@ -29,10 +29,12 @@ daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {REMOTED_DEBUG: '2'}
 
-
+# Test variables.
 receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]
+
 mitm_analysisd = ManInTheMiddle(address=ANALYSISD_QUEUE_SOCKET_PATH, family='AF_UNIX', connection_protocol='UDP')
 monitored_sockets_params = [(ANALYSISD_DAEMON, mitm_analysisd, True)]
+
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 

@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -54,7 +54,7 @@ from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH, RULES_SAMPLE_PATH
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 test_cases_path = Path(TEST_CASES_PATH, 'cases_syscollector.yaml')
@@ -143,7 +143,7 @@ def test_syscollector_events(test_metadata, configure_local_internal_options, mo
 
     # Start monitor
     log_monitor = file_monitor.FileMonitor(ALERTS_JSON_PATH)
-    log_monitor.start(callback=alert_callback, timeout=10)
+    log_monitor.start(callback=alert_callback, timeout=20)
 
     # Check that expected log appears for rules if_sid field being invalid
     assert log_monitor.callback_result

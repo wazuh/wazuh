@@ -1546,7 +1546,7 @@ async def get_agent_no_group(request, pretty: bool = False, wait_for_complete: b
 
 async def get_agent_outdated(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = DATABASE_LIMIT, sort: str = None, search: str = None,
-                             q: str = None) -> web.Response:
+                             select: str = None, q: str = None) -> web.Response:
     """Get outdated agents.
 
     Parameters
@@ -1565,6 +1565,8 @@ async def get_agent_outdated(request, pretty: bool = False, wait_for_complete: b
         ascending or descending order.
     search : str
         Look for elements with the specified string.
+    select : str
+        Select which fields to return (separated by comma).
     q : str
         Query to filter results by. For example "q&#x3D;&amp;quot;status&#x3D;active&amp;quot;".
 
@@ -1577,6 +1579,7 @@ async def get_agent_outdated(request, pretty: bool = False, wait_for_complete: b
                 'limit': limit,
                 'sort': parse_api_param(sort, 'sort'),
                 'search': parse_api_param(search, 'search'),
+                'select': select,
                 'q': q}
 
     dapi = DistributedAPI(f=agent.get_outdated_agents,

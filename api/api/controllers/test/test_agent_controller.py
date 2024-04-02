@@ -1076,6 +1076,7 @@ async def test_get_agent_outdated(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
+                'select': None,
                 'q': None
                 }
     mock_dapi.assert_called_once_with(f=agent.get_outdated_agents,

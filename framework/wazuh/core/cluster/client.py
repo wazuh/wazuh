@@ -171,7 +171,10 @@ class AbstractClient(common.Handler):
             Result of the hello request.
         """
         try:
-            future_result.result()
+            result = future_result.result()
+            if isinstance(future_result.result()[0], Exception):
+                raise result[0]
+
             self.logger.info("Successfully connected to master.")
             self.connected = True
         except Exception as e:        

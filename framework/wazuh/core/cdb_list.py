@@ -227,7 +227,7 @@ def validate_cdb_list(content: str):
     WazuhError(1112)
         Empty CDB list.
     """
-    regex_cdb = re.compile(r'(?:^"([\w\-:]+?)"|^[^:"\s]+):(?:"([\w\-:]*?)"$|[^:\"]*$)')
+    regex_cdb = re.compile(r'(?:^"([\w\-: ]+?)"|^[^:"\s]+):(?:"([\w\-: ]*?)"$|[^:\"]*$)')
 
     if len(content) == 0:
         raise WazuhError(1112)

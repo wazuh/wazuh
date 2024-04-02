@@ -150,6 +150,7 @@ void test_read_multiple_configuration(void **state) {
 void test_read_empty_configuration(void **state) {
     const char *string = "";
     test_structure *test = *state;
+    expect_string(__wrap__mdebug1, formatted_msg, "Empty configuration for module 'indexer'");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
@@ -181,7 +182,7 @@ void test_read_empty_field_configuration(void **state) {
     cJSON_free(json_result);
 }
 
-void test_read_field_host_0_entries_configuration(void **state) {
+void test_read_field_host_0_entries_configuration_fail(void **state) {
     const char *string =
         "<enabled>yes</enabled>"
         "<hosts>"
@@ -196,10 +197,11 @@ void test_read_field_host_0_entries_configuration(void **state) {
         "</ssl>"
     ;
     test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "indexer.hosts is empty in module 'indexer'. Check configuration");
     test->nodes = string_to_xml_node(string, &(test->xml));
-    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
+    assert_int_equal(Read_Indexer(&(test->xml), test->nodes), OS_MISVALUE);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[],\"ssl\":{\"certificate_authorities\":[\"/var/ossec/\",\"/var/ossec_cert/\"],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\"}");
     cJSON_free(json_result);
 }
 
@@ -226,7 +228,7 @@ void test_read_field_host_1_entries_configuration(void **state) {
     cJSON_free(json_result);
 }
 
-void test_read_field_certificate_authorities_0_entries_configuration(void **state) {
+void test_read_field_certificate_authorities_0_entries_configuration_fail(void **state) {
     const char *string =
         "<enabled>yes</enabled>"
         "<hosts>"
@@ -241,10 +243,11 @@ void test_read_field_certificate_authorities_0_entries_configuration(void **stat
         "</ssl>"
     ;
     test_structure *test = *state;
+    expect_string(__wrap__merror, formatted_msg, "indexer.ssl.certificate_authorities is empty in module 'indexer'. Check configuration");
     test->nodes = string_to_xml_node(string, &(test->xml));
     assert_int_equal(Read_Indexer(&(test->xml), test->nodes), 0);
     char * json_result = cJSON_PrintUnformatted(indexer_config);
-    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{\"certificate_authorities\":[],\"certificate\":\"cert\",\"key\":\"key_example\"}}");
+    assert_string_equal(json_result, "{\"enabled\":\"yes\",\"hosts\":[\"http://10.2.20.2:9200\",\"https://10.2.20.42:9200\"],\"ssl\":{}}");
     cJSON_free(json_result);
 }
 
@@ -278,9 +281,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_multiple_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_empty_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_empty_field_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_field_host_0_entries_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_field_host_0_entries_configuration_fail, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_field_host_1_entries_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_field_certificate_authorities_0_entries_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test_setup_teardown(test_read_field_certificate_authorities_0_entries_configuration_fail, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_field_certificate_authorities_1_entries_configuration, setup_test_read, teardown_test_read),
     };
     return cmocka_run_group_tests(tests_configuration, NULL, NULL);

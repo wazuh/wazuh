@@ -31,6 +31,8 @@ namespace Log
 };
 constexpr auto IC_NAME {"indexer-connector"};
 constexpr auto MAX_WAIT_TIME {60};
+constexpr auto START_TIME {1};
+constexpr auto DOUBLE_FACTOR {2};
 
 std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
 
@@ -182,13 +184,13 @@ IndexerConnector::IndexerConnector(
         // coverity[copy_constructor_call]
         [=]()
         {
-            auto sleepTime = std::chrono::seconds(1);
+            auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock<std::mutex> lock(m_mutex);
             do
             {
                 try
                 {
-                    sleepTime *= 2;
+                    sleepTime *= DOUBLE_FACTOR;
                     if (sleepTime.count() > MAX_WAIT_TIME)
                     {
                         sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
@@ -198,10 +200,14 @@ IndexerConnector::IndexerConnector(
                 }
                 catch (const std::exception& e)
                 {
+                    // Improved logging message
                     logWarn(IC_NAME,
-                            "Error initializing IndexerConnector: %s, we will try again after %ld seconds.",
+                            "Error initializing IndexerConnector for index '%s': %s. Retrying in %ld seconds. Maximum "
+                            "wait time: %ld seconds.",
+                            indexName.c_str(),
                             e.what(),
-                            sleepTime.count());
+                            sleepTime.count(),
+                            MAX_WAIT_TIME);
                 }
             } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [&]() { return m_stopping.load(); }));
         });
@@ -237,9 +243,18 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         [&](const std::string& response) {},
         [&](const std::string& error, const long statusCode)
         {
-            if (statusCode != 400)
+            if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
             {
-                throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
+                std::string errorMessage = "Failed to initialize template for index '" + indexName + "'. ";
+                if (statusCode != NOT_USED)
+                {
+                    errorMessage += "HTTP error: " + error + " (Status code: " + std::to_string(statusCode) + ").";
+                }
+                else
+                {
+                    errorMessage += "Error: " + error;
+                }
+                throw std::runtime_error(errorMessage);
             }
         },
         "",
@@ -253,9 +268,18 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
         [&](const std::string& response) {},
         [&](const std::string& error, const long statusCode)
         {
-            if (statusCode != 400)
+            if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
             {
-                throw std::runtime_error(statusCode != NOT_USED ? error + ": " + std::to_string(statusCode) : error);
+                std::string errorMessage = "Failed to initialize for index '" + indexName + "'. ";
+                if (statusCode != NOT_USED)
+                {
+                    errorMessage += "HTTP error: " + error + " (Status code: " + std::to_string(statusCode) + ").";
+                }
+                else
+                {
+                    errorMessage += "Error: " + error;
+                }
+                throw std::runtime_error(errorMessage);
             }
         },
         "",

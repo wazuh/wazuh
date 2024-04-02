@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -18,7 +18,7 @@ components:
 suite: configuration
 
 targets:
-    - manager
+    - agent
 
 daemons:
     - wazuh-analysisd
@@ -55,7 +55,7 @@ from wazuh_testing.utils import callbacks
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_basic.yaml')
