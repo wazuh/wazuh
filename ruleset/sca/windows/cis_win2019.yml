@@ -6625,10 +6625,10 @@ checks:
       - cis: ["18.10.82.1"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition: any
+    condition: all
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
-      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> DisableAutomaticRestartSignOn -> 1'
 
   # 18.10.87.1 (L1) Ensure 'Turn on PowerShell Script Block Logging' is set to 'Enabled'. (Automated)
