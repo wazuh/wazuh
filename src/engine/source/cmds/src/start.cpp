@@ -50,6 +50,11 @@
 
 namespace
 {
+struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
+{
+    static constexpr size_t BLOCK_SIZE = 2048;
+    static constexpr size_t IMPLICIT_INITIAL_INDEX_SIZE = 8192;
+};
 std::shared_ptr<engineserver::EngineServer> g_engineServer {};
 
 void sigintHandler(const int signum)
@@ -295,7 +300,7 @@ void runStart(ConfHandler confManager)
         // Router
         {
             // External queues
-            using QEventType = base::queue::ConcurrentQueue<base::Event>;
+            using QEventType = base::queue::ConcurrentQueue<base::Event, QueueTraits>;
             using QTestType = base::queue::ConcurrentQueue<router::test::QueueType>;
 
             std::shared_ptr<QEventType> eventQueue {};
