@@ -113,12 +113,12 @@ public:
  * and the pathFloodedFile is provided.
  * @tparam T The type of the data to be stored in the queue.
  */
-template<typename T,
-         typename D = moodycamel::ConcurrentQueueDefaultTraits,
-         typename = std::enable_if_t<std::is_base_of<moodycamel::ConcurrentQueueDefaultTraits, D>::value>>
+template<typename T, typename D = moodycamel::ConcurrentQueueDefaultTraits>
 class ConcurrentQueue : public iQueue<T>
 {
 private:
+    static_assert(std::is_base_of_v<moodycamel::ConcurrentQueueDefaultTraits, D>,
+                  "The template parameter D must be a subclass of ConcurrentQueueDefaultTraits");
     struct Metrics
     {
         std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;  ///< Metrics scope for the queue
@@ -131,7 +131,7 @@ private:
         std::shared_ptr<metricsManager::iCounter<uint64_t>> m_consumendPerSecond; ///< Counter for the used queue
     };
 
-    moodycamel::BlockingConcurrentQueue<T> m_queue {}; ///< The queue itself.
+    moodycamel::BlockingConcurrentQueue<T, D> m_queue {}; ///< The queue itself.
 
     std::shared_ptr<FloodingFile> m_floodingFile; ///< The flooding file.
     std::size_t m_maxAttempts;                    ///< The maximum number of attempts to push an element to the queue.
@@ -230,7 +230,7 @@ public:
             throw std::runtime_error("The capacity of the queue must be greater than 0");
         }
 
-        m_queue = moodycamel::BlockingConcurrentQueue<T>(capacity);
+        m_queue = moodycamel::BlockingConcurrentQueue<T, D>(capacity);
 
         // Verify if the pathFloodedFile is provided
         if (!pathFloodedFile.empty())
