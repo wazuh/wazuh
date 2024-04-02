@@ -1,0 +1,92 @@
+name: Build Macos Wazuh Agent Packages - intel64|arm64
+on:
+  workflow_dispatch:
+    inputs:
+      architecture:
+        type: choice
+        description: Package architecture [intel64, arm64]
+        required: true
+        default: intel64
+        options:
+          - intel64
+          - arm64
+      revision:
+        description: |
+          Package revision (name and metadata).
+        required: false
+        type: string
+        default: "0"
+      is_stage:
+        type: boolean
+        description: Set development/production nomenclature
+        required: false
+      debug:
+        type: boolean
+        description: |
+          Build the binaries with debug symbols. By default: false
+        required: false
+      checksum:
+        type: boolean
+        description: Generate package checksum
+        required: false
+
+  workflow_call:
+    inputs:
+      architecture:
+        type: string
+        required: true
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+
+jobs:
+  Build-agent-linux-packages:
+    runs-on: macos-latest
+    name: Build wazuh-agent on ${{ inputs.architecture }}
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - uses: actions/checkout@v4
+
+      - name: Build wazuh-agent on ${{ inputs.architecture }}
+        working-directory: packages/macos/
+        run: |
+          REVISION=${{ inputs.revision }}
+          nproc=$(sysctl -n hw.ncpu)
+          FLAGS="-j $nproc "
+          if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
+          if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
+          if [ "${{ inputs.checksum }}" == "true" ] && [ ${{ inputs.is_stage}} == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          echo $FLAGS
+          bash generate_wazuh_packages.sh -i
+          sudo bash generate_wazuh_packages.sh -a ${{ inputs.architecture }} $FLAGS
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Upload package to S3
+        working-directory: packages/macos/
+        run: |
+          for file in output/*agent*; do
+            aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          done

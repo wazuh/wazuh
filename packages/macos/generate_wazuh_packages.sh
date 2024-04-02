@@ -190,7 +190,6 @@ function help() {
     echo "    -b, --branch <branch>         [Optional] Select Git branch [${BRANCH}]."
     echo "    -s, --store-path <path>       [Optional] Set the destination absolute path of package."
     echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
-    echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
     echo "    -r, --revision <rev>          [Optional] Package revision that append to version e.g. x.x.x-rev"
     echo "    -d, --debug                   [Optional] Build the binaries with debug symbols. By default: no."    
     echo "    -c, --checksum <path>         [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
