@@ -23,7 +23,8 @@ from wazuh.core.utils import get_utc_now
 from api import configuration
 from api.alogging import custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
-from api.api_exception import BlockedIPException, MaxRequestsException
+from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
+from api.configuration import default_api_configuration
 
 # Default of the max event requests allowed per minute
 MAX_REQUESTS_EVENTS_DEFAULT = 30
@@ -257,3 +258,39 @@ class SecureHeadersMiddleware(BaseHTTPMiddleware):
         resp = await call_next(request)
         secure_headers.framework.starlette(resp)
         return resp
+
+class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
+    """Middleware to check for the 'Expect' header in incoming requests."""
+
+    async def dispatch(self, request: ConnexionRequest, call_next: RequestResponseEndpoint) -> Response:
+        """Check for specific request headers and generate error 417 if conditions are not met.
+                
+        Parameters
+        ----------
+            request : Request
+            HTTP Request received.
+        call_next :  RequestResponseEndpoint
+            Endpoint callable to be executed.
+        
+        Returns
+        -------
+            Returned response.
+        """
+        
+        if 'Expect' not in request.headers:
+            response = await call_next(request)
+            return response
+        else:
+            expect_value = request.headers["Expect"].lower()
+            
+            if expect_value != '100-continue':
+                raise ExpectFailedException(status=417, title="Expectation failed", detail="Unknown Expect")
+            
+            if 'Content-Length' in request.headers:
+                content_length = int(request.headers["Content-Length"])
+                max_upload_size = default_api_configuration["max_upload_size"]
+                if content_length > max_upload_size:
+                    raise ExpectFailedException(status=417, title="Expectation failed", detail="Unknown Expect")
+                
+        response = await call_next(request)
+        return response

@@ -10,7 +10,7 @@ from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from api import configuration
 from api.middlewares import ip_block, ip_stats, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
-from api.api_exception import BlockedIPException, MaxRequestsException
+from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.controllers.util import json_response, ERROR_CONTENT_TYPE
 from wazuh.core.utils import get_utc_now
 
@@ -53,6 +53,28 @@ def _cleanup_detail_field(detail: str) -> str:
         New value for the detail field.
     """
     return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
+
+
+async def expect_failed_error_handler(request: ConnexionRequest, exc: ExpectFailedException) -> ConnexionResponse:
+    """Handler for the 'Expect' HTTP header.
+    
+    Parameters
+    ----------
+    request : ConnexionRequest
+        Incoming request.
+
+    Returns
+    -------
+    Response
+        HTTP Response returned to the client.
+    """
+    problem = {
+        "title": "Expectation failed",
+        "detail": "Unknown Expect",
+        "error": 417
+    }
+    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
+                        status_code=417, content_type=ERROR_CONTENT_TYPE)
 
 
 async def unauthorized_error_handler(request: ConnexionRequest,
