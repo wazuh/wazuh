@@ -126,6 +126,12 @@ def step_impl(context, status: str, response: str):
             assert context.result.status == api_engine.ERROR, f"{context.result}"
             assert context.result.error == response, f"{context.result}"
 
+@then('I should receive a {status} response indicating')
+def step_impl(context, status: str):
+    if status == "failed":
+        assert context.result.status == api_engine.ERROR, f"{context.result}"
+        assert context.result.error == context.text, f"{context.result}"
+
 @then('I should receive a {status} response')
 def step_impl(context, status: str):
     if status == "failed":

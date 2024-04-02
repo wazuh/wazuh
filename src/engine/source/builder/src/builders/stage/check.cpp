@@ -86,37 +86,38 @@ getTermBuilder(const std::shared_ptr<const IBuildCtx>& buildCtx)
 
 base::Expression checkExpressionBuilder(const std::string& logicExpr, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    std::function<bool(base::Event)> evaluator;
     try
     {
         // Apply definitions
         auto replacedExpr = buildCtx->definitions().replace(logicExpr);
         // TODO: make a factory and inject this dependency
-        auto evaluator = logicexpr::buildDijstraEvaluator<base::Event, parsers::HelperToken>(
+        evaluator = logicexpr::buildDijstraEvaluator<base::Event, parsers::HelperToken>(
             replacedExpr, getTermBuilder(buildCtx), parsers::getTermParser());
-
-        // Trace
-        auto name = fmt::format("check: {}", logicExpr);
-        const auto successTrace = fmt::format("[{}] -> Success", name);
-        const auto failureTrace = fmt::format("[{}] -> Failure", name);
-
-        // Return expression
-        return base::Term<base::EngineOp>::create("stage.check",
-                                                  [=](base::Event event)
-                                                  {
-                                                      if (evaluator(event))
-                                                      {
-                                                          return base::result::makeSuccess(event, successTrace);
-                                                      }
-                                                      else
-                                                      {
-                                                          return base::result::makeFailure(event, failureTrace);
-                                                      }
-                                                  });
     }
     catch (const std::exception& e)
     {
         throw std::runtime_error(fmt::format("Stage 'check' failed to build expression '{}': {}", logicExpr, e.what()));
     }
+
+    // Trace
+    auto name = fmt::format("check: {}", logicExpr);
+    const auto successTrace = fmt::format("[{}] -> Success", name);
+    const auto failureTrace = fmt::format("[{}] -> Failure", name);
+
+    // Return expression
+    return base::Term<base::EngineOp>::create("stage.check",
+                                              [=](base::Event event)
+                                              {
+                                                  if (evaluator(event))
+                                                  {
+                                                      return base::result::makeSuccess(event, successTrace);
+                                                  }
+                                                  else
+                                                  {
+                                                      return base::result::makeFailure(event, failureTrace);
+                                                  }
+                                              });
 }
 
 } // namespace

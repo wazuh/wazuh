@@ -358,7 +358,7 @@ std::shared_ptr<Expression> parse(const std::string& rawExpression, TermParser&&
     }
     catch (const std::exception& e)
     {
-        throw std::runtime_error(fmt::format("Expression parsing failed. {}", e.what()));
+        throw std::runtime_error(fmt::format("Expression parsing failed.{}", e.what()));
     }
 
     return expression;
