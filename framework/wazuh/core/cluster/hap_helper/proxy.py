@@ -548,7 +548,14 @@ class Proxy:
         """
         return (await self.api.get_global_configuration()).get('hard_stop_after', None)
 
-    async def set_hard_stop_after_value(self, active_agents: int, chunk_size: int, agent_reconnection_time: int):
+    async def set_hard_stop_after_value(
+        self,
+        active_agents: int,
+        chunk_size: int,
+        agent_reconnection_time: int,
+        n_managers: int,
+        server_admin_state_delay: int,
+    ):
         """Calculate a dynamic value for `hard-stop-after` and set it.
 
         Parameters
@@ -559,9 +566,15 @@ class Proxy:
             Max number of agents to be reconnected at once.
         agent_reconnection_time : int
             Seconds to sleep after an agent chunk reconnection.
+        n_manager : int
+            Number of managers in the cluster.
+        server_admin_state_delay : int
+            Delay of server administration.
         """
-        number_of_chunks = active_agents / chunk_size if active_agents > chunk_size else 1
-        hard_stop_after = number_of_chunks * agent_reconnection_time
+
+        hard_stop_after = (active_agents / (n_managers * chunk_size)) * n_managers * agent_reconnection_time + (
+            n_managers * server_admin_state_delay * 2
+        )
 
         if self.hard_stop_after is None or self.hard_stop_after != hard_stop_after:
             configuration = await self.api.get_global_configuration()
