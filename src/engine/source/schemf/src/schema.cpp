@@ -83,7 +83,7 @@ void Schema::removeField(const DotPath& name)
     current->erase(entry);
 }
 
-const Field& Schema::get(const DotPath& name) const
+Field Schema::get(const DotPath& name) const
 {
     const auto* current = &m_fields;
     const Field* target = nullptr;
@@ -98,7 +98,16 @@ const Field& Schema::get(const DotPath& name) const
 
         if (it != name.cend() - 1)
         {
-
+            // Handle arrays e.g. "field/0"
+            // If the field is an array and the next part is the last one and a number, return a new field with the
+            // array type
+            if (entry->second.isArray() && it + 1 == name.cend() - 1)
+            {
+                if (std::isdigit((it + 1)->data()[0]))
+                {
+                    return Field({.type = entry->second.type(), .isArray = false});
+                }
+            }
             current = &entry->second.properties();
         }
         else
@@ -128,6 +137,15 @@ bool Schema::hasField(const DotPath& name) const
 
         if (it != name.cend() - 1)
         {
+            // Handle arrays e.g. "field/0"
+            // If the field is an array and the next part is the last one and a number, return true
+            if (entry->second.isArray() && it + 1 == name.cend() - 1)
+            {
+                if (std::isdigit((it + 1)->data()[0]))
+                {
+                    return true;
+                }
+            }
             current = &entry->second.properties();
         }
     }
