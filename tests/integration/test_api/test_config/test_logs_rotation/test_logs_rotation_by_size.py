@@ -97,7 +97,7 @@ def delete_api_logs_folder_contents() -> None:
 def test_logs_rotate_to_expected_path(test_configuration, test_metadata, add_configuration, truncate_monitored_files,
                                       delete_api_logs_folder_contents, daemons_handler, wait_for_api_start):
     """
-    description: Check if the log rotates based by the file size
+    description: Check if the log rotates based on the file size.
 
     wazuh_min_version: 4.6.0
 

@@ -82,7 +82,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 def test_logs_rotation_size_option_values(test_configuration, test_metadata, add_configuration,
                                           truncate_monitored_files, capfd):
     """
-    description: Check if the API works as expected with different values of log rotation size
+    description: Check if the API works as expected with different values of log rotation size.
 
     wazuh_min_version: 4.6.0
 
