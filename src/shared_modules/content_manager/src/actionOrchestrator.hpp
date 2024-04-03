@@ -40,13 +40,24 @@ public:
         FILE_HASH
     };
 
+    /**
+     * @brief Struct containing the necessary members to execute the orchestrations.
+     *
+     */
     struct UpdateData
     {
-        UpdateType type;
-        int offset;
-        std::string fileHash;
+        UpdateType type;      ///< Orchestration update type.
+        int offset;           ///< Offset value used in the update.
+        std::string fileHash; ///< Hash value used in the update.
 
-        UpdateData() : type(UpdateType::CONTENT), offset(-1), fileHash("") {};
+        /**
+         * @brief Struct constructor. Initialize the struct with default values.
+         *
+         */
+        UpdateData()
+            : type(UpdateType::CONTENT)
+            , offset(-1)
+            , fileHash(std::string()) {};
     };
 
     /**
@@ -89,9 +100,10 @@ public:
     /**
      * @brief Run the content updater orchestration.
      *
-     * @param offset Offset value from the on-demand request. If equals zero and \p type is CONTENT, the current
-     * offset will be reset to zero. If \p type is OFFSET, this value will be used to perform the offset update.
-     * @param type Type of update the orchestrator should perform.
+     * @param updateData Update orchestration data.
+     *
+     * @note If the \p updateData offset equals zero and the \p updateData type is CONTENT, the current offset will be
+     * reset to zero. If \p updateData type is OFFSET, this value will be used to perform the offset update.
      */
     void run(const UpdateData& updateData = UpdateData()) const
     {
@@ -103,20 +115,13 @@ public:
         {
             switch (updateData.type)
             {
-            case UpdateType::OFFSET:
-                runOffsetUpdate(std::move(spUpdaterContext), updateData.offset);
-                break;
-            
-            case UpdateType::FILE_HASH:
-                runFileHashUpdate(std::move(spUpdaterContext), updateData.fileHash);
-                break;
-            
-            case UpdateType::CONTENT:
-                runContentUpdate(std::move(spUpdaterContext), updateData.offset == 0);
-                break;
-            
-            default:
-                break;
+                case UpdateType::OFFSET: runOffsetUpdate(std::move(spUpdaterContext), updateData.offset); break;
+
+                case UpdateType::FILE_HASH: runFileHashUpdate(std::move(spUpdaterContext), updateData.fileHash); break;
+
+                case UpdateType::CONTENT: runContentUpdate(std::move(spUpdaterContext), updateData.offset == 0); break;
+
+                default: break;
             }
         }
         catch (const std::exception& e)
@@ -178,9 +183,7 @@ private:
         if (spUpdaterContext->spUpdaterBaseContext->spRocksDB)
         {
             spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)),
-                fileHash,
-                Components::Columns::DOWNLOADED_FILE_HASH);
+                Utils::getCompactTimestamp(std::time(nullptr)), fileHash, Components::Columns::DOWNLOADED_FILE_HASH);
         }
 
         spUpdaterContext->spUpdaterBaseContext->downloadedFileHash = fileHash;

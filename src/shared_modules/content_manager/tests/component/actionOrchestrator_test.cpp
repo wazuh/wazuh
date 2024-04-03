@@ -333,8 +333,8 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
 
     {
         // Trigger orchestrator in a reduced scope to avoid conflicts with the RocksDB connection below.
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
-                            .run(updateData));
+        ASSERT_NO_THROW(
+            ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData));
     }
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
@@ -354,7 +354,6 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdateInvalidOffsetThrows)
     updateData.type = ActionOrchestrator::UpdateType::OFFSET;
     updateData.offset = OFFSET;
 
-    EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
-                     .run(updateData),
+    EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData),
                  std::invalid_argument);
 }

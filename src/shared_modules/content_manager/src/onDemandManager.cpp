@@ -177,8 +177,7 @@ void OnDemandManager::stopServer()
     logDebug1(WM_CONTENTUPDATER, "Server stopped");
 }
 
-void OnDemandManager::addEndpoint(const std::string& endpoint,
-                                  std::function<void(ActionOrchestrator::UpdateData)> func)
+void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void(ActionOrchestrator::UpdateData)> func)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutex};
     // Check if the endpoint already exists

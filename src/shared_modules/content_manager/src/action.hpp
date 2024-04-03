@@ -73,8 +73,7 @@ public:
      * @brief Action execution with exclusivity: The action is only executed if there isn't another action in progress.
      *
      * @param id Action ID.
-     * @param offset Manually set current offset to process.
-     * @param type Type of update to perform.
+     * @param updateData Update orchestration data.
      *
      * @return True if the execution was made, false otherwise.
      */
@@ -179,8 +178,7 @@ public:
     /**
      * @brief Runs ondemand action. Wrapper of runActionExclusively().
      *
-     * @param offset Manually set current offset to process. Default -1
-     * @param type Type of update to perform.
+     * @param updateData Update orchestration data.
      */
     void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
     {
@@ -215,8 +213,7 @@ private:
     std::shared_ptr<ConditionSync> m_stopActionCondition;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
-    void runAction(const ActionID id,
-                   const ActionOrchestrator::UpdateData& updateData)
+    void runAction(const ActionID id, const ActionOrchestrator::UpdateData& updateData)
     {
         logDebug2(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
 
