@@ -12,7 +12,7 @@ CA_NAME=$5
 FLAGS="-j ${JOBS} IMAGE_TRUST_CHECKS=${TRUST_VERIFICATION} CA_NAME=\"${CA_NAME}\" "
 
 if [[ "${DEBUG}" = "yes" ]]; then
-    FLAGS+="-d "
+    FLAGS+="DEBUG=1 "
 fi
 
 if [ -z "${BRANCH}"]; then
