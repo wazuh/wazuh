@@ -1,4 +1,4 @@
-name: Integration tests for logcollector on MacOS - Tier 0 and 1
+name: Integration tests for fim on MacOS - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -45,7 +45,7 @@ jobs:
             echo "" >> ./etc/preloaded-vars.conf
             echo 'USER_INSTALL_TYPE="agent"' >> ./etc/preloaded-vars.conf
             echo "" >> ./etc/preloaded-vars.conf
-            echo "USER_DIR=/var/ossec" >> ./etc/preloaded-vars.conf
+            echo "USER_DIR=/Library/Ossec" >> ./etc/preloaded-vars.conf
             echo "" >> ./etc/preloaded-vars.conf
             echo 'USER_ENABLE_EMAIL="n"' >> ./etc/preloaded-vars.conf
             echo "" >> ./etc/preloaded-vars.conf
@@ -80,8 +80,8 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      # Run logcollector integration tests.
-      - name: Run logcollector integration tests
+      # Run fim integration tests.
+      - name: Run fim integration tests
         run: |
           cd tests/integration
           sudo python -m pytest --tier 0 --tier 1 test_fim/
