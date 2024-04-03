@@ -3,7 +3,7 @@
                or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
-          args: [!!python/object/apply:os.getcwd [],test_dir, symlink]
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -23,7 +23,7 @@
                or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
-          args: [!!python/object/apply:os.getcwd [],test_dir, symlink]
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       realtime: 'yes'
@@ -43,7 +43,7 @@
                or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
-          args: [!!python/object/apply:os.getcwd [],test_dir, symlink]
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -63,7 +63,7 @@
                or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
-          args: [!!python/object/apply:os.getcwd [],test_dir, symlink]
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
     FREQUENCY: 43200 # As default 12 hs
     FIM_MODE:
       whodata: 'yes'
@@ -83,7 +83,7 @@
                or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
-          args: [!!python/object/apply:os.getcwd [],test_dir, symlink]
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
@@ -103,7 +103,7 @@
                or added FIM inmediately raises a log.
   configuration_parameters:
     TEST_DIR: !!python/object/apply:os.path.join
-          args: [!!python/object/apply:os.getcwd [],test_dir, symlink]
+          args: [!!python/object/apply:os.getcwd [], test_dir, symlink]
     FREQUENCY: 3
     FIM_MODE:
       realtime: 'no'
