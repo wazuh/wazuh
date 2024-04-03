@@ -944,6 +944,8 @@ stages:
                   agents:
                     allow_higher_versions:
                       allow: !anybool
+                  indexer:
+                    allow: !anybool
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
