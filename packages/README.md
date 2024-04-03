@@ -40,9 +40,9 @@ wazuh# cd packages
 | --dont-build-docker | Use a locally built Docker image (optional)      | no   |
 | --tag        | Tag to use with the Docker image (optional)             | -                     |
 | *--sources    | Path containing local Wazuh source code (optional)       | script path            |
-| **--release-package | Use release name in package (optional)               | no                     |
+| **--is_stage | Use release name in package (optional)               | no                     |
 | --src        | Generate the source package (optional)                 | no                     |
-| --package-format | Package format to build (optional): rpm, deb (default)| deb                    |
+| --system | Package format to build (optional): rpm, deb (default)| deb                    |
 | -h, --help   | Show this help message                                 | -                     |
 
 ***Note1:** If we don't use this flag, will the script use the current directory where *generate_package.sh* is located.
@@ -53,16 +53,16 @@ wazuh# cd packages
 **Example Usage:**
 
 1. Build a manager package for amd64 architecture:
-./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --package-format rpm
+./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --system rpm
 
 2. Build a debug agent package for i386 architecture with checksum generation:
-./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --package-format rpm
+./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --system rpm
 
 3. Build a legacy RPM package for CentOS 5 (manager):
-./wazuh_package_builder.sh -t manager -l -s /tmp --package-format rpm
+./wazuh_package_builder.sh -t manager -l -s /tmp --system rpm
 
 4. Build a package using local Wazuh source code:
-./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --package-format rpm
+./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm
 
 
 **Notes:**
@@ -88,10 +88,10 @@ Where the JSON looks like this:
     "inputs":
         {
          "tag":"auto",
-         "arch":"amd64",
-         "package-format":"rpm",
+         "architecture":"amd64",
+         "system":"rpm",
          "revision":"test",
-         "release-package":"false",
+         "is_stage":"false",
          "legacy":"false"
         }
 }
@@ -111,14 +111,13 @@ Where the JSON looks like this:
     "ref":"22080-migrate-and-adapt-the-wazuh-agent-subsystem",
     "inputs":
         {
-         "tag":"auto",
-         "arch":"amd64",
-         "package-format":"deb",
+         "docker_image_tag":"auto",
+         "architecture":"amd64",
+         "system":"deb",
          "revision":"test",
-         "release-package":"false",
+         "is_stage":"false",
          "legacy":"false",
          "checksum":"false",
-         "runner-machine":"ubuntu-latest"
      }
 }
 ```

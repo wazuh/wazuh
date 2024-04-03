@@ -86,7 +86,7 @@ on:
 jobs:
   Build-agent-linux-packages:
     runs-on: ubuntu-latest
-    name: Build ${{ inputs.system }} wazuh-agent on ${{ env.ARCH }}
+    name: Build ${{ inputs.system }} wazuh-agent on ${{ inputs.architecture }}
 
     steps:
       - name: Cancel previous runs
@@ -143,6 +143,13 @@ jobs:
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           echo $FLAGS
           bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+
+      - name: Test install built package
+        run: |
+          if [ ${{ inputs.system }} == 'rpm' ]; then TESTING_DOCKER_IMAGE=centos:latest;
+          else TESTING_DOCKER_IMAGE=amd64/ubuntu:latest; fi
+          package_name=$(find $GITHUB_WORKSPACE/packages/output/ -name "*agent*.${{ inputs.system }}" -exec basename {} \;)
+          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v $GITHUB_WORKSPACE/packages/output/:/packages $TESTING_DOCKER_IMAGE bash /tests/install_component.sh $package_name agent
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
