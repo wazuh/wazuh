@@ -186,6 +186,7 @@ IndexerConnector::IndexerConnector(
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock<std::mutex> lock(m_mutex);
+            auto warningPrinted {false};
             do
             {
                 try
@@ -200,12 +201,20 @@ IndexerConnector::IndexerConnector(
                 }
                 catch (const std::exception& e)
                 {
-                    logWarn(IC_NAME,
-                            "Unable to initializing IndexerConnector for index '%s': %s. Retrying in %ld "
-                            "seconds.",
-                            indexName.c_str(),
-                            e.what(),
-                            sleepTime.count());
+                    logDebug1(IC_NAME,
+                              "Unable to initialize IndexerConnector for index '%s': %s. Retrying in %ld "
+                              "seconds.",
+                              indexName.c_str(),
+                              e.what(),
+                              sleepTime.count());
+                    if (!warningPrinted)
+                    {
+                        logWarn(IC_NAME,
+                                "IndexerConnector initialization failed for index '%s', retrying until the connection "
+                                "is successful.",
+                                indexName.c_str());
+                        warningPrinted = true;
+                    }
                 }
             } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [&]() { return m_stopping.load(); }));
         });
@@ -272,5 +281,5 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                 secureCommunication);
 
     m_initialized = true;
-    logInfo(IC_NAME, "IndexerConnector initialized.");
+    logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", indexName.c_str());
 }
