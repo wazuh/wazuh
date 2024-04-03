@@ -71,6 +71,7 @@ class BlockedIPException(ProblemException):
         ext = {"code": 6000}
         super().__init__(status=status, title=title, detail=detail, ext=ext)
 
+
 class MaxRequestsException(ProblemException):
     """Bocked IP Exception Class."""
     def __init__(self, code):
@@ -78,6 +79,7 @@ class MaxRequestsException(ProblemException):
         ext = {"code": exc.code}
         ext.update({"remediation": exc.remediation} if hasattr(exc, 'remediation') else {})
         super().__init__(status=429, title=exc.title, detail=exc.message, type=exc.type, ext=ext)
+
 
 class ExpectFailedException(ProblemException):
     """Exception for failed expectation (status code 417)."""
