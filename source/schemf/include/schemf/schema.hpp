@@ -22,7 +22,7 @@ private:
     class Validator;
     std::experimental::propagate_const<std::unique_ptr<Validator>> m_validator;
 
-    const Field& get(const DotPath& name) const;
+    Field get(const DotPath& name) const;
 
     /**
      * @brief Convert a field JSON entry to a Schema Field object.
