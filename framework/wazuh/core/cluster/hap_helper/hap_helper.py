@@ -1,5 +1,4 @@
 import logging
-import time
 from asyncio import sleep
 from math import ceil, floor
 
@@ -217,7 +216,7 @@ class HAPHelper:
                 raise WazuhHAPHelperError(3041)
 
             self.logger.debug('Waiting for new servers to go UP')
-            time.sleep(1)
+            await sleep(1)
             backend_stats_iteration += 1
             wazuh_backend_stats = (await self.proxy.get_wazuh_backend_stats()).keys()
 
@@ -414,11 +413,14 @@ class HAPHelper:
         self.logger.info('Setting a value for `hard-stop-after` configuration.')
         agents_distribution = await self.wazuh_dapi.get_agents_node_distribution()
         agents_id = [item['id'] for agents in agents_distribution.values() for item in agents]
+        current_cluster = await self.wazuh_dapi.get_cluster_nodes()
 
         await self.proxy.set_hard_stop_after_value(
             active_agents=len(agents_id),
             chunk_size=self.agent_reconnection_chunk_size,
             agent_reconnection_time=self.agent_reconnection_time,
+            n_managers=len(current_cluster.keys()),
+            server_admin_state_delay=self.SERVER_ADMIN_STATE_DELAY,
         )
 
         if reconnect_agents and len(agents_id) > 0:
