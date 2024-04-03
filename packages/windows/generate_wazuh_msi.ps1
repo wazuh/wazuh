@@ -2,15 +2,13 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 param (
-    [string]$OPTIONAL_REVISION = "",
-    [string]$SIGN = "",
+    [string]$MSI_NAME = "wazuh-agent.msi",
+    [string]$SIGN = "no",
     [string]$WIX_TOOLS_PATH = "",
     [string]$SIGN_TOOLS_PATH = "",
     [switch]$help
     )
 
-$MSI_NAME = ""
-$VERSION = ""
 $CANDLE_EXE = "candle.exe"
 $LIGHT_EXE = "light.exe"
 $SIGNTOOL_EXE = "signtool.exe"
@@ -19,20 +17,19 @@ if(($help.isPresent)) {
     "
     This tool can be used to generate the Windows Wazuh agent msi package.
 
-    PARAMETERS TO BUILD WAZUH-AGENT MSI:
-        1. OPTIONAL_REVISION: 1 or different
-        2. SIGN: yes or no.
-    OPTIONAL PARAMETERS:
-        3. WIX_TOOLS_PATH: Wix tools path
-        4. SIGN_TOOLS_PATH: sign tools path
+    PARAMETERS TO BUILD WAZUH-AGENT MSI (OPTIONALS):
+        1. MSI_NAME: MSI package name output.
+        2. SIGN: yes or no. By default 'no'.
+        3. WIX_TOOLS_PATH: Wix tools path.
+        4. SIGN_TOOLS_PATH: sign tools path.
 
     USAGE:
 
         * WAZUH:
-          $ ./generate_wazuh_msi.ps1  -OPTIONAL_REVISION {{ REVISION }} -SIGN {{ yes|no }} -WIX_TOOLS_PATH {{ PATH }} -SIGN_TOOLS_PATH {{ PATH }}
+          $ ./generate_wazuh_msi.ps1  -MSI_NAME {{ NAME }} -SIGN {{ yes|no }} -WIX_TOOLS_PATH {{ PATH }} -SIGN_TOOLS_PATH {{ PATH }}
 
-            Build a devel msi:    $ ./generate_wazuh_msi.ps1 -OPTIONAL_REVISION 2 -SIGN no
-            Build a prod msi:     $ ./generate_wazuh_msi.ps1 -OPTIONAL_REVISION 1 -SIGN yes -
+            Build a devel msi:    $ ./generate_wazuh_msi.ps1 -MSI_NAME wazuh-agent_4.9.0-0_windows_0ceb378.msi -SIGN no
+            Build a prod msi:     $ ./generate_wazuh_msi.ps1 -MSI_NAME wazuh-agent-4.9.0-1.msi -SIGN yes
     "
     Exit
 }
@@ -43,22 +40,7 @@ if ($PSversion -eq $null) {
     $PSversion = 1 # $PSVersionTable is new with Powershell 2.0
 }
 
-function ComputeMsiName() {
-
-    ## Checking arguments
-    if($OPTIONAL_REVISION -eq ""){
-        Write-Host "-OPTIONAL_REVISION empty. Using default value."
-        $OPTIONAL_REVISION = "1"
-    }
-    $VERSION = Get-Content VERSION
-    $VERSION = $VERSION -replace '[v]',''
-
-    $MSI_NAME="wazuh-agent-$VERSION-$OPTIONAL_REVISION.msi"
-    return $MSI_NAME
-}
-
 function BuildWazuhMsi(){
-    $MSI_NAME = ComputeMsiName
     Write-Host "MSI_NAME = $MSI_NAME"
 
     if($WIX_TOOLS_PATH -ne ""){
@@ -89,7 +71,7 @@ function BuildWazuhMsi(){
     Write-Host "Building MSI installer..."
 
     & $CANDLE_EXE -nologo .\wazuh-installer.wxs -out "wazuh-installer.wixobj" -ext WixUtilExtension -ext WixUiExtension
-    & $LIGHT_EXE ".\wazuh-installer.wixobj" -out $MSI_NAME  -ext WixUtilExtension -ext WixUiExtension
+    & $LIGHT_EXE ".\wazuh-installer.wixobj" -out $MSI_NAME -ext WixUtilExtension -ext WixUiExtension
 
     if($SIGN -eq "yes"){
         Write-Host "Signing $MSI_NAME..."

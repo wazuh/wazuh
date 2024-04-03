@@ -123,20 +123,14 @@ jobs:
     needs: build-agent-windows-base
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
         with:
-          python-version-file: ".github/workflows/.python-version"
-          architecture: x64
-
+          sparse-checkout: |
+            packages/windows/generate_wazuh_msi.ps1
+          sparse-checkout-cone-mode: false
+      
       - name: Add WiX toolkit to PATH
         shell: bash
         run: echo "${WIX}bin" >> $GITHUB_PATH
-
-      - name: Install dependencies
-        run: |
-          pip install -r src/win32/qa/requirements.txt
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -157,8 +151,9 @@ jobs:
 
       - name: Create .msi package
         run: |
+          cp .\packages\windows\generate_wazuh_msi.ps1 C:\win-agent-base\wazuh-local-src\src\win32
           cd C:\win-agent-base\wazuh-local-src\src\win32
-          .\generate_wazuh_msi.ps1 -OPTIONAL_REVISION ${{ inputs.revision }}
+          .\generate_wazuh_msi.ps1 -MSI_NAME ${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi
           cp ${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi C:\win-agent-base\
 
       - name: Upload msi to s3
@@ -166,7 +161,7 @@ jobs:
           aws s3 cp C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
 
       - name: Upload checksum to s3
-        if: inputs.checksum == 'true'
+        if: ${{ inputs.checksum == true }}
         run: |
           sha512sum "C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi" > "C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi.sha512"
           aws s3 cp C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
