@@ -40,6 +40,15 @@ public:
         FILE_HASH
     };
 
+    struct UpdateData
+    {
+        UpdateType type;
+        int offset;
+        std::string fileHash;
+
+        UpdateData() : type(UpdateType::CONTENT), offset(-1), fileHash("") {};
+    };
+
     /**
      * @brief Creates a new instance of ActionOrchestrator.
      *
@@ -84,7 +93,7 @@ public:
      * offset will be reset to zero. If \p type is OFFSET, this value will be used to perform the offset update.
      * @param type Type of update the orchestrator should perform.
      */
-    void run(const int offset = -1, const std::string& fileHash = "", const UpdateType type = UpdateType::CONTENT) const
+    void run(const UpdateData& updateData = UpdateData()) const
     {
         // Create a updater context
         auto spUpdaterContext {std::make_shared<UpdaterContext>()};
@@ -92,18 +101,18 @@ public:
 
         try
         {
-            switch (type)
+            switch (updateData.type)
             {
             case UpdateType::OFFSET:
-                runOffsetUpdate(std::move(spUpdaterContext), offset);
+                runOffsetUpdate(std::move(spUpdaterContext), updateData.offset);
                 break;
             
             case UpdateType::FILE_HASH:
-                runFileHashUpdate(std::move(spUpdaterContext), fileHash);
+                runFileHashUpdate(std::move(spUpdaterContext), updateData.fileHash);
                 break;
             
             case UpdateType::CONTENT:
-                runContentUpdate(std::move(spUpdaterContext), offset == 0);
+                runContentUpdate(std::move(spUpdaterContext), updateData.offset == 0);
                 break;
             
             default:

@@ -51,7 +51,9 @@ void OnDemandManager::startServer()
                                  const auto& it {m_endpoints.find(req.matches[1].str())};
                                  if (it != m_endpoints.end())
                                  {
-                                     it->second(offset, "", ActionOrchestrator::UpdateType::CONTENT);
+                                     auto updateData {ActionOrchestrator::UpdateData()};
+                                     updateData.offset = offset;
+                                     it->second(updateData);
                                      res.status = 200;
                                  }
                                  else
@@ -86,7 +88,10 @@ void OnDemandManager::startServer()
 
                                  if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
                                  {
-                                     it->second(offset, "", ActionOrchestrator::UpdateType::OFFSET);
+                                     auto updateData {ActionOrchestrator::UpdateData()};
+                                     updateData.offset = offset;
+                                     updateData.type = ActionOrchestrator::UpdateType::OFFSET;
+                                     it->second(updateData);
                                      res.status = 200;
                                      res.body = "Offset update processed successfully";
                                  }
@@ -122,7 +127,10 @@ void OnDemandManager::startServer()
 
                                  if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
                                  {
-                                     it->second(-1, fileHash, ActionOrchestrator::UpdateType::FILE_HASH);
+                                     auto updateData {ActionOrchestrator::UpdateData()};
+                                     updateData.type = ActionOrchestrator::UpdateType::FILE_HASH;
+                                     updateData.fileHash = fileHash;
+                                     it->second(updateData);
                                      res.status = 200;
                                      res.body = "File hash update processed successfully";
                                  }
@@ -170,7 +178,7 @@ void OnDemandManager::stopServer()
 }
 
 void OnDemandManager::addEndpoint(const std::string& endpoint,
-                                  std::function<void(int, std::string, ActionOrchestrator::UpdateType)> func)
+                                  std::function<void(ActionOrchestrator::UpdateData)> func)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutex};
     // Check if the endpoint already exists

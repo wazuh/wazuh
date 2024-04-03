@@ -300,8 +300,12 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
     auto actionOrchestrator {
         std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition)};
 
+    constexpr auto OFFSET {0};
+    auto updateData {ActionOrchestrator::UpdateData()};
+    updateData.offset = OFFSET;
+
     // Trigger orchestration with an offset of zero.
-    ASSERT_NO_THROW(actionOrchestrator->run(0));
+    ASSERT_NO_THROW(actionOrchestrator->run(updateData));
 
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
@@ -323,11 +327,14 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
 {
     constexpr auto OFFSET {1234};
+    auto updateData {ActionOrchestrator::UpdateData()};
+    updateData.type = ActionOrchestrator::UpdateType::OFFSET;
+    updateData.offset = OFFSET;
 
     {
         // Trigger orchestrator in a reduced scope to avoid conflicts with the RocksDB connection below.
         ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
-                            .run(OFFSET, "", ActionOrchestrator::UpdateType::OFFSET));
+                            .run(updateData));
     }
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
@@ -343,8 +350,11 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
 TEST_F(ActionOrchestratorTest, RunOffsetUpdateInvalidOffsetThrows)
 {
     constexpr auto OFFSET {-100};
+    auto updateData {ActionOrchestrator::UpdateData()};
+    updateData.type = ActionOrchestrator::UpdateType::OFFSET;
+    updateData.offset = OFFSET;
 
     EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
-                     .run(OFFSET, "", ActionOrchestrator::UpdateType::OFFSET),
+                     .run(updateData),
                  std::invalid_argument);
 }

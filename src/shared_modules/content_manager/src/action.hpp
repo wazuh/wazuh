@@ -79,14 +79,12 @@ public:
      * @return True if the execution was made, false otherwise.
      */
     bool runActionExclusively(const ActionID id,
-                              const int offset = -1,
-                              const std::string& fileHash = "",
-                              const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
+                              const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
     {
         auto expectedValue {false};
         if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
         {
-            runAction(id, offset, fileHash, type);
+            runAction(id, updateData);
         }
         return !expectedValue;
     }
@@ -156,8 +154,8 @@ public:
     void registerActionOnDemand()
     {
         OnDemandManager::instance().addEndpoint(m_topicName,
-                                                [this](int offset, const std::string& fileHash, const ActionOrchestrator::UpdateType type)
-                                                { this->runActionOnDemand(offset, fileHash, type); });
+                                                [this](const ActionOrchestrator::UpdateData& updateData)
+                                                { this->runActionOnDemand(updateData); });
     }
 
     /**
@@ -184,12 +182,10 @@ public:
      * @param offset Manually set current offset to process. Default -1
      * @param type Type of update to perform.
      */
-    void runActionOnDemand(const int offset = -1,
-                        const std::string& fileHash = "",
-                           const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
+    void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
     {
         logDebug2(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::ON_DEMAND, offset, fileHash, type))
+        if (!runActionExclusively(ActionID::ON_DEMAND, updateData))
         {
             logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
         }
@@ -220,15 +216,13 @@ private:
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
     void runAction(const ActionID id,
-                   const int offset = -1,
-                   const std::string& fileHash = "",
-                   const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
+                   const ActionOrchestrator::UpdateData& updateData)
     {
         logDebug2(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
 
         try
         {
-            m_orchestration->run(offset, fileHash, type);
+            m_orchestration->run(updateData);
         }
         catch (const std::exception& e)
         {
