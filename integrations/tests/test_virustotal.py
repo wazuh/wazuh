@@ -98,6 +98,15 @@ sys_args_template = [
     '>/dev/null 2>&1',
 ]
 
+vt_response_data = {
+        'attributes': {
+            'last_analysis_stats': {
+                'malicious': 2
+            },
+            'sha1': 'valid_sha1_value',
+            'last_analysis_date': 'valid_date_value'
+        }
+    }
 
 def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
@@ -266,9 +275,16 @@ def test_request_virustotal_info_md5_after_check_fail_8():
 
 def test_request_virustotal_info_md5_after_check_ok():
     """Test that the md5_after field from alerts are valid md5 hash."""
-    with patch('virustotal.query_api'), patch('virustotal.in_database', return_value=False), patch('virustotal.debug'):
+    with patch('virustotal.query_api', return_value=vt_response_data), \
+         patch('virustotal.in_database', return_value=False), \
+         patch('virustotal.debug'):
+
         response = virustotal.request_virustotal_info(alert_template_md5[8], apikey_virustotal)
-        assert response == alert_output
+
+        assert response['virustotal']['found'] == 1
+        assert response['virustotal']['malicious'] == 1
+        assert response['virustotal']['permalink'] == 'https://www.virustotal.com/gui/file/5d41402abc4b2a76b9719d911017c592/detection'
+        assert response['virustotal']['positives'] == 2
 
 
 def test_request_info_from_api_exception():
