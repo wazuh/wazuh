@@ -388,7 +388,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         self.remove_extra_fields = True
 
     def _format_data_into_dictionary(self) -> str:
-        """Add <field>: 'unknown' when filter field is not within the response. Compute 'status' field, format id with
+        """Add <field>: 'N/A' when filter field is not within the response. Compute 'status' field, format id with
         zero padding and remove non-user-requested fields. Also remove, extra fields (internal key and registration IP).
 
         Returns
@@ -399,7 +399,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         for result in self._data:
             for field in self.filter_fields['fields']:
                 if field not in result.keys():
-                    result[field] = 'unknown'
+                    result[field] = 'N/A'
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 

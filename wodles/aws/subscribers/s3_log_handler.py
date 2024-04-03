@@ -10,11 +10,10 @@ import sys
 
 from os import path
 from typing import List
+from urllib.parse import unquote
 
 try:
     import pyarrow.parquet as pq
-    if sys.version_info < (3, 8):
-        import pyarrow_hotfix  # noqa: F401
 except ImportError:
     print('ERROR: pyarrow module is required.')
     sys.exit(10)
@@ -200,7 +199,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
             An SQS message received from the queue.
         """
 
-        log_path = message_body['log_path']
+        log_path = unquote(message_body['log_path'])
         bucket_path = message_body['bucket_path']
 
         msg = {

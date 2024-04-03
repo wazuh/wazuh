@@ -155,6 +155,18 @@ test_agent_GET_endpoints.tavern.yaml ...........................................
 ============================== 92 passed, 98 warnings in 217.61s (0:03:37) ===============================
 ```
 
+```text
+API integration tests
+
+optional arguments:
+  --build-managers-only            
+                  Recreates only the managers' image once the AIT test environment is built.
+  --nobuild
+                  Prevents rebuilding the environment when running tests once the images are already created.
+  --disable-warnings 
+                  Disables warnings during test execution.
+```
+
 We can also use the `wazuh/api/test/integration/run_tests.py` script. This script includes the possibility to collect a 
 group of tests to be passed. Script arguments:
 

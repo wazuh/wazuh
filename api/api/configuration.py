@@ -6,6 +6,7 @@ import copy
 import datetime
 import os
 from typing import Dict, Tuple, Any, List
+import logging
 
 import yaml
 from cryptography import x509
@@ -20,6 +21,9 @@ import wazuh.core.utils as core_utils
 from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
+
+CACHE_DEPRECATED_MESSAGE = 'The `cache` API configuration option was deprecated in {release} and will be removed ' \
+                           'in the next minor release.'
 
 default_security_configuration = {
     "auth_token_exp_timeout": 900,
@@ -305,6 +309,12 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
     else:
         # If any value is missing from user's configuration, add the default one:
         dict_to_lowercase(configuration)
+
+        # Check if cache is enabled
+        if configuration.get('cache', {}).get('enabled', {}):
+            logger = logging.getLogger('wazuh-api')
+            logger.warning(CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
+
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
         configuration = fill_dict(default_conf, configuration, schema)
 

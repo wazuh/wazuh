@@ -492,20 +492,91 @@ namespace Utils
          */
         void deleteAll() override
         {
-            // Delete from all family columns
-            for (const auto& columnHandle : m_columnsHandles)
+            auto it = m_columnsHandles.begin();
+            std::vector<std::string> columnsNames;
+
+            while (it != m_columnsHandles.end())
             {
-                rocksdb::WriteBatch batch;
-                std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
-                for (it->SeekToFirst(); it->Valid(); it->Next())
+                if ((*it)->GetName() != rocksdb::kDefaultColumnFamilyName)
                 {
-                    batch.Delete(it->key());
+                    auto status = m_db->DropColumnFamily(*it);
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Error deleting data: " + status.ToString());
+                    }
+                    columnsNames.push_back((*it)->GetName());
+
+                    status = m_db->DestroyColumnFamilyHandle(*it);
+                    if (!status.ok())
+                    {
+                        std::cerr << "Failed to free RocksDB column family: " + std::string {status.getState()}
+                                  << std::endl;
+                    }
+
+                    it = m_columnsHandles.erase(it);
+                }
+                else
+                {
+                    rocksdb::WriteBatch batch;
+                    std::unique_ptr<rocksdb::Iterator> itDefault(m_db->NewIterator(rocksdb::ReadOptions(), *it));
+                    for (itDefault->SeekToFirst(); itDefault->Valid(); itDefault->Next())
+                    {
+                        batch.Delete(*it, itDefault->key());
+                    }
+
+                    auto status = m_db->Write(rocksdb::WriteOptions(), &batch);
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Error deleting data: " + status.ToString());
+                    }
+
+                    ++it;
+                }
+            }
+
+            for (const auto& columnName : columnsNames)
+            {
+                createColumn(columnName);
+            }
+        }
+
+        /**
+         * @brief Delete all key-value pairs from specified column.
+         * @param column The column to delete from.
+         */
+        void deleteAll(const std::string& columnName)
+        {
+            // Delete all data from the specified column
+            const auto columnHandle = getColumnFamilyHandle(columnName);
+            if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
+            {
+                auto status = m_db->DropColumnFamily(columnHandle);
+                if (!status.ok())
+                {
+                    throw std::runtime_error("Error deleting data: " + status.ToString());
                 }
 
-                rocksdb::WriteOptions writeOptions;
-                writeOptions.disableWAL = true;
+                status = m_db->DestroyColumnFamilyHandle(columnHandle);
+                if (!status.ok())
+                {
+                    std::cerr << "Failed to free RocksDB column family: " + std::string {status.getState()}
+                              << std::endl;
+                }
 
-                const auto status {m_db->Write(writeOptions, &batch)};
+                m_columnsHandles.erase(std::remove(m_columnsHandles.begin(), m_columnsHandles.end(), columnHandle),
+                                       m_columnsHandles.end());
+                createColumn(columnName);
+            }
+            else
+            {
+                rocksdb::WriteBatch batch;
+                std::unique_ptr<rocksdb::Iterator> itDefault(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
+                for (itDefault->SeekToFirst(); itDefault->Valid(); itDefault->Next())
+                {
+                    batch.Delete(columnHandle, itDefault->key());
+                }
+
+                auto status = m_db->Write(rocksdb::WriteOptions(), &batch);
                 if (!status.ok())
                 {
                     throw std::runtime_error("Error deleting data: " + status.ToString());
@@ -529,8 +600,6 @@ namespace Utils
             // Delete data from all family columns
             for (const auto& columnHandle : m_columnsHandles)
             {
-                rocksdb::WriteBatch batch;
-
                 // Create an iterator for the current column family
                 std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
 
@@ -542,18 +611,45 @@ namespace Utils
 
                     callback(keyStr, valueStr);
 
-                    // Mark the key for deletion in the batch
-                    batch.Delete(keyStr);
+                    auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle, it->key());
+
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Error deleting data: " + status.ToString());
+                    }
                 }
+            }
+        }
 
-                // Configure write options to disable write-ahead-logging (WAL)
-                rocksdb::WriteOptions writeOptions;
-                writeOptions.disableWAL = true;
+        /**
+         * @brief Delete all key-value pairs from the database.
+         *
+         * This method deletes all key-value pairs stored in the database for a specific column family.
+         * Uses a provided callback function to handle each deleted key. After deletion, it commits the changes
+         * to the database.
+         *
+         * @param callback A callback function that takes a string reference representing the deleted key.
+         * @param columnName The column name to delete from.
+         *
+         * @throws std::runtime_error if an error occurs during data deletion.
+         */
+        void deleteAll(const std::function<void(std::string&, std::string&)>& callback, const std::string& columnName)
+        {
+            // Get the column family handle
+            const auto columnHandle = getColumnFamilyHandle(columnName);
 
-                // Write the batch changes to the database
-                const auto status = m_db->Write(writeOptions, &batch);
+            // Create an iterator for the current column family
+            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
 
-                // Check for errors and throw an exception if necessary
+            for (it->SeekToFirst(); it->Valid(); it->Next())
+            {
+                auto keyStr = std::string(it->key().data(), it->key().size());
+                auto valueStr = it->value().ToString();
+
+                callback(keyStr, valueStr);
+
+                auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle, it->key());
+
                 if (!status.ok())
                 {
                     throw std::runtime_error("Error deleting data: " + status.ToString());

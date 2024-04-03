@@ -37,6 +37,8 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         Service name to extract logs from.
     only_logs_after : str
         Date after which obtain logs.
+    account_alias: str
+        AWS account alias.
     region : str
         Region name.
     db_table_name : str
@@ -54,7 +56,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
     """
 
     def __init__(self, reparse: bool, profile: str, iam_role_arn: str,
-                 service_name: str, only_logs_after: str, region: str, db_table_name: str = DEFAULT_TABLENAME,
+                 service_name: str, only_logs_after: str, account_alias: str, region: str, db_table_name: str = DEFAULT_TABLENAME,
                  discard_field: str = None, discard_regex: str = None, sts_endpoint: str = None,
                  service_endpoint: str = None,
                  iam_role_duration: str = None, **kwargs):
@@ -77,6 +79,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         # get account ID
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.only_logs_after = only_logs_after
+        self.account_alias = account_alias
 
         # SQL queries for services
         self.sql_create_table = """
@@ -133,7 +136,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
     def check_region(region: str) -> None:
         """
         Check if the region is valid.
-        
+
         Parameters
         ----------
         region : str

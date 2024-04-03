@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -154,6 +154,24 @@ def test_read_wrong_configuration(mock_exists, config):
             m.return_value = config
             with pytest.raises(api_exception.APIError, match=r'\b2000\b'):
                 configuration.read_yaml_config()
+
+
+@pytest.mark.parametrize('config, expected_msg', [
+    ({}, False),
+    ({'cache': {}}, False),
+    ({'cache': {'enabled': True}}, True),
+    ({'cache': {'enabled': False}}, False)
+])
+@patch('os.path.exists', return_value=True)
+def test_read_cache_configuration(mock_exists, config, expected_msg):
+    """Verify that expected warning is logged when reading the cace API option configuration"""
+    with patch('api.configuration.yaml.safe_load') as m, patch('logging.Logger.warning') as mock_logger, \
+            patch('builtins.open'):
+        m.return_value = config
+        configuration.read_yaml_config()
+
+        if expected_msg:
+            mock_logger.assert_called_once_with(configuration.CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
 
 
 @patch('os.chmod')

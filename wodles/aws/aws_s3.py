@@ -135,6 +135,7 @@ def main(argv):
                                        profile=options.aws_profile,
                                        iam_role_arn=options.iam_role_arn,
                                        only_logs_after=options.only_logs_after,
+                                       account_alias=options.aws_account_alias,
                                        region=region,
                                        aws_log_groups=options.aws_log_groups,
                                        remove_log_streams=options.deleteLogStreams,

@@ -113,7 +113,7 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+\s\d+:\d+:\d+.\d+:\s+%|</prematch>
   <prematch>\p*\w+\s+\d*\s\d+:\d+:\d+.\d+\s+\w+:\s+%|</prematch>
-  <prematch>\w+\s+\d\p**\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
+  <prematch>\w+\s+\d\p*\s\d+\s\d+:\d+:\d+.\d+\s+\w+:\s+%</prematch>
 </decoder>
 
 <decoder name="cisco-ios">

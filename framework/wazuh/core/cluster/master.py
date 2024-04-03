@@ -976,7 +976,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             pending_task.task.cancel()
 
         # Clean cluster files from previous executions.
-        cluster.clean_up(node_name=self.name)
+        self.name and cluster.clean_up(node_name=self.name)
 
 
 class Master(server.AbstractServer):
