@@ -51,7 +51,7 @@ void OnDemandManager::startServer()
                                  const auto& it {m_endpoints.find(req.matches[1].str())};
                                  if (it != m_endpoints.end())
                                  {
-                                     it->second(offset, ActionOrchestrator::UpdateType::CONTENT);
+                                     it->second(offset, "", ActionOrchestrator::UpdateType::CONTENT);
                                      res.status = 200;
                                  }
                                  else
@@ -66,7 +66,7 @@ void OnDemandManager::startServer()
                              }
                          });
 
-            // Capture PUT requests. These requests are used to update the offset from the database.
+            // Capture offset PUT requests. These requests are used to update the offset from the database.
             m_server.Put("/offset",
                          [&](const httplib::Request& req, httplib::Response& res)
                          {
@@ -86,7 +86,7 @@ void OnDemandManager::startServer()
 
                                  if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
                                  {
-                                     it->second(offset, ActionOrchestrator::UpdateType::OFFSET);
+                                     it->second(offset, "", ActionOrchestrator::UpdateType::OFFSET);
                                      res.status = 200;
                                      res.body = "Offset update processed successfully";
                                  }
@@ -102,6 +102,43 @@ void OnDemandManager::startServer()
                                  res.body = e.what();
                              }
                          });
+
+            // Capture hash PUT requests. These requests are used to update the file hash from the database.
+            m_server.Put("/hash",
+                         [&](const httplib::Request& req, httplib::Response& res)
+                         {
+                             std::shared_lock<std::shared_mutex> lock {m_mutex};
+
+                             try
+                             {
+                                 const auto requestData = nlohmann::json::parse(req.body);
+                                 const auto& fileHash {requestData.at("fileHash").get_ref<const std::string&>()};
+                                 const auto& topicName {requestData.at("topicName").get_ref<const std::string&>()};
+
+                                 if (fileHash.empty())
+                                 {
+                                     throw std::invalid_argument {"Invalid hash value: The hash is empty"};
+                                 }
+
+                                 if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
+                                 {
+                                     it->second(-1, fileHash, ActionOrchestrator::UpdateType::FILE_HASH);
+                                     res.status = 200;
+                                     res.body = "File hash update processed successfully";
+                                 }
+                                 else
+                                 {
+                                     res.status = 404;
+                                     res.body = "Topic '" + topicName + "' not found";
+                                 }
+                             }
+                             catch (const std::exception& e)
+                             {
+                                 res.status = 400;
+                                 res.body = e.what();
+                             }
+                         });
+
             m_server.set_address_family(AF_UNIX);
 
             std::filesystem::remove(ONDEMAND_SOCK);
@@ -133,7 +170,7 @@ void OnDemandManager::stopServer()
 }
 
 void OnDemandManager::addEndpoint(const std::string& endpoint,
-                                  std::function<void(int, ActionOrchestrator::UpdateType)> func)
+                                  std::function<void(int, std::string, ActionOrchestrator::UpdateType)> func)
 {
     std::unique_lock<std::shared_mutex> lock {m_mutex};
     // Check if the endpoint already exists

@@ -36,7 +36,8 @@ public:
     enum UpdateType
     {
         CONTENT,
-        OFFSET
+        OFFSET,
+        FILE_HASH
     };
 
     /**
@@ -83,7 +84,7 @@ public:
      * offset will be reset to zero. If \p type is OFFSET, this value will be used to perform the offset update.
      * @param type Type of update the orchestrator should perform.
      */
-    void run(const int offset = -1, const UpdateType type = UpdateType::CONTENT) const
+    void run(const int offset = -1, const std::string& fileHash = "", const UpdateType type = UpdateType::CONTENT) const
     {
         // Create a updater context
         auto spUpdaterContext {std::make_shared<UpdaterContext>()};
@@ -91,13 +92,22 @@ public:
 
         try
         {
-            if (type == UpdateType::OFFSET)
+            switch (type)
             {
-                return runOffsetUpdate(std::move(spUpdaterContext), offset);
-            }
-            else
-            {
-                return runContentUpdate(std::move(spUpdaterContext), offset == 0);
+            case UpdateType::OFFSET:
+                runOffsetUpdate(std::move(spUpdaterContext), offset);
+                break;
+            
+            case UpdateType::FILE_HASH:
+                runFileHashUpdate(std::move(spUpdaterContext), fileHash);
+                break;
+            
+            case UpdateType::CONTENT:
+                runContentUpdate(std::move(spUpdaterContext), offset == 0);
+                break;
+            
+            default:
+                break;
             }
         }
         catch (const std::exception& e)
@@ -147,6 +157,26 @@ private:
         FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(std::move(spUpdaterContext));
     }
 
+    void runFileHashUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const std::string& fileHash) const
+    {
+        logDebug2(WM_CONTENTUPDATER, "Running '%s' file hash update", m_spBaseContext->topicName.c_str());
+
+        if (fileHash.empty())
+        {
+            throw std::invalid_argument {"Invalid hash value: The hash is empty"};
+        }
+
+        if (spUpdaterContext->spUpdaterBaseContext->spRocksDB)
+        {
+            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
+                Utils::getCompactTimestamp(std::time(nullptr)),
+                fileHash,
+                Components::Columns::DOWNLOADED_FILE_HASH);
+        }
+
+        spUpdaterContext->spUpdaterBaseContext->downloadedFileHash = fileHash;
+    }
+
     /**
      * @brief Triggers a new orchestration that updates the content.
      *
@@ -194,21 +224,8 @@ private:
             spUpdaterContext->data = std::move(originalData);
         }
 
-        // Store last file hash.
-        const std::string lastDownloadedFileHash {spUpdaterContext->spUpdaterBaseContext->downloadedFileHash};
-
         // Run the updater chain
         m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
-
-        // Update filehash if it has changed.
-        if (spUpdaterContext->spUpdaterBaseContext->spRocksDB &&
-            lastDownloadedFileHash != spUpdaterContext->spUpdaterBaseContext->downloadedFileHash)
-        {
-            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)),
-                spUpdaterContext->spUpdaterBaseContext->downloadedFileHash,
-                Components::Columns::DOWNLOADED_FILE_HASH);
-        }
     }
 
     /**

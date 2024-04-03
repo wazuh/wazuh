@@ -338,7 +338,7 @@ TEST_F(ActionTest, RunActionOnDemandOffsetUpdate)
     action.registerActionOnDemand();
 
     constexpr auto OFFSET {1000};
-    ASSERT_NO_THROW(action.runActionOnDemand(OFFSET, ActionOrchestrator::UpdateType::OFFSET));
+    ASSERT_NO_THROW(action.runActionOnDemand(OFFSET, "", ActionOrchestrator::UpdateType::OFFSET));
 
     action.unregisterActionOnDemand();
     action.clearEndpoints();
