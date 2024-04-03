@@ -290,7 +290,10 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
                 content_length = int(request.headers["Content-Length"])
                 max_upload_size = default_api_configuration["max_upload_size"]
                 if content_length > max_upload_size:
-                    raise ExpectFailedException(status=417, title="Expectation failed", detail="Unknown Expect")
+                    raise ExpectFailedException(status=417, title="Expectation failed",
+                                                detail=f"Maximum content size limit ({max_upload_size}) exceeded "
+                                                       f"({content_length} bytes read)")
                 
         response = await call_next(request)
         return response
+    

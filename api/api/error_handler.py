@@ -70,11 +70,12 @@ async def expect_failed_error_handler(request: ConnexionRequest, exc: ExpectFail
     """
     problem = {
         "title": "Expectation failed",
-        "detail": "Unknown Expect",
-        "error": 417
     }
+    if exc.detail:
+        problem['detail'] = exc.detail
+
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
-                        status_code=417, content_type=ERROR_CONTENT_TYPE)
+                         status_code=exc.status, content_type=ERROR_CONTENT_TYPE)
 
 
 async def unauthorized_error_handler(request: ConnexionRequest,
