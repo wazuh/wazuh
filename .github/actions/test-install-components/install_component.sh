@@ -35,4 +35,8 @@ else
     exit 1
 fi
 
-$sys_type install -y "/packages/$package_name"
+if [ "${ARCH}" = "i386" ] || [ "${ARCH}" = "armv7hl" ]; then
+    linux="linux32"
+fi
+
+$linux $sys_type install -y "/packages/$package_name"

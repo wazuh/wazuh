@@ -146,15 +146,9 @@ jobs:
 
       - name: Test install built package
         run: |
-          if [ ${{ inputs.system }} == 'rpm' ]; then
-            TESTING_DOCKER_IMAGE=centos:latest;
-          else
-            TESTING_DOCKER_IMAGE=amd64/ubuntu:latest;
-          fi
-
           package_name=$(find /tmp -maxdepth 1 -type f -name "*agent*.${{ inputs.system }}" -exec basename {} 2>/dev/null \;)
           if [ -z "$package_name" ]; then echo "No package found matching the pattern!"; exit 1; fi
-          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages $TESTING_DOCKER_IMAGE bash /tests/install_component.sh $package_name agent
+          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $package_name agent
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
