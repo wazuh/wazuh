@@ -150,9 +150,14 @@ namespace Utils
         rocksdb::ColumnFamilyOptions buildColumnFamilyOptions() const
         {
             rocksdb::ColumnFamilyOptions columnFamilyOptions;
+            // Amount of data to build up in memory (backed by an unsorted log
+            // on disk) before converting to a sorted on-disk file.
             columnFamilyOptions.write_buffer_size = 64 * 1024 * 1024;
+            // The maximum number of write buffers that are built up in memory.
             columnFamilyOptions.max_write_buffer_number = 2;
+            // The maximum number of levels of compaction to allow.
             columnFamilyOptions.num_levels = 4;
+            // The size of the LRU cache used to prevent cold reads.
             columnFamilyOptions.table_factory.reset(rocksdb::NewBlockBasedTableFactory(buildTableOptions()));
 
             return columnFamilyOptions;
@@ -170,15 +175,28 @@ namespace Utils
             }
 
             rocksdb::Options options;
+            // If the total size of all live memtables of all the DBs exceeds
+            // a limit, a flush will be triggered in the next DB to which the next write
+            // is issued, as long as there is one or more column family not already
+            // flushing.
             options.write_buffer_manager = m_writeManager;
+            // If true, the database will be created if it is missing.
             options.create_if_missing = true;
+            // If true, log files will be kept around to restore the database
             options.keep_log_file_num = 1;
+            // Log level for the info log.
             options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+            // The maximum number of files to keep open at the same time.
             options.max_open_files = 256;
+            // The maximum levels of compaction to allow.
             options.num_levels = 4;
+            // Amount of data to build up in memory (backed by an unsorted log
+            // on disk) before converting to a sorted on-disk file.
             options.write_buffer_size = 64 * 1024 * 1024;
+            // The maximum number of write buffers that are built up in memory.
             options.max_write_buffer_number = 2;
 
+            // The size of the LRU cache used to prevent cold reads.
             options.table_factory.reset(NewBlockBasedTableFactory(buildTableOptions()));
             return options;
         }
