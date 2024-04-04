@@ -18,7 +18,6 @@
 #include "stringHelper.h"
 #include "commonDefs.h"
 
-using namespace std::chrono_literals;
 auto constexpr MAX_TRIES = 5;
 
 SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFactory,
@@ -627,8 +626,9 @@ bool SQLiteDBEngine::cleanDB(const std::string& path)
 
             for (uint8_t amountTries = 0; amountTries < MAX_TRIES && isRemoved; amountTries++)
             {
-                std::this_thread::sleep_for(1s); //< Sleep for 1s
-                std::cerr << "Sleep for 1s and try to delete database again.\n";
+                auto wait {amountTries + 1};
+                std::this_thread::sleep_for(std::chrono::seconds(wait)); //< Waiting time incrementally up to MAX_TRIES seconds.
+                std::cerr << "Sleep for " << wait << "s and try to delete database again.\n";
                 isRemoved = std::remove(path.c_str());
             }
 
