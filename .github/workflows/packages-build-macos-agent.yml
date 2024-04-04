@@ -80,8 +80,15 @@ jobs:
       - name: Test install built manager
         working-directory: packages/macos/output
         run: |
-            sudo installer -pkg *agent*pkg -target /
-        
+          sudo echo "WAZUH_MANAGER='10.0.0.2'" > /tmp/wazuh_envs && sudo installer -pkg *agent*pkg -target /
+          sudo /Library/Ossec/bin/wazuh-control start
+          if [ $(sudo /Library/Ossec/bin/wazuh-control status | grep 'is running...' | wc -l) -gt "0" ];
+            then echo "Installation successfully."
+          else
+            echo "The installation could not be completed successfully. The package will not be uploaded.";
+            exit 1;
+          fi
+
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
         with:
