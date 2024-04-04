@@ -118,7 +118,11 @@ public:
 
                 case UpdateType::CONTENT: runContentUpdate(std::move(spUpdaterContext), updateData.offset == 0); break;
 
-                default: break;
+                // LCOV_EXCL_START
+                default:
+                    logDebug1(WM_CONTENTUPDATER, "Invalid update type, the orchestration will be skipped");
+                    break;
+                    // LCOV_EXCL_STOP
             }
         }
         catch (const std::exception& e)
