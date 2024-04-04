@@ -25,7 +25,7 @@ protected:
     std::string m_datagramSockPath;
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         m_datagramSockPath = uniquePath().string();
     }

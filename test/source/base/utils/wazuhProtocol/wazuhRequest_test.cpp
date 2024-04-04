@@ -7,7 +7,7 @@
 class WazuhRequest_validate : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -15,7 +15,7 @@ protected:
 class WazuhRequest_getCommand : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -23,7 +23,7 @@ protected:
 class WazuhRequest_getParameters : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -31,7 +31,7 @@ protected:
 class WazuhRequest_create : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -39,7 +39,7 @@ protected:
 class WazuhResponse : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };

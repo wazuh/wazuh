@@ -40,7 +40,7 @@ Feature: Configuration API Management
   Scenario: Failed when trying to update an server.log_level with avoid value
     Given I have a valid configuration file called general.conf
     When I send a request to update the iteam "server.log_level" to "9999" value
-    Then I should receive a failed response indicating "--log_level: 9999 not in {trace,debug,info,warning,error,critical,off}"
+    Then I should receive a failed response indicating "--log_level: 9999 not in {trace,debug,info,warning,error,critical}"
 
   Scenario: Successful verification when updating a configuration parameter without save configuration
     Given I have a valid configuration file called general.conf

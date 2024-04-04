@@ -124,26 +124,16 @@ void runStart(ConfHandler confManager)
 
     // Logging init
     logging::LoggingConfig logConfig;
-    logConfig.level = level;
+    logConfig.level = logging::strToLevel(level);
     logConfig.truncate = logTruncate;
     logConfig.filePath = logOutput;
 
     exitHandler.add([]() { logging::stop(); });
-
-    try
-    {
-        logging::start(logConfig);
-    }
-    catch (const std::exception& e)
-    {
-        exitHandler.execute();
-        std::cerr << e.what() << '\n';
-        return;
-    }
+    logging::start(logConfig);
 
     LOG_DEBUG("Logging configuration: filePath='{}', level='{}', flushInterval={}ms.",
               logConfig.filePath,
-              logConfig.level,
+              logging::levelToStr(logConfig.level),
               logConfig.flushInterval);
     LOG_INFO("Logging initialized.");
 
@@ -447,9 +437,17 @@ void configure(CLI::App_p app)
     serverApp->require_subcommand(1);
     auto options = std::make_shared<Options>();
 
-    // Loggin module
     serverApp->add_option("-l, --log_level", options->level, "Sets the logging level.")
-        ->check(CLI::IsMember({"trace", "debug", "info", "warning", "error", "critical", "off"}))
+        ->check(CLI::IsMember(
+            [&]()
+            {
+                std::vector<std::string> validLevels;
+                for (auto i = static_cast<int>(logging::Level::Trace); i <= static_cast<int>(logging::Level::Critical); ++i)
+                {
+                    validLevels.push_back(logging::levelToStr(static_cast<logging::Level>(i)));
+                }
+                return validLevels;
+            }()))
         ->default_val(ENGINE_LOG_LEVEL)
         ->envname(ENGINE_LOG_LEVEL_ENV);
 
@@ -457,10 +455,12 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_LOG_OUTPUT)
         ->envname(ENGINE_LOG_OUTPUT_ENV);
 
-    serverApp->add_option("--log_truncate", options->logTruncate, "Allows whether or not to delete the log file at each start of the engine")
+    serverApp
+        ->add_option("--log_truncate",
+                     options->logTruncate,
+                     "Allows whether or not to delete the log file at each start of the engine")
         ->default_val(ENGINE_LOG_TRUNCATE)
         ->envname(ENGINE_LOG_TRUNCATE_ENV);
-
 
     // Server module
     serverApp

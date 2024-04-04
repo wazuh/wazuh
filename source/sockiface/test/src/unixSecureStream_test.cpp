@@ -28,11 +28,9 @@ protected:
     std::string m_streamSockPath;
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_streamSockPath = uniquePath().string();
     }
-
-    void TearDown() override { logging::stop(); }
 };
 
 TEST_F(unixSecureStreamSocket, build)

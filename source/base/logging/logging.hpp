@@ -16,73 +16,153 @@ namespace logging
  * @brief Default path for the error log file.
  * The default path where error logs should be saved.
  */
-constexpr char DEFAULT_LOG_ERROR_PATH[] {"/dev/stderr"};
+constexpr auto STD_ERR_PATH {"/dev/stderr"};
 
 /**
  * @brief Default path for the info log file.
  * The default path where info logs should be saved.
  */
-constexpr char DEFAULT_LOG_INFO_PATH[] {"/dev/stdout"};
+constexpr auto STD_OUT_PATH {"/dev/stdout"};
+
+// constexpr auto WAZUH_LOG_HEADER {"%D %T wazuh-engine[%P] %s:%# at %!(): %l: %v"};
 
 /**
  * @brief Default log header format.
  * The default format used for log messages.
  */
-constexpr char DEFAULT_LOG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l: %v"};
+constexpr auto DEFAULT_LOG_HEADER {"%Y-%m-%d %T.%e %P:%t %l: %v"};
 
 /**
  * @brief Log header format for debug messages.
  * The format used for log messages with debug level.
  * It includes additional information such as source file, function, and line number.
  */
-constexpr char LOG_DEBUG_HEADER[] {"%Y-%m-%d %T.%e %P:%t %l [%s %! %#]: %v"};
+constexpr auto LOG_DEBUG_HEADER {"%Y-%m-%d %T.%e %P:%t %s:%# at %!(): %l: %v"};
 
 /**
  * @brief Default log level.
  * Possible values: "trace", "debug", "info", "warning", "error", "critical", "off".
  */
-constexpr char DEFAULT_LOG_LEVEL[] {"info"};
+constexpr auto DEFAULT_LOG_LEVEL {"info"};
 
 /**
  * @brief Default number of dedicated threads.
  * 0 means no dedicated threads.
  */
-constexpr uint32_t DEFAULT_LOG_THREADS {0};
+constexpr auto DEFAULT_LOG_THREADS {0};
 
 /**
  * @brief Default size of the log threads' queue.
  */
-constexpr uint32_t DEFAULT_LOG_THREADS_QUEUE_SIZE {8192};
+constexpr auto DEFAULT_LOG_THREADS_QUEUE_SIZE {8192};
 
 /**
  * @brief Default flush interval for logs.
  * Value in milliseconds.
  */
-constexpr uint32_t DEFAULT_LOG_FLUSH_INTERVAL {1};
+constexpr auto DEFAULT_LOG_FLUSH_INTERVAL {1};
 
 /**
- * @brief Type alias for mapping log level strings to their corresponding enum values.
+ * @brief Enum class defining logging levels.
+ *
+ * This enum class represents different logging levels such as Trace, Debug, Info, Warn, Err, Critical, and Off.
  */
-using LogLevelMap = std::map<std::string, spdlog::level::level_enum>;
+enum class Level
+{
+    Trace,    /**< Trace logging level. */
+    Debug,    /**< Debug logging level. */
+    Info,     /**< Information logging level. */
+    Warn,     /**< Warning logging level. */
+    Err,      /**< Error logging level. */
+    Critical, /**< Critical logging level. */
+    Off       /**< Turn off logging. */
+};
 
 /**
- * @brief Map of log level strings to their corresponding enum values.
+ * @brief Alias for mapping logging levels to spdlog levels.
+ *
+ * This alias represents a mapping between custom logging levels and corresponding spdlog levels.
  */
-const LogLevelMap SEVERITY_LEVEL {{"trace", spdlog::level::trace},
-                                  {"debug", spdlog::level::debug},
-                                  {"info", spdlog::level::info},
-                                  {"warning", spdlog::level::warn},
-                                  {"error", spdlog::level::err},
-                                  {"critical", spdlog::level::critical},
-                                  {"off", spdlog::level::off}};
+using LevelMap = std::unordered_map<Level, spdlog::level::level_enum>;
+
+/**
+ * @brief Map of custom logging levels to spdlog levels.
+ *
+ * This static constant variable represents a mapping of custom logging levels to corresponding spdlog levels.
+ * It is used for converting between custom logging levels and spdlog levels.
+ */
+static const LevelMap SEVERITY_LEVEL {
+    {Level::Trace, spdlog::level::trace},       /**< Trace level mapping. */
+    {Level::Debug, spdlog::level::debug},       /**< Debug level mapping. */
+    {Level::Info, spdlog::level::info},         /**< Info level mapping. */
+    {Level::Warn, spdlog::level::warn},         /**< Warning level mapping. */
+    {Level::Err, spdlog::level::err},           /**< Error level mapping. */
+    {Level::Critical, spdlog::level::critical}, /**< Critical level mapping. */
+    {Level::Off, spdlog::level::off}            /**< Off level mapping. */
+};
+
+/**
+ * @brief Get string representation of the level
+ *
+ * @param level level to convert
+ * @return constexpr auto String representation of the level
+ */
+constexpr static auto levelToStr(Level level)
+{
+    switch (level)
+    {
+        case Level::Trace: return "trace";
+        case Level::Debug: return "debug";
+        case Level::Info: return "info";
+        case Level::Warn: return "warning";
+        case Level::Err: return "error";
+        case Level::Critical: return "critical";
+        default: return "off";
+    }
+}
+
+/**
+ * @brief Get level from string representation
+ *
+ * @param level String representation of the level
+ * @return spdlog::level::level_enum
+ */
+constexpr static auto strToLevel(std::string_view level)
+{
+    if (level == levelToStr(Level::Trace))
+    {
+        return Level::Trace;
+    }
+    else if (level == levelToStr(Level::Debug))
+    {
+        return Level::Debug;
+    }
+    else if (level == levelToStr(Level::Info))
+    {
+        return Level::Info;
+    }
+    else if (level == levelToStr(Level::Warn))
+    {
+        return Level::Warn;
+    }
+    else if (level == levelToStr(Level::Err))
+    {
+        return Level::Err;
+    }
+    else if (level == levelToStr(Level::Critical))
+    {
+        return Level::Critical;
+    }
+    return Level::Off;
+}
 
 /**
  * @brief Structure holding logging configuration parameters.
  */
 struct LoggingConfig
 {
-    std::string filePath {DEFAULT_LOG_INFO_PATH};              ///< Path to the log file.
-    std::string level {DEFAULT_LOG_LEVEL};                     ///< Log level.
+    std::string filePath {STD_OUT_PATH};                       ///< Path to the log file.
+    Level level {Level::Info};                                 ///< Log level.
     const uint32_t flushInterval {DEFAULT_LOG_FLUSH_INTERVAL}; ///< Flush interval in milliseconds.
     const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};     ///< Number of dedicated threads.
     const uint32_t queueSize {DEFAULT_LOG_THREADS_QUEUE_SIZE}; ///< Size of the log queue for dedicated threads.
@@ -108,18 +188,11 @@ inline std::shared_ptr<spdlog::logger> getDefaultLogger()
  * @brief Sets the log level.
  * @param levelStr The log level as a string.
  */
-inline void setLevel(const std::string& levelStr)
+inline void setLevel(Level level)
 {
-    auto levelIter = SEVERITY_LEVEL.find(levelStr);
-    if (levelIter == SEVERITY_LEVEL.end())
-    {
-        throw std::runtime_error(
-            fmt::format("An error occurred while setting the log level: '{}' is not defined", levelStr));
-    }
+    getDefaultLogger()->set_level(SEVERITY_LEVEL.at(level));
 
-    getDefaultLogger()->set_level(levelIter->second);
-
-    if (levelIter->second == spdlog::level::debug)
+    if (level <= Level::Debug)
     {
         getDefaultLogger()->set_pattern(LOG_DEBUG_HEADER);
     }
@@ -135,44 +208,28 @@ inline void setLevel(const std::string& levelStr)
  */
 inline void start(const LoggingConfig& cfg)
 {
-    try
-    {
-        if (0 < cfg.dedicatedThreads)
-        {
-            // Here we set the amount of DEDICATED threads
-            spdlog::init_thread_pool(cfg.queueSize, cfg.dedicatedThreads);
-        }
+    std::shared_ptr<spdlog::logger> logger;
 
-        if (!cfg.filePath.empty())
-        {
-            if (cfg.filePath == DEFAULT_LOG_ERROR_PATH)
-            {
-                auto logger = spdlog::stderr_color_mt("default");
-                logger->flush_on(spdlog::level::err);
-            }
-            else if (cfg.filePath == DEFAULT_LOG_INFO_PATH)
-            {
-                auto logger = spdlog::stdout_color_mt("default");
-                logger->flush_on(spdlog::level::info);
-            }
-            else
-            {
-                spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
-                spdlog::flush_every(std::chrono::milliseconds(cfg.flushInterval));
-                setLevel(cfg.level);
-            }
-        }
-        else
-        {
-            spdlog::stdout_color_mt("default");
-            spdlog::flush_every(std::chrono::milliseconds(cfg.flushInterval));
-            setLevel(cfg.level);
-        }
-    }
-    catch (const std::exception& e)
+    if (0 < cfg.dedicatedThreads)
     {
-        throw std::runtime_error(fmt::format("Log initialization failed: {}", e.what()));
+        spdlog::init_thread_pool(cfg.queueSize, cfg.dedicatedThreads);
     }
+
+    if (cfg.filePath == STD_ERR_PATH)
+    {
+        logger = spdlog::stderr_color_mt("default");
+    }
+    else if (cfg.filePath == STD_OUT_PATH)
+    {
+        logger = spdlog::stdout_color_mt("default");
+    }
+    else
+    {
+        logger = spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
+    }
+
+    setLevel(cfg.level);
+    logger->flush_on(spdlog::level::trace);
 }
 
 /**
@@ -190,8 +247,7 @@ inline void testInit()
     if (!initialized)
     {
         LoggingConfig logConfig;
-        logConfig.level = "off";
-        logConfig.filePath = "";
+        logConfig.level = Level::Off;
         start(logConfig);
         initialized = true;
     }
@@ -199,7 +255,9 @@ inline void testInit()
 
 } // namespace logging
 
-#define LOG_TRACE(msg, ...) logging::getDefaultLogger()->trace(msg, ##__VA_ARGS__)
+#define LOG_TRACE(msg, ...)                                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::trace, msg, ##__VA_ARGS__)
 #define LOG_DEBUG(msg, ...)                                                                                            \
     logging::getDefaultLogger()->log(                                                                                  \
         spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::debug, msg, ##__VA_ARGS__)

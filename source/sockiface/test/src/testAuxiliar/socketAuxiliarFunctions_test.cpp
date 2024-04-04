@@ -30,7 +30,7 @@ protected:
     std::string m_testPath;
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_testPath = uniquePath().string();
     }
 
@@ -44,7 +44,7 @@ protected:
     std::string m_testPath;
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_testPath = uniquePath().string();
     }
 
@@ -58,7 +58,7 @@ protected:
     std::string m_testPath;
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_testPath = uniquePath().string();
     }
 

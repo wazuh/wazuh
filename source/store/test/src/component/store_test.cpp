@@ -6,21 +6,6 @@
 
 #include <logging/logging.hpp>
 
-void inline initLogging(void)
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.level = "off";
-        logConfig.filePath = "";
-        logging::start(logConfig);
-        initialized = true;
-    }
-}
-
 using namespace store;
 static const std::filesystem::path TEST_PATH = "/tmp/store_test";
 
@@ -62,7 +47,7 @@ protected:
     void SetUp() override
     {
         utest_path = uniquePath();
-        initLogging();
+        logging::testInit();
         std::filesystem::remove_all(utest_path);
         m_fDriver = std::make_shared<drivers::FileDriver>(utest_path, true);
     }

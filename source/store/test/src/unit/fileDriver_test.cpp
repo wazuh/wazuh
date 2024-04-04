@@ -16,20 +16,6 @@ static const base::Name TEST_NAME_COLLECTION(std::vector<std::string> {"type", "
 static const json::Json TEST_JSON {R"({"key": "value"})"};
 static const json::Json TEST_JSON2 {R"({"key": "value2"})"};
 
-void inline initLogging(void)
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.level = "off";
-        logging::start(logConfig);
-        initialized = true;
-    }
-}
-
 using namespace store::drivers;
 
 std::filesystem::path uniquePath()
@@ -49,7 +35,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_path = uniquePath();
         m_filePath = m_path / "__test_file__";
         std::filesystem::create_directories(m_path);
@@ -58,7 +44,6 @@ protected:
 
     void TearDown() override
     {
-        logging::stop();
         std::filesystem::remove_all(m_path);
     }
 };
