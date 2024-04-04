@@ -12,26 +12,24 @@ on:
         default: 'auto'
       revision:
         description: |
-          Package revision (name and metadata)
+          Package revision (name and metadata).
           Default is '0'.
         required: false
         default: '0'
       is_stage:
         description: |
-          Should set development/production nomenclature
-          True if WPK name should have production format.
-          False if WPK name should have developer format.
+          Should set development/production nomenclature.
+          True if package name should have production format.
+          False if package name should have developer format.
           Default is 'false'.
         type: boolean
         required: false
-        default: false
       debug:
         description: |
           Activate debug mode in the compilation.
           Default is 'false'.
         type: boolean
         required: false
-        default: false
       trust_verification:
         type: choice
         description: |
@@ -48,7 +46,7 @@ on:
         default: '1'
       ca_name:
         description: |
-          CA name to be used to verify the trust of the agent."
+          CA name to be used to verify the trust of the agent.
           Default is 'DigiCert Assured ID Root CA'.
         required: false
         default: 'DigiCert Assured ID Root CA'
@@ -56,7 +54,30 @@ on:
         description: Generate checksum on the same directory than the package.
         type: boolean
         required: false
-        default: false
+
+  workflow_call:
+    inputs:
+      docker_image_tag:
+        type: string
+        required: false
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      debug:
+        type: boolean
+        required: false
+      trust_verification:
+        type: string
+        required: false
+      ca_name:
+        type: string
+        required: false
+      checksum:
+        type: boolean
+        required: false
 
 jobs:
   build-agent-windows-base:
@@ -103,6 +124,7 @@ jobs:
         run: |
           FLAGS="-s /tmp/windowsPKG --dont-build-docker -j $(nproc) -o ${{ env.PKG_NAME }}.zip "
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification }} --tag ${{ env.TAG }} -c "${{ inputs.ca_name }}" $FLAGS"
           bash generate_compiled_windows_agent.sh -t ${{ inputs.trust_verification }} --tag ${{ env.TAG }} -c "${{ inputs.ca_name }}" $FLAGS
 
       - name: Set up AWS CLI
@@ -147,7 +169,7 @@ jobs:
         run: |
           7z x C:\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.zip -oC:\win-agent-base
 
-      - name: Create .msi package
+      - name: Create MSI package
         run: |
           cp .\packages\windows\generate_wazuh_msi.ps1 C:\win-agent-base\wazuh-local-src\src\win32
           cd C:\win-agent-base\wazuh-local-src\src\win32
@@ -157,20 +179,18 @@ jobs:
       - name: Install Windows agent
         run: |
           cd C:\win-agent-base\
-          .\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi /q WAZUH_MANAGER="1.1.1.1" /l installer.log
-          sleep 10
-          dir
+          Start-Process -FilePath "./${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi" -ArgumentList "/q WAZUH_MANAGER='1.1.1.1' /l installer.log" -wait
           $SEL = Select-String -Path 'C:\win-agent-base\installer.log' -Pattern "Wazuh Agent -- Installation completed successfully."
-          cat C:\win-agent-base\installer.log
           if($SEL -eq $null) {
+            cat 'C:\win-agent-base\installer.log'
             exit 1
           }
 
-      - name: Upload msi to s3
+      - name: Upload MSI to S3
         run: |
           aws s3 cp C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
 
-      - name: Upload checksum to s3
+      - name: Upload checksum to S3
         if: ${{ inputs.checksum == true }}
         run: |
           sha512sum "C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi" > "C:\win-agent-base\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi.sha512"
