@@ -192,6 +192,7 @@ def start(params: dict):
     # Maximum body size that the API can accept (bytes)
     if api_conf['access']['max_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
+    app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware)
@@ -211,6 +212,7 @@ def start(params: dict):
         )
 
     # Add error handlers to format exceptions
+    app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)
     app.add_error_handler(jwt.exceptions.PyJWTError, error_handler.jwt_error_handler)
     app.add_error_handler(Unauthorized, error_handler.unauthorized_error_handler)
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
@@ -339,7 +341,7 @@ if __name__ == '__main__':
     from api import __path__ as api_path
     from api import error_handler
     from api.alogging import set_logging
-    from api.api_exception import APIError
+    from api.api_exception import APIError, ExpectFailedException
     from api.configuration import api_conf, generate_private_key, generate_self_signed_certificate, security_conf
     from api.constants import API_LOG_PATH
     from api.middlewares import (
@@ -347,6 +349,7 @@ if __name__ == '__main__':
         CheckRateLimitsMiddleware,
         SecureHeadersMiddleware,
         WazuhAccessLoggerMiddleware,
+        CheckExpectHeaderMiddleware,
     )
     from api.signals import lifespan_handler
     from api.uri_parser import APIUriParser
