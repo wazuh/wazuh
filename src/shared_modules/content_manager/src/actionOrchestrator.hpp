@@ -46,18 +46,15 @@ public:
      */
     struct UpdateData
     {
-        UpdateType type;      ///< Orchestration update type.
-        int offset;           ///< Offset value used in the update.
-        std::string fileHash; ///< Hash value used in the update.
+        UpdateType type = UpdateType::CONTENT; ///< Orchestration update type.
+        int offset = -1;                       ///< Offset value used in the update.
+        std::string fileHash;                  ///< Hash value used in the update.
 
         /**
-         * @brief Struct constructor. Initialize the struct with default values.
+         * @brief Struct empty constructor.
          *
          */
-        UpdateData()
-            : type(UpdateType::CONTENT)
-            , offset(-1)
-            , fileHash(std::string()) {};
+        UpdateData() {};
     };
 
     /**
