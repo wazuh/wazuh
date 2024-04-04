@@ -171,6 +171,12 @@ private:
         FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(std::move(spUpdaterContext));
     }
 
+    /**
+     * @brief Performs a file hash update in the database with the specified hash.
+     *
+     * @param spUpdaterContext Updater context.
+     * @param fileHash Hash value to be used in the update.
+     */
     void runFileHashUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const std::string& fileHash) const
     {
         logDebug2(WM_CONTENTUPDATER, "Running '%s' file hash update", m_spBaseContext->topicName.c_str());

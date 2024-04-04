@@ -357,3 +357,36 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdateInvalidOffsetThrows)
     EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData),
                  std::invalid_argument);
 }
+
+/**
+ * @brief Tests the file hash update process execution.
+ *
+ */
+TEST_F(ActionOrchestratorTest, RunFileHashUpdate)
+{
+    constexpr auto HASH_VALUE {"hash"};
+
+    auto updateData {ActionOrchestrator::UpdateData()};
+    updateData.type = ActionOrchestrator::UpdateType::FILE_HASH;
+    updateData.fileHash = HASH_VALUE;
+
+    ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData));
+
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto fullDatabasePath {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
+    auto wrapper {Utils::RocksDBWrapper(fullDatabasePath)};
+    EXPECT_EQ(wrapper.getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString(), HASH_VALUE);
+}
+
+/**
+ * @brief Tests the file hash update process execution with an empty hash. An exception is expected.
+ *
+ */
+TEST_F(ActionOrchestratorTest, RunFileHashUpdateInvalidHashThrows)
+{
+    auto updateData {ActionOrchestrator::UpdateData()};
+    updateData.type = ActionOrchestrator::UpdateType::FILE_HASH;
+
+    EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData),
+                 std::invalid_argument);
+}

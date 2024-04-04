@@ -30,7 +30,8 @@ protected:
     ~ActionTest() override = default;
 
     nlohmann::json m_parameters; ///< Parameters used to create the Action
-    const std::filesystem::path m_outputFolder {std::filesystem::temp_directory_path() / "ActionTest"}; ///< Output test folder.
+    const std::filesystem::path m_outputFolder {std::filesystem::temp_directory_path() /
+                                                "ActionTest"}; ///< Output test folder.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
