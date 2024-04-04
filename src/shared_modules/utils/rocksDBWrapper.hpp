@@ -13,11 +13,12 @@
 #define _ROCKS_DB_WRAPPER_HPP
 
 #include "rocksDBIterator.hpp"
-#include "stringHelper.h"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
 #include <rocksdb/db.h>
+#include <rocksdb/filter_policy.h>
+#include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <stdexcept>
@@ -27,6 +28,77 @@
 
 namespace Utils
 {
+
+    /**
+     * @brief RAII wrapper for RocksDB column family handle.
+     *
+     */
+    class ColumnFamilyRAII final
+    {
+    private:
+        std::shared_ptr<rocksdb::DB> m_db; ///< RocksDB instance.
+        std::unique_ptr<rocksdb::ColumnFamilyHandle, std::function<void(rocksdb::ColumnFamilyHandle*)>>
+            m_handle; ///< Column family handle.
+
+    public:
+        /**
+         * @brief Constructor.
+         *
+         * @param db RocksDB instance.
+         * @param rawHandle Column family handle.
+         */
+        ColumnFamilyRAII(std::shared_ptr<rocksdb::DB> db, rocksdb::ColumnFamilyHandle* rawHandle)
+            : m_db {db}
+            , m_handle(rawHandle,
+                       [db](rocksdb::ColumnFamilyHandle* handle)
+                       {
+                           if (db && handle)
+                           {
+                               auto status = db->DestroyColumnFamilyHandle(handle);
+                               if (!status.ok())
+                               {
+                                   throw std::runtime_error("Failed to free RocksDB column family: " +
+                                                            std::string {status.getState()});
+                               }
+                           }
+                       })
+        {
+        }
+
+        /**
+         * @brief Get the column family handle.
+         *
+         * @return rocksdb::ColumnFamilyHandle* Column family handle.
+         */
+        rocksdb::ColumnFamilyHandle* handle() const
+        {
+            return m_handle.get();
+        }
+
+        /**
+         * @brief Overload of the arrow operator.
+         *
+         * @return rocksdb::ColumnFamilyHandle* Column family handle.
+         */
+        rocksdb::ColumnFamilyHandle* operator->() const
+        {
+            return this->handle();
+        }
+
+        /**
+         * @brief Drops the column family.
+         *
+         * @note This method is used to delete a column family from the database.
+         */
+        void drop() const
+        {
+            if (const auto status = m_db->DropColumnFamily(m_handle.get()); !status.ok())
+            {
+                throw std::runtime_error("Error deleting data: " + status.ToString());
+            }
+        }
+    };
+
     class RocksDBTransaction;
     class IRocksDBWrapper
     {
@@ -52,20 +124,101 @@ namespace Utils
      * @brief Wrapper class for RocksDB.
      *
      */
-    class RocksDBWrapper : public IRocksDBWrapper
+    template<typename T = rocksdb::DB>
+    class TRocksDBWrapper : public IRocksDBWrapper
     {
         /**
-         * @brief Initializes the RocksDB instance.
+         * @brief Builds the table options for the RocksDB instance.
+         * @return rocksdb::BlockBasedTableOptions Table options.
          */
-        void initialize()
+        rocksdb::BlockBasedTableOptions buildTableOptions() const
         {
-            rocksdb::Options options;
-            options.create_if_missing = true;
-            options.keep_log_file_num = 1;
-            options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
-            options.max_open_files = 200;
+            if (m_readCache == nullptr)
+            {
+                throw std::runtime_error("Read cache is not initialized");
+            }
 
-            rocksdb::TransactionDB* dbRawPtr;
+            rocksdb::BlockBasedTableOptions tableOptions;
+            tableOptions.block_cache = m_readCache;
+            return tableOptions;
+        }
+
+        /**
+         * @brief Builds the column family options for the RocksDB instance.
+         * @return rocksdb::ColumnFamilyOptions Column family options.
+         */
+        rocksdb::ColumnFamilyOptions buildColumnFamilyOptions() const
+        {
+            rocksdb::ColumnFamilyOptions columnFamilyOptions;
+            // Amount of data to build up in memory (backed by an unsorted log
+            // on disk) before converting to a sorted on-disk file.
+            columnFamilyOptions.write_buffer_size = 64 * 1024 * 1024;
+            // The maximum number of write buffers that are built up in memory.
+            columnFamilyOptions.max_write_buffer_number = 2;
+            // The maximum number of levels of compaction to allow.
+            columnFamilyOptions.num_levels = 4;
+            // The size of the LRU cache used to prevent cold reads.
+            columnFamilyOptions.table_factory.reset(rocksdb::NewBlockBasedTableFactory(buildTableOptions()));
+
+            return columnFamilyOptions;
+        }
+
+        /**
+         * @brief Builds the DB options for the RocksDB instance.
+         * @return rocksdb::Options DB options.
+         */
+        rocksdb::Options buildDBOptions() const
+        {
+            if (m_writeManager == nullptr)
+            {
+                throw std::runtime_error("Write buffer manager is not initialized");
+            }
+
+            rocksdb::Options options;
+            // If the total size of all live memtables of all the DBs exceeds
+            // a limit, a flush will be triggered in the next DB to which the next write
+            // is issued, as long as there is one or more column family not already
+            // flushing.
+            options.write_buffer_manager = m_writeManager;
+            // If true, the database will be created if it is missing.
+            options.create_if_missing = true;
+            // If true, log files will be kept around to restore the database
+            options.keep_log_file_num = 1;
+            // Log level for the info log.
+            options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+            // The maximum number of files to keep open at the same time.
+            options.max_open_files = 256;
+            // The maximum levels of compaction to allow.
+            options.num_levels = 4;
+            // Amount of data to build up in memory (backed by an unsorted log
+            // on disk) before converting to a sorted on-disk file.
+            options.write_buffer_size = 64 * 1024 * 1024;
+            // The maximum number of write buffers that are built up in memory.
+            options.max_write_buffer_number = 2;
+
+            // The size of the LRU cache used to prevent cold reads.
+            options.table_factory.reset(NewBlockBasedTableFactory(buildTableOptions()));
+            return options;
+        }
+
+    public:
+        /**
+         * @brief Constructor.
+         *
+         * @param dbPath Path to the RocksDB database.
+         * @param enableWal Whether to enable WAL or not.
+         */
+        explicit TRocksDBWrapper(std::string dbPath, const bool enableWal = true)
+            : m_enableWal {enableWal}
+            , m_path {std::move(dbPath)}
+        {
+            m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+            m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
+
+            rocksdb::Options options = buildDBOptions();
+            rocksdb::ColumnFamilyOptions columnFamilyOptions = buildColumnFamilyOptions();
+
+            T* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
             const std::filesystem::path databasePath {m_path};
 
@@ -73,13 +226,11 @@ namespace Utils
             std::filesystem::create_directories(databasePath);
 
             // Get a list of the existing columns descriptors.
-            const auto databaseFile {databasePath / "CURRENT"};
-            if (std::filesystem::exists(databaseFile))
+            if (const auto databaseFile {databasePath / "CURRENT"}; std::filesystem::exists(databaseFile))
             {
                 // Read columns names.
                 std::vector<std::string> columnsNames;
-                const auto listStatus {rocksdb::TransactionDB::ListColumnFamilies(options, m_path, &columnsNames)};
-                if (!listStatus.ok())
+                if (const auto listStatus {T::ListColumnFamilies(options, m_path, &columnsNames)}; !listStatus.ok())
                 {
                     throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
                 }
@@ -87,75 +238,56 @@ namespace Utils
                 // Create a set of column descriptors. This includes the default column.
                 for (auto& columnName : columnsNames)
                 {
-                    columnsDescriptors.emplace_back(columnName, rocksdb::ColumnFamilyOptions());
+                    columnsDescriptors.emplace_back(columnName, columnFamilyOptions);
                 }
             }
             else
             {
                 // Database doesn't exist: Set just the default column descriptor.
-                columnsDescriptors.emplace_back(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions());
+                columnsDescriptors.emplace_back(rocksdb::kDefaultColumnFamilyName, columnFamilyOptions);
             }
 
+            // Create a vector of column handles.
+            // This vector will be used to store the column handles created by the Open method and based on the
+            // columnsDescriptors.
+            std::vector<rocksdb::ColumnFamilyHandle*> columnHandles;
+            columnHandles.reserve(columnsDescriptors.size());
+
             // Open database with a list of columns descriptors.
-            const auto status {rocksdb::TransactionDB::Open(
-                options, rocksdb::TransactionDBOptions(), m_path, columnsDescriptors, &m_columnsHandles, &dbRawPtr)};
-            if (!status.ok())
+            // Compare if T is a rocksdb::DB or rocksdb::TransactionDB.
+            if constexpr (std::is_same_v<T, rocksdb::DB>)
             {
-                throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
+                if (const auto status {T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr)};
+                    !status.ok())
+                {
+                    throw std::runtime_error("Failed to open RocksDB database. Reason: " +
+                                             std::string {status.getState()});
+                }
+            }
+            else
+            {
+                if (const auto status {T::Open(options,
+                                               rocksdb::TransactionDBOptions(),
+                                               m_path,
+                                               columnsDescriptors,
+                                               &columnHandles,
+                                               &dbRawPtr)};
+                    !status.ok())
+                {
+                    throw std::runtime_error("Failed to open RocksDB database. Reason: " +
+                                             std::string {status.getState()});
+                }
             }
             // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete the
             // allocated RocksDB instance.
             m_db.reset(dbRawPtr);
-        }
 
-        /**
-         * @brief Frees column family handles.
-         */
-        void destroyColumnFamilyHandles()
-        {
-            std::for_each(m_columnsHandles.begin(),
-                          m_columnsHandles.end(),
-                          [this](rocksdb::ColumnFamilyHandle* handle)
-                          {
-                              const auto status {m_db->DestroyColumnFamilyHandle(handle)};
-                              if (!status.ok())
-                              {
-                                  std::cerr
-                                      << "Failed to free RocksDB column family: " + std::string {status.getState()}
-                                      << std::endl;
-                              }
-                          });
+            // Create a RAII wrapper for each column handle.
+            for (const auto& handle : columnHandles)
+            {
+                m_columnsInstances.emplace_back(m_db, handle);
+            }
         }
-
-    public:
-        explicit RocksDBWrapper(std::string dbPath, const bool enableWal = true)
-            : m_enableWal {enableWal}
-            , m_path {std::move(dbPath)}
-        {
-            initialize();
-        }
-
-        /**
-         * @brief Reopen the database.
-         */
-        void reopen()
-        {
-            destroyColumnFamilyHandles();
-            m_db.reset();
-            initialize();
-        }
-
-        /**
-         * @brief Class destructor. Frees column family handles.
-         *
-         * @note The documentation of the lib clearly states that we should not free the default column family handler
-         * but not freeing it ends up on memory leaks and ASAN errors. OTOH, no problems seem to appear freeing it.
-         *
-         */
-        ~RocksDBWrapper() override
-        {
-            destroyColumnFamilyHandles();
-        };
 
         /**
          * @brief Put a key-value pair in the database.
@@ -175,8 +307,9 @@ namespace Utils
             rocksdb::WriteOptions writeOptions;
             writeOptions.disableWAL = !m_enableWal;
 
-            const auto status {m_db->Put(writeOptions, getColumnFamilyHandle(columnName), key, value)};
-            if (!status.ok())
+            if (const auto status {
+                    m_db->Put(writeOptions, getColumnFamilyBasedOnName(columnName).handle(), key, value)};
+                !status.ok())
             {
                 throw std::runtime_error("Error putting data: " + status.ToString());
             }
@@ -212,8 +345,9 @@ namespace Utils
                 throw std::invalid_argument("Key is empty");
             }
 
-            const auto status {m_db->Get(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName), key, &value)};
-            if (status.IsNotFound())
+            if (const auto status {
+                    m_db->Get(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle(), key, &value)};
+                status.IsNotFound())
             {
                 return false;
             }
@@ -234,7 +368,6 @@ namespace Utils
          * @return bool True if the operation was successful.
          * @return bool False if the key was not found.
          */
-
         bool get(const std::string& key, rocksdb::PinnableSlice& value, const std::string& columnName) override
         {
             if (key.empty())
@@ -242,8 +375,9 @@ namespace Utils
                 throw std::invalid_argument("Key is empty");
             }
 
-            const auto status {m_db->Get(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName), key, &value)};
-            if (status.IsNotFound())
+            if (const auto status {
+                    m_db->Get(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle(), key, &value)};
+                status.IsNotFound())
             {
                 return false;
             }
@@ -285,7 +419,7 @@ namespace Utils
             rocksdb::WriteOptions writeOptions;
             writeOptions.disableWAL = !m_enableWal;
 
-            const auto status {m_db->Delete(writeOptions, getColumnFamilyHandle(columnName), key)};
+            const auto status {m_db->Delete(writeOptions, getColumnFamilyBasedOnName(columnName).handle(), key)};
             if (!status.ok())
             {
                 throw std::runtime_error("Error deleting data: " + status.ToString());
@@ -314,7 +448,7 @@ namespace Utils
         std::pair<std::string, rocksdb::Slice> getLastKeyValue(const std::string& columnName = "")
         {
             std::unique_ptr<rocksdb::Iterator> it(
-                m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName)));
+                m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle()));
 
             it->SeekToLast();
             if (it->Valid())
@@ -333,7 +467,7 @@ namespace Utils
         RocksDBIterator seek(std::string_view key, const std::string& columnName = "") override // NOLINT
         {
             return {std::shared_ptr<rocksdb::Iterator>(
-                        m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
+                        m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle())),
                     key};
         }
 
@@ -343,9 +477,10 @@ namespace Utils
          */
         RocksDBIterator begin(const std::string& columnName = "")
         {
-            RocksDBIterator rocksDBIterator(std::shared_ptr<rocksdb::Iterator>(m_db->NewIterator(
-                                                rocksdb::ReadOptions(), getColumnFamilyHandle(columnName))),
-                                            "");
+            RocksDBIterator rocksDBIterator(
+                std::shared_ptr<rocksdb::Iterator>(
+                    m_db->NewIterator(rocksdb::ReadOptions(), getColumnFamilyBasedOnName(columnName).handle())),
+                "");
             rocksDBIterator.begin();
             return rocksDBIterator;
         }
@@ -354,7 +489,7 @@ namespace Utils
          * @brief Get an iterator to the end of the database.
          * @return const RocksDBIterator Iterator to the end of the database.
          */
-        const RocksDBIterator& end()
+        const RocksDBIterator& end() const
         {
             static const RocksDBIterator END_ITERATOR;
             return END_ITERATOR;
@@ -375,18 +510,13 @@ namespace Utils
          */
         void compactDatabaseUsingBzip2()
         {
-            auto status = m_db->SetOptions({{"compression", "kBZip2Compression"}});
-            if (!status.ok())
+            if (const auto status = m_db->SetOptions({{"compression", "kBZip2Compression"}}); !status.ok())
             {
                 throw std::runtime_error("Failed to set 'kBZip2Compression' option");
             }
 
-            // Create compact range options with kForceOptimized settings
-            rocksdb::CompactRangeOptions compactOptions;
-            compactOptions.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForceOptimized;
-
             // Perform compaction for the entire key range
-            m_db->CompactRange(compactOptions, nullptr, nullptr);
+            m_db->CompactRange(rocksdb::CompactRangeOptions(), nullptr, nullptr);
         }
 
         /**
@@ -404,6 +534,7 @@ namespace Utils
         {
             // Create compact range options with default settings
             rocksdb::CompactRangeOptions compactOptions;
+            compactOptions.bottommost_level_compaction = rocksdb::BottommostLevelCompaction::kForceOptimized;
 
             // Perform compaction for the entire key range
             m_db->CompactRange(compactOptions, nullptr, nullptr);
@@ -413,7 +544,7 @@ namespace Utils
          * @brief Initialize transaction.
          * @return RocksDBTransaction Transaction object.
          */
-        std::unique_ptr<RocksDBTransaction> createTransaction()
+        std::unique_ptr<IRocksDBWrapper> createTransaction()
         {
             return std::make_unique<RocksDBTransaction>(this);
         }
@@ -438,13 +569,13 @@ namespace Utils
             }
 
             rocksdb::ColumnFamilyHandle* pColumnFamily;
-            rocksdb::ColumnFamilyOptions columnFamilyOptions;
-            const auto status {m_db->CreateColumnFamily(columnFamilyOptions, columnName, &pColumnFamily)};
-            if (!status.ok())
+
+            if (const auto status {m_db->CreateColumnFamily(buildColumnFamilyOptions(), columnName, &pColumnFamily)};
+                !status.ok())
             {
                 throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
             }
-            m_columnsHandles.push_back(pColumnFamily);
+            m_columnsInstances.emplace_back(m_db, pColumnFamily);
         }
 
         /**
@@ -461,13 +592,10 @@ namespace Utils
                 throw std::invalid_argument {"Column name is empty"};
             }
 
-            const auto columnMatch {[&columnName](const rocksdb::ColumnFamilyHandle* handle)
-                                    {
-                                        return columnName == handle->GetName();
-                                    }};
-
-            return std::find_if(m_columnsHandles.begin(), m_columnsHandles.end(), columnMatch) !=
-                   m_columnsHandles.end();
+            return std::find_if(m_columnsInstances.begin(),
+                                m_columnsInstances.end(),
+                                [&columnName](const ColumnFamilyRAII& handle)
+                                { return columnName == handle->GetName(); }) != m_columnsInstances.end();
         }
 
         /**
@@ -479,8 +607,8 @@ namespace Utils
         {
             std::vector<std::string> columnsNames;
             rocksdb::Options options;
-            const auto listStatus {rocksdb::TransactionDB::ListColumnFamilies(options, m_path, &columnsNames)};
-            if (!listStatus.ok())
+            if (const auto listStatus {rocksdb::TransactionDB::ListColumnFamilies(options, m_path, &columnsNames)};
+                !listStatus.ok())
             {
                 throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
             }
@@ -492,40 +620,28 @@ namespace Utils
          */
         void deleteAll() override
         {
-            auto it = m_columnsHandles.begin();
             std::vector<std::string> columnsNames;
+            auto it = m_columnsInstances.begin();
 
-            while (it != m_columnsHandles.end())
+            while (it != m_columnsInstances.end())
             {
                 if ((*it)->GetName() != rocksdb::kDefaultColumnFamilyName)
                 {
-                    auto status = m_db->DropColumnFamily(*it);
-                    if (!status.ok())
-                    {
-                        throw std::runtime_error("Error deleting data: " + status.ToString());
-                    }
+                    it->drop();
                     columnsNames.push_back((*it)->GetName());
-
-                    status = m_db->DestroyColumnFamilyHandle(*it);
-                    if (!status.ok())
-                    {
-                        std::cerr << "Failed to free RocksDB column family: " + std::string {status.getState()}
-                                  << std::endl;
-                    }
-
-                    it = m_columnsHandles.erase(it);
+                    it = m_columnsInstances.erase(it);
                 }
                 else
                 {
                     rocksdb::WriteBatch batch;
-                    std::unique_ptr<rocksdb::Iterator> itDefault(m_db->NewIterator(rocksdb::ReadOptions(), *it));
+                    std::unique_ptr<rocksdb::Iterator> itDefault(
+                        m_db->NewIterator(rocksdb::ReadOptions(), it->handle()));
                     for (itDefault->SeekToFirst(); itDefault->Valid(); itDefault->Next())
                     {
-                        batch.Delete(*it, itDefault->key());
+                        batch.Delete(it->handle(), itDefault->key());
                     }
 
-                    auto status = m_db->Write(rocksdb::WriteOptions(), &batch);
-                    if (!status.ok())
+                    if (const auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
                     {
                         throw std::runtime_error("Error deleting data: " + status.ToString());
                     }
@@ -547,37 +663,30 @@ namespace Utils
         void deleteAll(const std::string& columnName)
         {
             // Delete all data from the specified column
-            const auto columnHandle = getColumnFamilyHandle(columnName);
+            const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
             if (columnHandle->GetName() != rocksdb::kDefaultColumnFamilyName)
             {
-                auto status = m_db->DropColumnFamily(columnHandle);
-                if (!status.ok())
-                {
-                    throw std::runtime_error("Error deleting data: " + status.ToString());
-                }
+                const auto it =
+                    std::find_if(m_columnsInstances.begin(),
+                                 m_columnsInstances.end(),
+                                 [&columnName](const auto& handle) { return columnName == handle->GetName(); });
 
-                status = m_db->DestroyColumnFamilyHandle(columnHandle);
-                if (!status.ok())
-                {
-                    std::cerr << "Failed to free RocksDB column family: " + std::string {status.getState()}
-                              << std::endl;
-                }
-
-                m_columnsHandles.erase(std::remove(m_columnsHandles.begin(), m_columnsHandles.end(), columnHandle),
-                                       m_columnsHandles.end());
+                it->drop();
+                m_columnsInstances.erase(it);
                 createColumn(columnName);
             }
             else
             {
                 rocksdb::WriteBatch batch;
-                std::unique_ptr<rocksdb::Iterator> itDefault(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
+                std::unique_ptr<rocksdb::Iterator> itDefault(
+                    m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
+
                 for (itDefault->SeekToFirst(); itDefault->Valid(); itDefault->Next())
                 {
-                    batch.Delete(columnHandle, itDefault->key());
+                    batch.Delete(columnHandle.handle(), itDefault->key());
                 }
 
-                auto status = m_db->Write(rocksdb::WriteOptions(), &batch);
-                if (!status.ok())
+                if (auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
                 {
                     throw std::runtime_error("Error deleting data: " + status.ToString());
                 }
@@ -598,7 +707,7 @@ namespace Utils
         void deleteAll(const std::function<void(std::string&, std::string&)>& callback)
         {
             // Delete data from all family columns
-            for (const auto& columnHandle : m_columnsHandles)
+            for (const auto& columnHandle : m_columnsInstances)
             {
                 // Create an iterator for the current column family
                 std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
@@ -636,10 +745,10 @@ namespace Utils
         void deleteAll(const std::function<void(std::string&, std::string&)>& callback, const std::string& columnName)
         {
             // Get the column family handle
-            const auto columnHandle = getColumnFamilyHandle(columnName);
+            const auto& columnHandle = getColumnFamilyBasedOnName(columnName);
 
             // Create an iterator for the current column family
-            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
+            std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
 
             for (it->SeekToFirst(); it->Valid(); it->Next())
             {
@@ -648,7 +757,7 @@ namespace Utils
 
                 callback(keyStr, valueStr);
 
-                auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle, it->key());
+                auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle.handle(), it->key());
 
                 if (!status.ok())
                 {
@@ -662,18 +771,22 @@ namespace Utils
          */
         void flush() override
         {
-            const auto status {m_db->Flush(rocksdb::FlushOptions(), m_columnsHandles)};
-            if (!status.ok())
+            for (const auto& columnFamily : m_columnsInstances)
             {
-                throw std::runtime_error {"Failed to flush transaction: " + std::string {status.getState()}};
+                if (const auto status {m_db->Flush(rocksdb::FlushOptions(), columnFamily.handle())}; !status.ok())
+                {
+                    throw std::runtime_error {"Failed to flush transaction: " + std::string {status.getState()}};
+                }
             }
         }
 
     private:
-        std::unique_ptr<rocksdb::TransactionDB> m_db;               ///< RocksDB instance.
-        std::vector<rocksdb::ColumnFamilyHandle*> m_columnsHandles; ///< List of column family handles.
-        const bool m_enableWal;                                     ///< Whether to enable WAL or not.
-        const std::string m_path;                                   ///< Location of the DB.
+        std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
+        std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
+        const bool m_enableWal;                                      ///< Whether to enable WAL or not.
+        const std::string m_path;                                    ///< Location of the DB.
+        std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
+        std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
 
         /**
          * @brief Returns the column family handle identified by its name.
@@ -681,26 +794,44 @@ namespace Utils
          * @param columnName Name of the column family. If empty, the default handle is returned.
          * @return rocksdb::ColumnFamilyHandle* Column family handle pointer.
          */
-        rocksdb::ColumnFamilyHandle* getColumnFamilyHandle(const std::string& columnName)
+        ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
         {
+            auto columnNameFind {columnName};
             if (columnName.empty())
             {
-                return m_db->DefaultColumnFamily();
+                columnNameFind = rocksdb::kDefaultColumnFamilyName;
             }
 
-            const auto columnMatch {[&columnName](const rocksdb::ColumnFamilyHandle* handle)
-                                    {
-                                        return columnName == handle->GetName();
-                                    }};
-
-            if (const auto it {std::find_if(m_columnsHandles.begin(), m_columnsHandles.end(), columnMatch)};
-                it != m_columnsHandles.end())
+            if (const auto it {std::find_if(m_columnsInstances.begin(),
+                                            m_columnsInstances.end(),
+                                            [&columnNameFind](const ColumnFamilyRAII& handle)
+                                            { return columnNameFind == handle.handle()->GetName(); })};
+                it != m_columnsInstances.end())
             {
                 return *it;
             }
 
             throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
         }
+
+        auto createTransaction(const rocksdb::WriteOptions& writeOptions)
+        {
+            if constexpr (std::is_same_v<T, rocksdb::DB>)
+            {
+                throw std::runtime_error {"Transactions are only supported for rocksdb::TransactionDB"};
+                return nullptr;
+            }
+            else
+            {
+                auto txn = m_db->BeginTransaction(writeOptions);
+                if (!txn)
+                {
+                    throw std::runtime_error {"Failed to begin transaction"};
+                }
+                return txn;
+            }
+        }
+
         friend class RocksDBTransaction;
     };
 
@@ -716,7 +847,7 @@ namespace Utils
          *
          * @param db RocksDB instance.
          */
-        explicit RocksDBTransaction(RocksDBWrapper* dbWrapper)
+        explicit RocksDBTransaction(TRocksDBWrapper<>* dbWrapper)
             : m_dbWrapper {dbWrapper}
         {
             if (!m_dbWrapper)
@@ -727,23 +858,15 @@ namespace Utils
             rocksdb::WriteOptions writeOptions;
             writeOptions.disableWAL = true;
 
-            m_txn = std::unique_ptr<rocksdb::Transaction>(m_dbWrapper->m_db->BeginTransaction(writeOptions));
-            if (!m_txn)
-            {
-                throw std::runtime_error {"Failed to begin transaction"};
-            }
-        }
-
-        /**
-         * @brief Destructor.
-         * @note If the transaction has not been committed, it will be aborted.
-         */
-        ~RocksDBTransaction() override
-        {
-            if (!m_committed)
-            {
-                m_txn->Rollback();
-            }
+            m_txn = std::unique_ptr<rocksdb::Transaction, std::function<void(rocksdb::Transaction*)>>(
+                m_dbWrapper->createTransaction(writeOptions),
+                [this](rocksdb::Transaction* txn)
+                {
+                    if (txn && !m_committed)
+                    {
+                        txn->Rollback();
+                    }
+                });
         }
 
         /**
@@ -756,7 +879,7 @@ namespace Utils
          */
         void put(const std::string& key, const rocksdb::Slice& value, const std::string& columnName) override
         {
-            const auto status {m_txn->Put(m_dbWrapper->getColumnFamilyHandle(columnName), key, value)};
+            const auto status {m_txn->Put(m_dbWrapper->getColumnFamilyBasedOnName(columnName).handle(), key, value)};
             if (!status.ok())
             {
                 throw std::runtime_error {"Failed to put key: " + std::string {status.getState()}};
@@ -783,7 +906,7 @@ namespace Utils
          */
         void delete_(const std::string& key, const std::string& columnName) override
         {
-            const auto status {m_txn->Delete(m_dbWrapper->getColumnFamilyHandle(columnName), key)};
+            const auto status {m_txn->Delete(m_dbWrapper->getColumnFamilyBasedOnName(columnName).handle(), key)};
             if (!status.ok())
             {
                 throw std::runtime_error {"Failed to delete key: " + std::string {status.getState()}};
@@ -819,9 +942,9 @@ namespace Utils
                 throw std::invalid_argument("Key is empty");
             }
 
-            const auto status {
-                m_txn->Get(rocksdb::ReadOptions(), m_dbWrapper->getColumnFamilyHandle(columnName), key, &value)};
-            if (status.IsNotFound())
+            if (const auto status = m_txn->Get(
+                    rocksdb::ReadOptions(), m_dbWrapper->getColumnFamilyBasedOnName(columnName).handle(), key, &value);
+                status.IsNotFound())
             {
                 return false;
             }
@@ -852,18 +975,12 @@ namespace Utils
          */
         void commit() override
         {
-            const auto status {m_txn->Commit()};
-            if (!status.ok())
+            if (const auto status {m_txn->Commit()}; !status.ok())
             {
                 throw std::runtime_error {"Failed to commit transaction: " + std::string {status.getState()}};
             }
 
-            const auto statusFlush {m_dbWrapper->m_db->Flush(rocksdb::FlushOptions(), m_dbWrapper->m_columnsHandles)};
-            if (!statusFlush.ok())
-            {
-                throw std::runtime_error {"Failed to flush transaction: " + std::string {statusFlush.getState()}};
-            }
-
+            m_dbWrapper->flush();
             m_committed = true;
         }
 
@@ -924,17 +1041,19 @@ namespace Utils
         /**
          * @brief Flushes the transaction.
          */
-        void flush() override
+        [[noreturn]] void flush() override
         {
             // This is only permited for atomic operations.
             throw std::runtime_error("Not implemented");
         }
 
     private:
-        RocksDBWrapper* m_dbWrapper;                 ///< RocksDB instance.
-        std::unique_ptr<rocksdb::Transaction> m_txn; ///< RocksDB transaction.
-        bool m_committed {false};                    ///< Whether the transaction has been committed or not.
+        TRocksDBWrapper<>* m_dbWrapper; ///< RocksDB instance.
+        std::unique_ptr<rocksdb::Transaction, std::function<void(rocksdb::Transaction*)>>
+            m_txn;                ///< RocksDB transaction.
+        bool m_committed {false}; ///< Whether the transaction has been committed or not.
     };
+    using RocksDBWrapper = TRocksDBWrapper<>;
 } // namespace Utils
 
 #endif // _ROCKS_DB_WRAPPER_HPP
