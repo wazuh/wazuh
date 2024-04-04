@@ -602,20 +602,24 @@ checks:
  
  # 2.3.7.3 (BL) Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'. (Automated)
   - id: 18565
-    title: "(BL) Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'."
+    title: "Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'."
     description: "This security setting determines the number of failed logon attempts that causes the machine to be locked out. Failed password attempts against workstations or member servers that have been locked using either CTRL+ALT+DELETE or password protected screen savers counts as failed logon attempts. The machine lockout policy is enforced only on those machines that have BitLocker enabled for protecting OS volumes. Please ensure that appropriate recovery password backup policies are enabled. The recommended state for this setting is: 10 or fewer invalid logon attempts, but not 0. Note: A value of 0 does not conform to the benchmark as it disables the machine account lockout threshold. Values from 1 to 3 will be interpreted as 4."
     rationale: "If a machine is lost or stolen, or if an insider threat attempts a brute force password attack against the computer, it is important to ensure that BitLocker will lock the computer and therefore prevent a successful attack."
     impact: "Users will be able to mistype their password several times, but the machine account will be locked out if a brute force password attack occurs. A locked out machine can only be recovered by providing the BitLocker recovery key at the console."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 10 or fewer invalid logon attempts, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine account lockout threshold."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-machine-account-lockout-threshold'
     compliance:
       - cis: ["2.3.7.3"]
       - cis_csc_v8: ["4.10"]
       - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
       - pci_dss_v4.0: ["8.3.4"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts'
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> n:^(\d+) compare <= 10'
  
  # 2.3.7.4 (L1) Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'. (Automated)
   - id: 18566
@@ -625,7 +629,7 @@ checks:
     impact: "The screen saver will automatically activate when the computer has been unattended for the amount of time specified. The impact should be minimal since the screen saver is enabled by default."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine inactivity limit."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-machine-inactivity-limit'
     compliance:
       - cis: ["2.3.7.4"]
       - cis_csc_v8: ["4.3"]
@@ -636,40 +640,15 @@ checks:
       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
       - pci_dss_v3.2.1: ["8.1.8"]
       - pci_dss_v4.0: ["8.2.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs'
+      - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
  
- # 2.3.7.5 (L1) Configure 'Interactive logon: Message text for users attempting to log on'. (Automated)
-  - id: 18567
-    title: "Configure 'Interactive logon: Message text for users attempting to log on'."
-    description: "This policy setting specifies a text message that displays to users when they log on. Set the following group policy to a value that is consistent with the security and operational requirements of your organization."
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited. Note: Any warning that you display should first be approved by your organization's legal and human resources representatives."
-    impact: "Users will have to acknowledge a dialog box containing the configured text before they can log on to the computer. Note: Windows Vista and Windows XP Professional support logon banners that can exceed 512 characters in length and that can also contain carriage-return line-feed sequences. However, Windows 2000-based clients cannot interpret and display these messages. You must use a Windows 2000-based computer to create a logon message policy that applies to Windows 2000-based computers."
-    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message text for users attempting to log on."
-    references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-message-text-for-users-attempting-to-log-on'
-    compliance:
-      - cis: ["2.3.7.5"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["0.0"]
-    condition:
-    rules:
- 
- # 2.3.7.6 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
-  - id: 18568
-    title: "Configure 'Interactive logon: Message title for users attempting to log on'."
-    description: "This policy setting specifies the text displayed in the title bar of the window that users see when they log on to the system. Configure this setting in a manner that is consistent with the security and operational requirements of your organization."
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process."
-    impact: "Users will have to acknowledge a dialog box with the configured title before they can log on to the computer."
-    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message title for users attempting to log on."
-    references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-message-title-for-users-attempting-to-log-on'
-    compliance:
-      - cis: ["2.3.7.6"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["0.0"]
-    condition:
-    rules:
+ # 2.3.7.5 (L1) Configure 'Interactive logon: Message text for users attempting to log on'. (Automated) - Not Implemented
+ # 2.3.7.6 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated) - Not Implemented
  
  # 2.3.7.7 (L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'. (Automated)
   - id: 18569
@@ -684,8 +663,11 @@ checks:
       - cis: ["2.3.7.7"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount -> n:^(\d+) compare <= 4'
  
  # 2.3.7.8 (L1) Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'. (Automated)
   - id: 18570
@@ -700,8 +682,11 @@ checks:
       - cis: ["2.3.7.8"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> n:^(\d+) compare >= 5 && n:^(\d+) compare <= 14'
  
  # 2.3.7.9 (L1) Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher. (Automated)
   - id: 18571
@@ -711,7 +696,7 @@ checks:
     impact: "If you select Lock Workstation, the workstation is locked when the smart card is removed, allowing users to leave the area, take their smart card with them, and still maintain a protected session. If you select Force Logoff, users are automatically logged off when their smart card is removed. If you select Disconnect if a Remote Desktop Services session, removal of the smart card disconnects the session without logging the users off. This allows the user to insert the smart card and resume the session later, or at another smart card reader-equipped computer, without having to log on again. If the session is local, this policy will function identically to Lock Workstation. Enforcing this setting on computers used by people who must log onto multiple computers in order to perform their duties could be frustrating and lower productivity. For example, if network administrators are limited to a single account but need to log into several computers simultaneously in order to effectively manage the network enforcing this setting will limit them to logging onto one computer at a time. For these reasons it is recommended that this setting only be enforced on workstations used for purposes commonly associated with typical users such as document creation and email."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Lock Workstation (or, if applicable for your environment, Force Logoff or Disconnect if a Remote Desktop Services session): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Smart card removal behavior."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-smart-card-removal-behavior'
     compliance:
       - cis: ["2.3.7.9"]
       - cis_csc_v8: ["4.3"]
@@ -722,13 +707,16 @@ checks:
       - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
       - pci_dss_v3.2.1: ["8.1.8"]
       - pci_dss_v4.0: ["8.2.8"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption -> r:^1$|^2$|^3$'
  
  # 2.3.8.1 (L1) Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'. (Automated)
   - id: 18572
     title: "Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'."
-    description: "This policy setting determines whether packet signing is required by the SMB client component. Note: When Windows Vista-based computers have this policy setting enabled and they connect to file or print shares on remote servers, it is important that the setting is synchronized with its companion setting, Microsoft network server: Digitally sign communications (always), on those servers. For more information about these settings, see the \"Microsoft network client and server: Digitally sign communications (four related settings)\" section in Chapter 5 of the Threats and Countermeasures guide. The recommended state for this setting is: Enabled."
+    description: "This policy setting determines whether packet signing is required by the SMB client component. Note - When Windows Vista-based computers have this policy setting enabled and they connect to file or print shares on remote servers, it is important that the setting is synchronized with its companion setting, Microsoft network server: Digitally sign communications (always), on those servers. For more information about these settings, see the \"Microsoft network client and server - Digitally sign communications (four related settings)\" section in Chapter 5 of the Threats and Countermeasures guide. The recommended state for this setting is - Enabled."
     rationale: "Session hijacking uses tools that allow attackers who have access to the same network as the client or server to interrupt, end, or steal a session in progress. Attackers can potentially intercept and modify unsigned SMB packets and then modify the traffic and forward it so that the server might perform undesirable actions. Alternatively, the attacker could pose as the server or client after legitimate authentication and gain unauthorized access to data. SMB is the resource sharing protocol that is supported by many Windows operating systems. It is the basis of NetBIOS and many other protocols. SMB signatures authenticate both users and the servers that host the data. If either side fails the authentication process, data transmission will not take place."
     impact: "The Microsoft network client will not communicate with a Microsoft network server unless that server agrees to perform SMB packet signing. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network client: Digitally sign communications (always)."
@@ -742,8 +730,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> RequireSecuritySignature -> 1'
  
  # 2.3.8.2 (L1) Ensure 'Microsoft network client: Digitally sign communications (if server agrees)' is set to 'Enabled'. (Automated)
   - id: 18573
@@ -753,7 +744,7 @@ checks:
     impact: "None - this is the default behavior. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network client: Digitally sign communications (if server agrees)."
     references:
-      - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-'
+      - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-R2-and-2012/jj852251(v=ws.11)'
     compliance:
       - cis: ["2.3.8.2"]
       - cis_csc_v8: ["3.10"]
@@ -762,8 +753,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnableSecuritySignature -> 1'
  
  # 2.3.8.3 (L1) Ensure 'Microsoft network client: Send unencrypted password to third-party SMB servers' is set to 'Disabled'. (Automated)
   - id: 18574
@@ -784,8 +778,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanmanWorkstation\Parameters -> EnablePlainTextPassword -> 0'
  
  # 2.3.9.1 (L1) Ensure 'Microsoft network server: Amount of idle time required before suspending session' is set to '15 or fewer minute(s)'. (Automated)
   - id: 18575
@@ -801,8 +798,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["16.11"]
       - iso_27001-2013: ["A.8.1.3"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> AutoDisconnect -> n:^(\d+) compare <= 15'
  
  # 2.3.9.2 (L1) Ensure 'Microsoft network server: Digitally sign communications (always)' is set to 'Enabled'. (Automated)
   - id: 18576
@@ -812,7 +812,7 @@ checks:
     impact: "The Microsoft network server will not communicate with a Microsoft network client unless that client agrees to perform SMB packet signing. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (always)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-digitally-sign-communications-always'
     compliance:
       - cis: ["2.3.9.2"]
       - cis_csc_v8: ["3.10"]
@@ -821,8 +821,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RequireSecuritySignature -> 1'
  
  # 2.3.9.3 (L1) Ensure 'Microsoft network server: Digitally sign communications (if client agrees)' is set to 'Enabled'. (Automated)
   - id: 18577
@@ -832,7 +835,7 @@ checks:
     impact: "The Microsoft network server will negotiate SMB packet signing as requested by the client. That is, if packet signing has been enabled on the client, packet signing will be negotiated. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (if client agrees)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/smbv1-microsoft-network-server-digitally-sign-communications-if-client-agrees'
     compliance:
       - cis: ["2.3.9.3"]
       - cis_csc_v8: ["3.10"]
@@ -841,8 +844,11 @@ checks:
       - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
       - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
       - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableSecuritySignature -> 1'
  
  # 2.3.9.4 (L1) Ensure 'Microsoft network server: Disconnect clients when logon hours expire' is set to 'Enabled'. (Automated)
   - id: 18578
@@ -852,13 +858,16 @@ checks:
     impact: "None - this is the default behavior. If logon hours are not used in your organization, this policy setting will have no impact. If logon hours are used, existing user sessions will be forcibly terminated when their logon hours expire."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Disconnect clients when logon hours expire."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-disconnect-clients-when-logon-hours-expire'
     compliance:
       - cis: ["2.3.9.4"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["16.13"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> EnableForcedLogOff -> 1'
  
  # 2.3.9.5 (L1) Ensure 'Microsoft network server: Server SPN target name validation level' is set to 'Accept if provided by client' or higher. (Automated)
   - id: 18579
@@ -868,7 +877,7 @@ checks:
     impact: "All Windows operating systems support both a client-side SMB component and a server-side SMB component. This setting affects the server SMB behavior, and its implementation should be carefully evaluated and tested to prevent disruptions to file and print serving capabilities. If configured to Accept if provided by client, the SMB server will accept and validate the SPN provided by the SMB client and allow a session to be established if it matches the SMB server’s list of SPN’s for itself. If the SPN does NOT match, the session request for that SMB client will be denied. If configured to Required from client, the SMB client MUST send a SPN name in session setup, and the SPN name provided MUST match the SMB server that is being requested to establish a connection. If no SPN is provided by client, or the SPN provided does not match, the session is denied."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Accept if provided by client (configuring to Required from client also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Server SPN target name validation level."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-server-spn-target-name-validation-level'
     compliance:
       - cis: ["2.3.9.5"]
       - cis_csc_v8: ["4.1"]
@@ -879,24 +888,13 @@ checks:
       - pci_dss_v3.2.1: ["11.5", "2.2"]
       - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
       - soc_2: ["CC7.1", "CC8.1"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\LanManServer\Parameters -> SMBServerNameHardeningLevel -> n:^(\d+) compare >= 1'
  
- # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated)
-  - id: 18580
-    title: "Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'."
-    description: "This policy setting determines whether an anonymous user can request security identifier (SID) attributes for another user, or use a SID to obtain its corresponding user name. The recommended state for this setting is: Disabled."
-    rationale: "If this policy setting is enabled, a user with local access could use the well-known Administrator's SID to learn the real name of the built-in Administrator account, even if it has been renamed. That person could then use the account name to initiate a password guessing attack."
-    impact: "None - this is the default behavior."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Allow anonymous SID/Name translation."
-    references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
-    compliance:
-      - cis: ["2.3.10.1"]
-      - cis_csc_v8: ["0.0"]
-      - cis_csc_v7: ["0.0"]
-    condition:
-    rules:
+ # 2.3.10.1 (L1) Ensure 'Network access: Allow anonymous SID/Name translation' is set to 'Disabled'. (Automated) - Not Implemented
  
  # 2.3.10.2 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts' is set to 'Enabled'. (Automated)
   - id: 18581
@@ -906,13 +904,16 @@ checks:
     impact: "None - this is the default behavior. It will be impossible to establish trusts with Windows NT 4.0-based domains. Also, client computers that run older versions of the Windows operating system such as Windows NT 3.51 and Windows 95 will experience problems when they try to use resources on the server."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-do-not-allow-anonymous-enumeration-of-sam-accounts'
     compliance:
       - cis: ["2.3.10.2"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymousSAM -> 1'
  
  # 2.3.10.3 (L1) Ensure 'Network access: Do not allow anonymous enumeration of SAM accounts and shares' is set to 'Enabled'. (Automated)
   - id: 18582
@@ -922,13 +923,16 @@ checks:
     impact: "It will be impossible to establish trusts with Windows NT 4.0-based domains. Also, client computers that run older versions of the Windows operating system such as Windows NT 3.51 and Windows 95 will experience problems when they try to use resources on the server. Users who access file and print servers anonymously will be unable to list the shared network resources on those servers; the users will have to authenticate before they can view the lists of shared folders and printers. However, even with this policy setting enabled, anonymous users will have access to resources with permissions that explicitly include the built-in group, ANONYMOUS LOGON."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts and shares."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-do-not-allow-anonymous-enumeration-of-sam-accounts-and-shares'
     compliance:
       - cis: ["2.3.10.3"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> RestrictAnonymous -> 1'
  
  # 2.3.10.4 (L1) Ensure 'Network access: Do not allow storage of passwords and credentials for network authentication' is set to 'Enabled'. (Automated)
   - id: 18583
@@ -943,8 +947,11 @@ checks:
       - cis: ["2.3.10.4"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> DisableDomainCreds -> 1'
  
  # 2.3.10.5 (L1) Ensure 'Network access: Let Everyone permissions apply to anonymous users' is set to 'Disabled'. (Automated)
   - id: 18584
@@ -954,13 +961,16 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Let Everyone permissions apply to anonymous users."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-let-everyone-permissions-apply-to-anonymous-users'
     compliance:
       - cis: ["2.3.10.5"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> EveryoneIncludesAnonymous -> 0'
  
  # 2.3.10.6 (L1) Ensure 'Network access: Named Pipes that can be accessed anonymously' is set to 'None'. (Automated)
   - id: 18585
@@ -970,13 +980,16 @@ checks:
     impact: "This configuration will disable null session access over named pipes, and applications that rely on this feature or on unauthenticated access to named pipes will no longer function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to <blank> (i.e. None): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Named Pipes that can be accessed anonymously."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-named-pipes-that-can-be-accessed-anonymously'
     compliance:
       - cis: ["2.3.10.6"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> r:\S+'
  
  # 2.3.10.7 (L1) Ensure 'Network access: Remotely accessible registry paths' is configured. (Automated)
   - id: 18586
@@ -986,13 +999,16 @@ checks:
     impact: "None - this is the default behavior. However, if you remove the default registry paths from the list of accessible ones, remote management tools such as the Microsoft Baseline Security Analyzer and Microsoft Systems Management Server could fail, as they require remote access to the registry to properly monitor and manage computers. Note: If you want to allow remote access, you must also enable the Remote Registry service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-remotely-accessible-registry-paths'
     compliance:
       - cis: ["2.3.10.7"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedExactPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications Software\\Microsoft\\Windows NT\\CurrentVersion'
  
  # 2.3.10.8 (L1) Ensure 'Network access: Remotely accessible registry paths and sub-paths' is configured. (Automated)
   - id: 18587
@@ -1002,13 +1018,26 @@ checks:
     impact: "None - this is the default behavior. However, if you remove the default registry paths from the list of accessible ones, remote management tools such as the Microsoft Baseline Security Analyzer and Microsoft Systems Management Server could fail, as they require remote access to the registry to properly monitor and manage computers. Note: If you want to allow remote access, you must also enable the Remote Registry service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog SOFTWARE\\Microsoft\\OLAP Server SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Print SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-remotely-accessible-registry-paths-and-subpaths'
     compliance:
       - cis: ["2.3.10.8"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Print\\Printers'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\Eventlog'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\OLAP Server'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Print'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\ContentIndex'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:Software\\Microsoft\\Windows NT\\CurrentVersion\\Perflib'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SecurePipeServers\Winreg\AllowedPaths -> Machine -> r:System\\CurrentControlSet\\Services\\SysmonLog'
  
  # 2.3.10.9 (L1) Ensure 'Network access: Restrict anonymous access to Named Pipes and Shares' is set to 'Enabled'. (Automated)
   - id: 18588
@@ -1018,13 +1047,16 @@ checks:
     impact: "None - this is the default behavior. If you choose to enable this setting and are supporting Windows NT 4.0 domains, you should check if any of the named pipes are required to maintain trust relationships between the domains, and then add the pipe to the Network access: Named pipes that can be accessed anonymously list: - COMNAP: SNA session access - COMNODE: SNA session access - SQL\\QUERY: SQL instance access - SPOOLSS: Spooler service - LLSRPC: License Logging service - NETLOGON: Net Logon service - LSARPC: LSA access - SAMR: Remote access to SAM objects - BROWSER: Computer Browser service Previous to the release of Windows Server 2003 with Service Pack 1 (SP1) these named pipes were allowed anonymous access by default, but with the increased hardening in Windows Server 2003 with SP1 these pipes must be explicitly added if needed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict anonymous access to Named Pipes and Shares."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-restrict-anonymous-access-to-named-pipes-and-shares'
     compliance:
       - cis: ["2.3.10.9"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> RestrictNullSessAccess -> 1'
  
  # 2.3.10.10 (L1) Ensure 'Network access: Restrict clients allowed to make remote calls to SAM' is set to 'Administrators: Remote Access: Allow'. (Automated)
   - id: 18589
@@ -1034,13 +1066,16 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Remote Access: Allow: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict clients allowed to make remote calls to SAM."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-restrict-clients-allowed-to-make-remote-sam-calls'
     compliance:
       - cis: ["2.3.10.10"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam'
+      - 'r:HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Lsa -> restrictremotesam -> r:O:BAG:BAD:\(A;;RC;;;BA\)'
  
  # 2.3.10.11 (L1) Ensure 'Network access: Shares that can be accessed anonymously' is set to 'None'. (Automated)
   - id: 18590
@@ -1056,8 +1091,11 @@ checks:
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["14.6"]
       - iso_27001-2013: ["A.9.1.1"]
-    condition:
+    condition: any
     rules:
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> \S+'
  
  # 2.3.10.12 (L1) Ensure 'Network access: Sharing and security model for local accounts' is set to 'Classic - local users authenticate as themselves'. (Automated)
   - id: 18591
@@ -1067,13 +1105,16 @@ checks:
     impact: "None - this is the default configuration for domain-joined computers."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Classic - local users authenticate as themselves: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Sharing and security model for local accounts."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-sharing-and-security-model-for-local-accounts'
     compliance:
       - cis: ["2.3.10.12"]
       - cis_csc_v8: ["0.0"]
       - cis_csc_v7: ["0.0"]
-    condition:
+    condition: all
     rules:
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> ForceGuest -> 0'
  
  # 2.3.11.1 (L1) Ensure 'Network security: Allow Local System to use computer identity for NTLM' is set to 'Enabled'. (Automated)
   - id: 18592
@@ -4383,7 +4424,7 @@ checks:
  
  # 18.9.7.1.1 (BL) Ensure 'Prevent installation of devices that match any of these device IDs' is set to 'Enabled'. (Automated)
   - id: 18761
-    title: "(BL) Ensure 'Prevent installation of devices that match any of these device IDs' is set to 'Enabled'."
+    title: "Ensure 'Prevent installation of devices that match any of these device IDs' is set to 'Enabled'."
     description: "This policy setting allows you to specify a list of Plug and Play hardware IDs and compatible IDs for devices that Windows is prevented from installing. This policy setting takes precedence over any other policy setting that allows Windows to install a device. If you enable this policy setting, Windows is prevented from installing a device whose hardware ID or compatible ID appears in the list you create. If you enable this policy setting on a remote desktop server, the policy setting affects redirection of the specified devices from a remote desktop client to the remote desktop server. If you disable or do not configure this policy setting, devices can be installed and updated as allowed or prevented by other policy settings. The recommended state for this setting is: Enabled. Note: In versions of Windows 10 Release 1803 (or newer), there is a new control named Enumeration policy for external devices incompatible with Kernel DMA Protection available that mitigates much of the risk for malicious devices that may perform Direct Memory Access (DMA) attacks. The newer control is also now part of the Windows 10 CIS benchmark, in section 18.8.26. However, if your environment still contains any Windows 10 Release 1709 (or older) workstations, then the newer control will not work, so this setting remains important to disable Thunderbolt devices on those systems."
     rationale: "A BitLocker-protected computer may be vulnerable to Direct Memory Access (DMA) attacks when the computer is turned on or is in the Standby power state - this includes when the workstation is locked. BitLocker with TPM-only authentication lets a computer enter the power-on state without any pre-boot authentication. Therefore, an attacker may be able to perform DMA attacks. This issue is documented in Microsoft Knowledge Base article 2516445: Blocking the SBP-2 driver and Thunderbolt controllers to reduce 1394 DMA and Thunderbolt DMA threats to BitLocker."
     impact: "Devices matching the specified device IDs will be prevented from installation."
@@ -4397,7 +4438,7 @@ checks:
  
  # 18.9.7.1.4 (BL) Ensure 'Prevent installation of devices using drivers that match these device setup classes' is set to 'Enabled'. (Automated)
   - id: 18762
-    title: "(BL) Ensure 'Prevent installation of devices using drivers that match these device setup classes' is set to 'Enabled'."
+    title: "Ensure 'Prevent installation of devices using drivers that match these device setup classes' is set to 'Enabled'."
     description: "This policy setting allows you to specify a list of device setup class globally unique identifiers (GUIDs) for device drivers that Windows is prevented from installing. This policy setting takes precedence over any other policy setting that allows Windows to install a device. If you enable this policy setting, Windows is prevented from installing or updating device drivers whose device setup class GUIDs appear in the list you create. If you enable this policy setting on a remote desktop server, the policy setting affects redirection of the specified devices from a remote desktop client to the remote desktop server. If you disable or do not configure this policy setting, Windows can install and update devices as allowed or prevented by other policy settings. The recommended state for this setting is: Enabled."
     rationale: "A BitLocker-protected computer may be vulnerable to Direct Memory Access (DMA) attacks when the computer is turned on or is in the Standby power state - this includes when the workstation is locked. BitLocker with TPM-only authentication lets a computer enter the power-on state without any pre-boot authentication. Therefore, an attacker may be able to perform DMA attacks. This issue is documented in Microsoft Knowledge Base article 2516445: Blocking the SBP-2 driver and Thunderbolt controllers to reduce 1394 DMA and Thunderbolt DMA threats to BitLocker."
     impact: "Devices matching the specified device setup classes will be prevented from installation."
@@ -4855,7 +4896,7 @@ checks:
  
  # 18.9.24.1 (BL) Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'. (Automated)
   - id: 18786
-    title: "(BL) Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'."
+    title: "Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'."
     description: "This policy is intended to provide additional security against external DMA-capable devices. It allows for more control over the enumeration of external DMA-capable devices that are not compatible with DMA Remapping/device memory isolation and sandboxing. The recommended state for this setting is: Enabled: Block All. Note: This policy does not apply to 1394, PCMCIA or ExpressCard devices. The protection also only applies to Windows 10 R1803 or higher and requires a UEFI BIOS to function. Note #2: More information on this feature is available at this link: Kernel DMA Protection for Thunderbolt™ 3 (Windows 10) | Microsoft Docs."
     rationale: "Device memory sandboxing allows the OS to leverage the I/O Memory Management Unit (IOMMU) of a device to block unpermitted I/O, or memory access, by the peripheral."
     impact: "External devices that are not compatible with DMA-remapping will not be enumerated and will not function unless/until the user has logged in successfully and has an unlocked user session. Once enumerated, these devices will continue to function, regardless of the state of the session. Devices that are compatible with DMA-remapping will be enumerated immediately, with their device memory isolated."
@@ -5249,7 +5290,7 @@ checks:
  
  # 18.9.33.6.3 (BL) Ensure 'Allow standby states (S1-S3) when sleeping (on battery)' is set to 'Disabled'. (Automated)
   - id: 18809
-    title: "(BL) Ensure 'Allow standby states (S1-S3) when sleeping (on battery)' is set to 'Disabled'."
+    title: "Ensure 'Allow standby states (S1-S3) when sleeping (on battery)' is set to 'Disabled'."
     description: "This policy setting manages whether or not Windows is allowed to use standby states when putting the computer in a sleep state. The recommended state for this setting is: Disabled."
     rationale: "System sleep states (S1-S3) keep power to the RAM which may contain secrets, such as the BitLocker volume encryption key. An attacker finding a computer in sleep states (S1-S3) could directly attack the memory of the computer and gain access to the secrets through techniques such as RAM reminisce and direct memory access (DMA)."
     impact: "Users will not be able to use Sleep (S3) while on battery, which resumes faster than Hibernation (S4)."
@@ -5269,7 +5310,7 @@ checks:
  
  # 18.9.33.6.4 (BL) Ensure 'Allow standby states (S1-S3) when sleeping (plugged in)' is set to 'Disabled'. (Automated)
   - id: 18810
-    title: "(BL) Ensure 'Allow standby states (S1-S3) when sleeping (plugged in)' is set to 'Disabled'."
+    title: "Ensure 'Allow standby states (S1-S3) when sleeping (plugged in)' is set to 'Disabled'."
     description: "This policy setting manages whether or not Windows is allowed to use standby states when putting the computer in a sleep state. The recommended state for this setting is: Disabled."
     rationale: "System sleep states (S1-S3) keep power to the RAM which may contain secrets, such as the BitLocker volume encryption key. An attacker finding a computer in sleep states (S1-S3) could directly attack the memory of the computer and gain access to the secrets through techniques such as RAM reminisce and direct memory access (DMA)."
     impact: "Users will not be able to use Sleep (S3) while plugged in, which resumes faster than Hibernation (S4)."
@@ -5639,7 +5680,7 @@ checks:
  
  # 18.10.9.1.1 (BL) Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'. (Automated)
   - id: 18831
-    title: "(BL) Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'."
+    title: "Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'."
     description: "This policy setting configures whether or not fixed data drives formatted with the FAT file system can be unlocked and viewed on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with Service Pack 3 (SP3), or Windows XP with Service Pack 2 (SP2) operating systems. Note: This policy setting does not apply to drives that are formatted with the NTFS file system. The recommended state for this setting is: Disabled."
     rationale: "By default BitLocker virtualizes FAT formatted drives to permit access via the BitLocker To Go Reader on previous versions of Windows. Additionally the BitLocker To Go Reader application is applied to the unencrypted portion of the drive. The BitLocker To Go Reader application, like any other application, is subject to spoofing and could be a mechanism to propagate malware."
     impact: "Fixed data drives formatted with the FAT file system that are BitLocker-protected cannot be unlocked on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with SP3 or Windows XP with SP2. BitLockerToGo.exe will not be installed."
@@ -5654,7 +5695,7 @@ checks:
  
  # 18.10.9.1.2 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'. (Automated)
   - id: 18832
-    title: "(BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'."
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'."
     description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The \"Allow data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected fixed data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. Select \"Omit recovery options from the BitLocker setup wizard\" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. In \"Save BitLocker recovery information to Active Directory Domain Services\" choose which BitLocker recovery information to store in AD DS for fixed data drives. If you select \"Backup recovery password and key package\", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select \"Backup recovery password only\", only the recovery password is stored in AD DS. Select the \"Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives\" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the \"Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives\" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled."
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive."
     impact: "To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
@@ -5672,7 +5713,7 @@ checks:
  
  # 18.10.9.1.3 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'. (Automated)
   - id: 18833
-    title: "(BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
     description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The \"Allow data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected fixed data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. The recommended state for this setting is: Enabled: True (checked)."
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "None - this is the default behavior."
@@ -5690,7 +5731,7 @@ checks:
  
  # 18.10.9.1.5 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key' or higher. (Automated)
   - id: 18834
-    title: "(BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key' or higher."
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key' or higher."
     description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Allow 256-bit recovery key or Enabled: Require 256-bit recovery key."
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "A 256-bit recovery key will be permitted for fixed drives."
@@ -5708,7 +5749,7 @@ checks:
  
  # 18.10.9.1.10 (BL) Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'. (Automated)
   - id: 18835
-    title: "(BL) Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'."
     description: "This policy setting allows you to manage BitLocker's use of hardware-based encryption on fixed data drives and specify which encryption algorithms it can use with hardware-based encryption. Using hardware-based encryption can improve performance of drive operations that involve frequent reading or writing of data to the drive. You can specify additional options that control whether BitLocker software-based encryption is used instead of hardware-based encryption on computers that do not support hardware-based encryption and whether you want to restrict the encryption algorithms and cipher suites used with hardware-based encryption. The recommended state for this setting is: Disabled."
     rationale: "From a security perspective hardware-based encryption may introduce vulnerabilities in the hardware encryption of certain self-encrypting drives (SEDs), if the vendor and/or user has not updated the firmware to remediate the vulnerability. For more information visit ADV180028 - Security Update Guide - Microsoft - Guidance for configuring BitLocker to enforce software encryption."
     impact: "None - this is the default behavior."
@@ -5725,7 +5766,7 @@ checks:
  
  # 18.10.9.1.11 (BL) Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'. (Automated)
   - id: 18836
-    title: "(BL) Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'."
     description: "This policy setting specifies whether a password is required to unlock BitLocker-protected fixed data drives. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Disabled."
     rationale: "Using a dictionary-style attack, passwords can be guessed or discovered by repeatedly attempting to unlock a drive. Since this type of BitLocker password does include anti-dictionary attack protections provided by a TPM, for example, there is no mechanism to slow down rapid brute-force attacks against them."
     impact: "The password option will not be available when configuring BitLocker for fixed drives."
@@ -5743,7 +5784,7 @@ checks:
  
  # 18.10.9.1.12 (BL) Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'. (Automated)
   - id: 18837
-    title: "(BL) Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'."
+    title: "Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'."
     description: "This policy setting allows you to specify whether smart cards can be used to authenticate user access to the BitLocker-protected fixed data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require smart card authentication by selecting the \"Require use of smart cards on fixed data drives\" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled."
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "None - this is the default behavior."
@@ -5757,7 +5798,7 @@ checks:
  
  # 18.10.9.1.13 (BL) Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'. (Automated)
   - id: 18838
-    title: "(BL) Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'."
+    title: "Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'."
     description: "This policy setting allows you to specify whether smart cards must be used to authenticate user access to the BitLocker-protected fixed data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require a smart card authentication by selecting the \"Require use of smart cards on fixed data drives\" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled: True (checked)."
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "Smart cards will be required to authenticate user access to fixed data drives. Use of smart cards requires PKI infrastructure. Users will need to authenticate with the smart card to unlock the fixed data drive every time they restart the computer."
@@ -5771,7 +5812,7 @@ checks:
  
  # 18.10.9.2.1 (BL) Ensure 'Allow enhanced PINs for startup' is set to 'Enabled'. (Automated)
   - id: 18839
-    title: "(BL) Ensure 'Allow enhanced PINs for startup' is set to 'Enabled'."
+    title: "Ensure 'Allow enhanced PINs for startup' is set to 'Enabled'."
     description: "This policy setting allows you to configure whether or not enhanced startup PINs are used with BitLocker. Enhanced startup PINs permit the use of characters including uppercase and lowercase letters, symbols, numbers, and spaces. This policy setting is applied when you turn on BitLocker. The recommended state for this setting is: Enabled."
     rationale: "A numeric-only PIN provides less entropy than a PIN that is alpha-numeric. When not using enhanced PIN for startup, BitLocker requires the use of the function keys [F1-F10] for PIN entry since the PIN is entered in the pre-OS environment before localization support is available. This limits each PIN digit to one of ten possibilities. The TPM has an anti-hammering feature that includes a mechanism to exponentially increase the delay for PIN retry attempts; however, an attacker is able to more effectively mount a brute force attack using a domain of 10 digits of the function keys."
     impact: "All new BitLocker startup PINs set will be enhanced PINs. Note: Not all computers enable full keyboard support in the Pre-OS environment. Some keys may not be available. It is recommended this functionality be tested using the computers in your environment prior to it being deployed."
@@ -5788,7 +5829,7 @@ checks:
  
  # 18.10.9.2.2 (BL) Ensure 'Allow Secure Boot for integrity validation' is set to 'Enabled'. (Automated)
   - id: 18840
-    title: "(BL) Ensure 'Allow Secure Boot for integrity validation' is set to 'Enabled'."
+    title: "Ensure 'Allow Secure Boot for integrity validation' is set to 'Enabled'."
     description: "This policy setting allows you to configure whether Secure Boot will be allowed as the platform integrity provider for BitLocker operating system drives. Secure Boot ensures that the PC's pre-boot environment only loads firmware that is digitally signed by authorized software publishers. Secure Boot also provides more flexibility for managing pre-boot configuration than legacy BitLocker integrity checks. Secure Boot requires a system that meets the UEFI 2.3.1 Specifications for Class 2 and Class 3 computers. When this policy is enabled and the hardware is capable of using Secure Boot for BitLocker scenarios, the \"Use enhanced Boot Configuration Data validation profile\" group policy setting is ignored and Secure Boot verifies BCD settings according to the Secure Boot policy setting, which is configured separately from BitLocker. Note: If the group policy setting \"Configure TPM platform validation profile for native UEFI firmware configurations\" is enabled and has PCR 7 omitted, BitLocker will be prevented from using Secure Boot for platform or Boot Configuration Data (BCD) integrity validation. The recommended state for this setting is: Enabled."
     rationale: "Secure Boot ensures that only firmware digitally signed by authorized software publishers is loaded during computer startup, which reduces the risk of rootkits and other types of malware from gaining control of the system. It also helps provide protection against malicious users booting from an alternate operating system."
     impact: "None - this is the default behavior."
@@ -5804,7 +5845,7 @@ checks:
  
  # 18.10.9.2.3 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered' is set to 'Enabled'. (Automated)
   - id: 18841
-    title: "(BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered' is set to 'Enabled'."
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered' is set to 'Enabled'."
     description: "This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. The \"Allow certificate-based data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected operating system drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. Select \"Omit recovery options from the BitLocker setup wizard\" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. In \"Save BitLocker recovery information to Active Directory Domain Services\", choose which BitLocker recovery information to store in AD DS for operating system drives. If you select \"Backup recovery password and key package\", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select \"Backup recovery password only\", only the recovery password is stored in AD DS. Select the \"Do not enable BitLocker until recovery information is stored in AD DS for operating system drives\" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the \"Do not enable BitLocker until recovery information is stored in AD DS for operating system drives\" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled."
     rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
     impact: "Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
@@ -5822,7 +5863,7 @@ checks:
  
  # 18.10.9.2.4 (BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False'. (Automated)
   - id: 18842
-    title: "(BL) Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False'."
+    title: "Ensure 'Choose how BitLocker-protected operating system drives can be recovered: Allow data recovery agent' is set to 'Enabled: False'."
     description: "This policy setting allows you to control how BitLocker-protected operating system drives are recovered in the absence of the required startup key information. This policy setting is applied when you turn on BitLocker. The \"Allow certificate-based data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected operating system drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. The recommended state for this setting is: Enabled: False (unchecked)."
     rationale: "Should a user lose their primary means for accessing an encrypted OS volume, or should the system not pass its boot time integrity checks, the system will go into recovery mode. If the recovery key has not been backed up to Active Directory, the user would need to have saved the recovery key to another location such as a USB flash drive, or have printed the recovery password, and now have access to one of those in order to recovery the system. If the user is unable to produce the recovery key, then the user will be denied access to the encrypted volume and subsequently any data that is stored there."
     impact: "A Data Recovery Agent will not be permitted for the operating system drive. Users will need to be domain connected to turn on BitLocker. This policy is not FIPS complaint."
@@ -5840,7 +5881,7 @@ checks:
  
  # 18.10.9.2.11 (BL) Ensure 'Configure use of hardware-based encryption for operating system drives' is set to 'Disabled'. (Automated)
   - id: 18843
-    title: "(BL) Ensure 'Configure use of hardware-based encryption for operating system drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of hardware-based encryption for operating system drives' is set to 'Disabled'."
     description: "This policy setting allows you to manage BitLocker's use of hardware-based encryption on operating system drives and specify which encryption algorithms it can use with hardware-based encryption. Using hardware-based encryption can improve performance of drive operations that involve frequent reading or writing of data to the drive. You can specify additional options that control whether BitLocker software-based encryption is used instead of hardware-based encryption on computers that do not support hardware-based encryption and whether you want to restrict the encryption algorithms and cipher suites used with hardware-based encryption. The recommended state for this setting is: Disabled."
     rationale: "From a security perspective hardware-based encryption may introduce vulnerabilities in the hardware encryption of certain self-encrypting drives (SEDs), if the vendor and/or user has not updated the firmware to remediate the vulnerability. For more information visit ADV180028 - Security Update Guide - Microsoft - Guidance for configuring BitLocker to enforce software encryption."
     impact: "None - this is the default behavior."
@@ -5857,7 +5898,7 @@ checks:
  
  # 18.10.9.2.12 (BL) Ensure 'Configure use of passwords for operating system drives' is set to 'Disabled'. (Automated)
   - id: 18844
-    title: "(BL) Ensure 'Configure use of passwords for operating system drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of passwords for operating system drives' is set to 'Disabled'."
     description: "This policy setting specifies the constraints for passwords used to unlock BitLocker-protected operating system drives. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Disabled."
     rationale: "Using a dictionary-style attack, passwords can be guessed or discovered by repeatedly attempting to unlock a drive. Since this type of BitLocker password does include anti-dictionary attack protections provided by a TPM, for example, there is no mechanism to slow down rapid brute-force attacks against them."
     impact: "The password option will not be available when configuring BitLocker for the operating system drive."
@@ -5875,7 +5916,7 @@ checks:
  
  # 18.10.9.2.13 (BL) Ensure 'Require additional authentication at startup' is set to 'Enabled'. (Automated)
   - id: 18845
-    title: "(BL) Ensure 'Require additional authentication at startup' is set to 'Enabled'."
+    title: "Ensure 'Require additional authentication at startup' is set to 'Enabled'."
     description: "This policy setting allows you to configure whether BitLocker requires additional authentication each time the computer starts and whether you are using BitLocker with or without a Trusted Platform Module (TPM). This policy setting is applied when you turn on BitLocker. Note: Only one of the additional authentication options can be required at startup, otherwise a policy error occurs. If you want to use BitLocker on a computer without a TPM, select the \"Allow BitLocker without a compatible TPM\" check box. In this mode a USB drive is required for start-up and the key information used to encrypt the drive is stored on the USB drive, creating a USB key. When the USB key is inserted the access to the drive is authenticated and the drive is accessible. If the USB key is lost or unavailable you will need to use one of the BitLocker recovery options to access the drive. On a computer with a compatible TPM, four types of authentication methods can be used at startup to provide added protection for encrypted data. When the computer starts, it can use only the TPM for authentication, or it can also require insertion of a USB flash drive containing a startup key, the entry of a 4-digit to 20-digit personal identification number (PIN), or both. Users can configure advanced startup options in the BitLocker setup wizard. Note #2: If you want to require the use of a startup PIN and a USB flash drive, you must configure BitLocker settings using the command-line tool manage-bde instead of the BitLocker Drive Encryption setup wizard. The recommended state for this setting is: Enabled."
     rationale: "TPM without use of a PIN will only validate early boot components and does not require a user to enter any additional authentication information. If a computer is lost or stolen in this configuration, BitLocker will not provide any additional measure of protection beyond what is provided by native Windows authentication unless the early boot components are tampered with or the encrypted drive is removed from the machine."
     impact: "A PIN requires physical presence to restart the computer. This functionality is not compatible with Wake on LAN solutions."
@@ -5890,7 +5931,7 @@ checks:
  
  # 18.10.9.2.14 (BL) Ensure 'Require additional authentication at startup: Allow BitLocker without a compatible TPM' is set to 'Enabled: False'. (Automated)
   - id: 18846
-    title: "(BL) Ensure 'Require additional authentication at startup: Allow BitLocker without a compatible TPM' is set to 'Enabled: False'."
+    title: "Ensure 'Require additional authentication at startup: Allow BitLocker without a compatible TPM' is set to 'Enabled: False'."
     description: "This policy setting allows you to configure whether you can use BitLocker without a Trusted Platform Module (TPM), instead using a password or startup key on a USB flash drive. This policy setting is applied when you turn on BitLocker. The recommended state for this setting is: Enabled: False (unchecked)."
     rationale: "TPM without use of a PIN will only validate early boot components and does not require a user to enter any additional authentication information. If a computer is lost or stolen in this configuration, BitLocker will not provide any additional measure of protection beyond what is provided by native Windows authentication unless the early boot components are tampered with or the encrypted drive is removed from the machine."
     impact: "A compatible TPM will be required in order to use BitLocker."
@@ -5905,7 +5946,7 @@ checks:
  
  # 18.10.9.2.15 (BL) Ensure 'Require additional authentication at startup: Configure TPM startup:' is set to 'Enabled: Do not allow TPM'. (Automated)
   - id: 18847
-    title: "(BL) Ensure 'Require additional authentication at startup: Configure TPM startup:' is set to 'Enabled: Do not allow TPM'."
+    title: "Ensure 'Require additional authentication at startup: Configure TPM startup:' is set to 'Enabled: Do not allow TPM'."
     description: "This policy setting allows you to configure whether BitLocker requires additional authentication each time the computer starts. This policy setting is applied when you turn on BitLocker. Note: Only one of the additional authentication options can be required at startup, otherwise a policy error occurs. On a computer with a compatible TPM, four types of authentication methods can be used at startup to provide added protection for encrypted data. When the computer starts, it can use only the TPM for authentication, or it can also require insertion of a USB flash drive containing a startup key, the entry of a 4-digit to 20-digit personal identification number (PIN), or both. The recommended state for this setting is: Enabled: Do not allow TPM."
     rationale: "TPM without use of a PIN will only validate early boot components and does not require a user to enter any additional authentication information. If a computer is lost or stolen in this configuration, BitLocker will not provide any additional measure of protection beyond what is provided by native Windows authentication unless the early boot components are tampered with or the encrypted drive is removed from the machine."
     impact: "A TPM alone will be insufficient authentication for use with BitLocker."
@@ -5920,7 +5961,7 @@ checks:
  
  # 18.10.9.2.16 (BL) Ensure 'Require additional authentication at startup: Configure TPM startup PIN:' is set to 'Enabled: Require startup PIN with TPM'. (Automated)
   - id: 18848
-    title: "(BL) Ensure 'Require additional authentication at startup: Configure TPM startup PIN:' is set to 'Enabled: Require startup PIN with TPM'."
+    title: "Ensure 'Require additional authentication at startup: Configure TPM startup PIN:' is set to 'Enabled: Require startup PIN with TPM'."
     description: "This policy setting allows you to configure whether BitLocker requires additional authentication each time the computer starts. This policy setting is applied when you turn on BitLocker. Note: Only one of the additional authentication options can be required at startup, otherwise a policy error occurs. On a computer with a compatible TPM, four types of authentication methods can be used at startup to provide added protection for encrypted data. When the computer starts, it can use only the TPM for authentication, or it can also require insertion of a USB flash drive containing a startup key, the entry of a 4-digit to 20-digit personal identification number (PIN), or both. The recommended state for this setting is: Enabled: Require startup PIN with TPM."
     rationale: "TPM without use of a PIN will only validate early boot components and does not require a user to enter any additional authentication information. If a computer is lost or stolen in this configuration, BitLocker will not provide any additional measure of protection beyond what is provided by native Windows authentication unless the early boot components are tampered with or the encrypted drive is removed from the machine."
     impact: "A startup PIN will be required in addition to a TPM for BitLocker authentication. A PIN requires physical presence to restart the computer. This functionality is not compatible with Wake on LAN solutions."
@@ -5938,7 +5979,7 @@ checks:
  
  # 18.10.9.2.17 (BL) Ensure 'Require additional authentication at startup: Configure TPM startup key:' is set to 'Enabled: Do not allow startup key with TPM'. (Automated)
   - id: 18849
-    title: "(BL) Ensure 'Require additional authentication at startup: Configure TPM startup key:' is set to 'Enabled: Do not allow startup key with TPM'."
+    title: "Ensure 'Require additional authentication at startup: Configure TPM startup key:' is set to 'Enabled: Do not allow startup key with TPM'."
     description: "This policy setting allows you to configure whether BitLocker requires additional authentication each time the computer starts. This policy setting is applied when you turn on BitLocker. Note: Only one of the additional authentication options can be required at startup, otherwise a policy error occurs. On a computer with a compatible TPM, four types of authentication methods can be used at startup to provide added protection for encrypted data. When the computer starts, it can use only the TPM for authentication, or it can also require insertion of a USB flash drive containing a startup key, the entry of a 4-digit to 20-digit personal identification number (PIN), or both. Note #2: If you want to require the use of a startup PIN and a USB flash drive, you must configure BitLocker settings using the command-line tool manage-bde instead of the BitLocker Drive Encryption setup wizard. The recommended state for this setting is: Enabled: Do not allow startup key with TPM."
     rationale: "TPM without use of a PIN will only validate early boot components and does not require a user to enter any additional authentication information. If a computer is lost or stolen in this configuration, BitLocker will not provide any additional measure of protection beyond what is provided by native Windows authentication unless the early boot components are tampered with or the encrypted drive is removed from the machine."
     impact: "A TPM and a startup key will not be a permitted combination for BitLocker authentication."
@@ -5953,7 +5994,7 @@ checks:
  
  # 18.10.9.3.1 (BL) Ensure 'Allow access to BitLocker-protected removable data drives from earlier versions of Windows' is set to 'Disabled'. (Automated)
   - id: 18850
-    title: "(BL) Ensure 'Allow access to BitLocker-protected removable data drives from earlier versions of Windows' is set to 'Disabled'."
+    title: "Ensure 'Allow access to BitLocker-protected removable data drives from earlier versions of Windows' is set to 'Disabled'."
     description: "This policy setting configures whether or not removable data drives formatted with the FAT file system can be unlocked and viewed on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with Service Pack 3 (SP3), or Windows XP with Service Pack 2 (SP2) operating systems. Note: This policy setting does not apply to drives that are formatted with the NTFS file system. The recommended state for this setting is: Disabled."
     rationale: "By default BitLocker virtualizes FAT formatted drives to permit access via the BitLocker To Go Reader on previous versions of Windows. Additionally the BitLocker To Go Reader application is applied to the unencrypted portion of the drive. The BitLocker To Go Reader application, like any other application, is subject to spoofing and could be a mechanism to propagate malware."
     impact: "Removable data drives formatted with the FAT file system that are BitLocker-protected cannot be unlocked on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with SP3 or Windows XP with SP2. BitLockerToGo.exe will not be installed."
@@ -5968,7 +6009,7 @@ checks:
  
  # 18.10.9.3.2 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered' is set to 'Enabled'. (Automated)
   - id: 18851
-    title: "(BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered' is set to 'Enabled'."
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered' is set to 'Enabled'."
     description: "This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The \"Allow data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected removable data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. Select \"Omit recovery options from the BitLocker setup wizard\" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. In \"Save BitLocker recovery information to Active Directory Domain Services\" choose which BitLocker recovery information to store in AD DS for removable data drives. If you select \"Backup recovery password and key package\", both the BitLocker recovery password and key package are stored in AD DS. If you select \"Backup recovery password only\", only the recovery password is stored in AD DS. Select the \"Do not enable BitLocker until recovery information is stored in AD DS for removable data drives\" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the \"Do not enable BitLocker until recovery information is stored in AD DS for removable data drives\" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled."
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive."
     impact: "To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
@@ -5989,7 +6030,7 @@ checks:
  
  # 18.10.9.3.3 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'. (Automated)
   - id: 18852
-    title: "(BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
     description: "This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The \"Allow data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected removable data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. The recommended state for this setting is: Enabled: True (checked)."
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "None - this is the default behavior."
@@ -6010,7 +6051,7 @@ checks:
  
  # 18.10.9.3.5 (BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key'. (Automated)
   - id: 18853
-    title: "(BL) Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key'."
+    title: "Ensure 'Choose how BitLocker-protected removable drives can be recovered: Recovery Key' is set to 'Enabled: Do not allow 256-bit recovery key'."
     description: "This policy setting allows you to control how BitLocker-protected removable data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Do not allow 256-bit recovery key."
     rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker a Data Recovery Agent will need to be configured for removable drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
     impact: "A 256-bit recovery key will not be permitted for removable drives."
@@ -6031,7 +6072,7 @@ checks:
  
  # 18.10.9.3.10 (BL) Ensure 'Configure use of hardware-based encryption for removable data drives' is set to 'Disabled'. (Automated)
   - id: 18854
-    title: "(BL) Ensure 'Configure use of hardware-based encryption for removable data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of hardware-based encryption for removable data drives' is set to 'Disabled'."
     description: "This policy setting allows you to manage BitLocker's use of hardware-based encryption on removable data drives and specify which encryption algorithms it can use with hardware-based encryption. Using hardware-based encryption can improve performance of drive operations that involve frequent reading or writing of data to the drive. You can specify additional options that control whether BitLocker software-based encryption is used instead of hardware-based encryption on computers that do not support hardware-based encryption and whether you want to restrict the encryption algorithms and cipher suites used with hardware-based encryption. The recommended state for this setting is: Disabled."
     rationale: "From a security perspective hardware-based encryption may introduce vulnerabilities in the hardware encryption of certain self-encrypting drives (SEDs), if the vendor and/or user has not updated the firmware to remediate the vulnerability. For more information visit ADV180028 - Security Update Guide - Microsoft - Guidance for configuring BitLocker to enforce software encryption."
     impact: "None - this is the default behavior."
@@ -6048,7 +6089,7 @@ checks:
  
  # 18.10.9.3.11 (BL) Ensure 'Configure use of passwords for removable data drives' is set to 'Disabled'. (Automated)
   - id: 18855
-    title: "(BL) Ensure 'Configure use of passwords for removable data drives' is set to 'Disabled'."
+    title: "Ensure 'Configure use of passwords for removable data drives' is set to 'Disabled'."
     description: "This policy setting allows you to specify whether a password is required to unlock BitLocker-protected removable data drives. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Disabled."
     rationale: "Using a dictionary-style attack, passwords can be guessed or discovered by repeatedly attempting to unlock a drive. Since this type of BitLocker password does not include anti-dictionary attack protections provided by a TPM, for example, there is no mechanism to slow down use of rapid brute-force attacks against them."
     impact: "The password option will not be available when configuring BitLocker for removable drives."
@@ -6066,7 +6107,7 @@ checks:
  
  # 18.10.9.3.12 (BL) Ensure 'Configure use of smart cards on removable data drives' is set to 'Enabled'. (Automated)
   - id: 18856
-    title: "(BL) Ensure 'Configure use of smart cards on removable data drives' is set to 'Enabled'."
+    title: "Ensure 'Configure use of smart cards on removable data drives' is set to 'Enabled'."
     description: "This policy setting specifies whether smart cards can be used to authenticate user access to BitLocker-protected removable data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require smart card authentication by selecting the \"Require use of smart cards on removable data drives\" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled."
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "None - this is the default behavior."
@@ -6080,7 +6121,7 @@ checks:
  
  # 18.10.9.3.13 (BL) Ensure 'Configure use of smart cards on removable data drives: Require use of smart cards on removable data drives' is set to 'Enabled: True'. (Automated)
   - id: 18857
-    title: "(BL) Ensure 'Configure use of smart cards on removable data drives: Require use of smart cards on removable data drives' is set to 'Enabled: True'."
+    title: "Ensure 'Configure use of smart cards on removable data drives: Require use of smart cards on removable data drives' is set to 'Enabled: True'."
     description: "This policy setting specifies whether smart cards must be used to authenticate user access to BitLocker-protected removable data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require smart card authentication by selecting the \"Require use of smart cards on removable data drives\" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled: True (checked)."
     rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
     impact: "Smart cards will be required to authenticate user access to removable data drives. Use of smart cards requires PKI infrastructure. Users will need to authenticate with the smart card to unlock the removable data drive every time they restart the computer."
@@ -6094,7 +6135,7 @@ checks:
  
  # 18.10.9.3.14 (BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'. (Automated)
   - id: 18858
-    title: "(BL) Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'."
+    title: "Ensure 'Deny write access to removable drives not protected by BitLocker' is set to 'Enabled'."
     description: "This policy setting configures whether BitLocker protection is required for a computer to be able to write data to a removable data drive. All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access. The recommended state for this setting is: Enabled."
     rationale: "Users may not voluntarily encrypt removable drives prior to saving important data to the drive."
     impact: "All removable data drives that are not BitLocker-protected will be mounted as read-only. If the drive is protected by BitLocker, it will be mounted with read and write access."
@@ -6115,7 +6156,7 @@ checks:
  
  # 18.10.9.4 (BL) Ensure 'Disable new DMA devices when this computer is locked' is set to 'Enabled'. (Automated)
   - id: 18859
-    title: "(BL) Ensure 'Disable new DMA devices when this computer is locked' is set to 'Enabled'."
+    title: "Ensure 'Disable new DMA devices when this computer is locked' is set to 'Enabled'."
     description: "This policy setting allows you to block direct memory access (DMA) for all hot pluggable PCI downstream ports until a user logs into Windows. The recommended state for this setting is: Enabled. Note: Microsoft changed the implementation of this setting in Windows 10 R1709 to strengthen its enforcement. As a result, some hardware configurations may experience unexpected problems with this setting in that release (or newer), until updated firmware and/or drivers from the vendor are installed to correct the problem. See the Impact Statement for more information."
     rationale: "A BitLocker-protected computer may be vulnerable to Direct Memory Access (DMA) attacks when the computer is turned on or is in the Standby power state - this includes when the workstation is locked. Enabling this setting will help prevent such an attack while the computer is left unattended."
     impact: "Newly attached hardware devices that use DMA will not function on a locked (or signed out) workstation until the user has unlocked the session or logged in. Some hardware configurations may experience unexpected problems with this setting in Windows 10 R1709 (or newer), requiring updated firmware and/or drivers to correct the problem. See MSKB 4057300 for more information. We recommend testing this setting on all examples of workstation hardware before deploying it on a large scale - to see if vendor firmware and/or driver updates are first required."
