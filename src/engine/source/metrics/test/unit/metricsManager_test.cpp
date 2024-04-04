@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include <metrics/metricsManager.hpp>
 #include <json/json.hpp>
-#include "../unit/mocks/metricsAuxiliarFunctions.hpp"
+#include <logging/logging.hpp>
+#include <metrics/metricsManager.hpp>
 
 using namespace metricsManager;
 
@@ -14,9 +14,7 @@ protected:
 
     ~MetricsInterfaceTest() {}
 
-    void SetUp() override {
-        initLogging();
-    }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 
@@ -113,9 +111,9 @@ TEST_F(MetricsInterfaceTest, getAllMetricsHistogram)
 
     const auto NUMBER_RECORS {1000};
 
-    for (int i=0; i < NUMBER_RECORS; i++)
+    for (int i = 0; i < NUMBER_RECORS; i++)
     {
-        histogram0->recordValue(rand()%10000);
+        histogram0->recordValue(rand() % 10000);
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));

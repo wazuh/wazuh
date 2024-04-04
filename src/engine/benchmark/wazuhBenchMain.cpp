@@ -3,9 +3,7 @@
 
 int main(int argc, char **argv)
 {
-    logging::LoggingConfig logConfig;
-    logConfig.level = "off";
-    logging::start(logConfig);
+    logging::testInit();
 
     benchmark::Initialize(&argc, argv);
     if (benchmark::ReportUnrecognizedArguments(argc, argv))

@@ -28,21 +28,6 @@ namespace
 {
 const Reference targetField {"wdb.result"};
 const std::vector<OpArg> commonArguments {makeRef("event.original"), makeRef("agent.id")};
-
-void inline initLogging(void)
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.level = "off";
-        logConfig.filePath = "";
-        logging::start(logConfig);
-        initialized = true;
-    }
-}
 } // namespace
 
 class opBuilderSCAdecoder_Functions : public ::testing::Test
@@ -55,7 +40,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         wdb = std::make_shared<MockWdbHandler>();
         cfg = std::make_shared<MockSockHandler>();
@@ -83,7 +68,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
 
         wdbManager = std::make_shared<MockWdbManager>();
         wdb = std::make_shared<MockWdbHandler>();
@@ -114,7 +99,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         wdbManager = std::make_shared<MockWdbManager>();
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
@@ -145,7 +130,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         wdbManager = std::make_shared<MockWdbManager>();
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
@@ -175,7 +160,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         wdbManager = std::make_shared<MockWdbManager>();
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();
@@ -205,7 +190,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         wdbManager = std::make_shared<MockWdbManager>();
         wdb = std::make_shared<MockWdbHandler>();
         sockFactory = std::make_shared<MockSockFactory>();

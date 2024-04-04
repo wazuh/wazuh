@@ -8,21 +8,6 @@
 #include <sockiface/mockSockFactory.hpp>
 #include <sockiface/mockSockHandler.hpp>
 
-void inline initLogging()
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.level = "off";
-        logConfig.filePath = "";
-        logging::start(logConfig);
-        initialized = true;
-    }
-}
-
 using namespace wazuhdb;
 using namespace sockiface::mocks;
 
@@ -45,7 +30,7 @@ std::tuple<std::shared_ptr<IWDBHandler>, std::shared_ptr<MockSockHandler>> getWD
 class wdb_connector : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -53,7 +38,7 @@ protected:
 class wdb_query : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -61,7 +46,7 @@ protected:
 class wdb_tryQuery : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -69,7 +54,7 @@ protected:
 class wdb_parseResult : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
@@ -77,7 +62,7 @@ protected:
 class wdb_tryQueryAndParseResult : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };

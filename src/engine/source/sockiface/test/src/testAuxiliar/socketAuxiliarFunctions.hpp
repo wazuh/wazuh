@@ -7,20 +7,6 @@
 
 #include <logging/logging.hpp>
 
-void inline initLogging(void)
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.level = "off";
-        logging::start(logConfig);
-        initialized = true;
-    }
-}
-
 enum UnixSocketErrorCodes
 {
     SOCKET_ERROR = -1,

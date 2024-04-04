@@ -31,7 +31,7 @@ public:
 class EngineServerTest : public testing::Test {
 protected:
     void SetUp() override {
-        initLogging();
+        logging::testInit();
         server = std::make_unique<engineserver::EngineServer>();
     }
 
