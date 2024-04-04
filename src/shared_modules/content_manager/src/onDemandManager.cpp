@@ -117,7 +117,7 @@ void OnDemandManager::startServer()
                              try
                              {
                                  const auto requestData = nlohmann::json::parse(req.body);
-                                 const auto& fileHash {requestData.at("fileHash").get_ref<const std::string&>()};
+                                 const auto& fileHash {requestData.at("hash").get_ref<const std::string&>()};
                                  const auto& topicName {requestData.at("topicName").get_ref<const std::string&>()};
 
                                  if (fileHash.empty())
