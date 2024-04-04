@@ -1,0 +1,53 @@
+- name: INVALID_UNIT_FOR_SIZE_OPTION
+  description: Upload an invalid API configuration with invalid log size unit
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 5p
+  metadata:
+    expected_error_code: 2011
+    expected_message: "Error setting up API logger: Size value does not match the expected format: <number><unit> (Available units: K (kilobytes), M (megabytes)"
+
+- name: INVALID_VALUE_FOR_SIZE_OPTION
+  description: Upload an invalid API configuration with a log size smaller than the min
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 500k
+  metadata:
+    expected_error_code: 2011
+    expected_message: "Error setting up API logger: Minimum value for size is 1M"
+
+- name: VALID_UPPERCASE_VALUE_FOR_SIZE_OPTION_IN_MB
+  description: Upload a valid API configuration with the log size value in uppercase in MB
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 2M
+  metadata:
+    expected_error_code: 0
+    expected_message: "Listening on"
+
+- name: VALID_LOWERCASE_VALUE_FOR_SIZE_OPTION_IN_MB
+  description: Upload a valid API configuration with the log size value in lowercase in MB
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 2m
+  metadata:
+    expected_error_code: 0
+    expected_message: "Listening on"
+
+- name: VALID_UPPERCASE_VALUE_FOR_SIZE_OPTION_IN_KB
+  description: Upload a valid API configuration with the log size value in uppercase in KB
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 2000K
+  metadata:
+    expected_error_code: 0
+    expected_message: "Listening on"
+
+- name: VALID_LOWERCASE_VALUE_FOR_SIZE_OPTION_IN_KB
+  description: Upload a valid API configuration with the log size value in lowercase in KB
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 2000k
+  metadata:
+    expected_error_code: 0
+    expected_message: "Listening on"
