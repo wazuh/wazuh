@@ -30,6 +30,7 @@ protected:
     ~ActionTest() override = default;
 
     nlohmann::json m_parameters; ///< Parameters used to create the Action
+    const std::filesystem::path m_outputFolder {std::filesystem::temp_directory_path() / "ActionTest"}; ///< Output test folder.
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
@@ -53,12 +54,12 @@ protected:
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
                     "url": "http://localhost:4444/raw/consumers",
-                    "outputFolder": "/tmp/action-tests",
-                    "contentFileName": "sample.json",
-                    "databasePath": "/tmp/action-tests/rocksdb"
+                    "contentFileName": "sample.json"
                 }
             }
         )"_json;
+        m_parameters["configData"]["outputFolder"] = m_outputFolder;
+        m_parameters["configData"]["databasePath"] = m_outputFolder;
 
         // Init router provider.
         const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
@@ -77,11 +78,10 @@ protected:
     void TearDown() override
     {
         // Removes the directory if it exists
-        const auto outputFolder = m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>();
-        if (std::filesystem::exists(outputFolder))
+        if (std::filesystem::exists(m_outputFolder))
         {
             // Delete the output folder.
-            std::filesystem::remove_all(outputFolder);
+            std::filesystem::remove_all(m_outputFolder);
         }
 
         // Stop router provider.

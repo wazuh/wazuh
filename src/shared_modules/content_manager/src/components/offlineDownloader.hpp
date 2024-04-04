@@ -151,7 +151,7 @@ private:
         {
             // Download finished: Insert path into context.
             context.data.at("paths").push_back(outputFilePath.string());
-            context.data["fileHash"] = std::move(inputFileHash);
+            context.data["fileMetadata"]["hash"] = std::move(inputFileHash);
             return;
         }
 

@@ -112,7 +112,7 @@ TEST_F(FileDownloaderTest, DownloadRawFile)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
-    expectedData["fileHash"] = FILEHASH_RAW;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_RAW;
 
     // Set config data. This will make the downloader to download from 'localhost:4444/raw'.
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
@@ -144,7 +144,7 @@ TEST_F(FileDownloaderTest, DownloadCompressedFile)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
-    expectedData["fileHash"] = FILEHASH_XZ;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_XZ;
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";
@@ -176,7 +176,7 @@ TEST_F(FileDownloaderTest, DownloadSameFileTwice)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
-    expectedData["fileHash"] = FILEHASH_XZ;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_XZ;
 
     // Set config data. This will make the downloader to download from 'localhost:4444/xz'.
     m_spUpdaterBaseContext->configData["compressionType"] = "xz";

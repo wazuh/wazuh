@@ -14,8 +14,8 @@
 
 #include "actionOrchestrator.hpp"
 #include "conditionSync.hpp"
+#include "iRouterProvider.hpp"
 #include "onDemandManager.hpp"
-#include "routerProvider.hpp"
 #include "updaterContext.hpp"
 #include <atomic>
 #include <chrono>
@@ -44,7 +44,7 @@ public:
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
      */
-    explicit Action(const std::shared_ptr<RouterProvider> channel, std::string topicName, nlohmann::json parameters)
+    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters)
         : m_channel {channel}
         , m_actionInProgress {false}
         , m_cv {}
@@ -201,7 +201,7 @@ public:
     }
 
 private:
-    std::shared_ptr<RouterProvider> m_channel;
+    std::shared_ptr<IRouterProvider> m_channel;
     std::thread m_schedulerThread;
     std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;

@@ -84,7 +84,7 @@ private:
 
         // Download finished: Update context paths.
         context.data.at("paths").push_back(outputFilePath);
-        context.data["fileHash"] = std::move(downloadFileHash);
+        context.data["fileMetadata"]["hash"] = std::move(downloadFileHash);
     }
 
 public:
