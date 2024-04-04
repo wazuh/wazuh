@@ -101,9 +101,19 @@ Field Schema::get(const DotPath& name) const
             // Handle arrays e.g. "field/0"
             // If the field is an array and the next part is the last one and a number, return a new field with the
             // array type
-            if (entry->second.isArray() && it + 1 == name.cend() - 1)
+            if (entry->second.isArray() && (it + 1) == (name.cend() - 1))
             {
-                if (std::isdigit((it + 1)->data()[0]))
+                auto arrayIndex = *(it + 1);
+                auto isIndex = true;
+                for (const auto& c : arrayIndex)
+                {
+                    if (!std::isdigit(c))
+                    {
+                        isIndex = false;
+                        break;
+                    }
+                }
+                if (isIndex)
                 {
                     return Field({.type = entry->second.type(), .isArray = false});
                 }
@@ -141,10 +151,25 @@ bool Schema::hasField(const DotPath& name) const
             // If the field is an array and the next part is the last one and a number, return true
             if (entry->second.isArray() && it + 1 == name.cend() - 1)
             {
-                if (std::isdigit((it + 1)->data()[0]))
+                auto arrayIndex = *(it + 1);
+                auto isIndex = true;
+                for (const auto& c : arrayIndex)
+                {
+                    if (!std::isdigit(c))
+                    {
+                        isIndex = false;
+                    }
+                }
+
+                if (isIndex)
                 {
                     return true;
                 }
+            }
+
+            if (entry->second.type() != Type::OBJECT && entry->second.type() != Type::NESTED)
+            {
+                return false;
             }
             current = &entry->second.properties();
         }
