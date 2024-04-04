@@ -10,7 +10,7 @@ namespace cmd
 constexpr auto ENGINE_LOG_LEVEL = "error";
 constexpr auto ENGINE_LOG_LEVEL_ENV = "WZE_LOG_LEVEL";
 
-constexpr auto ENGINE_LOG_OUTPUT = "";
+constexpr auto ENGINE_LOG_OUTPUT = "/dev/stdout";
 constexpr auto ENGINE_LOG_OUTPUT_ENV = "WZE_LOG_OUTPUT";
 
 constexpr auto ENGINE_LOG_TRUNCATE = false;

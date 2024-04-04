@@ -14,56 +14,56 @@ using namespace json;
 class JsonBase : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
 class JsonStatic : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
 class JsonBuildtime : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
 class JsonRuntime : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
 class JsonQueryTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
 class JsonGettersTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
 class JsonSettersTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
 class getJsonTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 

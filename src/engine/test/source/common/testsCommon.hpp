@@ -6,24 +6,6 @@
 
 #include <logging/logging.hpp>
 
-/**
- * @brief Initializes the logging module for tests
- *
- */
-void inline initLogging(void)
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.level = "off";
-        logging::start(logConfig);
-        initialized = true;
-    }
-}
-
 std::string inline getRandomNumber(unsigned int length)
 {
     const std::string digits = "0123456789";

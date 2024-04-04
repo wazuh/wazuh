@@ -1,26 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <logging/logging.hpp>
 #include <store/mockDriver.hpp>
 #include <store/store.hpp>
-#include <logging/logging.hpp>
 
 using namespace store;
 using namespace store::mocks;
-
-void inline initLogging()
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        // Logging setup
-        logging::LoggingConfig logConfig;
-        logConfig.level = "off";
-        logConfig.filePath = "";
-        logging::start(logConfig);
-        initialized = true;
-    }
-}
 
 // Internal root namespace
 const base::Name nsPrefix("namespaces"); // Prefix in the store for the namespaces
@@ -69,7 +54,7 @@ Col removePrefix(const Col& col, std::size_t level = 1)
 class StoreBuildTest : public ::testing::Test
 {
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 };
 
 class StoreTest : public ::testing::Test
@@ -80,7 +65,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         driver = std::make_shared<MockDriver>();
         fillDB();
         ASSERT_NO_THROW(store = std::make_shared<Store>(driver));
@@ -646,7 +631,7 @@ TEST_F(StoreTest, readInternalCol_fail)
 
 TEST_F(StoreTest, readInternalCol_ok)
 {
-    EXPECT_CALL(*driver, readCol(base::Name("x"))).WillOnce(testing::Return(driverReadColResp(Col{base::Name("a")})));
+    EXPECT_CALL(*driver, readCol(base::Name("x"))).WillOnce(testing::Return(driverReadColResp(Col {base::Name("a")})));
     auto res = store->readInternalCol("x");
 
     ASSERT_FALSE(base::isError(res));
