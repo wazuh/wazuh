@@ -3,6 +3,7 @@
 #include <fmt/format.h>
 
 #include <schemf/schema.hpp>
+#include <schemf/mockSchema.hpp>
 
 using namespace schemf;
 
@@ -141,3 +142,18 @@ INSTANTIATE_TEST_SUITE_P(SchemaTest,
                                            LoadTuple(R"({"a": {}})", false),
                                            LoadTuple(R"({"a": [{"type": "text"}]})", false),
                                            LoadTuple(R"([{"a": {"type": "keyword"}}])", false)));
+
+TEST(SchemaTest, ArrayItem)
+{
+    Schema schema;
+    schema.addField("a", {Type::INTEGER, true});
+    ASSERT_TRUE(schema.isArray("a"));
+    ASSERT_TRUE(schema.hasField("a.0"));
+    ASSERT_EQ(schema.getJsonType("a.0"), json::Json::Type::Number);
+    ASSERT_FALSE(schema.hasField("a.n"));
+    ASSERT_FALSE(schema.isArray("a.0"));
+    auto itemType = schema.getType("a.0");
+    ASSERT_EQ(itemType, Type::INTEGER);
+    ASSERT_THROW(schema.getType("a.n"), std::runtime_error);
+    ASSERT_THROW(schema.getJsonType("a.n"), std::runtime_error);
+}

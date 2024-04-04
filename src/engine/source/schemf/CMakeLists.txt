@@ -46,7 +46,7 @@ add_executable(schemf_ctest
     ${COMPONENT_SRC_DIR}/schema_test.cpp
     ${COMPONENT_SRC_DIR}/validator_test.cpp
 )
-target_link_libraries(schemf_ctest PRIVATE schemf gtest_main)
+target_link_libraries(schemf_ctest PRIVATE schemf gtest_main schemf::mocks)
 gtest_discover_tests(schemf_ctest)
 
 endif(ENGINE_BUILD_TEST)
