@@ -8,13 +8,13 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark v1.0.0 for Microsoft Windows 11 Release 21H2 - 02-14-2022
+# Center for Internet Security Benchmark v3.0.0 for Microsoft Windows 11 Enterprise - 02-22-2024
 
 policy:
-  id: "cis_win11_enterprise_21H2"
+  id: "cis_win11_enterprise"
   file: "cis_win11_enterprise.yml"
-  name: "CIS Microsoft Windows 11 Enterprise Benchmark v1.0.0"
-  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 11."
+  name: "CIS Microsoft Windows 11 Enterprise Benchmark v3.0.0"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft Windows 11. Please note that the rules provide accurate results for Windows 11 Operating Systems with the System language set to English. The SCA policy will work with other languages but the results will be less accurate due to some of the rules that depend on the System language."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
@@ -26,368 +26,538 @@ requirements:
     - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows 10'
 
 checks:
-  # 1.1 Password Policy
+ # 1.1.1 (L1) Ensure 'Enforce password history' is set to '24 or more password(s)'. (Automated)
   - id: 26000
     title: "Ensure 'Enforce password history' is set to '24 or more password(s)'."
-    description: "This policy setting determines the number of renewed, unique passwords that have to be associated with a user account before you can reuse an old password. The value for this policy setting must be between 0 and 24 passwords. The default value for Windows Vista is 0 passwords, but the default setting in a domain is 24 passwords. To maintain the effectiveness of this policy setting, use the Minimum password age setting to prevent users from repeatedly changing their password. The recommended state for this setting is: 24 or more password(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center. Note #2: As of the publication of this benchmark, Microsoft currently has a maximum limit of 24 saved passwords. For more information, please visit Enforce password history (Windows 10) - Windows security | Microsoft Docs"
+    description: "This policy setting determines the number of renewed, unique passwords that have to be associated with a user account before you can reuse an old password. The value for this policy setting must be between 0 and 24 passwords. The default value for stand-alone systems is 0 passwords, but the default setting when joined to a domain is 24 passwords. To maintain the effectiveness of this policy setting, use the Minimum password age setting to prevent users from repeatedly changing their password. The recommended state for this setting is: 24 or more password(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center. Note #2: As of the publication of this benchmark, Microsoft currently has a maximum limit of 24 saved passwords. For more information, please visit Enforce password history (Windows 10) - Windows security | Microsoft Docs."
     rationale: "The longer a user uses the same password, the greater the chance that an attacker can determine the password through brute force attacks. Also, any accounts that may have been compromised will remain exploitable for as long as the password is left unchanged. If password changes are required but password reuse is not prevented, or if users continually reuse a small number of passwords, the effectiveness of a good password policy is greatly reduced. If you specify a low number for this policy setting, users will be able to use the same small number of passwords repeatedly. If you do not also configure the Minimum password age setting, users might repeatedly change their passwords until they can reuse their original password."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 24 or more password(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Enforce password history"
+    impact: "The major impact of this configuration is that users must create a new password every time they are required to change their old one. If users are required to change their passwords to new unique values, there is an increased risk of users who write their passwords somewhere so that they do not forget them. Another risk is that users may create passwords that change incrementally (for example, password01, password02, and so on) to facilitate memorization but make them easier to guess. Also, an excessively low value for the Minimum password age setting will likely increase administrative overhead, because users who forget their passwords might ask the help desk to reset them frequently."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 24 or more password(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Enforce password history."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy'
     compliance:
       - cis: ["1.1.1"]
-      - cis_csc: ["5.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["16.2"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Length of password history maintained:\s+(\d+) compare >= 24'
 
+ # 1.1.2 (L1) Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'. (Automated)
   - id: 26001
     title: "Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'."
     description: "This policy setting defines how long a user can use their password before it expires. Values for this policy setting range from 0 to 999 days. If you set the value to 0, the password will never expire. Because attackers can crack passwords, the more frequently you change the password the less opportunity an attacker has to use a cracked password. However, the lower this value is set, the higher the potential for an increase in calls to help desk support due to users having to change their password or forgetting which password is current. The recommended state for this setting is 365 or fewer days, but not 0. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
     rationale: "The longer a password exists the higher the likelihood that it will be compromised by a brute force attack, by an attacker gaining general knowledge about the user, or by the user sharing the password. Configuring the Maximum password age setting to 0 so that users are never required to change their passwords is a major security risk because that allows a compromised password to be used by the malicious user for as long as the valid user has authorized access."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 365 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age"
+    impact: "If the Maximum password age setting is too low, users are required to change their passwords very often. Such a configuration can reduce security in the organization, because users might write their passwords in an insecure location or lose them. If the value for this policy setting is too high, the level of security within an organization is reduced because it allows potential attackers more time in which to discover user passwords or to use compromised accounts."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 365 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Maximum password age."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy'
     compliance:
       - cis: ["1.1.2"]
-      - cis_csc: ["5.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["16.10"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare <= 365'
       - 'c:net.exe accounts -> n:Maximum password age \(days\):\s+(\d+) compare > 0'
 
+ # 1.1.3 (L1) Ensure 'Minimum password age' is set to '1 or more day(s)'. (Automated)
   - id: 26002
     title: "Ensure 'Minimum password age' is set to '1 or more day(s)'."
     description: "This policy setting determines the number of days that you must use a password before you can change it. The range of values for this policy setting is between 1 and 999 days. (You may also set the value to 0 to allow immediate password changes.) The default value for this setting is 0 days. The recommended state for this setting is: 1 or more day(s)). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
     rationale: "Users may have favorite passwords that they like to use because they are easy to remember and they believe that their password choice is secure from compromise. Unfortunately, passwords are compromised and if an attacker is targeting a specific individual's user account, with foreknowledge of data about that user, reuse of old passwords can cause a security breach. To address password reuse a combination of security settings is required. Using this policy setting with the Enforce password history setting prevents the easy reuse of old passwords. For example, if you configure the Enforce password history setting to ensure that users cannot reuse any of their last 12 passwords, they could change their password 13 times in a few minutes and reuse the password they started with, unless you also configure the Minimum password age setting to a number that is greater than 0. You must configure this policy setting to a number that is greater than 0 for the Enforce password history setting to be effective."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 1 or more day(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Minimum password age"
+    impact: "If an administrator sets a password for a user but wants that user to change the password when the user first logs on, the administrator must select the User must change password at next logon check box, or the user will not be able to change the password until the next day."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 1 or more day(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Minimum password age."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy'
     compliance:
       - cis: ["1.1.3"]
-      - cis_csc: ["5.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["16.10"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Minimum password age \(days\):\s+(\d+) compare >= 1'
 
+ # 1.1.4 (L1) Ensure 'Minimum password length' is set to '14 or more character(s)'. (Automated)
   - id: 26003
     title: "Ensure 'Minimum password length' is set to '14 or more character(s)'."
-    description: "This policy setting determines the least number of characters that make up a password for a user account. There are many different theories about how to determine the best password length for an organization, but perhaps 'passphrase' is a better term than 'password.' In Microsoft Windows 2000 and newer, passphrases can be quite long and can include spaces. Therefore, a phrase such as 'I want to drink a $5 milkshake' is a valid passphrase; it is a considerably stronger password than an 8 or 10 character string of random numbers and letters, and yet is easier to remember. Users must be educated about the proper selection and maintenance of passwords, especially with regard to password length. In enterprise environments, the ideal value for the Minimum password length setting is 14 characters, however you should adjust this value to meet your organization's business requirements. The recommended state for this setting is: 14 or more character(s). Note: In Windows Server 2016 and older versions of Windows Server, the GUI of the Local Security Policy (LSP), Local Group Policy Editor (LGPE) and Group Policy Management Editor (GPME) would not let you set this value higher than 14 characters. However, starting with Windows Server 2019, Microsoft changed the GUI to allow up to a 20 character minimum password length. Note #2: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
+    description: "This policy setting determines the least number of characters that make up a password for a user account. There are many different theories about how to determine the best password length for an organization, but perhaps \"passphrase\" is a better term than \"password.\" In Microsoft Windows 2000 or newer, passphrases can be quite long and can include spaces. Therefore, a phrase such as \"I want to drink a $5 milkshake\" is a valid passphrase; it is a considerably stronger password than an 8 or 10 character string of random numbers and letters, and yet is easier to remember. Users must be educated about the proper selection and maintenance of passwords, especially around password length. In enterprise environments, the ideal value for the Minimum password length setting is 14 characters, however you should adjust this value to meet your organization's business requirements. The recommended state for this setting is: 14 or more character(s). Note: In Windows Server 2016 and older versions of Windows Server, the GUI of the Local Security Policy (LSP), Local Group Policy Editor (LGPE) and Group Policy Management Editor (GPME) would not let you set this value higher than 14 characters. However, starting with Windows Server 2019, Microsoft changed the GUI to allow up to a 20 character minimum password length. Note #2: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
     rationale: "Types of password attacks include dictionary attacks (which attempt to use common words and phrases) and brute force attacks (which try every possible combination of characters). Also, attackers sometimes try to obtain the account database so they can use tools to discover the accounts and passwords."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 14 or more character(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Minimum password length"
+    impact: "Requirements for extremely long passwords can actually decrease the security of an organization, because users might leave the information in an insecure location or lose it. If very long passwords are required, mistyped passwords could cause account lockouts and increase the volume of help desk calls. If your organization has issues with forgotten passwords due to password length requirements, consider teaching your users about passphrases, which are often easier to remember and, due to the larger number of character combinations, much harder to discover. Note: Older versions of Windows such as Windows 98 and Windows NT 4.0 do not support passwords that are longer than 14 characters. Computers that run these older operating systems are unable to authenticate with computers or domains that use accounts that require long passwords."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 14 or more character(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Minimum password length."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy'
     compliance:
       - cis: ["1.1.4"]
-      - cis_csc: ["5.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4", "16.2"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Minimum password length:\s+(\d+) compare >= 14'
 
-  - id: 26004
-    title: "Ensure 'Password must meet complexity requirements' is set to 'Enabled'."
-    description: "This policy setting checks all new passwords to ensure that they meet basic requirements for strong passwords. When this policy is enabled, passwords must meet the following minimum requirements: - Not contain the user's account name or parts of the user's full name that exceed two consecutive characters - Be at least six characters in length - Contain characters from three of the following categories: - English uppercase characters (A through Z) - English lowercase characters (a through z) - Base 10 digits (0 through 9) - Non-alphabetic characters (for example, !, $, #, %) o A catch-all category of any Unicode character that does not fall under the    previous four categories. This fifth category can be regionally specific. Each additional character in a password increases its complexity exponentially. For instance, a seven-character, all lower-case alphabetic password would have 267 (approximately 8 x 109 or 8 billion) possible combinations. At 1,000,000 attempts per second (a capability of many password-cracking utilities), it would only take 133 minutes to crack. A seven-character alphabetic password with case sensitivity has 527 combinations. A seven-character case-sensitive alphanumeric password without punctuation has 627 combinations. An eight-character password has 268 (or 2 x 1011) possible combinations. Although this might seem to be a large number, at 1,000,000 attempts per second it would take only 59 hours to try all possible passwords. Remember, these times will significantly increase for passwords that use ALT characters and other special keyboard characters such as '!'' or '@''. Proper use of the password settings can help make it difficult to mount a brute force attack. The recommended state for this setting is: Enabled. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
-    rationale: "Passwords that contain only alphanumeric characters are extremely easy to discover with several publicly available tools."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Password must meet complexity requirements"
-    compliance:
-      - cis: ["1.1.5"]
-      - cis_csc: ["5.2"]
-    condition: all
-    rules:
-      - 'c:powershell Get-ADDefaultDomainPasswordPolicy -Current LoggedOnUser -> r:ComplexityEnabled\s+: True'
+ # 1.1.5 (L1) Ensure 'Password must meet complexity requirements' is set to 'Enabled'. (Automated) - Not Implemented
 
+ # 1.1.6 (L1) Ensure 'Relax minimum password length limits' is set to 'Enabled'. (Automated)
   - id: 26005
     title: "Ensure 'Relax minimum password length limits' is set to 'Enabled'."
-    description: "This policy setting determines whether the minimum password length setting can be increased beyond the legacy limit of 14 characters. For more information please see the following Microsoft Security Blog. The recommended state for this setting is: Enabled. Note: This setting only affects local accounts on the computer. Domain accounts are only affected by settings on the Domain Controllers, because that is where domain accounts are stored."
+    description: "This policy setting determines whether the minimum password length setting can be increased beyond the legacy limit of 14 characters. For more information, please see the following Microsoft Security Blog. The recommended state for this setting is: Enabled. Note: This setting only affects local accounts on the computer. Domain accounts are only affected by settings on the Domain Controllers, because that is where domain accounts are stored."
     rationale: "This setting will enable the enforcement of longer and generally stronger passwords or passphrases where MFA is not in use."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Relax minimum password length limits. Note: This setting is only available within the built-in OS security template of Windows 10 Release 2004 and Server 2022 (or newer), and is not available via older versions of the OS, or via downloadable Administrative Templates (ADMX/ADML). Therefore, you must use a Windows 10 Release 2004 or Server 2022 system (or newer) to view or edit this setting with the Group Policy Management Console (GPMC) or Group Policy Management Editor (GPME)."
+    impact: "The Minimum password length setting may be configured higher than 14 characters. If very long passwords are required, mistyped passwords could cause account lockouts and increase the volume of help desk calls. If your organization has issues with forgotten passwords due to password length requirements, consider teaching your users about passphrases, which are often easier to remember and, due to the larger number of character combinations, much harder to discover."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Password Policy\\Relax minimum password length limits Note: This setting is only available within the built-in OS security template of Windows 10 Release 2004 and Server 2022 (or newer), and is not available via older versions of the OS, or via downloadable Administrative Templates (ADMX/ADML). Therefore, you must use a Windows 10 Release 2004 or Server 2022 system (or newer) to view or edit this setting with the Group Policy Management Console (GPMC) or Group Policy Management Editor (GPME)."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
+      - 'https://support.microsoft.com/en-us/topic/minimum-password-length-auditing-and-enforcement-on-certain-versions-of-windows-5ef7fecf-3325-f56b-cc10-4fd565aacc59'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/password-policy'
     compliance:
       - cis: ["1.1.6"]
-      - cis_csc: ["5.2"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["16.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.10.1.1"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\SAM -> RelaxMinimumPasswordLengthLimits -> 1'
 
-  - id: 26006
+ # 1.1.7 (L1) Ensure 'Store passwords using reversible encryption' is set to 'Disabled'. (Automated) - Not Implemented
+
+ # 1.2.1 (L1) Ensure 'Account lockout duration' is set to '15 or more minute(s)'. (Automated)
+  - id: 26007
     title: "Ensure 'Account lockout duration' is set to '15 or more minute(s)'."
     description: "This policy setting determines the length of time that must pass before a locked account is unlocked and a user can try to log on again. The setting does this by specifying the number of minutes a locked out account will remain unavailable. If the value for this policy setting is configured to 0, locked out accounts will remain locked out until an administrator manually unlocks them. Although it might seem like a good idea to configure the value for this policy setting to a high value, such a configuration will likely increase the number of calls that the help desk receives to unlock accounts locked by mistake. Users should be aware of the length of time a lock remains in place, so that they realize they only need to call the help desk if they have an extremely urgent need to regain access to their computer. The recommended state for this setting is: 15 or more minute(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
     rationale: "A denial of service (DoS) condition can be created if an attacker abuses the Account lockout threshold and repeatedly attempts to log on with a specific account. Once you configure the Account lockout threshold setting, the account will be locked out after the specified number of failed attempts. If you configure the Account lockout duration setting to 0, then the account will remain locked out until an administrator unlocks it manually."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Account lockout duration"
+    impact: "Although it may seem like a good idea to configure this policy setting to never automatically unlock an account, such a configuration can increase the number of requests that your organization's help desk receives to unlock accounts that were locked by mistake."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Account lockout duration."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
     compliance:
       - cis: ["1.2.1"]
-      - cis_csc: ["4.10"]
+      - cis_csc_v8: ["4.10"]
+      - cis_csc_v7: ["16.2", "16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
+      - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 15'
 
-  - id: 26007
+ # 1.2.2 (L1) Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'. (Automated)
+  - id: 26008
     title: "Ensure 'Account lockout threshold' is set to '5 or fewer invalid logon attempt(s), but not 0'."
     description: "This policy setting determines the number of failed logon attempts before the account is locked. Setting this policy to 0 does not conform to the benchmark as doing so disables the account lockout threshold. The recommended state for this setting is: 5 or fewer invalid logon attempt(s), but not 0. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
     rationale: "Setting an account lockout threshold reduces the likelihood that an online password brute force attack will be successful. Setting the account lockout threshold too low introduces risk of increased accidental lockouts and/or a malicious actor intentionally locking out accounts."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 5 or fewer invalid login attempt(s), but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Account lockout threshold"
+    impact: "If this policy setting is enabled, a locked-out account will not be usable until it is reset by an administrator or until the account lockout duration expires. This setting may generate additional help desk calls. If you enforce this setting an attacker could cause a denial of service condition by deliberately generating failed logons for multiple user, therefore you should also configure the Account Lockout Duration to a relatively low value. If you configure the Account Lockout Threshold to 0, there is a possibility that an attacker's attempt to discover passwords with a brute force password attack might go undetected if a robust audit mechanism is not in place."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 5 or fewer invalid login attempt(s), but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Account lockout threshold."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
     compliance:
       - cis: ["1.2.2"]
-      - cis_csc: ["4.10"]
+      - cis_csc_v8: ["4.10"]
+      - cis_csc_v7: ["16.2", "16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
+      - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare > 0'
       - 'c:net.exe accounts -> n:Lockout threshold:\s+(\d+) compare <= 5'
 
-  - id: 26008
+ # 1.2.3 (L1) Ensure 'Allow Administrator account lockout' is set to 'Enabled'. (Manual)
+
+ # 1.2.4 (L1) Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'. (Automated)
+  - id: 26010
     title: "Ensure 'Reset account lockout counter after' is set to '15 or more minute(s)'."
     description: "This policy setting determines the length of time before the Account lockout threshold resets to zero. The default value for this policy setting is Not Defined. If the Account lockout threshold is defined, this reset time must be less than or equal to the value for the Account lockout duration setting. If you leave this policy setting at its default value or configure the value to an interval that is too long, your environment could be vulnerable to a DoS attack. An attacker could maliciously perform a number of failed logon attempts on all users in the organization, which will lock out their accounts. If no policy were determined to reset the account lockout, it would be a manual task for administrators. Conversely, if a reasonable time value is configured for this policy setting, users would be locked out for a set period until all of the accounts are unlocked automatically. The recommended state for this setting is: 15 or more minute(s). Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center."
     rationale: "Users can accidentally lock themselves out of their accounts if they mistype their password multiple times. To reduce the chance of such accidental lockouts, the Reset account lockout counter after setting determines the number of minutes that must elapse before the counter that tracks failed logon attempts and triggers lockouts is reset to 0."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Reset account lockout counter after"
+    impact: "If you do not configure this policy setting or if the value is configured to an interval that is too long, a DoS attack could occur. An attacker could maliciously attempt to log on to each user's account numerous times and lock out their accounts as described in the preceding paragraphs. If you do not configure the Reset account lockout counter after setting, administrators would have to manually unlock all accounts. If you configure this policy setting to a reasonable value the users would be locked out for some period, after which their accounts would unlock automatically. Be sure that you notify users of the values used for this policy setting so that they will wait for the lockout timer to expire before they call the help desk about their inability to log on."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 15 or more minute(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Account Policies\\Account Lockout Policy\\Reset account lockout counter after."
+    references:
+      - 'https://www.cisecurity.org/white-papers/cis-password-policy-guide/'
     compliance:
-      - cis: ["1.2.3"]
-      - cis_csc: ["4.10"]
+      - cis: ["1.2.4"]
+      - cis_csc_v8: ["4.10"]
+      - cis_csc_v7: ["16.2", "16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
+      - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
       - 'c:net.exe accounts -> n:Lockout observation window \(minutes\):\s+(\d+) compare >= 15'
 
-  - id: 26009
-    title: "Ensure 'Accounts: Administrator account status' is set to 'Disabled'."
-    description: "This policy setting enables or disables the Administrator account during normal operation. When a computer is booted into safe mode, the Administrator account is always enabled, regardless of how this setting is configured. Note that this setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings. The recommended state for this setting is: Disabled."
-    rationale: "In some organizations, it can be a daunting management challenge to maintain a regular schedule for periodic password changes for local accounts. Therefore, you may want to disable the built-in Administrator account instead of relying on regular password changes to protect it from attack. Another reason to disable this built-in account is that it cannot be locked out no matter how many failed logons it accrues, which makes it a prime target for brute force attacks that attempt to guess passwords. Also, this account has a well-known security identifier (SID) and there are third-party tools that allow authentication by using the SID rather than the account name. This capability means that even if you rename the Administrator account, an attacker could launch a brute force attack by using the SID to log on."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Administrator account status"
-    compliance:
-      - cis: ["2.3.1.1"]
-      - cis_csc: ["4.7"]
-    condition: any
-    rules:
-      - 'c:net user administrator -> r:Account active\s+No'
-      - "c:net user administrator -> r:The user name could not be found."
+ # 2.2.1 (L1) Ensure 'Access Credential Manager as a trusted caller' is set to 'No One'. (Automated) - Not Implemented
+ # 2.2.2 (L1) Ensure 'Access this computer from the network' is set to 'Administrators, Remote Desktop Users'. (Automated) - Not Implemented
+ # 2.2.3 (L1) Ensure 'Act as part of the operating system' is set to 'No One'. (Automated) - Not Implemented
+ # 2.2.4 (L1) Ensure 'Adjust memory quotas for a process' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
+ # 2.2.5 (L1) Ensure 'Allow log on locally' is set to 'Administrators, Users'. (Automated) - Not Implemented
+ # 2.2.6 (L1) Ensure 'Allow log on through Remote Desktop Services' is set to 'Administrators, Remote Desktop Users'. (Automated) - Not Implemented
+ # 2.2.7 (L1) Ensure 'Back up files and directories' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.8 (L1) Ensure 'Change the system time' is set to 'Administrators, LOCAL SERVICE'. (Automated) - Not Implemented
+ # 2.2.9 (L1) Ensure 'Change the time zone' is set to 'Administrators, LOCAL SERVICE, Users'. (Automated) - Not Implemented
+ # 2.2.10 (L1) Ensure 'Create a pagefile' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.11 (L1) Ensure 'Create a token object' is set to 'No One'. (Automated) - Not Implemented
+ # 2.2.12 (L1) Ensure 'Create global objects' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE'. (Automated) - Not Implemented
+ # 2.2.13 (L1) Ensure 'Create permanent shared objects' is set to 'No One'. (Automated) - Not Implemented
+ # 2.2.14 (L1) Configure 'Create symbolic links'. (Automated) - Not Implemented
+ # 2.2.15 (L1) Ensure 'Debug programs' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.16 (L1) Ensure 'Deny access to this computer from the network' to include 'Guests, Local account'. (Automated) - Not Implemented
+ # 2.2.17 (L1) Ensure 'Deny log on as a batch job' to include 'Guests'. (Automated) - Not Implemented
+ # 2.2.18 (L1) Ensure 'Deny log on as a service' to include 'Guests'. (Automated) - Not Implemented
+ # 2.2.19 (L1) Ensure 'Deny log on locally' to include 'Guests'. (Automated) - Not Implemented
+ # 2.2.20 (L1) Ensure 'Deny log on through Remote Desktop Services' to include 'Guests, Local account'. (Automated) - Not Implemented
+ # 2.2.21 (L1) Ensure 'Enable computer and user accounts to be trusted for delegation' is set to 'No One'. (Automated) - Not Implemented Ensure 'Force shutdown from a remote system' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.23 (L1) Ensure 'Generate security audits' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
+ # 2.2.24 (L1) Ensure 'Impersonate a client after authentication' is set to 'Administrators, LOCAL SERVICE, NETWORK SERVICE, SERVICE'. (Automated) - Not Implemented
+ # 2.2.25 (L1) Ensure 'Increase scheduling priority' is set to 'Administrators, Window Manager\Window Manager Group'. (Automated) - Not Implemented
+ # 2.2.26 (L1) Ensure 'Load and unload device drivers' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.27 (L1) Ensure 'Lock pages in memory' is set to 'No One'. (Automated) - Not Implemented
+ # 2.2.28 (L2) Ensure 'Log on as a batch job' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.29 (L2) Configure 'Log on as a service'. (Automated) - Not Implemented
+ # 2.2.30 (L1) Ensure 'Manage auditing and security log' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.31 (L1) Ensure 'Modify an object label' is set to 'No One'. (Automated) - Not Implemented
+ # 2.2.32 (L1) Ensure 'Modify firmware environment values' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.33 (L1) Ensure 'Perform volume maintenance tasks' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.34 (L1) Ensure 'Profile single process' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.35 (L1) Ensure 'Profile system performance' is set to 'Administrators, NT SERVICE\WdiServiceHost'. (Automated) - Not Implemented
+ # 2.2.36 (L1) Ensure 'Replace a process level token' is set to 'LOCAL SERVICE, NETWORK SERVICE'. (Automated) - Not Implemented
+ # 2.2.37 (L1) Ensure 'Restore files and directories' is set to 'Administrators'. (Automated) - Not Implemented
+ # 2.2.38 (L1) Ensure 'Shut down the system' is set to 'Administrators, Users'. (Automated) - Not Implemented
+ # 2.2.39 (L1) Ensure 'Take ownership of files or other objects' is set to 'Administrators'. (Automated) - Not Implemented
 
-  - id: 26010
+ # 2.3.1.1 (L1) Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'. (Automated)
+  - id: 26050
     title: "Ensure 'Accounts: Block Microsoft accounts' is set to 'Users can't add or log on with Microsoft accounts'."
     description: "This policy setting prevents users from adding new Microsoft accounts on this computer. The recommended state for this setting is: Users can't add or log on with Microsoft accounts."
     rationale: "Organizations that want to effectively implement identity management policies and maintain firm control of what accounts are used to log onto their computers will probably want to block Microsoft accounts. Organizations may also need to block Microsoft accounts in order to meet the requirements of compliance standards that apply to their information systems."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts"
+    impact: "Users will not be able to log onto the computer with their Microsoft account."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Users can't add or log on with Microsoft accounts: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Block Microsoft accounts."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-block-microsoft-accounts'
     compliance:
-      - cis: ["2.3.1.2"]
-      - pci_dss: ["8.1"]
-      - tsc: ["CC6.1"]
-    condition: all
+      - cis: ["2.3.1.1"]
+      - cis_csc_v8: ["5.6"]
+      - cis_csc_v7: ["16.2"]
+      - nist_sp_800-53: ["AC-2(1)"]
+      - soc_2: ["CC6.1"]
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> NoConnectedUser -> 3'
 
-  - id: 26011
+ # 2.3.1.2 (L1) Ensure 'Accounts: Guest account status' is set to 'Disabled'. (Automated)
+  - id: 26051
     title: "Ensure 'Accounts: Guest account status' is set to 'Disabled'."
     description: "This policy setting determines whether the Guest account is enabled or disabled. The Guest account allows unauthenticated network users to gain access to the system. The recommended state for this setting is: Disabled. Note: This setting will have no impact when applied to the Domain Controllers organizational unit via group policy because Domain Controllers have no local account database. It can be configured at the domain level via group policy, similar to account lockout and password policy settings."
     rationale: "The default Guest account allows unauthenticated network users to log on as Guest with no password. These unauthorized users could access any resources that are accessible to the Guest account over the network. This capability means that any network shares with permissions that allow access to the Guest account, the Guests group, or the Everyone group will be accessible over the network, which could lead to the exposure or corruption of data."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Guest account status"
+    impact: "All network users will need to authenticate before they can access shared resources. If you disable the Guest account and the Network Access: Sharing and Security Model option is set to Guest Only, network logons, such as those performed by the Microsoft Network Server (SMB Service), will fail. This policy setting should have little impact on most organizations because it is the default setting in Microsoft Windows 2000, Windows XP, and Windows Server™ 2003."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Guest account status."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-guest-account-status'
     compliance:
-      - cis: ["2.3.1.3"]
-      - cis_csc: ["4.7"]
+      - cis: ["2.3.1.2"]
+      - cis_csc_v8: ["4.7"]
+      - cis_csc_v7: ["16.8"]
+      - iso_27001-2013: ["A.9.2.1"]
+      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
+      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
+      - soc_2: ["CC6.3"]
     condition: all
     rules:
       - 'c:net user guest -> r:Account active\s+No'
       - 'c:net user guest -> r:The user name could not be found.'
 
-  - id: 26012
+ # 2.3.1.3 (L1) Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'. (Automated)
+  - id: 26052
     title: "Ensure 'Accounts: Limit local account use of blank passwords to console logon only' is set to 'Enabled'."
     description: "This policy setting determines whether local accounts that are not password protected can be used to log on from locations other than the physical computer console. If you enable this policy setting, local accounts that have blank passwords will not be able to log on to the network from remote client computers. Such accounts will only be able to log on at the keyboard of the computer. The recommended state for this setting is: Enabled."
     rationale: "Blank passwords are a serious threat to computer security and should be forbidden through both organizational policy and suitable technical measures. In fact, the default settings for Active Directory domains require complex passwords of at least seven characters. However, if users with the ability to create new accounts bypass your domain-based password policies, they could create accounts with blank passwords. For example, a user could build a stand-alone computer, create one or more accounts with blank passwords, and then join the computer to the domain. The local accounts with blank passwords would still function. Anyone who knows the name of one of these unprotected accounts could then use it to log on."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only"
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Limit local account use of blank passwords to console logon only."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-limit-local-account-use-of-blank-passwords-to-console-logon-only'
     compliance:
-      - cis: ["2.3.1.4"]
-      - cis_csc: ["5.2"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
+      - cis: ["2.3.1.3"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> LimitBlankPasswordUse -> 1'
 
-  - id: 26013
+ # 2.3.1.4 (L1) Configure 'Accounts: Rename administrator account'. (Automated)
+  - id: 26053
     title: "Configure 'Accounts: Rename administrator account'."
     description: "The built-in local administrator account is a well-known account name that attackers will target. It is recommended to choose another name for this account, and to avoid names that denote administrative or elevated access accounts. Be sure to also change the default description for the local administrator (through the Computer Management console)."
     rationale: "The Administrator account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination. The built-in Administrator account cannot be locked out, regardless of how many times an attacker might use a bad password. This capability makes the Administrator account a popular target for brute force attacks that attempt to guess passwords. The value of this countermeasure is lessened because this account has a well-known SID, and there are third-party tools that allow authentication by using the SID rather than the account name. Therefore, even if you rename the Administrator account, an attacker could launch a brute force attack by using the SID to log on."
-    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Rename administrator account"
+    impact: "You will have to inform users who are authorized to use this account of the new account name. (The guidance for this setting assumes that the Administrator account was not disabled, which was recommended earlier in this chapter.)."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Rename administrator account."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-rename-administrator-account'
     compliance:
-      - cis: ["2.3.1.5"]
-      - cis_csc: ["4.7"]
+      - cis: ["2.3.1.4"]
+      - cis_csc_v8: ["4.7"]
+      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
+      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
+      - soc_2: ["CC6.3"]
     condition: all
     rules:
       - "c:net user administrator -> r:The user name could not be found."
 
-  - id: 26014
+ # 2.3.1.5 (L1) Configure 'Accounts: Rename guest account'. (Automated)
+  - id: 26054
     title: "Configure 'Accounts: Rename guest account'."
     description: "The built-in local guest account is another well-known name to attackers. It is recommended to rename this account to something that does not indicate its purpose. Even if you disable this account, which is recommended, ensure that you rename it for added security."
     rationale: "The Guest account exists on all computers that run the Windows 2000 or newer operating systems. If you rename this account, it is slightly more difficult for unauthorized persons to guess this privileged user name and password combination."
-    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Rename guest account"
+    impact: "There should be little impact, because the Guest account is disabled by default."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Accounts: Rename guest account."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/accounts-rename-guest-account'
     compliance:
-      - cis: ["2.3.1.6"]
-      - cis_csc: ["4.7"]
+      - cis: ["2.3.1.5"]
+      - cis_csc_v8: ["4.7"]
+      - pci_dss_v3.2.1: ["2.1", "2.1.1"]
+      - pci_dss_v4.0: ["2.2.2", "2.3.1"]
+      - soc_2: ["CC6.3"]
     condition: all
     rules:
       - "c:net user guest -> r:The user name could not be found."
 
-  - id: 26015
+ # 2.3.2.1 (L1) Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled' (Automated)
+  - id: 15513
     title: "Ensure 'Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings' is set to 'Enabled'."
     description: "This policy setting allows administrators to enable the more precise auditing capabilities present in Windows Vista. The Audit Policy settings available in Windows Server 2003 Active Directory do not yet contain settings for managing the new auditing subcategories. To properly apply the auditing policies prescribed in this baseline, the Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings setting needs to be configured to Enabled. The recommended state for this setting is: Enabled. Important: Be very cautious about audit settings that can generate a large volume of traffic. For example, if you enable either success or failure auditing for all of the Privilege Use subcategories, the high volume of audit events generated can make it difficult to find other types of entries in the Security log. Such a configuration could also have a significant impact on system performance."
     rationale: "Prior to the introduction of auditing subcategories in Windows Vista, it was difficult to track events at a per-system or per-user level. The larger event categories created too many events and the key information that needed to be audited was difficult to find."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings"
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Force audit policy subcategory settings (Windows Vista or later) to override audit policy category settings."
+    references:
+      - "https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/audit-force-audit-policy-subcategory-settings-to-override"
+      - "https://docs.microsoft.com/en-us/windows-server/identity/ad-ds/manage/component-updates/command-line-process-auditing#to-ensure-that-advanced-audit-policy-configuration-settings-are-not-overwritten"
     compliance:
       - cis: ["2.3.2.1"]
-      - cis_csc: ["8.5"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
-    condition: any
+      - cis_csc_v8: ["8.5"]
+      - cis_csc_v7: ["6.2", "6.3"]
+      - cmmc_v2.0: ["AU.L2-3.3.1"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - pci_dss_3.2.1: ["10.1", "10.2.2", "10.2.4", "10.2.5", "10.3"]
+      - pci_dss_4.0: ["9.4.5", "10.2", "10.2.1", "10.2.1.2", "10.2.1.5"]
+      - nist_sp_800-53: ["AU-3(1)", "AU-7"]
+      - soc_2: ["CC5.2", "CC7.2"]
+    condition: all
     rules:
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
-      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
+      - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> SCENoApplyLegacyAuditPolicy -> 1'
 
-  - id: 26016
+ # 2.3.2.2 (L1) Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'. (Automated)
+  - id: 26055
     title: "Ensure 'Audit: Shut down system immediately if unable to log security audits' is set to 'Disabled'."
     description: "This policy setting determines whether the system shuts down if it is unable to log Security events. It is a requirement for Trusted Computer System Evaluation Criteria (TCSEC)-C2 and Common Criteria certification to prevent auditable events from occurring if the audit system is unable to log them. Microsoft has chosen to meet this requirement by halting the system and displaying a stop message if the auditing system experiences a failure. When this policy setting is enabled, the system will be shut down if a security audit cannot be logged for any reason. If the Audit: Shut down system immediately if unable to log security audits setting is enabled, unplanned system failures can occur. The administrative burden can be significant, especially if you also configure the Retention method for the Security log to Do not overwrite events (clear log manually). This configuration causes a repudiation threat (a backup operator could deny that they backed up or restored data) to become a denial of service (DoS) vulnerability, because a server could be forced to shut down if it is overwhelmed with logon events and other security events that are written to the Security log. Also, because the shutdown is not graceful, it is possible that irreparable damage to the operating system, applications, or data could result. Although the NTFS file system guarantees its integrity when an ungraceful computer shutdown occurs, it cannot guarantee that every data file for every application will still be in a usable form when the computer restarts. The recommended state for this setting is: Disabled."
     rationale: "If the computer is unable to record events to the Security log, critical evidence or important troubleshooting information may not be available for review after a security incident. Also, an attacker could potentially generate a large volume of Security log events to purposely force a computer shutdown."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Shut down system immediately if unable to log security audits"
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Audit: Shut down system immediately if unable to log security audits."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/audit-shut-down-system-immediately-if-unable-to-log-security-audits'
     compliance:
       - cis: ["2.3.2.2"]
-      - cis_csc: ["8.3"]
-      - pci_dss: ["10.7"]
+      - cis_csc_v8: ["8.3"]
+      - cis_csc_v7: ["6.4"]
+      - iso_27001-2013: ["A.12.4.1"]
+      - pci_dss_v3.2.1: ["10.7"]
+      - soc_2: ["A1.1"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Lsa -> CrashOnAuditFail -> 0'
 
-  - id: 26017
-    title: "Ensure 'Devices: Allowed to format and eject removable media' is set to 'Administrators and Interactive Users'."
-    description: "This policy setting determines who is allowed to format and eject removable NTFS media. You can use this policy setting to prevent unauthorized users from removing data on one computer to access it on another computer on which they have local administrator privileges. The recommended state for this setting is: Administrators and Interactive Users."
-    rationale: "Users may be able to move data on removable disks to a different computer where they have administrative privileges. The user could then take ownership of any file, grant themselves full control, and view or modify any file. The fact that most removable storage devices will eject media by pressing a mechanical button diminishes the advantage of this policy setting."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators and Interactive Users: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Allowed to format and eject removable media"
-    compliance:
-      - cis: ["2.3.4.1"]
-      - pci_dss: ["7.2"]
-      - tsc: ["CC6.4"]
-    condition: all
-    rules:
-      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> AllocateDASD -> 2'
-
-  - id: 26018
+ # 2.3.4.1 (L2) Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'. (Automated)
+  - id: 26056
     title: "Ensure 'Devices: Prevent users from installing printer drivers' is set to 'Enabled'."
     description: "For a computer to print to a shared printer, the driver for that shared printer must be installed on the local computer. This security setting determines who is allowed to install a printer driver as part of connecting to a shared printer. The recommended state for this setting is: Enabled. Note: This setting does not affect the ability to add a local printer. This setting does not affect Administrators."
     rationale: "It may be appropriate in some organizations to allow users to install printer drivers on their own workstations. However, in a high security environment, you should allow only Administrators, not users, to do this, because printer driver installation may unintentionally cause the computer to become less stable. A malicious user could install inappropriate printer drivers in a deliberate attempt to damage the computer, or a user might accidentally install malicious software that masquerades as a printer driver. It is feasible for an attacker to disguise a Trojan horse program as a printer driver. The program may appear to users as if they must use it to print, but such a program could unleash malicious code on your computer network."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Prevent users from installing printer drivers"
+    impact: "Only Administrators will be able to install a printer driver as part of connecting to a shared printer. The ability to add a local printer will not be affected."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Devices: Prevent users from installing printer drivers."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/devices-prevent-users-from-installing-printer-drivers'
     compliance:
-      - cis: ["2.3.4.2"]
-      - pci_dss: ["2.2.4", "2.2.5"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC6.3", "CC5.2"]
+      - cis: ["2.3.4.1"]
+      - cis_csc_v8: ["6.8"]
+      - cmmc_v2.0: ["AC.L1-3.1.2", "AC.L2-3.1.4", "AC.L2-3.1.5", "SC.L2-3.13.3"]
+      - hipaa: ["164.308(a)(3)(ii)(B)", "164.308(a)(4)(i)", "164.308(a)(4)(ii)(C)"]
+      - nist_sp_800-53: ["AC-5", "AC-6", "AC-6(1)", "AC-6(7)", "AU-9(4)"]
+      - pci_dss_v4.0: ["10.3.1", "7.1", "7.1.1", "7.2", "7.2.1", "7.2.2", "7.2.4", "7.2.6", "7.3", "7.3.1", "7.3.2"]
+      - soc_2: ["CC5.2", "CC6.3"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Print\Providers\LanMan Print Services\Servers -> AddPrinterDrivers -> 1'
 
-  - id: 26019
+ # 2.3.6.1 (L1) Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'. (Automated)
+  - id: 26057
     title: "Ensure 'Domain member: Digitally encrypt or sign secure channel data (always)' is set to 'Enabled'."
     description: "This policy setting determines whether all secure channel traffic that is initiated by the domain member must be signed or encrypted. The recommended state for this setting is: Enabled."
     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt or sign secure channel data (always)"
+    impact: "None - this is the default behavior. However, only Windows NT 4.0 with Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed. Therefore, you cannot enable the Domain member: Digitally encrypt or sign secure channel data (always) setting on Domain Controllers that support Windows 98 clients as members of the domain. Potential impacts can include the following: - The ability to create or delete trust relationships with clients running versions of Windows earlier than Windows NT 4.0 with SP6a will be disabled. - Logons from clients running versions of Windows earlier than Windows NT 4.0 with SP6a will be disabled. - The ability to authenticate other domains' users from a Domain Controller running a version of Windows earlier than Windows NT 4.0 with SP6a in a trusted domain will be disabled. You can enable this policy setting after you eliminate all Windows 9x clients from the domain and upgrade all Windows NT 4.0 servers and Domain Controllers from trusted/trusting domains to Windows NT 4.0 with SP6a."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt or sign secure channel data (always)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-member-digitally-encrypt-or-sign-secure-channel-data-always'
     compliance:
       - cis: ["2.3.6.1"]
-      - cis_csc: ["3.10"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireSignOrSeal -> 1'
 
-  - id: 26020
+ # 2.3.6.2 (L1) Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'. (Automated)
+  - id: 26058
     title: "Ensure 'Domain member: Digitally encrypt secure channel data (when possible)' is set to 'Enabled'."
     description: "This policy setting determines whether a domain member should attempt to negotiate encryption for all secure channel traffic that it initiates. The recommended state for this setting is: Enabled."
     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt secure channel data (when possible)"
+    impact: "None - this is the default behavior. However, only Windows NT 4.0 Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally encrypt secure channel data (when possible)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-member-digitally-encrypt-secure-channel-data-when-possible'
     compliance:
       - cis: ["2.3.6.2"]
-      - cis_csc: ["3.10"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SealSecureChannel -> 1'
 
-  - id: 26021
+ # 2.3.6.3 (L1) Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'. (Automated)
+  - id: 26059
     title: "Ensure 'Domain member: Digitally sign secure channel data (when possible)' is set to 'Enabled'."
     description: "This policy setting determines whether a domain member should attempt to negotiate whether all secure channel traffic that it initiates must be digitally signed. Digital signatures protect the traffic from being modified by anyone who captures the data as it traverses the network. The recommended state for this setting is: Enabled."
     rationale: "When a computer joins a domain, a computer account is created. After it joins the domain, the computer uses the password for that account to create a secure channel with the Domain Controller for its domain every time that it restarts. Requests that are sent on the secure channel are authenticated-and sensitive information such as passwords are encrypted-but the channel is not integrity-checked, and not all information is encrypted. Digital encryption and signing of the secure channel is a good idea where it is supported. The secure channel protects domain credentials as they are sent to the Domain Controller."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally sign secure channel data (when possible)"
+    impact: "None - this is the default behavior. However, only Windows NT 4.0 with Service Pack 6a (SP6a) and subsequent versions of the Windows operating system support digital encryption and signing of the secure channel. Windows 98 Second Edition clients do not support it unless they have Dsclient installed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Digitally sign secure channel data (when possible)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-member-digitally-sign-secure-channel-data-when-possible'
     compliance:
       - cis: ["2.3.6.3"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["3.10"]
+      - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> SignSecureChannel -> 1'
 
-  - id: 26022
+ # 2.3.6.4 (L1) Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'. (Automated)
+  - id: 26060
     title: "Ensure 'Domain member: Disable machine account password changes' is set to 'Disabled'."
     description: "This policy setting determines whether a domain member can periodically change its computer account password. Computers that cannot automatically change their account passwords are potentially vulnerable, because an attacker might be able to determine the password for the system's domain account. The recommended state for this setting is: Disabled. Note: Some problems can occur as a result of machine account password expiration, particularly if a machine is reverted to a previous point-in-time state, as is common with virtual machines. Depending on how far back the reversion is, the older machine account password stored on the machine may no longer be recognized by the domain controllers, and therefore the computer loses its domain trust. This can also disrupt non-persistent VDI implementations, and devices with write filters that disallow permanent changes to the OS volume. Some organizations may choose to exempt themselves from this recommendation and disable machine account password expiration for these situations."
     rationale: "The default configuration for Windows Server 2003-based computers that belong to a domain is that they are automatically required to change the passwords for their accounts every 30 days. If you disable this policy setting, computers that run Windows Server 2003 will retain the same passwords as their computer accounts. Computers that are no longer able to automatically change their account password are at risk from an attacker who could determine the password for the computer's domain account."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Disable machine account password changes"
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Disable machine account password changes."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-member-disable-machine-account-password-changes'
     compliance:
       - cis: ["2.3.6.4"]
-      - pci_dss: ["8.2.4"]
-      - tsc: ["CC6.1"]
+      - cis_csc_v8: ["5.6"]
+      - nist_sp_800-53: ["AC-2(1)"]
+      - soc_2: ["CC6.1"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> DisablePasswordChange -> 0'
 
-  - id: 26023
+ # 2.3.6.5 (L1) Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'. (Automated)
+  - id: 26061
     title: "Ensure 'Domain member: Maximum machine account password age' is set to '30 or fewer days, but not 0'."
     description: "This policy setting determines the maximum allowable age for a computer account password. By default, domain members automatically change their domain passwords every 30 days. If you increase this interval significantly so that the computers no longer change their passwords, an attacker would have more time to undertake a brute force attack against one of the computer accounts. The recommended state for this setting is: 30 or fewer days, but not 0. Note: A value of 0 does not conform to the benchmark as it disables maximum password age. Note #2: Some problems can occur as a result of machine account password expiration, particularly if a machine is reverted to a previous point-in-time state, as is common with virtual machines. Depending on how far back the reversion is, the older machine account password stored on the machine may no longer be recognized by the domain controllers, and therefore the computer loses its domain trust. This can also disrupt non-persistent VDI implementations, and devices with write filters that disallow permanent changes to the OS volume. Some organizations may choose to exempt themselves from this recommendation and disable machine account password expiration for these situations."
     rationale: "In Active Directory-based domains, each computer has an account and password just like every user. By default, the domain members automatically change their domain password every 30 days. If you increase this interval significantly, or set it to 0 so that the computers no longer change their passwords, an attacker will have more time to undertake a brute force attack to guess the password of one or more computer accounts."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 30 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Maximum machine account password age"
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 30 or fewer days, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Maximum machine account password age."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-member-maximum-machine-account-password-age'
     compliance:
       - cis: ["2.3.6.5"]
+      - cis_csc_v8: ["5.2"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> 0'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> MaximumPasswordAge -> n:^(\d+) compare <= 30'
 
-  - id: 26024
+ # 2.3.6.6 (L1) Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'. (Automated)
+  - id: 26062
     title: "Ensure 'Domain member: Require strong (Windows 2000 or later) session key' is set to 'Enabled'."
     description: "When this policy setting is enabled, a secure channel can only be established with Domain Controllers that are capable of encrypting secure channel data with a strong (128-bit) session key. To enable this policy setting, all Domain Controllers in the domain must be able to encrypt secure channel data with a strong key, which means all Domain Controllers must be running Microsoft Windows 2000 or newer. The recommended state for this setting is: Enabled."
-    rationale: "Session keys that are used to establish secure channel communications between Domain Controllers and member computers are much stronger in Windows 2000 than they were in previous Microsoft operating systems. Whenever possible, you should take advantage of these stronger session keys to help protect secure channel communications from attacks that attempt to hijack network sessions and eavesdropping. (Eavesdropping is a form of hacking in which network data is read or altered in transit. The data can be modified to hide or change the sender, or be redirected.)"
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Require strong (Windows 2000 or later) session key"
+    rationale: "Session keys that are used to establish secure channel communications between Domain Controllers and member computers are much stronger in Windows 2000 than they were in previous Microsoft operating systems. Whenever possible, you should take advantage of these stronger session keys to help protect secure channel communications from attacks that attempt to hijack network sessions and eavesdropping. (Eavesdropping is a form of hacking in which network data is read or altered in transit. The data can be modified to hide or change the sender, or be redirected.)."
+    impact: "None - this is the default behavior. However, computers will not be able to join Windows NT 4.0 domains, and trusts between Active Directory domains and Windows NT-style domains may not work properly."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Domain member: Require strong (Windows 2000 or later) session key."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/domain-member-require-strong-windows-2000-or-later-session-key'
     compliance:
       - cis: ["2.3.6.6"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis_csc_v8: ["3.10"]
+      - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey'
       - 'r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\Netlogon\Parameters -> RequireStrongKey -> 1'
 
-  - id: 26025
+ # 2.3.7.1 (L1) Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'. (Automated)
+  - id: 26063
     title: "Ensure 'Interactive logon: Do not require CTRL+ALT+DEL' is set to 'Disabled'."
     description: "This policy setting determines whether users must press CTRL+ALT+DEL before they log on. The recommended state for this setting is: Disabled."
     rationale: "Microsoft developed this feature to make it easier for users with certain types of physical impairments to log on to computers that run Windows. If users are not required to press CTRL+ALT+DEL, they are susceptible to attacks that attempt to intercept their passwords. If CTRL+ALT+DEL is required before logon, user passwords are communicated by means of a trusted path. An attacker could install a Trojan horse program that looks like the standard Windows logon dialog box and capture the user's password. The attacker would then be able to log on to the compromised account with whatever level of privilege that user has."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Do not require CTRL+ALT+DEL"
+    impact: "Users must press CTRL+ALT+DEL before they log on to Windows unless they use a smart card for Windows logon. A smart card is a tamper-proof device that stores security information."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Do not require CTRL+ALT+DEL."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-do-not-require-ctrl-alt-del'
     compliance:
       - cis: ["2.3.7.1"]
     condition: all
@@ -396,33 +566,45 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DisableCAD -> 0'
 
-  - id: 26026
+ # 2.3.7.2 (L1) Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'. (Automated)
+  - id: 26064
     title: "Ensure 'Interactive logon: Don't display last signed-in' is set to 'Enabled'."
     description: "This policy setting determines whether the account name of the last user to log on to the client computers in your organization will be displayed in each computer's respective Windows logon screen. Enable this policy setting to prevent intruders from collecting account names visually from the screens of desktop or laptop computers in your organization. The recommended state for this setting is: Enabled."
     rationale: "An attacker with access to the console (for example, someone with physical access or someone who is able to connect to the server through Remote Desktop Services) could view the name of the last user who logged on to the server. The attacker could then try to guess the password, use a dictionary, or use a brute-force attack to try and log on."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Don't display last signed-in. Note: In older versions of Microsoft Windows, this setting was named Interactive logon: Do not display last user name, but it was renamed starting with Windows 10 Release 1703."
+    impact: "The name of the last user to successfully log on will not be displayed in the Windows logon screen."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Don't display last signed-in Note: In older versions of Microsoft Windows, this setting was named Interactive logon: Do not display last user name, but it was renamed starting with Windows 10 Release 1703."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-do-not-display-last-user-name'
     compliance:
       - cis: ["2.3.7.2"]
-      - pci_dss: ["2.2.3"]
-      - nist_800_53: ["CM.1"]
-      - gpg_13: ["4.3"]
-      - gdpr_IV: ["35.7.d"]
-      - hipaa: ["164.312.b"]
-      - tsc: ["CC5.2"]
+      - cis_csc_v8: ["4.1"]
+      - cis_csc_v7: ["5.1"]
+      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "CM.L2-3.4.1", "CM.L2-3.4.2", "CM.L2-3.4.6", "CM.L2-3.4.7"]
+      - iso_27001-2013: ["A.14.2.5", "A.8.1.3"]
+      - nist_sp_800-53: ["CM-7(1)", "CM-9", "SA-10"]
+      - pci_dss_v3.2.1: ["11.5", "2.2"]
+      - pci_dss_v4.0: ["1.1.1", "1.2.1", "1.2.6", "1.2.7", "1.5.1", "2.1.1", "2.2.1"]
+      - soc_2: ["CC7.1", "CC8.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> DontDisplayLastUserName -> 1'
 
-  - id: 26027
+ # 2.3.7.3 (BL) Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'. (Automated)
+  - id: 26065
     title: "Ensure 'Interactive logon: Machine account lockout threshold' is set to '10 or fewer invalid logon attempts, but not 0'."
     description: "This security setting determines the number of failed logon attempts that causes the machine to be locked out. Failed password attempts against workstations or member servers that have been locked using either CTRL+ALT+DELETE or password protected screen savers counts as failed logon attempts. The machine lockout policy is enforced only on those machines that have BitLocker enabled for protecting OS volumes. Please ensure that appropriate recovery password backup policies are enabled. The recommended state for this setting is: 10 or fewer invalid logon attempts, but not 0. Note: A value of 0 does not conform to the benchmark as it disables the machine account lockout threshold. Values from 1 to 3 will be interpreted as 4."
     rationale: "If a machine is lost or stolen, or if an insider threat attempts a brute force password attack against the computer, it is important to ensure that BitLocker will lock the computer and therefore prevent a successful attack."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 10 or fewer invalid logon attempts, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine account lockout threshold"
+    impact: "Users will be able to mistype their password several times, but the machine account will be locked out if a brute force password attack occurs. A locked out machine can only be recovered by providing the BitLocker recovery key at the console."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 10 or fewer invalid logon attempts, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine account lockout threshold."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-machine-account-lockout-threshold'
     compliance:
       - cis: ["2.3.7.3"]
-      - cis_csc: ["4.10"]
+      - cis_csc_v8: ["4.10"]
+      - cmmc_v2.0: ["AC.L2-3.1.8", "SC.L2-3.13.9"]
+      - pci_dss_v4.0: ["8.3.4"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -430,16 +612,25 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> MaxDevicePasswordFailedAttempts -> n:^(\d+) compare <=30'
 
-  - id: 26028
+ # 2.3.7.4 (L1) Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'. (Automated)
+  - id: 26066
     title: "Ensure 'Interactive logon: Machine inactivity limit' is set to '900 or fewer second(s), but not 0'."
     description: "Windows notices inactivity of a logon session, and if the amount of inactive time exceeds the inactivity limit, then the screen saver will run, locking the session. The recommended state for this setting is: 900 or fewer second(s), but not 0. Note: A value of 0 does not conform to the benchmark as it disables the machine inactivity limit."
     rationale: "If a user forgets to lock their computer when they walk away it's possible that a passerby will hijack it."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine inactivity limit"
+    impact: "The screen saver will automatically activate when the computer has been unattended for the amount of time specified. The impact should be minimal since the screen saver is enabled by default."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 900 or fewer seconds, but not 0: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Machine inactivity limit."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-machine-inactivity-limit'
     compliance:
       - cis: ["2.3.7.4"]
-      - cis_csc: ["4.3"]
-      - pci_dss: ["8.1.8"]
-      - tsc: ["CC6.1"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - pci_dss_v3.2.1: ["8.1.8"]
+      - pci_dss_v4.0: ["8.2.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System'
@@ -447,73 +638,94 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> 0'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Policies\System -> InactivityTimeoutSecs -> n:^(\d+) compare <= 900'
 
-  - id: 26029
+ # 2.3.7.5 (L1) Configure 'Interactive logon: Message text for users attempting to log on'. (Automated)
+  - id: 26067
     title: "Configure 'Interactive logon: Message text for users attempting to log on'."
     description: "This policy setting specifies a text message that displays to users when they log on. Set the following group policy to a value that is consistent with the security and operational requirements of your organization."
-    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons—for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited. Note: Any warning that you display should first be approved by your organization's legal and human resources representatives."
-    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message text for users attempting to log on"
+    rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process. This text is often used for legal reasons-for example, to warn users about the ramifications of misusing company information or to warn them that their actions may be audited. Note: Any warning that you display should first be approved by your organization's legal and human resources representatives."
+    impact: "Users will have to acknowledge a dialog box containing the configured text before they can log on to the computer. Note: Windows Vista and Windows XP Professional support logon banners that can exceed 512 characters in length and that can also contain carriage-return line-feed sequences. However, Windows 2000-based clients cannot interpret and display these messages. You must use a Windows 2000-based computer to create a logon message policy that applies to Windows 2000-based computers."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message text for users attempting to log on."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-message-text-for-users-attempting-to-log-on'
     compliance:
       - cis: ["2.3.7.5"]
     condition: all
     rules:
       - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticetext -> r:\s+legalnoticetext\s+REG_SZ\s+$'
 
-  - id: 26030
+ # 2.3.7.6 (L1) Configure 'Interactive logon: Message title for users attempting to log on'. (Automated)
+  - id: 26068
     title: "Configure 'Interactive logon: Message title for users attempting to log on'."
     description: "This policy setting specifies the text displayed in the title bar of the window that users see when they log on to the system. Configure this setting in a manner that is consistent with the security and operational requirements of your organization."
     rationale: "Displaying a warning message before logon may help prevent an attack by warning the attacker about the consequences of their misconduct before it happens. It may also help to reinforce corporate policy by notifying employees of the appropriate policy during the logon process."
-    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message title for users attempting to log on"
+    impact: "Users will have to acknowledge a dialog box with the configured title before they can log on to the computer."
+    remediation: "To establish the recommended configuration via GP, configure the following UI path to a value that is consistent with the security and operational requirements of your organization: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Message title for users attempting to log on."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-message-title-for-users-attempting-to-log-on'
     compliance:
       - cis: ["2.3.7.6"]
     condition: all
     rules:
       - 'not c:reg query HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\system /v legalnoticecaption -> r:\s+legalnoticecaption\s+REG_SZ\s+$'
 
-  - id: 26031
+ # 2.3.7.7 (L2) Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'. (Automated)
+  - id: 26069
     title: "Ensure 'Interactive logon: Number of previous logons to cache (in case domain controller is not available)' is set to '4 or fewer logon(s)'."
     description: "This policy setting determines whether a user can log on to a Windows domain using cached account information. Logon information for domain accounts can be cached locally to allow users to log on even if a Domain Controller cannot be contacted. This policy setting determines the number of unique users for whom logon information is cached locally. If this value is set to 0, the logon cache feature is disabled. An attacker who is able to access the file system of the server could locate this cached information and use a brute force attack to determine user passwords. The recommended state for this setting is: 4 or fewer logon(s)."
     rationale: "The number that is assigned to this policy setting indicates the number of users whose logon information the computer will cache locally. If the number is set to 4, then the computer caches logon information for 4 users. When a 5th user logs on to the computer, the server overwrites the oldest cached logon session. Users who access the computer console will have their logon credentials cached on that computer. An attacker who is able to access the file system of the computer could locate this cached information and use a brute force attack to attempt to determine user passwords. To mitigate this type of attack, Windows encrypts the information and obscures its physical location."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to 4 or fewer logon(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Number of previous logons to cache (in case domain controller is not available)"
+    impact: "Users will be unable to log on to any computers if there is no Domain Controller available to authenticate them. Organizations may want to configure this value to 2 for end-user computers, especially for mobile users. A configuration value of 2 means that the user's logon information will still be in the cache, even if a member of the IT department has recently logged on to their computer to perform system maintenance. This method allows users to log on to their computers when they are not connected to the organization's network."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to 4 or fewer logon(s): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Number of previous logons to cache (in case domain controller is not available)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-number-of-previous-logons-to-cache-in-case-domain-controller-is-not-available'
     compliance:
       - cis: ["2.3.7.7"]
-      - pci_dss: ["8.2"]
-      - tsc: ["CC6.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon -> CachedLogonsCount -> n:^(\d+) compare <= 4'
 
-  - id: 26032
+ # 2.3.7.8 (L1) Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'. (Automated)
+  - id: 26070
     title: "Ensure 'Interactive logon: Prompt user to change password before expiration' is set to 'between 5 and 14 days'."
     description: "This policy setting determines how far in advance users are warned that their password will expire. It is recommended that you configure this policy setting to at least 5 days but no more than 14 days to sufficiently warn users when their passwords will expire. The recommended state for this setting is: between 5 and 14 days."
     rationale: "Users will need to be warned that their passwords are going to expire, or they may inadvertently be locked out of the computer when their passwords expire. This condition could lead to confusion for users who access the network locally, or make it impossible for users to access your organization's network through dial-up or virtual private network (VPN) connections."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to a value between 5 and 14 days: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Prompt user to change password before expiration"
+    impact: "Users will see a dialog box prompt to change their password each time that they log on to the domain when their password is configured to expire between 5 and 14 days."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to a value between 5 and 14 days: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Prompt user to change password before expiration."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-prompt-user-to-change-password-before-expiration'
     compliance:
       - cis: ["2.3.7.8"]
-      - pci_dss: ["8.2.4"]
-      - tsc: ["CC6.1"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
       - 'not r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> PasswordExpiryWarning -> n:^(\d+) compare >= 5 && n:^(\d+) compare <= 14'
 
-  - id: 26033
+ # 2.3.7.9 (L1) Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher. (Automated)
+  - id: 26071
     title: "Ensure 'Interactive logon: Smart card removal behavior' is set to 'Lock Workstation' or higher."
     description: "This policy setting determines what happens when the smart card for a logged-on user is removed from the smart card reader. The recommended state for this setting is: Lock Workstation. Configuring this setting to Force Logoff or Disconnect if a Remote Desktop Services session also conforms to the benchmark."
     rationale: "Users sometimes forget to lock their workstations when they are away from them, allowing the possibility for malicious users to access their computers. If smart cards are used for authentication, the computer should automatically lock itself when the card is removed to ensure that only the user with the smart card is accessing resources using those credentials."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Lock Workstation (or, if applicable for your environment, Force Logoff or Disconnect if a Remote Desktop Services session): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Smart card removal behavior"
+    impact: "If you select Lock Workstation, the workstation is locked when the smart card is removed, allowing users to leave the area, take their smart card with them, and still maintain a protected session. If you select Force Logoff, users are automatically logged off when their smart card is removed. If you select Disconnect if a Remote Desktop Services session, removal of the smart card disconnects the session without logging the users off. This allows the user to insert the smart card and resume the session later, or at another smart card reader-equipped computer, without having to log on again. If the session is local, this policy will function identically to Lock Workstation. Enforcing this setting on computers used by people who must log onto multiple computers in order to perform their duties could be frustrating and lower productivity. For example, if network administrators are limited to a single account but need to log into several computers simultaneously in order to effectively manage the network enforcing this setting will limit them to logging onto one computer at a time. For these reasons it is recommended that this setting only be enforced on workstations used for purposes commonly associated with typical users such as document creation and email."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Lock Workstation (or, if applicable for your environment, Force Logoff or Disconnect if a Remote Desktop Services session): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Interactive logon: Smart card removal behavior."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-smart-card-removal-behavior'
     compliance:
       - cis: ["2.3.7.9"]
-      - cis_csc: ["4.3"]
-      - pci_dss: ["8.6"]
-      - tsc: ["CC6.1"]
+      - cis_csc_v8: ["4.3"]
+      - cis_csc_v7: ["16.11"]
+      - cmmc_v2.0: ["AC.L2-3.1.10", "AC.L2-3.1.11"]
+      - hipaa: ["164.312(a)(2)(iii)"]
+      - iso_27001-2013: ["A.8.1.3"]
+      - nist_sp_800-53: ["AC-11", "AC-11(1)", "AC-12", "AC-2(5)"]
+      - pci_dss_v3.2.1: ["8.1.8"]
+      - pci_dss_v4.0: ["8.2.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon'
       - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption'
-      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption -> r:^1$|^2$'
+      - 'r:HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon -> ScRemoveOption -> r:^1$|^2$|^3$'
 
   - id: 26034
     title: "Ensure 'Microsoft network client: Digitally sign communications (always)' is set to 'Enabled'."
