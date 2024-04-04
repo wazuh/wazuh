@@ -196,7 +196,7 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         m_loop = uvw::Loop::getDefault();
         SharedCounter m_proccessdMessages = std::make_shared<std::atomic<std::size_t>>(0);
         SharedCounter m_conexions = std::make_shared<std::atomic<std::size_t>>(0);

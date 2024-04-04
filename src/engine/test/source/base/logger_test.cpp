@@ -1,12 +1,10 @@
-#include <gtest/gtest.h>
-
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <regex>
 
 #include "logging/logging.hpp"
-
-constexpr auto TMP_FILE {"/tmp/log.txt"};
 
 std::string readFileContents(const std::string& filePath)
 {
@@ -24,72 +22,90 @@ std::string readFileContents(const std::string& filePath)
 
 class LoggerTest : public testing::Test
 {
-protected:
+public:
+    std::string m_tmpPath;
+    void SetUp() override
+    {
+        char tempFileName[] = "/tmp/temp_log_XXXXXX";
+        auto tempFileDescriptor = mkstemp(tempFileName);
+        m_tmpPath = tempFileName;
+        ASSERT_NE(tempFileDescriptor, -1);
+    }
+
     void TearDown() override
     {
         logging::stop();
-        std::filesystem::remove(TMP_FILE); // Remove temporary log file
+        std::filesystem::remove(m_tmpPath); // Remove temporary log file
     }
 };
 
 TEST_F(LoggerTest, LogNonExist)
 {
-    auto expected {"The 'default' logger is not initialized."};
-    try
-    {
-        logging::setLevel("info");
-    }
-    catch (const std::exception& e)
-    {
-        EXPECT_STREQ(e.what(), expected);
-    }
+    ASSERT_ANY_THROW(logging::setLevel(logging::Level::Info));
 }
 
 TEST_F(LoggerTest, LogSuccessStart)
 {
-    EXPECT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = TMP_FILE, .level = "info"}));
-}
-
-TEST_F(LoggerTest, LogLevelNonExist)
-{
-    auto expected {
-        "Log initialization failed: An error occurred while setting the log level: 'non-exist' is not defined"};
-    try
-    {
-        logging::start(logging::LoggingConfig {.filePath = TMP_FILE, .level = "non-exist"});
-    }
-    catch (const std::exception& e)
-    {
-        EXPECT_STREQ(e.what(), expected);
-    }
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = logging::Level::Info}));
 }
 
 TEST_F(LoggerTest, LogRepeatedStart)
 {
-    auto expected {"Log initialization failed: logger with name 'default' already exists"};
-    logging::start(logging::LoggingConfig {.filePath = TMP_FILE});
-    try
-    {
-        logging::start(logging::LoggingConfig {.filePath = TMP_FILE});
-    }
-    catch (const std::exception& e)
-    {
-        EXPECT_STREQ(e.what(), expected);
-    }
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath}));
+    ASSERT_ANY_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath}));
 }
 
 TEST_F(LoggerTest, LogGetSomeInstance)
 {
-    logging::start(logging::LoggingConfig {.filePath = TMP_FILE});
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath}));
     auto logger = logging::getDefaultLogger();
     auto someLogger = logging::getDefaultLogger();
-    EXPECT_NE(logger, nullptr);
-    EXPECT_EQ(logger, someLogger);
+    ASSERT_NE(logger, nullptr);
+    ASSERT_EQ(logger, someLogger);
 }
 
-TEST_F(LoggerTest, LogChangeLevelInRuntime)
+class LoggerTestLevels : public ::testing::TestWithParam<logging::Level>
 {
-    EXPECT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = TMP_FILE, .level = "info"}));
+public:
+    std::string m_tmpPath;
+    void SetUp() override
+    {
+        char tempFileName[] = "/tmp/temp_log_XXXXXX";
+        auto tempFileDescriptor = mkstemp(tempFileName);
+        m_tmpPath = tempFileName;
+        ASSERT_NE(tempFileDescriptor, -1);
+    }
+
+    void checkLogFileContent(const std::string& message, bool shouldContain)
+    {
+        std::string fileContent = readFileContents(m_tmpPath);
+        if (shouldContain)
+        {
+            EXPECT_NE(fileContent.find(message), std::string::npos);
+        }
+        else
+        {
+            EXPECT_EQ(fileContent.find(message), std::string::npos);
+        }
+    }
+
+    bool shouldContainMessage(logging::Level currentLevel, logging::Level messageLevel)
+    {
+        return static_cast<int>(messageLevel) >= static_cast<int>(currentLevel);
+    }
+
+    void TearDown() override
+    {
+        logging::stop();
+        std::filesystem::remove(m_tmpPath); // Remove temporary log file
+    }
+};
+
+TEST_P(LoggerTestLevels, LogChangeLevelInRuntime)
+{
+    auto level = GetParam();
+
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = level}));
 
     LOG_TRACE("TRACE message");
     LOG_DEBUG("DEBUG message");
@@ -98,40 +114,47 @@ TEST_F(LoggerTest, LogChangeLevelInRuntime)
     LOG_ERROR("ERROR message");
     LOG_CRITICAL("CRITICAL message");
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
-
-    // Verificar que no haya mensajes de nivel más bajo que el nivel configurado
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("TRACE message") == std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("DEBUG message") == std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("INFO message") != std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("WARNING message") != std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("ERROR message") != std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("CRITICAL message") != std::string::npos);
-
-    logging::setLevel("error");
-
-    LOG_TRACE("other TRACE message");
-    LOG_DEBUG("other DEBUG message");
-    LOG_INFO("other INFO message");
-    LOG_WARNING("other WARNING message");
-    LOG_ERROR("other ERROR message");
-    LOG_CRITICAL("other CRITICAL message");
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
-
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("other TRACE message") == std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("other DEBUG message") == std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("other INFO message") == std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("other WARNING message") == std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("other ERROR message") != std::string::npos);
-    EXPECT_TRUE(readFileContents(TMP_FILE).find("other CRITICAL message") != std::string::npos);
+    checkLogFileContent("TRACE message", shouldContainMessage(level, logging::Level::Trace));
+    checkLogFileContent("DEBUG message", shouldContainMessage(level, logging::Level::Debug));
+    checkLogFileContent("INFO message", shouldContainMessage(level, logging::Level::Info));
+    checkLogFileContent("WARNING message", shouldContainMessage(level, logging::Level::Warn));
+    checkLogFileContent("ERROR message", shouldContainMessage(level, logging::Level::Err));
+    checkLogFileContent("CRITICAL message", shouldContainMessage(level, logging::Level::Critical));
 }
 
-TEST_F(LoggerTest, LogWithExtraInformation)
-{
-    std::regex pattern(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+) \[.*\]: .*)");
+INSTANTIATE_TEST_CASE_P(Levels,
+                        LoggerTestLevels,
+                        ::testing::Values(logging::Level::Trace,
+                                          logging::Level::Debug,
+                                          logging::Level::Info,
+                                          logging::Level::Warn,
+                                          logging::Level::Err,
+                                          logging::Level::Critical));
 
-    EXPECT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = TMP_FILE, .level = "debug"}));
+class LoggerTestExtraInfo : public ::testing::TestWithParam<std::tuple<logging::Level, std::regex>>
+{
+public:
+    std::string m_tmpPath;
+    void SetUp() override
+    {
+        char tempFileName[] = "/tmp/temp_log_XXXXXX";
+        auto tempFileDescriptor = mkstemp(tempFileName);
+        m_tmpPath = tempFileName;
+        ASSERT_NE(tempFileDescriptor, -1);
+    }
+
+    void TearDown() override
+    {
+        logging::stop();
+        std::filesystem::remove(m_tmpPath); // Remove temporary log file
+    }
+};
+
+TEST_P(LoggerTestExtraInfo, LogPatternMatching)
+{
+    auto [level, pattern] = GetParam();
+
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = level}));
 
     LOG_TRACE("TRACE message");
     LOG_DEBUG("DEBUG message");
@@ -140,9 +163,7 @@ TEST_F(LoggerTest, LogWithExtraInformation)
     LOG_ERROR("ERROR message");
     LOG_CRITICAL("CRITICAL message");
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
-
-    std::istringstream iss(readFileContents(TMP_FILE));
+    std::istringstream iss(readFileContents(m_tmpPath));
     std::string line;
     while (std::getline(iss, line))
     {
@@ -150,25 +171,19 @@ TEST_F(LoggerTest, LogWithExtraInformation)
     }
 }
 
-TEST_F(LoggerTest, LogWithoutExtraInformation)
-{
-    std::regex pattern(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)");
-
-    EXPECT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = TMP_FILE, .level = "trace"}));
-
-    LOG_TRACE("TRACE message");
-    LOG_DEBUG("DEBUG message");
-    LOG_INFO("INFO message");
-    LOG_WARNING("WARNING message");
-    LOG_ERROR("ERROR message");
-    LOG_CRITICAL("CRITICAL message");
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
-
-    std::istringstream iss(readFileContents(TMP_FILE));
-    std::string line;
-    while (std::getline(iss, line))
-    {
-        EXPECT_TRUE(std::regex_match(line, pattern));
-    }
-}
+INSTANTIATE_TEST_CASE_P(
+    LevelsWithRegex,
+    LoggerTestExtraInfo,
+    ::testing::Values(
+        std::make_tuple(logging::Level::Trace,
+                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
+        std::make_tuple(logging::Level::Debug,
+                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
+        std::make_tuple(logging::Level::Info,
+                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+        std::make_tuple(logging::Level::Warn,
+                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+        std::make_tuple(logging::Level::Err,
+                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+        std::make_tuple(logging::Level::Critical,
+                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"))));

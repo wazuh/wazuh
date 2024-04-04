@@ -41,14 +41,13 @@ protected:
 
     void SetUp() override
     {
-        initLogging();
+        logging::testInit();
         socketPath = uniquePath().c_str();
         loop = uvw::Loop::create();
     }
 
     void TearDown() override
     {
-        logging::stop();
         loop->close();
         unlink(socketPath.c_str());
     }

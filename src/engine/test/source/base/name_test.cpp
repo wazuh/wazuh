@@ -10,7 +10,7 @@ class NameTest : public ::testing::Test
 {
 
 protected:
-    void SetUp() override { initLogging(); }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };
