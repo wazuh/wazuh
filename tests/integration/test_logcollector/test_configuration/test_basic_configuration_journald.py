@@ -86,18 +86,13 @@ def build_tc_config(tc_conf_list):
     # Build the configuration for each test case
     for tc_config in tc_conf_list:
         sections = []
+        # Build the configuration for each localfile
         for i, elements in enumerate(tc_config, start=1):
-            if i == 1:
-                section = {
-                    "section": "localfile",
-                    "elements": elements
-                }
-            else:
-                section = {
-                    "section": "localfile",
-                    "attributes": [{"unique_id": str(i)}],
-                    "elements": elements
-                }
+            section = {
+                "section": "localfile",
+                "attributes": [{"unique_id": str(i)}], # Prevents duplicated localfiles sections
+                "elements": elements
+            }
             sections.append(section)  
 
         config_list.append({"sections": sections})
@@ -125,7 +120,7 @@ local_internal_options = {daemon_debug: '1'}
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_configuration_location(test_configuration, test_metadata, truncate_monitored_files, configure_local_internal_options,
-                                set_wazuh_configuration, daemons_handler, wait_for_logcollector_start):
+                                remove_all_localfiles_wazuh_config, set_wazuh_configuration, daemons_handler, wait_for_logcollector_start):
     '''
     description: Check if the 'wazuh-logcollector' daemon starts properly when the 'location' tag is used.
                  For this purpose, the test will configure the logcollector to monitor a 'syslog' directory
