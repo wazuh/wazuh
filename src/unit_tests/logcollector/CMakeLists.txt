@@ -109,7 +109,7 @@ else()
                                     -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
 
     list(APPEND logcollector_names "test_journal_log")
-    list(APPEND logcollector_flags "")
+    list(APPEND logcollector_flags "-Wl,--wrap,stat")
 endif()
 
 list(LENGTH logcollector_names count)

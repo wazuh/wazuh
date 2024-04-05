@@ -13,8 +13,17 @@
 
 #include "debug_op.h"
 
-static const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;     ///< Open the journal log for the local machine
-static const char * W_LIB_SYSTEMD = "libsystemd.so.0"; ///< Name of the systemd library
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#define INLINE
+#else
+#define STATIC static
+#define INLINE inline
+#endif
+
+STATIC const int W_SD_JOURNAL_LOCAL_ONLY = 1 << 0;     ///< Open the journal log for the local machine
+STATIC const char * W_LIB_SYSTEMD = "libsystemd.so.0"; ///< Name of the systemd library
 
 // Function added on version 187 of systemd
 typedef int (*w_journal_open)(sd_journal ** ret, int flags);            ///< sd_journal_open
@@ -68,7 +77,7 @@ struct w_journal_lib_t {
  *
  * @return int64_t
  */
-static inline uint64_t w_get_epoch_time() {
+STATIC INLINE uint64_t w_get_epoch_time() {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     return (uint64_t) tv.tv_sec * 1000000 + tv.tv_usec;
@@ -81,7 +90,7 @@ static inline uint64_t w_get_epoch_time() {
  * @param timestamp The epoch time
  * @return char* The human-readable string or NULL on error
  */
-static inline char * w_timestamp_to_string(uint64_t timestamp) {
+STATIC INLINE char * w_timestamp_to_string(uint64_t timestamp) {
     struct tm tm;
     time_t time = timestamp / 1000000;
     if (gmtime_r(&time, &tm) == NULL) {
@@ -101,7 +110,7 @@ static inline char * w_timestamp_to_string(uint64_t timestamp) {
  * @param timestamp The epoch time
  * @return char* The human-readable string or NULL on error
  */
-static inline char * w_timestamp_to_journalctl_since(uint64_t timestamp) {
+STATIC INLINE char * w_timestamp_to_journalctl_since(uint64_t timestamp) {
     struct tm tm;
     time_t time = timestamp / 1000000;
     if (gmtime_r(&time, &tm) == NULL) {
@@ -160,7 +169,7 @@ char * find_library_path(const char * library_name) {
  * @param library_path The path to the file to be checked.
  * @return true if the file is owned by the root user, false otherwise.
  */
-bool is_owned_by_root(const char * library_path) {
+STATIC INLINE bool is_owned_by_root(const char * library_path) {
     struct stat file_stat;
     if (stat(library_path, &file_stat) != 0) {
         return false;
@@ -177,7 +186,7 @@ bool is_owned_by_root(const char * library_path) {
  * @param func Function pointer
  * @return true if the function was loaded and validated successfully, false otherwise.
  */
-static inline bool load_and_validate_function(void * handle, const char * name, void ** func) {
+STATIC INLINE bool load_and_validate_function(void * handle, const char * name, void ** func) {
     *func = dlsym(handle, name);
     if (*func == NULL) {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD, name, dlerror());
@@ -192,7 +201,7 @@ static inline bool load_and_validate_function(void * handle, const char * name, 
  * The caller is responsible for freeing the returned library.
  * @return w_journal_lib_t* The library or NULL on error
  */
-static inline w_journal_lib_t * w_journal_lib_init() {
+STATIC INLINE w_journal_lib_t * w_journal_lib_init() {
     w_journal_lib_t * lib = NULL;
     os_calloc(1, sizeof(w_journal_lib_t), lib);
 
@@ -388,7 +397,7 @@ int w_journal_context_get_oldest_timestamp(w_journal_context_t * ctx, uint64_t *
  * @param ctx Journal log context
  * @return cJSON* JSON object with the available data or NULL on error
  */
-static inline cJSON * entry_as_json(w_journal_context_t * ctx) {
+STATIC INLINE cJSON * entry_as_json(w_journal_context_t * ctx) {
     cJSON * dump = cJSON_CreateObject();
     int isEmpty = 1; // Flag to check if the entry is empty
 
@@ -433,7 +442,7 @@ static inline cJSON * entry_as_json(w_journal_context_t * ctx) {
  * @param value
  * @return int
  */
-static inline char * get_field_ptr(w_journal_context_t * ctx, const char * field) {
+STATIC INLINE char * get_field_ptr(w_journal_context_t * ctx, const char * field) {
     const void * data;
     size_t length;
 
@@ -469,7 +478,7 @@ static inline char * get_field_ptr(w_journal_context_t * ctx, const char * field
  * @return char*
  * @warning The arguments must be valid strings (except pid)
  */
-static inline char * create_plain_syslog(const char * timestamp,
+STATIC INLINE char * create_plain_syslog(const char * timestamp,
                                          const char * hostname,
                                          const char * syslog_identifier,
                                          const char * pid,
@@ -510,7 +519,7 @@ static inline char * create_plain_syslog(const char * timestamp,
  * @param type
  * @return w_journal_entry_t*
  */
-static inline char * entry_as_syslog(w_journal_context_t * ctx) {
+STATIC INLINE char * entry_as_syslog(w_journal_context_t * ctx) {
 
     char * hostname = get_field_ptr(ctx, "_HOSTNAME");
     char * syslog_identifier = get_field_ptr(ctx, "SYSLOG_IDENTIFIER");
