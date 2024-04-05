@@ -1,0 +1,41 @@
+- name: Test 1
+  description: test 1 description
+  configuration_parameters:
+    - - location:
+          value: 'journald'
+      - log_format:
+          value: 'journald'
+          
+    - - location:
+          value: 'journald'
+      - log_format:
+          value: 'journald'
+      - filter:
+           value: '\w+'
+           attributes:
+             - field: 'syslogtag'
+             - ignore_if_missing: 'yes'
+    - - location:
+          value: 'journald_123'
+      - log_format:
+          value: 'journald'
+      - filter:
+          value: '\d+'
+  metadata:
+    location: 'journald'
+    log_format: 'journald'
+    validate_config: True
+
+
+- name: Test 2
+  description: test 2 description
+  configuration_parameters:
+    - - location:
+          value: 'journald'
+      - log_format:
+          value: 'journald'
+
+  metadata:
+    location: 'journald'
+    log_format: 'journald'
+    validate_config: True
