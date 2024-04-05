@@ -30,10 +30,12 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
     static const char *bind_addr = "bind_addr";
     static const char *C_VALID = "!\"#$%&'-.0123456789:<=>?ABCDEFGHIJKLMNOPQRESTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
 
-    xml_node **children = NULL;
+    xml_node **child = NULL;
     static const char *haproxy_helper = "haproxy_helper";
+    static const char *haproxy_disabled = "haproxy_disabled";
     static const char *haproxy_address = "haproxy_address";
     static const char *haproxy_port = "haproxy_port";
+    static const char *haproxy_protocol = "haproxy_protocol";
     static const char *haproxy_user = "haproxy_user";
     static const char *haproxy_password = "haproxy_password";
     static const char *haproxy_resolver = "haproxy_resolver";
@@ -116,44 +118,48 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
         } else if (!strcmp(node[i]->element, bind_addr)) {
         } else if (!strcmp(node[i]->element, haproxy_helper)) {
 
-            if (!(children = OS_GetElementsbyNode(xml, node[i]))) {
+            if (!(child = OS_GetElementsbyNode(xml, node[i]))) {
                 continue;
             }
 
-            for (j = 0; children[j]; j++) {
-                if (!strcmp(children[j]->element, disabled)) {
-                    if (strcmp(children[j]->content, "yes") && strcmp(children[j]->content, "no")) {
-                        merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", children[j]->element);
+            for (j = 0; child[j]; j++) {
+                if (!strcmp(child[j]->element, haproxy_disabled)) {
+                    if (strcmp(child[j]->content, "yes") && strcmp(child[j]->content, "no")) {
+                        merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", child[j]->element);
                         return OS_INVALID;
                     }
-                } else if (!strcmp(children[j]->element, frequency)) {
-                } else if (!strcmp(children[j]->element, haproxy_address)) {
+                } else if (!strcmp(child[j]->element, frequency)) {
+                } else if (!strcmp(child[j]->element, haproxy_address)) {
                     if (!strlen(node[i]->content)) {
                         merror("HAProxy address is empty in configuration");
                         return OS_INVALID;
                     }
-                } else if (!strcmp(children[j]->element, haproxy_port)) {
-                } else if (!strcmp(children[j]->element, haproxy_user)) {
+                } else if (!strcmp(child[j]->element, haproxy_port)) {
+                } else if (!strcmp(child[j]->element, haproxy_protocol)) {
+                    if (strcmp(child[j]->content, "http") && strcmp(child[j]->content, "https")) {
+                        merror("Detected a not allowed value for haproxy_protocol tag '%s'. Valid values are 'http' and 'https'.", child[j]->element);
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(child[j]->element, haproxy_user)) {
                     if (!strlen(node[i]->content)) {
                         merror("HAProxy user is empty in configuration");
                         return OS_INVALID;
                     }
-                } else if (!strcmp(children[j]->element, haproxy_password)) {
+                } else if (!strcmp(child[j]->element, haproxy_password)) {
                     if (!strlen(node[i]->content)) {
                         merror("HAProxy password is empty in configuration");
                         return OS_INVALID;
                     }
-                } else if (!strcmp(children[j]->element, haproxy_backend)) {
-                } else if (!strcmp(children[j]->element, haproxy_resolver)) {
-                } else if (!strcmp(children[j]->element, api_port)) {
-                } else if (!strcmp(children[j]->element, excluded_nodes)) {
-                } else if (!strcmp(children[j]->element, agent_chunk_size)) {
-                } else if (!strcmp(children[j]->element, agent_reconnection_time)) {
-                } else if (!strcmp(children[j]->element, agent_reconnection_stability_time)) {
-                } else if (!strcmp(children[j]->element, imbalance_tolerance)) {
-                } else if (!strcmp(children[j]->element, remove_disconnected_node_after)) {
+                } else if (!strcmp(child[j]->element, haproxy_backend)) {
+                } else if (!strcmp(child[j]->element, haproxy_resolver)) {
+                } else if (!strcmp(child[j]->element, excluded_nodes)) {
+                } else if (!strcmp(child[j]->element, agent_chunk_size)) {
+                } else if (!strcmp(child[j]->element, agent_reconnection_time)) {
+                } else if (!strcmp(child[j]->element, agent_reconnection_stability_time)) {
+                } else if (!strcmp(child[j]->element, imbalance_tolerance)) {
+                } else if (!strcmp(child[j]->element, remove_disconnected_node_after)) {
                 } else {
-                    merror(XML_INVELEM, children[i]->element);
+                    merror(XML_INVELEM, child[i]->element);
                     return OS_INVALID;
                 }
 
