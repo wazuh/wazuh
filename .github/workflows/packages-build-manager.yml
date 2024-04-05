@@ -1,4 +1,4 @@
-name: Build Wazuh Manager Packages - DEB|RPM - amd64|arm64
+name: Build Wazuh Manager Packages - DEB|RPM - amd64|arm64|x86_64|aarch64
 on:
   workflow_dispatch:
     inputs:
@@ -15,7 +15,7 @@ on:
         description: |
           Architecture of the package [amd64, arm64, x86_64, aarch64]
         type: choice
-        options: 
+        options:
           - amd64
           - arm64
           - x86_64
@@ -24,7 +24,7 @@ on:
       system:
         description: 'Package format [deb, rpm]'
         type: choice
-        options: 
+        options:
           - deb
           - rpm
         required: true
@@ -45,19 +45,16 @@ on:
         description: |
           Build package with release format.
           Checksum will be also generated.
-        default: false
         type: boolean
         required: false
       debug:
         description: |
           Build the binaries with debug symbols.
           By default: false
-        default: false
         type: boolean
         required: false
       checksum:
         description: Generate package checksum.
-        default: false
         type: boolean
         required: false
 
@@ -113,7 +110,7 @@ jobs:
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
-          if [ ${{ inputs.system }} == 'rpm' ]; then 
+          if [ ${{ inputs.system }} == 'rpm' ]; then
             if [ ${{ inputs.architecture }} == 'x86_64' ]; then arch=amd64;
             else arch=arm64; fi
           else arch=${{ inputs.architecture }}; fi
@@ -128,20 +125,26 @@ jobs:
         working-directory: packages
         run: |
           REVISION=${{ inputs.revision }}
-          FLAGS="-t manager --dont-build-docker -j $(nproc) "
+          FLAGS="-t manager -s /tmp --dont-build-docker -j $(nproc) "
           if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
-          if [ "${{ inputs.checksum }}" == "true" ] || [ ${{ inputs.is_stage}} == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           echo $FLAGS
           bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
       - name: Test install built manager
         run: |
-          if [ ${{ inputs.system }} == 'rpm' ]; then TESTING_DOCKER_IMAGE=centos:latest;
-          else TESTING_DOCKER_IMAGE=amd64/ubuntu:latest; fi
-          package_name=$(find $GITHUB_WORKSPACE/packages/output/ -name "*manager*.${{ inputs.system }}" -exec basename {} \;)
-          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v $GITHUB_WORKSPACE/packages/output/:/packages $TESTING_DOCKER_IMAGE bash /tests/install_component.sh $package_name manager
+          package_name=$(find /tmp -maxdepth 1 -type f -name "*manager*.${{ inputs.system }}" -exec basename {} 2>/dev/null \;)
+          if [ -z "$package_name" ]; then echo "No package found matching the pattern!"; exit 1; fi
+          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $package_name manager
+          # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
+          if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded.";
+            exit 1;
+          fi
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -153,6 +156,6 @@ jobs:
       - name: Upload package to S3
         working-directory: packages
         run: |
-          for file in output/*manager*; do
+          for file in /tmp/*manager*; do
             aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           done

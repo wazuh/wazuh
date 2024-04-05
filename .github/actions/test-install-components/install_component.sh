@@ -1,35 +1,23 @@
 #!/bin/bash
-echo "Installing Wazuh $2."
+package_name=$1
+target=$2
 
-if [ -f /etc/os-release ]; then
-    source /etc/os-release
-    if [ "$ID" = "centos" ] && [ "$VERSION_ID" = "8" ]; then
-        find /etc/yum.repos.d/ -type f -exec sed -i 's/mirrorlist/#mirrorlist/g' {} \;
-        find /etc/yum.repos.d/ -type f -exec sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' {} \;
-    fi
-
-    if [ "$ID" = "debian" ] && [ "$VERSION_ID" = "9" ]; then
-        echo "deb http://archive.debian.org/debian stretch contrib main non-free" > /etc/apt/sources.list
-        echo "deb http://archive.debian.org/debian-security stretch/updates main" >> /etc/apt/sources.list
-    fi
-fi
-
-if [ -f /etc/redhat-release ]; then
-    VERSION=$(cat /etc/redhat-release)
-    if [ "$VERSION" = "CentOS release 6.9 (Final)" ]; then
-        curl https://www.getpagespeed.com/files/centos6-eol.repo --output /etc/yum.repos.d/CentOS-Base.repo
-    fi
-fi
+echo "Installing Wazuh $target."
 
 if [ -n "$(command -v yum)" ]; then
-    sys_type="yum"
+    install="yum install -y --nogpgcheck"
+    installed_log="/var/log/yum.log"
 elif [ -n "$(command -v apt-get)" ]; then
-    sys_type="apt-get"
-    apt-get update
-    apt-get install -y systemd
+    install="dpkg --install"
+    installed_log="/var/log/dpkg.log"
 else
     common_logger -e "Couldn't find type of system"
     exit 1
 fi
 
-$sys_type install -y "/packages/$1"
+if [ "${ARCH}" = "i386" ] || [ "${ARCH}" = "armv7hl" ]; then
+    linux="linux32"
+fi
+
+WAZUH_MANAGER="10.0.0.2" $linux $install "/packages/$package_name"| tee /packages/status.log
+grep -i " installed.*wazuh-$target" $installed_log| tee -a /packages/status.log

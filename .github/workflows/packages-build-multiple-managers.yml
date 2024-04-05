@@ -4,22 +4,18 @@ on:
     inputs:
       build-amd64-deb:
         description: 'Build .deb wazuh-manager on amd64 arch'
-        default: false
         type: boolean
         required: false
       build-amd64-rpm:
         description: 'Build .rpm wazuh-manager on amd64 arch'
-        default: false
         type: boolean
         required: false
       build-arm64-deb:
         description: 'Build .deb wazuh-manager on arm64 arch'
-        default: false
         type: boolean
         required: false
       build-arm64-rpm:
         description: 'Build .rpm wazuh-manager on arm64 arch'
-        default: false
         type: boolean
         required: false
       revision:
@@ -46,7 +42,7 @@ on:
         required: false
 
 jobs:
-   Build-manager-amd64-deb: 
+   Build-manager-amd64-deb:
     if: ${{ inputs.build-amd64-deb == true }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
@@ -58,7 +54,7 @@ jobs:
         debug: ${{ inputs.debug }}
     secrets: inherit
 
-   Build-manager-amd64-rpm: 
+   Build-manager-amd64-rpm:
     if: ${{ inputs.build-amd64-rpm == true }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
@@ -69,8 +65,8 @@ jobs:
         is_stage: ${{ inputs.is_stage }}
         debug: ${{ inputs.debug }}
     secrets: inherit
-    
-   Build-manager-arm64-deb: 
+
+   Build-manager-arm64-deb:
     if: ${{ inputs.build-arm64-deb == true }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
@@ -82,7 +78,7 @@ jobs:
         debug: ${{ inputs.debug }}
     secrets: inherit
 
-   Build-manager-arm64-rpm: 
+   Build-manager-arm64-rpm:
     if: ${{ inputs.build-arm64-rpm == true }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
