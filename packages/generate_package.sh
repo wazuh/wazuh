@@ -37,7 +37,6 @@ clean() {
     # Clean the files
     find "${DOCKERFILE_PATH}" \( -name '*.sh' -o -name '*.tar.gz' -o -name 'wazuh-*' \) ! -name 'docker_builder.sh' -exec rm -rf {} +
 
-
     exit ${exit_code}
 }
 

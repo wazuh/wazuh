@@ -86,7 +86,7 @@ on:
 jobs:
   Build-agent-linux-packages:
     runs-on: ubuntu-latest
-    name: Build ${{ inputs.system }} wazuh-agent on ${{ inputs.architecture }}
+    name: Build ${{ inputs.system }} wazuh-agent on ${{ inputs.architecture }} ${{ inputs.legacy && '- legacy' || '' }} ${{ inputs.is_stage && '- is stage' || '' }}
 
     steps:
       - name: Cancel previous runs
@@ -141,7 +141,7 @@ jobs:
           if [ "${{ inputs.legacy }}" == "true" ]; then FLAGS+="--legacy "; fi
           if [ "${{ inputs.checksum }}" == "true" ] && [ ${{ inputs.is_stage}} == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
-          echo $FLAGS
+          echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
       - name: Test install built package
@@ -150,8 +150,12 @@ jobs:
           if [ -z "$package_name" ]; then echo "No package found matching the pattern!"; exit 1; fi
           sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $package_name agent
           # Check if all Wazuh services are running. The /tmp/status.log file was generated in the previous step.
-          if [ $(grep -c "is running" /tmp/status.log) -ge 5 ]; then exit 0 ; else exit 1; fi
-
+          if grep -iq " installed.*wazuh-$target" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed. The package will not be uploaded.";
+            exit 1;
+          fi
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
         with:
