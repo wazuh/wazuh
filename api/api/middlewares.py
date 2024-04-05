@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import binascii
 import json
 import hashlib
 import time
@@ -13,6 +14,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
+from connexion.exceptions import OAuthProblem
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
 
@@ -78,25 +80,23 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
 
     # Get the username from the request. If it is not found in the context, try
     # to get it from the headers using basic or bearer authentication methods.
-    user = UNKNOWN_USER_STRING
-    if headers and not (user := context.get('user', None)):
-        auth_type, user_passw = AbstractSecurityHandler.get_auth_header_value(request)
-        if auth_type == 'basic':
-            user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
-        elif auth_type == 'bearer':
-            try:
+    if not (user := context.get('user', None)):
+        try:
+            auth_type, user_passw = AbstractSecurityHandler.get_auth_header_value(request)
+            if auth_type == 'basic':
+                user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
+            elif auth_type == 'bearer':
                 s = jwt.decode(user_passw, generate_keypair()[1],
                             algorithms=[JWT_ALGORITHM],
                             audience='Wazuh API REST',
                             options={'verify_exp': False})
                 user = s['sub']
-            except jwt.exceptions.PyJWTError:
-                pass
+        except (KeyError, IndexError, binascii.Error, jwt.exceptions.PyJWTError, OAuthProblem):
+            user = UNKNOWN_USER_STRING
 
     # Get or create authorization context hash
     hash_auth_context = context.get('token_info', {}).get('hash_auth_context', '')
     # Create hash if run_as login
-
     if not hash_auth_context and path == RUN_AS_LOGIN_ENDPOINT:
         hash_auth_context = hashlib.blake2b(json.dumps(body).encode(),
                                             digest_size=16).hexdigest()
