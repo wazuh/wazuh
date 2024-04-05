@@ -43,11 +43,17 @@ public:
     /**
      * @brief Struct containing the necessary members to execute the orchestrations.
      *
+     * @details When 'type' is CONTENT, the orchestrator will perform a content update. If 'offset' is
+     * zero, the offset value will be reset. Otherwise, its value will be read from the RocksDB database.
+     * @details When 'type' is OFFSET, the orchestrator will write the 'offset' value in the RocksDB database. This
+     * value should be nonnegative.
+     * @details When 'type' is FILE_HASH, the orchestrator will write the 'fileHash' value in the RocksDB database. This
+     * value shouldn't be empty.
      */
     struct UpdateData
     {
-        UpdateType type = UpdateType::CONTENT; ///< Orchestration update type.
-        int offset = -1;                       ///< Offset value used in the update.
+        UpdateType type {UpdateType::CONTENT}; ///< Orchestration update type.
+        int offset {1};                        ///< Offset value used in the update.
         std::string fileHash;                  ///< Hash value used in the update.
 
         /**
@@ -98,9 +104,6 @@ public:
      * @brief Run the content updater orchestration.
      *
      * @param updateData Update orchestration data.
-     *
-     * @note If the \p updateData offset equals zero and the \p updateData type is CONTENT, the current offset will be
-     * reset to zero. If \p updateData type is OFFSET, this value will be used to perform the offset update.
      */
     void run(const UpdateData& updateData = UpdateData()) const
     {
