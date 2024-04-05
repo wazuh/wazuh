@@ -23,7 +23,7 @@ class AsyncWazuhDBConnection:
     Represent an async connection to the wdb socket.
     """
 
-    def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None):
+    def __init__(self, loop: asyncio.AbstractEventLoopPolicy = None, socket_path = None):
         """Class constructor.
 
         Parameters
@@ -32,7 +32,7 @@ class AsyncWazuhDBConnection:
             Event loop. It's optional and can always be determined automatically when self.open_connection() is
             awaited from a coroutine.
         """
-        self.socket_path = common.WDB_SOCKET
+        self.socket_path = common.WDB_SOCKET if not socket_path else socket_path
         self.loop = loop
         self._reader = None
         self._writer = None

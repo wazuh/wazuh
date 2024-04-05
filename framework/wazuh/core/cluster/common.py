@@ -571,7 +571,7 @@ class Handler(asyncio.Protocol):
         return data
 
     async def update_chunks_wdb(self, data: dict, info_type: str, logger: logging.Logger, error_command: bytes,
-                                timeout: int) -> dict:
+                                timeout: int, socket_path = None) -> dict:
         """Send the received data to WDB and returns the result of the operation.
 
         Parameters
@@ -593,7 +593,7 @@ class Handler(asyncio.Protocol):
             Dict containing number of updated chunks, error messages (if any) and time spent.
         """
         try:
-            result = await send_data_to_wdb(data, timeout, info_type)
+            result = await send_data_to_wdb(data, timeout, info_type, socket_path)
         except Exception as e:
             logger.error(f'error processing {info_type} chunks: {str(e)}'.encode())
             with contextlib.suppress(Exception):
@@ -1668,7 +1668,7 @@ def error_receiving_agent_information(logger, response, info_type):
     return b'ok', b'Thanks'
 
 
-async def send_data_to_wdb(data, timeout, info_type='agent-info') -> dict[str, Any]:
+async def send_data_to_wdb(data, timeout, info_type='agent-info', socket_path = None) -> dict[str, Any]:
     """Send chunks of data to Wazuh-db socket.
 
     Parameters
@@ -1686,7 +1686,7 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info') -> dict[str, A
         Dict containing number of updated chunks, error messages (if any) and time spent.
     """
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
-    wdb_conn = AsyncWazuhDBConnection()
+    wdb_conn = AsyncWazuhDBConnection(socket_path=socket_path)
     before = time.perf_counter()
 
     try:
