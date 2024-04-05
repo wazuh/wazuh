@@ -51,6 +51,8 @@ on:
 jobs:
   Upload-package-building-images:
     runs-on: ubuntu-latest
+    name: Upload docker image pkg_${{ inputs.system }}_${{ inputs.legacy && 'legacy' || 'agent' }}_builder_${{ env.architecture }}
+
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
