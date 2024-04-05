@@ -1,4 +1,4 @@
-name: Build Macos Wazuh Agent Packages - intel64|arm64
+name: Build macOS Wazuh Agent Packages - intel64|arm64
 on:
   workflow_dispatch:
     inputs:
@@ -24,19 +24,16 @@ on:
           False if package name should have developer format.
           Default is 'false'.
         required: false
-        default: false
       debug:
         type: boolean
         description: |
           Activate debug mode in the compilation.
           Default is 'false'.
         required: false
-        default: false
       checksum:
         type: boolean
         description: Generate checksum on the same directory than the package.
         required: false
-        default: false
 
   workflow_call:
     inputs:
@@ -57,9 +54,9 @@ on:
         required: false
 
 jobs:
-  Build-agent-linux-packages:
+  build-agent-macos-packages:
     runs-on: macos-latest
-    name: Build MacOS wazuh-agent on ${{ inputs.architecture }}
+    name: Build macOS wazuh-agent on ${{ inputs.architecture }}
 
     steps:
       - name: Cancel previous runs
@@ -75,21 +72,22 @@ jobs:
         working-directory: packages/macos/
         run: |
           nproc=$(sysctl -n hw.ncpu)
-          FLAGS="-j $nproc -r $REVISION "
+          FLAGS="-j $nproc -r ${{ inputs.revision }} "
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          bash generate_wazuh_packages.sh -i
+          echo "generate_wazuh_packages.sh -a ${{ inputs.architecture }} $FLAGS"
           sudo bash generate_wazuh_packages.sh -a ${{ inputs.architecture }} $FLAGS
 
       - name: Test install Wazuh agent
         working-directory: packages/macos/output
         run: |
-          sudo echo "WAZUH_MANAGER='1.1.1.1'" > /tmp/wazuh_envs && sudo installer -pkg *agent*pkg -target /
-          sudo /Library/Ossec/bin/wazuh-control start
-          if [ $(sudo /Library/Ossec/bin/wazuh-control status | grep 'is running...' | wc -l) -gt "0" ];
-            then echo "Installation successfully."
+          sudo echo "WAZUH_MANAGER='1.1.1.1'" > /tmp/wazuh_envs && sudo installer -pkg *agent*pkg -target / | sudo tee ./installer.log
+          if grep -q "The install was successful" "./installer.log"; then
+            echo "Installation successfully."
           else
-            echo "The installation could not be completed successfully. The package will not be uploaded.";
+            echo "The installation could not be completed. The package will not be uploaded.";
             exit 1;
           fi
 

@@ -15,7 +15,7 @@ WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
 INSTALLATION_PATH="/Library/Ossec"    # Installation path
 VERSION=""                            # Default VERSION (branch/tag)
 REVISION="1"                          # Package revision.
-BRANCH_TAG=""                   # Branch that will be downloaded to build package.
+BRANCH_TAG=""                         # Branch that will be downloaded to build package.
 DESTINATION="${CURRENT_PATH}/output/" # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
 VERBOSE="no"                          # Enables the full log by using `set -exf`.
@@ -129,8 +129,7 @@ function build_package() {
         SOURCES_DIRECTORY="${CURRENT_PATH}/repository"
         WAZUH_PATH="${SOURCES_DIRECTORY}/wazuh"
         git clone --depth=1 -b ${BRANCH_TAG} ${WAZUH_SOURCE_REPOSITORY} "${WAZUH_PATH}"
-        short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
-                | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-11)"
+        short_commit_hash="$(git rev-parse -C "${WAZUH_PATH}" --short HEAD)"
     else
         WAZUH_PATH="${CURRENT_PATH}/../.."
         short_commit_hash="$(git rev-parse --short HEAD)"
