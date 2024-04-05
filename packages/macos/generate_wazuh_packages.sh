@@ -10,22 +10,19 @@ set -x
 # Foundation.
 
 CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
-SOURCES_DIRECTORY="${CURRENT_PATH}/repository"
-WAZUH_PATH="${SOURCES_DIRECTORY}/wazuh"
-WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"
-WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
-export CONFIG="${WAZUH_PATH}/etc/preloaded-vars.conf"
-ENTITLEMENTS_PATH="${WAZUH_PACKAGES_PATH}/entitlements.plist"
 ARCH="intel64"
+WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
 INSTALLATION_PATH="/Library/Ossec"    # Installation path
 VERSION=""                            # Default VERSION (branch/tag)
 REVISION="1"                          # Package revision.
-BRANCH_TAG="master"                   # Branch that will be downloaded to build package.
+BRANCH_TAG=""                         # Branch that will be downloaded to build package.
 DESTINATION="${CURRENT_PATH}/output/" # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
-DEBUG="no"                            # Enables the full log by using `set -exf`.
+VERBOSE="no"                          # Enables the full log by using `set -exf`.
+DEBUG="no"                            # Enables debug symbols while compiling.
 CHECKSUMDIR=""                        # Directory to store the checksum of the package.
 CHECKSUM="no"                         # Enables the checksum generation.
+IS_STAGE="no"                         # Enables release package naming,
 CERT_APPLICATION_ID=""                # Apple Developer ID certificate to sign Apps and binaries.
 CERT_INSTALLER_ID=""                  # Apple Developer ID certificate to sign pkg.
 KEYCHAIN=""                           # Keychain where the Apple Developer ID certificate is.
@@ -42,7 +39,11 @@ trap ctrl_c INT
 function clean_and_exit() {
     exit_code=$1
     rm -rf "${SOURCES_DIRECTORY}"
+    if [ -z "$BRANCH_TAG" ]; then
+        make -C $WAZUH_PATH/src clean clean-deps
+    fi
     ${CURRENT_PATH}/uninstall.sh
+    
     exit ${exit_code}
 }
 
@@ -105,6 +106,7 @@ function sign_pkg() {
 function get_pkgproj_specs() {
 
     VERSION="$1"
+    pkg_final_name="$2"
 
     pkg_file="${WAZUH_PACKAGES_PATH}/specs/wazuh-agent-${ARCH}.pkgproj"
 
@@ -113,7 +115,7 @@ function get_pkgproj_specs() {
         exit 1
     else
         echo "Modifiying ${pkg_file} to match revision."
-        sed -i -e "s:${VERSION}-.*<:${VERSION}-${REVISION}.${ARCH}<:g" "${pkg_file}"
+        sed -i -e "s:>.*${VERSION}-.*<:>${pkg_final_name}<:g" "${pkg_file}"
         cp "${pkg_file}" "${AGENT_PKG_FILE}"
     fi
 
@@ -123,16 +125,31 @@ function get_pkgproj_specs() {
 function build_package() {
 
     # Download source code
-    git clone --depth=1 -b ${BRANCH_TAG} ${WAZUH_SOURCE_REPOSITORY} "${WAZUH_PATH}"
-    short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${BRANCH_TAG} \
-                          | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
+    if [ -n "$BRANCH_TAG" ]; then
+        SOURCES_DIRECTORY="${CURRENT_PATH}/repository"
+        WAZUH_PATH="${SOURCES_DIRECTORY}/wazuh"
+        git clone --depth=1 -b ${BRANCH_TAG} ${WAZUH_SOURCE_REPOSITORY} "${WAZUH_PATH}"
+        short_commit_hash="$(git rev-parse -C "${WAZUH_PATH}" --short HEAD)"
+    else
+        WAZUH_PATH="${CURRENT_PATH}/../.."
+        short_commit_hash="$(git rev-parse --short HEAD)"
+    fi
+
+    export CONFIG="${WAZUH_PATH}/etc/preloaded-vars.conf"
+    WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"
+    AGENT_PKG_FILE="${WAZUH_PACKAGES_PATH}/package_files/wazuh-agent-${ARCH}.pkgproj"
+    ENTITLEMENTS_PATH="${WAZUH_PACKAGES_PATH}/entitlements.plist"
 
     VERSION=$(cat ${WAZUH_PATH}/src/VERSION | cut -d "-" -f1 | cut -c 2-)
 
     # Define output package name
-    pkg_name="wazuh-agent_${VERSION}-${REVISION}_${ARCH}_${short_commit_hash}.pkg"
+    if [ $IS_STAGE == "no" ]; then
+        pkg_name="wazuh-agent_${VERSION}-${REVISION}_${ARCH}_${short_commit_hash}"
+    else
+        pkg_name="wazuh-agent-${VERSION}-${REVISION}.${ARCH}"
+    fi
 
-    get_pkgproj_specs $VERSION
+    get_pkgproj_specs $VERSION $pkg_name
 
 
     if [ -d "${INSTALLATION_PATH}" ]; then
@@ -143,7 +160,7 @@ function build_package() {
         ${CURRENT_PATH}/uninstall.sh
     fi
 
-    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS}
+    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS} ${DEBUG}
 
     # sign the binaries and the libraries
     sign_binaries
@@ -169,16 +186,17 @@ function help() {
     echo
     echo "  Build options:"
     echo "    -a, --architecture <arch>     [Optional] Target architecture of the package [intel64/arm64]. By Default: intel64."
-    echo "    -b, --branch <branch>         [Required] Select Git branch or tag e.g. $BRANCH"
+    echo "    -b, --branch <branch>         [Optional] Select Git branch [${BRANCH}]."
     echo "    -s, --store-path <path>       [Optional] Set the destination absolute path of package."
     echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
     echo "    -r, --revision <rev>          [Optional] Package revision that append to version e.g. x.x.x-rev"
+    echo "    -d, --debug                   [Optional] Build the binaries with debug symbols. By default: no."    
     echo "    -c, --checksum <path>         [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
+    echo "    --is_stage                    [Optional] Use release name in package"    
     echo "    -h, --help                    [  Util  ] Show this help."
     echo "    -i, --install-deps            [  Util  ] Install build dependencies (Packages)."
     echo "    -x, --install-xcode           [  Util  ] Install X-Code and brew. Can't be executed as root."
     echo "    -v, --verbose                 [  Util  ] Show additional information during the package generation."
-    echo
     echo "  Signing options:"
     echo "    --keychain                    [Optional] Keychain where the Certificates are installed."
     echo "    --keychain-password           [Optional] Password of the keychain."
@@ -249,7 +267,7 @@ function check_root() {
 
 function main() {
 
-    BUILD="no"
+    BUILD="yes"
     while [ -n "$1" ]
     do
         case "$1" in
@@ -264,7 +282,6 @@ function main() {
         "-b"|"--branch")
             if [ -n "$2" ]; then
                 BRANCH_TAG="$2"
-                BUILD=yes
                 shift 2
             else
                 help 1
@@ -304,6 +321,10 @@ function main() {
             install_xcode
             ;;
         "-v"|"--verbose")
+            VERBOSE="yes"
+            shift 1
+            ;;
+        "-d"|"--debug")
             DEBUG="yes"
             shift 1
             ;;
@@ -316,6 +337,10 @@ function main() {
                 CHECKSUM="yes"
                 shift 1
             fi
+            ;;
+        "--is_stage")
+            IS_STAGE="yes"
+            shift 1
             ;;
         "--keychain")
             if [ -n "$2" ]; then
@@ -390,7 +415,7 @@ function main() {
         esac
     done
 
-    if [ ${DEBUG} = "yes" ]; then
+    if [ ${VERBOSE} = "yes" ]; then
         set -exf
     fi
 
@@ -408,7 +433,6 @@ function main() {
 
     if [[ "${BUILD}" != "no" ]]; then
         check_root
-        AGENT_PKG_FILE="${WAZUH_PACKAGES_PATH}/package_files/wazuh-agent-${ARCH}.pkgproj"
         build_package
         "${CURRENT_PATH}/uninstall.sh"
     fi
