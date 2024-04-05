@@ -112,14 +112,14 @@ help() {
     echo
     echo "Usage: $0 [OPTIONS]"
     echo
-    echo "    -b, --branch <branch>      [Optional] Select Git branch [${BRANCH}]. By default: master."
+    echo "    -b, --branch <branch>      [Optional] Select Git branch [${BRANCH}]."
     echo "    -t, --target <target>      [Required] Target package to build: manager or agent."
     echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/ppc64le/arm64/armhf]."
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
-    echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
+    echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: False."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package."
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
