@@ -28,7 +28,7 @@ NO = 'no'
 YES = 'yes'
 DISABLED = 'disabled'
 HAPROXY_HELPER = 'haproxy_helper'
-FREQUENCY = 'frequency'
+HAPROXY_DISABLED = 'haproxy_disabled'
 HAPROXY_ADDRESS = 'haproxy_address'
 HAPROXY_PORT = 'haproxy_port'
 HAPROXY_PROTOCOL = 'haproxy_protocol'
@@ -36,6 +36,7 @@ HAPROXY_USER = 'haproxy_user'
 HAPROXY_PASSWORD = 'haproxy_password'
 HAPROXY_BACKEND = 'haproxy_backend'
 HAPROXY_RESOLVER = 'haproxy_resolver'
+FREQUENCY = 'frequency'
 EXCLUDED_NODES = 'excluded_nodes'
 AGENT_CHUNK_SIZE = 'agent_chunk_size'
 AGENT_RECONNECTION_TIME = 'agent_reconnection_time'
@@ -64,10 +65,10 @@ def validate_haproxy_helper_config(helper_config: dict) -> dict:
     WazuhError (3004)
         If some value have an invalid type.
     """
-    if helper_config[DISABLED] == NO:
-        helper_config[DISABLED] = False
-    elif helper_config[DISABLED] == YES:
-        helper_config[DISABLED] = True
+    if helper_config[HAPROXY_DISABLED] == NO:
+        helper_config[HAPROXY_DISABLED] = False
+    elif helper_config[HAPROXY_DISABLED] == YES:
+        helper_config[HAPROXY_DISABLED] = True
 
     for field in [
         FREQUENCY,

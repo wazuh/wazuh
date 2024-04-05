@@ -97,7 +97,7 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
     tasks = [my_server, my_local_server]
-    if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.DISABLED, True):
+    if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
         tasks.append(HAPHelper)
     await asyncio.gather(*[task.start() for task in tasks])
 
