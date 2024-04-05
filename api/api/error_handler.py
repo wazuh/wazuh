@@ -9,7 +9,8 @@ import jwt
 from content_size_limit_asgi.errors import ContentSizeExceeded
 
 from api import configuration
-from api.middlewares import ip_block, ip_stats, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
+from api.middlewares import ip_block, ip_stats, LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, UNKNOWN_USER_STRING
+from api.alogging import custom_logging
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.controllers.util import json_response, ERROR_CONTENT_TYPE
 from wazuh.core.utils import get_utc_now
@@ -109,6 +110,7 @@ async def unauthorized_error_handler(request: ConnexionRequest,
         problem.update({'detail': 'No authorization token provided'} \
                             if 'token_info' not in request.context \
                             else {})
+
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
                          status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
 
