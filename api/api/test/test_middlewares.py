@@ -4,13 +4,15 @@
 
 from datetime import datetime
 from unittest.mock import patch, MagicMock, AsyncMock, call
+import binascii
+import jwt
 import pytest
 
 from starlette.responses import Response
 
 from connexion import AsyncApp
 from connexion.testing import TestContext
-from connexion.exceptions import ProblemException
+from connexion.exceptions import ProblemException, OAuthProblem
 
 from freezegun import freeze_time
 
@@ -163,7 +165,7 @@ async def test_check_rate_limits_middleware_ko(
     (False, 'q_pass', None, 'b_key', 'wazuh', '', ('bearer', {'sub':'wazuh'}), RUN_AS_LOGIN_ENDPOINT, 'POST', 403),
     (False, 'q_pass', None, 'b_key', 'wazuh', '', ('other', ''), RUN_AS_LOGIN_ENDPOINT, 'POST', 403),
 ])
-async def test_access_log(json_body, q_password, b_password, b_key, c_user, 
+async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                           hash, sec_header, endpoint, method, status_code, mock_req):
     """Test access_log function."""
     JWT_ALGORITHM = 'ES512'
@@ -231,6 +233,48 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                 method in {'GET', 'POST'}:
             mock_log_warning.assert_called_once_with(
                 f"IP blocked due to exceeded number of logins attempts: {mock_req.client.host}")
+
+
+@freeze_time(datetime(1970, 1, 1, 0, 0, 0))
+@pytest.mark.asyncio
+@pytest.mark.parametrize("exception", [
+    (OAuthProblem),
+    (jwt.exceptions.PyJWTError),
+    (KeyError),
+    (IndexError),
+    (binascii.Error)
+])
+async def test_access_log_ko(mock_req, exception):
+    """Test access_log authorization header decoding exceptions."""
+    user = UNKNOWN_USER_STRING
+    endpoint = LOGIN_ENDPOINT
+    method = 'GET'
+    status_code = 401
+
+    response = MagicMock()
+    response.status_code = status_code
+
+    operation = MagicMock(name="operation")
+    operation.method = "post"
+
+    body = {}
+    mock_req.json = AsyncMock(return_value=body)
+    mock_req.query_params = {'password': '****'}
+    mock_req.method = method
+    mock_req.context.update({'user': user})
+    mock_req.scope = {'path': endpoint}
+    mock_req.headers = {'content-type': 'None'}
+
+    with TestContext(operation=operation), \
+        patch('api.middlewares.custom_logging') as mock_custom_logging, \
+        patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value', side_effect=exception):
+        expected_time = datetime(1970, 1, 1, 0, 0, 0).timestamp()
+        await access_log(request=mock_req, response=response, prev_time=expected_time)
+        mock_custom_logging.assert_called_once_with(
+            user, mock_req.client.host, mock_req.method,
+            endpoint, mock_req.query_params, body, 0.0, response.status_code,
+            hash_auth_context='', headers=mock_req.headers
+        )
 
 
 @pytest.mark.asyncio
