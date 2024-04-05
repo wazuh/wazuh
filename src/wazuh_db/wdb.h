@@ -2506,4 +2506,17 @@ cJSON* wdb_get_config();
  */
 void wdbcom_dispatch(char* request, char* output);
 
+
+/**
+ * @brief Set the synchronous mode of the SQLite database session.
+ *
+ * This function sets the synchronous mode of the SQLite database session to control how
+ * and when changes made to the database are written to disk. It executes the necessary
+ * SQL statements to set the synchronous mode.
+ *
+ * @param[in] wdb The database structure.
+ * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
+ */
+int wdb_set_synchronous_mode(wdb_t * wdb);
+
 #endif

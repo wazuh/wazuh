@@ -18,6 +18,7 @@
 #include "../wazuh_db/wdb.h"
 #include "wazuhdb_op.h"
 #include "hash_op.h"
+#include "../shared_modules/dbsync/include/db_exception.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/externals/sqlite/sqlite3_wrappers.h"
@@ -3088,6 +3089,36 @@ void test_wdb_check_fragmentation_vacuum_current_fragmentation_delta(void **stat
     wdb_destroy(node);
 }
 
+void test_wdb_set_synchronous_mode_null_errmsg(void ** state) {
+    wdb_t * wdb = wdb_init("000");
+    assert_non_null(wdb);
+    wdb->db = (sqlite3 *)1;
+
+    expect_string(__wrap_sqlite3_exec, sql, SQL_STMT[WDB_STMT_PRAGMA_SYNCHRONOUS_1]);
+    will_return(__wrap_sqlite3_exec, 0);
+    will_return(__wrap_sqlite3_exec, NULL);
+
+    int retval = wdb_set_synchronous_mode(wdb);
+
+    assert_int_equal(retval, 0);
+}
+
+void test_wdb_set_synchronous_mode_with_errmsg(void ** state) {
+    wdb_t * wdb = wdb_init("000");
+    assert_non_null(wdb);
+    wdb->db = (sqlite3 *)1;
+
+    expect_string(__wrap_sqlite3_exec, sql, SQL_STMT[WDB_STMT_PRAGMA_SYNCHRONOUS_1]);
+
+    will_return(__wrap_sqlite3_exec, -1);
+    will_return(__wrap_sqlite3_exec, "Some error message");
+
+    int result = wdb_set_synchronous_mode(wdb);
+
+    assert_int_equal(result, -1);
+}
+
+
 int main() {
     const struct CMUnitTest tests[] = {
         // wdb_open_tasks
@@ -3197,6 +3228,9 @@ int main() {
         cmocka_unit_test(test_wdb_check_fragmentation_no_vacuum_current_fragmentation_delta),
         cmocka_unit_test(test_wdb_check_fragmentation_vacuum_first),
         cmocka_unit_test(test_wdb_check_fragmentation_vacuum_current_fragmentation_delta),
+        // wdb_set_synchronous_mode
+        cmocka_unit_test(test_wdb_set_synchronous_mode_null_errmsg),
+        cmocka_unit_test(test_wdb_set_synchronous_mode_with_errmsg),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
