@@ -140,10 +140,11 @@ async def test_master_main():
             return 'HAPHELPER_START'
 
 
-    async def gather(first, second, third):
+    async def gather(first, second):
         assert first == 'MASTER_START'
         assert second == 'LOCALSERVER_START'
-        assert third == 'HAPHELPER_START'
+        # FIXME: When write UT for the new components.
+        # assert third == 'HAPHELPER_START'
 
 
     wazuh_clusterd.cluster_utils = cluster_utils
