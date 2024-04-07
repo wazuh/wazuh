@@ -199,7 +199,8 @@ PROTOBUF_CONSTEXPR DefaultParentDelete_Request::DefaultParentDelete_Request(
     /*decltype(_impl_._has_bits_)*/{}
   , /*decltype(_impl_._cached_size_)*/{}
   , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
-  , /*decltype(_impl_.namespace__)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+  , /*decltype(_impl_.namespace__)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.parent_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
 struct DefaultParentDelete_RequestDefaultTypeInternal {
   PROTOBUF_CONSTEXPR DefaultParentDelete_RequestDefaultTypeInternal()
       : _instance(::_pbi::ConstantInitialized{}) {}
@@ -402,8 +403,10 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,  // no _inlined_string_donated_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Request, _impl_.policy_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Request, _impl_.namespace__),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Request, _impl_.parent_),
   0,
   1,
+  2,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::PoliciesGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -455,11 +458,11 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 84, 92, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Request)},
   { 94, 103, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Response)},
   { 106, 115, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentPost_Request)},
-  { 118, 126, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Request)},
-  { 128, -1, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Request)},
-  { 134, 143, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Response)},
-  { 146, 153, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Request)},
-  { 154, 163, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Response)},
+  { 118, 127, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Request)},
+  { 130, -1, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Request)},
+  { 136, 145, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Response)},
+  { 148, 155, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Request)},
+  { 156, 165, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -511,25 +514,25 @@ const char descriptor_table_protodef_policy_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "ror\"\201\001\n\031DefaultParentPost_Request\022\023\n\006pol"
   "icy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001\022\023"
   "\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\014\n\n_names"
-  "paceB\t\n\007_parent\"c\n\033DefaultParentDelete_R"
-  "equest\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace"
-  "\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace\"\025\n\023"
-  "PoliciesGet_Request\"v\n\024PoliciesGet_Respo"
-  "nse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.engi"
-  "ne.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004d"
-  "ata\030\003 \003(\tB\010\n\006_error\"7\n\025NamespacesGet_Req"
-  "uest\022\023\n\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007_policy\"x\n\026"
-  "NamespacesGet_Response\0222\n\006status\030\001 \001(\0162\""
-  ".com.wazuh.api.engine.ReturnStatus\022\022\n\005er"
-  "ror\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_errorb\006"
-  "proto3"
+  "paceB\t\n\007_parent\"\203\001\n\033DefaultParentDelete_"
+  "Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespac"
+  "e\030\002 \001(\tH\001\210\001\001\022\023\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_po"
+  "licyB\014\n\n_namespaceB\t\n\007_parent\"\025\n\023Policie"
+  "sGet_Request\"v\n\024PoliciesGet_Response\0222\n\006"
+  "status\030\001 \001(\0162\".com.wazuh.api.engine.Retu"
+  "rnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003"
+  "(\tB\010\n\006_error\"7\n\025NamespacesGet_Request\022\023\n"
+  "\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007_policy\"x\n\026Namespa"
+  "cesGet_Response\0222\n\006status\030\001 \001(\0162\".com.wa"
+  "zuh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001"
+  "(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_errorb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_policy_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_policy_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_policy_2eproto = {
-    false, false, 1606, descriptor_table_protodef_policy_2eproto,
+    false, false, 1639, descriptor_table_protodef_policy_2eproto,
     "policy.proto",
     &descriptor_table_policy_2eproto_once, descriptor_table_policy_2eproto_deps, 1, 16,
     schemas, file_default_instances, TableStruct_policy_2eproto::offsets,
@@ -3690,6 +3693,9 @@ class DefaultParentDelete_Request::_Internal {
   static void set_has_namespace_(HasBits* has_bits) {
     (*has_bits)[0] |= 2u;
   }
+  static void set_has_parent(HasBits* has_bits) {
+    (*has_bits)[0] |= 4u;
+  }
 };
 
 DefaultParentDelete_Request::DefaultParentDelete_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
@@ -3705,7 +3711,8 @@ DefaultParentDelete_Request::DefaultParentDelete_Request(const DefaultParentDele
       decltype(_impl_._has_bits_){from._impl_._has_bits_}
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.policy_){}
-    , decltype(_impl_.namespace__){}};
+    , decltype(_impl_.namespace__){}
+    , decltype(_impl_.parent_){}};
 
   _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
   _impl_.policy_.InitDefault();
@@ -3724,6 +3731,14 @@ DefaultParentDelete_Request::DefaultParentDelete_Request(const DefaultParentDele
     _this->_impl_.namespace__.Set(from._internal_namespace_(), 
       _this->GetArenaForAllocation());
   }
+  _impl_.parent_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.parent_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_parent()) {
+    _this->_impl_.parent_.Set(from._internal_parent(), 
+      _this->GetArenaForAllocation());
+  }
   // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.DefaultParentDelete_Request)
 }
 
@@ -3736,6 +3751,7 @@ inline void DefaultParentDelete_Request::SharedCtor(
     , /*decltype(_impl_._cached_size_)*/{}
     , decltype(_impl_.policy_){}
     , decltype(_impl_.namespace__){}
+    , decltype(_impl_.parent_){}
   };
   _impl_.policy_.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
@@ -3744,6 +3760,10 @@ inline void DefaultParentDelete_Request::SharedCtor(
   _impl_.namespace__.InitDefault();
   #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
     _impl_.namespace__.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.parent_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.parent_.Set("", GetArenaForAllocation());
   #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
 }
 
@@ -3760,6 +3780,7 @@ inline void DefaultParentDelete_Request::SharedDtor() {
   GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
   _impl_.policy_.Destroy();
   _impl_.namespace__.Destroy();
+  _impl_.parent_.Destroy();
 }
 
 void DefaultParentDelete_Request::SetCachedSize(int size) const {
@@ -3773,12 +3794,15 @@ void DefaultParentDelete_Request::Clear() {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _impl_.policy_.ClearNonDefaultToEmpty();
     }
     if (cached_has_bits & 0x00000002u) {
       _impl_.namespace__.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _impl_.parent_.ClearNonDefaultToEmpty();
     }
   }
   _impl_._has_bits_.Clear();
@@ -3809,6 +3833,16 @@ const char* DefaultParentDelete_Request::_InternalParse(const char* ptr, ::_pbi:
           ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
           CHK_(ptr);
           CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentDelete_Request.namespace"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string parent = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_parent();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentDelete_Request.parent"));
         } else
           goto handle_unusual;
         continue;
@@ -3862,6 +3896,16 @@ uint8_t* DefaultParentDelete_Request::_InternalSerialize(
         2, this->_internal_namespace_(), target);
   }
 
+  // optional string parent = 3;
+  if (_internal_has_parent()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_parent().data(), static_cast<int>(this->_internal_parent().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.DefaultParentDelete_Request.parent");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_parent(), target);
+  }
+
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
     target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
         _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
@@ -3879,7 +3923,7 @@ size_t DefaultParentDelete_Request::ByteSizeLong() const {
   (void) cached_has_bits;
 
   cached_has_bits = _impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     // optional string policy = 1;
     if (cached_has_bits & 0x00000001u) {
       total_size += 1 +
@@ -3892,6 +3936,13 @@ size_t DefaultParentDelete_Request::ByteSizeLong() const {
       total_size += 1 +
         ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
           this->_internal_namespace_());
+    }
+
+    // optional string parent = 3;
+    if (cached_has_bits & 0x00000004u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_parent());
     }
 
   }
@@ -3914,12 +3965,15 @@ void DefaultParentDelete_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to
   (void) cached_has_bits;
 
   cached_has_bits = from._impl_._has_bits_[0];
-  if (cached_has_bits & 0x00000003u) {
+  if (cached_has_bits & 0x00000007u) {
     if (cached_has_bits & 0x00000001u) {
       _this->_internal_set_policy(from._internal_policy());
     }
     if (cached_has_bits & 0x00000002u) {
       _this->_internal_set_namespace_(from._internal_namespace_());
+    }
+    if (cached_has_bits & 0x00000004u) {
+      _this->_internal_set_parent(from._internal_parent());
     }
   }
   _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
@@ -3949,6 +4003,10 @@ void DefaultParentDelete_Request::InternalSwap(DefaultParentDelete_Request* othe
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
       &_impl_.namespace__, lhs_arena,
       &other->_impl_.namespace__, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.parent_, lhs_arena,
+      &other->_impl_.parent_, rhs_arena
   );
 }
 

@@ -595,7 +595,15 @@ api::HandlerSync policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy
         }
         auto& namespaceId = std::get<store::NamespaceId>(resNs);
 
-        auto err = spPolicyAPI->delDefaultParent(policy, namespaceId);
+        // Validate parent
+        auto resParent = getParent<RequestType, ResponseType>(eRequest);
+        if (std::holds_alternative<api::wpResponse>(resParent))
+        {
+            return std::move(std::get<api::wpResponse>(resParent));
+        }
+        auto& parent = std::get<base::Name>(resParent);
+
+        auto err = spPolicyAPI->delDefaultParent(policy, namespaceId, parent);
         if (base::isError(err))
         {
             return ::api::adapter::genericError<ResponseType>(err.value().message);

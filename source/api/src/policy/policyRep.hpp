@@ -241,18 +241,17 @@ public:
         if (defParents)
         {
             auto defParentsObj = std::move(defParents.value());
-            for (const auto& [assetType, nsIdParent] : defParentsObj)
+            for (const auto& [ns, parents] : defParentsObj)
             {
-                auto nsIdParentObj = nsIdParent.getObject();
-                if (!nsIdParentObj)
+                auto nsId = store::NamespaceId {ns};
+                auto parentVect = parents.getArray();
+                if (parentVect)
                 {
-                    throw std::runtime_error("Default parent asset is not a object");
-                }
-                for (const auto& [ns, name] : nsIdParentObj.value())
-                {
-                    auto nsId = store::NamespaceId {ns};
-                    auto parentName = base::Name {name.getString().value()};
-                    defaultParents.emplace(nsId, parentName);
+                    for (auto i = 0; i < parentVect.value().size(); i++)
+                    {
+                        auto parentName = base::Name {parentVect.value()[i].getString().value()};
+                        defaultParents.emplace(nsId, parentName);
+                    }
                 }
             }
         }
@@ -285,29 +284,33 @@ public:
             policyDoc.appendString(asset.fullName(), ASSETS_PATH);
         }
 
-        std::map<std::string, std::map<std::string, std::string>> assetTypeNamespaceParent;
-        for (const auto& [namespaceId, parent] : m_defaultParents)
-        {
-            assetTypeNamespaceParent[parent.parts()[0]][namespaceId.str()] = parent;
-        }
-
         // Default parents
-        json::Json tmp;
-        for (const auto& [namespaceId, parent] : assetTypeNamespaceParent["rule"])
+        std::map<std::string, std::vector<std::string>> nsParent;
+        for (const auto& [ns, parent] : m_defaultParents)
         {
-            auto key = "/rules" + json::Json::formatJsonPath(namespaceId);
-            tmp.setString(parent, key);
+            auto it = nsParent.find(ns.str());
+            if (it == nsParent.end())
+            {
+                nsParent[ns.str()] = {parent};
+            }
+            else
+            {
+                it->second.push_back(parent.toStr());
+            }
         }
 
-        for (const auto& [namespaceId, parent] : assetTypeNamespaceParent["decoder"])
+        json::Json defaultParentsObj;
+        for (const auto& [ns, parents] : nsParent)
         {
-            auto key = "/decoders" + json::Json::formatJsonPath(namespaceId);
-            tmp.setString(parent, key);
+            for (const auto& parent : parents)
+            {
+                defaultParentsObj.appendString(parent, json::Json::formatJsonPath(ns));
+            }
         }
-        
-        if (!tmp.isEmpty())
+
+        if (!defaultParentsObj.isEmpty())
         {
-            policyDoc.set(DEF_PARENTS_PATH, tmp);
+            policyDoc.set(DEF_PARENTS_PATH, defaultParentsObj);
         }
         else
         {
@@ -382,16 +385,15 @@ public:
     {
         auto range = m_defaultParents.equal_range(namespaceId);
         std::list<base::Name> parents;
-        if (range.first == m_defaultParents.end())
+        if (range.first == range.second)
         {
-            return base::Error {"Namespace not found or no default parent"};
+            return base::Error {fmt::format("Namespace {} not found")};
         }
 
         for (auto it = range.first; it != range.second; ++it)
         {
             parents.push_back(it->second);
         }
-        
         return parents;
     }
 
@@ -411,15 +413,21 @@ public:
         return base::noError();
     }
 
-    base::OptError delDefaultParent(const store::NamespaceId& namespaceId)
+    base::OptError delDefaultParent(const store::NamespaceId& namespaceId, const base::Name& parent)
     {
         auto range = m_defaultParents.equal_range(namespaceId);
-        if (range.first == m_defaultParents.end())
+        if (range.first == range.second)
         {
-            return base::Error {"Namespace not found  or no default parent"};
+            return base::Error {fmt::format("Namespace {} not found", namespaceId.str())};
         }
 
-        m_defaultParents.erase(range.first, range.second);
+        auto it = std::find_if(range.first, range.second, [&](const auto& pair) { return pair.second == parent; });
+        if (it == range.second)
+        {
+            return base::Error {fmt::format("Parent {} not found in the specified namespace", parent.toStr())};
+        }
+
+        m_defaultParents.erase(it);
         updateHash();
         return base::noError();
     }

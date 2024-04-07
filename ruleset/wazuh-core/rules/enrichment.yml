@@ -1,4 +1,4 @@
-name: rule/integrations/0
+name: rule/enrichment/0
 
 metadata:
   title: Geographical and Autonomous System Number data enrichment rule
