@@ -43,7 +43,8 @@ void runSetDefaultParent(std::shared_ptr<apiclnt::Client> client,
                          const std::string& parentAssetName);
 void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
                             const std::string& policyName,
-                            const std::string& namespaceId);
+                            const std::string& namespaceId,
+                            const std::string& parentAssetName);
 
 void configure(CLI::App_p app);
 } // namespace cmd::policy
