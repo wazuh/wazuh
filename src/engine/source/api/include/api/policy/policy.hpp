@@ -3,8 +3,8 @@
 
 #include <memory>
 
-#include <builder/ivalidator.hpp>
 #include <api/policy/ipolicy.hpp>
+#include <builder/ivalidator.hpp>
 #include <store/istore.hpp>
 
 namespace api::policy
@@ -15,7 +15,7 @@ class Policy : public IPolicy
 private:
     class PolicyRep; ///< PIMPL forward declaration of the PolicyRep class
 
-    std::shared_ptr<store::IStore> m_store;   ///< Store instance to access policies documents and query assets
+    std::shared_ptr<store::IStore> m_store;           ///< Store instance to access policies documents and query assets
     std::shared_ptr<builder::IValidator> m_validator; ///< Validator instance to validate policy documents
 
     /**
@@ -60,7 +60,6 @@ public:
      */
     base::OptError del(const base::Name& policyName) override;
 
-
     /**
      * @brief Get the policy with the given name, filtered by the given namespace in a human readable format
      *
@@ -97,7 +96,7 @@ public:
      * @copydoc IPolicy::getDefaultParent
      */
     base::RespOrError<std::list<base::Name>> getDefaultParent(const base::Name& policyName,
-                                                   const store::NamespaceId& namespaceId) const override;
+                                                              const store::NamespaceId& namespaceId) const override;
 
     /**
      * @copydoc IPolicy::setDefaultParent
@@ -109,7 +108,9 @@ public:
     /**
      * @copydoc IPolicy::delDefaultParent
      */
-    base::OptError delDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId) override;
+    base::OptError delDefaultParent(const base::Name& policyName,
+                                    const store::NamespaceId& namespaceId,
+                                    const base::Name& assetName) override;
 
     /**
      * @copydoc IPolicy::listNamespaces

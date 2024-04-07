@@ -30,7 +30,7 @@ decoders:
   - decoder/core-windows/0
 
 rules:
-  - rule/integrations/0 
+  - rule/enrichment/0 
 
 outputs:
   - output/file-output-wazuh-core/0

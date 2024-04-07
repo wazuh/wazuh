@@ -21,10 +21,7 @@ const store::Doc POLICY_DOC {R"({
         "decoder/user/0"
     ],
     "default_parents": {
-        "decoders":
-        {
-            "user": "decoder/system/0"
-        }
+        "user": ["decoder/system/0"]
     }
 })"};
 
@@ -39,10 +36,7 @@ const store::Doc POLICY_DOC_2 {R"({
         "decoder/wazuh/0"
     ],
     "default_parents": {
-        "decoders":
-        {
-            "user": "decoder/system/0"
-        }
+        "user": ["decoder/system/0"]
     }
 })"};
 
@@ -83,16 +77,19 @@ hash: 4112711263806056918
 )"};
 
 // Avoid string comparison issues with json
-MATCHER_P(EqualsJson, expectedJson, "is not equal to expected JSON") {
-    return store::Doc{arg} == store::Doc{expectedJson};
+MATCHER_P(EqualsJson, expectedJson, "is not equal to expected JSON")
+{
+    return store::Doc {arg} == store::Doc {expectedJson};
 }
-
 
 void expectNsPolicy(std::shared_ptr<MockStore> store)
 {
-    EXPECT_CALL(*store, getNamespace({"decoder/system/0"})).WillRepeatedly(testing::Return(storeGetNamespaceResp("system")));
-    EXPECT_CALL(*store, getNamespace({"decoder/wazuh/0"})).WillRepeatedly(testing::Return(storeGetNamespaceResp("wazuh")));
-    EXPECT_CALL(*store, getNamespace({"decoder/user/0"})).WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
+    EXPECT_CALL(*store, getNamespace({"decoder/system/0"}))
+        .WillRepeatedly(testing::Return(storeGetNamespaceResp("system")));
+    EXPECT_CALL(*store, getNamespace({"decoder/wazuh/0"}))
+        .WillRepeatedly(testing::Return(storeGetNamespaceResp("wazuh")));
+    EXPECT_CALL(*store, getNamespace({"decoder/user/0"}))
+        .WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
 }
 
 template<typename T>
@@ -739,7 +736,8 @@ INSTANTIATE_TEST_SUITE_P(
 /*******************************************************************************
  * Get default parent from namespace in policy
  ******************************************************************************/
-using GetDefaultParentT = std::tuple<base::Name, store::NamespaceId, ExpectedFn<base::RespOrError<std::list<base::Name>>>>;
+using GetDefaultParentT =
+    std::tuple<base::Name, store::NamespaceId, ExpectedFn<base::RespOrError<std::list<base::Name>>>>;
 using GetDefaultParent = PolicyTest<GetDefaultParentT>;
 
 TEST_P(GetDefaultParent, Get)
@@ -755,49 +753,51 @@ TEST_P(GetDefaultParent, Get)
     else
     {
         ASSERT_FALSE(base::isError(res)) << "Error: " << base::getError(res).message << std::endl;
-        ASSERT_EQ(base::getResponse<std::list<base::Name>>(res).size(), base::getResponse<std::list<base::Name>>(expected).size());
+        ASSERT_EQ(base::getResponse<std::list<base::Name>>(res).size(),
+                  base::getResponse<std::list<base::Name>>(expected).size());
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(PolicyTest,
-                         GetDefaultParent,
-                         testing::Values(
-                             // Invalid policy names
-                             GetDefaultParentT("invalidName", "namespace", failure<std::list<base::Name>>()),
-                             GetDefaultParentT("pol/icy", "namespace", failure<std::list<base::Name>>()),
-                             GetDefaultParentT("policy/noVersion", "namespace", failure<std::list<base::Name>>()),
-                             GetDefaultParentT("policy/name/version/extraPart", "namespace", failure<std::list<base::Name>>()),
-                             GetDefaultParentT("\n", "namespace", failure<std::list<base::Name>>()),
-                             GetDefaultParentT("poLICY/name/version", "namespace", failure<std::list<base::Name>>()),
-                             // Store get policy error
-                             GetDefaultParentT(POLICY_NAME,
-                                               "unused",
-                                               failure<std::list<base::Name>>(
-                                                   [](auto store, auto) {
-                                                       EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
-                                                           .WillOnce(::testing::Return(storeReadError<store::Doc>()));
-                                                   })),
-                             // Namespace not found
-                             GetDefaultParentT(POLICY_NAME,
-                                               "nonexists",
-                                               failure<std::list<base::Name>>(
-                                                   [](auto store, auto)
-                                                   {
-                                                       EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
-                                                           .WillOnce(::testing::Return(base::Error {"error"}));
-                                                       expectNsPolicy(store);
-                                                   })),
-                             // Success
-                             GetDefaultParentT(POLICY_NAME,
-                                               "user",
-                                               success<std::list<base::Name>>(
-                                                   [](auto store, auto)
-                                                   {
-                                                       EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
-                                                           .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
-                                                       expectNsPolicy(store);
-                                                       return std::list<base::Name> {"decoder/system/0"};
-                                                   }))));
+INSTANTIATE_TEST_SUITE_P(
+    PolicyTest,
+    GetDefaultParent,
+    testing::Values(
+        // Invalid policy names
+        GetDefaultParentT("invalidName", "namespace", failure<std::list<base::Name>>()),
+        GetDefaultParentT("pol/icy", "namespace", failure<std::list<base::Name>>()),
+        GetDefaultParentT("policy/noVersion", "namespace", failure<std::list<base::Name>>()),
+        GetDefaultParentT("policy/name/version/extraPart", "namespace", failure<std::list<base::Name>>()),
+        GetDefaultParentT("\n", "namespace", failure<std::list<base::Name>>()),
+        GetDefaultParentT("poLICY/name/version", "namespace", failure<std::list<base::Name>>()),
+        // Store get policy error
+        GetDefaultParentT(POLICY_NAME,
+                          "unused",
+                          failure<std::list<base::Name>>(
+                              [](auto store, auto) {
+                                  EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                      .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+                              })),
+        // Namespace not found
+        GetDefaultParentT(POLICY_NAME,
+                          "nonexists",
+                          failure<std::list<base::Name>>(
+                              [](auto store, auto)
+                              {
+                                  EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                      .WillOnce(::testing::Return(base::Error {"error"}));
+                                  expectNsPolicy(store);
+                              })),
+        // Success
+        GetDefaultParentT(POLICY_NAME,
+                          "user",
+                          success<std::list<base::Name>>(
+                              [](auto store, auto)
+                              {
+                                  EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                      .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                                  expectNsPolicy(store);
+                                  return std::list<base::Name> {"decoder/system/0"};
+                              }))));
 
 /*******************************************************************************
  * Set default parent from namespace in policy
@@ -850,7 +850,8 @@ INSTANTIATE_TEST_SUITE_P(
                               {
                                   EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                       .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
-                                  EXPECT_CALL(*validator, validatePolicy(testing::_)).WillOnce(::testing::Return(std::nullopt));
+                                  EXPECT_CALL(*validator, validatePolicy(testing::_))
+                                      .WillOnce(::testing::Return(std::nullopt));
                                   EXPECT_CALL(*store, upsertInternalDoc(testing::_, testing::_))
                                       .WillOnce(::testing::Return(base::Error {"error"}));
                                   expectNsPolicy(store);
@@ -902,15 +903,15 @@ INSTANTIATE_TEST_SUITE_P(
 /*******************************************************************************
  * Delete default parent from namespace in policy
  ******************************************************************************/
-using DeleteDefaultParentT = std::tuple<base::Name, store::NamespaceId, ExpectedFn<>>;
+using DeleteDefaultParentT = std::tuple<base::Name, store::NamespaceId, base::Name, ExpectedFn<>>;
 using DeleteDefaultParent = PolicyTest<DeleteDefaultParentT>;
 
 TEST_P(DeleteDefaultParent, Delete)
 {
-    auto [policy, namespaceId, expectedFn] = GetParam();
+    auto [policy, namespaceId, parent, expectedFn] = GetParam();
 
     auto expected = expectedFn(m_store, m_validator);
-    auto res = m_policyManager->delDefaultParent(policy, namespaceId);
+    auto res = m_policyManager->delDefaultParent(policy, namespaceId, parent);
     if (base::isError(expected))
     {
         ASSERT_TRUE(base::isError(res));
@@ -926,48 +927,60 @@ INSTANTIATE_TEST_SUITE_P(
     DeleteDefaultParent,
     testing::Values(
         // Invalid policy names
-        DeleteDefaultParentT("invalidName", "namespace", failure()),
-        DeleteDefaultParentT("pol/icy", "namespace", failure()),
-        DeleteDefaultParentT("policy/noVersion", "namespace", failure()),
-        DeleteDefaultParentT("policy/name/version/extraPart", "namespace", failure()),
-        DeleteDefaultParentT("\n", "namespace", failure()),
-        DeleteDefaultParentT("poLICY/name/version", "namespace", failure()),
+        DeleteDefaultParentT("invalidName", "namespace", "parent", failure()),
+        DeleteDefaultParentT("pol/icy", "namespace", "parent", failure()),
+        DeleteDefaultParentT("policy/noVersion", "namespace", "parent", failure()),
+        DeleteDefaultParentT("policy/name/version/extraPart", "namespace", "parent", failure()),
+        DeleteDefaultParentT("\n", "namespace", "parent", failure()),
+        DeleteDefaultParentT("poLICY/name/version", "namespace", "parent", failure()),
         // Store get policy error
         DeleteDefaultParentT(POLICY_NAME,
                              "unused",
+                             "parent",
                              failure(
                                  [](auto store, auto) {
                                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                          .WillOnce(::testing::Return(storeReadError<store::Doc>()));
                                  })),
-        // Not set
+        // Namespace not found
         DeleteDefaultParentT(POLICY_NAME,
                              "system",
+                             "parent",
                              failure(
                                  [](auto store, auto validator)
                                  {
                                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                          .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
-                                    EXPECT_CALL(*validator, validatePolicy(testing::_)).WillOnce(::testing::Return(std::nullopt));
-                                    EXPECT_CALL(*store, upsertInternalDoc(testing::_, testing::_))
-                                      .WillOnce(::testing::Return(base::Error {"error"}));
+                                     expectNsPolicy(store);
+                                 })),
+        // Parent not found in namespace
+        DeleteDefaultParentT(POLICY_NAME,
+                             "user",
+                             "parent",
+                             failure(
+                                 [](auto store, auto validator)
+                                 {
+                                     EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                         .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                      expectNsPolicy(store);
                                  })),
         // Validation error
         DeleteDefaultParentT(POLICY_NAME,
                              "user",
+                             "decoder/system/0",
                              failure(
                                  [](auto store, auto validator)
                                  {
                                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
                                          .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
-                                     expectNsPolicy(store);
                                      EXPECT_CALL(*validator, validatePolicy(testing::_))
                                          .WillOnce(::testing::Return(validateError()));
+                                     expectNsPolicy(store);
                                  })),
         // Store upsert error
         DeleteDefaultParentT(POLICY_NAME,
                              "user",
+                             "decoder/system/0",
                              failure(
                                  [](auto store, auto validator)
                                  {
@@ -982,6 +995,7 @@ INSTANTIATE_TEST_SUITE_P(
         // Success
         DeleteDefaultParentT(POLICY_NAME,
                              "user",
+                             "decoder/system/0",
                              success(
                                  [](auto store, auto validator)
                                  {
@@ -1120,69 +1134,69 @@ TEST_P(Copy, Copy)
     }
 }
 
+INSTANTIATE_TEST_SUITE_P(
+    PolicyTest,
+    Copy,
+    testing::Values(
+        // Invalid policy names
+        CopyT("invalidName", POLICY_NAME_2, failure()),
+        CopyT("pol/icy", POLICY_NAME_2, failure()),
+        CopyT("policy/noVersion", POLICY_NAME_2, failure()),
+        CopyT("policy/name/version/extraPart", POLICY_NAME_2, failure()),
+        CopyT("\n", POLICY_NAME_2, failure()),
+        CopyT("poLICY/name/version", POLICY_NAME_2, failure()),
+        // Invalid new policy names
+        CopyT(POLICY_NAME, "invalidName", failure()),
+        CopyT(POLICY_NAME, "pol/icy", failure()),
+        CopyT(POLICY_NAME, "policy/noVersion", failure()),
+        CopyT(POLICY_NAME, "policy/name/version/extraPart", failure()),
+        CopyT(POLICY_NAME, "\n", failure()),
+        CopyT(POLICY_NAME, "poLICY/name/version", failure()),
+        // Store get policy error
+        CopyT(POLICY_NAME,
+              POLICY_NAME_2,
+              failure(
+                  [](auto store, auto) {
+                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                          .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+                  })),
+        // Validator error
+        CopyT(POLICY_NAME,
+              POLICY_NAME_2,
+              failure(
+                  [](auto store, auto validator)
+                  {
+                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                          .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                      expectNsPolicy(store);
 
-INSTANTIATE_TEST_SUITE_P(PolicyTest,
-                         Copy,
-                         testing::Values(
-                             // Invalid policy names
-                             CopyT("invalidName", POLICY_NAME_2, failure()),
-                             CopyT("pol/icy", POLICY_NAME_2, failure()),
-                             CopyT("policy/noVersion", POLICY_NAME_2, failure()),
-                             CopyT("policy/name/version/extraPart", POLICY_NAME_2, failure()),
-                             CopyT("\n", POLICY_NAME_2, failure()),
-                             CopyT("poLICY/name/version", POLICY_NAME_2, failure()),
-                             // Invalid new policy names
-                             CopyT(POLICY_NAME, "invalidName", failure()),
-                             CopyT(POLICY_NAME, "pol/icy", failure()),
-                             CopyT(POLICY_NAME, "policy/noVersion", failure()),
-                             CopyT(POLICY_NAME, "policy/name/version/extraPart", failure()),
-                             CopyT(POLICY_NAME, "\n", failure()),
-                             CopyT(POLICY_NAME, "poLICY/name/version", failure()),
-                             // Store get policy error
-                             CopyT(POLICY_NAME,
-                                   POLICY_NAME_2,
-                                   failure(
-                                       [](auto store, auto) {
-                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
-                                               .WillOnce(::testing::Return(storeReadError<store::Doc>()));
-                                       })),
-                             // Validator error
-                             CopyT(POLICY_NAME,
-                                   POLICY_NAME_2,
-                                   failure(
-                                       [](auto store, auto validator)
-                                       {
-                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
-                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
-                                           expectNsPolicy(store);
-
-                                           EXPECT_CALL(*validator, validatePolicy(POLICY_DOC_2))
-                                               .WillOnce(::testing::Return(validateError()));
-                                       })),
-                             // Store upsert new policy error
-                             CopyT(POLICY_NAME,
-                                   POLICY_NAME_2,
-                                   failure(
-                                       [](auto store, auto validator)
-                                       {
-                                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
-                                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
-                                           expectNsPolicy(store);
-                                           EXPECT_CALL(*validator, validatePolicy(EqualsJson(POLICY_DOC_2)))
-                                         .WillOnce(::testing::Return(validateOk()));
-                                           EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
-                                               .WillOnce(::testing::Return(storeError()));
-                                       })),
-                             // Success
-                             CopyT(POLICY_NAME,
-                                      POLICY_NAME_2,
-                                      success(
-                                        [](auto store, auto validator)
-                                        {
-                                             EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
-                                                  .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
-                                             expectNsPolicy(store);
-                                             EXPECT_CALL(*validator, validatePolicy(POLICY_DOC_2)).WillOnce(::testing::Return(validateOk()));
-                                             EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
-                                                  .WillOnce(::testing::Return(storeOk()));
-                                        }))));
+                      EXPECT_CALL(*validator, validatePolicy(POLICY_DOC_2))
+                          .WillOnce(::testing::Return(validateError()));
+                  })),
+        // Store upsert new policy error
+        CopyT(POLICY_NAME,
+              POLICY_NAME_2,
+              failure(
+                  [](auto store, auto validator)
+                  {
+                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                          .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                      expectNsPolicy(store);
+                      EXPECT_CALL(*validator, validatePolicy(EqualsJson(POLICY_DOC_2)))
+                          .WillOnce(::testing::Return(validateOk()));
+                      EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
+                          .WillOnce(::testing::Return(storeError()));
+                  })),
+        // Success
+        CopyT(POLICY_NAME,
+              POLICY_NAME_2,
+              success(
+                  [](auto store, auto validator)
+                  {
+                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                          .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                      expectNsPolicy(store);
+                      EXPECT_CALL(*validator, validatePolicy(POLICY_DOC_2)).WillOnce(::testing::Return(validateOk()));
+                      EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
+                          .WillOnce(::testing::Return(storeOk()));
+                  }))));

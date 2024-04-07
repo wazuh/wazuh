@@ -2282,6 +2282,7 @@ class DefaultParentDelete_Request final :
   enum : int {
     kPolicyFieldNumber = 1,
     kNamespaceFieldNumber = 2,
+    kParentFieldNumber = 3,
   };
   // optional string policy = 1;
   bool has_policy() const;
@@ -2319,6 +2320,24 @@ class DefaultParentDelete_Request final :
   std::string* _internal_mutable_namespace_();
   public:
 
+  // optional string parent = 3;
+  bool has_parent() const;
+  private:
+  bool _internal_has_parent() const;
+  public:
+  void clear_parent();
+  const std::string& parent() const;
+  template <typename ArgT0 = const std::string&, typename... ArgT>
+  void set_parent(ArgT0&& arg0, ArgT... args);
+  std::string* mutable_parent();
+  PROTOBUF_NODISCARD std::string* release_parent();
+  void set_allocated_parent(std::string* parent);
+  private:
+  const std::string& _internal_parent() const;
+  inline PROTOBUF_ALWAYS_INLINE void _internal_set_parent(const std::string& value);
+  std::string* _internal_mutable_parent();
+  public:
+
   // @@protoc_insertion_point(class_scope:com.wazuh.api.engine.policy.DefaultParentDelete_Request)
  private:
   class _Internal;
@@ -2331,6 +2350,7 @@ class DefaultParentDelete_Request final :
     mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr policy_;
     ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr namespace__;
+    ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr parent_;
   };
   union { Impl_ _impl_; };
   friend struct ::TableStruct_policy_2eproto;
@@ -4835,6 +4855,74 @@ inline void DefaultParentDelete_Request::set_allocated_namespace_(std::string* n
   }
 #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
   // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.DefaultParentDelete_Request.namespace)
+}
+
+// optional string parent = 3;
+inline bool DefaultParentDelete_Request::_internal_has_parent() const {
+  bool value = (_impl_._has_bits_[0] & 0x00000004u) != 0;
+  return value;
+}
+inline bool DefaultParentDelete_Request::has_parent() const {
+  return _internal_has_parent();
+}
+inline void DefaultParentDelete_Request::clear_parent() {
+  _impl_.parent_.ClearToEmpty();
+  _impl_._has_bits_[0] &= ~0x00000004u;
+}
+inline const std::string& DefaultParentDelete_Request::parent() const {
+  // @@protoc_insertion_point(field_get:com.wazuh.api.engine.policy.DefaultParentDelete_Request.parent)
+  return _internal_parent();
+}
+template <typename ArgT0, typename... ArgT>
+inline PROTOBUF_ALWAYS_INLINE
+void DefaultParentDelete_Request::set_parent(ArgT0&& arg0, ArgT... args) {
+ _impl_._has_bits_[0] |= 0x00000004u;
+ _impl_.parent_.Set(static_cast<ArgT0 &&>(arg0), args..., GetArenaForAllocation());
+  // @@protoc_insertion_point(field_set:com.wazuh.api.engine.policy.DefaultParentDelete_Request.parent)
+}
+inline std::string* DefaultParentDelete_Request::mutable_parent() {
+  std::string* _s = _internal_mutable_parent();
+  // @@protoc_insertion_point(field_mutable:com.wazuh.api.engine.policy.DefaultParentDelete_Request.parent)
+  return _s;
+}
+inline const std::string& DefaultParentDelete_Request::_internal_parent() const {
+  return _impl_.parent_.Get();
+}
+inline void DefaultParentDelete_Request::_internal_set_parent(const std::string& value) {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  _impl_.parent_.Set(value, GetArenaForAllocation());
+}
+inline std::string* DefaultParentDelete_Request::_internal_mutable_parent() {
+  _impl_._has_bits_[0] |= 0x00000004u;
+  return _impl_.parent_.Mutable(GetArenaForAllocation());
+}
+inline std::string* DefaultParentDelete_Request::release_parent() {
+  // @@protoc_insertion_point(field_release:com.wazuh.api.engine.policy.DefaultParentDelete_Request.parent)
+  if (!_internal_has_parent()) {
+    return nullptr;
+  }
+  _impl_._has_bits_[0] &= ~0x00000004u;
+  auto* p = _impl_.parent_.Release();
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.parent_.IsDefault()) {
+    _impl_.parent_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  return p;
+}
+inline void DefaultParentDelete_Request::set_allocated_parent(std::string* parent) {
+  if (parent != nullptr) {
+    _impl_._has_bits_[0] |= 0x00000004u;
+  } else {
+    _impl_._has_bits_[0] &= ~0x00000004u;
+  }
+  _impl_.parent_.SetAllocated(parent, GetArenaForAllocation());
+#ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (_impl_.parent_.IsDefault()) {
+    _impl_.parent_.Set("", GetArenaForAllocation());
+  }
+#endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  // @@protoc_insertion_point(field_set_allocated:com.wazuh.api.engine.policy.DefaultParentDelete_Request.parent)
 }
 
 // -------------------------------------------------------------------
