@@ -194,34 +194,52 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
     auto defaultParents = doc.getObject(syntax::policy::PATH_PARENTS);
     if (defaultParents)
     {
-        for (const auto& [assetType, nsIdParent] : defaultParents.value())
+        for (const auto& [ns, parents] : defaultParents.value())
         {
-            auto nsIdParentObj = nsIdParent.getObject();
-            if (!nsIdParentObj)
+            auto assetArr = parents.getArray();
+            if (assetArr)
             {
-                throw std::runtime_error(fmt::format("Default parent decoder in namespace '{}' is not a string", ns));
-            }
-            base::Name decoderName;
-            try
-            {
-                decoderName = base::Name(decoderStr.value());
-            }
-            catch (const std::runtime_error& e)
-            {
-                throw std::runtime_error(
-                    fmt::format("Invalid default parent decoder name '{}': {}", decoderStr.value(), e.what()));
-            }
-            if (!syntax::name::isDecoder(decoderName))
-            {
-                throw std::runtime_error(
-                    fmt::format("Default parent decoder '{}' in namespace '{}' is not a decoder", decoderName, ns));
-            }
+                for (auto i = 0; i < assetArr.value().size(); i++)
+                {
+                    auto assetStr = assetArr.value()[i].getString();
+                    if (!assetStr)
+                    {
+                        throw std::runtime_error(fmt::format("Default parent asset in namespace '{}' is not a string", ns));
+                    }
 
-            for (const auto& [ns, name] : nsIdParentObj.value())
-            {
-                throw std::runtime_error(fmt::format("Default parent decoder '{}' in namespace '{}' is duplicated",
-                                                     decoderName,
-                                                     ns));
+                    base::Name assetName;
+                    try
+                    {
+                        assetName = base::Name(assetStr.value());
+                    }
+                    catch (const std::runtime_error& e)
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Invalid default parent name '{}': {}", assetStr.value(), e.what()));
+                    }
+
+                    PolicyData::AssetType assetType;
+                    if (syntax::name::isDecoder(assetName))
+                    {
+                        assetType = PolicyData::AssetType::DECODER;
+                    }
+                    else if (syntax::name::isRule(assetName))
+                    {
+                        assetType = PolicyData::AssetType::RULE;
+                    }
+                    else
+                    {
+                        throw std::runtime_error(fmt::format(
+                            "Default parent '{}' in namespace '{}' is neither a decoder nor a rule", assetName, ns));
+                    }
+
+                    auto added = data.addDefaultParent(assetType, ns, assetName);
+                    if (!added)
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Default parent asset '{}' in namespace '{}' is duplicated", assetName, ns));
+                    }
+                }
             }
         }
     }

@@ -45,12 +45,14 @@ class AssetPost_Request(_message.Message):
     def __init__(self, policy: _Optional[str] = ..., asset: _Optional[str] = ..., namespace: _Optional[str] = ...) -> None: ...
 
 class DefaultParentDelete_Request(_message.Message):
-    __slots__ = ["namespace", "policy"]
+    __slots__ = ["namespace", "parent", "policy"]
     NAMESPACE_FIELD_NUMBER: _ClassVar[int]
+    PARENT_FIELD_NUMBER: _ClassVar[int]
     POLICY_FIELD_NUMBER: _ClassVar[int]
     namespace: str
+    parent: str
     policy: str
-    def __init__(self, policy: _Optional[str] = ..., namespace: _Optional[str] = ...) -> None: ...
+    def __init__(self, policy: _Optional[str] = ..., namespace: _Optional[str] = ..., parent: _Optional[str] = ...) -> None: ...
 
 class DefaultParentGet_Request(_message.Message):
     __slots__ = ["namespace", "policy"]

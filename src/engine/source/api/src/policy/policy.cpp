@@ -189,7 +189,7 @@ base::RespOrError<std::list<base::Name>> Policy::listAssets(const base::Name& po
 }
 
 base::RespOrError<std::list<base::Name>> Policy::getDefaultParent(const base::Name& policyName,
-                                                       const store::NamespaceId& namespaceId) const
+                                                                  const store::NamespaceId& namespaceId) const
 {
     auto resp = read(policyName);
     if (base::isError(resp))
@@ -221,7 +221,9 @@ base::OptError Policy::setDefaultParent(const base::Name& policyName,
     return upsert(policy);
 }
 
-base::OptError Policy::delDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId)
+base::OptError Policy::delDefaultParent(const base::Name& policyName,
+                                        const store::NamespaceId& namespaceId,
+                                        const base::Name& parentName)
 {
     auto resp = read(policyName);
     if (base::isError(resp))
@@ -230,7 +232,7 @@ base::OptError Policy::delDefaultParent(const base::Name& policyName, const stor
     }
 
     auto policy = base::getResponse<PolicyRep>(resp);
-    auto error = policy.delDefaultParent(namespaceId);
+    auto error = policy.delDefaultParent(namespaceId, parentName);
     if (base::isError(error))
     {
         return error;
