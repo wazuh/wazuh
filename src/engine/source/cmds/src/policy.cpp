@@ -291,7 +291,8 @@ void runSetDefaultParent(std::shared_ptr<apiclnt::Client> client,
 
 void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
                             const std::string& policyName,
-                            const std::string& namespaceId)
+                            const std::string& namespaceId,
+                            const std::string& parentAssetName)
 {
     using RequestType = ePolicy::DefaultParentDelete_Request;
     using ResponseType = eEngine::GenericStatus_Response;
@@ -301,6 +302,7 @@ void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
     RequestType eRequest;
     eRequest.set_policy(policyName);
     eRequest.set_namespace_(namespaceId);
+    eRequest.set_parent(parentAssetName);
 
     // Call API, any exception will be thrown
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
@@ -487,12 +489,14 @@ void configure(CLI::App_p app)
     removeDefaultParentSubcommand
         ->add_option("-n, --namespace", options->namespaceId, "Namespace to remove the default parent")
         ->default_val(ENGINE_NAMESPACE);
+    removeDefaultParentSubcommand->add_option("parent_name", options->parentAssetName, "Name of the default parent")
+        ->required();
 
     removeDefaultParentSubcommand->callback(
         [options]()
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
-            runRemoveDefaultParent(client, options->policyName, options->namespaceId);
+            runRemoveDefaultParent(client, options->policyName, options->namespaceId, options->parentAssetName);
         });
 
     // List namespaces

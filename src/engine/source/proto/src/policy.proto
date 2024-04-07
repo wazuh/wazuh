@@ -141,6 +141,7 @@ message DefaultParentDelete_Request
 {
     optional string policy = 1;    // Policy name
     optional string namespace = 2; // Namespace of the assets
+    optional string parent = 3;    // Default parent of the namespace
 }
 
 // message DefaultParentDelete_Response -> Return a GenericStatus_Response
