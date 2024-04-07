@@ -585,22 +585,22 @@ INSTANTIATE_TEST_SUITE_P(
         TestPolT(policyDefaultParentDelete, JParams(POLICY_NAME).namespace_("other/namespace"), failure()),
         TestPolT(policyDefaultParentDelete, JParams(POLICY_NAME).namespace_("/"), failure()),
         TestPolT(policyDefaultParentDelete,
-                 JParams(POLICY_NAME).namespace_(NAMESPACE_U),
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U).parent(ASSET_NAME_A),
                  failure(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
-                                     delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}))
+                                     delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}, testing::_))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [policyDefaultParentDelete]: ok
         TestPolT(policyDefaultParentDelete,
-                 JParams(POLICY_NAME).namespace_(NAMESPACE_U),
+                 JParams(POLICY_NAME).namespace_(NAMESPACE_U).parent(ASSET_NAME_B),
                  success(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
-                                     delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}))
+                                     delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}, testing::_))
                              .WillOnce(::testing::Return(std::nullopt));
                      })),
         // [policiesGet]: Fail

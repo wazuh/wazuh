@@ -29,7 +29,6 @@ public:
      */
     virtual base::OptError del(const base::Name& policyName) = 0;
 
-
     /**
      * @brief Get the policy with the given name, filtered by the given namespace in a human readable format
      *
@@ -38,7 +37,7 @@ public:
      * @return base::RespOrError<std::string> Policy in a human readable format or an error
      */
     virtual base::RespOrError<std::string> get(const base::Name& policyName,
-                                              const std::vector<store::NamespaceId>& namespaceIds) const = 0;
+                                               const std::vector<store::NamespaceId>& namespaceIds) const = 0;
 
     /**
      * @brief List all policies
@@ -46,7 +45,6 @@ public:
      * @return base::RespOrError<std::list<base::Name>> List of policies or an error
      */
     virtual base::RespOrError<std::vector<base::Name>> list() const = 0;
-
 
     /**
      * @brief Add a new asset to a policy
@@ -88,7 +86,7 @@ public:
      * @return base::RespOrError<std::list<base::Name>> Default parents or an error
      */
     virtual base::RespOrError<std::list<base::Name>> getDefaultParent(const base::Name& policyName,
-                                                           const store::NamespaceId& namespaceId) const = 0;
+                                                                      const store::NamespaceId& namespaceId) const = 0;
 
     /**
      * @brief Set namespace default parent from a policy
@@ -98,7 +96,8 @@ public:
      * @param parentName Default parent name
      * @return base::OptError Error if cannot set the default parent to the policy
      */
-    virtual base::OptError setDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId,
+    virtual base::OptError setDefaultParent(const base::Name& policyName,
+                                            const store::NamespaceId& namespaceId,
                                             const base::Name& parentName) = 0;
 
     /**
@@ -108,7 +107,9 @@ public:
      * @param namespaceId Namespace of the default parent
      * @return base::OptError Error if cannot delete the default parent from the policy
      */
-    virtual base::OptError delDefaultParent(const base::Name& policyName, const store::NamespaceId& namespaceId) = 0;
+    virtual base::OptError delDefaultParent(const base::Name& policyName,
+                                            const store::NamespaceId& namespaceId,
+                                            const base::Name& parentName) = 0;
 
     /**
      * @brief Get the list of namespaces from a policy
@@ -134,7 +135,6 @@ public:
      * @return base::OptError Error if cannot copy the policy
      */
     virtual base::OptError copy(const base::Name& policyName, const base::Name& newPolicyName) = 0;
-
 };
 } // namespace api::policy
 
