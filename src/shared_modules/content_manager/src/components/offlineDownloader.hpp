@@ -149,11 +149,9 @@ private:
         auto inputFileHash {Utils::asciiToHex(Utils::hashFile(outputFilePath))};
         if (context.spUpdaterBaseContext->downloadedFileHash != inputFileHash)
         {
-            // Store new hash.
-            context.spUpdaterBaseContext->downloadedFileHash = std::move(inputFileHash);
-
             // Download finished: Insert path into context.
             context.data.at("paths").push_back(outputFilePath.string());
+            context.data["fileMetadata"]["hash"] = std::move(inputFileHash);
             return;
         }
 

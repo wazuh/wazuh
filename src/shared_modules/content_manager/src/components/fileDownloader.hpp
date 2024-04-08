@@ -82,11 +82,9 @@ private:
             return;
         }
 
-        // Store new hash.
-        context.spUpdaterBaseContext->downloadedFileHash = std::move(downloadFileHash);
-
         // Download finished: Update context paths.
         context.data.at("paths").push_back(outputFilePath);
+        context.data["fileMetadata"]["hash"] = std::move(downloadFileHash);
     }
 
 public:
