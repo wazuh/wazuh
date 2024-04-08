@@ -9,7 +9,6 @@ on:
           - intel64
           - arm64
         required: true
-        default: 'intel64'
       revision:
         description: |
           Package revision (name and metadata).
@@ -19,9 +18,7 @@ on:
       is_stage:
         type: boolean
         description: |
-          Should set development/production nomenclature
-          True if package name should have production format.
-          False if package name should have developer format.
+          Set production nomenclature if true.
           Default is 'false'.
         required: false
       debug:
@@ -32,7 +29,9 @@ on:
         required: false
       checksum:
         type: boolean
-        description: Generate checksum on the same directory than the package.
+        description: | 
+          Generate checksum on the same directory than the package.
+          Default is 'false'.
         required: false
 
   workflow_call:

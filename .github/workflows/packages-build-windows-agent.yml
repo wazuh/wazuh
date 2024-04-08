@@ -18,9 +18,7 @@ on:
         default: '0'
       is_stage:
         description: |
-          Should set development/production nomenclature.
-          True if package name should have production format.
-          False if package name should have developer format.
+          Set production nomenclature if true.
           Default is 'false'.
         type: boolean
         required: false
@@ -51,7 +49,9 @@ on:
         required: false
         default: 'DigiCert Assured ID Root CA'
       checksum:
-        description: Generate checksum on the same directory than the package.
+        description: |
+          Generate checksum on the same directory than the package.
+          Default is 'false'.
         type: boolean
         required: false
 

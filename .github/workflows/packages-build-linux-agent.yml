@@ -12,9 +12,8 @@ on:
         default: 'auto'
       architecture:
         type: choice
-        description: Package architecture [i386, x86_64, armv7hl, aarch64, amd64, armhf, arm64]
+        description: Package architecture [i386, x86_64, armv7hl, aarch64, amd64, armhf, arm64].
         required: true
-        default: amd64
         options:
           - amd64
           - x86_64
@@ -25,34 +24,38 @@ on:
           - aarch64
       system:
         type: choice
-        description: Package os [deb, rpm]
+        description: Package os [deb, rpm].
         required: true
-        default: deb
         options:
           - deb
           - rpm
       revision:
-        description: |
-          Package revision (name and metadata).
+        description: Package revision (name and metadata).
         required: false
-        type: string
         default: "0"
       is_stage:
         type: boolean
-        description: Set development/production nomenclature
+        description: |
+          Set production nomenclature if true.
+          Default is 'false'.
         required: false
       legacy:
         type: boolean
-        description:  Use rpm5 resources
+        description: |
+          Set the use of rpm5 resources.
+          Default is 'false'.
         required: false
       debug:
         type: boolean
         description: |
-          Build the binaries with debug symbols. By default: false
+          Build the binaries with debug symbols.
+          Default is 'false'.
         required: false
       checksum:
         type: boolean
-        description: Generate package checksum
+        description: |
+          Generate package checksum.
+          Default is 'false'.
         required: false
 
   workflow_call:
@@ -98,7 +101,7 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Set architecture
+      - name: Set ARCH
         run: |
           if [ ${{ inputs.system }} == 'rpm' ]; then
             if [ "${{ inputs.architecture }}" = "armv7hl" ]; then
@@ -115,7 +118,7 @@ jobs:
           fi
           echo "ARCH=$arch" >> $GITHUB_ENV;
 
-      - name: Set docker_image_tag and container name
+      - name: Set TAG and CONTAINER_NAME
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
