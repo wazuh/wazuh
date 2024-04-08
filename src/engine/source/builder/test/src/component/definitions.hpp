@@ -212,7 +212,7 @@ auto constexpr POLICY_JSON = R"({
     "hash": "11464515449720324140",
     "assets": ["integration/test/0"],
     "default_parents": {
-        "system": "decoder/parent-test/0"
+        "system": ["decoder/parent-test/0"]
     }
     })";
 
@@ -221,7 +221,7 @@ auto constexpr DEFECTIVE_POLICY_NAME_JSON = R"({
     "hash": "11464515449720324140",
     "assets": ["integration/test/0"],
     "default_parents": {
-        "system": "decoder/parent-test/0"
+        "system": ["decoder/parent-test/0"]
     }
     })";
 
@@ -230,7 +230,7 @@ auto constexpr DEFECTIVE_POLICY_FORMAT_NAME_JSON = R"({
     "hash": "11464515449720324140",
     "assets": ["integration/test/0"],
     "default_parents": {
-        "system": "decoder/parent-test/0"
+        "system": ["decoder/parent-test/0"]
     }
     })";
 
@@ -239,7 +239,7 @@ auto constexpr DEFECTIVE_POLICY_HASH_JSON = R"({
     "h": "11464515449720324140",
     "assets": ["integration/test/0"],
     "default_parents": {
-        "system": "decoder/parent-test/0"
+        "system": ["decoder/parent-test/0"]
     }
     })";
 
@@ -248,7 +248,7 @@ auto constexpr DEFECTIVE_POLICY_EMPTY_HASH_JSON = R"({
     "hash": "",
     "assets": ["integration/test/0"],
     "default_parents": {
-        "system": "decoder/parent-test/0"
+        "system": ["decoder/parent-test/0"]
     }
     })";
 
@@ -257,7 +257,7 @@ auto constexpr DEFECTIVE_PARENT_POLICY_EMPTY_NAME_JSON = R"({
     "hash": "11464515449720324140",
     "assets": ["integration/test/0"],
     "default_parents": {
-        "system": ""
+        "system": [""]
     }
     })";
 
@@ -266,7 +266,7 @@ auto constexpr DEFECTIVE_PARENT_POLICY_NOT_STRING_NAME_JSON = R"({
     "hash": "11464515449720324140",
     "assets": ["integration/test/0"],
     "default_parents": {
-        "system": 2
+        "system": [2]
     }
     })";
 
@@ -275,7 +275,7 @@ auto constexpr DEFECTIVE_ASSET_POLICY_NOT_STRING_NAME_JSON = R"({
     "hash": "11464515449720324140",
     "assets": [2,3],
     "default_parents": {
-        "system": "decoder/parent-test/0"
+        "system": ["decoder/parent-test/0"]
     }
     })";
 
