@@ -90,7 +90,6 @@ on:
 
 jobs:
   Build-manager-packages:
-    if: |
     runs-on: ubuntu-latest
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
