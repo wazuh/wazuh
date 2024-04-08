@@ -73,7 +73,11 @@ build_pkg() {
         fi
     else
         CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
-        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
+        if [ "${ARCHITECTURE}" = "arm64" ] || [ "${ARCHITECTURE}" = "ppc64le" ]; then
+            DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}"
+        else
+            DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
+        fi
     fi
 
     # Copy the necessary files
