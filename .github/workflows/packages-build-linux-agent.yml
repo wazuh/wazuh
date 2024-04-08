@@ -92,13 +92,6 @@ jobs:
     name: Build ${{ inputs.system }} wazuh-agent on ${{ inputs.architecture }} ${{ inputs.legacy && '- legacy' || '' }} ${{ inputs.is_stage && '- is stage' || '' }}
 
     steps:
-      - name: Testing exit 1
-        run: |
-          echo "Testing"
-          exit 1
-      - name: Should not be here
-        run: echo "Sad to be here"
-
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
