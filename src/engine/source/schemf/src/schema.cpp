@@ -137,13 +137,21 @@ Field Schema::get(const DotPath& name) const
 bool Schema::hasField(const DotPath& name) const
 {
     const auto* current = &m_fields;
+    auto isParentSchema = false;
     for (auto it = name.cbegin(); it != name.cend(); ++it)
     {
         auto entry = current->find(*it);
         if (entry == current->end())
         {
-            return false;
+            if (!isParentSchema)
+            {
+                return false;
+            }
+
+            throw std::runtime_error(fmt::format("Field '{}' does not exist in '{}'", it->data(), name.str()));
         }
+
+        isParentSchema = true;
 
         if (it != name.cend() - 1)
         {
