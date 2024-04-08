@@ -24,12 +24,6 @@
 #include <thread>
 #include <utility>
 
-enum ActionID
-{
-    SCHEDULED,
-    ON_DEMAND
-};
-
 /**
  * @brief Action class.
  *
@@ -72,18 +66,16 @@ public:
     /**
      * @brief Action execution with exclusivity: The action is only executed if there isn't another action in progress.
      *
-     * @param id Action ID.
      * @param updateData Update orchestration data.
      *
      * @return True if the execution was made, false otherwise.
      */
-    bool runActionExclusively(const ActionID id,
-                              const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
+    bool runActionExclusively(const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
     {
         auto expectedValue {false};
         if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
         {
-            runAction(id, updateData);
+            runAction(updateData);
         }
         return !expectedValue;
     }
@@ -124,7 +116,7 @@ public:
     void runActionScheduled()
     {
         logDebug2(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::SCHEDULED))
+        if (!runActionExclusively())
         {
             logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', scheduled request ignored", m_topicName.c_str());
         }
@@ -183,7 +175,7 @@ public:
     void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
     {
         logDebug2(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::ON_DEMAND, updateData))
+        if (!runActionExclusively(updateData))
         {
             logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
         }
@@ -213,7 +205,7 @@ private:
     std::shared_ptr<ConditionSync> m_stopActionCondition;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
-    void runAction(const ActionID id, const ActionOrchestrator::UpdateData& updateData)
+    void runAction(const ActionOrchestrator::UpdateData& updateData)
     {
         logDebug2(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
 
