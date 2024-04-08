@@ -249,7 +249,7 @@ public:
                 {
                     for (auto i = 0; i < parentVect.value().size(); i++)
                     {
-                        auto parentName = base::Name {parentVect.value()[i].getString().value()};
+                        auto parentName = base::Name {parentVect.value()[i].getString().value_or("error_name")};
                         defaultParents.emplace(nsId, parentName);
                     }
                 }
@@ -387,7 +387,7 @@ public:
         std::list<base::Name> parents;
         if (range.first == range.second)
         {
-            return base::Error {fmt::format("Namespace {} not found")};
+            return base::Error {fmt::format("Namespace {} not found", namespaceId.str())};
         }
 
         for (auto it = range.first; it != range.second; ++it)

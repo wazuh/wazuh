@@ -25,6 +25,10 @@ def update_conf():
     
     return serv_conf_file
 
+def set_mmdb():
+    mmdb = os.path.join(ENGINE_SRC_DIR, 'test', 'health_test', 'testdb.mmdb')
+    shutil.copy(mmdb, os.path.join(ENVIRONMENT_DIR, 'engine', 'etc', 'testdb.mmdb'))
+
 def load_integrations():
     subprocess.run(f'{os.path.join(ENGINE_SRC_DIR, "build", "main")} catalog --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} -n system create filter < {os.path.join(ENGINE_SRC_DIR, "ruleset", "filters", "allow-all.yml")}', 
                check=True, 
@@ -75,6 +79,9 @@ def load_policies():
 
     subprocess.run(f'{os.path.join(ENGINE_SRC_DIR, "build", "main")} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set -n wazuh decoder/integrations/0',
                    check=True, shell=True)
+    
+    subprocess.run(f'{os.path.join(ENGINE_SRC_DIR, "build", "main")} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set -n wazuh rule/enrichment/0',
+                   check=True, shell=True)
 
     subprocess.run(f'{os.path.join(ENGINE_SRC_DIR, "build", "main")} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} asset-add -n system integration/wazuh-core/0',
                        check=True, shell=True)
@@ -100,7 +107,8 @@ def main():
     ENVIRONMENT_DIR = args.environment or WAZUH_DIR
     ENVIRONMENT_DIR = ENVIRONMENT_DIR.replace('//', '/')
     update_conf()
-    
+    set_mmdb()
+
     os.environ['ENV_DIR'] = ENVIRONMENT_DIR
     os.environ['WAZUH_DIR'] = WAZUH_DIR
     os.environ['CONF_FILE'] =  os.path.join(ENVIRONMENT_DIR, 'engine', 'general.conf')

@@ -230,7 +230,7 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
                     else
                     {
                         throw std::runtime_error(fmt::format(
-                            "Default parent '{}' in namespace '{}' is neither a decoder nor a rule", assetName, ns));
+                            "Default parent '{}' in namespace '{}' is neither a decoder or a rule", assetName, ns));
                     }
 
                     auto added = data.addDefaultParent(assetType, ns, assetName);

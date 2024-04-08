@@ -58,15 +58,15 @@ public:
             {
                 factory::PolicyData::AssetType parentType;
                 base::Name parentName(parent);
-                if (builder::syntax::name::isDecoder(parentName))
+                if (builder::syntax::name::isDecoder(parentName, false))
                 {
                     parentType = factory::PolicyData::AssetType::DECODER;
                 }
-                else if (builder::syntax::name::isRule(parentName))
+                else if (builder::syntax::name::isRule(parentName, false))
                 {
                     parentType = factory::PolicyData::AssetType::RULE;
                 }
-                else if (builder::syntax::name::isOutput(parentName))
+                else if (builder::syntax::name::isOutput(parentName, false))
                 {
                     parentType = factory::PolicyData::AssetType::OUTPUT;
                 }

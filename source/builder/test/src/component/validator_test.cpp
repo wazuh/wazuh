@@ -81,13 +81,13 @@ INSTANTIATE_TEST_SUITE_P(
                             const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
                             const std::shared_ptr<defs::mocks::MockDefinitions>& def,
                             const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-                         { return "Invalid default parent decoder name '': Name cannot be empty"; })),
+                         { return "Invalid default parent name '': Name cannot be empty"; })),
         Validate(json::Json {DEFECTIVE_PARENT_POLICY_NOT_STRING_NAME_JSON},
                  FAILURE([](const std::shared_ptr<MockStore>& store,
                             const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
                             const std::shared_ptr<defs::mocks::MockDefinitions>& def,
                             const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
-                         { return "Default parent decoder in namespace 'system' is not a string"; })),
+                         { return "Default parent asset in namespace 'system' is not a string"; })),
         Validate(json::Json {DEFECTIVE_ASSET_POLICY_NOT_STRING_NAME_JSON},
                  FAILURE([](const std::shared_ptr<MockStore>& store,
                             const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
