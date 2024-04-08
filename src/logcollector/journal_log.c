@@ -135,7 +135,7 @@ STATIC INLINE char * w_timestamp_to_journalctl_since(uint64_t timestamp) {
  * @param library_name The name of the library to search for.
  * @return The path of the library if found, or NULL if not found or an error occurred.
  */
-char * find_library_path(const char * library_name) {
+STATIC INLINE char * find_library_path(const char * library_name) {
     FILE * maps_file = fopen("/proc/self/maps", "r");
     if (maps_file == NULL) {
         return NULL;

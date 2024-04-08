@@ -19,6 +19,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/common.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
 
 #define _XOPEN_SOURCE
 
@@ -27,6 +28,7 @@ bool load_and_validate_function(void * handle, const char * name, void ** func);
 uint64_t w_get_epoch_time();
 char * w_timestamp_to_string(uint64_t timestamp);
 char * w_timestamp_to_journalctl_since(uint64_t timestamp);
+char * find_library_path(const char * library_name);
 
 //Mocks
 
@@ -47,6 +49,24 @@ char* __wrap_dlerror() {
 // Mock gmtime_r function
 unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
     return mock_type(unsigned int);
+}
+
+// Mock getline function
+extern ssize_t __real_getline(char **lineptr, size_t *n, FILE *stream);
+ssize_t __wrap_getline(char **lineptr, size_t *n, FILE *stream) {
+    if (test_mode) {
+        // Asegurarse de que se pase un puntero no nulo para lineptr
+        assert_non_null(lineptr);
+
+        // Configurar la línea simulada y su longitud
+        *lineptr = mock_ptr_type(char *);
+        *n = strlen(*lineptr);
+
+        // Retornar la longitud de la línea simulada
+        return *n;
+    } else {
+        return __real_getline(lineptr, n, stream);
+    }
 }
 
 /* setup/teardown */
@@ -213,6 +233,58 @@ static void test_w_timestamp_to_journalctl_since_failure(void **state) {
     assert_null(result);
 }
 
+//Test find_library_path
+
+static void test_find_library_path_success(void **state) {
+    // Arrange
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE *maps_file = (FILE *)0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char *simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /path/to/libtest.so\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // Act
+    char *result = find_library_path("libtest.so");
+
+    // Assert
+    assert_non_null(result);
+    assert_string_equal(result, "/path/to/libtest.so");
+
+    // Clean
+    free(result);
+}
+
+static void test_find_library_path_failure(void **state) {
+    // Arrange
+
+    // Set expectations for fopen
+    const char *library_name = "libtest.so";
+    const char *expected_mode = "r";
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Setting the return value for fopen
+    FILE *maps_file = NULL; // Simulate fopen error
+    will_return(__wrap_fopen, maps_file);
+
+    // Act
+    char *result = find_library_path(library_name);
+
+    // Assert
+    assert_null(result);
+
+    // Clean
+    free(result);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -224,7 +296,9 @@ int main(void) {
         cmocka_unit_test(test_w_get_epoch_time),
         cmocka_unit_test(test_w_timestamp_to_string),
         cmocka_unit_test(test_w_timestamp_to_journalctl_since_success),
-        cmocka_unit_test(test_w_timestamp_to_journalctl_since_failure)
+        cmocka_unit_test(test_w_timestamp_to_journalctl_since_failure),
+        cmocka_unit_test(test_find_library_path_success),
+        cmocka_unit_test(test_find_library_path_failure)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
