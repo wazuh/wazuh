@@ -51,7 +51,9 @@ tags:
 '''
 
 
-import pytest, sys, os
+import pytest
+import sys
+import os
 import tempfile
 
 from pathlib import Path
@@ -90,26 +92,43 @@ def build_tc_config(tc_conf_list):
         for i, elements in enumerate(tc_config, start=1):
             section = {
                 "section": "localfile",
-                "attributes": [{"unique_id": str(i)}], # Prevents duplicated localfiles sections
+                "attributes": [{"unique_id": str(i)}],  # Prevents duplicated localfiles sections
                 "elements": elements
             }
-            sections.append(section)  
+            sections.append(section)
 
         config_list.append({"sections": sections})
 
     return config_list
+
+
+def assert_list_logs(regex_messages: list):
+    '''
+    Asserts if the expected messages are present in the log file.
+
+    TODO: This function must guarantee the order of the logs and move to a common module
+
+    Args:
+        regex_messages (list): List of regular expressions to search in the log file.
+    '''
+
+    # Monitor the ossec.log file
+    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
+
+    for regex in regex_messages:
+        log_monitor.start(callback=callbacks.generate_callback(regex))
+        assert (log_monitor.callback_result != None), f'Did not receive the expected messages in the log file.'
+
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration
 journald_case_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_journald.yaml')
-
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(journald_case_path)
 test_configuration = build_tc_config(test_configuration)
 
 daemon_debug = logcollector_configuration.LOGCOLLECTOR_DEBUG
-
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
@@ -168,8 +187,23 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
         - invalid_settings
     '''
 
-    if test_metadata['validate_config']:
-        utils.check_logcollector_socket()
-        # Check if test_metadata['log_format'] is not 'macos' or 'journald', this return a modify configuration
-        if test_metadata['log_format'] not in ['macos', 'journald']:
-            utils.validate_test_config_with_module_config(test_configuration=test_configuration)
+    # Logcollector always start, regardless of the configuration
+    utils.check_logcollector_socket()
+
+    # Check the event in the log file
+    if 'expected_logs' in test_metadata:
+        assert_list_logs(test_metadata['expected_logs'])
+
+    # Get the localfile list from the runtime configuration
+    localfile_list = utils.get_localfile_runtime_configuration()
+
+    # Regardless of configuration, there should never be more than one journal block.
+    if 'journal_disabled' in test_metadata and test_metadata['journal_disabled']:
+        assert len(localfile_list) == 0, f"Invalid configuration but journal block found."
+        return
+    else:
+        assert len(localfile_list) == 1, f"Invalid configuration. More than one journal block found."
+
+    # Validate the test configuration with the runtime configuration
+    if 'expected_config' in test_metadata:
+        assert localfile_list[0] == test_metadata['expected_config'], f"Invalid configuration. Expected: {test_metadata['expected_config']}. Found: {localfile_list[0]}"

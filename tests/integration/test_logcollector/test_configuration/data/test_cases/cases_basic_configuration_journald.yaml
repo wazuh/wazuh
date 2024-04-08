@@ -1,41 +1,70 @@
-- name: Test 1
+# Basic configuration for journald without filters or merge
+- name: Journald default configuration
+  description: A basic configuration for journald, 1 block without filters
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring the journal
+    expected_config:
+      logformat: journald
+      only-future-events: 'yes'
+      target: 
+        - agent
+
+- name: Journald, ignore bad location
+  description: A basic configuration for journald ignore the bad location
+  configuration_parameters:
+    - - location:
+          value: bad location
+      - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - .*Invalid location value 'bad location'.*Default value will be used
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring the journal
+    expected_config:
+      logformat: journald
+      only-future-events: 'yes'
+      target: 
+        - agent
+
+- name: Journald, ignore missing location
+  description: A basic configuration for journald ignore the missing location
+  configuration_parameters:
+    - - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - .*Missing 'location' element when using 'journald' as 'log_format'. Default value will be used.
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring the journal.*
+    expected_config:
+      logformat: journald
+      only-future-events: 'yes'
+      target: 
+        - agent
+
+# Fail basic configuration for journald without merge
+- name: Journald fail basic configuration
   description: test 1 description
   configuration_parameters:
     - - location:
-          value: 'journald'
+          value: journald
       - log_format:
-          value: 'journald'
-          
-    - - location:
-          value: 'journald'
-      - log_format:
-          value: 'journald'
+          value: journald
       - filter:
            value: '\w+'
            attributes:
-             - field: 'syslogtag'
+             - not_field: 'syslogtag'
              - ignore_if_missing: 'yes'
-    - - location:
-          value: 'journald_123'
-      - log_format:
-          value: 'journald'
-      - filter:
-          value: '\d+'
   metadata:
-    location: 'journald'
-    log_format: 'journald'
-    validate_config: True
-
-
-- name: Test 2
-  description: test 2 description
-  configuration_parameters:
-    - - location:
-          value: 'journald'
-      - log_format:
-          value: 'journald'
-
-  metadata:
-    location: 'journald'
-    log_format: 'journald'
-    validate_config: True
+    expected_logs:
+      - ".*The field for the journal filter cannot be empty.*"
+      - ".*Cannot add filter, the block will be ignored.*"
+    journal_disabled: True
