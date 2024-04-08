@@ -141,6 +141,51 @@ TEST_F(OfflineDownloaderTest, DownloadSameFileTwice)
 }
 
 /**
+ * @brief Tests two downloads one after the other. The file from the second download should override the first one.
+ *
+ */
+TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
+{
+    m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_inputFilePathRaw.string();
+    m_spUpdaterBaseContext->configData["compressionType"] = "raw";
+
+    // Set expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"].push_back(m_spUpdaterBaseContext->contentsFolder.string() + "/" +
+                                    m_inputFilePathRaw.filename().string());
+    expectedData["stageStatus"] = nlohmann::json::array();
+    expectedData["stageStatus"].push_back(OK_STATUS);
+    expectedData["type"] = DEFAULT_TYPE;
+    expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = m_inputFileHashRaw;
+
+    // Trigger first download.
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
+
+    // Change input file content.
+    std::ofstream testFileStream {m_inputFilePathRaw};
+    testFileStream << "I'm a test file with a .txt extension and I will override the output file." << std::endl;
+    testFileStream.close();
+
+    // Clear first execution data.
+    m_spUpdaterContext->data.at("stageStatus").clear();
+    m_spUpdaterContext->data.at("paths").clear();
+
+    // Trigger second download.
+    ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+
+    // The new hash should be different from the first one.
+    auto newHash {m_spUpdaterContext->data.at("fileMetadata").at("hash").get<std::string>()};
+    EXPECT_NE(newHash, m_inputFileHashRaw);
+    expectedData["fileMetadata"]["hash"] = std::move(newHash);
+
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+    EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
+}
+
+/**
  * @brief Tests the download of a raw file with an inexistant content folder. Exception is expected.
  *
  */
