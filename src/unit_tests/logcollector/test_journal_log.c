@@ -20,10 +20,13 @@
 #include "../wrappers/common.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 
+#define _XOPEN_SOURCE
+
 bool is_owned_by_root(const char * library_path);
 bool load_and_validate_function(void * handle, const char * name, void ** func);
 uint64_t w_get_epoch_time();
 char * w_timestamp_to_string(uint64_t timestamp);
+char * w_timestamp_to_journalctl_since(uint64_t timestamp);
 
 //Mocks
 
@@ -177,6 +180,39 @@ static void test_w_timestamp_to_string(void **state) {
     free(result);
 }
 
+//Test w_timestamp_to_journalctl_since
+
+static void test_w_timestamp_to_journalctl_since_success(void **state) {
+    // Arrange
+    uint64_t timestamp = 1618849174000000; // Timestamp en microsegundos
+
+    will_return(__wrap_gmtime_r, 1618849174000000);
+    
+    // Act
+    char *result = w_timestamp_to_journalctl_since(timestamp);
+    
+    // Assert
+    assert_non_null(result);
+
+    // Verificar que la cadena generada tenga el formato esperado
+    assert_true(strlen(result) == strlen("1900-01-00 00:00:00"));
+    assert_true(strncmp(result, "1900-01-00 00:00:00", strlen("1900-01-00 00:00:00")) == 0);
+    free(result);
+}
+
+static void test_w_timestamp_to_journalctl_since_failure(void **state) {
+    // Arrange
+    uint64_t timestamp = 0; // Timestamp que provocará el error
+
+    will_return(__wrap_gmtime_r, 0);
+    
+    // Act
+    char *result = w_timestamp_to_journalctl_since(timestamp);
+    
+    // Assert
+    assert_null(result);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -186,7 +222,9 @@ int main(void) {
         cmocka_unit_test(test_load_and_validate_function_success),
         cmocka_unit_test(test_load_and_validate_function_failure),
         cmocka_unit_test(test_w_get_epoch_time),
-        cmocka_unit_test(test_w_timestamp_to_string)
+        cmocka_unit_test(test_w_timestamp_to_string),
+        cmocka_unit_test(test_w_timestamp_to_journalctl_since_success),
+        cmocka_unit_test(test_w_timestamp_to_journalctl_since_failure)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
