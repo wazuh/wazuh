@@ -636,8 +636,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
 
         data = await self.get_chunks_in_task_id(task_id, b'syn_m_a_err')
-        result = await self.update_chunks_wdb(data, 'agent-info', logger, b'syn_m_a_err',
-                                              self.cluster_items['intervals']['master']['timeout_agent_info'])
+        result = await self.update_chunks_wdb(data, 'agent-info', logger, b'syn_m_a_err')
 
         # Send result to worker.
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
