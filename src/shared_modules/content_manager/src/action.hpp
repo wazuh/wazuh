@@ -70,7 +70,7 @@ public:
      *
      * @return True if the execution was made, false otherwise.
      */
-    bool runActionExclusively(const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
+    bool runActionExclusively(const ActionOrchestrator::UpdateData& updateData)
     {
         auto expectedValue {false};
         if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
@@ -116,7 +116,7 @@ public:
     void runActionScheduled()
     {
         logDebug2(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively())
+        if (!runActionExclusively(ActionOrchestrator::UpdateData::createContentUpdateData(-1)))
         {
             logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', scheduled request ignored", m_topicName.c_str());
         }
@@ -172,7 +172,7 @@ public:
      *
      * @param updateData Update orchestration data.
      */
-    void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData = ActionOrchestrator::UpdateData())
+    void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData)
     {
         logDebug2(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
         if (!runActionExclusively(updateData))

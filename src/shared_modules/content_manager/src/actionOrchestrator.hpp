@@ -43,24 +43,66 @@ public:
     /**
      * @brief Struct containing the necessary members to execute the orchestrations.
      *
-     * @details When 'type' is CONTENT, the orchestrator will perform a content update. If 'offset' is
-     * zero, the offset value will be reset. Otherwise, its value will be read from the RocksDB database.
-     * @details When 'type' is OFFSET, the orchestrator will write the 'offset' value in the RocksDB database. This
-     * value should be nonnegative.
-     * @details When 'type' is FILE_HASH, the orchestrator will write the 'fileHash' value in the RocksDB database. This
-     * value shouldn't be empty.
      */
     struct UpdateData
     {
-        UpdateType type {UpdateType::CONTENT}; ///< Orchestration update type.
-        int offset {1};                        ///< Offset value used in the update.
-        std::string fileHash;                  ///< Hash value used in the update.
+        UpdateType type;      ///< Orchestration update type.
+        int offset;           ///< Offset value used in the update.
+        std::string fileHash; ///< Hash value used in the update.
 
         /**
-         * @brief Struct empty constructor.
+         * @brief Creates an UpdateData struct for content update.
+         *
+         * @param offset Offset used in the update. If zero, the offset value will be reset. Otherwise, its value will
+         * be read from the RocksDB database.
+         * @return UpdateData Struct ready to be used by the orchestrator.
+         */
+        static UpdateData createContentUpdateData(const int offset)
+        {
+            return UpdateData(UpdateType::CONTENT, offset, "");
+        }
+
+        /**
+         * @brief Creates an UpdateData struct for offset update.
+         *
+         * @param offset Offset used in the update that will be written in the RocksDB database to be used in posterior
+         * content updates. Should be nonnegative.
+         * @return UpdateData Struct ready to be used by the orchestrator.
+         */
+        static UpdateData createOffsetUpdateData(const int offset)
+        {
+            if (0 > offset)
+            {
+                throw std::invalid_argument {"Offset value (" + std::to_string(offset) + ") shouldn't be negative"};
+            }
+            return UpdateData(UpdateType::OFFSET, offset, "");
+        }
+
+        /**
+         * @brief Creates an UpdateData struct for file hash update.
+         *
+         * @param fileHash Hash used in the update that will be written in the RocksDB database to be used in posterior
+         * content updates. Should be nonnegative.
+         * @return UpdateData Struct ready to be used by the orchestrator.
+         */
+        static UpdateData createHashUpdateData(const std::string& fileHash)
+        {
+            if (fileHash.empty())
+            {
+                throw std::invalid_argument {"Invalid hash value: The hash is empty"};
+            }
+            return UpdateData(UpdateType::FILE_HASH, -1, fileHash);
+        }
+
+    private:
+        /**
+         * @brief Private struct constructor called from the static methods of this struct.
          *
          */
-        UpdateData() {};
+        UpdateData(const UpdateType type, const int offset, const std::string& fileHash)
+            : type(type)
+            , offset(offset)
+            , fileHash(fileHash) {};
     };
 
     /**
@@ -105,7 +147,7 @@ public:
      *
      * @param updateData Update orchestration data.
      */
-    void run(const UpdateData& updateData = UpdateData()) const
+    void run(const UpdateData& updateData) const
     {
         // Create a updater context
         auto spUpdaterContext {std::make_shared<UpdaterContext>()};
@@ -165,11 +207,6 @@ private:
     {
         logDebug2(WM_CONTENTUPDATER, "Running '%s' offset update", m_spBaseContext->topicName.c_str());
 
-        if (0 > offset)
-        {
-            throw std::invalid_argument {"Offset value (" + std::to_string(offset) + ") shouldn't be negative"};
-        }
-
         spUpdaterContext->currentOffset = offset;
 
         FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(std::move(spUpdaterContext));
@@ -184,11 +221,6 @@ private:
     void runFileHashUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const std::string& fileHash) const
     {
         logDebug2(WM_CONTENTUPDATER, "Running '%s' file hash update", m_spBaseContext->topicName.c_str());
-
-        if (fileHash.empty())
-        {
-            throw std::invalid_argument {"Invalid hash value: The hash is empty"};
-        }
 
         if (spUpdaterContext->spUpdaterBaseContext->spRocksDB)
         {

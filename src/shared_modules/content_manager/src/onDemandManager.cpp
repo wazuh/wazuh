@@ -51,9 +51,7 @@ void OnDemandManager::startServer()
                                  const auto& it {m_endpoints.find(req.matches[1].str())};
                                  if (it != m_endpoints.end())
                                  {
-                                     auto updateData {ActionOrchestrator::UpdateData()};
-                                     updateData.offset = offset;
-                                     it->second(updateData);
+                                     it->second(ActionOrchestrator::UpdateData::createContentUpdateData(offset));
                                      res.status = 200;
                                  }
                                  else
@@ -88,10 +86,7 @@ void OnDemandManager::startServer()
 
                                  if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
                                  {
-                                     auto updateData {ActionOrchestrator::UpdateData()};
-                                     updateData.offset = offset;
-                                     updateData.type = ActionOrchestrator::UpdateType::OFFSET;
-                                     it->second(updateData);
+                                     it->second(ActionOrchestrator::UpdateData::createOffsetUpdateData(offset));
                                      res.status = 200;
                                      res.body = "Offset update processed successfully";
                                  }
@@ -127,10 +122,7 @@ void OnDemandManager::startServer()
 
                                  if (const auto& it {m_endpoints.find(topicName)}; it != m_endpoints.end())
                                  {
-                                     auto updateData {ActionOrchestrator::UpdateData()};
-                                     updateData.type = ActionOrchestrator::UpdateType::FILE_HASH;
-                                     updateData.fileHash = fileHash;
-                                     it->second(updateData);
+                                     it->second(ActionOrchestrator::UpdateData::createHashUpdateData(fileHash));
                                      res.status = 200;
                                      res.body = "File hash update processed successfully";
                                  }

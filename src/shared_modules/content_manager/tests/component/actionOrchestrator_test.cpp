@@ -195,7 +195,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(actionOrchestrator->run());
+    EXPECT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // This file shouldn't exist because it's a test for raw data
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
@@ -233,7 +233,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(actionOrchestrator->run());
+    EXPECT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // This file should exist because deleteDownloadedContent is not enabled
     EXPECT_TRUE(std::filesystem::exists(downloadPath));
@@ -273,7 +273,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(actionOrchestrator->run());
+    EXPECT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // This file shouldn't exist because deleteDownloadedContent is enabled
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
@@ -300,12 +300,9 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
     auto actionOrchestrator {
         std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition)};
 
-    constexpr auto OFFSET {0};
-    auto updateData {ActionOrchestrator::UpdateData()};
-    updateData.offset = OFFSET;
-
     // Trigger orchestration with an offset of zero.
-    ASSERT_NO_THROW(actionOrchestrator->run(updateData));
+    constexpr auto OFFSET {0};
+    ASSERT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(OFFSET)));
 
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
@@ -327,9 +324,7 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
 {
     constexpr auto OFFSET {1234};
-    auto updateData {ActionOrchestrator::UpdateData()};
-    updateData.type = ActionOrchestrator::UpdateType::OFFSET;
-    updateData.offset = OFFSET;
+    auto updateData {ActionOrchestrator::UpdateData::createOffsetUpdateData(OFFSET)};
 
     {
         // Trigger orchestrator in a reduced scope to avoid conflicts with the RocksDB connection below.
@@ -344,18 +339,13 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
 }
 
 /**
- * @brief Tests the offset update process execution with an invalid offset. An exception is expected.
+ * @brief Tests the offset update data creation with an invalid offset. An exception is expected.
  *
  */
-TEST_F(ActionOrchestratorTest, RunOffsetUpdateInvalidOffsetThrows)
+TEST_F(ActionOrchestratorTest, OffsetUpdateDataInvalidOffsetThrows)
 {
     constexpr auto OFFSET {-100};
-    auto updateData {ActionOrchestrator::UpdateData()};
-    updateData.type = ActionOrchestrator::UpdateType::OFFSET;
-    updateData.offset = OFFSET;
-
-    EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData),
-                 std::invalid_argument);
+    EXPECT_THROW(ActionOrchestrator::UpdateData::createOffsetUpdateData(OFFSET), std::invalid_argument);
 }
 
 /**
@@ -366,9 +356,7 @@ TEST_F(ActionOrchestratorTest, RunFileHashUpdate)
 {
     constexpr auto HASH_VALUE {"hash"};
 
-    auto updateData {ActionOrchestrator::UpdateData()};
-    updateData.type = ActionOrchestrator::UpdateType::FILE_HASH;
-    updateData.fileHash = HASH_VALUE;
+    auto updateData {ActionOrchestrator::UpdateData::createHashUpdateData(HASH_VALUE)};
 
     ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData));
 
@@ -379,14 +367,10 @@ TEST_F(ActionOrchestratorTest, RunFileHashUpdate)
 }
 
 /**
- * @brief Tests the file hash update process execution with an empty hash. An exception is expected.
+ * @brief Tests the file hash update data creation with an empty hash. An exception is expected.
  *
  */
-TEST_F(ActionOrchestratorTest, RunFileHashUpdateInvalidHashThrows)
+TEST_F(ActionOrchestratorTest, FileHashUpdateDataInvalidHashThrows)
 {
-    auto updateData {ActionOrchestrator::UpdateData()};
-    updateData.type = ActionOrchestrator::UpdateType::FILE_HASH;
-
-    EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData),
-                 std::invalid_argument);
+    EXPECT_THROW(ActionOrchestrator::UpdateData::createHashUpdateData(""), std::invalid_argument);
 }

@@ -229,7 +229,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
 
     EXPECT_NO_THROW(action->registerActionOnDemand());
 
-    EXPECT_NO_THROW(action->runActionOnDemand());
+    EXPECT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -296,7 +296,7 @@ TEST_F(ActionTest, OnDemandActionCatchException)
     auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     // Trigger action. No exceptions are expected despite the error.
-    ASSERT_NO_THROW(action->runActionOnDemand());
+    ASSERT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // Check that no output files have been created.
     const std::filesystem::path outputFolder {
@@ -347,10 +347,7 @@ TEST_F(ActionTest, RunActionOnDemandOffsetUpdate)
     action.registerActionOnDemand();
 
     constexpr auto OFFSET {1000};
-    auto updateData {ActionOrchestrator::UpdateData()};
-    updateData.type = ActionOrchestrator::UpdateType::OFFSET;
-    updateData.offset = OFFSET;
-    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
+    ASSERT_NO_THROW(action.runActionOnDemand(ActionOrchestrator::UpdateData::createOffsetUpdateData(OFFSET)));
 
     action.unregisterActionOnDemand();
     action.clearEndpoints();
@@ -375,8 +372,9 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     // Download file twice without hash update: Two publications are expected.
     constexpr auto EXPECTED_PUBLICATIONS {2};
     EXPECT_CALL(*spMockRouterProvider, send(::testing::_)).Times(EXPECTED_PUBLICATIONS);
-    ASSERT_NO_THROW(action.runActionOnDemand());
-    ASSERT_NO_THROW(action.runActionOnDemand());
+    auto updateData {ActionOrchestrator::UpdateData::createContentUpdateData(-1)};
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
 
     // Update hash.
     std::string putUrl {"http://localhost/hash"};
@@ -389,8 +387,8 @@ TEST_F(ActionTest, HashOnDemandUpdate)
 
     // Trigger two more downloads that will be skipped.
     EXPECT_CALL(*spMockRouterProvider, send(::testing::_)).Times(0);
-    ASSERT_NO_THROW(action.runActionOnDemand());
-    ASSERT_NO_THROW(action.runActionOnDemand());
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
 
     action.unregisterActionOnDemand();
     action.clearEndpoints();
