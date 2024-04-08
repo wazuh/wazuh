@@ -87,7 +87,7 @@ def get_default_parent(policy_name: str, namespace: str):
     request = api_policy.DefaultParentGet_Request()
     request.policy = policy_name
     request.namespace = namespace
-    error, response = send_recv(request, api_policy.DefaultParentGet_Response())
+    response, error = send_recv(request, api_policy.DefaultParentGet_Response())
     return response
 
 def get_namespace_policy(policy_name: str):
@@ -154,6 +154,10 @@ def step_impl(context, policy_name: str, namespace: str):
 @when('I send a request to get namespaces of policy "{policy_name}"')
 def step_impl(context, policy_name: str):
     context.result = get_namespace_policy(policy_name)
+
+@then('I should an error indicating "{response}"')
+def step_impl(context, response: str):
+    assert context.result == response, f"{context.result}"
 
 @then('I should receive a {status} response indicating "{response}"')
 def step_impl(context, status: str, response: str):

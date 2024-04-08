@@ -91,7 +91,7 @@ base::OptError Builder::validateIntegration(const json::Json& json, const std::s
     }
     catch(const std::exception& e)
     {
-        return base::Error {e.what()};
+        return base::Error {fmt::format("Error creating dummy policy: {}", e.what())};
     }
     
     auto namePath = json::Json::formatJsonPath(syntax::asset::NAME_KEY);

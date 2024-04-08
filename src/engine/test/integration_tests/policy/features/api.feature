@@ -85,7 +85,7 @@ Feature: Policy API Management
   Scenario: Set the non-exist default parent of a namespace
     Given I have a policy called "policy/wazuh/0"
     When I send a request to set the default parent called "default" in the namespace "wazuh"
-    Then I should receive a failed response indicating "Default parent decoder 'default' in namespace 'wazuh' is not a decoder"
+    Then I should receive a failed response indicating "Default parent 'default' in namespace 'wazuh' is neither a decoder or a rule"
 
   @exclude
   Scenario: Set the default parent of a namespace
@@ -97,7 +97,7 @@ Feature: Policy API Management
   Scenario: Get the non-exist default parent of a namespace
     Given I have a policy called "policy/wazuh/0"
     When I send a request to get the default parent of policy "policy/wazuh/0" in the namespace "wazuh"
-    Then I should receive a failed response indicating "Namespace not found or no default parent"
+    Then I should an error indicating "Namespace wazuh not found"
 
   Scenario: Get namespaces in policy
     Given I have a policy called "policy/wazuh/0"
