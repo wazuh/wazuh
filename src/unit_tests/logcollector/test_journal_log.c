@@ -23,6 +23,9 @@
 bool is_owned_by_root(const char * library_path);
 bool load_and_validate_function(void * handle, const char * name, void ** func);
 uint64_t w_get_epoch_time();
+char * w_timestamp_to_string(uint64_t timestamp);
+
+//Mocks
 
 // Mock dlsym function to simulate the loading of valid and invalid functions
 void *__wrap_dlsym(void *handle, const char *name) {
@@ -33,9 +36,14 @@ void *__wrap_dlsym(void *handle, const char *name) {
     }
 }
 
-// Mock dlerror
+// Mock dlerror function
 char* __wrap_dlerror() {
     return "ERROR";
+}
+
+// Mock gmtime_r function
+unsigned int __wrap_gmtime_r(__attribute__ ((__unused__)) const time_t *t, __attribute__ ((__unused__)) struct tm *tm) {
+    return mock_type(unsigned int);
 }
 
 /* setup/teardown */
@@ -155,6 +163,20 @@ static void test_w_get_epoch_time(void **state) {
     assert_int_equal(result, 0);
 }
 
+//Test w_timestamp_to_string
+
+static void test_w_timestamp_to_string(void **state) {
+    // Arrange
+    uint64_t timestamp = 1618849174000000; // Timestamp en microsegundos
+    will_return(__wrap_gmtime_r, 1);
+    
+    // Act
+    char *result = w_timestamp_to_string(timestamp);
+    
+    // Assert
+    free(result);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -163,7 +185,8 @@ int main(void) {
         cmocka_unit_test(test_is_owned_by_root_stat_fails),
         cmocka_unit_test(test_load_and_validate_function_success),
         cmocka_unit_test(test_load_and_validate_function_failure),
-        cmocka_unit_test(test_w_get_epoch_time)
+        cmocka_unit_test(test_w_get_epoch_time),
+        cmocka_unit_test(test_w_timestamp_to_string)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
