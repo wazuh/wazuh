@@ -272,7 +272,7 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
-    WDB_STMT_PRAGMA_SYNCHRONOUS_1,
+    WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
@@ -2517,6 +2517,6 @@ void wdbcom_dispatch(char* request, char* output);
  * @param[in] wdb The database structure.
  * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
  */
-int wdb_set_synchronous_mode(wdb_t * wdb);
+int wdb_set_synchronous_normal(wdb_t * wdb);
 
 #endif
