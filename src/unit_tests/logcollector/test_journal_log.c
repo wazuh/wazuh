@@ -22,6 +22,7 @@
 
 bool is_owned_by_root(const char * library_path);
 bool load_and_validate_function(void * handle, const char * name, void ** func);
+uint64_t w_get_epoch_time();
 
 // Mock dlsym function to simulate the loading of valid and invalid functions
 void *__wrap_dlsym(void *handle, const char *name) {
@@ -141,6 +142,19 @@ static void test_load_and_validate_function_failure(void **state) {
     assert_null(function_pointer);
 }
 
+// Test w_get_epoch_time
+
+static void test_w_get_epoch_time(void **state) {
+    // Arrange
+    expect_function_call(__wrap_gettimeofday);
+    
+    // Act
+    uint64_t result = w_get_epoch_time();
+    
+    // Assert
+    assert_int_equal(result, 0);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -148,7 +162,8 @@ int main(void) {
         cmocka_unit_test(test_is_owned_by_root_not_root_owned),
         cmocka_unit_test(test_is_owned_by_root_stat_fails),
         cmocka_unit_test(test_load_and_validate_function_success),
-        cmocka_unit_test(test_load_and_validate_function_failure)
+        cmocka_unit_test(test_load_and_validate_function_failure),
+        cmocka_unit_test(test_w_get_epoch_time)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
