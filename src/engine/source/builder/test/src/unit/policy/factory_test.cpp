@@ -125,86 +125,86 @@ INSTANTIATE_TEST_SUITE_P(
         ReadT(R"({"name": "test", "hash": "test", "assets": []})",
               SUCCESS([](const std::shared_ptr<MockStoreRead>& store) { return D {.name = "test", .hash = "test"}; })),
         ReadT(
-            R"({"name": "test", "hash": "test", "default_parents": {"ns": ["decoder/asset"]}, "assets": ["decoder/asset"]})",
+            R"({"name": "test", "hash": "test", "default_parents": {"ns": ["decoder/asset/0"]}, "assets": ["decoder/asset/0"]})",
             SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
-                    EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
+                    EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset/0")))
                         .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
 
                     return D {.name = "test",
                               .hash = "test",
-                              .defaultParents = {{"ns", "decoder/asset"}},
-                              .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}};
+                              .defaultParents = {{"ns", "decoder/asset/0"}},
+                              .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset/0"}}}}}}};
                 })),
-        ReadT(R"({"name": "test", "hash": "test", "assets": ["decoder/asset"]})",
+        ReadT(R"({"name": "test", "hash": "test", "assets": ["decoder/asset/0"]})",
               SUCCESS(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
-                      EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
+                      EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset/0")))
                           .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
 
                       return D {.name = "test",
                                 .hash = "test",
-                                .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}};
+                                .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset/0"}}}}}}};
                   })),
-        ReadT(R"({"name": "test", "hash": "test", "defaultParents": {}, "assets": ["decoder/asset"]})",
+        ReadT(R"({"name": "test", "hash": "test", "defaultParents": {}, "assets": ["decoder/asset/0"]})",
               SUCCESS(
                   [](const std::shared_ptr<MockStoreRead>& store)
                   {
-                      EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
+                      EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset/0")))
                           .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
 
                       return D {.name = "test",
                                 .hash = "test",
-                                .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}};
+                                .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset/0"}}}}}}};
                   })),
         ReadT(
-            R"({"name": "test", "hash": "test", "defaultParents": {"otherNs": "decoder/other"}, "assets": ["decoder/asset"]})",
+            R"({"name": "test", "hash": "test", "defaultParents": {"otherNs": "decoder/other/0"}, "assets": ["decoder/asset/0"]})",
             SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
-                    EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
+                    EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset/0")))
                         .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
 
                     return D {.name = "test",
                               .hash = "test",
-                              .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}}}};
+                              .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset/0"}}}}}}};
                 })),
         ReadT(
-            R"({"name": "test", "hash": "test", "default_parents": {"ns": ["decoder/asset"]}, "assets": ["decoder/asset", "output/asset", "rule/asset", "filter/asset"]})",
+            R"({"name": "test", "hash": "test", "default_parents": {"ns": ["decoder/asset/0"]}, "assets": ["decoder/asset/0", "output/asset/0", "rule/asset/0", "filter/asset/0"]})",
             SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
-                    EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset")))
+                    EXPECT_CALL(*store, getNamespace(base::Name("decoder/asset/0")))
                         .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
-                    EXPECT_CALL(*store, getNamespace(base::Name("output/asset")))
+                    EXPECT_CALL(*store, getNamespace(base::Name("output/asset/0")))
                         .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
-                    EXPECT_CALL(*store, getNamespace(base::Name("rule/asset")))
+                    EXPECT_CALL(*store, getNamespace(base::Name("rule/asset/0")))
                         .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
-                    EXPECT_CALL(*store, getNamespace(base::Name("filter/asset")))
+                    EXPECT_CALL(*store, getNamespace(base::Name("filter/asset/0")))
                         .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
 
                     return D {.name = "test",
                               .hash = "test",
-                              .defaultParents = {{"ns", "decoder/asset"}},
-                              .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset"}}}}},
-                                         {factory::PolicyData::AssetType::OUTPUT, {{"ns", {{"output/asset"}}}}},
-                                         {factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset"}}}}},
-                                         {factory::PolicyData::AssetType::FILTER, {{"ns", {{"filter/asset"}}}}}}};
+                              .defaultParents = {{"ns", "decoder/asset/0"}},
+                              .assets = {{factory::PolicyData::AssetType::DECODER, {{"ns", {{"decoder/asset/0"}}}}},
+                                         {factory::PolicyData::AssetType::OUTPUT, {{"ns", {{"output/asset/0"}}}}},
+                                         {factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset/0"}}}}},
+                                         {factory::PolicyData::AssetType::FILTER, {{"ns", {{"filter/asset/0"}}}}}}};
                 })),
         ReadT(
-            R"({"name": "test", "hash": "test", "default_parents": {"ns": ["rule/asset"]}, "assets": ["rule/asset"]})",
+            R"({"name": "test", "hash": "test", "default_parents": {"ns": ["rule/asset/0"]}, "assets": ["rule/asset/0"]})",
             SUCCESS(
                 [](const std::shared_ptr<MockStoreRead>& store)
                 {
-                    EXPECT_CALL(*store, getNamespace(base::Name("rule/asset")))
+                    EXPECT_CALL(*store, getNamespace(base::Name("rule/asset/0")))
                         .WillOnce(testing::Return(storeGetNamespaceResp("ns")));
 
                     return D {.name = "test",
                               .hash = "test",
-                              .defaultParents = {{"ns", "rule/asset"}},
-                              .assets = {{factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset"}}}}}}};
+                              .defaultParents = {{"ns", "rule/asset/0"}},
+                              .assets = {{factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset/0"}}}}}}};
                 }))
             ));
 } // namespace readtest

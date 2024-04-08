@@ -75,45 +75,66 @@ constexpr auto OUTPUT_PART = "output";           ///< The name of the output res
 constexpr auto FILTER_PART = "filter";           ///< The name of the filter resource.
 constexpr auto INTEGRATION_PART = "integration"; ///< The name of the integration resource.
 constexpr auto POLICY_PART = "policy";           ///< The name of the policy resource.
+constexpr auto NUM_PARTS = 3;                    ///< Number of parts expected in the name.
 
 /**
  * @brief Check if a name corresponds to a decoder resource.
  * @param name The name to check.
+ * @param verifyParts Flag indicating whether to verify the parts of the name.
  * @return True if the name corresponds to a decoder resource, false otherwise.
  */
-inline bool isDecoder(const base::Name& name)
+inline bool isDecoder(const base::Name& name, bool verifyParts = true)
 {
-    return name.parts().front() == DECODER_PART;
+    if (verifyParts)
+    {
+        return  (name.parts().front() == DECODER_PART) && (name.parts().size() == NUM_PARTS);
+    }
+    return  name.parts().front() == DECODER_PART;
 }
 
 /**
  * @brief Check if a name corresponds to a rule resource.
  * @param name The name to check.
+ * @param verifyParts Flag indicating whether to verify the parts of the name.
  * @return True if the name corresponds to a rule resource, false otherwise.
  */
-inline bool isRule(const base::Name& name)
+inline bool isRule(const base::Name& name, bool verifyParts = true)
 {
-    return name.parts().front() == RULE_PART;
+    if (verifyParts)
+    {
+        return  (name.parts().front() == RULE_PART) && (name.parts().size() == NUM_PARTS);
+    }
+    return  name.parts().front() == RULE_PART;
 }
 
 /**
  * @brief Check if a name corresponds to an output resource.
  * @param name The name to check.
+ * @param verifyParts Flag indicating whether to verify the parts of the name.
  * @return True if the name corresponds to an output resource, false otherwise.
  */
-inline bool isOutput(const base::Name& name)
+inline bool isOutput(const base::Name& name, bool verifyParts = true)
 {
-    return name.parts().front() == OUTPUT_PART;
+    if (verifyParts)
+    {
+        return  (name.parts().front() == OUTPUT_PART) && (name.parts().size() == NUM_PARTS);
+    }
+    return  name.parts().front() == OUTPUT_PART;
 }
 
 /**
  * @brief Check if a name corresponds to a filter resource.
  * @param name The name to check.
+ * @param verifyParts Flag indicating whether to verify the parts of the name.
  * @return True if the name corresponds to a filter resource, false otherwise.
  */
-inline bool isFilter(const base::Name& name)
+inline bool isFilter(const base::Name& name, bool verifyParts = true)
 {
-    return name.parts().front() == FILTER_PART;
+    if (verifyParts)
+    {
+        return  (name.parts().front() == FILTER_PART) && (name.parts().size() == NUM_PARTS);
+    }
+    return  name.parts().front() == FILTER_PART;
 }
 
 /**
