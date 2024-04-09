@@ -153,7 +153,7 @@ normalize:
       - _answer.data: $suricata.dns.rdata
       - _answer.type: $suricata.dns.rrtype
       - _answer.ttl: $suricata.dns.ttl
-      - dns.answer: array_append($_answer)
+      - dns.answers: array_append($_answer)
 
   - check: >-
         $_answer.type == A
