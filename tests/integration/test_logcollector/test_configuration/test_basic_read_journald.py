@@ -59,8 +59,7 @@ from wazuh_testing.modules.logcollector import utils
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.utils import configuration
 
-from . import TEST_CASES_PATH, build_tc_config, assert_list_logs
-
+from . import TEST_CASES_PATH, build_tc_config, assert_list_logs, assert_not_list_logs
 
 LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
@@ -68,7 +67,7 @@ LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration
-journald_case_path = Path(TEST_CASES_PATH, 'cases_basic_configuration_journald.yaml')
+journald_case_path = Path(TEST_CASES_PATH, 'cases_basic_read_journald.yaml')
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(journald_case_path)
 test_configuration = build_tc_config(test_configuration)
 
@@ -77,7 +76,31 @@ daemon_debug = logcollector_configuration.LOGCOLLECTOR_DEBUG
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
 
-local_internal_options = {daemon_debug: '1'}
+local_internal_options = {daemon_debug: '2'}
+
+def send_log_to_journal(conf_message):
+    '''
+    Send a log message to the journal.
+
+    This function sends a log message to the journal using the 'logger' command to avoid use third-party libraries.
+    Args:
+        conf_message (dic): The message to send to the journal, with the following fields:
+            - message (str): The message to send to the journal.
+            - tag (str): The tag of the message. Default is 'wazuh-itest'.
+            - priority (str): The priority of the message. Default is 'info'.
+    '''
+    import subprocess as sp
+
+    # Send the log message to the journal
+    try:
+        tag = conf_message['tag'] if 'tag' in conf_message else 'wazuh-itest'
+        priority = conf_message['priority'] if 'priority' in conf_message else 'info'
+        message = conf_message['message']
+        if not message:
+            raise Exception("The message field is required in the configuration.")
+        sp.run(['logger', '-t', tag, '-p', priority, message], check=True)
+    except sp.CalledProcessError as e:
+        raise Exception(f"Error sending log message to journal: {e}")
 
 
 # Test function.
@@ -121,9 +144,9 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
 
     assertions:
         - Verify that the Wazuh component (agent or manager) can start when the 'jouranld' tag is used.
-        - Verify that the Wazuh API returns the correct values for the 'localfile' section.
+        - Verify that the Wazuh component (agent or manager) can read the logs from the 'journald' log format.
 
-    input_description: A configuration file with journal block settings and the expected output for each test case.
+    input_description: A configuration file with journal block settings and the expected log messages.
                        Those include configuration settings for `journal` configuration in 'wazuh-logcollector'.
 
     expected_output:
@@ -137,9 +160,25 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
     # Logcollector always start, regardless of the configuration
     utils.check_logcollector_socket()
 
+    # Send log messages to the monitored file
+    if 'input_logs' not in test_metadata:
+        raise Exception(f"Log messages not found in the test metadata.")
+    else:
+        for log_message in test_metadata['input_logs']:
+            send_log_to_journal(log_message)
+
     # Check the messages in the log file
     if 'expected_logs' in test_metadata:
+        # Append regex to expected logs
+        for i, log_message in enumerate(test_metadata['expected_logs']):
+            test_metadata['expected_logs'][i] = f".*Reading from journal: {log_message}"
         assert_list_logs(test_metadata['expected_logs'])
+    
+    if 'unexpected_logs' in test_metadata:
+        # Append regex to unexpected logs
+        for i, log_message in enumerate(test_metadata['unexpected_logs']):
+            test_metadata['unexpected_logs'][i] = f".*Reading from journal: {log_message}"
+        assert_not_list_logs(test_metadata['unexpected_logs'])
 
     # Get the localfile list from the runtime configuration
     localfile_list = utils.get_localfile_runtime_configuration()
