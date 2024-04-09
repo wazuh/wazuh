@@ -26,11 +26,6 @@ on:
           - deb
           - rpm
         required: true
-      os_name:
-        description: Package OS name (used in some packages like Solaris).
-        default: ""
-        type: string
-        required: false
       revision:
         description: |
           Set the value to "1" for packages in release format.
@@ -68,10 +63,6 @@ on:
       system:
         type: string
         required: true
-      os_name:
-        default: ""
-        type: string
-        required: false
       revision:
         default: "0"
         type: string
@@ -122,6 +113,7 @@ jobs:
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
       - name: Test install built manager

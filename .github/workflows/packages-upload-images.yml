@@ -45,7 +45,7 @@ jobs:
               - 'packages/generate_package.sh'
               - 'packages/debs/utils/**'
             rpm_manager_amd64:
-              - 'packages/debs/amd64/agent/**'
+              - 'packages/rpms/amd64/manager/**'
               - 'packages/build.sh'
               - 'packages/generate_package.sh'
               - 'packages/rpms/utils/**'
