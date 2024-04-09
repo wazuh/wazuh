@@ -102,28 +102,6 @@ void updateDoc(json::Json& doc,
         return;
     }
 
-    // If the value is not quoted, try parsing it as an int or double
-    if (!is_quoted)
-    {
-        // Try parsing as int
-        int64_t i;
-        auto [ptr, ec] {utils::from_chars(value.data(), value.data() + value.size(), i)};
-        if (std::errc() == ec && (value.data() + value.size()) == ptr)
-        {
-            doc.setInt64(i, key);
-            return;
-        }
-
-        // Try parsing as double
-        double_t d;
-        auto [ptr2, ec2] {utils::from_chars(value.data(), value.data() + value.size(), d)};
-        if (std::errc() == ec2 && (value.data() + value.size()) == ptr2)
-        {
-            doc.setDouble(d, key);
-            return;
-        }
-    }
-
     // If the value is a string, unescape it if necessary and add it to the JSON document
     auto vs = std::string {value.data(), value.size()};
     unescape(is_escaped, vs, escape);
