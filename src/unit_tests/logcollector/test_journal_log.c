@@ -29,21 +29,32 @@ uint64_t w_get_epoch_time();
 char * w_timestamp_to_string(uint64_t timestamp);
 char * w_timestamp_to_journalctl_since(uint64_t timestamp);
 char * find_library_path(const char * library_name);
+w_journal_lib_t * w_journal_lib_init();
 
 //Mocks
 
 // Mock dlsym function to simulate the loading of valid and invalid functions
-void *__wrap_dlsym(void *handle, const char *name) {
-    if (strcmp(name, "valid_function") == 0) {
-        return (void *)1; // Valid function
+// Mock dlsym function
+extern void *__real_dlsym(void *handle, const char *symbol);
+void *__wrap_dlsym(void *handle, const char *symbol) {
+    if (test_mode) {
+        check_expected_ptr(handle);
+        check_expected_ptr(symbol);
+        return mock_ptr_type(void *);
     } else {
-        return NULL; // Invalid function
+        return __real_dlsym(handle, symbol);
     }
 }
 
 // Mock dlerror function
-char* __wrap_dlerror() {
-    return "ERROR";
+extern char *__real_dlerror(void);
+
+char *__wrap_dlerror(void) {
+    if (test_mode) {
+        return mock_ptr_type(char *);
+    } else {
+        return __real_dlerror();
+    }
 }
 
 // Mock gmtime_r function
@@ -66,6 +77,31 @@ ssize_t __wrap_getline(char **lineptr, size_t *n, FILE *stream) {
         return *n;
     } else {
         return __real_getline(lineptr, n, stream);
+    }
+}
+
+// Mock dlopen function
+extern void *__real_dlopen(const char *filename, int flags);
+
+void *__wrap_dlopen(const char *filename, int flags) {
+    if (test_mode) {
+        check_expected_ptr(filename);
+        check_expected(flags);
+        return mock_ptr_type(void *);
+    } else {
+        return __real_dlopen(filename, flags);
+    }
+}
+
+// Mock dlclose function
+extern int __real_dlclose(void *handle);
+
+int __wrap_dlclose(void *handle) {
+    if (test_mode) {
+        check_expected_ptr(handle);
+        return mock();
+    } else {
+        return __real_dlclose(handle);
     }
 }
 
@@ -146,8 +182,13 @@ void test_is_owned_by_root_stat_fails(void **state) {
 static void test_load_and_validate_function_success(void **state) {
     // Arrange
     void *handle = (void *)1; // Simulate handle
+    void *mock_function = (void *)0xabcdef;
     const char *function_name = "valid_function";
     void *function_pointer;
+
+    expect_any(__wrap_dlsym, handle);
+    expect_string(__wrap_dlsym, symbol, "valid_function");
+    will_return(__wrap_dlsym, mock_function);
     
     // Act
     bool result = load_and_validate_function(handle, function_name, &function_pointer);
@@ -160,8 +201,15 @@ static void test_load_and_validate_function_success(void **state) {
 static void test_load_and_validate_function_failure(void **state) {
     // Arrange
     void *handle = NULL;  // Simulate invalid handle
+    void *mock_function = NULL;
     const char *function_name = "invalid_function";
     void *function_pointer = (void *)1;
+
+    expect_any(__wrap_dlsym, handle);
+    expect_string(__wrap_dlsym, symbol, "invalid_function");
+    will_return(__wrap_dlsym, mock_function);
+
+    will_return(__wrap_dlerror,"ERROR");
 
     expect_string(__wrap__mwarn, formatted_msg, "(8008): Failed to load 'invalid_function': 'ERROR'.");
     
@@ -285,6 +333,232 @@ static void test_find_library_path_failure(void **state) {
     free(result);
 }
 
+#define W_LIB_SYSTEMD "libsystemd.so.0"
+#define RTLD_LAZY 1
+
+// Test w_journal_lib_init
+
+// Define a test case for the scenario where dlopen fails
+static void test_w_journal_lib_init_dlopen_fail(void **state) {
+    // Arrange
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, NULL);
+
+    will_return(__wrap_dlerror, "Library load failed");
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8008): Failed to load 'libsystemd.so.0': 'Library load failed'.");
+
+    //expect_value(__wrap_os_free, ptr, NULL);
+
+    // Act
+    w_journal_lib_t *result = w_journal_lib_init();
+
+    // Assert
+    assert_null(result);
+}
+
+// Define a test case for the scenario where find_library_path fails
+static void test_w_journal_lib_init_find_library_path_fail(void **state) {
+    // Arrange
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *)0x123456); // Mocked handle
+
+    // test_find_library_path_failure
+    // Set expectations for fopen
+    const char *library_name = "libtest.so";
+    const char *expected_mode = "r";
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Setting the return value for fopen
+    FILE *maps_file = NULL; // Simulate fopen error
+    will_return(__wrap_fopen, maps_file);
+
+    //expect_any(__wrap_mwarn, id);
+    expect_string(__wrap__mwarn, formatted_msg, "(8009): The library 'libsystemd.so.0' is not owned by the root user.");
+
+    expect_value(__wrap_dlclose, handle, (void *)0x123456); // Mocked handle
+    will_return(__wrap_dlclose, 0); // Simulate dlclose success
+
+    // Act
+    w_journal_lib_t *result = w_journal_lib_init();
+
+    // Assert
+    assert_null(result);
+}
+
+// Define a test case for the scenario where is_owned_by_root fails
+static void test_w_journal_lib_init_is_owned_by_root_fail(void **state) {
+    // Arrange
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *)0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE *maps_file = (FILE *)0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char *simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_stat_fails
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 1000;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, -1);
+
+    //expect_any(__wrap_mwarn, id);
+    expect_string(__wrap__mwarn, formatted_msg, "(8009): The library 'libsystemd.so.0' is not owned by the root user.");
+
+    expect_value(__wrap_dlclose, handle, (void *)0x123456); // Mocked handle
+    will_return(__wrap_dlclose, 0); // Simulate dlclose success
+
+    // Act
+    w_journal_lib_t *result = w_journal_lib_init();
+
+    // Assert
+    assert_null(result);
+}
+
+// Define a test case for the scenario where load_and_validate_function fails
+static void test_w_journal_lib_init_load_and_validate_function_fail(void **state) {
+    // Arrange
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *)0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE *maps_file = (FILE *)0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char *simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_root_owned
+
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    // test_load_and_validate_function_failure
+    void *handle = NULL;  // Simulate invalid handle
+    void *mock_function = NULL;
+    const char *function_name = "sd_journal_open";
+    void *function_pointer = (void *)1;
+
+    expect_any(__wrap_dlsym, handle);
+    expect_string(__wrap_dlsym, symbol, function_name);
+    will_return(__wrap_dlsym, mock_function);
+
+    will_return(__wrap_dlerror,"ERROR");
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8008): Failed to load 'sd_journal_open': 'ERROR'.");
+
+    expect_value(__wrap_dlclose, handle, (void *)0x123456); // Mocked handle
+    will_return(__wrap_dlclose, 0);
+
+    // Act
+    w_journal_lib_t *result = w_journal_lib_init();
+
+    // Assert
+    assert_null(result);
+}
+
+// Define a test case for the scenario where everything succeeds
+//  Auxiliary function for setting dlsym wrap expectations
+static void setup_dlsym_expectations(const char *symbol) {
+    void *handle = (void *)1; // Simulate handle
+    void *mock_function = (void *)0xabcdef;
+
+    expect_any(__wrap_dlsym, handle);
+    expect_string(__wrap_dlsym, symbol, symbol);
+    will_return(__wrap_dlsym, mock_function);
+}
+
+static void test_w_journal_lib_init_success(void **state) {
+    // Arrange
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *)0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE *maps_file = (FILE *)0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char *simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_root_owned
+
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    void *handle = (void *)1; // Simulate handle
+    void *mock_function = (void *)0xabcdef;
+
+    // Set expectations for dlsym wrap
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+
+    // Act
+    w_journal_lib_t *result = w_journal_lib_init();
+
+    // Assert
+    assert_non_null(result);
+    free(result);
+    //assert_ptr_equal(result->handle, (void *)0x123456); // Ensure handle is set correctly
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -298,7 +572,12 @@ int main(void) {
         cmocka_unit_test(test_w_timestamp_to_journalctl_since_success),
         cmocka_unit_test(test_w_timestamp_to_journalctl_since_failure),
         cmocka_unit_test(test_find_library_path_success),
-        cmocka_unit_test(test_find_library_path_failure)
+        cmocka_unit_test(test_find_library_path_failure),
+        cmocka_unit_test(test_w_journal_lib_init_dlopen_fail),
+        cmocka_unit_test(test_w_journal_lib_init_find_library_path_fail),
+        cmocka_unit_test(test_w_journal_lib_init_is_owned_by_root_fail),
+        cmocka_unit_test(test_w_journal_lib_init_load_and_validate_function_fail),
+        cmocka_unit_test(test_w_journal_lib_init_success)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);

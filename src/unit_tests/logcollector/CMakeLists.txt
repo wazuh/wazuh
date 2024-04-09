@@ -112,7 +112,7 @@ else()
     list(APPEND logcollector_flags "-Wl,--wrap,stat -Wl,--wrap,_mwarn -Wl,--wrap,dlsym -Wl,--wrap,dlerror -Wl,--wrap,gettimeofday \
                                     -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                     -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
-                                    -Wl,--wrap,fgetpos -Wl,--wrap,gmtime_r -Wl,--wrap,getline")
+                                    -Wl,--wrap,fgetpos -Wl,--wrap,gmtime_r -Wl,--wrap,getline -Wl,--wrap,dlopen -Wl,--wrap,dlclose")
 endif()
 
 list(LENGTH logcollector_names count)
