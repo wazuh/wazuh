@@ -11,7 +11,7 @@ RUN echo 'Acquire::Check-Valid-Until "false";' >> /etc/apt/apt.conf && \
     curl g++ bzip2 debhelper gcc rename make sudo wget expect gnupg perl-base perl \
     libc-bin libc6 libc6-dev build-essential dpkg-dev\
     cdbs devscripts equivs automake autoconf libtool libaudit-dev selinux-basics \
-    libdb5.3 libdb5.3-dev libssl1.0.0 libssl-dev procps gawk libsigsegv2
+    libdb5.3 libdb5.3-dev libssl1.0.0 libssl-dev procps git gawk libsigsegv2
 
 RUN echo "deb-src http://archive.debian.org/debian jessie contrib main non-free" >> /etc/apt/sources.list && \
     apt-get update && apt-get build-dep python3 -y --force-yes

@@ -69,7 +69,7 @@ get_checksum(){
         deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
     fi
 
-    if [[ "${IS_PACKAGE_RELEASE}" == "no" ]]; then
+    if [[ "${IS_STAGE}" == "no" ]]; then
         deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$deb_file")"
     fi
 

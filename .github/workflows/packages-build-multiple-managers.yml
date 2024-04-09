@@ -46,7 +46,7 @@ jobs:
         debug: ${{ inputs.debug }}
     secrets: inherit
 
-   Build-manager-amd64-rpm:
+   Build-manager-x86_64-rpm:
     if: ${{ inputs.build-x86_64-rpm == true }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
