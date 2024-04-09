@@ -33,9 +33,7 @@
     "log": {
       "level": "information"
     },
-    "message": [
-      "File creation time"
-    ],
+    "message": "File creation time",
     "process": {
       "entity_id": "{23b237de-6cd1-650b-0006-000000002000}",
       "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",

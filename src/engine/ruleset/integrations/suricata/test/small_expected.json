@@ -393,7 +393,7 @@
       "port": 39464
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "175.16.199.1",
           "name": "clients.l.google.com",

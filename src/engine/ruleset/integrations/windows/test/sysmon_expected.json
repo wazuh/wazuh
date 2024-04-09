@@ -32,9 +32,7 @@
     "log": {
       "level": "information"
     },
-    "message": [
-      "File Delete archived"
-    ],
+    "message": "File Delete archived",
     "process": {
       "entity_id": "42F11C3B-4664-5EBA-91AE-000000000000",
       "executable": "C:\\Windows\\system32\\svchost.exe",
@@ -115,9 +113,7 @@
     "log": {
       "level": "information"
     },
-    "message": [
-      "File Delete archived"
-    ],
+    "message": "File Delete archived",
     "process": {
       "entity_id": "42F11C3B-B2B6-5EB3-18AB-000000000000",
       "executable": "C:\\Windows\\System32\\svchost.exe",
@@ -197,9 +193,7 @@
     "log": {
       "level": "information"
     },
-    "message": [
-      "File Delete archived"
-    ],
+    "message": "File Delete archived",
     "process": {
       "entity_id": "42F11C3B-C36F-5EB3-2C07-290000000000",
       "executable": "C:\\Users\\vagrant\\.gvm\\versions\\go1.13.10.windows.amd64\\bin\\go.exe",

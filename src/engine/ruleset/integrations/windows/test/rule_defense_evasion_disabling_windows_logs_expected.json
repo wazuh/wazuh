@@ -32,9 +32,7 @@
     "log": {
       "level": "information"
     },
-    "message": [
-      "Process Create"
-    ],
+    "message": "Process Create",
     "process": {
       "args": [
         "\"C:\\WINDOWS\\system32\\logman.exe\"",
