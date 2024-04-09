@@ -7,7 +7,7 @@ echo "Installing Wazuh $target."
 if [ -n "$(command -v yum)" ]; then
     install="yum install -y --nogpgcheck"
     installed_log="/var/log/yum.log"
-elif [ -n "$(command -v apt-get)" ]; then
+elif [ -n "$(command -v dpkg)" ]; then
     install="dpkg --install"
     installed_log="/var/log/dpkg.log"
 else
