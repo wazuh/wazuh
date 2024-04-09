@@ -141,7 +141,7 @@ INSTANTIATE_TEST_SUITE_P(
             SUCCESS,
             R"(pid=6969 subj=system_u:system_r:virtd_t:s0-s0:c0.c1023 msg='virt=kvm vm=\"rhel-work3\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe="/usr/sbin/someexe" terminal=? res=success')",
             j(fmt::format(
-                R"({{"{}":{{"pid":6969,"subj":"system_u:system_r:virtd_t:s0-s0:c0.c1023","msg":"virt=kvm vm=\\\"rhel-work3\\\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe=\"/usr/sbin/someexe\" terminal=? res=success"}}}})",
+                R"({{"{}":{{"pid":"6969","subj":"system_u:system_r:virtd_t:s0-s0:c0.c1023","msg":"virt=kvm vm=\\\"rhel-work3\\\" uuid=650c2a3b-2a7d-a7bd-bbc7-aa0069007bbf vm-ctx=system_u:system_r:svirt_t:s0:c424,c957 exe=\"/usr/sbin/someexe\" terminal=? res=success"}}}})",
                 TARGET.substr(1))),
             222,
             getKVParser,
@@ -162,7 +162,7 @@ INSTANTIATE_TEST_SUITE_P(
             "pure_letters=abcdefghijklmnopqrstuvwxyz integer=1234567890 double=12345.67890 mixed_string_a=1234abcde "
             "mixed_string_b=1234.567890abcde",
             j(fmt::format(
-                R"({{"{}":{{"pure_letters":"abcdefghijklmnopqrstuvwxyz","integer":1234567890,"double":12345.67890,"mixed_string_a":"1234abcde","mixed_string_b":"1234.567890abcde"}}}})",
+                R"({{"{}":{{"pure_letters":"abcdefghijklmnopqrstuvwxyz","integer":"1234567890","double":"12345.67890","mixed_string_a":"1234abcde","mixed_string_b":"1234.567890abcde"}}}})",
                 TARGET.substr(1))),
             134,
             getKVParser,
@@ -205,7 +205,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                R"(key1="123" key2=456)",
-               j(fmt::format(R"({{"{}": {{"key1":"123","key2":456}}}})", TARGET.substr(1))),
+               j(fmt::format(R"({{"{}": {{"key1":"123","key2":"456"}}}})", TARGET.substr(1))),
                19,
                getKVParser,
                {NAME, TARGET, {}, {"=", " ", "\"", "'"}}),

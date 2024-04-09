@@ -343,8 +343,8 @@ normalize:
       - related.user: array_append_unique($windows.EventData.NewTargetUserName)
 
   # SidListDesc
-  - map:
-    - windows.EventData.SidListDesc: windows_sid_list_desc(windows_sidlist_tables, $windows.EventData.SidList)
+  # - map:
+  #   - windows.EventData.SidListDesc: windows_sid_list_desc(windows_sidlist_tables, $windows.EventData.SidList)
 
   # Set File fields for events 5140 and 5145
   - check: $event.code == '5140' OR $event.code == '5145'

@@ -214,7 +214,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                R"(0,1.0,,"")",
-               j(fmt::format(R"({{"{}":{{"field_1":0,"field_2":1.0,"field_3":null,"field_4":null}}}})", TARGET.substr(1))),
+               j(fmt::format(R"({{"{}":{{"field_1":"0","field_2":"1.0","field_3":null,"field_4":null}}}})", TARGET.substr(1))),
                9,
                getCSVParser,
                {NAME, TARGET, {""}, {"field_1", "field_2", "field_3", "field_4"}}),
@@ -423,7 +423,7 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                "0|1.0||''",
-               j(fmt::format(R"({{"{}":{{"out1":0,"out2":1.0,"out3":null,"out4":null}}}})", TARGET.substr(1))),
+               j(fmt::format(R"({{"{}":{{"out1":"0","out2":"1.0","out3":null,"out4":null}}}})", TARGET.substr(1))),
                strlen("0|1.0||''"),
                getDSVParser,
                {NAME, TARGET, {""}, {"|", "'", "'", "out1", "out2", "out3", "out4"}}),

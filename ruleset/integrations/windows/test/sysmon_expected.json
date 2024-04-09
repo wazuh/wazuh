@@ -43,6 +43,9 @@
       "parent": {
         "name": "svchost.exe"
       },
+      "pe": {
+        "imphash": "00000000000000000000000000000000"
+      },
       "pid": 820
     },
     "related": {
