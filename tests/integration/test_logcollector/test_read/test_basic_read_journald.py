@@ -59,7 +59,8 @@ from wazuh_testing.modules.logcollector import utils
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.utils import configuration
 
-from . import TEST_CASES_PATH, build_tc_config, assert_list_logs, assert_not_list_logs
+from . import TEST_CASES_PATH
+from utils import build_tc_config, assert_list_logs, assert_not_list_logs
 
 LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
