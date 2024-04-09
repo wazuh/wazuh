@@ -48,6 +48,30 @@ on:
         type: boolean
         default: false
 
+  workflow_call:
+    inputs:
+      docker_image_tag:
+        type: string
+        required: false
+      linux_reference:
+        type: string
+        required: false
+      windows_reference:
+        type: string
+        required: false
+      macos_reference:
+        type: string
+        required: false
+      revision:
+        type: string
+        required: false
+      is_stage:
+        type: boolean
+        required: false
+      checksum:
+        type: boolean
+        required: false
+
 jobs:
   WPK-generation:
     runs-on: ubuntu-latest
