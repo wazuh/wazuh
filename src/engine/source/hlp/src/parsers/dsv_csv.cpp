@@ -92,6 +92,12 @@ inline Parser dsvParserFunction(std::string name,
             i++;
         }
 
+        // If start is 0, it means no fields were found
+        if (start == 0)
+        {
+            return abs::makeFailure<ResultT>("No fields found", name);
+        }
+
         if (headers.size() != i)
         {
             return abs::makeFailure<ResultT>(txt.substr(start-1), name);
