@@ -307,10 +307,10 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         {schemf::runtimeValidation(), builders::optransform::getBuilderSCAdecoder(deps.wdbManager, deps.sockFactory)});
 
     // Windows builders
-    registry->template add<builders::OpBuilderEntry>(
-        "windows_sid_list_desc",
-        {schemf::JTypeToken::create(json::Json::Type::String, true),
-         builders::getWindowsSidListDescHelperBuilder(deps.kvdbManager, deps.kvdbScopeName)});
+    // registry->template add<builders::OpBuilderEntry>(
+    //     "windows_sid_list_desc",
+    //     {schemf::JTypeToken::create(json::Json::Type::String, true),
+    //      builders::getWindowsSidListDescHelperBuilder(deps.kvdbManager, deps.kvdbScopeName)});
 }
 
 /**
