@@ -1,5 +1,5 @@
 # Basic configuration for journald without filters or merge
-- name: Test Journal default configuration
+- name: Test Journal reader default configuration
   description: A basic configuration for journald, 1 block without filters, read all
   configuration_parameters:
     - - location:
@@ -18,7 +18,7 @@
       - message: This is a message from journald 3
       
 
-- name: Test Journald Filter by field
+- name:  Test Journal reader Filter by field
   description: A basic configuration for journald, 1 block without filters, read all
   configuration_parameters:
     - - location:
@@ -52,7 +52,7 @@
         tag: "test-IT-tag-3"
       
 
-- name: Test merge, with disabled filters in journal
+- name: Test Journal reader, merge, with disabled filters in journal
   description: A basic configuration for journald, 1 block without filters, read all
   configuration_parameters:
     - - location:
