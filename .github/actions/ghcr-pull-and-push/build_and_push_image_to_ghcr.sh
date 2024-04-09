@@ -5,7 +5,7 @@ BUILD_CONTEXT=$4
 DOCKERFILE_PATH="$BUILD_CONTEXT/Dockerfile"
 if [ -n "$5" ]; then
     DOCKER_IMAGE_TAG=$5
-else 
+else
     exit 1
 fi
 GITHUB_REPOSITORY="wazuh/wazuh"
