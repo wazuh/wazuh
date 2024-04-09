@@ -953,7 +953,7 @@
       "port": 44773
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "atsv2-fp-shed.wg1.b.yahoo.com",
           "name": "www.yahoo.com",
@@ -1039,7 +1039,7 @@
       "port": 44773
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "175.16.199.1",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
@@ -1128,7 +1128,7 @@
       "port": 44773
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "175.16.199.1",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
@@ -1217,7 +1217,7 @@
       "port": 44773
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "175.16.199.1",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
@@ -1306,7 +1306,7 @@
       "port": 44773
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "175.16.199.1",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
@@ -1395,7 +1395,7 @@
       "port": 55246
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "atsv2-fp-shed.wg1.b.yahoo.com",
           "name": "www.yahoo.com",
@@ -1481,7 +1481,7 @@
       "port": 55246
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
@@ -1570,7 +1570,7 @@
       "port": 55246
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
@@ -1659,7 +1659,7 @@
       "port": 55246
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
@@ -1748,7 +1748,7 @@
       "port": 55246
     },
     "dns": {
-      "answer": [
+      "answers": [
         {
           "data": "2a02:cf40:add:4002:91f2:a9b2:e09a:6fc6",
           "name": "atsv2-fp-shed.wg1.b.yahoo.com",
