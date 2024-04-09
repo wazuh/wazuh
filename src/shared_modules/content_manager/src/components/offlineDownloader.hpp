@@ -76,12 +76,9 @@ private:
      *
      * @param inputFileURL URL from where to download the file.
      * @param outputFilepath Output path where to store the downloaded file.
-     * @param userAgent HTTP user agent.
      * @return true if the file was downloaded, otherwise false.
      */
-    bool downloadFile(const std::filesystem::path& inputFileURL,
-                      const std::filesystem::path& outputFilepath,
-                      const std::string& userAgent) const
+    bool downloadFile(const std::filesystem::path& inputFileURL, const std::filesystem::path& outputFilepath) const
     {
         auto returnCode {true};
         const auto onError {
@@ -96,7 +93,7 @@ private:
                   "Downloading file from '%s' into '%s'",
                   inputFileURL.string().c_str(),
                   outputFilepath.string().c_str());
-        m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError, {}, {}, userAgent);
+        m_urlRequest.download(HttpURL(inputFileURL), outputFilepath, onError);
         return returnCode;
     }
 
@@ -138,7 +135,7 @@ private:
         }
         else if (Utils::startsWith(fileUrl, HTTP_PREFIX) || Utils::startsWith(fileUrl, HTTPS_PREFIX))
         {
-            if (!downloadFile(fileUrl, outputFilePath, context.spUpdaterBaseContext->httpUserAgent))
+            if (!downloadFile(fileUrl, outputFilePath))
             {
                 return;
             }

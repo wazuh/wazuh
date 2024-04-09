@@ -15,7 +15,6 @@
 #include "../sharedDefs.hpp"
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
-#include "defs.h"
 #include "json.hpp"
 #include "stringHelper.h"
 #include "updaterContext.hpp"
@@ -27,7 +26,6 @@
 #include <string>
 
 const std::string GENERIC_OUTPUT_FOLDER_PATH {std::filesystem::temp_directory_path() / "output_folder"};
-const std::string DEFAULT_AGENT_NAME {"Wazuh ContentManager"};
 
 /**
  * @class ExecutionContext
@@ -192,19 +190,6 @@ private:
         context.contentsFolder = outputFolderPath / CONTENTS_FOLDER;
     }
 
-    /**
-     * @brief Sets the user agent context member used in HTTP requests.
-     *
-     * @param context Updater context.
-     */
-    void setHttpUserAgent(UpdaterBaseContext& context) const
-    {
-        context.httpUserAgent = context.configData.contains("agentName")
-                                    ? context.configData.at("agentName").get<std::string>()
-                                    : DEFAULT_AGENT_NAME;
-        context.httpUserAgent += std::string("/") + __ossec_version;
-    }
-
 public:
     /**
      * @brief Prepare the execution context necessary to execute the orchestration.
@@ -224,7 +209,6 @@ public:
         }
 
         createOutputFolder(*context);
-        setHttpUserAgent(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(std::move(context));
     }

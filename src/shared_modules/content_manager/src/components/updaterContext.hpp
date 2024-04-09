@@ -44,12 +44,6 @@ struct UpdaterBaseContext
     nlohmann::json configData;
 
     /**
-     * @brief HTTP User-Agent header value.
-     *
-     */
-    std::string httpUserAgent;
-
-    /**
      * @brief Channel where the data will be published.
      *
      */

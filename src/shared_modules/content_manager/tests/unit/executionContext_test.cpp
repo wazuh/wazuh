@@ -11,7 +11,6 @@
 
 #include "executionContext_test.hpp"
 #include "componentsHelper.hpp"
-#include "defs.h"
 #include "executionContext.hpp"
 #include "updaterContext.hpp"
 #include <filesystem>
@@ -286,27 +285,4 @@ TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
 
     EXPECT_EQ(m_spUpdaterBaseContext->downloadedFileHash, FILE_HASH);
-}
-
-/**
- * @brief Tests the correct set of the HTTP user agent context member.
- *
- */
-TEST_F(ExecutionContextTest, HttpUserAgentSet)
-{
-    const std::string agentName {"ExecutionContextTest"};
-    m_spUpdaterBaseContext->configData["agentName"] = agentName;
-
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, agentName + "/" + __ossec_version);
-}
-
-/**
- * @brief Tests the correct set of the default HTTP user agent context member.
- *
- */
-TEST_F(ExecutionContextTest, DefaultHttpUserAgentSet)
-{
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, DEFAULT_AGENT_NAME + "/" + __ossec_version);
 }

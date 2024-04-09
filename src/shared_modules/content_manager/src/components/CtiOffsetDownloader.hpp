@@ -44,7 +44,7 @@ private:
         getParameters(context);
 
         // First, make a get request to the API to get the consumer offset.
-        const auto ctiParameters {getCtiBaseParameters(m_url, context.spUpdaterBaseContext->httpUserAgent)};
+        const auto ctiParameters {getCtiBaseParameters(m_url)};
         auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
         if (stopCondition->check())
         {
@@ -134,8 +134,7 @@ private:
         logDebug2(WM_CONTENTUPDATER, "Downloading offsets from: '%s'", (m_url + queryParameters).c_str());
 
         // Download the content.
-        performQueryWithRetry(
-            m_url, onSuccess, context.spUpdaterBaseContext->httpUserAgent, queryParameters, fullFilePath);
+        performQueryWithRetry(m_url, onSuccess, queryParameters, fullFilePath);
     }
 
     std::string m_url {};          ///< URL of the API to connect to.

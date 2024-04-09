@@ -10,7 +10,6 @@ The input configuration of the Content Manager is described below:
 - `interval`: Interval, in seconds, between each action execution.
 - `ondemand`: If `true`, the module will be executed on demand.
 - `configData`: Configuration data to create the orchestration of the module.
-  + `agentName`: Optional parameter. Name of the Content Manager caller (e.g. `Wazuh VulnerabilityScanner`).
   + `contentSource`: Source of the content. Can be any of `api`, `cti-offset`, `cti-snapshot`, `file`, or `offline`. See the [use cases section](#use-cases) for more information.
   + `compressionType`: Compression type of the content. Can be any of `gzip`, `zip`, `xz`, or `raw`.
   + `versionedContent`: Type of versioned content. Can be any of `false` (content versioning disabled) or `cti-api` (only useful if using the `cti-offset` content source).

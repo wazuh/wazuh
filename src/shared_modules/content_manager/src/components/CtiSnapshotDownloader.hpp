@@ -38,7 +38,7 @@ private:
         const auto& baseURL {context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()};
 
         // Get and use the CTI base parameters.
-        const auto baseParameters {getCtiBaseParameters(baseURL, context.spUpdaterBaseContext->httpUserAgent)};
+        const auto baseParameters {getCtiBaseParameters(baseURL)};
 
         if (!baseParameters.lastSnapshotLink.has_value() || !baseParameters.lastSnapshotOffset.has_value())
         {
@@ -61,8 +61,7 @@ private:
         logDebug2(WM_CONTENTUPDATER, "Downloading snapshot from '%s'", lastSnapshotURL.string().c_str());
 
         // Download the content.
-        performQueryWithRetry(
-            lastSnapshotURL, onSuccess, context.spUpdaterBaseContext->httpUserAgent, "", outputFilepath);
+        performQueryWithRetry(lastSnapshotURL, onSuccess, "", outputFilepath);
     }
 
 public:

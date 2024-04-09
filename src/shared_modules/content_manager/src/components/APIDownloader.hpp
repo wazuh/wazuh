@@ -81,8 +81,7 @@ private:
             }};
 
         // Run the request. Save the file on disk.
-        m_urlRequest.download(
-            HttpURL(m_url), m_fullFilePath, onError, {}, {}, m_context->spUpdaterBaseContext->httpUserAgent);
+        m_urlRequest.download(HttpURL(m_url), m_fullFilePath, onError);
     }
 
     std::string m_url {};                         ///< URL of the API to connect to.
