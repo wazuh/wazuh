@@ -1,4 +1,4 @@
-name: Build multiple Wazuh Manager Packages - DEB|RPM - amd64|arm64
+name: Build multiple Wazuh Manager Packages - DEB|RPM - amd64|x86_64
 on:
   workflow_dispatch:
     inputs:
@@ -6,16 +6,8 @@ on:
         description: 'Build .deb wazuh-manager on amd64 arch'
         type: boolean
         required: false
-      build-amd64-rpm:
-        description: 'Build .rpm wazuh-manager on amd64 arch'
-        type: boolean
-        required: false
-      build-arm64-deb:
-        description: 'Build .deb wazuh-manager on arm64 arch'
-        type: boolean
-        required: false
-      build-arm64-rpm:
-        description: 'Build .rpm wazuh-manager on arm64 arch'
+      build-x86_64-rpm:
+        description: 'Build .rpm wazuh-manager on x86_64 arch'
         type: boolean
         required: false
       revision:
@@ -55,35 +47,11 @@ jobs:
     secrets: inherit
 
    Build-manager-amd64-rpm:
-    if: ${{ inputs.build-amd64-rpm == true }}
+    if: ${{ inputs.build-x86_64-rpm == true }}
     uses: ./.github/workflows/packages-build-manager.yml
     with:
         docker_image_tag: auto
         architecture: x86_64
-        system: rpm
-        revision: ${{ inputs.revision}}
-        is_stage: ${{ inputs.is_stage }}
-        debug: ${{ inputs.debug }}
-    secrets: inherit
-
-   Build-manager-arm64-deb:
-    if: ${{ inputs.build-arm64-deb == true }}
-    uses: ./.github/workflows/packages-build-manager.yml
-    with:
-        docker_image_tag: auto
-        architecture: arm64
-        system: deb
-        revision: ${{ inputs.revision}}
-        is_stage: ${{ inputs.is_stage }}
-        debug: ${{ inputs.debug }}
-    secrets: inherit
-
-   Build-manager-arm64-rpm:
-    if: ${{ inputs.build-arm64-rpm == true }}
-    uses: ./.github/workflows/packages-build-manager.yml
-    with:
-        docker_image_tag: auto
-        architecture: aarch64
         system: rpm
         revision: ${{ inputs.revision}}
         is_stage: ${{ inputs.is_stage }}

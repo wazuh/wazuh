@@ -1,4 +1,4 @@
-name: Build Wazuh Manager Packages - DEB|RPM - amd64|arm64|x86_64|aarch64
+name: Build Wazuh Manager Packages - DEB|RPM - amd64|x86_64
 on:
   workflow_dispatch:
     inputs:
@@ -13,13 +13,11 @@ on:
         required: false
       architecture:
         description: |
-          Architecture of the package [amd64, arm64, x86_64, aarch64]
+          Architecture of the package [amd64, x86_64]
         type: choice
         options:
           - amd64
-          - arm64
           - x86_64
-          - aarch64
         required: true
       system:
         description: 'Package format [deb, rpm]'
@@ -109,12 +107,7 @@ jobs:
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
-          if [ ${{ inputs.system }} == 'rpm' ]; then
-            if [ ${{ inputs.architecture }} == 'x86_64' ]; then arch=amd64;
-            else arch=arm64; fi
-          else arch=${{ inputs.architecture }}; fi
-          echo "ARCH=$arch" >> $GITHUB_ENV;
-          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${arch}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_amd64" >> $GITHUB_ENV
 
       - name: Download docker image for package building
         run: |
@@ -130,7 +123,7 @@ jobs:
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
           echo $FLAGS
-          bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+          bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
       - name: Test install built manager
         run: |
