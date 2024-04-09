@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: | 
-          Tag name of the Docker image to be uploaded 
-          (Use developer to set branch name. 
+        description: |
+          Tag name of the Docker image to be uploaded
+          (Use developer to set branch name.
           Use auto to set src/VERSION content)
         required: false
         default: auto
@@ -23,7 +23,7 @@ jobs:
             DOCKERFILE_PATH: packages/rpms/amd64/manager
             DISTRO: rpm
       fail-fast: false
-    
+
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
@@ -40,21 +40,21 @@ jobs:
         with:
           filters: |
             deb_manager_amd64:
-              - 'packages/debs/amd64/manager/**'
               - 'packages/build.sh'
               - 'packages/generate_package.sh'
+              - 'packages/debs/amd64/manager/**'
               - 'packages/debs/utils/**'
             rpm_manager_amd64:
-              - 'packages/rpms/amd64/manager/**'
               - 'packages/build.sh'
               - 'packages/generate_package.sh'
+              - 'packages/rpms/amd64/manager/**'
               - 'packages/rpms/utils/**'
 
       - name: Copy build.sh and utils to Dockerfile path
         run: |
           cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
           cp $GITHUB_WORKSPACE/packages/${{ matrix.DISTRO }}s/utils/* $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
-      
+
       - name: Set tag
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)

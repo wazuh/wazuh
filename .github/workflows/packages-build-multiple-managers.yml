@@ -21,15 +21,13 @@ on:
       is_stage:
           description: |
             Build package with release format.
-            Checksum will be also generated.
-          default: false
+            By default: false
           type: boolean
           required: false
       debug:
         description: |
           Build the binaries with debug symbols.
           By default: false
-        default: false
         type: boolean
         required: false
 

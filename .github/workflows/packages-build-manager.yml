@@ -37,7 +37,7 @@ on:
       is_stage:
         description: |
           Build package with release format.
-          Checksum will be also generated.
+          By default: false
         type: boolean
         required: false
       debug:
@@ -113,6 +113,7 @@ jobs:
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
           echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
