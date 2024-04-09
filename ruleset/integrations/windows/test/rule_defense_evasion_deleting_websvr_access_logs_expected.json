@@ -33,9 +33,7 @@
     "log": {
       "level": "information"
     },
-    "message": [
-      "File Delete archived"
-    ],
+    "message": "File Delete archived",
     "process": {
       "entity_id": "{7100ab27-350d-6506-912a-000000001200}",
       "executable": "C:\\Users\\nahuel\\Desktop\\nahuel\\Apache24\\bin\\httpd.exe",
