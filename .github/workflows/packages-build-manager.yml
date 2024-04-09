@@ -122,7 +122,6 @@ jobs:
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
-          echo $FLAGS
           bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
       - name: Test install built manager
