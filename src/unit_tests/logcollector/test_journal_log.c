@@ -32,6 +32,12 @@ char * find_library_path(const char * library_name);
 w_journal_lib_t * w_journal_lib_init();
 
 //Mocks
+int return_lib_open = 0; //w_journal_lib_open success
+
+// Mock for the open function of w_journal_lib_t
+int wrap_w_journal_lib_open(sd_journal **journal, int flags) {
+    return return_lib_open;
+}
 
 // Mock dlsym function to simulate the loading of valid and invalid functions
 // Mock dlsym function
@@ -349,8 +355,6 @@ static void test_w_journal_lib_init_dlopen_fail(void **state) {
 
     expect_string(__wrap__mwarn, formatted_msg, "(8008): Failed to load 'libsystemd.so.0': 'Library load failed'.");
 
-    //expect_value(__wrap_os_free, ptr, NULL);
-
     // Act
     w_journal_lib_t *result = w_journal_lib_init();
 
@@ -492,10 +496,11 @@ static void test_w_journal_lib_init_load_and_validate_function_fail(void **state
 }
 
 // Define a test case for the scenario where everything succeeds
+
 //  Auxiliary function for setting dlsym wrap expectations
 static void setup_dlsym_expectations(const char *symbol) {
     void *handle = (void *)1; // Simulate handle
-    void *mock_function = (void *)0xabcdef;
+    void *mock_function = wrap_w_journal_lib_open;
 
     expect_any(__wrap_dlsym, handle);
     expect_string(__wrap_dlsym, symbol, symbol);
@@ -556,7 +561,170 @@ static void test_w_journal_lib_init_success(void **state) {
     // Assert
     assert_non_null(result);
     free(result);
-    //assert_ptr_equal(result->handle, (void *)0x123456); // Ensure handle is set correctly
+}
+
+// Test w_journal_context_create
+
+// Test case for a successful context creation
+static void test_w_journal_context_create_success(void **state) {
+    // Define a pointer to w_journal_context_t
+    w_journal_context_t *ctx = NULL;
+
+    // Expectativas de llamada a w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *)0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE *maps_file = (FILE *)0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char *simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_root_owned
+
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    void *handle = (void *)1; // Simulate handle
+    void *mock_function = (void *)0xabcdef;
+
+    // Set expectations for dlsym wrap
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+
+    // Call the function under test
+    int ret = w_journal_context_create(&ctx);
+
+    // Check the result
+    assert_int_equal(ret, 0); // Asegurar que la función retorna 0 en caso de éxito
+    assert_non_null(ctx);     // Asegurar que el contexto no es nulo
+
+    // Clear dynamically allocated memory
+    os_free(ctx->journal);
+    os_free(ctx->lib);
+    os_free(ctx);
+}
+
+// Test case for a failure due to NULL context pointer
+static void test_w_journal_context_create_null_pointer(void **state) {
+    // Call the function with a NULL context pointer
+    int ret = w_journal_context_create(NULL);
+
+    // Check the result
+    assert_int_equal(ret, -1);
+}
+
+// Test case for a failure in library initialization
+static void test_w_journal_context_create_lib_init_fail(void **state) {
+    // Allocate memory for the context
+    w_journal_context_t *ctx = NULL;
+
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, NULL);
+
+    will_return(__wrap_dlerror, "Library load failed");
+
+    expect_string(__wrap__mwarn, formatted_msg, "(8008): Failed to load 'libsystemd.so.0': 'Library load failed'.");
+
+    // Call the function under test
+    int ret = w_journal_context_create(&ctx);
+
+    // Check the result
+    assert_int_equal(ret, -1);
+    assert_null(ctx);
+}
+
+// Test case for a failure in journal opening
+static void test_w_journal_context_create_journal_open_fail(void **state) {
+    // Define a pointer to w_journal_context_t
+    w_journal_context_t *ctx = NULL;
+
+    // Expectativas de llamada a w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *)0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE *maps_file = (FILE *)0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char *simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_root_owned
+
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    void *handle = (void *)1; // Simulate handle
+    void *mock_function = (void *)0xabcdef;
+
+    // Set expectations for dlsym wrap
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+
+    return_lib_open = -1; // Fail w_journal_lib_open
+    expect_string(__wrap__mwarn, formatted_msg, "(8010): Failed open journal log: 'Operation not permitted'.");
+
+    expect_value(__wrap_dlclose, handle, (void *)0x123456); // Mocked handle
+    will_return(__wrap_dlclose, 0); // Simulate dlclose success
+
+    // Call the function under test
+    int ret = w_journal_context_create(&ctx);
+
+    // Check the result
+    assert_int_equal(ret, -1);
+    assert_null(ctx);
+
 }
 
 int main(void) {
@@ -577,7 +745,11 @@ int main(void) {
         cmocka_unit_test(test_w_journal_lib_init_find_library_path_fail),
         cmocka_unit_test(test_w_journal_lib_init_is_owned_by_root_fail),
         cmocka_unit_test(test_w_journal_lib_init_load_and_validate_function_fail),
-        cmocka_unit_test(test_w_journal_lib_init_success)
+        cmocka_unit_test(test_w_journal_lib_init_success),
+        cmocka_unit_test(test_w_journal_context_create_success),
+        cmocka_unit_test(test_w_journal_context_create_null_pointer),
+        cmocka_unit_test(test_w_journal_context_create_lib_init_fail),
+        cmocka_unit_test(test_w_journal_context_create_journal_open_fail)
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
