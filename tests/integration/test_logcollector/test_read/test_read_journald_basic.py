@@ -60,15 +60,14 @@ from wazuh_testing.modules.logcollector import configuration as logcollector_con
 from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH
-from utils import build_tc_config, assert_list_logs, assert_not_list_logs
+from utils import build_tc_config, assert_list_logs, assert_not_list_logs, send_log_to_journal
 
-LOG_COLLECTOR_GLOBAL_TIMEOUT = 40
 
 # Marks
 pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration
-journald_case_path = Path(TEST_CASES_PATH, 'cases_basic_read_journald.yaml')
+journald_case_path = Path(TEST_CASES_PATH, 'cases_read_journald_basic.yaml')
 test_configuration, test_metadata, test_cases_ids = configuration.get_test_cases_data(journald_case_path)
 test_configuration = build_tc_config(test_configuration)
 
@@ -78,31 +77,6 @@ daemon_debug = logcollector_configuration.LOGCOLLECTOR_DEBUG
 daemons_handler_configuration = {'all_daemons': True}
 
 local_internal_options = {daemon_debug: '2'}
-
-def send_log_to_journal(conf_message):
-    '''
-    Send a log message to the journal.
-
-    This function sends a log message to the journal using the 'logger' command to avoid use third-party libraries.
-    Args:
-        conf_message (dic): The message to send to the journal, with the following fields:
-            - message (str): The message to send to the journal.
-            - tag (str): The tag of the message. Default is 'wazuh-itest'.
-            - priority (str): The priority of the message. Default is 'info'.
-    '''
-    import subprocess as sp
-
-    # Send the log message to the journal
-    try:
-        tag = conf_message['tag'] if 'tag' in conf_message else 'wazuh-itest'
-        priority = conf_message['priority'] if 'priority' in conf_message else 'info'
-        message = conf_message['message']
-        if not message:
-            raise Exception("The message field is required in the configuration.")
-        sp.run(['logger', '-t', tag, '-p', priority, message], check=True)
-    except sp.CalledProcessError as e:
-        raise Exception(f"Error sending log message to journal: {e}")
-
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)

@@ -3,9 +3,13 @@ Copyright (C) 2015-2024, Wazuh Inc.
 Created by Wazuh, Inc. <info@wazuh.com>.
 This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
+from os.path import join as path_join
+
+
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths import WAZUH_PATH
 
 def build_tc_config(tc_conf_list):
     '''
@@ -40,8 +44,6 @@ def build_tc_config(tc_conf_list):
 def assert_list_logs(regex_messages: list):
     '''
     Asserts if the expected messages are present in the log file.
-
-    TODO: This function must guarantee the order of the logs and move to a common module
 
     Args:
         regex_messages (list): List of regular expressions to search in the log file.
@@ -93,3 +95,28 @@ def assert_not_list_logs(regex_messages: list):
     for regex in regex_messages:
         log_monitor.start(callback=callbacks.generate_callback(regex), timeout=0)
         assert (log_monitor.callback_result == None), f'Received the expected messages in the log file. Expected: {regex}'
+
+# Journal functions
+def send_log_to_journal(conf_message):
+    '''
+    Send a log message to the journal.
+
+    This function sends a log message to the journal using the 'logger' command to avoid use third-party libraries.
+    Args:
+        conf_message (dic): The message to send to the journal, with the following fields:
+            - message (str): The message to send to the journal.
+            - tag (str): The tag of the message. Default is 'wazuh-itest'.
+            - priority (str): The priority of the message. Default is 'info'.
+    '''
+    import subprocess as sp
+
+    # Send the log message to the journal
+    try:
+        tag = conf_message['tag'] if 'tag' in conf_message else 'wazuh-itest'
+        priority = conf_message['priority'] if 'priority' in conf_message else 'info'
+        message = conf_message['message']
+        if not message:
+            raise Exception("The message field is required in the configuration.")
+        sp.run(['logger', '-t', tag, '-p', priority, message], check=True)
+    except sp.CalledProcessError as e:
+        raise Exception(f"Error sending log message to journal: {e}")
