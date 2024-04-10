@@ -270,6 +270,8 @@ int w_journal_context_create(w_journal_context_t ** ctx) {
     ret = (*ctx)->lib->open(&((*ctx)->journal), W_SD_JOURNAL_LOCAL_ONLY);
     if (ret < 0) {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_OPEN, strerror(-ret));
+        dlclose((*ctx)->lib->handle);
+        os_free((*ctx)->lib);
         os_free(*ctx);
     }
     return ret;
