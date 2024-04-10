@@ -110,6 +110,13 @@ function ExtractDebugSymbols(){
 
 		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -Wait -WindowStyle Hidden
 	}
+
+    #compress every pdb file in current folder
+	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
+	Write-Host "Compressing debug symbols to debug-symbols.zip"
+	Compress-Archive -Path $pdbFiles -Force -DestinationPath ".\debug-symbols.zip"
+
+	Remove-Item -Path "*.pdb"
 }
 
 ############################
