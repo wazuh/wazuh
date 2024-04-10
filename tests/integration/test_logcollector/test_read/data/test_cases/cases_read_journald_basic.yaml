@@ -11,7 +11,6 @@
       - '\w+ \d+ \d+:\d+:\d+ \S+ \S+\[\d+]: This is a message from journald 1'
       - '\w+ \d+ \d+:\d+:\d+ \S+ \S+\[\d+]: This is a message from journald 2'
       - '\w+ \d+ \d+:\d+:\d+ \S+ \S+\[\d+]: This is a message from journald 3'
-    # dont_expected_logs: TODO Implement thiic
     input_logs:
       - message: This is a message from journald 1
       - message: This is a message from journald 2
@@ -27,7 +26,6 @@
           value: journald
       - filter:
            value: test-IT-tag-\d
-           #value: test-IT-tag-\d|other-tag
            attributes:
              - field: SYSLOG_IDENTIFIER
              - ignore_if_missing: 'no'
