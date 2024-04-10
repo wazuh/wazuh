@@ -44,6 +44,7 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
+                    "agentName": "ContentProviderTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",

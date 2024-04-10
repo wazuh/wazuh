@@ -48,6 +48,7 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
+                    "agentName": "ContentModuleFacadeTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",

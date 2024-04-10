@@ -27,7 +27,6 @@
 #include <string>
 
 const std::string GENERIC_OUTPUT_FOLDER_PATH {std::filesystem::temp_directory_path() / "output_folder"};
-const std::string DEFAULT_AGENT_NAME {"Wazuh ContentManager"};
 
 /**
  * @class ExecutionContext
@@ -199,11 +198,12 @@ private:
      */
     void setHttpUserAgent(UpdaterBaseContext& context) const
     {
-        context.httpUserAgent = (context.configData.contains("agentName") &&
-                                 !context.configData.at("agentName").get_ref<const std::string&>().empty())
-                                    ? context.configData.at("agentName").get<std::string>()
-                                    : DEFAULT_AGENT_NAME;
-        context.httpUserAgent += std::string("/") + __ossec_version;
+        if (!context.configData.contains("agentName") ||
+            context.configData.at("agentName").get_ref<const std::string&>().empty())
+        {
+            throw std::invalid_argument {"Missing or empty agentName"};
+        }
+        context.httpUserAgent = context.configData.at("agentName").get<std::string>() + "/" + __ossec_version;
     }
 
 public:

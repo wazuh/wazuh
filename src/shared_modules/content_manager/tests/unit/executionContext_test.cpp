@@ -294,31 +294,26 @@ TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
  */
 TEST_F(ExecutionContextTest, HttpUserAgentSet)
 {
-    const std::string agentName {"ExecutionContextTest"};
-    m_spUpdaterBaseContext->configData["agentName"] = agentName;
-
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, agentName + "/" + __ossec_version);
+    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, m_agentName + "/" + __ossec_version);
 }
 
 /**
- * @brief Tests the correct set of the default HTTP user agent context member when the input agent name is empty.
+ * @brief Test the correct exception generation when the agentName config is empty.
  *
  */
-TEST_F(ExecutionContextTest, DefaultHttpUserAgentSetEmptyInput)
+TEST_F(ExecutionContextTest, HttpUserAgentSetEmptyInputThrow)
 {
     m_spUpdaterBaseContext->configData["agentName"] = "";
-
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, DEFAULT_AGENT_NAME + "/" + __ossec_version);
+    EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
 }
 
 /**
- * @brief Tests the correct set of the default HTTP user agent context member.
+ * @brief Test the correct exception generation when the agentName config is not present.
  *
  */
 TEST_F(ExecutionContextTest, DefaultHttpUserAgentSet)
 {
-    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, DEFAULT_AGENT_NAME + "/" + __ossec_version);
+    m_spUpdaterBaseContext->configData.erase("agentName");
+    EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
 }
