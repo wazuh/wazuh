@@ -113,33 +113,6 @@ async def unauthorized_error_handler(request: ConnexionRequest,
                          status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
 
 
-async def bad_request_error_handler(request: ConnexionRequest,
-                                    exc: exceptions.BadRequestProblem) -> ConnexionResponse:
-    """Bad Request Exception Error handler.
-    
-    Parameters
-    ----------
-    request : ConnexionRequest
-        Incomming request.
-    exc : BadRequestProblem
-        Raised exception.
-
-    Returns
-    -------
-    Response
-        HTTP Response returned to the client.
-    """
-
-    problem = {
-        "title": 'Bad Request',
-    }
-    if exc.detail:
-        problem['detail'] = exc.detail
-
-    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
-                         status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
-
-
 async def http_error_handler(request: ConnexionRequest,
                              exc: exceptions.HTTPException) -> ConnexionResponse:
     """HTTPError Exception Error handler.
