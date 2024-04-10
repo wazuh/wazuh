@@ -31,6 +31,15 @@
     },
     {
       "geoip": {
+        "field": "data.src_ip",
+        "target_field": "GeoLocation",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
         "field": "data.win.eventdata.ipAddress",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
