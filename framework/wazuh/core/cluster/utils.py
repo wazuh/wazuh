@@ -63,7 +63,7 @@ def validate_haproxy_helper_config(helper_config: dict) -> dict:
     Raises
     ------
     WazuhError (3004)
-        If some value have an invalid type.
+        If some value has an invalid type.
     """
     if helper_config[HAPROXY_DISABLED] == NO:
         helper_config[HAPROXY_DISABLED] = False
@@ -71,6 +71,7 @@ def validate_haproxy_helper_config(helper_config: dict) -> dict:
         helper_config[HAPROXY_DISABLED] = True
 
     for field in [
+        HAPROXY_PORT,
         FREQUENCY,
         AGENT_RECONNECTION_STABILITY_TIME,
         AGENT_RECONNECTION_TIME,
@@ -144,9 +145,9 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         raise WazuhError(3004, extra_message="Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster[DISABLED] == 'no':
+    if config_cluster[DISABLED] == NO:
         config_cluster[DISABLED] = False
-    elif config_cluster[DISABLED] == 'yes':
+    elif config_cluster[DISABLED] == YES:
         config_cluster[DISABLED] = True
     elif not isinstance(config_cluster[DISABLED], bool):
         raise WazuhError(3004,
