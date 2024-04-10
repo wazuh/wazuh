@@ -302,6 +302,18 @@ TEST_F(ExecutionContextTest, HttpUserAgentSet)
 }
 
 /**
+ * @brief Tests the correct set of the default HTTP user agent context member when the input agent name is empty.
+ *
+ */
+TEST_F(ExecutionContextTest, DefaultHttpUserAgentSetEmptyInput)
+{
+    m_spUpdaterBaseContext->configData["agentName"] = "";
+
+    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
+    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, DEFAULT_AGENT_NAME + "/" + __ossec_version);
+}
+
+/**
  * @brief Tests the correct set of the default HTTP user agent context member.
  *
  */

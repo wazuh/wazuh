@@ -199,9 +199,10 @@ private:
      */
     void setHttpUserAgent(UpdaterBaseContext& context) const
     {
-        context.httpUserAgent = context.configData.contains("agentName")
-                                    ? context.configData.at("agentName").get<std::string>()
-                                    : DEFAULT_AGENT_NAME;
+        context.httpUserAgent =
+            (context.configData.contains("agentName") && !context.configData.at("agentName").empty())
+                ? context.configData.at("agentName").get<std::string>()
+                : DEFAULT_AGENT_NAME;
         context.httpUserAgent += std::string("/") + __ossec_version;
     }
 
