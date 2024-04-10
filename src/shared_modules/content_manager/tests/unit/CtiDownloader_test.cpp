@@ -45,8 +45,8 @@ private:
      */
     void download(UpdaterContext& context) override
     {
-        m_parameters = std::make_shared<CtiBaseParameters>(getCtiBaseParameters(
-            context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>(), "CtiDummyDownloader"));
+        m_parameters = std::make_shared<CtiBaseParameters>(
+            getCtiBaseParameters(context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()));
     }
 
     std::shared_ptr<CtiBaseParameters> m_parameters; ///< Parameters used on tests.

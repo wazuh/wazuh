@@ -109,10 +109,9 @@ protected:
      * @brief Get the CTI API base parameters.
      *
      * @param ctiURL Base URL from where to download the CTI parameters.
-     * @param userAgent HTTP user agent.
      * @return struct CtiBaseParameters Base parameters of the CTI API.
      */
-    CtiBaseParameters getCtiBaseParameters(const std::string& ctiURL, const std::string& userAgent)
+    CtiBaseParameters getCtiBaseParameters(const std::string& ctiURL)
     {
         nlohmann::json rawMetadata;
 
@@ -136,7 +135,7 @@ protected:
                               }};
 
         // Make a get request to the API to get the consumer offset.
-        performQueryWithRetry(ctiURL, onSuccess, userAgent);
+        performQueryWithRetry(ctiURL, onSuccess);
 
         // Return if interrupted.
         if (m_spUpdaterContext->spUpdaterBaseContext->spStopCondition->check())
@@ -184,13 +183,11 @@ protected:
      *
      * @param URL URL to download from.
      * @param onSuccess Callback on success download.
-     * @param userAgent HTTP user agent.
      * @param queryParameters Parameters to the GET query.
      * @param outputFilepath File where to store the downloaded content.
      */
     void performQueryWithRetry(const std::string& URL,
                                const std::function<void(const std::string&)>& onSuccess,
-                               const std::string& userAgent,
                                const std::string& queryParameters = "",
                                const std::string& outputFilepath = "") const
     {
@@ -221,8 +218,13 @@ protected:
         {
             try
             {
-                m_urlRequest.get(
-                    HttpURL(URL + queryParameters), onSuccess, onError, outputFilepath, DEFAULT_HEADERS, {}, userAgent);
+                m_urlRequest.get(HttpURL(URL + queryParameters),
+                                 onSuccess,
+                                 onError,
+                                 outputFilepath,
+                                 DEFAULT_HEADERS,
+                                 {},
+                                 m_spUpdaterContext->spUpdaterBaseContext->httpUserAgent);
                 return;
             }
             catch (const cti_server_error& e)
