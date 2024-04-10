@@ -727,6 +727,82 @@ static void test_w_journal_context_create_journal_open_fail(void **state) {
 
 }
 
+// Test w_journal_context_free
+
+// Test case for freeing a NULL context
+static void test_w_journal_context_free_null(void **state) {
+    w_journal_context_t *ctx = NULL;
+    w_journal_context_free(ctx); // Should not cause any issues
+    
+    // Assert
+    assert_null(ctx);
+}
+
+// Test case for freeing a valid context
+static void test_w_journal_context_free_valid(void **state) {
+    // test_w_journal_context_create_success
+    // Define a pointer to w_journal_context_t
+    w_journal_context_t *ctx = NULL;
+
+    // Expectativas de llamada a w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *)0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE *maps_file = (FILE *)0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char *simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_root_owned
+
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    void *handle = (void *)1; // Simulate handle
+    void *mock_function = (void *)0xabcdef;
+
+    // Set expectations for dlsym wrap
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+
+    return_lib_open = 0;
+    w_journal_context_create(&ctx);
+
+    expect_value(__wrap_dlclose, handle, (void *)0x123456); // Mocked handle
+    will_return(__wrap_dlclose, 0); // Simulate dlclose success
+
+    // Perform the function under test
+    w_journal_context_free(ctx);
+
+    // No need to check the memory deallocation of ctx since it's freed
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -749,7 +825,9 @@ int main(void) {
         cmocka_unit_test(test_w_journal_context_create_success),
         cmocka_unit_test(test_w_journal_context_create_null_pointer),
         cmocka_unit_test(test_w_journal_context_create_lib_init_fail),
-        cmocka_unit_test(test_w_journal_context_create_journal_open_fail)
+        cmocka_unit_test(test_w_journal_context_create_journal_open_fail),
+        cmocka_unit_test(test_w_journal_context_free_valid)
+
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
