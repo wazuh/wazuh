@@ -12,7 +12,7 @@ from freezegun import freeze_time
 
 from connexion.exceptions import HTTPException, ProblemException, BadRequestProblem, Unauthorized
 from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, jwt_error_handler, \
-    http_error_handler, problem_error_handler, bad_request_error_handler, unauthorized_error_handler, \
+    http_error_handler, problem_error_handler, unauthorized_error_handler, \
     expect_failed_error_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
 from api.api_exception import ExpectFailedException
@@ -185,23 +185,6 @@ async def test_problem_error_handler(title, detail, ext, error_type, mock_reques
     assert response.status_code == 400
     assert response.content_type == ERROR_CONTENT_TYPE
     assert body == problem
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('detail', [None, 'detail'])
-async def test_bad_request_error_handler(detail, mock_request):
-    """Test bad request error handler."""
-    problem = {
-        "title": 'Bad Request',
-    }
-    problem.update({'detail': detail} if detail else {})
-
-    exc = BadRequestProblem(detail=detail)
-    response = await bad_request_error_handler(mock_request, exc)
-    body = json.loads(response.body)
-    assert body == problem
-    assert response.status_code == exc.status_code
-    assert response.content_type == ERROR_CONTENT_TYPE
 
 
 @pytest.mark.asyncio
