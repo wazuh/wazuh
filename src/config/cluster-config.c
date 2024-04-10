@@ -125,29 +125,29 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
             for (j = 0; child[j]; j++) {
                 if (!strcmp(child[j]->element, haproxy_disabled)) {
                     if (strcmp(child[j]->content, "yes") && strcmp(child[j]->content, "no")) {
-                        merror("Detected a not allowed value for disabled tag '%s'. Valid values are 'yes' and 'no'.", child[j]->element);
+                        merror("Detected an invalid value for the disabled tag '%s'. Valid values are 'yes' and 'no'.", child[j]->element);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, frequency)) {
                 } else if (!strcmp(child[j]->element, haproxy_address)) {
                     if (!strlen(node[i]->content)) {
-                        merror("HAProxy address is empty in configuration");
+                        merror("HAProxy address is missing in the configuration");
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_port)) {
                 } else if (!strcmp(child[j]->element, haproxy_protocol)) {
                     if (strcmp(child[j]->content, "http") && strcmp(child[j]->content, "https")) {
-                        merror("Detected a not allowed value for haproxy_protocol tag '%s'. Valid values are 'http' and 'https'.", child[j]->element);
+                        merror("Detected an invalid value for the haproxy_protocol tag '%s'. Valid values are 'http' and 'https'.", child[j]->element);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_user)) {
                     if (!strlen(node[i]->content)) {
-                        merror("HAProxy user is empty in configuration");
+                        merror("HAProxy user is missing in the configuration");
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_password)) {
                     if (!strlen(node[i]->content)) {
-                        merror("HAProxy password is empty in configuration");
+                        merror("HAProxy password is missing in the configuration");
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_backend)) {
