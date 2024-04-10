@@ -8781,6 +8781,15 @@ paths:
                       - type: object
                         description: "The output format depends on the type of file that has been requested: rootkit
                         file, rootkit trojans or rcl"
+            application/xml:
+              schema:
+                properties:
+                  data:
+                    oneOf:
+                      - type: array
+                      - type: object
+                        description: "The output format depends on the type of file that has been requested: rootkit
+                        file, rootkit trojans or rcl"
               example:
                 data:
                   vars: None
@@ -11864,6 +11873,14 @@ paths:
           description: "Wazuh configuration"
           content:
             application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+                - type: object
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/WazuhManagerConfiguration'
+            application/xml:
               schema:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
