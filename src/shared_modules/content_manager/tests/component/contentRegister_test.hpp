@@ -42,7 +42,7 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
-                    "agentName": "ContentRegisterTest",
+                    "consumerName": "ContentRegisterTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",

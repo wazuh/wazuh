@@ -55,7 +55,7 @@ protected:
                 "interval": 1,
                 "ondemand": true,
                 "configData": {
-                    "agentName": "ActionOrchestratorTest",
+                    "consumerName": "ActionOrchestratorTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",

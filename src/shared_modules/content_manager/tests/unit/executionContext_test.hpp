@@ -37,8 +37,8 @@ protected:
     const std::filesystem::path m_databasePath {"/tmp/database"};        ///< Path used to store the database files.
     const std::filesystem::path m_outputFolder {"/tmp/content_manager"}; ///< Path used to store the output files.
     std::shared_ptr<ConditionSync> m_spStopActionCondition {
-        std::make_shared<ConditionSync>(false)};            ///< Stop condition wrapper
-    const std::string m_agentName {"ExecutionContextTest"}; ///< Test agent name.
+        std::make_shared<ConditionSync>(false)};               ///< Stop condition wrapper
+    const std::string m_consumerName {"ExecutionContextTest"}; ///< Test agent name.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -52,7 +52,7 @@ protected:
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spUpdaterBaseContext->configData["outputFolder"] = m_outputFolder.string();
-        m_spUpdaterBaseContext->configData["agentName"] = m_agentName;
+        m_spUpdaterBaseContext->configData["consumerName"] = m_consumerName;
     }
 
     /**

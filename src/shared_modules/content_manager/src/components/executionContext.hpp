@@ -198,12 +198,12 @@ private:
      */
     void setHttpUserAgent(UpdaterBaseContext& context) const
     {
-        if (!context.configData.contains("agentName") ||
-            context.configData.at("agentName").get_ref<const std::string&>().empty())
+        if (!context.configData.contains("consumerName") ||
+            context.configData.at("consumerName").get_ref<const std::string&>().empty())
         {
-            throw std::invalid_argument {"Missing or empty agentName"};
+            throw std::invalid_argument {"Missing or empty consumerName"};
         }
-        context.httpUserAgent = context.configData.at("agentName").get<std::string>() + "/" + __ossec_version;
+        context.httpUserAgent = context.configData.at("consumerName").get<std::string>() + "/" + __ossec_version;
     }
 
 public:

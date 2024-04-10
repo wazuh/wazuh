@@ -50,7 +50,7 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
-                    "agentName": "ActionTest",
+                    "consumerName": "ActionTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",

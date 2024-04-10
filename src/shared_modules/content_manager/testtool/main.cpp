@@ -33,7 +33,7 @@ static const nlohmann::json CONFIG_PARAMETERS =
             "ondemand": true,
             "configData":
             {
-                "agentName": "ContentManagerTestTool",
+                "consumerName": "ContentManagerTestTool",
                 "contentSource": "api",
                 "compressionType": "raw",
                 "versionedContent": "false",

@@ -295,25 +295,25 @@ TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
 TEST_F(ExecutionContextTest, HttpUserAgentSet)
 {
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
-    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, m_agentName + "/" + __ossec_version);
+    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, m_consumerName + "/" + __ossec_version);
 }
 
 /**
- * @brief Test the correct exception generation when the agentName config is empty.
+ * @brief Test the correct exception generation when the consumerName config is empty.
  *
  */
 TEST_F(ExecutionContextTest, HttpUserAgentSetEmptyInputThrow)
 {
-    m_spUpdaterBaseContext->configData["agentName"] = "";
+    m_spUpdaterBaseContext->configData["consumerName"] = "";
     EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
 }
 
 /**
- * @brief Test the correct exception generation when the agentName config is not present.
+ * @brief Test the correct exception generation when the consumerName config is not present.
  *
  */
 TEST_F(ExecutionContextTest, DefaultHttpUserAgentSet)
 {
-    m_spUpdaterBaseContext->configData.erase("agentName");
+    m_spUpdaterBaseContext->configData.erase("consumerName");
     EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
 }
