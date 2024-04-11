@@ -41,7 +41,9 @@
 
 # Basic configuration for journald without filters or merge
 - name: Test Journal only future events, with timestamp set in the future 
-  description: This test set the timestamp in the future, so it shuold be detected and the logs should be read in realtime before logcollector starts
+  description: | 
+          This test set the timestamp in the future, so it shuold be detected and 
+          the logs should be read in realtime before logcollector starts
   configuration_parameters:
     - - location:
           value: journald
@@ -85,7 +87,9 @@
 
 # Basic configuration for journald without filters or merge
 - name: Test Journal only future events, with timestamp set in the future 
-  description: This test set the timestamp in the future, so it shuold be detected and the logs should be read in realtime before logcollector starts
+  description: |
+        This test set the timestamp in the future, so it shuold be detected and the logs 
+        should be read in realtime before logcollector starts
   configuration_parameters:
     - - location:
           value: journald

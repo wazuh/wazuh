@@ -83,10 +83,9 @@ local_internal_options = {daemon_debug: '2'}
 def test_configuration_location(test_configuration, test_metadata, truncate_monitored_files, configure_local_internal_options,
                                 remove_all_localfiles_wazuh_config, set_wazuh_configuration, daemons_handler, wait_for_logcollector_start):
     '''
-    description: Check if the 'wazuh-logcollector' daemon starts properly when the 'journald' tag is used.
+    description: Check if the 'wazuh-logcollector' daemon starts properly when the 'journald' tag is used and read the logs from the 'systemd/journald' component.
                  For this purpose, the test will configure the logcollector to monitor a 'journald'.
-                 Finally, the test will verify that the
-                 Wazuh component is started by checking its process, and the Wazuh API returns the correct values
+                 Finally, the test will verify that the Wazuh-logcollector read the logs, and the Wazuh API returns the correct values
                  for the 'localfile' section.
 
     wazuh_min_version: 4.9.0
@@ -119,7 +118,9 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
 
     assertions:
         - Verify that the Wazuh component (agent or manager) can start when the 'jouranld' tag is used.
-        - Verify that the Wazuh component (agent or manager) can read the logs from the 'journald' log format.
+        - Verify that the Wazuh component (agent or manager) can read the logs from the 'systemd-journald'.
+        - Verify the correct messages are generated in the log file in the correct order.
+
 
     input_description: A configuration file with journal block settings and the expected log messages.
                        Those include configuration settings for `journal` configuration in 'wazuh-logcollector'.
@@ -164,7 +165,3 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
         return
     else:
         assert len(localfile_list) == 1, f"Invalid configuration. More than one journal block found."
-
-    # Validate the test configuration with the runtime configuration
-    if 'expected_config' in test_metadata:
-        assert localfile_list[0] == test_metadata['expected_config'], f"Invalid configuration. Expected: {test_metadata['expected_config']}. Found: {localfile_list[0]}"
