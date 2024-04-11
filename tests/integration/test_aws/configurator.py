@@ -133,12 +133,16 @@ class TestConfigurator:
 
                 if data["resource_type"] == "bucket":
                     data["bucket_name"] += suffix
+                    if 'vpc_name' in data:
+                        data['vpc_name'] += suffix
                     if "BUCKET_NAME" in param:
                         param["BUCKET_NAME"] += suffix
 
                 elif data["resource_type"] == "log_group":
-                    param["LOG_GROUP_NAME"] += suffix
-                    data["log_group_name"] += suffix
+                    if "LOG_GROUP_NAME" in param:
+                        param["LOG_GROUP_NAME"] += suffix
+                        data["log_group_name"] += suffix
+                        data["log_stream_name"] += suffix
 
             except KeyError:
                 raise
