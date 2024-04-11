@@ -13,10 +13,9 @@ from wazuh_testing.constants.paths.configurations import WAZUH_CONF_PATH
 from wazuh_testing.constants.daemons import LOGCOLLECTOR_DAEMON
 from wazuh_testing.modules.logcollector.patterns import LOGCOLLECTOR_MODULE_START
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils import callbacks
+from wazuh_testing.utils import callbacks, configuration
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.utils.file import truncate_file, replace_regex_in_file, write_json_file
-from wazuh_testing.utils import configuration
 
 # Logcollector internal paths
 LOGCOLLECTOR_OFE_PATH = path_join(WAZUH_PATH, 'queue', 'logcollector', 'file_status.json')
@@ -51,16 +50,14 @@ def remove_all_localfiles_wazuh_config(request):
 
 @pytest.fixture()
 def reset_ofe_status(request: pytest.FixtureRequest, test_metadata: dict):
-    """Reset the status of the logcollector only future events."""
+    """Reset the status file of the logcollector only future events."""
 
-
-    # Get the _SOURCE_REALTIME_TIMESTAMP from the last log message in the journal
-    def get_last_log_timestamp():
+    def get_journal_last_log_timestamp():
         '''
         Get the timestamp of the last log message in the journal.
 
         Returns:
-            str: Timestamp of the last log message.
+            int: The timestamp of the last log message in the journal.
         '''
         from subprocess import Popen, PIPE
         from shlex import split
@@ -78,27 +75,33 @@ def reset_ofe_status(request: pytest.FixtureRequest, test_metadata: dict):
         log_message = json.loads(output.decode())
         return log_message.get('_SOURCE_REALTIME_TIMESTAMP')
 
-    # Set the timestamp for last read log in the logcollector configuration
-    def set_ofe_timestamp_journald_logcollector():
+    def get_ofe_journald():
         '''
-        Set the timestamp for last read log in the logcollector file status (only future events).
+        Get the status of the logcollector for journald.
+
+        Set the timestamp of the last log message in the journal as the timestamp for the journald.
+        if the test_metadata contains the key 'force_timestamp', the value of this key will be used as the timestamp.
+
+        Returns:
+            dict: The status of the logcollector for journald.
         '''
 
         if 'force_timestamp' in test_metadata:
             epoch_timestamp = test_metadata['force_timestamp']
         else:
-            # get epoch timestamp for the last log message in the journal
-            epoch_timestamp = get_last_log_timestamp()
+            epoch_timestamp = get_journal_last_log_timestamp()
 
-        # update the timestamp in the logcollector file status
-        file_status: dict = {
-            "journald": {
-                "timestamp": str(epoch_timestamp)
-            }
-        }
-        write_json_file(LOGCOLLECTOR_OFE_PATH, file_status)
+        status: dict = { "timestamp": str(epoch_timestamp) }
+        return status
+        
+    # File status for logcollector
+    file_status: dict = {}
 
-    set_ofe_timestamp_journald_logcollector()
+    # Configure the file status for each logreader
+    file_status['journald'] = get_ofe_journald()
+    
+    # Write the file status
+    write_json_file(LOGCOLLECTOR_OFE_PATH, file_status)
 
 @pytest.fixture()
 def pre_send_journal_logs(request: pytest.FixtureRequest, test_metadata: dict):
@@ -106,7 +109,7 @@ def pre_send_journal_logs(request: pytest.FixtureRequest, test_metadata: dict):
     from utils import send_log_to_journal
 
     if 'pre_input_logs' not in test_metadata:
-        raise Exception(f"Log messages not found in the test metadata.")
+        raise Exception(f"The test_metadata does not contain the key 'pre_input_logs'")
     else:
         for log_message in test_metadata['pre_input_logs']:
             send_log_to_journal(log_message)
