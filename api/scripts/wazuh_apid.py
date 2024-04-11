@@ -11,7 +11,7 @@ import sys
 import warnings
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
-CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer take effect since {release} and will ' \
+CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
                         'be completely removed in the next major release.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
