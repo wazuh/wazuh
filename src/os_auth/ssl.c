@@ -118,6 +118,10 @@ SSL_CTX *get_ssl_context(const char *ciphers, int auto_method)
         goto CONTEXT_ERR;
     }
 
+    // Disable SSL/TLS renegotiation
+
+    SSL_CTX_set_options(ctx, SSL_OP_NO_RENEGOTIATION);
+
     return ctx;
 
 CONTEXT_ERR:
