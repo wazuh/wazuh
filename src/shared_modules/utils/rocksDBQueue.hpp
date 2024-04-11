@@ -54,7 +54,7 @@ public:
 
         if (const auto status = rocksdb::DB::Open(options, connectorName, &db); !status.ok())
         {
-            throw std::runtime_error("Failed to open RocksDB database");
+            throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
         }
 
         m_db.reset(db);
@@ -76,7 +76,7 @@ public:
             m_last = 0;
         }
 
-        for (; it->Valid(); it->Next())
+        while (it->Valid())
         {
             auto key = std::stoull(it->key().ToString());
             if (key > m_last)
@@ -89,6 +89,8 @@ public:
                 m_first = key;
             }
             ++m_size;
+
+            it->Next();
         }
     }
 
