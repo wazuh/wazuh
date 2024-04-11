@@ -2,6 +2,7 @@ import ipaddress
 import json
 import logging
 from enum import Enum
+from os.path import join
 from typing import Literal, Optional, TypeAlias
 
 import httpx
@@ -73,7 +74,7 @@ class ProxyBalanceAlgorithm(Enum):
 class ProxyAPI:
     """Wrapper for calling HAProxy REST API"""
 
-    HAP_ENDPOINT = '/v2'
+    HAP_ENDPOINT = 'v2'
 
     def __init__(
         self,
@@ -104,7 +105,7 @@ class ProxyAPI:
         try:
             async with httpx.AsyncClient(verify=False) as client:
                 response = await client.get(
-                    f'{self.protocol}://{self.address}:{self.port}/{self.HAP_ENDPOINT}/health',
+                    join(f'{self.protocol}://', f'{self.address}:{self.port}', self.HAP_ENDPOINT, 'health'),
                     auth=(self.username, self.password),
                 )
                 if response.status_code == 401:
@@ -150,7 +151,7 @@ class ProxyAPI:
         """
         context_tag.set(self.tag)
         version_key = '_version'
-        uri = f'{self.protocol}://{self.address}:{self.port}{self.HAP_ENDPOINT}/{endpoint}'
+        uri = join(f'{self.protocol}://', f'{self.address}:{self.port}', self.HAP_ENDPOINT, endpoint)
         query_parameters = query_parameters or {}
         query_parameters.update({'version': self.version})
 
@@ -186,7 +187,7 @@ class ProxyAPI:
     async def update_configuration_version(self):
         """Get the last version of the configuration schema and set it."""
 
-        configuration_version = await self._make_hap_request('/services/haproxy/configuration/version')
+        configuration_version = await self._make_hap_request('services/haproxy/configuration/version')
         self.version = configuration_version
 
     async def get_runtime_info(self) -> PROXY_API_RESPONSE:
@@ -197,7 +198,7 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             The runtime information.
         """
-        return (await self._make_hap_request('/services/haproxy/runtime/info'))[0]['info']
+        return (await self._make_hap_request('services/haproxy/runtime/info'))[0]['info']
 
     async def get_global_configuration(self) -> dict:
         """Get the global configuration from HAProxy.
@@ -207,7 +208,7 @@ class ProxyAPI:
         dict
             The current global configuration.
         """
-        return (await self._make_hap_request('/services/haproxy/configuration/global'))['data']
+        return (await self._make_hap_request('services/haproxy/configuration/global'))['data']
 
     async def update_global_configuration(self, new_configuration: dict):
         """Apply the new global configuration.
@@ -218,7 +219,7 @@ class ProxyAPI:
             New global configuration to apply.
         """
         await self._make_hap_request(
-            '/services/haproxy/configuration/global', json_body=new_configuration, method=ProxyAPIMethod.PUT
+            'services/haproxy/configuration/global', json_body=new_configuration, method=ProxyAPIMethod.PUT
         )
 
     async def get_backends(self) -> PROXY_API_RESPONSE:
@@ -229,7 +230,7 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             Information of configured backends.
         """
-        return await self._make_hap_request(endpoint='/services/haproxy/configuration/backends')
+        return await self._make_hap_request(endpoint='services/haproxy/configuration/backends')
 
     async def add_backend(
         self,
@@ -257,7 +258,7 @@ class ProxyAPI:
         json_body = {'name': name, 'mode': mode.value, 'balance': {'algorithm': algorithm.value}}
 
         return await self._make_hap_request(
-            '/services/haproxy/configuration/backends',
+            'services/haproxy/configuration/backends',
             method=ProxyAPIMethod.POST,
             query_parameters=query_params,
             json_body=json_body,
@@ -278,11 +279,11 @@ class ProxyAPI:
         """
 
         return await self._make_hap_request(
-            '/services/haproxy/configuration/servers', query_parameters={'backend': backend}
+            'services/haproxy/configuration/servers', query_parameters={'backend': backend}
         )
 
     async def add_server_to_backend(
-        self, backend: str, server_name: str, server_address: str, port: int, resolver: Optional[str]
+        self, backend: str, server_name: str, server_address: str, port: int, resolver: Optional[str] = None
     ) -> PROXY_API_RESPONSE:
         """Add a new server to the provided backend.
 
@@ -318,7 +319,7 @@ class ProxyAPI:
         )
 
         return await self._make_hap_request(
-            '/services/haproxy/configuration/servers',
+            'services/haproxy/configuration/servers',
             method=ProxyAPIMethod.POST,
             query_parameters=query_params,
             json_body=json_body,
@@ -342,7 +343,7 @@ class ProxyAPI:
         query_params = {'backend': backend, 'force_reload': True}
 
         return await self._make_hap_request(
-            f'/services/haproxy/configuration/servers/{server_name}',
+            f'services/haproxy/configuration/servers/{server_name}',
             method=ProxyAPIMethod.DELETE,
             query_parameters=query_params,
         )
@@ -355,7 +356,7 @@ class ProxyAPI:
         PROXY_API_RESPONSE
             Information of configured frontends.
         """
-        return await self._make_hap_request(endpoint='/services/haproxy/configuration/frontends')
+        return await self._make_hap_request(endpoint='services/haproxy/configuration/frontends')
 
     async def add_frontend(
         self, name: str, port: int, backend: str, mode: CommunicationProtocol = CommunicationProtocol.TCP
@@ -382,7 +383,7 @@ class ProxyAPI:
         frontend_json_body = {'name': name, 'mode': mode.value, 'default_backend': backend}
 
         frontend_response = await self._make_hap_request(
-            '/services/haproxy/configuration/frontends',
+            'services/haproxy/configuration/frontends',
             method=ProxyAPIMethod.POST,
             query_parameters=frontend_query_params,
             json_body=frontend_json_body,
@@ -393,7 +394,7 @@ class ProxyAPI:
         bind_json_body = {'port': port, 'name': f'{frontend_name}_bind'}
 
         await self._make_hap_request(
-            '/services/haproxy/configuration/binds',
+            'services/haproxy/configuration/binds',
             method=ProxyAPIMethod.POST,
             query_parameters=bind_query_params,
             json_body=bind_json_body,
@@ -419,7 +420,7 @@ class ProxyAPI:
         query_params = {'backend': backend_name, 'name': server_name}
 
         return await self._make_hap_request(
-            f'/services/haproxy/runtime/servers/{server_name}', query_parameters=query_params
+            f'services/haproxy/runtime/servers/{server_name}', query_parameters=query_params
         )
 
     async def change_backend_server_state(
@@ -445,7 +446,7 @@ class ProxyAPI:
         json_body = {'admin_state': state.value}
 
         return await self._make_hap_request(
-            f'/services/haproxy/runtime/servers/{server_name}',
+            f'services/haproxy/runtime/servers/{server_name}',
             method=ProxyAPIMethod.PUT,
             query_parameters=query_params,
             json_body=json_body,
@@ -466,7 +467,7 @@ class ProxyAPI:
         """
         query_params = {'type': 'backend', 'name': backend_name}
 
-        return await self._make_hap_request('/services/haproxy/stats/native', query_parameters=query_params)
+        return await self._make_hap_request('services/haproxy/stats/native', query_parameters=query_params)
 
     async def get_backend_server_stats(self, backend_name: str, server_name: str) -> PROXY_API_RESPONSE:
         """Get the statistics of the provided backend server.
@@ -485,7 +486,7 @@ class ProxyAPI:
         """
         query_params = {'type': 'server', 'parent': backend_name, 'name': server_name.lower()}
 
-        return await self._make_hap_request('/services/haproxy/stats/native', query_parameters=query_params)
+        return await self._make_hap_request('services/haproxy/stats/native', query_parameters=query_params)
 
 
 class Proxy:
