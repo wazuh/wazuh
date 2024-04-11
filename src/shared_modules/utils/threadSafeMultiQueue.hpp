@@ -13,7 +13,6 @@
 #define THREAD_SAFE_MULTIQUEUE_HPP
 #include <atomic>
 #include <condition_variable>
-#include <iostream>
 #include <mutex>
 
 namespace Utils
