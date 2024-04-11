@@ -10,7 +10,8 @@
  */
 
 #include "threadSafeMultiQueue_test.hpp"
-#include <thread>
+#include <filesystem>
+#include <future>
 
 void ThreadSafeMultiQueueTest::SetUp()
 {
@@ -95,5 +96,40 @@ TEST_F(ThreadSafeMultiQueueTest, Cancel)
     queue.cancel();
     t1.join();
     EXPECT_TRUE(queue.cancelled());
+}
+
+TEST_F(ThreadSafeMultiQueueTest, Postpone)
+{
+    Utils::
+        TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+    // Get current timestamp
+    auto now = std::chrono::system_clock::now();
+
+    constexpr auto EXPECTED_COUNT_MSGS = 1;
+    auto count = 0;
+
+    std::promise<void> promise;
+    std::thread t1 {[&]()
+                    {
+                        std::future<void> future = promise.get_future();
+                        future.wait();
+                        auto data = queue.front();
+                        while (data.second.empty())
+                        {
+                            data = queue.front();
+                        }
+                        EXPECT_STREQ("DATA", data.first.data());
+                        ++count;
+                    }};
+
+    rocksdb::Slice slice("DATA");
+    queue.push("000", slice);
+    queue.postpone("000", std::chrono::seconds(5));
+    promise.set_value();
+    t1.join();
+
+    EXPECT_TRUE(std::chrono::system_clock::now() - now > std::chrono::seconds(5));
+    EXPECT_TRUE(count == EXPECTED_COUNT_MSGS);
 }
 

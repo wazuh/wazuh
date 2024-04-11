@@ -17,7 +17,7 @@
 
 namespace Utils
 {
-    constexpr auto QUEUE_CHECK_TIME = 10;
+    constexpr auto QUEUE_CHECK_TIME = 5;
 
     template<typename T, typename U, typename Tq>
     class TSafeMultiQueue
