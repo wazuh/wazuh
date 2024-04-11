@@ -12,16 +12,15 @@ on:
         default: 'auto'
       architecture:
         type: choice
-        description: 'Build .deb wazuh-agent on arm64 arch'
+        description: 'Choose the appropriate architecture for deploying the wazuh-agent.'
         required: true
         options:
           - 'x86_64'
           - 'amd64'
           - 'i386'
-          - 'aarch64'
       system:
         type: choice
-        description: 'Package format [deb, rpm]'
+        description: 'Package format [deb, rpm].'
         required: true
         options:
           - deb
@@ -104,7 +103,7 @@ jobs:
           cp $GITHUB_WORKSPACE/packages/${{ inputs.system }}s/utils/* $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
 
       - name: Copy centos-5-i386.tar.gz to Dockerfile legacy path
-        if: inputs.legacy == 'true' || inputs.legacy == true
+        if: ${{ inputs.legacy == true }}
         run: |
           cd $GITHUB_WORKSPACE/${{ env.DOCKERFILE_PATH }}
           curl -sO "https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
