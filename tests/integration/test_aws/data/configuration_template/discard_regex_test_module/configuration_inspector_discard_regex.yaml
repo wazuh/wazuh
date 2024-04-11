@@ -9,8 +9,6 @@
             attributes:
               - type: SERVICE_TYPE
             elements:
-              - aws_profile:
-                  value: qa
               - only_logs_after:
                   value: ONLY_LOGS_AFTER
               - regions:
