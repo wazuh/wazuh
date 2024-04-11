@@ -9,7 +9,6 @@ This module contains all necessary components (fixtures, classes, methods) to co
 import pytest
 from time import time
 from botocore.exceptions import ClientError
-from uuid import uuid4
 
 # qa-integration-framework imports
 from wazuh_testing.logger import logger
@@ -18,8 +17,11 @@ from wazuh_testing.modules.aws.utils import (
     upload_log_events,
     create_log_group,
     create_log_stream,
+    create_flow_log,
+    delete_vpc,
     delete_bucket,
     delete_log_group,
+    delete_log_stream,
     delete_s3_db,
     delete_services_db,
     upload_bucket_file,
@@ -114,7 +116,7 @@ def log_groups_manager():
                 "resource_name": log_group,
                 "error": str(error)
             })
-            raise
+            raise error
 
         except Exception as error:
             logger.error({
@@ -122,6 +124,7 @@ def log_groups_manager():
                 "resource_name": log_group,
                 "error": str(error)
             })
+            raise error
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -218,9 +221,16 @@ def manage_bucket_files(metadata: dict):
     # Get bucket type
     bucket_type = metadata['bucket_type']
 
+    # Check if the VPC type is the one to be tested
+    vpc_bucket = bucket_type == 'vpcflow'
+
     # Generate file
-    data, key = generate_file(bucket_type=bucket_type,
-                                   bucket_name=bucket_name)
+    if vpc_bucket:
+        # Create VPC resources
+        flow_log_id, vpc_id = create_flow_log(vpc_name=metadata['vpc_name'], bucket_name=bucket_name)
+        data, key = generate_file(bucket_type=bucket_type, bucket_name=bucket_name, flow_log_id=flow_log_id)
+    else:
+        data, key = generate_file(bucket_type=bucket_type, bucket_name=bucket_name)
 
     try:
         # Upload file to bucket
@@ -256,6 +266,11 @@ def manage_bucket_files(metadata: dict):
     try:
         # Delete all bucket files
         delete_bucket_files(bucket_name=bucket_name)
+
+        if vpc_bucket:
+            # Delete VPC resources (VPC and Flow Log)
+            delete_vpc(vpc_id=vpc_id)
+
     except ClientError as error:
         logger.error({
             "message": "Client error deleting files in bucket",
@@ -281,7 +296,7 @@ def manage_bucket_files(metadata: dict):
 @pytest.fixture()
 def create_test_log_group(log_groups_manager,
                           metadata: dict) -> None:
-    """Create a bucket.
+    """Create a log group.
 
     Parameters
     ----------
@@ -298,7 +313,7 @@ def create_test_log_group(log_groups_manager,
         create_log_group(log_group_name=log_group_name)
         logger.debug(f"Created log group: {log_group_name}")
 
-        # Append created bucket to resource list
+        # Append created log group to resource list
         log_groups_manager.add(log_group_name)
 
     except ClientError as error:
@@ -331,8 +346,8 @@ def create_test_log_stream(metadata: dict) -> None:
     # Get log group
     log_group_name = metadata['log_group_name']
 
-    # Create random stream name
-    log_stream_name = str(uuid4())
+    # Get log stream
+    log_stream_name = metadata['log_stream_name']
 
     try:
         # Create log stream
@@ -359,15 +374,14 @@ def create_test_log_stream(metadata: dict) -> None:
         raise
 
 
-@pytest.fixture()
-def create_test_events(metadata: dict) -> None:
-    """Create a log event in a log stream.
+@pytest.fixture
+def manage_log_group_events(metadata: dict):
+    """Upload events to a log stream inside a log group and delete the log stream after the test ends.
 
     Parameters
     ----------
     metadata : dict
-        Log group information.
-
+        Metadata to get the parameters.
     """
     # Get log group name
     log_group_name = metadata["log_group_name"]
@@ -379,9 +393,15 @@ def create_test_events(metadata: dict) -> None:
     event_number = metadata["expected_results"]
 
     # Generate event information
-    events = [
-        {'timestamp': int(time() * 1000), 'message': f"Test event number {i}"} for i in range(event_number)
-    ]
+    if 'discard_field' in metadata:
+        events = [
+            {'timestamp': int(time() * 1000), 'message': f'{{"message":"Test event number {i}"}}'}
+            for i in range(event_number)
+        ]
+    else:
+        events = [
+            {'timestamp': int(time() * 1000), 'message': f'Test event number {i}'} for i in range(event_number)
+        ]
 
     try:
         # Insert log events in log group
@@ -393,19 +413,45 @@ def create_test_events(metadata: dict) -> None:
 
     except ClientError as error:
         logger.error({
-            "message": "Client error creating log stream",
+            "message": "Client error uploading events to log stream",
             "log_group": log_group_name,
+            "log_stream_name": log_stream_name,
             "error": str(error)
         })
-        pass
+        raise error
 
     except Exception as error:
         logger.error({
-            "message": "Broad error creating log stream",
+            "message": "Broad error uploading events to log stream",
+            "log_group": log_group_name,
+            "log_stream_name": log_stream_name,
+            "error": str(error)
+        })
+        raise error
+
+    yield
+
+    try:
+        # Delete log_stream
+        delete_log_stream(log_stream=log_stream_name, log_group=log_group_name)
+
+    except ClientError as error:
+        logger.error({
+            "message": "Client error deleting log stream",
+            "log_stream_name": log_stream_name,
             "log_group": log_group_name,
             "error": str(error)
         })
-        pass
+        raise error
+
+    except Exception as error:
+        logger.error({
+            "message": "Broad error deleting log stream",
+            "log_stream_name": log_stream_name,
+            "log_group": log_group_name,
+            "error": str(error)
+        })
+        raise error
 
 
 """SQS fixtures"""
@@ -450,7 +496,7 @@ def set_test_sqs_queue(metadata: dict, sqs_manager) -> None:
         # Check if the sqs exist
         if error.response['Error']['Code'] == 'ResourceNotFound':
             logger.error(f"SQS Queue {sqs_name} already exists")
-            pass
+            raise error
         else:
             raise error
 

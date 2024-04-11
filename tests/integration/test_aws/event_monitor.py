@@ -223,7 +223,7 @@ def callback_detect_event_processed(line):
         return line
 
 
-def callback_detect_event_processed_or_skipped(pattern):
+def callback_detect_event_skipped(pattern):
     """Search for event processed or skipped message in the given line.
 
     Args:
@@ -232,7 +232,7 @@ def callback_detect_event_processed_or_skipped(pattern):
         Callable: Callback to match the given line.
     """
     pattern_regex = re.compile(pattern)
-    return lambda line: pattern_regex.match(line) or callback_detect_event_processed(line)
+    return lambda line: pattern_regex.match(line)
 
 
 def callback_detect_service_event_processed(expected_results, service_type):
