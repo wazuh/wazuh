@@ -137,7 +137,7 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
     const int max_line_len = OS_MAXSTR - OS_LOG_HEADER;
 
     /* Continue from last read line */
-    SHA_CTX context;
+    EVP_MD_CTX *context = NULL;
     int64_t initial_pos;
     char * raw_data = NULL;
 
@@ -172,14 +172,14 @@ void * read_multiline_regex(logreader * lf, int * rc, int drop_it) {
         }
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(&context, NULL, raw_data);
+            OS_SHA1_Stream(context, NULL, raw_data);
         }
 
         os_free(raw_data);
     }
 
     if (is_valid_context_file) {
-        w_update_file_status(lf->file, lf->multiline->offset_last_read, &context);
+        w_update_file_status(lf->file, lf->multiline->offset_last_read, context);
     }
 
     return NULL;

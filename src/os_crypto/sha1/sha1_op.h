@@ -13,6 +13,7 @@
 
 #include <sys/types.h>
 #include <openssl/sha.h>
+#include <openssl/evp.h>
 #ifdef WIN32
 #include <windef.h>
 #endif
@@ -50,7 +51,7 @@ void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output);
  * @param nbytes[in] Number of bytes to read.
  * @return 0 on success, -1 when failure opening file.
  */
-int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, int64_t nbytes);
+int OS_SHA1_File_Nbytes(const char *fname, EVP_MD_CTX **c, os_sha1 output, int mode, int64_t nbytes);
 
 /**
  * @brief If fp corresponds to fname then calculates the SHA1 of the `fname` file until N byte and save the context
@@ -65,10 +66,10 @@ int OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode,
  * @retval -2 When fp does not correspond to the `fname` file
  */
 #ifndef WIN32
-int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 output, int mode, int64_t nbytes,
+int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sha1 output, int mode, int64_t nbytes,
                                       ino_t fd_check);
 #else
-int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 output, int mode, int64_t nbytes,
+int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sha1 output, int mode, int64_t nbytes,
                                       DWORD fd_check);
 #endif
 /**
@@ -78,6 +79,6 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 o
  * @param output[out] Output string.
  * @param buf[in] String to update the SHA1 context
  */
-void OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf);
+void OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf);
 
 #endif /* SHA1_OP_H */

@@ -14,6 +14,7 @@
 #include <math.h>
 #include <pthread.h>
 #include "sysinfo_utils.h"
+#include <openssl/evp.h>
 
 // Remove STATIC qualifier from tests
 #ifdef WAZUH_UNIT_TESTING
@@ -551,6 +552,7 @@ void LogCollectorStart()
                         if (reload_file(current) == -1) {
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            EVP_MD_CTX_free(old_file_status->context);
                             os_free(old_file_status);
                             w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
@@ -626,6 +628,7 @@ void LogCollectorStart()
                             if(current->exists==1){
                                 minfo(FORGET_FILE, current->file);
                                 os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                                EVP_MD_CTX_free(old_file_status->context);
                                 os_free(old_file_status);
                                 w_logcollector_state_delete_file(current->file);
                                 current->exists = 0;
@@ -682,6 +685,7 @@ void LogCollectorStart()
                         if(current->exists==1){
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            EVP_MD_CTX_free(old_file_status->context);
                             os_free(old_file_status);
                             w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
@@ -726,6 +730,7 @@ void LogCollectorStart()
                                current->file);
 
                         os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                        EVP_MD_CTX_free(old_file_status->context);
                         os_free(old_file_status);
                         w_logcollector_state_delete_file(current->file);
 
@@ -760,6 +765,7 @@ void LogCollectorStart()
 
                         /* Get new file */
                         os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                        EVP_MD_CTX_free(old_file_status->context);
                         os_free(old_file_status);
                         w_logcollector_state_delete_file(current->file);
 
@@ -855,6 +861,7 @@ void LogCollectorStart()
                         if (!PathFileExists(current->file)) {
 #endif
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
+                            EVP_MD_CTX_free(old_file_status->context);
                             os_free(old_file_status);
                             w_logcollector_state_delete_file(current->file);
 
@@ -2525,12 +2532,12 @@ int can_read() {
     return ret;
 }
 
-int w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
+int w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * context) {
 
     os_file_status_t * data;
     os_malloc(sizeof(os_file_status_t), data);
 
-    data->context = *context;
+    data->context = context;
 
     os_sha1 output;
     OS_SHA1_Stream(context, output, NULL);
@@ -2668,7 +2675,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
         memcpy(data->hash, hash_str, sizeof(os_sha1));
         data->offset = value_offset;
 
-        SHA_CTX context;
+        EVP_MD_CTX *context = NULL;
         os_sha1 output;
 
         if (OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset) < 0) {
@@ -2775,7 +2782,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
 
     int64_t result = 0;
 
-    SHA_CTX context;
+    EVP_MD_CTX *context = NULL;
     os_sha1 output;
 
     if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) < 0) {
@@ -2788,6 +2795,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     } else if (stat_fd.st_size - data->offset > lf->diff_max_size) {
         result = w_set_to_pos(lf, 0, SEEK_END);
     } else {
+        EVP_MD_CTX_free(context);
         return w_set_to_pos(lf, data->offset, SEEK_SET);
     }
 
@@ -2797,6 +2805,7 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
         }
     }
 
+    EVP_MD_CTX_free(context);
     return result;
 }
 
@@ -2812,7 +2821,7 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
 
     data->offset = pos;
 
-    SHA_CTX context;
+    EVP_MD_CTX *context = NULL;
     os_sha1 output;
 
     if (OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos) < 0) {
@@ -2849,7 +2858,7 @@ STATIC int64_t w_set_to_pos(logreader * lf, int64_t pos, int mode) {
     return w_ftell(lf->fp);
 }
 
-bool w_get_hash_context(logreader *lf, SHA_CTX * context, int64_t position) {
+bool w_get_hash_context(logreader *lf, EVP_MD_CTX ** context, int64_t position) {
 
     os_file_status_t * data = (os_file_status_t *) OSHash_Get_ex(files_status, lf->file);
 
