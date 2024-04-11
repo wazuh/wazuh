@@ -9,14 +9,13 @@ from os.path import join as path_join
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.paths import WAZUH_PATH
 
 def build_tc_config(tc_conf_list):
     '''
     Build the configuration for each test case.
 
     Args:
-        tc_conf_list (list): List of test case configurations.
+        tc_conf_list (list): List of test case localfile configurations.
 
     Returns:
         list: List of configurations for each test case.
@@ -43,7 +42,7 @@ def build_tc_config(tc_conf_list):
 
 def assert_list_logs(regex_messages: list):
     '''
-    Asserts if the expected messages are present in the log file.
+    Asserts if the expected messages are present in the log file in the expected order.
 
     Args:
         regex_messages (list): List of regular expressions to search in the log file.
@@ -51,7 +50,7 @@ def assert_list_logs(regex_messages: list):
 
     def get_epoch_timestamp(log):
         '''
-        Get the timestamp of the log message in epocj format.
+        Get the timestamp of the log message in epoch format.
 
         Args:
             log (str): Log message.
@@ -97,7 +96,7 @@ def assert_not_list_logs(regex_messages: list):
         assert (log_monitor.callback_result == None), f'Received the expected messages in the log file. Expected: {regex}'
 
 # Journal functions
-def send_log_to_journal(conf_message):
+def send_log_to_journal(conf_message: dict):
     '''
     Send a log message to the journal.
 
