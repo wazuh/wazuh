@@ -168,9 +168,12 @@ function build_package() {
     # create package
     if packagesbuild ${AGENT_PKG_FILE} --build-folder "${DESTINATION}/" ; then
         echo "The wazuh agent package for macOS has been successfully built."
-        cp -R "${SOURCES_DIRECTORY}/wazuh/src/symbols" "${DESTINATION}"
-        zip -r "${DESTINATION}/symbols.zip" "${DESTINATION}/symbols"
-        rm -rf "${DESTINATION}/symbols"
+        symbols_pkg_name=$(echo "${pkg_name}" | tr '\n' ' ' | cut -d ' ' -f 1)
+        symbols_pkg_name="${symbols_pkg_name}_debug_symbols"
+        echo "Parte deseada: ${symbols_pkg_name}"
+        cp -R "${SOURCES_DIRECTORY}/wazuh/src/symbols"  "${DESTINATION}"
+        zip -r "${DESTINATION}${symbols_pkg_name}.zip" "${DESTINATION}symbols"
+        rm -rf "${DESTINATION}symbols"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
             shasum -a512 "${DESTINATION}/${pkg_name}" > "${DESTINATION}/${pkg_name}.sha512"
