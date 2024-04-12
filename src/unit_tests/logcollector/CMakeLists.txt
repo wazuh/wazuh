@@ -112,7 +112,12 @@ else()
     list(APPEND logcollector_flags "-Wl,--wrap,stat -Wl,--wrap,_mwarn -Wl,--wrap,dlsym -Wl,--wrap,dlerror -Wl,--wrap,gettimeofday \
                                     -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
                                     -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
-                                    -Wl,--wrap,fgetpos -Wl,--wrap,gmtime_r -Wl,--wrap,getline -Wl,--wrap,dlopen -Wl,--wrap,dlclose")
+                                    -Wl,--wrap,fgetpos -Wl,--wrap,gmtime_r -Wl,--wrap,getline -Wl,--wrap,dlopen -Wl,--wrap,dlclose \
+                                    -Wl,--wrap,sd_journal_open -Wl,--wrap,sd_journal_close -Wl,--wrap,sd_journal_previous \
+                                    -Wl,--wrap,sd_journal_next -Wl,--wrap,sd_journal_seek_tail \
+                                    -Wl,--wrap,sd_journal_seek_realtime_usec -Wl,--wrap,sd_journal_get_realtime_usec \
+                                    -Wl,--wrap,sd_journal_get_data -Wl,--wrap,sd_journal_restart_data \
+                                    -Wl,--wrap,sd_journal_enumerate_data -Wl,--wrap,sd_journal_get_cutoff_realtime_usec")
 endif()
 
 list(LENGTH logcollector_names count)
