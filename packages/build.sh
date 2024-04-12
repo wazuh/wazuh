@@ -117,4 +117,4 @@ build_deps $legacy
 build_package $package_name $debug "$short_commit_hash" "$wazuh_version"
 
 # Post-processing
-get_checksum $wazuh_version $short_commit_hash $src
+get_package_and_checksum $wazuh_version $short_commit_hash $src
