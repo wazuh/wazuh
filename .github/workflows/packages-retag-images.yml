@@ -1,0 +1,47 @@
+name: Package - Retag Docker images
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: |
+          Tag name of the Docker image to be uploaded
+          (Use developer to set branch name.
+          Use auto to set src/VERSION content)
+        required: false
+        default: auto
+  push:
+      branches: 
+          - '[0-9]+.[0-9]+.[0-9]+'
+      paths:
+          - 'src/VERSION'
+
+jobs:
+  Upload-package-building-images:
+    runs-on: ubuntu-latest
+    name: Package - Retag Docker images
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test commit
+        run: |
+          echo $(git log -1)
+        
+      - name: Checkout repository previous commit
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 2
+      - run: git checkout HEAD^
+
+      - name: Test commit
+        run: |
+          echo $(git log -1)
