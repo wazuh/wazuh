@@ -170,7 +170,6 @@ function build_package() {
         echo "The wazuh agent package for macOS has been successfully built."
         symbols_pkg_name=$(echo "${pkg_name}" | tr '\n' ' ' | cut -d ' ' -f 1)
         symbols_pkg_name="${symbols_pkg_name}_debug_symbols"
-        echo "Parte deseada: ${symbols_pkg_name}"
         cp -R "${SOURCES_DIRECTORY}/wazuh/src/symbols"  "${DESTINATION}"
         zip -r "${DESTINATION}${symbols_pkg_name}.zip" "${DESTINATION}symbols"
         rm -rf "${DESTINATION}symbols"
