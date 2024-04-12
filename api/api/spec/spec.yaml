@@ -5145,6 +5145,7 @@ components:
                 format: int32
               node_name:
                 type: string
+                format: alphanumeric_symbols
         groups:
           type: array
           description: "Recount of the number of Wazuh agents group by Wazuh groups"
