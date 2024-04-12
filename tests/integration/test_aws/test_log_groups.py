@@ -17,12 +17,14 @@ from wazuh_testing.modules.aws.patterns import NON_EXISTENT_SPECIFIED_LOG_GROUPS
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
+from .configurator import configurator
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
+
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
-configurator = TestConfigurator(module='log_groups_test_module')
+configurator.module = 'log_groups_test_module'
 
 # ----------------------------------------------- TEST_AWS_LOG_GROUPS --------------------------------------------------
 # Configure T1 test
@@ -35,9 +37,9 @@ configurator.configure_test(configuration_file='configuration_log_groups.yaml',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_log_groups(
-    configuration, metadata, create_log_stream, load_wazuh_basic_configuration, set_wazuh_configuration,
-    clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
-    file_monitoring
+        configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):
     """
     description: Only the events for the specified log_group are processed.
@@ -106,7 +108,6 @@ def test_log_groups(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', 'qa',
         '--only_logs_after', '2023-JAN-12',
         '--regions', 'us-east-1',
         '--aws_log_groups', log_group_names,
