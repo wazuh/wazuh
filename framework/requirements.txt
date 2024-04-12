@@ -95,6 +95,3 @@ Werkzeug==3.0.1
 xmltodict==0.12.0
 yarl==1.7.0
 zipp==3.3.2
-content_size_limit_asgi
-uvicorn==0.24.0.post1
-content_size_limit_asgi==0.1.5
