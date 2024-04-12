@@ -126,26 +126,35 @@ class TestConfigurator:
 
         # Add suffix to metadata
         for param, data in zip(parameters, self._metadata):
-            try:
-                if "sqs_name" in data:
-                    data["sqs_name"] += suffix
-                    param["SQS_NAME"] += suffix
+            # Determine whether resource creation is required or not
+            resource_creation_required = 'resource_type' in data
 
-                if data["resource_type"] == "bucket":
-                    data["bucket_name"] += suffix
-                    if 'vpc_name' in data:
-                        data['vpc_name'] += suffix
-                    if "BUCKET_NAME" in param:
-                        param["BUCKET_NAME"] += suffix
+            if resource_creation_required:
+                try:
+                    if "sqs_name" in data:
+                        data["sqs_name"] += suffix
+                        param["SQS_NAME"] += suffix
 
-                elif data["resource_type"] == "log_group":
-                    if "LOG_GROUP_NAME" in param:
-                        param["LOG_GROUP_NAME"] += suffix
-                        data["log_group_name"] += suffix
-                        data["log_stream_name"] += suffix
+                    if data["resource_type"] == "bucket":
+                        data["bucket_name"] += suffix
+                        if 'vpc_name' in data:
+                            data['vpc_name'] += suffix
+                        if "BUCKET_NAME" in param:
+                            param["BUCKET_NAME"] += suffix
 
-            except KeyError:
-                raise
+                    elif data["resource_type"] == "log_group":
+                        if "LOG_GROUP_NAME" in param:
+                            suffixed_log_groups = []
+                            for log_group in data["log_group_name"].split(','):
+                                log_group += suffix
+                                suffixed_log_groups.append(log_group)
+                            data["log_group_name"] = ','.join(suffixed_log_groups)
+                            param["LOG_GROUP_NAME"] = data["log_group_name"]
+                            if "log_stream_name" in data:  # It is not present for basic or parser tests
+                                data["log_stream_name"] += suffix
+
+                except KeyError:
+                    raise
 
 
 # Instantiate configurator
