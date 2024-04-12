@@ -305,21 +305,26 @@ def create_test_log_group(log_groups_manager,
     metadata : dict
         Log group information.
     """
-    # Get log group name
-    log_group_name = metadata["log_group_name"]
+    # Get log group names
+    log_group_names = metadata["log_group_name"].split(',')
+
+    # If the resource_type is defined, then the resource must be created
+    resource_creation = 'resource_type' in metadata
 
     try:
-        # Create log group
-        create_log_group(log_group_name=log_group_name)
-        logger.debug(f"Created log group: {log_group_name}")
+        if resource_creation:
+            # Create log group
+            for log_group in log_group_names:
+                create_log_group(log_group_name=log_group)
+                logger.debug(f"Created log group: {log_group}")
 
-        # Append created log group to resource list
-        log_groups_manager.add(log_group_name)
+                # Append created log group to resource list
+                log_groups_manager.add(log_group)
 
     except ClientError as error:
         logger.error({
             "message": "Client error creating log group",
-            "log_group": log_group_name,
+            "log_group": log_group,
             "error": str(error)
         })
         raise
@@ -327,7 +332,7 @@ def create_test_log_group(log_groups_manager,
     except Exception as error:
         logger.error({
             "message": "Broad error creating log group",
-            "log_group": log_group_name,
+            "log_group": log_group,
             "error": str(error)
         })
         raise
@@ -343,24 +348,27 @@ def create_test_log_stream(metadata: dict) -> None:
         Log group information.
 
     """
-    # Get log group
-    log_group_name = metadata['log_group_name']
+    # Get log group names
+    log_group_names = metadata["log_group_name"].split(',')
 
     # Get log stream
     log_stream_name = metadata['log_stream_name']
 
-    try:
-        # Create log stream
-        create_log_stream(log_group=log_group_name,
-                          log_stream=log_stream_name)
-        logger.debug(f'Created log stream {log_stream_name} within log group {log_group_name}')
+    # If the resource_type is defined, then the resource must be created
+    resource_creation = 'resource_type' in metadata
 
-        metadata['log_stream'] = log_stream_name
+    try:
+        if resource_creation:
+            # Create log stream for each log group defined
+            for log_group in log_group_names:
+                create_log_stream(log_group=log_group,
+                                  log_stream=log_stream_name)
+                logger.debug(f'Created log stream {log_stream_name} within log group {log_group}')
 
     except ClientError as error:
         logger.error({
             "message": "Client error creating log stream",
-            "log_group": log_group_name,
+            "log_group": log_group,
             "error": str(error)
         })
         raise
@@ -368,7 +376,7 @@ def create_test_log_stream(metadata: dict) -> None:
     except Exception as error:
         logger.error({
             "message": "Broad error creating log stream",
-            "log_group": log_group_name,
+            "log_group": log_group,
             "error": str(error)
         })
         raise
@@ -383,8 +391,8 @@ def manage_log_group_events(metadata: dict):
     metadata : dict
         Metadata to get the parameters.
     """
-    # Get log group name
-    log_group_name = metadata["log_group_name"]
+    # Get log group names
+    log_group_names = metadata["log_group_name"].split(',')
 
     # Get log stream name
     log_stream_name = metadata["log_stream_name"]
@@ -392,29 +400,33 @@ def manage_log_group_events(metadata: dict):
     # Get number of events
     event_number = metadata["expected_results"]
 
-    # Generate event information
-    if 'discard_field' in metadata:
-        events = [
-            {'timestamp': int(time() * 1000), 'message': f'{{"message":"Test event number {i}"}}'}
-            for i in range(event_number)
-        ]
-    else:
-        events = [
-            {'timestamp': int(time() * 1000), 'message': f'Test event number {i}'} for i in range(event_number)
-        ]
+    # If the resource_type is defined, then the resource must be created
+    resource_creation = 'resource_type' in metadata
 
     try:
-        # Insert log events in log group
-        upload_log_events(
-            log_stream=log_stream_name,
-            log_group=log_group_name,
-            events=events
-        )
+        if resource_creation:
+            # Generate event information
+            if 'discard_field' in metadata:
+                events = [
+                    {'timestamp': int(time() * 1000), 'message': f'{{"message":"Test event number {i}"}}'}
+                    for i in range(event_number)
+                ]
+            else:
+                events = [
+                    {'timestamp': int(time() * 1000), 'message': f'Test event number {i}'} for i in range(event_number)
+                ]
+            for log_group in log_group_names:
+                # Insert log events in log group
+                upload_log_events(
+                    log_stream=log_stream_name,
+                    log_group=log_group,
+                    events=events
+                )
 
     except ClientError as error:
         logger.error({
             "message": "Client error uploading events to log stream",
-            "log_group": log_group_name,
+            "log_group": log_group,
             "log_stream_name": log_stream_name,
             "error": str(error)
         })
@@ -423,7 +435,7 @@ def manage_log_group_events(metadata: dict):
     except Exception as error:
         logger.error({
             "message": "Broad error uploading events to log stream",
-            "log_group": log_group_name,
+            "log_group": log_group,
             "log_stream_name": log_stream_name,
             "error": str(error)
         })
@@ -432,14 +444,16 @@ def manage_log_group_events(metadata: dict):
     yield
 
     try:
-        # Delete log_stream
-        delete_log_stream(log_stream=log_stream_name, log_group=log_group_name)
+        if resource_creation:
+            for log_group in log_group_names:
+                # Delete log_stream
+                delete_log_stream(log_stream=log_stream_name, log_group=log_group)
 
     except ClientError as error:
         logger.error({
             "message": "Client error deleting log stream",
             "log_stream_name": log_stream_name,
-            "log_group": log_group_name,
+            "log_group": log_group,
             "error": str(error)
         })
         raise error
@@ -448,7 +462,7 @@ def manage_log_group_events(metadata: dict):
         logger.error({
             "message": "Broad error deleting log stream",
             "log_stream_name": log_stream_name,
-            "log_group": log_group_name,
+            "log_group": log_group,
             "error": str(error)
         })
         raise error
