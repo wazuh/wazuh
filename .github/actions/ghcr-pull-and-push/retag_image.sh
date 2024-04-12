@@ -1,10 +1,9 @@
 set -x
 GITHUB_PUSH_SECRET=$1
 GITHUB_USER=$2
-DOCKER_IMAGE_NAME=$3
-OLD_TAG=$4
-if [ -n "$5" ]; then
-    NEW_TAG="$5"
+OLD_TAG=$3
+if [ -n "$4" ]; then
+    NEW_TAG="$4"
 else
     exit 1
 fi
