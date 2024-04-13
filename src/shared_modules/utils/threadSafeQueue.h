@@ -106,6 +106,7 @@ namespace Utils
             std::queue<U> bulkQueue;
 
             // If we have less elements than requested, wait for more elements to be pushed.
+            // coverity[missing_lock]
             if (m_queue.size() < elementsQuantity)
             {
                 m_cv.wait_for(lock,
