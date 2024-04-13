@@ -35,7 +35,7 @@ private:
         // Time from epoch + postpone time.
         std::chrono::time_point<std::chrono::system_clock> postponeTime;
 
-        ColumnFamilyQueue(std::shared_ptr<rocksdb::DB> db, rocksdb::ColumnFamilyHandle* rawHandle)
+        ColumnFamilyQueue(const std::shared_ptr<rocksdb::DB>& db, rocksdb::ColumnFamilyHandle* rawHandle)
             : Utils::ColumnFamilyRAII(db, rawHandle)
         {
         }

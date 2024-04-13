@@ -111,7 +111,10 @@ namespace Utils
                 m_cv.wait_for(lock,
                               timeout,
                               [this, elementsQuantity]()
-                              { return m_canceled.load() || m_queue.size() >= elementsQuantity; });
+                              {
+                                  // coverity[missing_lock]
+                                  return m_canceled.load() || m_queue.size() >= elementsQuantity;
+                              });
             }
 
             // If the queue is not canceled, get the elements.

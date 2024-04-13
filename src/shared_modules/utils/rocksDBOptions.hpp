@@ -26,7 +26,7 @@ namespace Utils
          * @brief Builds the table options for the RocksDB instance.
          * @return rocksdb::BlockBasedTableOptions Table options.
          */
-        static rocksdb::BlockBasedTableOptions buildTableOptions(std::shared_ptr<rocksdb::Cache> readCache)
+        static rocksdb::BlockBasedTableOptions buildTableOptions(const std::shared_ptr<rocksdb::Cache>& readCache)
         {
             if (readCache == nullptr)
             {
@@ -43,7 +43,7 @@ namespace Utils
          * @brief Builds the column family options for the RocksDB instance.
          * @return rocksdb::ColumnFamilyOptions Column family options.
          */
-        static rocksdb::ColumnFamilyOptions buildColumnFamilyOptions(std::shared_ptr<rocksdb::Cache> readCache)
+        static rocksdb::ColumnFamilyOptions buildColumnFamilyOptions(const std::shared_ptr<rocksdb::Cache>& readCache)
         {
             rocksdb::ColumnFamilyOptions columnFamilyOptions;
             // Amount of data to build up in memory (backed by an unsorted log
@@ -63,8 +63,8 @@ namespace Utils
          * @brief Builds the DB options for the RocksDB instance.
          * @return rocksdb::Options DB options.
          */
-        static rocksdb::Options buildDBOptions(std::shared_ptr<rocksdb::WriteBufferManager> writeManager,
-                                               std::shared_ptr<rocksdb::Cache> readCache)
+        static rocksdb::Options buildDBOptions(const std::shared_ptr<rocksdb::WriteBufferManager>& writeManager,
+                                               const std::shared_ptr<rocksdb::Cache>& readCache)
         {
             if (writeManager == nullptr)
             {

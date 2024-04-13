@@ -69,13 +69,15 @@ namespace Utils
                           std::chrono::seconds(QUEUE_CHECK_TIME),
                           [&queueEmpty, this]()
                           {
+                              // coverity[missing_lock]
                               queueEmpty = m_queue.empty();
                               return !queueEmpty || m_canceled;
                           });
 
             if (!m_canceled && !queueEmpty)
             {
-                const auto columnFamilyName = m_queue.getAvailableColumn();
+                // coverity[missing_lock]
+                const auto& columnFamilyName = m_queue.getAvailableColumn();
                 return std::make_pair(m_queue.front(columnFamilyName), columnFamilyName);
             }
 
