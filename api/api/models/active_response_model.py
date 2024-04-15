@@ -14,7 +14,7 @@ from api.models.base_model_ import Body
 
 class ActiveResponseModel(Body):
 
-    def __init__(self, command: str = None, custom: bool = None, arguments: list = None, alert: dict = None):
+    def __init__(self, command: str = None, arguments: list = None, alert: dict = None):
         """ActiveResponseModel body model.
 
         Parameters
