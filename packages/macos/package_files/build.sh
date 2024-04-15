@@ -13,6 +13,7 @@ SOURCES_PATH=$2
 BUILD_JOBS=$3
 DEBUG=$4
 INSTALLATION_SCRIPTS_DIR=${DESTINATION_PATH}/packages_files/agent_installation_scripts
+SEARCH_DIR=${SOURCES_PATH}/src
 
 function configure() {
     echo USER_LANGUAGE="en" > ${CONFIG}
