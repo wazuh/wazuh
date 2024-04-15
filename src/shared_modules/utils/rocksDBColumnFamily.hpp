@@ -45,8 +45,7 @@ namespace Utils
             , m_handle(rawHandle,
                        [db](rocksdb::ColumnFamilyHandle* handle)
                        {
-                           auto status = db->DestroyColumnFamilyHandle(handle);
-                           if (!status.ok())
+                           if (const auto status = db->DestroyColumnFamilyHandle(handle); !status.ok())
                            {
                                throw std::runtime_error("Failed to free RocksDB column family: " +
                                                         std::string {status.getState()});

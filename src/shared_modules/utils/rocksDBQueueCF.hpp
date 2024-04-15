@@ -28,8 +28,8 @@ class RocksDBQueueCF final
 private:
     struct ColumnFamilyQueue : public Utils::ColumnFamilyRAII
     {
-        uint64_t first = 0;
-        uint64_t last = 0;
+        uint64_t head = 0;
+        uint64_t tail = 0;
         uint64_t size = 0;
 
         // Time from epoch + postpone time.
@@ -70,8 +70,8 @@ private:
             throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
         }
         auto& element = m_columnsInstances.emplace_back(m_db, pColumnFamily);
-        element.first = 1;
-        element.last = 0;
+        element.head = 1;
+        element.tail = 0;
     }
 
     bool columnExists(std::string_view columnName) const
@@ -96,27 +96,27 @@ private:
         it->SeekToFirst();
         if (it->Valid())
         {
-            auto key = std::stoull(it->key().ToString());
-            element.first = key;
-            element.last = key;
+            const auto key = std::stoull(it->key().ToString());
+            element.head = key;
+            element.tail = key;
         }
         else
         {
-            element.first = 1;
-            element.last = 0;
+            element.head = 1;
+            element.tail = 0;
         }
 
         while (it->Valid())
         {
-            auto key = std::stoull(it->key().ToString());
-            if (key > element.last)
+            const auto key = std::stoull(it->key().ToString());
+            if (key > element.tail)
             {
-                element.last = key;
+                element.tail = key;
             }
 
-            if (key < element.first)
+            if (key < element.head)
             {
-                element.first = key;
+                element.head = key;
             }
             ++element.size;
 
@@ -219,8 +219,8 @@ public:
 
         if (it != m_columnsInstances.end())
         {
-            ++it->last;
-            if (const auto status = m_db->Put(rocksdb::WriteOptions(), it->handle(), std::to_string(it->last), data);
+            ++it->tail;
+            if (const auto status = m_db->Put(rocksdb::WriteOptions(), it->handle(), std::to_string(it->tail), data);
                 !status.ok())
             {
                 throw std::runtime_error("Failed to enqueue element");
@@ -238,12 +238,12 @@ public:
             it != m_columnsInstances.end())
         {
             // RocksDB dequeue element.
-            if (!m_db->Delete(rocksdb::WriteOptions(), it->handle(), std::to_string(it->first)).ok())
+            if (!m_db->Delete(rocksdb::WriteOptions(), it->handle(), std::to_string(it->head)).ok())
             {
                 throw std::runtime_error("Failed to dequeue element, can't delete it");
             }
 
-            ++it->first;
+            ++it->head;
             --it->size;
 
             if (it->size == 0)
@@ -326,10 +326,10 @@ public:
                                         { return columnFamily == handle.handle()->GetName(); })};
             it != m_columnsInstances.end())
         {
-            if (!m_db->Get(rocksdb::ReadOptions(), it->handle(), std::to_string(it->first), &value).ok())
+            if (!m_db->Get(rocksdb::ReadOptions(), it->handle(), std::to_string(it->head), &value).ok())
             {
                 throw std::runtime_error("Failed to get front element, column family: " + std::string {columnFamily} +
-                                         " key: " + std::to_string(it->first));
+                                         " key: " + std::to_string(it->head));
             }
         }
         else
