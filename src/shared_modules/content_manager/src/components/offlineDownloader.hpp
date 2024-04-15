@@ -58,7 +58,7 @@ private:
         // Check input file existence.
         if (!std::filesystem::exists(unprefixedUrl))
         {
-            logWarn(WM_CONTENTUPDATER, "File '%s' doesn't exist. Skipping download.", inputFilepath.string().c_str());
+            logWarn(WM_CONTENTUPDATER, "File '%s' doesn't exist.", inputFilepath.string().c_str());
             return false;
         }
 
