@@ -4075,7 +4075,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:yescrypt|md5|bigcrypt|sha256|sha512|blowfish'
+      - 'not f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:md5|bigcrypt|sha256|sha512|blowfish'
       - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD\s*\t*yescrypt'
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not implemented
