@@ -11,7 +11,7 @@ import pytest
 from freezegun import freeze_time
 
 from connexion.exceptions import HTTPException, ProblemException, BadRequestProblem, Unauthorized
-from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, jwt_error_handler, \
+from api.error_handler import _cleanup_detail_field, prevent_bruteforce_attack, \
     http_error_handler, problem_error_handler, unauthorized_error_handler, \
     expect_failed_error_handler, ERROR_CONTENT_TYPE
 from api.middlewares import LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT
@@ -88,6 +88,8 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
     problem = {
         "title": "Unauthorized",
     }
+    detail = 'test'
+    exc = Unauthorized(detail)
     mock_request.configure_mock(scope={'path': path})
     mock_request.method = method
     if path in {LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT} \
@@ -97,10 +99,9 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
         if token_info:
             mock_request.context = {'token_info': ''}
         else:
-            problem['detail'] = 'No authorization token provided'
+            problem['detail'] = detail
             mock_request.context = {}
 
-    exc = Unauthorized()
     with patch('api.error_handler.prevent_bruteforce_attack') as mock_pbfa, \
         patch('api.configuration.api_conf', new={'access': {'max_login_attempts': 1000}}):
         response = await unauthorized_error_handler(mock_request, exc)
@@ -111,21 +112,6 @@ async def test_unauthorized_error_handler(path, method, token_info, mock_request
     body = json.loads(response.body)
     assert body == problem
     assert response.status_code == exc.status_code
-    assert response.content_type == ERROR_CONTENT_TYPE
-
-
-@pytest.mark.asyncio
-async def test_jwt_error_handler(mock_request):
-    """Test jwt error handler."""
-    problem = {
-        "title": "Unauthorized",
-        "detail": "No authorization token provided"
-    }
-    response = await jwt_error_handler(mock_request, None)
-
-    body = json.loads(response.body)
-    assert body == problem
-    assert response.status_code == 401
     assert response.content_type == ERROR_CONTENT_TYPE
 
 
