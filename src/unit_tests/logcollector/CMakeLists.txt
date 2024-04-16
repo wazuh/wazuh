@@ -56,7 +56,10 @@ else()
     list(APPEND logcollector_names "test_localfile-config")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,wfopen \
                                     -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
-                                    -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,fgetpos -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,fgetpos -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} \
+                                    -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddStringToObject \
+                                    -Wl,--wrap,cJSON_AddBoolToObject -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_CreateArray \
+                                    -Wl,--wrap,cJSON_AddItemToArray")
 
     list(APPEND logcollector_names "test_state")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
