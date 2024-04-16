@@ -176,7 +176,7 @@ _update_config_default_result_kwargs = {
 }
 
 _restart_default_result_kwargs = {
-    'all_msg': f"Restart request sent to {' all specified nodes' if node_id != ' manager' else ''}",
+    'all_msg': f"Restart request sent to {'all specified nodes' if node_id != 'manager' else ''}",
     'some_msg': "Could not send restart request to some specified nodes",
     'none_msg': "Could not send restart request to any node",
     'sort_casting': ['str']
