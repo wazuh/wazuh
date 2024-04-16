@@ -112,24 +112,34 @@ def test_max_eps(test_configuration, test_metadata, configure_local_internal_opt
     tier: 1
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: dict
+            brief: Configuration values for ossec.conf.
+        - test_metadata:
+            type: dict
+            brief: Test case data.
+        - configure_local_internal_options:
             type: fixture
-            brief: Get configurations from the module.
-        - configure_environment:
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
             type: fixture
-            brief: Configure a custom environment for testing.
-        - restart_syscheckd:
+            brief: Truncate all the log files and json alerts files before and after the test execution.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Clear the 'ossec.log' file and start a new monitor.
-        - wait_for_fim_start:
+            brief: Set ossec.conf configuration.
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - daemons_handler:
             type: fixture
-            brief: Wait for realtime start, whodata start, or end of initial FIM scan.
+            brief: Handler of Wazuh daemons.
+
 
     assertions:
         - Verify that FIM events are generated for each testing file created.
         - Verify that the eps limit set in the 'max_eps' tag has not been exceeded at generating FIM events.
 
-    input_description: A test case (max_eps) is contained in external YAML file (wazuh_conf.yaml) which
+    input_description: A test case (max_eps) is contained in external YAML file (cases_max_eps.yaml) which
                        includes configuration settings for the 'wazuh-syscheckd' daemon and, these are
                        combined with the testing directory to be monitored defined in the module.
 
