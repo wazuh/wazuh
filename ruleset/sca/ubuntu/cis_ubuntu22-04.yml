@@ -805,9 +805,9 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "c:systemctl is-enabled apport.service -> r:disabled"
+      - "not c:systemctl is-enabled apport.service -> r:^active"
       - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
-      - "not c:systemctl is-active apport.service -> r:active"
+      - "not c:systemctl is-active apport.service -> r:^active"
 
   # 1.5.4 Ensure core dumps are restricted. (Automated)
   - id: 28532
