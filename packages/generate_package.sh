@@ -67,7 +67,7 @@ build_pkg() {
         # This was necessary because we don't have permission to overwrite an existing container.
         # Also, ensure that the same adjustment is made in the else condition.
         CONTAINER_NAME="pkg_${SYSTEM}_legacy_builder_${ARCHITECTURE}"
-        if [ "$SYSTEM" != "rpm"]; then
+        if [ "$SYSTEM" != "rpm" ]; then
             echo "Legacy mode is only available for RPM packages."
             clean 1
         fi
