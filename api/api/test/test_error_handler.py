@@ -199,7 +199,7 @@ async def test_expect_failed_error_handler(query_param_pretty, expected_detail):
     response = await expect_failed_error_handler(request, ExpectFailedException(detail=expected_detail) if expected_detail else None)
     
     assert response.status_code == 417
-    assert response.content_type == "application/problem+json; charset=utf-8"
+    assert response.content_type == ERROR_CONTENT_TYPE
     
     body = json.loads(response.body)
     assert body["title"] == "Expectation failed"
