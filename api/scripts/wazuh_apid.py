@@ -219,7 +219,6 @@ def start(params: dict):
 
     # Add error handlers to format exceptions
     app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)
-    app.add_error_handler(jwt.exceptions.PyJWTError, error_handler.jwt_error_handler)
     app.add_error_handler(Unauthorized, error_handler.unauthorized_error_handler)
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)

@@ -106,7 +106,7 @@ async def unauthorized_error_handler(request: ConnexionRequest,
             attempts=configuration.api_conf['access']['max_login_attempts']
         )
     else:
-        problem.update({'detail': 'No authorization token provided'} \
+        problem.update({'detail': exc.detail} \
                             if 'token_info' not in request.context \
                             else {})
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
@@ -136,30 +136,6 @@ async def http_error_handler(request: ConnexionRequest,
     }
     return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
                          status_code=exc.status_code, content_type=ERROR_CONTENT_TYPE)
-
-
-async def jwt_error_handler(request: ConnexionRequest, _: jwt.exceptions.PyJWTError) -> ConnexionResponse:
-    """JWTException Error handler.
-    
-    Parameters
-    ----------
-    request : ConnexionRequest
-        Incomming request.
-    _ : JWTError
-        Raised exception.
-        Unnamed parameter not used.
-
-    Returns
-    -------
-    Response
-        HTTP Response returned to the client.
-    """
-    problem = {
-        "title": "Unauthorized",
-        "detail": "No authorization token provided"
-    }
-    return json_response(data=problem, pretty=request.query_params.get('pretty', 'false') == 'true',
-                         status_code=401, content_type=ERROR_CONTENT_TYPE)
 
 
 async def problem_error_handler(request: ConnexionRequest, exc: exceptions.ProblemException) -> ConnexionResponse:
