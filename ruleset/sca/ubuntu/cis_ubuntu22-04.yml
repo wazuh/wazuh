@@ -4051,7 +4051,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/pam.d/common-password -> r:^\s*\t*password\s*\t*[success=1\s*\t*default=ignore]\s*\t*pam_unix.so\s*\t*obscure'
-      - 'f:/etc/pam.d/common-password -> n:^\s*\t*use_authtok\s*\t*try_first_pass\s*\t*yescrypt\s*\t*remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> n:\s*\t*use_authtok\s*\t*try_first_pass\s*\t*yescrypt\s*\t*remember=(\d+) compare >= 5'
 
   # 5.4.4 Ensure password hashing algorithm is up to date with the latest standards. (Automated)
   - id: 28664
