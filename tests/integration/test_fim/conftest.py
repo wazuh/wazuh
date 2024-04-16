@@ -15,7 +15,7 @@ from typing import Any
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
@@ -59,17 +59,31 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
     amount = test_metadata.get('files_amount')
     amount = 2 if not amount else amount
+    max_retries = 3
+    retry_delay = 1
 
     if not file.exists(path):
         file.recursive_directory_creation(path)
 
     [file.write_file(Path(path, f'test{i}.log'), 'content') for i in range(amount)]
-        # file.write_file(Path(path, f'test{i}.log'), 'content')
 
     yield
 
-    [file.remove_file(Path(path, f'test{i}.log')) for i in range(amount)]
-
+    for i in range(amount):
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                file.remove_file(Path(path, f'test{i}.log'))
+                break
+            except Exception as e:
+                print(f"Error deleting file {i}: {e}")
+                retry_count += 1
+                if retry_count == max_retries:
+                    print(f"Failed to delete file {i} after {max_retries} attempts.")
+                    break
+                else:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    sleep(retry_delay)
 
 @pytest.fixture()
 def start_monitoring() -> None:
@@ -97,19 +111,17 @@ def set_agent_config(request: pytest.FixtureRequest):
 @pytest.fixture(scope='session', autouse=True)
 def install_audit():
     """Automatically install auditd before test session on linux distros."""
-    if sys.platform == WINDOWS:
+    if sys.platform == WINDOWS or sys.platform == MACOS:
         return
 
     # Check distro
     linux_distro = distro.id()
 
-    if re.match(linux_distro, "darwin"):
-        return
-    elif re.match(linux_distro, "centos"):
+    if re.match(linux_distro, CENTOS):
         package_management = "yum"
         audit = "audit"
         option = "--assumeyes"
-    elif re.match(linux_distro, "ubuntu") or re.match(linux_distro, "debian"):
+    elif re.match(linux_distro, UBUNTU) or re.match(linux_distro, DEBIAN):
         package_management = "apt-get"
         audit = "auditd"
         option = "--yes"
