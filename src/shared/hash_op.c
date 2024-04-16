@@ -16,6 +16,8 @@ static unsigned int _os_genhash(const OSHash *self, const char *key) __attribute
 
 int _OSHash_Add(OSHash *self, const char *key, void *data, int update);
 
+pthread_mutex_t remoted_agents_state_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 /* Create hash
  * Returns NULL on error
  */
@@ -287,7 +289,9 @@ int _OSHash_Add(OSHash *self, const char *key, void *data, int update)
 
     /* Add to table */
     if (!self->table[index]) {
+        w_mutex_lock(&remoted_agents_state_mutex);
         self->table[index] = new_node;
+        w_mutex_unlock(&remoted_agents_state_mutex);
     }
     /* If there is duplicated, add to the beginning */
     else {
@@ -590,7 +594,10 @@ OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i){
 
     if (self) {
         while (*i <= self->rows) {
+            w_mutex_lock(&remoted_agents_state_mutex);
             curr_node = self->table[*i];
+            w_mutex_unlock(&remoted_agents_state_mutex);
+
             if (curr_node && curr_node->key) {
                 return curr_node;
             }
