@@ -129,9 +129,9 @@ public:
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.
-        m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+        m_readCache = rocksdb::NewLRUCache(Utils::ROCKSDB_BLOCK_CACHE_SIZE);
         // Write buffer manager is used to manage the memory used for writing data to the disk.
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(64 * 1024 * 1024);
+        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(Utils::ROCKSDB_WRITE_BUFFER_MANAGER_SIZE);
 
         rocksdb::Options options = Utils::RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
         rocksdb::ColumnFamilyOptions columnFamilyOptions = Utils::RocksDBOptions::buildColumnFamilyOptions(m_readCache);

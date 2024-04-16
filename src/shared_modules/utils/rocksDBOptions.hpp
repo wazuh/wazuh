@@ -18,6 +18,12 @@
 
 namespace Utils
 {
+    constexpr auto ROCKSDB_WRITE_BUFFER_SIZE = 64 * 1024 * 1024;
+    constexpr auto ROCKSDB_WRITE_BUFFER_MANAGER_SIZE = 64 * 1024 * 1024;
+    constexpr auto ROCKSDB_MAX_WRITE_BUFFER_NUMBER = 2;
+    constexpr auto ROCKSDB_MAX_OPEN_FILES = 256;
+    constexpr auto ROCKSDB_NUM_LEVELS = 4;
+    constexpr auto ROCKSDB_BLOCK_CACHE_SIZE = 16 * 1024 * 1024;
 
     class RocksDBOptions final
     {
@@ -48,11 +54,11 @@ namespace Utils
             rocksdb::ColumnFamilyOptions columnFamilyOptions;
             // Amount of data to build up in memory (backed by an unsorted log
             // on disk) before converting to a sorted on-disk file.
-            columnFamilyOptions.write_buffer_size = 64 * 1024 * 1024;
+            columnFamilyOptions.write_buffer_size = ROCKSDB_WRITE_BUFFER_SIZE;
             // The maximum number of write buffers that are built up in memory.
-            columnFamilyOptions.max_write_buffer_number = 2;
+            columnFamilyOptions.max_write_buffer_number = ROCKSDB_MAX_WRITE_BUFFER_NUMBER;
             // The maximum number of levels of compaction to allow.
-            columnFamilyOptions.num_levels = 4;
+            columnFamilyOptions.num_levels = ROCKSDB_NUM_LEVELS;
             // The size of the LRU cache used to prevent cold reads.
             columnFamilyOptions.table_factory.reset(rocksdb::NewBlockBasedTableFactory(buildTableOptions(readCache)));
 
@@ -84,14 +90,14 @@ namespace Utils
             // Log level for the info log.
             options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
             // The maximum number of files to keep open at the same time.
-            options.max_open_files = 256;
+            options.max_open_files = ROCKSDB_MAX_OPEN_FILES;
             // The maximum levels of compaction to allow.
-            options.num_levels = 4;
+            options.num_levels = ROCKSDB_NUM_LEVELS;
             // Amount of data to build up in memory (backed by an unsorted log
             // on disk) before converting to a sorted on-disk file.
-            options.write_buffer_size = 64 * 1024 * 1024;
+            options.write_buffer_size = ROCKSDB_WRITE_BUFFER_SIZE;
             // The maximum number of write buffers that are built up in memory.
-            options.max_write_buffer_number = 2;
+            options.max_write_buffer_number = ROCKSDB_MAX_WRITE_BUFFER_NUMBER;
 
             // The size of the LRU cache used to prevent cold reads.
             options.table_factory.reset(NewBlockBasedTableFactory(buildTableOptions(readCache)));
