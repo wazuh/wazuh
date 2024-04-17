@@ -66,7 +66,7 @@ normalize:
   - check:
       - _tls_1: regex_not_match(\\d+\\.\\d+)
     map:
-      - tls.version: concat($_tls_1, '.0')
+      - tls.version: concat_any($_tls_1, '.0')
 
   - check: int_less($http.response.status_code, 400)
     map:
