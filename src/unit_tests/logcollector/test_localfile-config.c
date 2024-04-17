@@ -423,6 +423,22 @@ void test_init_w_journal_log_config_t_fail(void ** state) {
     assert_non_null(config);
 }
 
+/* w_journal_log_config_free */
+void test_w_journal_log_config_free_null(void ** state) {
+    w_journal_log_config_t * config = NULL;
+
+    w_journal_log_config_free(NULL);
+    w_journal_log_config_free(&config);
+}
+
+void test_w_journal_log_config_free_ok(void ** state) {
+
+    w_journal_log_config_t * config = NULL;
+
+    assert_true(init_w_journal_log_config_t(&config));
+    w_journal_log_config_free(&config);
+}
+
 /* free_unit_filter */
 void test_free_unit_filter_null(void ** state) {
     _w_journal_filter_unit_t * ufilter = NULL;
@@ -467,12 +483,11 @@ void test_unit_filter_as_json_null_params(void ** state) {
     _w_journal_filter_unit_t unit = {.exp = NULL, .field = NULL, .ignore_if_missing = false};
 
     assert_null(unit_filter_as_json(NULL));
-    
-    assert_null(unit_filter_as_json(&unit));
-    
-    unit.field = "test field";
+
     assert_null(unit_filter_as_json(&unit));
 
+    unit.field = "test field";
+    assert_null(unit_filter_as_json(&unit));
 }
 
 void test_unit_filter_as_json_ok(void ** state) {
@@ -492,7 +507,7 @@ void test_unit_filter_as_json_ok(void ** state) {
     expect_string(__wrap_cJSON_AddStringToObject, string, VALID_PCRE2_REGEX);
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
 
-    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
+    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *) 1);
 
     assert_non_null(unit_filter_as_json(&unit));
 
@@ -510,14 +525,13 @@ void test_w_journal_filter_add_condition_null_params(void ** state) {
 void test_w_journal_filter_add_condition_bad_exp(void ** state) {
     w_journal_filter_t * filters = NULL;
     assert_int_not_equal(0, w_journal_filter_add_condition(&filters, "field", INVALID_PCRE2_REGEX, false));
-
 }
 
 void test_w_journal_filter_add_condition_ok_first_cond(void ** state) {
     w_journal_filter_t * filters = NULL;
-    
+
     assert_int_equal(0, w_journal_filter_add_condition(&filters, "field", VALID_PCRE2_REGEX, false));
-    
+
     assert_non_null(filters);
     assert_int_equal(1, filters->units_size);
     assert_non_null(filters->units);
@@ -526,15 +540,14 @@ void test_w_journal_filter_add_condition_ok_first_cond(void ** state) {
     assert_null(filters->units[1]);
 
     w_journal_filter_free(filters); // test w_journal_filter_free
-    
 }
 
 void test_w_journal_filter_add_condition_ok_other_cond(void ** state) {
 
     w_journal_filter_t * filters = NULL;
-    
+
     assert_int_equal(0, w_journal_filter_add_condition(&filters, "field", VALID_PCRE2_REGEX, false));
-    
+
     assert_non_null(filters);
     assert_int_equal(1, filters->units_size);
     assert_non_null(filters->units);
@@ -545,7 +558,7 @@ void test_w_journal_filter_add_condition_ok_other_cond(void ** state) {
 
     // Add second filter
     assert_int_equal(0, w_journal_filter_add_condition(&filters, "field2", VALID_PCRE2_REGEX, true));
-    
+
     assert_int_equal(2, filters->units_size);
     assert_non_null(filters->units);
     assert_non_null(filters->units[0]);
@@ -558,23 +571,38 @@ void test_w_journal_filter_add_condition_ok_other_cond(void ** state) {
 
     assert_null(filters->units[2]);
 
-    w_journal_filter_free(filters);  // test w_journal_filter_free
+    w_journal_filter_free(filters); // test w_journal_filter_free
 }
+
+/* w_journal_filter_free */
+void test_w_journal_filter_free_null(void ** state) { w_journal_filter_free(NULL); }
 
 /* Test filter_as_json */
 void test_filter_as_json_null_params(void ** state) {
-    
+
     w_journal_filter_t filter = {0};
-    
+
     assert_null(filter_as_json(NULL));
     assert_null(filter_as_json(&filter));
-    
+}
+
+void test_filter_as_json_fail_array(void ** state) {
+
+    w_journal_filter_t * filter = NULL;
+
+    assert_int_equal(0, w_journal_filter_add_condition(&filter, "test field", VALID_PCRE2_REGEX, false));
+
+    will_return(__wrap_cJSON_CreateArray, (cJSON *) NULL);
+
+    assert_null(filter_as_json(filter));
+
+    w_journal_filter_free(filter);
 }
 
 void test_filter_as_json_one_unit(void ** state) {
-    
+
     w_journal_filter_t * filter = NULL;
-    
+
     assert_int_equal(0, w_journal_filter_add_condition(&filter, "test field", VALID_PCRE2_REGEX, false));
 
     will_return(__wrap_cJSON_CreateArray, (cJSON *) 0x1);
@@ -589,17 +617,15 @@ void test_filter_as_json_one_unit(void ** state) {
     expect_string(__wrap_cJSON_AddStringToObject, name, "expression");
     expect_string(__wrap_cJSON_AddStringToObject, string, VALID_PCRE2_REGEX);
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
-    
-    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
+
+    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *) 1);
     // end: unit filter as json
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
 
-    //assert_int_equal(0, w_journal_filter_add_condition(&filter, "field2", VALID_PCRE2_REGEX, true));
-
     assert_non_null(filter_as_json(filter));
-    
+
     w_journal_filter_free(filter);
 }
 
@@ -610,7 +636,6 @@ void test_w_journal_add_filter_to_list_null_params(void ** state) {
     w_journal_filter_t filter;
     assert_false(w_journal_add_filter_to_list(&list, NULL));
     assert_false(w_journal_add_filter_to_list(NULL, &filter));
-
 }
 
 void test_w_journal_add_filter_to_list_new_list(void ** state) {
@@ -626,8 +651,6 @@ void test_w_journal_add_filter_to_list_new_list(void ** state) {
     assert_null(list[1]);
 
     os_free(list);
-
-
 }
 
 void test_w_journal_add_filter_to_list_exist_list(void ** state) {
@@ -656,10 +679,24 @@ void test_w_journal_add_filter_to_list_exist_list(void ** state) {
 }
 
 // Test w_journal_filter_list_as_json
-void test_w_journal_filter_list_as_json_null_params(void ** state) {
+void test_w_journal_filter_list_as_json_null_params(void ** state) { assert_null(w_journal_filter_list_as_json(NULL)); }
 
-    assert_null(w_journal_filter_list_as_json(NULL));
+void test_w_journal_filter_list_as_json_fail_array(void ** state) {
 
+    w_journal_filters_list_t list = NULL;
+
+    // Prepare the filter
+    w_journal_filter_t * filter = NULL;
+    assert_int_equal(0, w_journal_filter_add_condition(&filter, "test field", VALID_PCRE2_REGEX, false));
+    // Add filter to the list
+    assert_true(w_journal_add_filter_to_list(&list, filter));
+
+    // Print the list
+    // start: Print as json
+    will_return(__wrap_cJSON_CreateArray, (cJSON *) NULL);
+    assert_null(w_journal_filter_list_as_json(list));
+
+    w_journal_free_filters_list(list); // Test w_journal_free_filters_list
 }
 
 void test_w_journal_filter_list_as_json_success(void ** state) {
@@ -672,36 +709,33 @@ void test_w_journal_filter_list_as_json_success(void ** state) {
     // Add filter to the list
     assert_true(w_journal_add_filter_to_list(&list, filter));
 
-
     // Print the list
 
     // start: Print as json
     will_return(__wrap_cJSON_CreateArray, (cJSON *) 0x1);
-    
+
     // - filter_as_json
     will_return(__wrap_cJSON_CreateArray, (cJSON *) 0x1);
     // - - unit_filter_as_json
-     will_return(__wrap_cJSON_CreateObject, (void *) 0x1);
+    will_return(__wrap_cJSON_CreateObject, (void *) 0x1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "field");
     expect_string(__wrap_cJSON_AddStringToObject, string, "test field");
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
     expect_string(__wrap_cJSON_AddStringToObject, name, "expression");
     expect_string(__wrap_cJSON_AddStringToObject, string, VALID_PCRE2_REGEX);
     will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
-    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *)1);
+    will_return(__wrap_cJSON_AddBoolToObject, (cJSON *) 1);
     // - end: filter_as_json
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
-
 
     expect_function_call(__wrap_cJSON_AddItemToArray);
     will_return(__wrap_cJSON_AddItemToArray, true);
 
     assert_non_null(w_journal_filter_list_as_json(list));
 
-    w_journal_free_filters_list(list);
+    w_journal_free_filters_list(list); // Test w_journal_free_filters_list
 }
-
 
 // ------------------------------------------------
 /* journald_add_condition_to_filter */
@@ -771,6 +805,127 @@ void test_journald_add_condition_to_filter_null_regex(void ** state) {
     assert_false(journald_add_condition_to_filter(&node, &filter));
 }
 
+void test_journald_add_condition_to_filter_ingore_no(void ** state) {
+
+    xml_node node = {0};
+    node.content = VALID_PCRE2_REGEX;
+
+    w_journal_filter_t * filter = NULL;
+
+    will_return(__wrap_w_get_attr_val_by_name, "field");
+    will_return(__wrap_w_get_attr_val_by_name, "no");
+
+    // w_journal_filter_add_condition ok
+    assert_true(journald_add_condition_to_filter(&node, &filter));
+
+    assert_non_null(filter);
+    assert_int_equal(filter->units_size, 1);
+    assert_non_null(filter->units);
+    assert_non_null(filter->units[0]);
+    assert_string_equal(filter->units[0]->exp->pcre2->raw_pattern, VALID_PCRE2_REGEX);
+    assert_string_equal(filter->units[0]->field, "field");
+    assert_false(filter->units[0]->ignore_if_missing);
+    assert_null(filter->units[1]);
+
+    w_journal_filter_free(filter);
+}
+
+void test_journald_add_condition_to_filter_ingore_missing(void ** state) {
+
+    xml_node node = {0};
+    node.content = VALID_PCRE2_REGEX;
+
+    w_journal_filter_t * filter = NULL;
+
+    will_return(__wrap_w_get_attr_val_by_name, "field");
+    will_return(__wrap_w_get_attr_val_by_name, NULL);
+
+    // w_journal_filter_add_condition ok
+    assert_true(journald_add_condition_to_filter(&node, &filter));
+
+    assert_non_null(filter);
+    assert_int_equal(filter->units_size, 1);
+    assert_non_null(filter->units);
+    assert_non_null(filter->units[0]);
+    assert_string_equal(filter->units[0]->exp->pcre2->raw_pattern, VALID_PCRE2_REGEX);
+    assert_string_equal(filter->units[0]->field, "field");
+    assert_false(filter->units[0]->ignore_if_missing);
+    assert_null(filter->units[1]);
+
+    w_journal_filter_free(filter);
+}
+
+void test_journald_add_condition_to_filter_ingore_wrong(void ** state) {
+
+    xml_node node = {0};
+    node.content = VALID_PCRE2_REGEX;
+
+    w_journal_filter_t * filter = NULL;
+
+    will_return(__wrap_w_get_attr_val_by_name, "field");
+    will_return(__wrap_w_get_attr_val_by_name, "bad attribute");
+    expect_string(__wrap__mwarn,
+                  formatted_msg,
+                  "(8000): Invalid value 'bad attribute' for attribute 'ignore_if_missing' in 'journal' option. "
+                  "Default value will be used.");
+
+    // w_journal_filter_add_condition ok
+    assert_true(journald_add_condition_to_filter(&node, &filter));
+
+    assert_non_null(filter);
+    assert_int_equal(filter->units_size, 1);
+    assert_non_null(filter->units);
+    assert_non_null(filter->units[0]);
+    assert_string_equal(filter->units[0]->exp->pcre2->raw_pattern, VALID_PCRE2_REGEX);
+    assert_string_equal(filter->units[0]->field, "field");
+    assert_false(filter->units[0]->ignore_if_missing);
+    assert_null(filter->units[1]);
+
+    w_journal_filter_free(filter);
+}
+
+void test_journald_add_condition_to_filter_ingore_yes(void ** state) {
+
+    xml_node node = {0};
+    node.content = VALID_PCRE2_REGEX;
+
+    w_journal_filter_t * filter = NULL;
+
+    will_return(__wrap_w_get_attr_val_by_name, "field");
+    will_return(__wrap_w_get_attr_val_by_name, "yes");
+
+    // w_journal_filter_add_condition ok
+    assert_true(journald_add_condition_to_filter(&node, &filter));
+
+    assert_non_null(filter);
+    assert_int_equal(filter->units_size, 1);
+    assert_non_null(filter->units);
+    assert_non_null(filter->units[0]);
+    assert_string_equal(filter->units[0]->exp->pcre2->raw_pattern, VALID_PCRE2_REGEX);
+    assert_string_equal(filter->units[0]->field, "field");
+    assert_true(filter->units[0]->ignore_if_missing);
+    assert_null(filter->units[1]);
+
+    w_journal_filter_free(filter);
+}
+
+void test_journald_add_condition_to_filter_fail_regex(void ** state) {
+
+    xml_node node = {0};
+    node.content = INVALID_PCRE2_REGEX;
+
+    w_journal_filter_t * filter = NULL;
+
+    will_return(__wrap_w_get_attr_val_by_name, "field");
+    will_return(__wrap_w_get_attr_val_by_name, "no");
+
+    expect_string(
+        __wrap__mwarn,
+        formatted_msg,
+        "(8021): Error compiling the PCRE2 expression 'invalid regex [a \\w+{-1' for field 'field' in journal filter.");
+    // w_journal_filter_add_condition fail
+    assert_false(journald_add_condition_to_filter(&node, &filter));
+}
 
 /* main */
 
@@ -816,66 +971,52 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_activity),
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_log_activity),
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_log_multiword_invalid),
-        // TODO: Test w_clean_logreader
-        // TODO: Test Free_Logreader
-        // TODO: Test w_multiline_log_config_free
-        // TODO: Test w_macos_log_config_free
-        
         // Test init_w_journal_log_config_t
         cmocka_unit_test(test_init_w_journal_log_config_t_fail),
         cmocka_unit_test(test_init_w_journal_log_config_t_ok),
-
+        // Test w_journal_log_config_free
+        cmocka_unit_test(test_w_journal_log_config_free_null),
+        cmocka_unit_test(test_w_journal_log_config_free_ok),
         // Test free_unit_filter
         cmocka_unit_test(test_free_unit_filter_null),
         cmocka_unit_test(test_free_unit_filter_ok),
-
         // Test create_unit_filter
         cmocka_unit_test(test_create_unit_filter_null_param),
         cmocka_unit_test(test_create_unit_filter_inv_expresion),
         cmocka_unit_test(test_create_unit_filter_ok),
-
         // Test unit_filter_as_json
         cmocka_unit_test(test_unit_filter_as_json_null_params),
         cmocka_unit_test(test_unit_filter_as_json_ok),
-
-        // Test w_journal_filter_add_condition w_journal_filter_free
+        // Test w_journal_filter_add_condition
         cmocka_unit_test(test_w_journal_filter_add_condition_null_params),
         cmocka_unit_test(test_w_journal_filter_add_condition_bad_exp),
         cmocka_unit_test(test_w_journal_filter_add_condition_ok_first_cond),
         cmocka_unit_test(test_w_journal_filter_add_condition_ok_other_cond),
-
+        // Test w_journal_filter_add_condition w_journal_filter_free
+        cmocka_unit_test(test_w_journal_filter_free_null),
         // Test filter_as_json
         cmocka_unit_test(test_filter_as_json_null_params),
+        cmocka_unit_test(test_filter_as_json_fail_array),
         cmocka_unit_test(test_filter_as_json_one_unit),
-
-
         // Test w_journal_add_filter_to_list
         cmocka_unit_test(test_w_journal_add_filter_to_list_null_params),
         cmocka_unit_test(test_w_journal_add_filter_to_list_new_list),
         cmocka_unit_test(test_w_journal_add_filter_to_list_exist_list),
-
         // Test w_journal_filter_list_as_json
         cmocka_unit_test(test_w_journal_filter_list_as_json_null_params),
-        cmocka_unit_test(test_w_journal_filter_list_as_json_success),
-
-        // TODO: Test w_journal_log_config_free
+        cmocka_unit_test(test_w_journal_filter_list_as_json_fail_array),
+        cmocka_unit_test(test_w_journal_filter_list_as_json_success),       
         // Test journald_add_condition_to_filter
         cmocka_unit_test(test_journald_add_condition_to_filter_invalid_params),
         cmocka_unit_test(test_journald_add_condition_to_filter_non_field),
         cmocka_unit_test(test_journald_add_condition_to_filter_empty_field),
         cmocka_unit_test(test_journald_add_condition_to_filter_empty_regex),
-        cmocka_unit_test(test_journald_add_condition_to_filter_null_regex)
-        // cmocka_unit_test(test_journald_add_condition_to_filter_ingore_no),
-        // cmocka_unit_test(test_journald_add_condition_to_filter_ingore_missing),
-        // cmocka_unit_test(test_journald_add_condition_to_filter_ingore_yes w_journal_filter_add_condition),
-        // cmocka_unit_test(test_journald_add_condition_to_filter_ingore_no w_journal_filter_add_condition),
-        // cmocka_unit_test(test_journald_add_condition_to_filter_ok,
-        
-        // TODO: Test w_journal_free_filters_list
-        // TODO: Test w_logreader_journald_merge
-
-
-
+        cmocka_unit_test(test_journald_add_condition_to_filter_null_regex),
+        cmocka_unit_test(test_journald_add_condition_to_filter_ingore_no),
+        cmocka_unit_test(test_journald_add_condition_to_filter_ingore_missing),
+        cmocka_unit_test(test_journald_add_condition_to_filter_ingore_wrong),
+        cmocka_unit_test(test_journald_add_condition_to_filter_ingore_yes),
+        cmocka_unit_test(test_journald_add_condition_to_filter_fail_regex),
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
     //return cmocka_run_group_tests(tests, NULL, NULL);
