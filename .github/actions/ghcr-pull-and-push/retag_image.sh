@@ -2,13 +2,10 @@ set -x
 GITHUB_PUSH_SECRET=$1
 GITHUB_USER=$2
 OLD_TAG=$3
-if [ -n "$4" ]; then
-    NEW_TAG="$4"
-else
-    exit 1
+NEW_TAG=$4
+if [ -n "$5" ]; then
+    SINGLE_IMAGE="$5"
 fi
-GITHUB_REPOSITORY="wazuh/wazuh"
-GITHUB_OWNER="wazuh"
 
 IMAGES_LIST=(
     "common_wpk_builder"
@@ -28,11 +25,12 @@ IMAGES_LIST=(
     "pkg_rpm_legacy_builder_amd64"
 )
 
-# Login to GHCR
-echo ${GITHUB_PUSH_SECRET} | docker login https://ghcr.io -u $GITHUB_USER --password-stdin
-
-# Iterate images list retagging
-for DOCKER_IMAGE_NAME in "${IMAGES_LIST[@]}"; do
+retag_image(){
+    DOCKER_IMAGE_NAME="$1"
+    OLD_TAG="$2"
+    NEW_TAG="$3"
+    GITHUB_REPOSITORY="wazuh/wazuh"
+    GITHUB_OWNER="wazuh"
     IMAGE_ID=ghcr.io/${GITHUB_OWNER}/${DOCKER_IMAGE_NAME}
     IMAGE_ID=$(echo ${IMAGE_ID} | tr '[A-Z]' '[a-z]')
 
@@ -47,4 +45,17 @@ for DOCKER_IMAGE_NAME in "${IMAGES_LIST[@]}"; do
         # Upload
         docker push ${IMAGE_ID}:${NEW_TAG}
     fi
-done
+}
+
+# Login to GHCR
+echo ${GITHUB_PUSH_SECRET} | docker login https://ghcr.io -u $GITHUB_USER --password-stdin
+
+if [ -n "$SINGLE_IMAGE" ]; then
+    # Retag the image passed as argument
+    retag_image $SINGLE_IMAGE $OLD_TAG $NEW_TAG
+else
+    # Iterate images list retagging
+    for DOCKER_IMAGE_NAME in "${IMAGES_LIST[@]}"; do
+        retag_image $DOCKER_IMAGE_NAME $OLD_TAG $NEW_TAG
+    done
+fi
