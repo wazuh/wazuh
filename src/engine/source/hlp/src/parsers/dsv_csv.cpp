@@ -67,6 +67,7 @@ inline Parser dsvParserFunction(std::string name,
         }
 
         const auto parsed = syntax::parsed(synR, txt);
+        const auto fieldNotFound = "No fields found";
 
         std::size_t start {0};
 
@@ -95,13 +96,12 @@ inline Parser dsvParserFunction(std::string name,
         // If start is 0, it means no fields were found
         if (start == 0)
         {
-            return abs::makeFailure<ResultT>("No fields found", name);
+            return abs::makeFailure<ResultT>(fieldNotFound, name);
         }
 
         if (headers.size() != i)
         {
             return abs::makeFailure<ResultT>(txt.substr(start-1), name);
-            // return parsec::makeError<json::Json>(fmt::format("{}: Expected a DSV/CSV string", name), start + index);
         }
 
         if (start-1 != parsed.size())

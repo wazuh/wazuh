@@ -55,11 +55,17 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "not_exists", {schemf::runtimeValidation(), builders::opfilter::notExistsBuilder});
     registry->template add<builders::OpBuilderEntry>("array_contains",
-                                                     {schemf::JTypeToken::create(json::Json::Type::String, true),
-                                                      builders::opfilter::opBuilderHelperContainsString});
+                                                     {schemf::isArrayToken(),
+                                                      builders::opfilter::opBuilderHelperContains});
+    registry->template add<builders::OpBuilderEntry>("array_contains_any",
+                                                     {schemf::isArrayToken(),
+                                                      builders::opfilter::opBuilderHelperContainsAny});
     registry->template add<builders::OpBuilderEntry>("array_not_contains",
-                                                     {schemf::JTypeToken::create(json::Json::Type::String, true),
-                                                      builders::opfilter::opBuilderHelperNotContainsString});
+                                                     {schemf::isArrayToken(),
+                                                      builders::opfilter::opBuilderHelperNotContains});
+    registry->template add<builders::OpBuilderEntry>("array_not_contains_any",
+                                                     {schemf::isArrayToken(),
+                                                      builders::opfilter::opBuilderHelperNotContainsAny});
     registry->template add<builders::OpBuilderEntry>(
         "int_equal",
         {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntEqual});
@@ -140,7 +146,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "match_value", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperMatchValue});
     registry->template add<builders::OpBuilderEntry>(
-        "match_key",
+        "exists_key_in",
         {schemf::JTypeToken::create(json::Json::Type::String), builders::opfilter::opBuilderHelperMatchKey});
 
     // Map builders
@@ -179,9 +185,13 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
 
     // Transform builders
     registry->template add<builders::OpBuilderEntry>(
-        "array_append_unique", {schemf::isArrayToken(), builders::optransform::getArrayAppendBuilder(true)});
+        "array_append_unique", {schemf::isArrayToken(), builders::optransform::getArrayAppendBuilder(true, false)});
     registry->template add<builders::OpBuilderEntry>(
-        "array_append", {schemf::isArrayToken(), builders::optransform::getArrayAppendBuilder(false)});
+        "array_append", {schemf::isArrayToken(), builders::optransform::getArrayAppendBuilder(false, false)});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_append_unique_any", {schemf::isArrayToken(), builders::optransform::getArrayAppendBuilder(true, true)});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_append_any", {schemf::isArrayToken(), builders::optransform::getArrayAppendBuilder(false, true)});
     // Transform helpers: Event Field functions
     registry->template add<builders::OpBuilderEntry>(
         "delete", {schemf::runtimeValidation(), builders::opBuilderHelperDeleteField});
@@ -199,16 +209,18 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "split",
         {schemf::JTypeToken::create(json::Json::Type::String, true), builders::opBuilderHelperAppendSplitString});
     registry->template add<builders::OpBuilderEntry>(
-        "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat});
+        "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
+    registry->template add<builders::OpBuilderEntry>(
+        "concat_any", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat(false)});
     registry->template add<builders::OpBuilderEntry>(
         "replace", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringReplace});
     registry->template add<builders::OpBuilderEntry>(
         "trim", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringTrim});
     // Transform helpers: Definition functions
     registry->template add<builders::OpBuilderEntry>(
-        "get_value", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
+        "get_key_in", {schemf::runtimeValidation(), builders::opBuilderHelperGetValue}); // TODO: add validation
     registry->template add<builders::OpBuilderEntry>(
-        "merge_value", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeValue});
+        "merge_key_in", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeValue});
     // Global event helpers
     registry->template add<builders::OpBuilderEntry>(
         "erase_custom_fields", {schemf::runtimeValidation(), builders::opBuilderHelperEraseCustomFields});

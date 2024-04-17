@@ -19,7 +19,7 @@ check: >-
         (($process.name == logman.exe
         OR $process.pe.original_file_name == Logman.exe))
         AND (array_contains($process.args, EventLog)
-        AND array_contains($process.args, stop, delete))
+        AND array_contains_any($process.args, stop, delete))
         OR (
             ($process.name == pwsh.exe
             OR $process.name == powershell.exe

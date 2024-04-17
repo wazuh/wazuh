@@ -13,7 +13,7 @@ check :
   - event.type: array_contains(start)
   - event.category: array_contains(process)
   - process.name: python.exe
-  - process.args: array_contains(-c, import, sys)
+  - process.args: array_contains_any(-c, import, sys)
 
 normalize:
   - map:
