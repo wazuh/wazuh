@@ -41,11 +41,27 @@ public:
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
     }
+
+    explicit TThreadEventDispatcher(const std::string& dbPath,
+                                    const uint64_t bulkSize = 1,
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+        : m_maxQueueSize {maxQueueSize}
+        , m_bulkSize {bulkSize}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
+    {
+    }
+
     TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
     TThreadEventDispatcher(TThreadEventDispatcher& other) = delete;
     ~TThreadEventDispatcher()
     {
         cancel();
+    }
+
+    void startWorker(Functor functor)
+    {
+        m_functor = std::move(functor);
+        m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
     }
 
     void push(const T& value)
