@@ -304,7 +304,12 @@ void w_journal_context_update_timestamp(w_journal_context_t * ctx) {
     }
 }
 
-int w_journal_context_seek_most_recent(w_journal_context_t * ctx) {
+int w_journal_context_seek_most_recent(w_journal_context_t * ctx) {  
+    
+    if (ctx == NULL) {
+        return -1;
+    }
+
     int err = ctx->lib->seek_tail(ctx->journal);
     if (err < 0) {
         return err;
@@ -319,6 +324,11 @@ int w_journal_context_seek_most_recent(w_journal_context_t * ctx) {
 }
 
 int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timestamp) {
+    
+    if (ctx == NULL) {
+        return -1;
+    }
+
     // If the timestamp is in the future or invalid, seek the most recent entry
     if (timestamp == 0 || timestamp > w_get_epoch_time()) {
         mwarn(LOGCOLLECTOR_JOURNAL_LOG_FUTURE_TS, timestamp);
@@ -350,6 +360,11 @@ int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timesta
 }
 
 int w_journal_context_next_newest(w_journal_context_t * ctx) {
+    
+    if (ctx == NULL) {
+        return -1;
+    }
+
     int ret = ctx->lib->next(ctx->journal);
 
     // if change cursor, update timestamp
