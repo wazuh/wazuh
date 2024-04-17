@@ -208,7 +208,7 @@ normalize:
     - wazuh.decoders: array_append(windows-sysmon)
     - event.dataset: sysmon
     - event.kind: event
-    - _event: get_value($idEvent_map, $event.code)
+    - _event: get_key_in($idEvent_map, $event.code)
     - event.category: $_event.category
     - event.type: $_event.type
     - message: $_event.message

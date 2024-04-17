@@ -66,7 +66,7 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
  * @param definitions handler with definitions
  * @return base::Expression The lifter with the `concat` transformation.
  */
-MapOp opBuilderHelperStringConcat(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx);
+MapBuilder opBuilderHelperStringConcat(bool safe = true);
 
 /**
  * @brief Transforms an array of strings into a single string field result of concatenate
@@ -347,7 +347,7 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
 //*************************************************
 
 /**
- * @brief Create 'get_value' helper function that maps or merge target field value with the content of the some key in
+ * @brief Create 'get_key_in' helper function that maps or merge target field value with the content of the some key in
  * the definition object, where the key is specified with a reference to another field.
  *
  * @param targetField target field of the helper
@@ -355,7 +355,7 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
  * @param rawParameters vector of parameters as present in the raw definition.
  * @param definitions handler with definitions
  * @param schema schema to validate fields
- * @param isMerge true if the helper is used in a merge operation (merge_value), false if only get the value
+ * @param isMerge true if the helper is used in a merge operation (merge_key_in), false if only get the value
  * @return base::Expression
  */
 TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
@@ -364,9 +364,9 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
                                            bool isMerge = false);
 
 /**
- * @brief Get the 'get_value' function helper builder
+ * @brief Get the 'get_key_in' function helper builder
  *
- * <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
+ * <field>: +get_key_in/$<definition_object>|$<object_reference>/$<key>
  * @param schema schema to validate fields
  * @return builder
  */
@@ -375,9 +375,9 @@ TransformOp opBuilderHelperGetValue(const Reference& targetField,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Get the 'merge_value' function helper builder
+ * @brief Get the 'merge_key_in' function helper builder
  *
- * <field>: +merge_value/$<definition_object>|$<object_reference>/$<key>
+ * <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
  * @param schema schema to validate fields
  * @return builder
  */

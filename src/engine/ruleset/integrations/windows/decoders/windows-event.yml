@@ -37,7 +37,7 @@ normalize:
       - event.kind: event
       - event.provider: $windows.System.Provider.@Name
 
-      - log.level: get_value($_win_log_level, $windows.System.Level.#text)
+      - log.level: get_key_in($_win_log_level, $windows.System.Level.#text)
 
       - host.name: $windows.System.Computer.#text
 

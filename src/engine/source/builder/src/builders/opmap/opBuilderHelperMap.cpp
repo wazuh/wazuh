@@ -525,89 +525,101 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
 }
 
 // field: +concat/string1|$ref1/string2|$ref2
-MapOp opBuilderHelperStringConcat(const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx)
+MapBuilder opBuilderHelperStringConcat(bool safe)
 {
-    // Assert expected number of parameters
-    builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
-
-    for (const auto& arg : opArgs)
+    return [safe](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
-        if (arg->isValue())
-        {
-            const auto& asValue = std::static_pointer_cast<Value>(arg);
-            if (!asValue->value().isString())
-            {
-                throw std::runtime_error(
-                    fmt::format("Expected 'string' parameter but got type '{}'", asValue->value().typeName()));
-            }
-        }
-        else
-        {
-            auto ref = std::static_pointer_cast<Reference>(arg);
-            if (buildCtx->validator().hasField(ref->dotPath()))
-            {
-                auto jtype = buildCtx->validator().getJsonType(ref->dotPath());
-                if (jtype != json::Json::Type::String)
-                {
-                    throw std::runtime_error(
-                        fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
-                                    ref->dotPath(),
-                                    json::Json::typeToStr(jtype)));
-                }
-            }
-        }
-    }
-
-    // Format name for the tracer
-    const auto name = buildCtx->context().opName;
-
-    // Tracing messages
-    const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
-
-    const std::string failureTrace1 {fmt::format("{} -> Failure: ", name)};
-    const std::string failureTrace2 {fmt::format("{} -> Failure: ", name)};
-
-    // Return Op
-    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
-    {
-        std::string result {};
+        // Assert expected number of parameters
+        builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
 
         for (const auto& arg : opArgs)
         {
-            if (arg->isReference())
+            if (arg->isValue())
             {
-                // Check path exists
-                const auto& ref = std::static_pointer_cast<Reference>(arg)->jsonPath();
-                if (!event->exists(ref))
+                const auto& asValue = std::static_pointer_cast<Value>(arg);
+                if (!asValue->value().isString())
                 {
-                    RETURN_FAILURE(
-                        runState, json::Json {}, failureTrace1 + fmt::format("Reference '{}' not found", ref));
+                    throw std::runtime_error(
+                        fmt::format("Expected 'string' parameter but got type '{}'", asValue->value().typeName()));
                 }
-
-                // Get field value
-                std::string resolvedField {};
-                if (event->isString(ref))
-                {
-                    resolvedField = event->getString(ref).value();
-                }
-                else
-                {
-                    RETURN_FAILURE(runState,
-                                   json::Json {},
-                                   failureTrace2 + fmt::format("Parameter '{}' type cannot be handled", ref));
-                }
-
-                result.append(resolvedField);
             }
             else
             {
-                const auto& value = std::static_pointer_cast<Value>(arg)->value().getString().value();
-                result.append(value);
+                auto ref = std::static_pointer_cast<Reference>(arg);
+                if (buildCtx->validator().hasField(ref->dotPath()))
+                {
+                    auto jtype = buildCtx->validator().getJsonType(ref->dotPath());
+                    if (jtype != json::Json::Type::String)
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Expected 'string' reference but got reference '{}' of type '{}'",
+                                        ref->dotPath(),
+                                        json::Json::typeToStr(jtype)));
+                    }
+                }
             }
         }
-        json::Json resultJson;
-        resultJson.setString(result);
-        RETURN_SUCCESS(runState, resultJson, successTrace);
+
+        // Format name for the tracer
+        const auto name = buildCtx->context().opName;
+
+        // Tracing messages
+        const std::string successTrace {fmt::format(TRACE_SUCCESS, name)};
+
+        const std::string failureTrace1 {fmt::format("{} -> Failure: ", name)};
+        const std::string failureTrace2 {fmt::format("{} -> Failure: ", name)};
+
+        // Return Op
+        return [=, runState = buildCtx->runState()](base::ConstEvent event) -> MapResult
+        {
+            std::string result {};
+
+            for (const auto& arg : opArgs)
+            {
+                if (arg->isReference())
+                {
+                    // Check path exists
+                    std::string resolvedField {};
+                    const auto& ref = std::static_pointer_cast<Reference>(arg)->jsonPath();
+
+                    auto isExist = event->exists(ref);
+
+                    if (!isExist)
+                    {
+                        if (safe)
+                        {
+                            RETURN_FAILURE(
+                                runState, json::Json {}, failureTrace1 + fmt::format("Reference '{}' not found", ref));
+                        }
+
+                        result.append(resolvedField);
+                        continue;
+                    }
+
+                    // Get field value
+                    if (event->isString(ref))
+                    {
+                        resolvedField = event->getString(ref).value();
+                    }
+                    else
+                    {
+                        RETURN_FAILURE(runState,
+                                       json::Json {},
+                                       failureTrace2 + fmt::format("Parameter '{}' type cannot be handled", ref));
+                    }
+
+                    result.append(resolvedField);
+                }
+                else
+                {
+                    const auto& value = std::static_pointer_cast<Value>(arg)->value().getString().value();
+                    result.append(value);
+                }
+            }
+            json::Json resultJson;
+            resultJson.setString(result);
+            RETURN_SUCCESS(runState, resultJson, successTrace);
+        };
     };
 }
 
@@ -1662,9 +1674,10 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
         auto type = buildCtx->validator().getType(targetField.dotPath());
         if (type != schemf::Type::OBJECT && !buildCtx->validator().isArray(targetField.dotPath()))
         {
-            throw std::runtime_error(fmt::format("Expected 'object' or 'array' target field but got field '{}' of type '{}'",
-                                                 targetField.dotPath(),
-                                                 schemf::typeToStr(type)));
+            throw std::runtime_error(
+                fmt::format("Expected 'object' or 'array' target field but got field '{}' of type '{}'",
+                            targetField.dotPath(),
+                            schemf::typeToStr(type)));
         }
     }
 
@@ -1781,7 +1794,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     };
 }
 
-// <field>: +get_value/$<definition_object>|$<object_reference>/$<key>
+// <field>: +get_key_in/$<definition_object>|$<object_reference>/$<key>
 TransformOp opBuilderHelperGetValue(const Reference& targetField,
                                     const std::vector<OpArg>& opArgs,
                                     const std::shared_ptr<const IBuildCtx>& buildCtx)
@@ -1789,7 +1802,7 @@ TransformOp opBuilderHelperGetValue(const Reference& targetField,
     return opBuilderHelperGetValueGeneric(targetField, opArgs, buildCtx, false);
 }
 
-// <field>: +merge_value/$<definition_object>|$<object_reference>/$<key>
+// <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
 TransformOp opBuilderHelperMergeValue(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx)

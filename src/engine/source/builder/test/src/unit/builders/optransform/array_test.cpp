@@ -39,22 +39,27 @@ auto jTypeRefExpected(json::Json::Type jType)
     };
 }
 
-auto customTargetExpected()
+auto customTargetExpected(bool hasField = true, schemf::Type type = schemf::Type::KEYWORD)
 {
-    return [](const BuildersMocks& mocks)
+    return [hasField, type](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, validator());
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.validator, validate(DotPath("targetField"), testing::_))
             .WillOnce(testing::Return(schemf::ValidationResult()));
+        EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField"))).WillOnce(testing::Return(hasField));
+        if (hasField)
+        {
+            EXPECT_CALL(*mocks.validator, getType(DotPath("targetField"))).WillOnce(testing::Return(type));
+        }
         return None {};
     };
 }
 
-auto arrayTargetExpected()
+auto arrayTargetExpected(bool hasField = true, schemf::Type type = schemf::Type::KEYWORD)
 {
-    return [](const BuildersMocks& mocks)
+    return [hasField, type](const BuildersMocks& mocks)
     {
-        EXPECT_CALL(*mocks.ctx, validator());
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
         EXPECT_CALL(*mocks.validator, validate(DotPath("targetField"), testing::_))
             .WillOnce(testing::Return(schemf::ValidationResult(
                 [](const json::Json& json) -> base::OptError
@@ -65,6 +70,11 @@ auto arrayTargetExpected()
                     }
                     return base::Error {"Not an array"};
                 })));
+        EXPECT_CALL(*mocks.validator, hasField(DotPath("targetField"))).WillOnce(testing::Return(hasField));
+        if (hasField)
+        {
+            EXPECT_CALL(*mocks.validator, getType(DotPath("targetField"))).WillOnce(testing::Return(type));
+        }
         return None {};
     };
 }
@@ -99,23 +109,35 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({}, optransform::getArrayAppendBuilder(), FAILURE()),
         TransformT({makeRef("ref")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
         TransformT({makeValue(R"("a")")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(1)")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(1.1)")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(true)")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(), SUCCESS(customTargetExpected())),
+        TransformT({makeValue(R"(1)")},
+                   optransform::getArrayAppendBuilder(),
+                   SUCCESS(customTargetExpected(true, schemf::Type::INTEGER))),
+        TransformT({makeValue(R"(1.1)")},
+                   optransform::getArrayAppendBuilder(),
+                   SUCCESS(customTargetExpected(true, schemf::Type::DOUBLE))),
+        TransformT({makeValue(R"(true)")},
+                   optransform::getArrayAppendBuilder(),
+                   SUCCESS(customTargetExpected(true, schemf::Type::BOOLEAN))),
+        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(), FAILURE(customTargetExpected())),
+        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(), FAILURE(customTargetExpected())),
+        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(), FAILURE(customTargetExpected())),
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    optransform::getArrayAppendBuilder(),
                    SUCCESS(customTargetExpected())),
         TransformT({makeRef("ref")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
         TransformT({makeValue(R"("a")")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(1)")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(1.1)")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(true)")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(), SUCCESS(arrayTargetExpected())),
+        TransformT({makeValue(R"(1)")},
+                   optransform::getArrayAppendBuilder(),
+                   SUCCESS(arrayTargetExpected(true, schemf::Type::INTEGER))),
+        TransformT({makeValue(R"(1.1)")},
+                   optransform::getArrayAppendBuilder(),
+                   SUCCESS(arrayTargetExpected(true, schemf::Type::DOUBLE))),
+        TransformT({makeValue(R"(true)")},
+                   optransform::getArrayAppendBuilder(),
+                   SUCCESS(arrayTargetExpected(true, schemf::Type::BOOLEAN))),
+        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(), FAILURE(arrayTargetExpected())),
+        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(), FAILURE(arrayTargetExpected())),
+        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(), FAILURE(arrayTargetExpected())),
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    optransform::getArrayAppendBuilder(),
                    SUCCESS(arrayTargetExpected())),
@@ -123,23 +145,35 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({}, optransform::getArrayAppendBuilder(true), FAILURE()),
         TransformT({makeRef("ref")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
         TransformT({makeValue(R"("a")")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(1)")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(1.1)")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(true)")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
-        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(true), SUCCESS(customTargetExpected())),
+        TransformT({makeValue(R"(1)")},
+                   optransform::getArrayAppendBuilder(true),
+                   SUCCESS(customTargetExpected(true, schemf::Type::INTEGER))),
+        TransformT({makeValue(R"(1.1)")},
+                   optransform::getArrayAppendBuilder(true),
+                   SUCCESS(customTargetExpected(true, schemf::Type::DOUBLE))),
+        TransformT({makeValue(R"(true)")},
+                   optransform::getArrayAppendBuilder(true),
+                   SUCCESS(customTargetExpected(true, schemf::Type::BOOLEAN))),
+        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(true), FAILURE(customTargetExpected())),
+        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(true), FAILURE(customTargetExpected())),
+        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(true), FAILURE(customTargetExpected())),
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    optransform::getArrayAppendBuilder(true),
                    SUCCESS(customTargetExpected())),
         TransformT({makeRef("ref")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
         TransformT({makeValue(R"("a")")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(1)")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(1.1)")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(true)")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
-        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(true), SUCCESS(arrayTargetExpected())),
+        TransformT({makeValue(R"(1)")},
+                   optransform::getArrayAppendBuilder(true),
+                   SUCCESS(arrayTargetExpected(true, schemf::Type::INTEGER))),
+        TransformT({makeValue(R"(1.1)")},
+                   optransform::getArrayAppendBuilder(true),
+                   SUCCESS(arrayTargetExpected(true, schemf::Type::DOUBLE))),
+        TransformT({makeValue(R"(true)")},
+                   optransform::getArrayAppendBuilder(true),
+                   SUCCESS(arrayTargetExpected(true, schemf::Type::BOOLEAN))),
+        TransformT({makeValue(R"(null)")}, optransform::getArrayAppendBuilder(true), FAILURE(arrayTargetExpected())),
+        TransformT({makeValue(R"([])")}, optransform::getArrayAppendBuilder(true), FAILURE(arrayTargetExpected())),
+        TransformT({makeValue(R"({})")}, optransform::getArrayAppendBuilder(true), FAILURE(arrayTargetExpected())),
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    optransform::getArrayAppendBuilder(true),
                    SUCCESS(arrayTargetExpected()))),
@@ -216,7 +250,7 @@ INSTANTIATE_TEST_SUITE_P(
                    SUCCESS(
                        [](const auto& mocks)
                        {
-                           customTargetExpected()(mocks);
+                           customTargetExpected(false)(mocks);
                            return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
                        })),
         TransformT(R"({"ref": "a", "targetField": ["b"]})",
@@ -260,7 +294,7 @@ INSTANTIATE_TEST_SUITE_P(
                    {makeRef("ref")},
                    FAILURE(customTargetExpected())),
         TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(),
+                   optransform::getArrayAppendBuilder(false, true),
                    "targetField",
                    {makeRef("ref"), makeValue(R"("a")")},
                    SUCCESS(
@@ -361,10 +395,10 @@ INSTANTIATE_TEST_SUITE_P(
                    {makeRef("ref")},
                    FAILURE(customTargetExpected())),
         TransformT(R"({})",
-                   optransform::getArrayAppendBuilder(true),
+                   optransform::getArrayAppendBuilder(true, true),
                    "targetField",
                    {makeRef("ref"), makeValue(R"("a")")},
-                  SUCCESS(
+                   SUCCESS(
                        [](const auto& mocks)
                        {
                            customTargetExpected()(mocks);
@@ -374,11 +408,12 @@ INSTANTIATE_TEST_SUITE_P(
                    optransform::getArrayAppendBuilder(true),
                    "targetField",
                    {makeValue(R"("a")"), makeValue(R"("a")")},
-                    SUCCESS([](const auto& mocks)
-                           {
-                               customTargetExpected()(mocks);
-                               return makeEvent(R"({"targetField": ["a"]})");
-                           })),
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customTargetExpected()(mocks);
+                           return makeEvent(R"({"targetField": ["a"]})");
+                       })),
         TransformT(R"({})",
                    optransform::getArrayAppendBuilder(true),
                    "targetField",
@@ -393,11 +428,12 @@ INSTANTIATE_TEST_SUITE_P(
                    optransform::getArrayAppendBuilder(true),
                    "targetField",
                    {makeValue(R"("a")"), makeValue(R"("a")")},
-                   SUCCESS([](const auto& mocks)
-                           {
-                               arrayTargetExpected()(mocks);
-                               return makeEvent(R"({"targetField": ["a"]})");
-                           })),
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           arrayTargetExpected()(mocks);
+                           return makeEvent(R"({"targetField": ["a"]})");
+                       })),
         TransformT(R"({})",
                    optransform::getArrayAppendBuilder(true),
                    "targetField",

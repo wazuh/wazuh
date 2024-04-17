@@ -332,7 +332,23 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
  *
  * @throws std::runtime_error if cannot create the filter.
  */
-FilterOp opBuilderHelperContainsString(const Reference& targetField,
+FilterOp opBuilderHelperContains(const Reference& targetField,
+                                       const std::vector<OpArg>& opArgs,
+                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Create `array_contains` helper function that filters events if the field
+ * is an array and contains one of the specified values.
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
+ * @return FilterOp
+ *
+ * @throws std::runtime_error if cannot create the filter.
+ */
+FilterOp opBuilderHelperContainsAny(const Reference& targetField,
                                        const std::vector<OpArg>& opArgs,
                                        const std::shared_ptr<const IBuildCtx>& buildCtx);
 
@@ -348,7 +364,23 @@ FilterOp opBuilderHelperContainsString(const Reference& targetField,
  *
  * @throws std::runtime_error if cannot create the filter.
  */
-FilterOp opBuilderHelperNotContainsString(const Reference& targetField,
+FilterOp opBuilderHelperNotContains(const Reference& targetField,
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
+
+/**
+ * @brief Create `array_not_contains` helper function that filters events if the field
+ * is an array and does not contains any of the specified values.
+ *
+ * @param targetField target field of the helper
+ * @param rawName name of the helper as present in the raw definition
+ * @param rawParameters vector of parameters as present in the raw definition
+ * @param definitions handler with definitions
+ * @return FilterOp
+ *
+ * @throws std::runtime_error if cannot create the filter.
+ */
+FilterOp opBuilderHelperNotContainsAny(const Reference& targetField,
                                           const std::vector<OpArg>& opArgs,
                                           const std::shared_ptr<const IBuildCtx>& buildCtx);
 
@@ -544,9 +576,9 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `match_key` helper function that filters events which field
+ * @brief Create `exists_key_in` helper function that filters events which field
  * value is present as a key in the specified definition object.
- * <field>: +match_key/$<definition_object>|$<object_reference>
+ * <field>: +exists_key_in/$<definition_object>|$<object_reference>
  *
  * @param targetField target field of the helper
  * @param rawName name of the helper as present in the raw definition
