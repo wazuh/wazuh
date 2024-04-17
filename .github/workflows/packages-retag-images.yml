@@ -15,11 +15,17 @@ on:
           Must be newer than old one.)
         required: false
         default: none
+      single_docker_image:
+        description: |
+          Docker image name. Used to retag only
+          the provided image.
+        required: false
+        default: ''
   push:
-      branches: 
-          - '[0-9]+.[0-9]+.[0-9]+'
-      paths:
-          - 'src/VERSION'
+    branches: 
+      - '[0-9]+.[0-9]+.[0-9]+'
+    paths:
+      - 'src/VERSION'
 
 jobs:
   Upload-package-building-images:
@@ -62,5 +68,4 @@ jobs:
             new_version=${{ env.NEW_VERSION }}
             old_version=${{ env.OLD_VERSION }}
           fi
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/retag_image.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $old_version $new_version
- 
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/retag_image.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $old_version $new_version ${{ inputs.single_docker_image }}
