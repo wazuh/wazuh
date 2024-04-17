@@ -46,9 +46,9 @@ def get_sca_list(agent_list: list = None, q: str = "", offset: int = 0, limit: i
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected sca information was returned',
-                                      some_msg='Some sca information was not returned',
-                                      none_msg='No sca information was returned'
+    result = AffectedItemsWazuhResult(all_msg='All selected SCA information was returned',
+                                      some_msg='Some SCA information was not returned',
+                                      none_msg='No SCA information was returned'
                                       )
 
     if len(agent_list) != 0:
@@ -106,9 +106,9 @@ def get_sca_checks(policy_id: str = None, agent_list: list = None, q: str = "", 
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected sca/policy information was returned',
-                                      some_msg='Some sca/policy information was not returned',
-                                      none_msg='No sca/policy information was returned'
+    result = AffectedItemsWazuhResult(all_msg='All selected SCA/policy information was returned',
+                                      some_msg='Some SCA/policy information was not returned',
+                                      none_msg='No SCA/policy information was returned'
                                       )
     if len(agent_list) != 0:
         if agent_list[0] in get_agents_info():
