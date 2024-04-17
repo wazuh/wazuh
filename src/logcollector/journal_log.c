@@ -78,7 +78,7 @@ struct w_journal_lib_t {
  * @return int64_t
  */
 STATIC INLINE uint64_t w_get_epoch_time() {
-    struct timeval tv;
+    struct timeval tv = {0};
     gettimeofday(&tv, NULL);
     return (uint64_t) tv.tv_sec * 1000000 + tv.tv_usec;
 }
