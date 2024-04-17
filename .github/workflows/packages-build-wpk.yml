@@ -81,7 +81,7 @@ jobs:
         arch: [x86_64]
       fail-fast: false
 
-    steps:      
+    steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
@@ -90,7 +90,7 @@ jobs:
           skip_after_successful_duplicate: 'false'
 
       - uses: actions/checkout@v4
-      
+
       - name: Set VERSION, CONTAINER_NAME, CHECKSUM_FLAG and UPLOAD_READY
         if: (matrix.os == 'linux' && github.event.inputs.linux_reference != '') || (matrix.os == 'windows' && github.event.inputs.windows_reference != '') || (matrix.os == 'macos' && github.event.inputs.macos_reference != '')
         run: |
@@ -105,7 +105,7 @@ jobs:
         if: (matrix.os == 'linux' && github.event.inputs.linux_reference != '') || (matrix.os == 'windows' && github.event.inputs.windows_reference != '') || (matrix.os == 'macos' && github.event.inputs.macos_reference != '')
         run: |
           if [ "${{ github.event.inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=${{ env.VERSION }}" >> $GITHUB_ENV;
-          elif [ "${{ github.event.inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          elif [ "${{ github.event.inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ github.event.inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
 
       - name: Set WPK_NAME
