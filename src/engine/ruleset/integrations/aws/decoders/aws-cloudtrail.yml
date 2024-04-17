@@ -351,7 +351,7 @@ normalize:
       - event.kind: event
       - event.type: +array_append/info
       - event.outcome: success
-      - event: +merge_value/$ActionsToEvent/$json_event.aws.eventName
+      - event: +merge_key_in/$ActionsToEvent/$json_event.aws.eventName
 
       - event.action: $json_event.aws.eventName
       - event.id: $json_event.aws.eventID

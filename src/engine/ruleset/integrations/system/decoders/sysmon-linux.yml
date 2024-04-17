@@ -117,13 +117,13 @@ normalize:
       - event.module: sysmon-linux
       - wazuh.decoders: array_append(sysmon-linux)
 
-      - log.level: get_value($lvl_map, $_sysmon.System.Level.#text)
+      - log.level: get_key_in($lvl_map, $_sysmon.System.Level.#text)
       - event.start: $_sysmon.System.TimeCreated.@SystemTime
       - host.name: $_sysmon.System.Computer.#text
       - event.kind: event
       - event.code: $_sysmon.System.EventID.#text
 
-      - event: merge_value($idEvent_map, $_sysmon.System.EventID.#text)
+      - event: merge_key_in($idEvent_map, $_sysmon.System.EventID.#text)
 
   #########################################################
   #                   Delete invalid fields
