@@ -11,6 +11,8 @@ import sys
 import warnings
 
 SSL_DEPRECATED_MESSAGE = 'The `{ssl_protocol}` SSL protocol is deprecated.'
+CACHE_DELETED_MESSAGE = 'The `cache` API configuration option no longer takes effect since {release} and will ' \
+                        'be completely removed in the next major release.'
 
 API_MAIN_PROCESS = 'wazuh-apid'
 API_LOCAL_REQUEST_PROCESS = 'wazuh-apid_exec'
@@ -210,6 +212,10 @@ def start(params: dict):
             allow_headers=api_conf['cors']['allow_headers'],
             allow_credentials=api_conf['cors']['allow_credentials'],
         )
+
+    # Display warning if using deprecated cache API configuration
+    if api_conf.get('cache', {}).get('enabled', {}):
+        logger.warning(CACHE_DELETED_MESSAGE.format(release="4.9.0"))
 
     # Add error handlers to format exceptions
     app.add_error_handler(ExpectFailedException, error_handler.expect_failed_error_handler)
