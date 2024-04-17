@@ -1,11 +1,17 @@
-name: Packages - Build filebeat package
+name: Packages - Build Filebeat Package
 on:
   workflow_dispatch:
     inputs:
       revision:
         description: 'Revision used to naming Filebeat package wazuh-filebeat-X.X.tar.gz'
         required: true
-
+  workflow_call:
+    inputs:
+      revision:
+        required: true
+        default: "0.0"
+        type: string
+    
 jobs:
   Filebeat-module-generation:
     runs-on: ubuntu-latest
@@ -22,7 +28,7 @@ jobs:
 
       - name: Set package name
         run: |
-          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ github.event.inputs.revision }}.tar.gz" >> $GITHUB_ENV
+          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ inputs.revision }}.tar.gz" >> $GITHUB_ENV
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
