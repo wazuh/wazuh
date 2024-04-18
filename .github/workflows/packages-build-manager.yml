@@ -1,4 +1,4 @@
-run-name: Build Wazuh Manager Package - ${{ inputs.system }} - ${{ inputs.architecture }}
+run-name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }}
 on:
   workflow_dispatch:
     inputs:

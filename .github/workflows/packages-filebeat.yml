@@ -3,12 +3,17 @@ on:
   workflow_dispatch:
     inputs:
       revision:
-        description: 'Revision used to naming Filebeat package wazuh-filebeat-X.X.tar.gz'
-        required: true
+        description: | 
+          Revision used to naming Filebeat package wazuh-filebeat-X.X.tar.gz.
+          Default 0.0.
+        required: false
+        default: "0.0"
+        type: string
+
   workflow_call:
     inputs:
       revision:
-        required: true
+        required: false
         default: "0.0"
         type: string
     
