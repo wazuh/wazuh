@@ -1463,7 +1463,7 @@ components:
           description: "If this is not included, the API will get the IP automatically. Allowed values:
           IP, IP/NET, ANY"
           type: string
-          format: alphanumeric
+          format: alphanumeric_symbols
       required:
       - name
 
@@ -1526,7 +1526,7 @@ components:
           description: "If this is not included, the API will get the IP automatically. Allowed values:
           IP, IP/NET, ANY"
           type: string
-          format: alphanumeric
+          format: alphanumeric_symbols
         force:
           $ref: '#/components/schemas/AgentInsertForce'
       required:
