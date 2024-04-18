@@ -37,6 +37,7 @@ int OS_SHA1_File(const char *fname, os_sha1 output, int mode) {
 
     fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
+        EVP_MD_CTX_free(sha1_ctx);
         return (-1);
     }
 
@@ -148,7 +149,6 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sh
     memset(output, 0, sizeof(os_sha1));
     buf[OS_MAXSTR - 1] = '\0';
 
-    *c = EVP_MD_CTX_new();
     EVP_DigestInit(*c, EVP_sha1());
 
     /* It's important to read \r\n instead of \n to generate the correct hash */

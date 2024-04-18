@@ -41,6 +41,12 @@ static void check_pattern_expand_excluded();
 static void set_can_read(int value);
 
 /**
+ * @brief Releases the data structure stored in the hash table 'files_status'.
+ * @param data Structure of the data to be released
+ */
+STATIC void free_files_status_data(os_file_status_t *data);
+
+/**
  * @brief Create files_status hash and load the previous estatus from JSON file
  */
 STATIC void w_initialize_file_status();
@@ -2547,12 +2553,19 @@ int w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * context) {
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
         if (OSHash_Add_ex(files_status, path, data) != 2) {
+            EVP_MD_CTX_free(context);
             os_free(data);
             return -1;
         }
     }
 
     return 0;
+}
+
+void free_files_status_data(os_file_status_t *data) {
+    if (!data) return;
+    EVP_MD_CTX_free(data->context);
+    os_free(data);
 }
 
 STATIC void w_initialize_file_status() {
@@ -2566,7 +2579,7 @@ STATIC void w_initialize_file_status() {
         merror_exit(HSETSIZE_ERROR, files_status_name);
     }
 
-    OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free);
+    OSHash_SetFreeDataPointer(files_status, (void (*)(void *))free_files_status_data);
 
     /* Read json file to load last read positions */
     FILE * fd = NULL;
@@ -2675,11 +2688,12 @@ STATIC void w_load_files_status(cJSON * global_json) {
         memcpy(data->hash, hash_str, sizeof(os_sha1));
         data->offset = value_offset;
 
-        EVP_MD_CTX *context = NULL;
+        EVP_MD_CTX *context = EVP_MD_CTX_new();
         os_sha1 output;
 
         if (OS_SHA1_File_Nbytes(path_str, &context, output, OS_BINARY, value_offset) < 0) {
             mdebug1(LOGCOLLECTOR_FILE_NOT_EXIST, path_str);
+            EVP_MD_CTX_free(context);
             os_free(data);
             return;
         }
@@ -2688,6 +2702,7 @@ STATIC void w_load_files_status(cJSON * global_json) {
         if (OSHash_Update_ex(files_status, path_str, data) != 1) {
             if (OSHash_Add_ex(files_status, path_str, data) != 2) {
                 merror(HADD_ERROR, path_str, files_status_name);
+                EVP_MD_CTX_free(context);
                 os_free(data);
             }
         }
@@ -2781,12 +2796,12 @@ STATIC int w_set_to_last_line_read(logreader * lf) {
     }
 
     int64_t result = 0;
-
-    EVP_MD_CTX *context = NULL;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     os_sha1 output;
 
     if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, data->offset) < 0) {
         merror(FAIL_SHA1_GEN, lf->file);
+        EVP_MD_CTX_free(context);
         return -1;
     }
 
@@ -2821,11 +2836,12 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
 
     data->offset = pos;
 
-    EVP_MD_CTX *context = NULL;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     os_sha1 output;
 
     if (OS_SHA1_File_Nbytes(path, &context, output, OS_BINARY, pos) < 0) {
         merror(FAIL_SHA1_GEN, path);
+        EVP_MD_CTX_free(context);
         os_free(data);
         return -1;
     }
@@ -2834,6 +2850,7 @@ STATIC int w_update_hash_node(char * path, int64_t pos) {
 
     if (OSHash_Update_ex(files_status, path, data) != 1) {
         if (OSHash_Add_ex(files_status, path, data) != 2) {
+            EVP_MD_CTX_free(context);
             os_free(data);
             return -1;
         }
@@ -2868,7 +2885,8 @@ bool w_get_hash_context(logreader *lf, EVP_MD_CTX ** context, int64_t position) 
             return false;
         }
     } else {
-        *context = data->context;
+        EVP_DigestInit(*context, EVP_sha1());
+        EVP_MD_CTX_copy(*context, data->context);
     }
     return true;
 }

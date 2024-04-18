@@ -92,7 +92,7 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
     }
 
     /* Obtain context to calculate hash */
-    EVP_MD_CTX *context = NULL;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
@@ -194,6 +194,8 @@ void *read_djbmultilog(logreader *lf, int *rc, int drop_it) {
 
     if (is_valid_context_file) {
         w_update_file_status(lf->file, current_position, context);
+    } else {
+        EVP_MD_CTX_free(context);
     }
 
     mdebug2("Read %d lines from %s", lines, lf->file);
