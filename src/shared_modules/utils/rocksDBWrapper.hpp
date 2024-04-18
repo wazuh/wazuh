@@ -12,7 +12,9 @@
 #ifndef _ROCKS_DB_WRAPPER_HPP
 #define _ROCKS_DB_WRAPPER_HPP
 
+#include "rocksDBColumnFamily.hpp"
 #include "rocksDBIterator.hpp"
+#include "rocksDBOptions.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <memory>
@@ -28,77 +30,6 @@
 
 namespace Utils
 {
-
-    /**
-     * @brief RAII wrapper for RocksDB column family handle.
-     *
-     */
-    class ColumnFamilyRAII final
-    {
-    private:
-        std::shared_ptr<rocksdb::DB> m_db; ///< RocksDB instance.
-        std::unique_ptr<rocksdb::ColumnFamilyHandle, std::function<void(rocksdb::ColumnFamilyHandle*)>>
-            m_handle; ///< Column family handle.
-
-    public:
-        /**
-         * @brief Constructor.
-         *
-         * @param db RocksDB instance.
-         * @param rawHandle Column family handle.
-         */
-        ColumnFamilyRAII(std::shared_ptr<rocksdb::DB> db, rocksdb::ColumnFamilyHandle* rawHandle)
-            : m_db {db}
-            , m_handle(rawHandle,
-                       [db](rocksdb::ColumnFamilyHandle* handle)
-                       {
-                           if (db && handle)
-                           {
-                               auto status = db->DestroyColumnFamilyHandle(handle);
-                               if (!status.ok())
-                               {
-                                   throw std::runtime_error("Failed to free RocksDB column family: " +
-                                                            std::string {status.getState()});
-                               }
-                           }
-                       })
-        {
-        }
-
-        /**
-         * @brief Get the column family handle.
-         *
-         * @return rocksdb::ColumnFamilyHandle* Column family handle.
-         */
-        rocksdb::ColumnFamilyHandle* handle() const
-        {
-            return m_handle.get();
-        }
-
-        /**
-         * @brief Overload of the arrow operator.
-         *
-         * @return rocksdb::ColumnFamilyHandle* Column family handle.
-         */
-        rocksdb::ColumnFamilyHandle* operator->() const
-        {
-            return this->handle();
-        }
-
-        /**
-         * @brief Drops the column family.
-         *
-         * @note This method is used to delete a column family from the database.
-         */
-        void drop() const
-        {
-            if (const auto status = m_db->DropColumnFamily(m_handle.get()); !status.ok())
-            {
-                throw std::runtime_error("Error deleting data: " + status.ToString());
-            }
-        }
-    };
-
     class RocksDBTransaction;
     class IRocksDBWrapper
     {
@@ -127,79 +58,6 @@ namespace Utils
     template<typename T = rocksdb::DB>
     class TRocksDBWrapper : public IRocksDBWrapper
     {
-        /**
-         * @brief Builds the table options for the RocksDB instance.
-         * @return rocksdb::BlockBasedTableOptions Table options.
-         */
-        rocksdb::BlockBasedTableOptions buildTableOptions() const
-        {
-            if (m_readCache == nullptr)
-            {
-                throw std::runtime_error("Read cache is not initialized");
-            }
-
-            rocksdb::BlockBasedTableOptions tableOptions;
-            tableOptions.block_cache = m_readCache;
-            return tableOptions;
-        }
-
-        /**
-         * @brief Builds the column family options for the RocksDB instance.
-         * @return rocksdb::ColumnFamilyOptions Column family options.
-         */
-        rocksdb::ColumnFamilyOptions buildColumnFamilyOptions() const
-        {
-            rocksdb::ColumnFamilyOptions columnFamilyOptions;
-            // Amount of data to build up in memory (backed by an unsorted log
-            // on disk) before converting to a sorted on-disk file.
-            columnFamilyOptions.write_buffer_size = 64 * 1024 * 1024;
-            // The maximum number of write buffers that are built up in memory.
-            columnFamilyOptions.max_write_buffer_number = 2;
-            // The maximum number of levels of compaction to allow.
-            columnFamilyOptions.num_levels = 4;
-            // The size of the LRU cache used to prevent cold reads.
-            columnFamilyOptions.table_factory.reset(rocksdb::NewBlockBasedTableFactory(buildTableOptions()));
-
-            return columnFamilyOptions;
-        }
-
-        /**
-         * @brief Builds the DB options for the RocksDB instance.
-         * @return rocksdb::Options DB options.
-         */
-        rocksdb::Options buildDBOptions() const
-        {
-            if (m_writeManager == nullptr)
-            {
-                throw std::runtime_error("Write buffer manager is not initialized");
-            }
-
-            rocksdb::Options options;
-            // If the total size of all live memtables of all the DBs exceeds
-            // a limit, a flush will be triggered in the next DB to which the next write
-            // is issued, as long as there is one or more column family not already
-            // flushing.
-            options.write_buffer_manager = m_writeManager;
-            // If true, the database will be created if it is missing.
-            options.create_if_missing = true;
-            // If true, log files will be kept around to restore the database
-            options.keep_log_file_num = 1;
-            // Log level for the info log.
-            options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
-            // The maximum number of files to keep open at the same time.
-            options.max_open_files = 256;
-            // The maximum levels of compaction to allow.
-            options.num_levels = 4;
-            // Amount of data to build up in memory (backed by an unsorted log
-            // on disk) before converting to a sorted on-disk file.
-            options.write_buffer_size = 64 * 1024 * 1024;
-            // The maximum number of write buffers that are built up in memory.
-            options.max_write_buffer_number = 2;
-
-            // The size of the LRU cache used to prevent cold reads.
-            options.table_factory.reset(NewBlockBasedTableFactory(buildTableOptions()));
-            return options;
-        }
 
     public:
         /**
@@ -215,8 +73,8 @@ namespace Utils
             m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
             m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
 
-            rocksdb::Options options = buildDBOptions();
-            rocksdb::ColumnFamilyOptions columnFamilyOptions = buildColumnFamilyOptions();
+            rocksdb::Options options = RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
+            rocksdb::ColumnFamilyOptions columnFamilyOptions = RocksDBOptions::buildColumnFamilyOptions(m_readCache);
 
             T* dbRawPtr;
             std::vector<rocksdb::ColumnFamilyDescriptor> columnsDescriptors;
@@ -570,7 +428,8 @@ namespace Utils
 
             rocksdb::ColumnFamilyHandle* pColumnFamily;
 
-            if (const auto status {m_db->CreateColumnFamily(buildColumnFamilyOptions(), columnName, &pColumnFamily)};
+            if (const auto status {m_db->CreateColumnFamily(
+                    RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName, &pColumnFamily)};
                 !status.ok())
             {
                 throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
@@ -636,9 +495,12 @@ namespace Utils
                     rocksdb::WriteBatch batch;
                     std::unique_ptr<rocksdb::Iterator> itDefault(
                         m_db->NewIterator(rocksdb::ReadOptions(), it->handle()));
-                    for (itDefault->SeekToFirst(); itDefault->Valid(); itDefault->Next())
+
+                    itDefault->SeekToFirst();
+                    while (itDefault->Valid())
                     {
                         batch.Delete(it->handle(), itDefault->key());
+                        itDefault->Next();
                     }
 
                     if (const auto status = m_db->Write(rocksdb::WriteOptions(), &batch); !status.ok())
@@ -721,19 +583,19 @@ namespace Utils
                 std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle));
 
                 // Iterate through all key-value pairs in the column
-                for (it->SeekToFirst(); it->Valid(); it->Next())
+                it->SeekToFirst();
+                while (it->Valid())
                 {
                     auto keyStr = std::string(it->key().data(), it->key().size());
                     auto valueStr = it->value().ToString();
 
                     callback(keyStr, valueStr);
 
-                    auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle, it->key());
-
-                    if (!status.ok())
+                    if (auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle, it->key()); !status.ok())
                     {
                         throw std::runtime_error("Error deleting data: " + status.ToString());
                     }
+                    it->Next();
                 }
             }
         }
@@ -758,19 +620,19 @@ namespace Utils
             // Create an iterator for the current column family
             std::unique_ptr<rocksdb::Iterator> it(m_db->NewIterator(rocksdb::ReadOptions(), columnHandle.handle()));
 
-            for (it->SeekToFirst(); it->Valid(); it->Next())
+            it->SeekToFirst();
+            while (it->Valid())
             {
                 auto keyStr = std::string(it->key().data(), it->key().size());
                 auto valueStr = it->value().ToString();
 
                 callback(keyStr, valueStr);
 
-                auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle.handle(), it->key());
-
-                if (!status.ok())
+                if (auto status = m_db->Delete(rocksdb::WriteOptions(), columnHandle.handle(), it->key()); !status.ok())
                 {
                     throw std::runtime_error("Error deleting data: " + status.ToString());
                 }
+                it->Next();
             }
         }
 

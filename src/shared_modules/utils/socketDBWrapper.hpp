@@ -44,9 +44,9 @@ private:
         m_dbSocket =
             std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(m_socketPath);
         m_dbSocket->connect(
-            [&](const char* body, uint32_t bodySize, const char* header, uint32_t headerSize)
+            [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
-                std::lock_guard<std::mutex> lock {m_mutexResponse};
+                std::scoped_lock lock {m_mutexResponse};
                 std::string responsePacket(body, bodySize);
 
                 if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_DUE) - 1, DB_WRAPPER_DUE))
@@ -136,10 +136,10 @@ public:
     void query(const std::string& query, nlohmann::json& response)
     {
         // Acquire lock to avoid multiple threads sending queries at the same time
-        std::lock_guard<std::mutex> lockMessage {m_mutexMessage};
+        std::scoped_lock lockMessage {m_mutexMessage};
 
         // Acquire lock before clearing the response
-        std::unique_lock<std::mutex> lockResponse {m_mutexResponse};
+        std::unique_lock lockResponse {m_mutexResponse};
 
         if (!m_dbSocket)
         {
@@ -148,13 +148,13 @@ public:
 
         m_response.clear();
         m_responsePartial.clear();
+        // coverity[missing_lock]
         m_exceptionStr.clear();
 
         m_dbSocket->send(query.c_str(), query.size());
-        const auto res =
-            m_conditionVariable.wait_for(lockResponse, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
-
-        if (res == std::cv_status::timeout)
+        if (const auto res =
+                m_conditionVariable.wait_for(lockResponse, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
+            res == std::cv_status::timeout)
         {
             // Restart the socket connection to avoid the reception of old messages
             m_dbSocket->stop();
