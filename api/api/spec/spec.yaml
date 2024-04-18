@@ -1372,7 +1372,7 @@ components:
           type: object
           properties:
             data:
-              description: "Alert data depending on the active response executed"
+              description: "Alert data depending on the active response command executed"
               type: object
       required:
         - command
@@ -8584,7 +8584,7 @@ paths:
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
-                message: All selected agents information was returned
+                message: "All selected agents information was returned"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9187,8 +9187,8 @@ paths:
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
-                        major: 20
-                        minor: 04
+                        major: '20'
+                        minor: '04'
                         name: Ubuntu
                         platform: ubuntu
                         uname: Linux |b2497efbf876 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
@@ -9213,8 +9213,8 @@ paths:
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
-                        major: 20
-                        minor: 04
+                        major: '20'
+                        minor: '04'
                         name: Ubuntu
                         platform: ubuntu
                         uname: Linux |600e27371700 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
@@ -9239,8 +9239,8 @@ paths:
                     - os:
                         arch: x86_64
                         codename: Focal Fossa
-                        major: 20
-                        minor: 04
+                        major: '20'
+                        minor: '04'
                         name: Ubuntu
                         platform: ubuntu
                         uname: Linux |4bdac19ce5e3 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
@@ -18830,8 +18830,8 @@ paths:
                     - os:
                         arch: "x86_64"
                         codename: "Focal Fossa"
-                        major: 20
-                        minor: 04
+                        major: '20'
+                        minor: '04'
                         name: Ubuntu
                         platform: ubuntu
                         uname: "Linux |77000bae7bd0 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
