@@ -87,8 +87,7 @@ daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 # Tests
 @pytest.mark.tier(level=1)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_logs_formats(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler,
-                      wait_for_api_start):
+def test_logs_formats(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler):
     """
     description: Check if the logs of the API are stored in the specified formats and the content of the log
                  files are the expected.
@@ -127,9 +126,6 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.
-        - wait_for_api_start:
-            type: fixture
-            brief: Monitor the API log file to detect whether it has been started or not.
 
     assertions:
         - Verify that the response status code is the expected one.
