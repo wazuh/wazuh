@@ -59,6 +59,15 @@ STATIC w_journald_ofe_t gs_journald_ofe = {
     .mutex = PTHREAD_MUTEX_INITIALIZER,
 }; ///< Only future events configuration and status
 
+#ifdef WAZUH_UNIT_TESTING
+void set_gs_journald_global(bool exist, bool ofe, uint64_t timestamp) {
+    gs_journald_ofe.exist_journal = exist;
+    gs_journald_ofe.only_future_events = ofe;
+    gs_journald_ofe.last_read_timestamp = timestamp;
+}
+#endif
+
+
 bool w_journald_can_read(unsigned long owner_id) {
 
     if (gs_journald_global.is_disabled) {
