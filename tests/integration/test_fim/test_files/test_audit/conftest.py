@@ -6,6 +6,7 @@ import re
 import pytest
 import subprocess
 
+from wazuh_testing.constants.platforms import CENTOS, UBUNTU, DEBIAN
 
 @pytest.fixture(scope='module')
 def uninstall_audit():
@@ -14,11 +15,11 @@ def uninstall_audit():
     # Check distro
     linux_distro = distro.id()
 
-    if re.match(linux_distro, "centos"):
+    if re.match(linux_distro, CENTOS):
         package_management = "yum"
         audit = "audit"
         option = "--assumeyes"
-    elif re.match(linux_distro, "ubuntu") or re.match(linux_distro, "debian"):
+    elif re.match(linux_distro, UBUNTU) or re.match(linux_distro, DEBIAN):
         package_management = "apt-get"
         audit = "auditd"
         option = "--yes"
