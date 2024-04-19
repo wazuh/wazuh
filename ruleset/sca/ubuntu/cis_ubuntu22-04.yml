@@ -759,7 +759,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "f:/etc/shadow -> r:^root:\\$\\d+"
+      - "c:passwd --status root -> r:^root P"
+      - "not c:passwd --status root -> r:^root NP"
 
   # 1.5.1 Ensure address space layout randomization (ASLR) is enabled (Automated) - Not implemented
 
