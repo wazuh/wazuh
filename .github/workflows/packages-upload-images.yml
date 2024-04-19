@@ -1,4 +1,4 @@
-name: Package - Upload Docker images - DEB and RPM - amd64
+run-name: Package - Upload Docker images with ${{ inputs.tag }}
 on:
   workflow_dispatch:
     inputs:
@@ -18,37 +18,6 @@ on:
 jobs:
   Upload-package-building-images:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - CONTAINER_NAME: pkg_deb_manager_builder_amd64
-            DOCKERFILE_PATH: packages/debs/amd64/manager
-            DISTRO: deb
-          - CONTAINER_NAME: pkg_rpm_manager_builder_amd64
-            DOCKERFILE_PATH: packages/rpms/amd64/manager
-            DISTRO: rpm
-          - CONTAINER_NAME: pkg_deb_agent_builder_amd64
-            DOCKERFILE_PATH: packages/debs/amd64/agent
-            DISTRO: deb
-          - CONTAINER_NAME: pkg_deb_agent_builder_i386
-            DOCKERFILE_PATH: packages/debs/i386/agent
-            DISTRO: deb
-          - CONTAINER_NAME: pkg_rpm_agent_builder_amd64
-            DOCKERFILE_PATH: packages/rpms/amd64/agent
-            DISTRO: rpm
-          - CONTAINER_NAME: pkg_rpm_agent_builder_i386
-            DOCKERFILE_PATH: packages/rpms/i386/agent
-            DISTRO: rpm
-          - CONTAINER_NAME: pkg_rpm_legacy_builder_amd64
-            DOCKERFILE_PATH: packages/rpms/amd64/legacy
-            DISTRO: rpm
-          - CONTAINER_NAME: pkg_rpm_legacy_builder_i386
-            DOCKERFILE_PATH: packages/debs/i386/legacy
-            DISTRO: deb
-          - CONTAINER_NAME: compile_windows_agent
-            DOCKERFILE_PATH: packages/windows
-            DISTRO: ''
-      fail-fast: false
 
     steps:
       - name: Cancel previous runs
@@ -106,31 +75,105 @@ jobs:
               - 'packages/rpms/i386/legacy/**'
               - 'packages/rpms/utils/**'       
             compile_windows_agent:
-              - 'packages/windows/**' 
+              - 'packages/windows/**'
 
-      - name: Copy build.sh and utils to Dockerfile path
-        if: matrix.CONTAINER_NAME != 'compile_windows_agent' 
-        run: |
-          cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
-          cp $GITHUB_WORKSPACE/packages/${{ matrix.DISTRO }}s/utils/* $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
-
-      - name: Set tag
+      - name: Set tag and WAZUH_WORKFLOWS_BRANCH
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
           elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
+          echo "WAZUH_WORKFLOWS_BRANCH=1-migrate-upload-packages-workflows" >> $GITHUB_ENV
 
-      - name: Build and push image ${{ matrix.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
-        if: |
-          (steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_manager_builder_amd64') || 
-          (steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_manager_builder_amd64') ||
-          (steps.changes.outputs.pkg_deb_agent_builder_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_agent_builder_amd64') ||
-          (steps.changes.outputs.pkg_deb_agent_builder_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_agent_builder_i386') ||
-          (steps.changes.outputs.pkg_rpm_agent_builder_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_agent_builder_amd64') ||
-          (steps.changes.outputs.pkg_rpm_agent_builder_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_agent_builder_i386') ||
-          (steps.changes.outputs.pkg_rpm_legacy_builder_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_amd64') ||
-          (steps.changes.outputs.pkg_rpm_legacy_builder_i386 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_legacy_builder_i386') ||
-          (steps.changes.outputs.compile_windows_agent == 'true' && matrix.CONTAINER_NAME == 'compile_windows_agent')
-        run:
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{matrix.CONTAINER_NAME}} ${{ matrix.DOCKERFILE_PATH }} ${{ env.TAG }}
+      - name: Request pkg_deb_manager_builder_amd64 update 
+        if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
+        run: |
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", "inputs": {"container_name": "pkg_deb_manager_builder_amd64", "dockerfile_path": "packages/debs/amd64/manager", "tag": "${{ env.TAG }}", "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+      
+      - name: Request pkg_rpm_manager_builder_amd64 update
+        if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "pkg_rpm_manager_builder_amd64", \ 
+                       "dockerfile_path": "packages/rpms/amd64/manager", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+
+      - name: Request pkg_deb_agent_builder_amd64 update
+        if: steps.changes.outputs.pkg_deb_agent_builder_amd64 == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "pkg_deb_agent_builder_amd64", \ 
+                       "dockerfile_path": "packages/debs/amd64/agent", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+
+      - name: Request pkg_deb_agent_builder_i386 update
+        if: steps.changes.outputs.pkg_deb_agent_builder_i386 == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "pkg_deb_agent_builder_i386", \ 
+                       "dockerfile_path": "packages/debs/i386/agent", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+
+      - name: Request pkg_rpm_agent_builder_amd64 update
+        if: steps.changes.outputs.pkg_rpm_agent_builder_amd64 == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "pkg_rpm_agent_builder_amd64", \ 
+                       "dockerfile_path": "packages/rpms/amd64/agent", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+
+      - name: Request pkg_rpm_agent_builder_i386 update
+        if: steps.changes.outputs.pkg_rpm_agent_builder_i386 == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "pkg_rpm_agent_builder_i386", \ 
+                       "dockerfile_path": "packages/rpms/i386/agent", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+
+      - name: Request pkg_rpm_legacy_builder_amd64 update
+        if: steps.changes.outputs.pkg_rpm_legacy_builder_amd64 == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "pkg_rpm_legacy_builder_amd64", \ 
+                       "dockerfile_path": "packages/rpms/amd64/legacy", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+
+      - name: Request pkg_rpm_legacy_builder_i386 update
+        if: steps.changes.outputs.pkg_rpm_legacy_builder_i386 == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "pkg_rpm_legacy_builder_i386", \ 
+                       "dockerfile_path": "packages/debs/i386/legacy", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+
+      - name: Request compile_windows_agent update
+        if: steps.changes.outputs.compile_windows_agent == 'true'
+        run: | 
+          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
+            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
+            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
+            "inputs": {"container_name": "compile_windows_agent", \ 
+                       "dockerfile_path": "packages/windows", \
+                       "tag": "${{ env.TAG }}", \  
+                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
