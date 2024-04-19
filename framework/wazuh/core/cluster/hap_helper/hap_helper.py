@@ -10,10 +10,13 @@ from wazuh.core.cluster.utils import (
     AGENT_RECONNECTION_TIME,
     EXCLUDED_NODES,
     FREQUENCY,
+    HAPROXY_ADDRESS,
     HAPROXY_BACKEND,
+    HAPROXY_PASSWORD,
     HAPROXY_PORT,
     HAPROXY_PROTOCOL,
     HAPROXY_RESOLVER,
+    HAPROXY_USER,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
     ClusterFilter,
@@ -24,20 +27,7 @@ from wazuh.core.cluster.utils import (
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
-HELPER_DEFAULTS = {
-    HAPROXY_PORT: 5555,
-    HAPROXY_PROTOCOL: 'http',
-    HAPROXY_BACKEND: 'wazuh_cluster',
-    HAPROXY_RESOLVER: None,
-    EXCLUDED_NODES: [],
-    FREQUENCY: 60,
-    AGENT_CHUNK_SIZE: 120,
-    AGENT_RECONNECTION_TIME: 5,
-    AGENT_RECONNECTION_STABILITY_TIME: 60,
-    IMBALANCE_TOLERANCE: 0.1,
-    REMOVE_DISCONNECTED_NODE_AFTER: 3,
-}
-
+CONNECTION_PORT = 1514
 
 class HAPHelper:
     """Helper to balance Wazuh agents through cluster calling HAProxy."""
@@ -489,45 +479,39 @@ class HAPHelper:
 
         try:
             helper_config = read_cluster_config()['haproxy_helper']
-            port_config = get_ossec_conf(section='remote', field='port')
+            port_config = get_ossec_conf(section='remote')
 
             proxy_api = ProxyAPI(
-                username=helper_config['haproxy_user'],
-                password=helper_config['haproxy_password'],
+                username=helper_config[HAPROXY_USER],
+                password=helper_config[HAPROXY_PASSWORD],
                 tag=tag,
-                address=helper_config['haproxy_address'],
-                port=helper_config.get(HAPROXY_PORT, HELPER_DEFAULTS[HAPROXY_PORT]),
-                protocol=helper_config.get(HAPROXY_PROTOCOL, HELPER_DEFAULTS[HAPROXY_PROTOCOL]),
+                address=helper_config[HAPROXY_ADDRESS],
+                port=helper_config[HAPROXY_PORT],
+                protocol=helper_config[HAPROXY_PROTOCOL],
             )
             proxy = Proxy(
-                wazuh_backend=helper_config.get(HAPROXY_BACKEND, HELPER_DEFAULTS[HAPROXY_BACKEND]),
-                wazuh_connection_port=int(port_config.get('remote')[0].get('port')),
+                wazuh_backend=helper_config[HAPROXY_BACKEND],
+                wazuh_connection_port=int(port_config.get('remote')[0].get('port', CONNECTION_PORT)),
                 proxy_api=proxy_api,
                 tag=tag,
-                resolver=helper_config.get(HAPROXY_RESOLVER, HELPER_DEFAULTS[HAPROXY_RESOLVER]),
+                resolver=helper_config[HAPROXY_RESOLVER],
             )
 
             wazuh_dapi = WazuhDAPI(
                 tag=tag,
-                excluded_nodes=helper_config.get(EXCLUDED_NODES, HELPER_DEFAULTS[EXCLUDED_NODES]),
+                excluded_nodes=helper_config[EXCLUDED_NODES],
             )
 
             helper = cls(
                 proxy=proxy,
                 wazuh_dapi=wazuh_dapi,
                 tag=tag,
-                sleep_time=int(helper_config.get(FREQUENCY, HELPER_DEFAULTS[FREQUENCY])),
-                agent_reconnection_stability_time=helper_config.get(
-                    AGENT_RECONNECTION_STABILITY_TIME, HELPER_DEFAULTS[AGENT_RECONNECTION_STABILITY_TIME]
-                ),
-                agent_reconnection_time=helper_config.get(
-                    AGENT_RECONNECTION_TIME, HELPER_DEFAULTS[AGENT_RECONNECTION_TIME]
-                ),
-                agent_reconnection_chunk_size=helper_config.get(AGENT_CHUNK_SIZE, HELPER_DEFAULTS[AGENT_CHUNK_SIZE]),
-                agent_tolerance=helper_config.get(IMBALANCE_TOLERANCE, HELPER_DEFAULTS[IMBALANCE_TOLERANCE]),
-                remove_disconnected_node_after=helper_config.get(
-                    REMOVE_DISCONNECTED_NODE_AFTER, HELPER_DEFAULTS[REMOVE_DISCONNECTED_NODE_AFTER]
-                ),
+                sleep_time=helper_config[FREQUENCY],
+                agent_reconnection_stability_time=helper_config[AGENT_RECONNECTION_STABILITY_TIME],
+                agent_reconnection_time=helper_config[AGENT_RECONNECTION_TIME],
+                agent_reconnection_chunk_size=helper_config[AGENT_CHUNK_SIZE],
+                agent_tolerance=helper_config[IMBALANCE_TOLERANCE],
+                remove_disconnected_node_after=helper_config[REMOVE_DISCONNECTED_NODE_AFTER],
             )
 
             await helper.initialize_proxy()
