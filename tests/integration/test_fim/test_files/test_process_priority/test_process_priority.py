@@ -145,9 +145,6 @@ def test_process_priority(test_configuration, test_metadata, configure_local_int
         - scheduled
     '''
 
-    if sys.platform == MACOS and not test_metadata['fim_mode'] == 'scheduled':
-        pytest.skip(reason="Realtime and whodata are not supported on macos")
-
     priority = int(test_metadata['priority'])
     syscheckd_process = search_process_by_command(SYSCHECK_DAEMON)
 
