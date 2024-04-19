@@ -126,6 +126,10 @@ All notable changes to this project will be documented in this file.
 - Removed external `python-jose` and `ecdsa` library dependencies. ([#21749](https://github.com/wazuh/wazuh/pull/21749))
 
 
+## [v4.7.4]
+
+
+
 ## [v4.7.3]
 
 ### Manager
