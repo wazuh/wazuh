@@ -47,6 +47,21 @@ REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
 logger = logging.getLogger('wazuh')
 execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock")
 
+HELPER_DEFAULTS = {
+    HAPROXY_PORT: 5555,
+    HAPROXY_PROTOCOL: 'http',
+    HAPROXY_BACKEND: 'wazuh_cluster',
+    HAPROXY_RESOLVER: None,
+    EXCLUDED_NODES: [],
+    FREQUENCY: 60,
+    AGENT_CHUNK_SIZE: 120,
+    AGENT_RECONNECTION_TIME: 5,
+    AGENT_RECONNECTION_STABILITY_TIME: 60,
+    IMBALANCE_TOLERANCE: 0.1,
+    REMOVE_DISCONNECTED_NODE_AFTER: 3,
+}
+
+
 def validate_haproxy_helper_config(helper_config: dict) -> dict:
     """Validate HAProxy helper configuration section.
 
@@ -65,6 +80,10 @@ def validate_haproxy_helper_config(helper_config: dict) -> dict:
     WazuhError (3004)
         If some value has an invalid type.
     """
+    # If any value is missing from user's cluster configuration, add the default one.
+    for value_name in set(HELPER_DEFAULTS.keys()) - set(helper_config.keys()):
+        helper_config[value_name] = HELPER_DEFAULTS[value_name]
+
     if helper_config[HAPROXY_DISABLED] == NO:
         helper_config[HAPROXY_DISABLED] = False
     elif helper_config[HAPROXY_DISABLED] == YES:
