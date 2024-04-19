@@ -267,15 +267,15 @@ int can_read();
  * @brief Update the read position in file status hash table
  * @param path the path is the hash key
  * @param pos new read position
- * @param context SHA1 context.
+ * @param context EVP_MD_CTX context.
  * @return 0 on succes, otherwise -1
  */
 int w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX *context);
 
 /**
- * @brief Get SHA1 context or initialize it
+ * @brief Get EVP_MD_CTX context or initialize it
  * @param lf Structure that contains file information, with `fd` and `file` non-null.
- * @param context SHA1 context.
+ * @param context EVP_MD_CTX context.
  * @param position end file position.
  * @return true if returns a valid context, false in otherwise.
  */

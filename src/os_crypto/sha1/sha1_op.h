@@ -13,10 +13,11 @@
 
 #include <sys/types.h>
 #include <openssl/sha.h>
-#include <openssl/evp.h>
 #ifdef WIN32
+#include <winsock2.h>
 #include <windef.h>
 #endif
+#include <openssl/evp.h>
 
 #define OS_SHA1_HEXDIGEST_SIZE (SHA_DIGEST_LENGTH * 2) // Sha1 digest len (20) * 2 (hex chars per byte)
 
@@ -46,7 +47,7 @@ void OS_SHA1_Hexdigest(const unsigned char * digest, os_sha1 output);
  * @brief Calculates the SHA1 of a file until N byte and save the context
  *
  * @param fname[in] File name to calculate SHA1.
- * @param c[out] SHA1 context.
+ * @param c[out] EVP_MD_CTX context.
  * @param output[out] Output string.
  * @param nbytes[in] Number of bytes to read.
  * @return 0 on success, -1 when failure opening file.
@@ -57,7 +58,7 @@ int OS_SHA1_File_Nbytes(const char *fname, EVP_MD_CTX **c, os_sha1 output, int m
  * @brief If fp corresponds to fname then calculates the SHA1 of the `fname` file until N byte and save the context
  *
  * @param[in] fname File name to calculate SHA1.
- * @param[out] c SHA1 context.
+ * @param[out] c EVP_MD_CTX context.
  * @param[out] output Output string.
  * @param[in] nbytes Number of bytes to read.
  * @param[in] fd_check File serial number, Is checked against `fname`
@@ -75,7 +76,7 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sh
 /**
  * @brief update the context and calculates the SHA1
  *
- * @param c[out] SHA1 context.
+ * @param c[out] EVP_MD_CTX context.
  * @param output[out] Output string.
  * @param buf[in] String to update the SHA1 context
  */
