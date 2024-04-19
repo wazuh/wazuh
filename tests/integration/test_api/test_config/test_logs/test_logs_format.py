@@ -148,10 +148,10 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
 
     if current_level == 'error':
         with pytest.raises(RuntimeError) as exception:
-            login()
+            login(timeout=10, login_attempts=5)
         response = exception.value.args[1]
     else:
-        _, response = login()
+        _, response = login(timeout=10, login_attempts=5)
 
     assert response.status_code == expected_code, f"The status code was {response.status_code}." \
                                                   f"\nExpected: {expected_code}."
