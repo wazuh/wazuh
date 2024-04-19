@@ -58,39 +58,6 @@ function pack_wpk() {
 }
 
 
-function build_wpk_linux() {
-    local BRANCH="${1}"
-    local DESTINATION="${2}"
-    local CONTAINER_NAME="${3}"
-    local JOBS="${4}"
-    local OUT_NAME="${5}"
-    local CHECKSUM="${6}"
-    local INSTALLATION_PATH="${7}"
-    local AWS_REGION="${8}"
-    local WPK_KEY="${9}"
-    local WPK_CERT="${10}"
-
-    if [[ "${CHECKSUM}" == "yes" ]]; then
-        CHECKSUM_FLAG="-c"
-    fi
-    if [ -n "${KEYDIR}" ]; then
-        MOUNT_KEYDIR_FLAG="-v ${KEYDIR}:/etc/wazuh:Z"
-    fi
-    if [ -n "${WPK_KEY}" ]; then
-        WPK_KEY_FLAG="--aws-wpk-key ${WPK_KEY}"
-    fi
-    if [ -n "${WPK_CERT}" ]; then
-        WPK_CERT_FLAG="--aws-wpk-cert ${WPK_CERT}"
-    fi
-
-    docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${DESTINATION}:/var/local/checksum:Z \
-        -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} ${CHECKSUM_FLAG}
-
-    return $?
-}
-
-
 function build_container() {
     local CONTAINER_NAME="${1}"
     local DOCKERFILE_PATH="${2}"
@@ -337,7 +304,7 @@ function main() {
     fi
 
     if [[ "${HAVE_TARGET}" == true ]] && [[ "${HAVE_BRANCH}" == true ]] && [[ "${HAVE_DESTINATION}" == true ]] && [[ "${HAVE_OUT_NAME}" == true ]]; then
-        if [[ "${TARGET}" == "windows" || "${TARGET}" == "macos" ]]; then
+        if [[ "${TARGET}" == "windows" || "${TARGET}" == "macos" || "${TARGET}" == "linux" ]]; then
             if [[ "${HAVE_PKG_NAME}" == true ]]; then
                 if [[ ${BUILD_DOCKER} == "yes" ]]; then
                     build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
@@ -350,12 +317,7 @@ function main() {
                 help 1
             fi
         else
-            if [[ ${BUILD_DOCKER} == "yes" ]]; then
-                build_container ${LINUX_BUILDER} ${LINUX_BUILDER_DOCKERFILE} || clean ${LINUX_BUILDER_DOCKERFILE} 1
-            fi
-            local CONTAINER_NAME="${LINUX_BUILDER}"
-            build_wpk_linux ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${OUT_NAME} ${CHECKSUM} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${LINUX_BUILDER_DOCKERFILE} 1
-            clean ${LINUX_BUILDER_DOCKERFILE} 0
+            echo "Error"
         fi
     else
         echo "ERROR: Need more parameters"
