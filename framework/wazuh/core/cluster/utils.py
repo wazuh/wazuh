@@ -62,18 +62,79 @@ HELPER_DEFAULTS = {
 }
 
 
-def validate_haproxy_helper_config(helper_config: dict) -> dict:
-    """Validate HAProxy helper configuration section.
+def parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
+    """Parse HAProxy helper integer values.
 
     Parameters
     ----------
     helper_config : dict
-        Configuration to validate.
+        Configuration to parse.
 
     Returns
     -------
     dict
-        Validated configuration for HAProxy Helper.
+        Parsed configuration with integer values.
+
+    Raises
+    ------
+    WazuhError (3004)
+        If some value has an invalid type.
+    """
+    for field in [
+        HAPROXY_PORT,
+        FREQUENCY,
+        AGENT_RECONNECTION_STABILITY_TIME,
+        AGENT_RECONNECTION_TIME,
+        AGENT_CHUNK_SIZE,
+        REMOVE_DISCONNECTED_NODE_AFTER
+    ]:
+        if helper_config.get(field):
+            try:
+                helper_config[field] = int(helper_config[field])
+            except ValueError:
+                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be an integer.")
+    return helper_config
+
+
+def parse_haproxy_helper_float_values(helper_config: dict) -> dict:
+    """Parse HAProxy helper float values.
+
+    Parameters
+    ----------
+    helper_config : dict
+        Configuration to parse.
+
+    Returns
+    -------
+    dict
+        Parsed configuration with float values.
+
+    Raises
+    ------
+    WazuhError (3004)
+        If some value has an invalid type.
+    """
+    for field in [IMBALANCE_TOLERANCE]:
+        if helper_config.get(field):
+            try:
+                helper_config[field] = float(helper_config[field])
+            except ValueError:
+                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be a float.")
+    return helper_config
+
+
+def parse_haproxy_helper_config(helper_config: dict) -> dict:
+    """Parse HAProxy helper configuration section.
+
+    Parameters
+    ----------
+    helper_config : dict
+        Configuration to parse.
+
+    Returns
+    -------
+    dict
+        Parsed configuration for HAProxy Helper.
 
     Raises
     ------
@@ -89,26 +150,8 @@ def validate_haproxy_helper_config(helper_config: dict) -> dict:
     elif helper_config[HAPROXY_DISABLED] == YES:
         helper_config[HAPROXY_DISABLED] = True
 
-    for field in [
-        HAPROXY_PORT,
-        FREQUENCY,
-        AGENT_RECONNECTION_STABILITY_TIME,
-        AGENT_RECONNECTION_TIME,
-        AGENT_CHUNK_SIZE,
-        REMOVE_DISCONNECTED_NODE_AFTER
-    ]:
-        if helper_config.get(field):
-            try:
-                helper_config[field] = int(helper_config[field])
-            except ValueError:
-                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be an integer.")
-
-    for field in [IMBALANCE_TOLERANCE]:
-        if helper_config.get(field):
-            try:
-                helper_config[field] = float(helper_config[field])
-            except ValueError:
-                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be a float.")
+    helper_config = parse_haproxy_helper_integer_values(helper_config)
+    helper_config = parse_haproxy_helper_float_values(helper_config)
 
     return helper_config
 
@@ -178,7 +221,7 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         config_cluster['node_type'] = 'worker'
 
     if config_cluster.get(HAPROXY_HELPER):
-        config_cluster[HAPROXY_HELPER] = validate_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
+        config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
 
     return config_cluster
 
