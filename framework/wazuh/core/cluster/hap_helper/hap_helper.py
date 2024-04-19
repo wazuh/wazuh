@@ -536,4 +536,4 @@ class HAPHelper:
         except Exception as unexpected_exc:
             logger.critical(f'Unexpected exception: {unexpected_exc}', exc_info=True)
         finally:
-            logger.info('Process ended')
+            logger.info('Task ended')
