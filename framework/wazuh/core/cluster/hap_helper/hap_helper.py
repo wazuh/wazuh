@@ -29,6 +29,7 @@ from wazuh.core.exception import WazuhException, WazuhHAPHelperError
 
 CONNECTION_PORT = 1514
 
+
 class HAPHelper:
     """Helper to balance Wazuh agents through cluster calling HAProxy."""
 
@@ -450,7 +451,7 @@ class HAPHelper:
             active_agents=len(agents_id),
             chunk_size=self.agent_reconnection_chunk_size,
             agent_reconnection_time=self.agent_reconnection_time,
-            n_managers=len(current_cluster.keys()),
+            n_managers=len(current_cluster.keys()) or 1,
             server_admin_state_delay=self.SERVER_ADMIN_STATE_DELAY,
         )
 
