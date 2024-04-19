@@ -1,5 +1,5 @@
+import asyncio
 import logging
-from asyncio import sleep
 from math import ceil, floor
 
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
@@ -197,7 +197,7 @@ class HAPHelper:
         for index in range(0, len(agent_list), self.agent_reconnection_chunk_size):
             await self.wazuh_dapi.reconnect_agents(agent_list[index : index + self.agent_reconnection_chunk_size])
             self.logger.debug(f'Delay between agent reconnections. Sleeping {self.agent_reconnection_time}s...')
-            await sleep(self.agent_reconnection_time)
+            await asyncio.sleep(self.agent_reconnection_time)
 
     async def force_agent_reconnection_to_server(self, chosen_server: str, agents_list: list[dict]):
         """Force agents reconnection to a given server.
@@ -213,7 +213,7 @@ class HAPHelper:
         affected_servers = current_servers - {chosen_server}
         for server_name in affected_servers:
             await self.proxy.restrain_server_new_connections(server_name=server_name)
-        await sleep(self.SERVER_ADMIN_STATE_DELAY)
+        await asyncio.sleep(self.SERVER_ADMIN_STATE_DELAY)
         eligible_agents = WazuhAgent.get_agents_able_to_reconnect(agents_list=agents_list)
         if len(eligible_agents) != len(agents_list):
             self.logger.warning(
@@ -223,7 +223,7 @@ class HAPHelper:
         await self.update_agent_connections(agent_list=eligible_agents)
         for server_name in affected_servers:
             await self.proxy.allow_server_new_connections(server_name=server_name)
-        await sleep(self.SERVER_ADMIN_STATE_DELAY)
+        await asyncio.sleep(self.SERVER_ADMIN_STATE_DELAY)
 
     async def migrate_old_connections(self, new_servers: list[str], deleted_servers: list[str]):
         """Reconnects agents to new servers.
@@ -248,7 +248,7 @@ class HAPHelper:
                 raise WazuhHAPHelperError(3041)
 
             self.logger.debug('Waiting for new servers to go UP')
-            await sleep(1)
+            await asyncio.sleep(1)
             backend_stats_iteration += 1
             wazuh_backend_stats = (await self.proxy.get_wazuh_backend_stats()).keys()
 
@@ -284,7 +284,7 @@ class HAPHelper:
 
         self.logger.info('Waiting for agent connections stability')
         self.logger.debug(f'Sleeping {self.agent_reconnection_stability_time}s...')
-        await sleep(self.agent_reconnection_stability_time)
+        await asyncio.sleep(self.agent_reconnection_stability_time)
 
     def check_for_balance(self, current_connections_distribution: dict) -> dict:
         """Checks if the Wazuh cluster is balanced.
@@ -414,17 +414,17 @@ class HAPHelper:
                     self.logger.info('Load balancer backend is balanced')
                 else:
                     self.logger.info('Agent imbalance detected. Waiting for agent status sync...')
-                    await sleep(self.AGENT_STATUS_SYNC_TIME)
+                    await asyncio.sleep(self.AGENT_STATUS_SYNC_TIME)
                     await self.balance_agents(affected_servers=unbalanced_connections)
 
                 self.logger.debug(f'Sleeping {self.sleep_time}s...')
-                await sleep(self.sleep_time)
+                await asyncio.sleep(self.sleep_time)
             except WazuhException as handled_exc:
                 self.logger.error(str(handled_exc))
                 self.logger.warning(
                     f'Tasks may not perform as expected. Sleeping {self.sleep_time}s ' 'before continuing...'
                 )
-                await sleep(self.sleep_time)
+                await asyncio.sleep(self.sleep_time)
 
     async def set_hard_stop_after(self, wait_connection_retry: bool = True, reconnect_agents: bool = True):
         """Calculate and set hard-stop-after configuration in HAProxy.
@@ -440,7 +440,7 @@ class HAPHelper:
         if wait_connection_retry:
             connection_retry = self.get_connection_retry()
             self.logger.debug(f'Waiting {connection_retry}s for workers connections...')
-            await sleep(connection_retry)
+            await asyncio.sleep(connection_retry)
 
         self.logger.info('Setting a value for `hard-stop-after` configuration.')
         agents_distribution = await self.wazuh_dapi.get_agents_node_distribution()
@@ -520,7 +520,7 @@ class HAPHelper:
             if helper.proxy.hard_stop_after is not None:
                 sleep_time = max(helper.proxy.hard_stop_after, cls.get_connection_retry())
                 helper.logger.info(f'Ensuring only exists one HAProxy process. Sleeping {sleep_time}s before start...')
-                await sleep(sleep_time)
+                await asyncio.sleep(sleep_time)
 
             await helper.initialize_wazuh_cluster_configuration()
 
