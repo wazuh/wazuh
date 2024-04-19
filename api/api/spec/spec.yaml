@@ -8555,6 +8555,7 @@ paths:
                       dateAdd: 2021-05-27T10:06:13Z
                       registerIP: 172.16.16.16
                       status_code: 0
+                      group_config_status: not synced
                     - node_name: unknown
                       ip: 172.16.16.17
                       id: 010
@@ -8563,6 +8564,7 @@ paths:
                       dateAdd: 2021-05-27T10:06:27Z
                       registerIP: 172.16.16.17
                       status_code: 0
+                      group_config_status: not synced
                     - node_name: unknown
                       ip: any
                       id: 011
@@ -8571,6 +8573,7 @@ paths:
                       dateAdd: 2021-05-27T10:07:37Z
                       registerIP: any
                       status_code: 0
+                      group_config_status: not synced
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -8925,7 +8928,6 @@ paths:
                 data:
                   affected_items:
                     - ubuntu
-                  totalItems: 1
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -9005,7 +9007,7 @@ paths:
         - $ref: '#/components/parameters/groups_list_all'
       responses:
         '200':
-          description: "Remove multiple group of multiple agents"
+          description: "Remove multiple group from multiple agents"
           content:
             application/json:
               schema:
