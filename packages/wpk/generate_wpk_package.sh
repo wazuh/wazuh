@@ -10,16 +10,9 @@
 # Foundation.
 
 CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
-LINUX_BUILDER_X86_64="linux_wpk_builder_x86_64"
-LINUX_BUILDER_X86_64_DOCKERFILE="${CURRENT_PATH}/linux/x86_64"
-LINUX_BUILDER_AARCH64="linux_wpk_builder_aarch64"
-LINUX_BUILDER_AARCH64_DOCKERFILE="${CURRENT_PATH}/linux/aarch64"
-LINUX_BUILDER_ARMV7HL="linux_wpk_builder_armv7hl"
-LINUX_BUILDER_ARMV7HL_DOCKERFILE="${CURRENT_PATH}/linux/armv7hl"
 COMMON_BUILDER="common_wpk_builder"
 COMMON_BUILDER_DOCKERFILE="${CURRENT_PATH}/common"
 CHECKSUM="no"
-INSTALLATION_PATH="/var/ossec"
 
 trap ctrl_c INT
 
@@ -28,14 +21,12 @@ function pack_wpk() {
     local BRANCH="${1}"
     local DESTINATION="${2}"
     local CONTAINER_NAME="${3}"
-    local JOBS="${4}"
-    local PACKAGE_NAME="${5}"
-    local OUT_NAME="${6}"
-    local CHECKSUM="${7}"
-    local INSTALLATION_PATH="${8}"
-    local AWS_REGION="${9}"
-    local WPK_KEY="${10}"
-    local WPK_CERT="${11}"
+    local PACKAGE_NAME="${4}"
+    local OUT_NAME="${5}"
+    local CHECKSUM="${6}"
+    local AWS_REGION="${7}"
+    local WPK_KEY="${8}"
+    local WPK_CERT="${9}"
 
     if [[ "${CHECKSUM}" == "yes" ]]; then
         CHECKSUM_FLAG="-c"
@@ -52,7 +43,7 @@ function pack_wpk() {
 
     docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z -v ${DESTINATION}:/var/local/checksum:Z \
         -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} -p ${INSTALLATION_PATH} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
+        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -o ${OUT_NAME} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
 
     return $?
 }
@@ -75,15 +66,12 @@ function help() {
     echo "    -t,   --target-system <target> [Required] Select target wpk to build [linux/windows/macos]"
     echo "    -b,   --branch <branch>        [Required] Select Git branch or tag e.g. $BRANCH"
     echo "    -d,   --destination <path>     [Required] Set the destination path of package."
-    echo "    -pn,  --package-name <name>    [Required for windows and macos] Package name to pack on wpk."
+    echo "    -pn,  --package-name <name>    [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk."
     echo "    -o,   --output <name>          [Required] Name to the output package."
     echo "    -k,   --key-dir <path>         [Optional] Set the WPK key path to sign package."
     echo "    --aws-wpk-key                  [Optional] AWS Secrets manager Name/ARN to get WPK private key."
     echo "    --aws-wpk-cert                 [Optional] AWS secrets manager Name/ARN to get WPK certificate."
     echo "    --aws-wpk-key-region           [Optional] AWS Region where secrets are stored."
-    echo "    -a,   --architecture <arch>    [Optional] Target architecture of the package [x86_64]."
-    echo "    -j,   --jobs <number>          [Optional] Number of parallel jobs when compiling."
-    echo "    -p,   --path <path>            [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no"
     echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes"
     echo "    --tag <name>                   [Optional] Tag to use with the docker image."
@@ -112,12 +100,9 @@ function main() {
     local TARGET=""
     local BRANCH=""
     local DESTINATION="${CURRENT_PATH}/output"
-    local ARCHITECTURE="x86_64"
-    local JOBS="4"
     local CONTAINER_NAME=""
     local PKG_NAME=""
     local OUT_NAME=""
-    local NO_COMPILE=false
     local WPK_KEY=""
     local WPK_CERT=""
     local AWS_REGION="us-east-1"
@@ -132,8 +117,6 @@ function main() {
     local HAVE_OUT_NAME=false
     local HAVE_WPK_KEY=false
     local HAVE_WPK_CERT=false
-    local LINUX_BUILDER="${LINUX_BUILDER_X86_64}"
-    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_X86_64_DOCKERFILE}"
 
     while [ -n "${1}" ]
     do
@@ -185,53 +168,6 @@ function main() {
                 shift 2
             fi
             ;;
-        "-a"|"--architecture")
-            if [ -n "${2}" ]; then
-                if [[ "${2}" == "x86_64" ]] || [[ "${2}" == "amd64" ]]; then
-                    local ARCHITECTURE="x86_64"
-                    local LINUX_BUILDER="${LINUX_BUILDER_X86_64}"
-                    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_X86_64_DOCKERFILE}"
-                    shift 2
-                elif [[ "${2}" == "aarch64" ]]; then
-                    local ARCHITECTURE="${2}"
-                    local LINUX_BUILDER="${LINUX_BUILDER_AARCH64}"
-                    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_AARCH64_DOCKERFILE}"
-                    shift 2
-                    echo "Architecture not supported currently. Issue: https://github.com/wazuh/wazuh/issues/22400"
-                    help 1
-                elif [[ "${2}" == "armv7hl" ]]; then
-                    local ARCHITECTURE="${2}"
-                    local LINUX_BUILDER="${LINUX_BUILDER_ARMV7HL}"
-                    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_ARMV7HL_DOCKERFILE}"
-                    shift 2
-                    echo "Architecture not supported currently. Issue: https://github.com/wazuh/wazuh/issues/22400"
-                    help 1
-                else
-                    echo "Architecture must be x86_64/amd64, aarch64 or armv7hl"
-                    help 1
-                fi
-            else
-              echo "ERROR: Missing architecture."
-              help 1
-            fi
-            ;;
-        "-j"|"--jobs")
-            if [ -n "${2}" ]; then
-                local JOBS="${2}"
-                shift 2
-            else
-                echo "ERROR: Missing jobs."
-                help 1
-            fi
-            ;;
-        "-p"|"--path")
-              if [ -n "${2}" ]; then
-                  INSTALLATION_PATH="${2}"
-                  shift 2
-              else
-                  help 1
-              fi
-              ;;
         "-pn"|"--package-name")
             if [ -n "${2}" ]; then
                 local HAVE_PKG_NAME=true
@@ -240,7 +176,7 @@ function main() {
                 PKG_NAME=`basename ${PKG_NAME}`
                 shift 2
             else
-                echo "ERROR: Missing package name"
+                echo "ERROR: Missing package file"
                 help 1
             fi
             ;;
@@ -310,14 +246,15 @@ function main() {
                     build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 fi
                 local CONTAINER_NAME="${COMMON_BUILDER}"
-                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
+                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 clean ${COMMON_BUILDER_DOCKERFILE} 0
             else
-                echo "ERROR: No MSI/PKG package name specified for Windows or macOS WPK"
+                echo "ERROR: Cannot build WPK without a package."
                 help 1
             fi
         else
-            echo "Error"
+            echo "ERROR: Target system must be linux, windows or macos."
+            help 1
         fi
     else
         echo "ERROR: Need more parameters"
