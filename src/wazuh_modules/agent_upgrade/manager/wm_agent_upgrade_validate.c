@@ -23,15 +23,33 @@
 pthread_mutex_t download_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char* invalid_platforms[] = {
+    "solaris",
     "sunos",
     "aix",
     "hp-ux",
-    "bsd"
+    "bsd",
+    "arch",
+    "gentoo",
+    "slackware"
 };
 
-static const char* rolling_platforms[] = {
+static const char* deb_platforms[] = {
+    "debian",
+    "ubuntu",
+    "raspbian"
+};
+
+static const char* rpm_platforms[] = {
+    "amzn",
+    "centos",
+    "fedora",
+    "ol",
+    "opensuse",
+    "opensuse-leap",
     "opensuse-tumbleweed",
-    "arch"
+    "rhel",
+    "sles",
+    "suse"
 };
 
 int wm_agent_upgrade_validate_id(int agent_id) {
@@ -56,38 +74,34 @@ int wm_agent_upgrade_validate_status(const char* connection_status) {
 
 int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
     int invalid_platforms_len = 0;
-    int rolling_platforms_len = 0;
     int platforms_it = 0;
     int return_code = WM_UPGRADE_GLOBAL_DB_FAILURE;
 
     if (platform) {
-        if (!strcmp(platform, "windows") || !strcmp(platform, "darwin") || (os_major && arch && (strcmp(platform, "ubuntu") || os_minor))) {
-            return_code = WM_UPGRADE_SUCCESS;
-
-            // Blacklist for invalid OS platforms
-            invalid_platforms_len = array_size(invalid_platforms);
-            for(platforms_it = 0; platforms_it < invalid_platforms_len; ++platforms_it) {
-                if(!strcmp(invalid_platforms[platforms_it], platform)) {
-                    return_code = WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
-                    break;
-                }
+        // Blacklist for invalid OS platforms
+        invalid_platforms_len = array_size(invalid_platforms);
+        for (platforms_it = 0; platforms_it < invalid_platforms_len; ++platforms_it) {
+            if(!strcmp(invalid_platforms[platforms_it], platform)) {
+                return_code = WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
+                break;
             }
+        }
 
-            if (WM_UPGRADE_SUCCESS == return_code) {
+        if (WM_UPGRADE_SYSTEM_NOT_SUPPORTED != return_code) {
+            if (!strcmp(platform, "windows") || (!strcmp(platform, "darwin") && arch)) {
+                // Windows and macOS platforms
+                return_code = WM_UPGRADE_SUCCESS;
+            } else if (arch && (!strcmp(platform, "opensuse-tumbleweed") || (os_major && (strcmp(platform, "ubuntu") || os_minor)))) {
+                // Linux platforms
+                return_code = WM_UPGRADE_SUCCESS;
+
                 if ((!strcmp(platform, "sles") && !strcmp(os_major, "11")) ||
+                    (!strcmp(platform, "suse") && !strcmp(os_major, "11")) ||
+                    (!strcmp(platform, "ol") && !strcmp(os_major, "5")) ||
                     (!strcmp(platform, "rhel") && !strcmp(os_major, "5")) ||
                     (!strcmp(platform, "centos") && !strcmp(os_major, "5"))) {
                     return_code = WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
                 }
-            }
-        }
-
-        // Whitelist for OS platforms with 'rolling' version
-        rolling_platforms_len = array_size(rolling_platforms);
-        for(platforms_it = 0; platforms_it < rolling_platforms_len; ++platforms_it) {
-            if(!strcmp(rolling_platforms[platforms_it], platform)) {
-                return_code = WM_UPGRADE_SUCCESS;
-                break;
             }
         }
     }
@@ -196,11 +210,17 @@ int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_up
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
                  task->wpk_version, agent_info->architecture);
     } else {
-        if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_REPOSITORY, true) >= 0) {
-            snprintf(path_url, OS_SIZE_2048, "%slinux/%s/",
-                     repository_url, agent_info->architecture);
-            snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_linux_%s.wpk",
-                     task->wpk_version, agent_info->architecture);
+        if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_LINUX_VERSION_REPOSITORY, true) >= 0) {
+            if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_STRUCTURE_REPOSITORY, true) >= 0) {
+
+                // Check linux OS distro
+
+            } else {
+                snprintf(path_url, OS_SIZE_2048, "%slinux/%s/",
+                         repository_url, agent_info->architecture);
+                snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_linux_%s.wpk",
+                         task->wpk_version, agent_info->architecture);
+            }
         } else if (!strcmp(agent_info->platform, "ubuntu")) {
             snprintf(path_url, OS_SIZE_2048, "%s%s/%s.%s/%s/",
                      repository_url, agent_info->platform, agent_info->major_version, agent_info->minor_version, agent_info->architecture);

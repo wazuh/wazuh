@@ -8,6 +8,8 @@ if (Test-Path ".\upgrade\upgrade_in_progress") {
     exit 1
 }
 
+write-output "0" | out-file ".\upgrade\upgrade_in_progress" -encoding ascii
+
 # Delete previous upgrade.log
 Remove-Item -Path ".\upgrade\upgrade.log" -ErrorAction SilentlyContinue
 
@@ -17,6 +19,21 @@ if (Test-Path "$env:windir\sysnative") {
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
+}
+
+# Check process status
+function check-process
+{
+    $process_id = (Get-Process wazuh-agent).id
+    $counter = 10
+    while($process_id -eq $null -And $counter -gt 0)
+    {
+        $counter--
+        Start-Service -Name "Wazuh"
+        Start-Sleep 2
+        $process_id = (Get-Process wazuh-agent).id
+    }
+    write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\upgrade.log
 }
 
 # Check new version and restart the Wazuh service
@@ -44,18 +61,9 @@ function install
     cmd /c start /wait (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
 }
 
-write-output "0" | out-file ".\upgrade\upgrade_in_progress" -encoding ascii
-
 # Get current version
 $current_version = (Get-Content VERSION)
 write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
-
-# Get process name
-$current_process = "wazuh-agent"
-If (!(Test-Path ".\wazuh-agent.exe"))
-{
-    $current_process = "ossec-agent"
-}
 
 # Ensure no other instance of msiexec is running by stopping them
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
@@ -63,19 +71,10 @@ Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
 # Install
 install
 check-installation
+
 write-output "$(Get-Date -format u) - Installation finished." >> .\upgrade\upgrade.log
 
-# Check process status
-$process_id = (Get-Process wazuh-agent).id
-$counter = 10
-while($process_id -eq $null -And $counter -gt 0)
-{
-    $counter--
-    Start-Service -Name "Wazuh"
-    Start-Sleep 2
-    $process_id = (Get-Process wazuh-agent).id
-}
-write-output "$(Get-Date -format u) - Process ID: $($process_id)." >> .\upgrade\upgrade.log
+check-process
 
 # Wait for agent state to be cleaned
 Start-Sleep 10

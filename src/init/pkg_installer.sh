@@ -48,7 +48,7 @@ elif [[ "$OS" == "Linux" ]]; then
         if command -v apk >/dev/null 2>&1; then
             apk add --allow-untrusted --force ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
-            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. DEB package found but dpkg command not found." >> ./logs/upgrade.log
+            echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. APK package found but apk command not found." >> ./logs/upgrade.log
             echo -ne "2" > ./var/upgrade/upgrade_result
             rm -f $LOCK
             exit 1
