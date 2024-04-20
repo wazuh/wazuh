@@ -111,6 +111,16 @@ else()
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream \
                                     -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
 
+    list(APPEND logcollector_names "test_read_journal")
+    list(APPEND logcollector_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fgets -Wl,--wrap,remove -Wl,--wrap,fgetc \
+                                    -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,_mdebug2\
+                                    -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,popen \
+                                    -Wl,--wrap,w_journal_context_create -Wl,--wrap,w_journal_context_seek_most_recent \
+                                    -Wl,--wrap,w_journal_context_seek_timestamp -Wl,--wrap,w_journal_entry_dump \
+                                    -Wl,--wrap,w_journal_entry_to_string -Wl,--wrap,w_journal_entry_free \
+                                    -Wl,--wrap,w_journal_context_next_newest_filtered -Wl,--wrap,_merror -Wl,--wrap,_minfo \
+                                    -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,isDebug -Wl,--wrap,w_msg_hash_queues_push")
+
     list(APPEND logcollector_names "test_journal_log")
     list(APPEND logcollector_flags "-Wl,--wrap,stat -Wl,--wrap,_mwarn -Wl,--wrap,dlsym -Wl,--wrap,dlerror -Wl,--wrap,gettimeofday \
                                     -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \

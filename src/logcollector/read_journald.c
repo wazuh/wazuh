@@ -60,10 +60,16 @@ STATIC w_journald_ofe_t gs_journald_ofe = {
 }; ///< Only future events configuration and status
 
 #ifdef WAZUH_UNIT_TESTING
-void set_gs_journald_global(bool exist, bool ofe, uint64_t timestamp) {
+void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp) {
     gs_journald_ofe.exist_journal = exist;
     gs_journald_ofe.only_future_events = ofe;
     gs_journald_ofe.last_read_timestamp = timestamp;
+}
+
+void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void * journal_ctx) {
+    gs_journald_global.owner_id = owner_id;
+    gs_journald_global.is_disabled = is_disabled;
+    gs_journald_global.journal_ctx = journal_ctx;
 }
 #endif
 
