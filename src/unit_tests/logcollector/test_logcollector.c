@@ -56,7 +56,7 @@ static wfd_t * stream_backup;
 static wfd_t * show_backup;
 
 // Aux functions
-void set_gs_journald_global(bool exist, bool ofe, uint64_t timestamp);
+void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp);
 
 /* setup/teardown */
 
@@ -623,11 +623,11 @@ void test_w_save_files_status_to_cJSON_journal_valid(void ** state) {
     will_return(__wrap_cJSON_PrintUnformatted, "test_1234");
     expect_function_call(__wrap_cJSON_Delete);
 
-    set_gs_journald_global(true, false, 123456);
+    set_gs_journald_ofe(true, false, 123456);
 
     assert_non_null(w_save_files_status_to_cJSON());
 
-    set_gs_journald_global(false, true, 0);
+    set_gs_journald_ofe(false, true, 0);
 }
 
 void test_w_save_files_status_invalid_vault(void ** state) {
