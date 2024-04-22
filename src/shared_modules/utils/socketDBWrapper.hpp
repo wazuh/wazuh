@@ -14,6 +14,7 @@
 
 #include "json.hpp"
 #include "socketClient.hpp"
+#include "socketDBWrapperException.hpp"
 #include <condition_variable>
 #include <mutex>
 #include <string>
@@ -27,6 +28,17 @@ char constexpr DB_WRAPPER_UNKNOWN[] {"unk"};
 char constexpr DB_WRAPPER_IGNORE[] {"ign"};
 char constexpr DB_WRAPPER_DUE[] {"due"};
 
+enum class DbQueryStatus : uint8_t
+{
+    JSON_PARSING,
+    EMPTY_RESPONSE,
+    QUERY_ERROR,
+    QUERY_IGNORE,
+    QUERY_UNKNOWN,
+    QUERY_NOT_SYNCED,
+    INVALID_RESPONSE
+};
+
 class SocketDBWrapper final
 {
 private:
@@ -34,6 +46,7 @@ private:
     nlohmann::json m_response;
     nlohmann::json m_responsePartial;
     std::string m_exceptionStr;
+    DbQueryStatus m_queryStatus;
     std::mutex m_mutexMessage;
     std::mutex m_mutexResponse;
     std::condition_variable m_conditionVariable;
@@ -57,6 +70,7 @@ private:
                     }
                     catch (const nlohmann::detail::exception& ex)
                     {
+                        m_queryStatus = DbQueryStatus::JSON_PARSING;
                         m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(4) +
                                          ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
                     }
@@ -65,18 +79,22 @@ private:
                 {
                     if (responsePacket.empty())
                     {
+                        m_queryStatus = DbQueryStatus::EMPTY_RESPONSE;
                         m_exceptionStr = "Empty DB response";
                     }
                     else if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_ERROR) - 1, DB_WRAPPER_ERROR))
                     {
+                        m_queryStatus = DbQueryStatus::QUERY_ERROR;
                         m_exceptionStr = "DB query error: " + responsePacket.substr(sizeof(DB_WRAPPER_ERROR));
                     }
                     else if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_IGNORE) - 1, DB_WRAPPER_IGNORE))
                     {
+                        m_queryStatus = DbQueryStatus::QUERY_IGNORE;
                         m_exceptionStr = "DB query ignored: " + responsePacket.substr(sizeof(DB_WRAPPER_IGNORE));
                     }
                     else if (0 == responsePacket.compare(0, sizeof(DB_WRAPPER_UNKNOWN) - 1, DB_WRAPPER_UNKNOWN))
                     {
+                        m_queryStatus = DbQueryStatus::QUERY_UNKNOWN;
                         m_exceptionStr =
                             "DB query unknown response: " + responsePacket.substr(sizeof(DB_WRAPPER_UNKNOWN));
                     }
@@ -101,6 +119,7 @@ private:
                                     if (responseParsed.contains("status") &&
                                         responseParsed.at("status") == "NOT_SYNCED")
                                     {
+                                        m_queryStatus = DbQueryStatus::QUERY_NOT_SYNCED;
                                         m_exceptionStr = "DB query not synced";
                                     }
                                     else
@@ -111,6 +130,7 @@ private:
                             }
                             catch (const nlohmann::detail::exception& ex)
                             {
+                                m_queryStatus = DbQueryStatus::JSON_PARSING;
                                 m_exceptionStr =
                                     "Error parsing JSON response: " + responsePacket.substr(sizeof(DB_WRAPPER_OK) - 1) +
                                     ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
@@ -119,6 +139,7 @@ private:
                     }
                     else
                     {
+                        m_queryStatus = DbQueryStatus::INVALID_RESPONSE;
                         m_exceptionStr = "DB query invalid response: " + responsePacket;
                     }
                     m_conditionVariable.notify_one();
@@ -164,7 +185,25 @@ public:
 
         if (!m_exceptionStr.empty())
         {
-            throw std::runtime_error(m_exceptionStr);
+            switch (m_queryStatus)
+            {
+            case DbQueryStatus::JSON_PARSING:
+                throw std::runtime_error(m_exceptionStr);
+            case DbQueryStatus::EMPTY_RESPONSE:
+                throw SocketDbWrapperException(m_exceptionStr);
+            case DbQueryStatus::QUERY_ERROR:
+                throw SocketDbWrapperException(m_exceptionStr);
+            case DbQueryStatus::QUERY_IGNORE:
+                throw SocketDbWrapperException(m_exceptionStr);
+            case DbQueryStatus::QUERY_UNKNOWN:
+                throw SocketDbWrapperException(m_exceptionStr);
+            case DbQueryStatus::QUERY_NOT_SYNCED:
+                throw SocketDbWrapperException(m_exceptionStr);
+            case DbQueryStatus::INVALID_RESPONSE:
+                throw std::runtime_error(m_exceptionStr);
+            default:
+                throw std::runtime_error(m_exceptionStr);
+            }
         }
 
         response = m_response;
