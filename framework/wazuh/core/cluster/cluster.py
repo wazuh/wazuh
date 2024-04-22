@@ -43,6 +43,19 @@ PATH_SEP = '|//@@//|'
 MIN_PORT = 1024
 MAX_PORT = 65535
 
+HAPROXY_HELPER_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        HAPROXY_PORT: {'type': 'integer', 'minimum': MIN_PORT, 'maximum': MAX_PORT},
+        HAPROXY_PROTOCOL: {'type': 'string', 'enum': ['http', 'https']},
+        FREQUENCY: {'type': 'integer', 'minimum': 10},
+        AGENT_RECONNECTION_STABILITY_TIME: {'type': 'integer', 'minimum': 10},
+        AGENT_CHUNK_SIZE: {'type': 'integer', 'minimum': 100},
+        AGENT_RECONNECTION_TIME: {'type': 'integer', 'minimum': 0},
+        IMBALANCE_TOLERANCE: {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'maximum': 1},
+        REMOVE_DISCONNECTED_NODE_AFTER: {'type': 'integer', 'minimum': 0},
+    },
+}
 
 #
 # Cluster
@@ -61,22 +74,8 @@ def validate_haproxy_helper_config(config: dict):
     WazuhError(3004)
         If there any invalid value.
     """
-    SCHEMA = {
-        'type': 'object',
-        'properties': {
-            HAPROXY_PORT: {'type': 'integer', 'minimum': MIN_PORT, 'maximum': MAX_PORT},
-            HAPROXY_PROTOCOL: {'type': 'string', 'enum': ['http', 'https']},
-            FREQUENCY: {'type': 'integer', 'minimum': 10},
-            AGENT_RECONNECTION_STABILITY_TIME: {'type': 'integer', 'minimum': 10},
-            AGENT_CHUNK_SIZE: {'type': 'integer', 'minimum': 100},
-            AGENT_RECONNECTION_TIME: {'type': 'integer', 'minimum': 0},
-            IMBALANCE_TOLERANCE: {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'maximum': 1},
-            REMOVE_DISCONNECTED_NODE_AFTER: {'type': 'integer', 'minimum': 0},
-        },
-    }
-
     try:
-        validate(config, SCHEMA)
+        validate(config, HAPROXY_HELPER_SCHEMA)
     except ValidationError as error:
         raise WazuhError(
             3004,
