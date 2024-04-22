@@ -44,7 +44,16 @@ namespace PackageLinuxHelper
             }
         }
 
-        if (!info.empty() && info.at("Status") == "install ok installed")
+        /*
+           Status is SELECTION_STATE FLAG PACKAGE_STATE.
+           Package selection states (wanted state, marked as): install, hold, deinstall, purge, unknown.
+           Package flags: ok, reinstreq.
+           Package states (current state): not-installed, config-files, half-installed, unpacked, half-configured,
+                                           triggers-awaited, triggers-pending, installed.
+
+           We'll collect packages in any selection state, but not broken and correctly installed.
+         */
+        if (!info.empty() && info.at("Status").find("ok installed") != std::string::npos)
         {
             ret["name"] = info.at("Package");
 
