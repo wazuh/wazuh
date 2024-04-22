@@ -45,13 +45,18 @@ namespace PackageLinuxHelper
         }
 
         /*
-           Status is SELECTION_STATE FLAG PACKAGE_STATE.
-           Package selection states (wanted state, marked as): install, hold, deinstall, purge, unknown.
-           Package flags: ok, reinstreq.
-           Package states (current state): not-installed, config-files, half-installed, unpacked, half-configured,
-                                           triggers-awaited, triggers-pending, installed.
+           According to dpkg documentation, the status of the package consists in three fields separated by spaces:
+           'SELECTION_STATE FLAG PACKAGE_STATE'.
 
-           We'll collect packages in any selection state, but not broken and correctly installed.
+           SELECTION_STATE: the desired action to take by the package manager. It could be 'install', 'hold',
+                            'deinstall', 'purge', or 'unknown'.
+           FLAG: indicates if the package requires a reinstall or if no issues were found. It could be 'ok',
+                 or 'reinstreq'.
+           PACKAGE_STATE: this is the real status of package at this moment. It could be 'not-installed',
+                          'config-files', 'half-installed', 'unpacked', 'half-configured', 'triggers-awaited',
+                          'triggers-pending', or 'installed'.
+
+           We'll collect packages in any selection state, but not broken ('ok') and correctly installed.
          */
         if (!info.empty() && info.at("Status").find("ok installed") != std::string::npos)
         {
