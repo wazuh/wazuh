@@ -2,18 +2,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import io
 import os
 import sys
-import zipfile
 import zlib
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor
 from time import time
-from unittest.mock import MagicMock, mock_open, patch, call, ANY
+from unittest.mock import ANY, MagicMock, call, mock_open, patch
 
 import pytest
 from wazuh.core import common
-from concurrent.futures import ProcessPoolExecutor
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -254,7 +252,7 @@ def test_get_files_status(mock_get_cluster_items):
 
     with patch('wazuh.core.cluster.cluster.walk_dir', side_effect=Exception):
         _, logs = cluster.get_files_status()
-        assert logs['warning']['etc/'] == [f"Error getting file status: ."]
+        assert logs['warning']['etc/'] == ["Error getting file status: ."]
 
 
 @patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
@@ -491,7 +489,7 @@ def test_compare_files_ko(logger_mock, mock_get_cluster_items):
     with pytest.raises(Exception):
         cluster.compare_files(seq, condition, 'worker1')
         logger_mock.assert_called_once_with(
-            f"Error getting agent IDs while verifying which extra-valid files are required: ")
+            "Error getting agent IDs while verifying which extra-valid files are required: ")
         mock_get_cluster_items.assert_called_once_with()
         wazuh_db_query_mock.assert_called_once_with()
 
@@ -603,3 +601,24 @@ async def test_run_in_pool(event_loop):
 
     # Test the second condition
     assert await cluster.run_in_pool(event_loop, None, mock_callable, None) == "Mock callable"
+
+
+def test_validate_haproxy_helper_config_calls_validate():
+    """Verify that validate_haproxy_helper_config function calls validate function."""
+
+    config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
+
+    with patch.object(cluster, 'validate') as validate_mock:
+        cluster.validate_haproxy_helper_config(config)
+
+        validate_mock.assert_called_once_with(config, cluster.HAPROXY_HELPER_SCHEMA)
+
+
+def test_validate_haproxy_helper_config_raises_wazuh_error():
+    """Verify that validate_haproxy_helper_config raises WazuhError when the is validation error."""
+
+    config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
+
+    with patch.object(cluster, 'validate', side_effect=cluster.ValidationError(message='Error test', path=['test'])):
+        with pytest.raises(cluster.WazuhError, match='.* 3004 .*'):
+            cluster.validate_haproxy_helper_config(config)

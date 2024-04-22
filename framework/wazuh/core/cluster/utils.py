@@ -62,7 +62,7 @@ HELPER_DEFAULTS = {
 }
 
 
-def parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
+def _parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
     """Parse HAProxy helper integer values.
 
     Parameters
@@ -96,7 +96,7 @@ def parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
     return helper_config
 
 
-def parse_haproxy_helper_float_values(helper_config: dict) -> dict:
+def _parse_haproxy_helper_float_values(helper_config: dict) -> dict:
     """Parse HAProxy helper float values.
 
     Parameters
@@ -150,8 +150,8 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
     elif helper_config[HAPROXY_DISABLED] == YES:
         helper_config[HAPROXY_DISABLED] = True
 
-    helper_config = parse_haproxy_helper_integer_values(helper_config)
-    helper_config = parse_haproxy_helper_float_values(helper_config)
+    helper_config = _parse_haproxy_helper_integer_values(helper_config)
+    helper_config = _parse_haproxy_helper_float_values(helper_config)
 
     return helper_config
 
