@@ -108,9 +108,12 @@ function ExtractDebugSymbols(){
 		$args += $file.BaseName
 		$args += ".pdb"
 
-		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -Wait -WindowStyle Hidden
+		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
 	}
 
+    Write-Host "Waiting for processes to finish"
+    Wait-Process -Name cv2pdb -Timeout 10
+    
     #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
 
