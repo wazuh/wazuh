@@ -56,7 +56,7 @@ namespace PackageLinuxHelper
                           'config-files', 'half-installed', 'unpacked', 'half-configured', 'triggers-awaited',
                           'triggers-pending', or 'installed'.
 
-           We'll collect packages in any selection state, but not broken ('ok') and correctly installed.
+           We'll collect packages in any selection state, with 'ok' FLAG and 'installed' PACKAGE_STATE.
          */
         if (!info.empty() && info.at("Status").find("ok installed") != std::string::npos)
         {
