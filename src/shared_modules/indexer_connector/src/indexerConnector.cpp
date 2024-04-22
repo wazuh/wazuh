@@ -132,7 +132,7 @@ IndexerConnector::IndexerConnector(
 
             auto url = selector->getNext();
             std::string bulkData;
-            url.append("/_bulk");
+            url.append("/_bulk?refresh=wait_for");
 
             while (!dataQueue.empty())
             {
