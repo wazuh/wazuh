@@ -147,11 +147,15 @@ jobs:
           echo "generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a ${{ env.ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
-      - name: Test install built package
+      - name: Set PACKAGE_NAME
         run: |
           package_name=$(find /tmp -maxdepth 1 -type f -name "*agent*.${{ inputs.system }}" -exec basename {} 2>/dev/null \;)
           if [ -z "$package_name" ]; then echo "No package found matching the pattern!"; exit 1; fi
-          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $package_name agent
+          echo "PACKAGE_NAME=$package_name" >> $GITHUB_ENV
+
+      - name: Test install built package
+        run: |
+          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} ${{ env.PACKAGE_NAME }} agent
           # Check if wazuh-agent was installed. The /tmp/status.log file was generated in the previous step.
           if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
             echo "Installation successfully."
@@ -159,6 +163,36 @@ jobs:
             echo "The installation could not be completed. The package will not be uploaded.";
             exit 1;
           fi
+
+      - name: Set WPK_NAME
+        if: github.event.inputs.linux_reference != ''
+        run: |
+          if [ "${{ inputs.is_stage }}" == "true" ]; then
+            curl -O https://raw.githubusercontent.com/wazuh/wazuh/${{ github.event.inputs.linux_reference }}/src/VERSION
+            echo "VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' $GITHUB_WORKSPACE/VERSION)" >> $GITHUB_ENV;
+            echo "WPK_NAME=wazuh_agent_v${{ env.VERSION }}_linux_${{ env.ARCH }}.${{ inputs.system }}.wpk" >> $GITHUB_ENV;
+          else
+            echo "WPK_NAME=${{ env.PACKAGE_NAME }}.wpk" >> $GITHUB_ENV
+          fi
+
+      - name: Get secrets by name
+        if: github.event.inputs.linux_reference != ''
+        uses: aws-actions/aws-secretsmanager-get-secrets@v1
+        with:
+          secret-ids: |
+            WPK_PRIVATE_KEY,${{ secrets.CI_AWS_WPK_PRIVATE_KEY_SECRET_NAME }}
+            WPK_CERT,${{ secrets.CI_AWS_WPK_CERT_SECRET_NAME }}
+
+      - name: Generate WPK ${{ inputs.system }} package for wazuh-agent on ${{ env.ARCH }}
+        if: github.event.inputs.linux_reference != ''
+        working-directory: packages/wpk
+        run: |
+          REVISION=${{ inputs.revision }}
+          FLAGS=""
+          if [ "${{ inputs.checksum }}" == "true" ] && [ ${{ inputs.is_stage}} == "true" ]; then FLAGS+="--checksum "; fi
+          echo "Generating WPK package..."
+          bash generate_wpk_package.sh -t linux -b ${{ github.event.inputs.linux_reference }} -d /tmp -o ${{ env.WPK_NAME }} --dont-build-docker --tag ${{ env.TAG }} --aws-wpk-key WPK_PRIVATE_KEY --aws-wpk-cert WPK_CERT ${{ env.CHECKSUM_FLAG }} $FLAGS
+
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
         with:
