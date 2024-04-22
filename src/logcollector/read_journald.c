@@ -17,6 +17,11 @@
 // Remove STATIC qualifier from tests
 #define STATIC
 #define INLINE
+// Ajust the buffer size for testing
+#undef OS_MAXSTR
+#define OS_MAXSTR 16
+#undef OS_LOG_HEADER
+#define OS_LOG_HEADER 0
 #else
 #define STATIC static
 #define INLINE inline
@@ -70,6 +75,10 @@ void set_gs_journald_global(unsigned long owner_id, bool is_disabled, void * jou
     gs_journald_global.owner_id = owner_id;
     gs_journald_global.is_disabled = is_disabled;
     gs_journald_global.journal_ctx = journal_ctx;
+}
+
+bool journald_isDisabled() {
+    return gs_journald_global.is_disabled;
 }
 #endif
 
