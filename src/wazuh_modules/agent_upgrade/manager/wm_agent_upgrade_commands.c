@@ -104,6 +104,7 @@ char* wm_agent_upgrade_process_upgrade_command(const int* agent_ids, wm_upgrade_
         w_strdup(task->custom_version, upgrade_task->custom_version);
         upgrade_task->use_http = task->use_http;
         upgrade_task->force_upgrade = task->force_upgrade;
+        w_strdup(task->package_type, upgrade_task->package_type);
 
         agent_task->task_info = wm_agent_upgrade_init_task_info();
         agent_task->task_info->command = WM_UPGRADE_UPGRADE;
@@ -330,7 +331,7 @@ STATIC int wm_agent_upgrade_validate_agent_task(const wm_agent_task *agent_task)
     }
 
     // Validate system information
-    validate_result = wm_agent_upgrade_validate_system(agent_task->agent_info->platform, agent_task->agent_info->major_version, agent_task->agent_info->minor_version, agent_task->agent_info->architecture);
+    validate_result = wm_agent_upgrade_validate_system(agent_task->agent_info->platform, agent_task->agent_info->major_version, agent_task->agent_info->minor_version, agent_task->agent_info->architecture, &agent_task->agent_info->package_type);
 
     if (validate_result != WM_UPGRADE_SUCCESS) {
         return validate_result;

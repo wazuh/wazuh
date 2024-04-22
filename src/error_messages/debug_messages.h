@@ -208,6 +208,8 @@
 #define WM_UPGRADE_REQUEST_RECEIVE_MESSAGE   "(8166): Receiving message from agent: '%s'"
 #define WM_UPGRADE_UPGRADE_FILE_AGENT        "(8167): Upgrade result file has been successfully erased from the agent."
 #define WM_UPGRADE_TASK_SEND_CLUSTER_MESSAGE "(8168): Sending sendsync message to task manager in master node: '%s'"
+#define WM_UPGRADE_INVALID_PACKAGE_NO_FORCE  "(8169): Cannot upgrade agent '%d' with platform '%s' using package '%s' without the force option. Ignoring..."
+#define WM_UPGRADE_UNSUPPORTED_DEFAULT       "(8170): Agent '%d' with unsupported platform '%s' will be upgraded with package '%s'"
 
 #define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
