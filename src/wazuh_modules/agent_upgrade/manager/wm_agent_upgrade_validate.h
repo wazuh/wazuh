@@ -37,12 +37,13 @@ int wm_agent_upgrade_validate_status(const char* connection_status);
  * @param os_major OS major version of agent to validate
  * @param os_minor OS minor version of agent to validate
  * @param arch architecture of agent to validate
+ * @param package_type variable used to store package type
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
+int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch, char **package_type);
 
 /**
  * Check if agent is valid to upgrade
@@ -68,8 +69,9 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
+ * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * */
-int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) __attribute__((nonnull(1, 2)));
+int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) __attribute__((nonnull(1, 2)));
 
 /**
  * Check if WPK file exist or download it

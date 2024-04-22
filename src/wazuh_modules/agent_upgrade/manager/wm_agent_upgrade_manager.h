@@ -76,6 +76,7 @@ typedef struct _wm_upgrade_task {
     char *wpk_version;           ///> WPK version to install
     char *wpk_file;              ///> WPK file name
     char *wpk_sha1;              ///> WPK sha1 to validate
+    char *package_type;          ///> package type to send (for Linux systems)
 } wm_upgrade_task;
 
 /**
@@ -114,6 +115,7 @@ typedef struct _wm_agent_info {
     char *architecture;          ///> architecture of the agent
     char *wazuh_version;         ///> wazuh version of the agent
     char *connection_status;     ///> connection_status of the agent
+    char *package_type;          ///> package type of the agent (DEB, RPM, etc.)
 } wm_agent_info;
 
 /**
