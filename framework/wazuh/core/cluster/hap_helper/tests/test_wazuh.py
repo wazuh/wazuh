@@ -11,12 +11,12 @@ from framework.wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhDAPI
 
 class TestWazuhAgent:
     @pytest.mark.parametrize('version,expected', [('v4.2.0', False), ('v4.3.0', True), ('v4.4.0', True)])
-    def test_can_reconnect_returns_correct_value(self, version: str, expected: bool):
+    def test_can_reconnect(self, version: str, expected: bool):
         """Check the correct output of `can_reconnect` function."""
 
         assert WazuhAgent.can_reconnect(version) == expected
 
-    def test_get_agents_able_to_reconnect_returns_correct_items(self):
+    def test_get_agents_able_to_reconnect(self):
         """Check the correct output of `get_agents_able_to_reconnect` function."""
 
         agents = [
@@ -58,7 +58,7 @@ class TestWazuhDAPI:
         ),
     )
     @mock.patch('framework.wazuh.core.cluster.hap_helper.wazuh.get_system_nodes', return_value={})
-    async def test_get_cluster_nodes_returns_correct_information(
+    async def test_get_cluster_nodes(
         self,
         get_system_nodes_mock: mock.AsyncMock,
         dapi_mock: mock.MagicMock,
@@ -85,7 +85,7 @@ class TestWazuhDAPI:
         )
         assert ret_val == {item['name']: item['ip'] for item in nodes_data if item['name'] not in excluded_nodes}
 
-    async def test_reconnect_agents_correct_information(
+    async def test_reconnect_agents(
         self,
         dapi_mock: mock.MagicMock,
         fixture_affected_items_result: AffectedItemsWazuhResult,
@@ -107,7 +107,7 @@ class TestWazuhDAPI:
         )
         assert ret_val == agent_list
 
-    async def test_get_agents_node_distribution_returns_correct_information(
+    async def test_get_agents_node_distribution(
         self,
         dapi_mock: mock.MagicMock,
         fixture_affected_items_result: AffectedItemsWazuhResult,
@@ -138,7 +138,7 @@ class TestWazuhDAPI:
         assert ret_val == {'worker1': [{'id': 1, 'version': '4.9.0'}], 'worker2': [{'id': 2, 'version': '4.9.0'}]}
 
     @pytest.mark.parametrize('limit', [100, None])
-    async def test_get_agents_belonging_to_node_returns_correct_information(
+    async def test_get_agents_belonging_to_node(
         self, dapi_mock: mock.MagicMock, fixture_affected_items_result: AffectedItemsWazuhResult, limit: Optional[int]
     ):
         """Check the correct output of `get_agents_belonging_to_node` function."""

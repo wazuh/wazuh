@@ -77,13 +77,13 @@ class TestHAPHelper:
         with mock.patch('wazuh.core.cluster.hap_helper.hap_helper.get_ossec_conf') as get_ossec_conf:
             yield get_ossec_conf
 
-    async def test_initialize_cluster_runs_ok(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
-        """Check the correct function of `initialize` method."""
+    async def test_initialize_proxy(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
+        """Check the correct function of `initialize_proxy` method."""
         await helper.initialize_proxy()
         proxy_mock.initialize.assert_called_once()
 
-    async def test_initialize_raise_and_log_error(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
-        """Check the correct error handling of `initialize` method."""
+    async def test_initialize_proxy_ko(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
+        """Check the correct error handling of `initialize_proxy` method."""
         proxy_mock.initialize.side_effect = WazuhHAPHelperError(3046)
 
         with pytest.raises(WazuhHAPHelperError):
@@ -93,7 +93,7 @@ class TestHAPHelper:
     @pytest.mark.parametrize(
         'exists_backend,exists_frontend', ([True, True], [True, False], [False, True], [False, False])
     )
-    async def test_initialize_wazuh_cluster_configuration_makes_correct_callbacks(
+    async def test_initialize_wazuh_cluster_configuration(
         self, helper: HAPHelper, proxy_mock: mock.MagicMock, exists_backend: bool, exists_frontend: bool
     ):
         """Check that `initialize_wazuh_cluster_configuration` method makes the correct callbacks."""
@@ -160,7 +160,7 @@ class TestHAPHelper:
             ],
         ),
     )
-    async def test_check_node_to_delete_returns_correct_information(
+    async def test_check_node_to_delete(
         self, helper: HAPHelper, proxy_mock: mock.MagicMock, stats: dict, expected: bool
     ):
         """Check the correct output of `check_node_to_delete` method."""
@@ -172,7 +172,7 @@ class TestHAPHelper:
         proxy_mock.get_wazuh_server_stats.assert_called_once_with(server_name=node_name)
         assert ret_val == expected
 
-    async def test_backend_servers_state_healthcheck_makes_correct_callbacks(
+    async def test_backend_servers_state_healthcheck(
         self, helper: HAPHelper, proxy_mock: mock.MagicMock
     ):
         """Check that `backend_servers_state_healthcheck` method makes the correct callbacks."""
@@ -191,7 +191,7 @@ class TestHAPHelper:
         proxy_mock.allow_server_new_connections.assert_called_once_with(WORKER1)
 
     @pytest.mark.parametrize('check_node_to_delete', [True, False])
-    async def test_obtain_nodes_to_configure_servers_returns_correct_information(
+    async def test_obtain_nodes_to_configure_servers(
         self, helper: HAPHelper, proxy_mock: mock.MagicMock, dapi_mock: mock.MagicMock, check_node_to_delete: bool
     ):
         """Check the correct output of `obtain_nodes_to_configure` method."""
@@ -219,7 +219,7 @@ class TestHAPHelper:
 
     @pytest.mark.parametrize('agents_count,expected', ([6, 1], [11, 2]))
     @pytest.mark.asyncio
-    async def test_update_agent_connections_makes_correct_callbacks(
+    async def test_update_agent_connections(
         self, helper: HAPHelper, dapi_mock: mock.MagicMock, sleep_mock: mock.AsyncMock, agents_count: int, expected: int
     ):
         """Check that `update_agent_connections` method makes the correct callbacks."""
@@ -253,7 +253,7 @@ class TestHAPHelper:
             ],
         ),
     )
-    async def test_force_agent_reconnection_to_server_makes_correct_callbacks(
+    async def test_force_agent_reconnection_to_server(
         self,
         wazuh_agent_mock: mock.MagicMock,
         helper: HAPHelper,
@@ -285,7 +285,7 @@ class TestHAPHelper:
         assert sleep_mock.call_count == 2
         sleep_mock.assert_called_with(helper.SERVER_ADMIN_STATE_DELAY)
 
-    async def test_migrate_old_connections_makes_correct_callbacks(
+    async def test_migrate_old_connections(
         self, helper: HAPHelper, proxy_mock: mock.MagicMock, dapi_mock: mock.MagicMock, sleep_mock: mock.AsyncMock
     ):
         """Check that `migrate_old_connections` method makes the correct callbacks."""
@@ -299,14 +299,14 @@ class TestHAPHelper:
         AGENTS_TO_FORCE = [{'id': '001', 'version': 'v4.9.0'}]
         AGENTS_TO_UPDATE = [{'id': '002', 'version': 'v4.9.0'}]
 
-        PREVIOUSE_CONNECTION_DIST = {WORKER1: 1, WORKER3: 1}
+        PREVIOUS_CONNECTION_DIST = {WORKER1: 1, WORKER3: 1}
 
         proxy_mock.get_wazuh_backend_stats.return_value = {WORKER1: {}, WORKER2: {}}
         dapi_mock.get_agents_node_distribution.return_value = {
             WORKER1: AGENTS_TO_FORCE,
             WORKER3: AGENTS_TO_UPDATE,
         }
-        proxy_mock.get_wazuh_backend_server_connections.return_value = PREVIOUSE_CONNECTION_DIST
+        proxy_mock.get_wazuh_backend_server_connections.return_value = PREVIOUS_CONNECTION_DIST
         with mock.patch.object(helper, 'check_for_balance', return_value={WORKER3: 1}) as check_for_balance_mock:
             with mock.patch.object(
                 helper, 'force_agent_reconnection_to_server'
@@ -314,7 +314,7 @@ class TestHAPHelper:
                 with mock.patch.object(helper, 'update_agent_connections') as update_agent_connections_mock:
                     await helper.migrate_old_connections(NEW_SERVERS, OLD_SERVERS)
                     check_for_balance_mock.assert_called_once_with(
-                        current_connections_distribution=PREVIOUSE_CONNECTION_DIST
+                        current_connections_distribution=PREVIOUS_CONNECTION_DIST
                     )
                     force_agent_reconnection_to_server_mock.assert_called_once_with(
                         chosen_server=WORKER1, agents_list=AGENTS_TO_FORCE
@@ -324,7 +324,7 @@ class TestHAPHelper:
                     )
         sleep_mock.assert_any_call(helper.agent_reconnection_stability_time)
 
-    async def test_migrate_old_connections_raises_when_exceed_timeout(
+    async def test_migrate_old_connections_ko(
         self, helper: HAPHelper, proxy_mock: mock.MagicMock, sleep_mock: mock.AsyncMock
     ):
         """Check that `migrate_old_connections` method makes the correct callbacks."""
@@ -352,7 +352,7 @@ class TestHAPHelper:
             [{'worker1': 0, 'worker2': 4, 'worker3': 0}, {'worker2': 3}],
         ),
     )
-    async def test_check_for_balance_returns_correct_information(
+    async def test_check_for_balance(
         self, helper: HAPHelper, distribution: dict, expected: dict
     ):
         """Check the correct output of `check_for_balance` method."""
@@ -365,7 +365,7 @@ class TestHAPHelper:
             [[{'id': '001'}, {'id': '002'}, {'id': '003'}], ['001', '002']],
         ),
     )
-    async def test_calculate_agents_to_balance_returns_correct_information(
+    async def test_calculate_agents_to_balance(
         self,
         helper: HAPHelper,
         dapi_mock: mock.MagicMock,
@@ -384,7 +384,7 @@ class TestHAPHelper:
         if len(elegible_agents) != len(agent_list):
             helper.logger.warning.assert_called_once()
 
-    async def test_balance_agents_makes_correct_callbacks(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
+    async def test_balance_agents(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
         """Check that `balance_agents` method makes the correct callbacks."""
         WORKER1 = 'worker1'
 
@@ -409,7 +409,7 @@ class TestHAPHelper:
             ([], [], {'worker1': 10, 'worker2': 8}),
         ],
     )
-    async def test_manage_wazuh_cluster_nodes_makes_correct_callbacks(
+    async def test_manage_wazuh_cluster_nodes(
         self,
         helper: HAPHelper,
         proxy_mock: mock.MagicMock,
@@ -471,7 +471,7 @@ class TestHAPHelper:
                                     helper.logger.info.assert_any_call('Load balancer backend is balanced')
                                 sleep_mock.assert_any_call(helper.sleep_time)
 
-    async def test_manage_wazuh_cluster_nodes_dont_raise_in_case_of_error(
+    async def test_manage_wazuh_cluster_nodes_ko(
         self,
         helper: HAPHelper,
         sleep_mock: mock.AsyncMock,
@@ -489,7 +489,7 @@ class TestHAPHelper:
 
     @pytest.mark.parametrize('wait_connection_retry,reconnect_agents', ([True, False], [False, False], [False, True]))
     @pytest.mark.parametrize('agent_ids', (['001', '002'], []))
-    async def test_set_hard_stop_after_makes_correct_callbacks(
+    async def test_set_hard_stop_after(
         self,
         helper: HAPHelper,
         proxy_mock: mock.MagicMock,
@@ -533,7 +533,7 @@ class TestHAPHelper:
                 else:
                     update_agent_connections_mock.assert_not_called()
 
-    async def test_get_connection_retry_returns_correct_information(
+    async def test_get_connection_retry(
         self, helper: HAPHelper, proxy_mock: mock.MagicMock
     ):
         """Check the correct output of `get_connection_retry` method."""
@@ -546,7 +546,7 @@ class TestHAPHelper:
             assert helper.get_connection_retry() == CONNECTION_RETRY + 2
 
     @pytest.mark.parametrize('hard_stop_after', [None, 8, 12])
-    async def test_start_makes_correct_callbacks(
+    async def test_start(
         self,
         read_cluster_config_mock: mock.MagicMock,
         get_ossec_conf: mock.MagicMock,
@@ -642,7 +642,7 @@ class TestHAPHelper:
                             HAPHelper.manage_wazuh_cluster_nodes.assert_called_once()
 
     @pytest.mark.parametrize('exception', [KeyError(), KeyboardInterrupt(), WazuhHAPHelperError(3046)])
-    async def test_start_dont_raise_in_case_of_error(
+    async def test_start_ko(
         self, read_cluster_config_mock: mock.MagicMock, exception: Exception
     ):
         """Check the correct error handling of `start` method."""

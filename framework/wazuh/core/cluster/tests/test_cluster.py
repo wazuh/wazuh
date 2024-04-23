@@ -603,7 +603,7 @@ async def test_run_in_pool(event_loop):
     assert await cluster.run_in_pool(event_loop, None, mock_callable, None) == "Mock callable"
 
 
-def test_validate_haproxy_helper_config_calls_validate():
+def test_validate_haproxy_helper_config():
     """Verify that validate_haproxy_helper_config function calls validate function."""
 
     config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
@@ -614,8 +614,8 @@ def test_validate_haproxy_helper_config_calls_validate():
         validate_mock.assert_called_once_with(config, cluster.HAPROXY_HELPER_SCHEMA)
 
 
-def test_validate_haproxy_helper_config_raises_wazuh_error():
-    """Verify that validate_haproxy_helper_config raises WazuhError when the is validation error."""
+def test_validate_haproxy_helper_config_ko():
+    """Verify that validate_haproxy_helper_config raises WazuhError when there is a validation error."""
 
     config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
 
