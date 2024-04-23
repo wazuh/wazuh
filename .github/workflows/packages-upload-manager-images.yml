@@ -1,0 +1,41 @@
+run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ inputs.tag }}
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: |
+          Image tag.
+        required: true
+      system:
+        description: |
+          deb or rpm sytem.
+        required: true
+      source_reference:
+        description: |
+          wazuh/wazuh branch that triggered the upload.
+        required: true
+
+jobs:
+  Upload-package-building-images:
+    runs-on: ubuntu-latest
+    name: Package - Upload pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ inputs.tag }}
+
+    steps:
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh
+          ref: ${{ inputs.source_reference }}
+
+      - name: Copy build.sh and utils to Dockerfile path
+        run: |
+          if [[ ${{ inputs.system }} == deb ]]; then dockerfile_path=packages/${{ inputs.system }}s/amd64/manager;
+          else dockerfile_path=packages/${{ inputs.system }}s/amd64/manager; fi
+          echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
+          cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/$dockerfile_path
+          cp $GITHUB_WORKSPACE/packages/${system}s/utils/* $GITHUB_WORKSPACE/$dockerfile_path
+
+      - name: Build and push image pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ inputs.tag }} to Github Container Registry
+        run:
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_manager_builder_amd64 ${{ env.DOCKERFILE_PATH }} ${{ inputs.tag }}
