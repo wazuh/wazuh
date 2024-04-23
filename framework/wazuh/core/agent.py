@@ -1425,8 +1425,9 @@ def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, *
     for chunk in agents_chunks:
         response = core_upgrade_agents(command=command, agents_chunk=chunk, wpk_repo=kwargs.get('wpk_repo'),
                                        version=kwargs.get('version'), force=kwargs.get('force'),
-                                       use_http=kwargs.get('use_http'), file_path=kwargs.get('file_path'),
-                                       installer=kwargs.get('installer'), get_result=kwargs.get('get_result'))
+                                       use_http=kwargs.get('use_http'), package_type=kwargs.get('package_type'),
+                                       file_path=kwargs.get('file_path'), installer=kwargs.get('installer'),
+                                       get_result=kwargs.get('get_result'))
 
         # In case of task manager communication error, try to create the upgrade tasks again with a smaller chunk size
         # If the used chunk size is 1, return the response with the task manager communication error
@@ -1439,8 +1440,8 @@ def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, *
 
 
 def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk_repo: str = None, version: str = None,
-                        force: bool = False, use_http: bool = False, file_path: str = None, installer: str = None,
-                        get_result: bool = False) -> dict:
+                        force: bool = False, use_http: bool = False, package_type: str = None, file_path: str = None,
+                        installer: str = None, get_result: bool = False) -> dict:
     """Send command to upgrade module / task module.
 
     Parameters
@@ -1457,6 +1458,8 @@ def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk
         Forces the agents to upgrade, ignoring version validations.
     use_http : bool
         False for HTTPS protocol, True for HTTP protocol.
+    package_type : str
+        Default package type (rpm, deb).
     file_path : str
         Path to the installation file.
     installer : str
@@ -1476,6 +1479,7 @@ def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk
                                           'version': unify_wazuh_upgrade_version_format(version),
                                           'force_upgrade': force,
                                           'use_http': use_http,
+                                          'package_type': package_type,
                                           'wpk_repo': wpk_repo,
                                           'file_path': file_path,
                                           'installer': installer
