@@ -43,8 +43,6 @@ size_t global_counter;
 
 _Atomic (time_t) current_ts;
 
-/* remoted agents state mutex */
-extern pthread_mutex_t remoted_agents_state_mutex;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
