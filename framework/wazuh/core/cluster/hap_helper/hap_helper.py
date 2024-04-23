@@ -2,11 +2,32 @@ import logging
 from asyncio import sleep
 from math import ceil, floor
 
-from wazuh.core.cluster.hap_helper.configuration import parse_configuration
 from wazuh.core.cluster.hap_helper.proxy import Proxy, ProxyAPI, ProxyServerState
 from wazuh.core.cluster.hap_helper.wazuh import WazuhAgent, WazuhDAPI
-from wazuh.core.cluster.utils import ClusterFilter, context_tag, get_cluster_items
+from wazuh.core.cluster.utils import (
+    AGENT_CHUNK_SIZE,
+    AGENT_RECONNECTION_STABILITY_TIME,
+    AGENT_RECONNECTION_TIME,
+    EXCLUDED_NODES,
+    FREQUENCY,
+    HAPROXY_ADDRESS,
+    HAPROXY_BACKEND,
+    HAPROXY_PASSWORD,
+    HAPROXY_PORT,
+    HAPROXY_PROTOCOL,
+    HAPROXY_RESOLVER,
+    HAPROXY_USER,
+    IMBALANCE_TOLERANCE,
+    REMOVE_DISCONNECTED_NODE_AFTER,
+    ClusterFilter,
+    context_tag,
+    get_cluster_items,
+    read_cluster_config,
+)
+from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhException, WazuhHAPHelperError
+
+CONNECTION_PORT = 1514
 
 
 class HAPHelper:
@@ -16,18 +37,29 @@ class HAPHelper:
     AGENT_STATUS_SYNC_TIME: int = 25  # Default agent notify time + cluster sync + 5s
     SERVER_ADMIN_STATE_DELAY: int = 5
 
-    def __init__(self, proxy: Proxy, wazuh_dapi: WazuhDAPI, tag: str, options: dict):
+    def __init__(
+        self,
+        proxy: Proxy,
+        wazuh_dapi: WazuhDAPI,
+        tag: str,
+        sleep_time: float,
+        agent_reconnection_stability_time: int,
+        agent_reconnection_time: int,
+        agent_reconnection_chunk_size: int,
+        agent_tolerance: float,
+        remove_disconnected_node_after: int,
+    ):
         self.tag = tag
         self.logger = self._get_logger(self.tag)
         self.proxy = proxy
         self.wazuh_dapi = wazuh_dapi
 
-        self.sleep_time: int = options['sleep_time']
-        self.agent_reconnection_stability_time: int = options['agent_reconnection_stability_time']
-        self.agent_reconnection_chunk_size: int = options['agent_reconnection_chunk_size']
-        self.agent_reconnection_time: int = options['agent_reconnection_time']
-        self.agent_tolerance: float = options['agent_tolerance']
-        self.remove_disconnected_node_after: int = options['remove_disconnected_node_after']
+        self.sleep_time = sleep_time
+        self.agent_reconnection_stability_time = agent_reconnection_stability_time
+        self.agent_reconnection_chunk_size = agent_reconnection_chunk_size
+        self.agent_reconnection_time = agent_reconnection_time
+        self.agent_tolerance = agent_tolerance
+        self.remove_disconnected_node_after = remove_disconnected_node_after
 
     @staticmethod
     def _get_logger(tag: str) -> logging.Logger:
@@ -419,7 +451,7 @@ class HAPHelper:
             active_agents=len(agents_id),
             chunk_size=self.agent_reconnection_chunk_size,
             agent_reconnection_time=self.agent_reconnection_time,
-            n_managers=len(current_cluster.keys()),
+            n_managers=len(current_cluster.keys()) or 1,
             server_admin_state_delay=self.SERVER_ADMIN_STATE_DELAY,
         )
 
@@ -442,33 +474,46 @@ class HAPHelper:
     @classmethod
     async def start(cls):
         """Initialize and run HAPHelper."""
+        tag = 'HAPHelper'
+        context_tag.set(tag)
+        logger = HAPHelper._get_logger(tag)
 
         try:
-            configuration = parse_configuration()
-            tag = 'HAPHelper'
+            helper_config = read_cluster_config()['haproxy_helper']
+            port_config = get_ossec_conf(section='remote')
 
             proxy_api = ProxyAPI(
-                username=configuration['proxy']['api']['user'],
-                password=configuration['proxy']['api']['password'],
+                username=helper_config[HAPROXY_USER],
+                password=helper_config[HAPROXY_PASSWORD],
                 tag=tag,
-                address=configuration['proxy']['api']['address'],
-                port=configuration['proxy']['api']['port'],
-                protocol=configuration['proxy']['api']['protocol'],
+                address=helper_config[HAPROXY_ADDRESS],
+                port=helper_config[HAPROXY_PORT],
+                protocol=helper_config[HAPROXY_PROTOCOL],
             )
             proxy = Proxy(
-                wazuh_backend=configuration['proxy']['backend'],
-                wazuh_connection_port=configuration['wazuh']['connection']['port'],
+                wazuh_backend=helper_config[HAPROXY_BACKEND],
+                wazuh_connection_port=int(port_config.get('remote')[0].get('port', CONNECTION_PORT)),
                 proxy_api=proxy_api,
                 tag=tag,
-                resolver=configuration['proxy'].get('resolver', None),
+                resolver=helper_config[HAPROXY_RESOLVER],
             )
 
             wazuh_dapi = WazuhDAPI(
                 tag=tag,
-                excluded_nodes=configuration['wazuh']['excluded_nodes'],
+                excluded_nodes=helper_config[EXCLUDED_NODES],
             )
 
-            helper = cls(proxy=proxy, wazuh_dapi=wazuh_dapi, tag=tag, options=configuration['hap_helper'])
+            helper = cls(
+                proxy=proxy,
+                wazuh_dapi=wazuh_dapi,
+                tag=tag,
+                sleep_time=helper_config[FREQUENCY],
+                agent_reconnection_stability_time=helper_config[AGENT_RECONNECTION_STABILITY_TIME],
+                agent_reconnection_time=helper_config[AGENT_RECONNECTION_TIME],
+                agent_reconnection_chunk_size=helper_config[AGENT_CHUNK_SIZE],
+                agent_tolerance=helper_config[IMBALANCE_TOLERANCE],
+                remove_disconnected_node_after=helper_config[REMOVE_DISCONNECTED_NODE_AFTER],
+            )
 
             await helper.initialize_proxy()
 
@@ -482,11 +527,13 @@ class HAPHelper:
             if helper.proxy.hard_stop_after is None:
                 await helper.set_hard_stop_after()
 
-            helper.logger.info('Starting HAProxy Helper')
+            logger.info('Starting HAProxy Helper')
             await helper.manage_wazuh_cluster_nodes()
+        except KeyError as exc:
+            logger.error(f'Missing configuration {exc}. The helper cannot start.')
         except KeyboardInterrupt:
             pass
         except Exception as unexpected_exc:
-            helper.logger.critical(f'Unexpected exception: {unexpected_exc}', exc_info=True)
+            logger.critical(f'Unexpected exception: {unexpected_exc}', exc_info=True)
         finally:
-            helper.logger.info('Process ended')
+            logger.info('Task ended')

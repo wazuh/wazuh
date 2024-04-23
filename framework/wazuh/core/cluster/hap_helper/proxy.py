@@ -112,7 +112,9 @@ class ProxyAPI:
                 elif response.status_code == 404:
                     raise WazuhHAPHelperError(3047)
         except httpx.ConnectError:
-            raise WazuhHAPHelperError(3043, extra_message='Check connectivity and the configuration file')
+            raise WazuhHAPHelperError(
+                3043, extra_message='Check connectivity and the configuration in the `ossec.conf`'
+            )
         except httpx.RequestError as req_exc:
             raise WazuhHAPHelperError(3043, extra_message=str(req_exc))
 

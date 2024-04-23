@@ -121,7 +121,7 @@ int wm_key_request_read(__attribute__((unused)) xml_node **nodes, __attribute__(
 #endif
 #endif
 int Read_Labels(XML_NODE node, void *d1, void *d2);
-int Read_Cluster(XML_NODE node, void *d1, void *d2);
+int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_LogCollecSocket(XML_NODE node, void *d1, void *d2);
 int Read_AnalysisdSocket(XML_NODE node, void *d1, void *d2);
 int Read_Vuln(const OS_XML *xml, xml_node **nodes, void *d1, char d2);
