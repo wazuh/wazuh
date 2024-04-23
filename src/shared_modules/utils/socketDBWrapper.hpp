@@ -187,22 +187,14 @@ public:
         {
             switch (m_queryStatus)
             {
-            case DbQueryStatus::JSON_PARSING:
-                throw std::runtime_error(m_exceptionStr);
-            case DbQueryStatus::EMPTY_RESPONSE:
-                throw SocketDbWrapperException(m_exceptionStr);
-            case DbQueryStatus::QUERY_ERROR:
-                throw SocketDbWrapperException(m_exceptionStr);
-            case DbQueryStatus::QUERY_IGNORE:
-                throw SocketDbWrapperException(m_exceptionStr);
-            case DbQueryStatus::QUERY_UNKNOWN:
-                throw SocketDbWrapperException(m_exceptionStr);
-            case DbQueryStatus::QUERY_NOT_SYNCED:
-                throw SocketDbWrapperException(m_exceptionStr);
-            case DbQueryStatus::INVALID_RESPONSE:
-                throw std::runtime_error(m_exceptionStr);
-            default:
-                throw std::runtime_error(m_exceptionStr);
+                case DbQueryStatus::EMPTY_RESPONSE:
+                case DbQueryStatus::QUERY_ERROR:
+                case DbQueryStatus::QUERY_IGNORE:
+                case DbQueryStatus::QUERY_UNKNOWN:
+                case DbQueryStatus::QUERY_NOT_SYNCED: throw SocketDbWrapperException(m_exceptionStr);
+                case DbQueryStatus::JSON_PARSING:
+                case DbQueryStatus::INVALID_RESPONSE:
+                default: throw std::runtime_error(m_exceptionStr);
             }
         }
 
