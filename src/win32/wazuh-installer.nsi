@@ -21,7 +21,7 @@
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
 !define VERSION "4.7.4"
-!define REVISION "40715"
+!define REVISION "40716"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
