@@ -97,7 +97,7 @@ def test_read_cluster_config():
             }
         )
 )
-def test_parse_haproxy_helper_config_return_correct_values(config: dict):
+def test_parse_haproxy_helper_config(config: dict):
     """Verify that parse_haproxy_helper_config function returns the default configuration."""
 
     ret_val = utils.parse_haproxy_helper_config(config)
@@ -140,7 +140,7 @@ def test_parse_haproxy_helper_config_return_correct_values(config: dict):
             }
         )
 )
-def test_parse_haproxy_helper_config_raises_with_an_invalid_type(config: dict):
+def test_parse_haproxy_helper_config_ko(config: dict):
     """Verify that parse_haproxy_helper_config function raises when config has an invalid type."""
 
     with pytest.raises(WazuhError, match='.* 3004 .*'):
