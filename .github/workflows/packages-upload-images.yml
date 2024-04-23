@@ -88,20 +88,16 @@ jobs:
       - name: Request pkg_deb_manager_builder_amd64 update 
         if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-image-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f container_name=pkg_deb_manager_builder_amd64 -f dockerfile_path=packages/debs/amd64/manager -f tag=${{ env.TAG }} -f wazuh_wazuh_branch=${{ github.ref_name }}
+          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
         env:
-          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request pkg_rpm_manager_builder_amd64 update
         if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
-        run: | 
-          curl -L -X POST -H "Accept: application/vnd.github+json" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
-            -H "X-GitHub-Api-Version: 2022-11-28" https://api.github.com/repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \  
-            -d '{"ref": "${{ env.WAZUH_WORKFLOWS_BRANCH }}", \
-            "inputs": {"container_name": "pkg_rpm_manager_builder_amd64", \ 
-                       "dockerfile_path": "packages/rpms/amd64/manager", \
-                       "tag": "${{ env.TAG }}", \  
-                       "wazuh_wazuh_branch": "${{ github.ref_name }}"}}'
+        run: |
+          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request pkg_deb_agent_builder_amd64 update
         if: steps.changes.outputs.pkg_deb_agent_builder_amd64 == 'true'
