@@ -35,6 +35,7 @@ install:
 
 	$(INSTALL_DIR) $(INSTALLDIR)/api/scripts
 	$(INSTALL_FILE) scripts/wazuh-apid.py ${INSTALLDIR}/api/scripts
+	$(INSTALL_FILE) scripts/vuln-stated.py ${INSTALLDIR}/api/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
