@@ -41,7 +41,7 @@ logger = logging.getLogger('wazuh')
 FILE_SEP = '|@@//@@|'
 PATH_SEP = '|//@@//|'
 MIN_PORT = 1024
-MAX_PÖRT = 65535
+MAX_PORT = 65535
 
 
 #
@@ -64,7 +64,7 @@ def validate_haproxy_helper_config(config: dict):
     SCHEMA = {
         'type': 'object',
         'properties': {
-            HAPROXY_PORT: {'type': 'integer', 'minimum': MIN_PORT, 'maximum': MAX_PÖRT},
+            HAPROXY_PORT: {'type': 'integer', 'minimum': MIN_PORT, 'maximum': MAX_PORT},
             HAPROXY_PROTOCOL: {'type': 'string', 'enum': ['http', 'https']},
             FREQUENCY: {'type': 'integer', 'minimum': 10},
             AGENT_RECONNECTION_STABILITY_TIME: {'type': 'integer', 'minimum': 10},
@@ -121,8 +121,8 @@ def check_cluster_config(config):
     elif not isinstance(config['port'], int):
         raise WazuhError(3004, "Port has to be an integer.")
 
-    elif not MIN_PORT < config['port'] < MAX_PÖRT:
-        raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PÖRT}.")
+    elif not MIN_PORT < config['port'] < MAX_PORT:
+        raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
 
     if len(config['nodes']) > 1:
         logger.warning(
