@@ -7,6 +7,7 @@ on:
           Tag name of the Docker image to be downloaded.
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
           Default is 'auto'.
         required: false
         default: 'auto'
@@ -102,7 +103,7 @@ jobs:
       - name: Set TAG
         run: |
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=${{ env.VERSION }}" >> $GITHUB_ENV;
-          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
 
       - name: Set PKG_NAME
@@ -175,7 +176,7 @@ jobs:
           cd C:\win-agent-base\wazuh-local-src\src\win32
           .\generate_wazuh_msi.ps1 -MSI_NAME ${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi -SIGN no
           cp .\${{ needs.build-agent-windows-base.outputs.PKG_NAME }}.msi C:\win-agent-base\
-      
+
       - name: Install Windows agent
         run: |
           cd C:\win-agent-base\
