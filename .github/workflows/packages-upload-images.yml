@@ -88,14 +88,9 @@ jobs:
       - name: Request pkg_deb_manager_builder_amd64 update 
         if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
         run: |
-          gh api \
-          --method POST \
-          -H "Accept: application/vnd.github+json" \
-          -H "X-GitHub-Api-Version: 2022-11-28" \
-          /repos/wazuh/wazuh-agent-packages/actions/workflows/packages-upload-image-amd.yml/dispatches \
-          -f "ref=${{ env.WAZUH_WORKFLOWS_BRANCH }}" -f "inputs[container_name]=pkg_deb_manager_builder_amd64" -f "inputs[dockerfile_path]=packages/debs/amd64/manager" -f "inputs[tag]=${{ env.TAG }}" -f "inputs[wazuh_wazuh_branch]=${{ github.ref_name }}"
+          gh workflow run packages-upload-image-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f container_name=pkg_deb_manager_builder_amd64 -f dockerfile_path=packages/debs/amd64/manager -f tag=${{ env.TAG }} -f wazuh_wazuh_branch=${{ github.ref_name }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
       - name: Request pkg_rpm_manager_builder_amd64 update
         if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
