@@ -4,9 +4,10 @@ on:
     inputs:
       docker_image_tag:
         description: |
-          Specify the docker tag used to build the package.
+          Tag name of the Docker image to be uploaded.
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
           Default is 'auto'.
         required: false
         default: 'auto'
