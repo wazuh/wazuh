@@ -254,11 +254,14 @@ int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_
             if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_STRUCTURE_REPOSITORY, true) >= 0) {
                 if (task->package_type) {
                     if (agent_info->package_type) {
-                        if (task->force_upgrade) {
-                            os_free(agent_info->package_type);
-                            os_strdup(task->package_type, agent_info->package_type);
-                        } else {
-                            mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INVALID_PACKAGE_NO_FORCE, agent_info->agent_id, agent_info->platform, task->package_type);
+                        if (strcmp(task->package_type, agent_info->package_type) != 0) {
+                            if (task->force_upgrade) {
+                                mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_DIFF_PACKAGE_FORCE, agent_info->agent_id, agent_info->platform, task->package_type);
+                                os_free(agent_info->package_type);
+                                os_strdup(task->package_type, agent_info->package_type);
+                            } else {
+                                mtwarn(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_DIFF_PACKAGE_NO_FORCE, agent_info->agent_id, agent_info->platform, task->package_type);
+                            }
                         }
                     } else {
                         mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNSUPPORTED_DEFAULT, agent_info->agent_id, agent_info->platform, task->package_type);
