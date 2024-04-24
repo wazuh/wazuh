@@ -1153,7 +1153,7 @@ void w_journal_log_config_free(w_journal_log_config_t ** config) {
         return;
     }
 
-    w_journal_free_filters_list((*config)->filters);
+    w_journal_filters_list_free((*config)->filters);
     os_free(*config);
 }
 
@@ -1388,7 +1388,7 @@ cJSON * w_journal_filter_list_as_json(w_journal_filters_list_t filter_lst) {
 
 }
 
-void w_journal_free_filters_list(w_journal_filters_list_t list) {
+void w_journal_filters_list_free(w_journal_filters_list_t list) {
     if (list == NULL) {
         return;
     }

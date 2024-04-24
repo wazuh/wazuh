@@ -696,7 +696,7 @@ void test_w_journal_filter_list_as_json_fail_array(void ** state) {
     will_return(__wrap_cJSON_CreateArray, (cJSON *) NULL);
     assert_null(w_journal_filter_list_as_json(list));
 
-    w_journal_free_filters_list(list); // Test w_journal_free_filters_list
+    w_journal_filters_list_free(list); // Test w_journal_filters_list_free
 }
 
 void test_w_journal_filter_list_as_json_success(void ** state) {
@@ -734,7 +734,7 @@ void test_w_journal_filter_list_as_json_success(void ** state) {
 
     assert_non_null(w_journal_filter_list_as_json(list));
 
-    w_journal_free_filters_list(list); // Test w_journal_free_filters_list
+    w_journal_filters_list_free(list); // Test w_journal_filters_list_free
 }
 
 // ------------------------------------------------
