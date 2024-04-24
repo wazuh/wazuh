@@ -2,9 +2,8 @@
 
 #include "builders/opmap/mmdb.hpp"
 
-#include <mmdb/mockHandler.hpp>
-#include <mmdb/mockManager.hpp>
-#include <mmdb/mockResult.hpp>
+#include <geo/mockLocator.hpp>
+#include <geo/mockManager.hpp>
 
 namespace
 {
@@ -59,56 +58,50 @@ auto customRefExpected(const json::Json& value)
 // AS: Builder getters for building test
 namespace as
 {
-mapbuildtest::BuilderGetter getBuilderNoHandler()
+mapbuildtest::BuilderGetter getBuilderNoLocator()
 {
     return []()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        return getMMDBASNBuilder(mmdbManager);
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        return getMMDBASNBuilder(geoManager);
     };
 }
 
-mapbuildtest::BuilderGetter getBuilderWHandler(bool failHandler = false)
+mapbuildtest::BuilderGetter getBuilderWLocator(bool failLocator = false)
 {
     return [=]()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        auto mmdbHandler = std::make_shared<::mmdb::MockHandler>();
-        if (failHandler)
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
+        if (failLocator)
         {
-            EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-asn")).WillOnce(testing::Return(base::Error {"error"}));
+            EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(base::Error {"error"}));
         }
         else
         {
-            EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-asn")).WillOnce(testing::Return(mmdbHandler));
+            EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(geoLocator));
         }
-        return getMMDBASNBuilder(mmdbManager);
+        return getMMDBASNBuilder(geoManager);
     };
 }
 
 // AS operation
-mapbuildtest::BuilderGetter getBuilderHandlerNoResult(bool validIP = true)
+mapbuildtest::BuilderGetter getBuilderLocatorNoResult()
 {
     return [=]()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        auto mmdbHandler = std::make_shared<::mmdb::MockHandler>();
-        if (!validIP)
-        {
-            EXPECT_CALL(*mmdbHandler, lookup(testing::_)).WillOnce(testing::Throw(std::runtime_error {"Invalid IP"}));
-        }
-        else
-        {
-            auto mmdbResult = std::make_shared<::mmdb::MockResult>();
-            EXPECT_CALL(*mmdbResult, hasData()).WillOnce(testing::Return(false));
-            EXPECT_CALL(*mmdbHandler, lookup(testing::_)).WillOnce(testing::Return(mmdbResult));
-        }
-        EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-asn")).WillOnce(testing::Return(mmdbHandler));
-        return getMMDBASNBuilder(mmdbManager);
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
+        EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(geoLocator));
+        ON_CALL(*geoLocator, getString(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        ON_CALL(*geoLocator, getUint32(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        ON_CALL(*geoLocator, getDouble(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        ON_CALL(*geoLocator, getAsJson(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        return getMMDBASNBuilder(geoManager);
     };
 }
 
-mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasASN, bool hasASOrg)
+mapbuildtest::BuilderGetter getBuilderLocatorResult(bool hasASN, bool hasASOrg)
 {
     // Path from the root MaxMind object
     const DotPath asnPath {"autonomous_system_number"};
@@ -116,89 +109,84 @@ mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasASN, bool hasASOrg)
 
     return [=]()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        auto mmdbHandler = std::make_shared<::mmdb::MockHandler>();
-        auto mmdbResult = std::make_shared<::mmdb::MockResult>();
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
         if (hasASN)
         {
-            EXPECT_CALL(*mmdbResult, getUint32(asnPath)).WillOnce(testing::Return(123u));
+            EXPECT_CALL(*geoLocator, getUint32(testing::_, asnPath)).WillOnce(testing::Return(123u));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getUint32(asnPath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getUint32(testing::_, asnPath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasASOrg)
         {
-            EXPECT_CALL(*mmdbResult, getString(asOrgPath)).WillOnce(testing::Return("AS Org"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, asOrgPath)).WillOnce(testing::Return("AS Org"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(asOrgPath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, asOrgPath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
-        EXPECT_CALL(*mmdbResult, hasData()).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mmdbHandler, lookup(testing::_)).WillOnce(testing::Return(mmdbResult));
-        EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-asn")).WillOnce(testing::Return(mmdbHandler));
-        return getMMDBASNBuilder(mmdbManager);
+        EXPECT_CALL(*geoManager, getLocator(geo::Type::ASN)).WillOnce(testing::Return(geoLocator));
+        return getMMDBASNBuilder(geoManager);
     };
 }
 
 } // namespace as
 
 // Geo builder
-namespace geo
+namespace city
 {
-mapbuildtest::BuilderGetter getBuilderNoHandler()
+mapbuildtest::BuilderGetter getBuilderNoLocator()
 {
     return []()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        return getMMDBGeoBuilder(mmdbManager);
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        return getMMDBGeoBuilder(geoManager);
     };
 }
 
-mapbuildtest::BuilderGetter getBuilderWHandler(bool failHandler = false)
+mapbuildtest::BuilderGetter getBuilderWLocator(bool failLocator = false)
 {
     return [=]()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        auto mmdbHandler = std::make_shared<::mmdb::MockHandler>();
-        if (failHandler)
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
+        if (failLocator)
         {
-            EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-city")).WillOnce(testing::Return(base::Error {"error"}));
+            EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(base::Error {"error"}));
         }
         else
         {
-            EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-city")).WillOnce(testing::Return(mmdbHandler));
+            EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(geoLocator));
         }
-        return getMMDBGeoBuilder(mmdbManager);
+        return getMMDBGeoBuilder(geoManager);
     };
 }
 
 // AS operation
-mapbuildtest::BuilderGetter getBuilderHandlerNoResult(bool validIP = true)
+mapbuildtest::BuilderGetter getBuilderLocatorNoResult(bool validIP = true)
 {
     return [=]()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        auto mmdbHandler = std::make_shared<::mmdb::MockHandler>();
-        if (!validIP)
-        {
-            EXPECT_CALL(*mmdbHandler, lookup(testing::_)).WillOnce(testing::Throw(std::runtime_error {"Invalid IP"}));
-        }
-        else
-        {
-            auto mmdbResult = std::make_shared<::mmdb::MockResult>();
-            EXPECT_CALL(*mmdbResult, hasData()).WillOnce(testing::Return(false));
-            EXPECT_CALL(*mmdbHandler, lookup(testing::_)).WillOnce(testing::Return(mmdbResult));
-        }
-        EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-city")).WillOnce(testing::Return(mmdbHandler));
-        return getMMDBGeoBuilder(mmdbManager);
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
+
+        ON_CALL(*geoLocator, getString(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        ON_CALL(*geoLocator, getUint32(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        ON_CALL(*geoLocator, getDouble(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+        ON_CALL(*geoLocator, getAsJson(testing::_, testing::_)).WillByDefault(testing::Return(base::Error {"error"}));
+
+        EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(geoLocator));
+        return getMMDBGeoBuilder(geoManager);
     };
 }
 
-mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasCity,
+mapbuildtest::BuilderGetter getBuilderLocatorResult(bool hasCity,
                                                     bool hasContinentCode,
                                                     bool hasContinentName,
                                                     bool hasCountryIsoCode,
@@ -208,8 +196,7 @@ mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasCity,
                                                     bool hasPostalCode,
                                                     bool hasTimeZone,
                                                     bool hasRegionCode,
-                                                    bool hasRegionName
-                                                    )
+                                                    bool hasRegionName)
 {
     // Path from the root MaxMind object
     const DotPath cityPath {"city.names.en"};
@@ -226,118 +213,125 @@ mapbuildtest::BuilderGetter getBuilderHandlerResult(bool hasCity,
 
     return [=]()
     {
-        auto mmdbManager = std::make_shared<::mmdb::MockManager>();
-        auto mmdbHandler = std::make_shared<::mmdb::MockHandler>();
-        auto mmdbResult = std::make_shared<::mmdb::MockResult>();
+        auto geoManager = std::make_shared<::geo::mocks::MockManager>();
+        auto geoLocator = std::make_shared<::geo::mocks::MockLocator>();
 
         if (hasCity)
         {
-            EXPECT_CALL(*mmdbResult, getString(cityPath)).WillOnce(testing::Return("City"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, cityPath)).WillOnce(testing::Return("City"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(cityPath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, cityPath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasContinentCode)
         {
-            EXPECT_CALL(*mmdbResult, getString(continentCodePath)).WillOnce(testing::Return("CC"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, continentCodePath)).WillOnce(testing::Return("CC"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(continentCodePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, continentCodePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasContinentName)
         {
-            EXPECT_CALL(*mmdbResult, getString(continentNamePath)).WillOnce(testing::Return("Continent"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, continentNamePath)).WillOnce(testing::Return("Continent"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(continentNamePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, continentNamePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasCountryIsoCode)
         {
-            EXPECT_CALL(*mmdbResult, getString(countryIsoCodePath)).WillOnce(testing::Return("CI"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, countryIsoCodePath)).WillOnce(testing::Return("CI"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(countryIsoCodePath))
+            EXPECT_CALL(*geoLocator, getString(testing::_, countryIsoCodePath))
                 .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasCountryName)
         {
-            EXPECT_CALL(*mmdbResult, getString(countryNamePath)).WillOnce(testing::Return("Country"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, countryNamePath)).WillOnce(testing::Return("Country"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(countryNamePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, countryNamePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasLatitude)
         {
-            EXPECT_CALL(*mmdbResult, getDouble(latitudePath)).WillOnce(testing::Return(1.23));
+            EXPECT_CALL(*geoLocator, getDouble(testing::_, latitudePath)).WillOnce(testing::Return(1.23));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getDouble(latitudePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getDouble(testing::_, latitudePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasLongitude)
         {
-            EXPECT_CALL(*mmdbResult, getDouble(longitudePath)).WillOnce(testing::Return(4.56));
+            EXPECT_CALL(*geoLocator, getDouble(testing::_, longitudePath)).WillOnce(testing::Return(4.56));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getDouble(longitudePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getDouble(testing::_, longitudePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasPostalCode)
         {
-            EXPECT_CALL(*mmdbResult, getString(postalCodePath)).WillOnce(testing::Return("12345"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, postalCodePath)).WillOnce(testing::Return("12345"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(postalCodePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, postalCodePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasTimeZone)
         {
-            EXPECT_CALL(*mmdbResult, getString(timeZonePath)).WillOnce(testing::Return("TZ"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, timeZonePath)).WillOnce(testing::Return("TZ"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(timeZonePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, timeZonePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasRegionCode)
         {
-            EXPECT_CALL(*mmdbResult, getString(regionCodePath)).WillOnce(testing::Return("RC"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, regionCodePath)).WillOnce(testing::Return("RC"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(regionCodePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, regionCodePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
         if (hasRegionName)
         {
-            EXPECT_CALL(*mmdbResult, getString(regionNamePath)).WillOnce(testing::Return("Region"));
+            EXPECT_CALL(*geoLocator, getString(testing::_, regionNamePath)).WillOnce(testing::Return("Region"));
         }
         else
         {
-            EXPECT_CALL(*mmdbResult, getString(regionNamePath)).WillOnce(testing::Return(base::Error {"Not found"}));
+            EXPECT_CALL(*geoLocator, getString(testing::_, regionNamePath))
+                .WillOnce(testing::Return(base::Error {"Not found"}));
         }
 
-        EXPECT_CALL(*mmdbResult, hasData()).WillOnce(testing::Return(true));
-        EXPECT_CALL(*mmdbHandler, lookup(testing::_)).WillOnce(testing::Return(mmdbResult));
-        EXPECT_CALL(*mmdbManager, getHandler("mm-geolite2-city")).WillOnce(testing::Return(mmdbHandler));
-        return getMMDBGeoBuilder(mmdbManager);
+        EXPECT_CALL(*geoManager, getLocator(::geo::Type::CITY)).WillOnce(testing::Return(geoLocator));
+        return getMMDBGeoBuilder(geoManager);
     };
 }
 
-} // namespace geo
+} // namespace city
 
 } // namespace
 
@@ -349,17 +343,17 @@ INSTANTIATE_TEST_SUITE_P(
     MapBuilderWithDepsTest,
     testing::Values(
         // Only accept a ref with a ip to map an object
-        MapDepsT({}, as::getBuilderNoHandler(), FAILURE(expectContext())),
-        MapDepsT({makeValue(R"("value")")}, as::getBuilderNoHandler(), FAILURE(expectContext())),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::TEXT))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::KEYWORD))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::INTEGER))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::OBJECT))),
-        MapDepsT({makeRef("ref")}, as::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::NESTED))),
-        MapDepsT({makeRef("ref")}, as::getBuilderWHandler(), SUCCESS(customRefExpected())),
-        // #TODO: Fail Handler, Temporary error handling, this should be mandatory
-        MapDepsT({makeRef("ref")}, as::getBuilderWHandler(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
-        MapDepsT({makeRef("ref")}, as::getBuilderWHandler(true), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
+        MapDepsT({}, as::getBuilderNoLocator(), FAILURE(expectContext())),
+        MapDepsT({makeValue(R"("value")")}, as::getBuilderNoLocator(), FAILURE(expectContext())),
+        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::TEXT))),
+        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::KEYWORD))),
+        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::INTEGER))),
+        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT))),
+        MapDepsT({makeRef("ref")}, as::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED))),
+        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(customRefExpected())),
+        // #TODO: Fail Locator, Temporary error handling, this should be mandatory
+        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
+        MapDepsT({makeRef("ref")}, as::getBuilderWLocator(true), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
         // End of test values
         ),
     testNameFormatter<MapBuilderWithDepsTest>("mmdb_asn"));
@@ -370,20 +364,20 @@ INSTANTIATE_TEST_SUITE_P(
     MapBuilderWithDepsTest,
     testing::Values(
         // Only accept a ref with a ip to map an object
-        MapDepsT({}, geo::getBuilderNoHandler(), FAILURE()),
-        MapDepsT({makeValue(R"("value")")}, geo::getBuilderNoHandler(), FAILURE()),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::TEXT, true))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::KEYWORD, true))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::INTEGER, true))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::OBJECT, true))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderNoHandler(), FAILURE(expectTypeRef(schemf::Type::NESTED, true))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderWHandler(), SUCCESS(customRefExpected())),
-        // #TODO: Fail Handler, Temporary error handling, this should be mandatory
-        MapDepsT({makeRef("ref")}, geo::getBuilderWHandler(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
-        MapDepsT({makeRef("ref")}, geo::getBuilderWHandler(true), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
+        MapDepsT({}, city::getBuilderNoLocator(), FAILURE()),
+        MapDepsT({makeValue(R"("value")")}, city::getBuilderNoLocator(), FAILURE()),
+        MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::TEXT, true))),
+        MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::KEYWORD, true))),
+        MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::INTEGER, true))),
+        MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::OBJECT, true))),
+        MapDepsT({makeRef("ref")}, city::getBuilderNoLocator(), FAILURE(expectTypeRef(schemf::Type::NESTED, true))),
+        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(), SUCCESS(customRefExpected())),
+        // #TODO: Fail Locator, Temporary error handling, this should be mandatory
+        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(), SUCCESS(expectTypeRef(schemf::Type::IP, true))),
+        MapDepsT({makeRef("ref")}, city::getBuilderWLocator(true), SUCCESS(expectTypeRef(schemf::Type::IP, true)))
         // End of test values
         ),
-    testNameFormatter<MapBuilderWithDepsTest>("mmdb_geo"));
+    testNameFormatter<MapBuilderWithDepsTest>("mmdb_city"));
 
 } // namespace mapbuildtest
 
@@ -396,34 +390,34 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         // Bad ref
         MapDepsT(
-            R"({"ref": {"some":"data"}})", as::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": {}})", as::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": false})", as::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": ["::1"]})", as::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": 123})", as::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": 123.34})", as::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
+            R"({"ref": {"some":"data"}})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": {}})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": false})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": ["::1"]})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": 123})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": 123.34})", as::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
         MapDepsT(
-            R"({"ref": "1.2.3.4"})", as::getBuilderHandlerNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
+            R"({"ref": "1.2.3.4"})", as::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
         // No result
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderHandlerNoResult(false),
+                 as::getBuilderLocatorNoResult(),
                  {makeRef("ref")},
                  FAILURE(customRefExpected())),
         // Partial result
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderHandlerResult(false, false),
+                 as::getBuilderLocatorResult(false, false),
                  {makeRef("ref")},
                  FAILURE(customRefExpected())),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderHandlerResult(true, false),
+                 as::getBuilderLocatorResult(true, false),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"number": 123})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderHandlerResult(false, true),
+                 as::getBuilderLocatorResult(false, true),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"organization": {"name": "AS Org"}})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderHandlerResult(true, true),
+                 as::getBuilderLocatorResult(true, true),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"({"number": 123, "organization": {"name": "AS Org"}})"})))
         // End of test values
@@ -437,70 +431,82 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Values(
         // Bad ref
         MapDepsT(
-            R"({"ref": {"some":"data"}})", geo::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": {}})", geo::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": false})", geo::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": ["::1"]})", geo::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": 123})", geo::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": 123.34})", geo::getBuilderWHandler(), {makeRef("ref")}, FAILURE(customRefExpected())),
+            R"({"ref": {"some":"data"}})", city::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": {}})", city::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": false})", city::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": ["::1"]})", city::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": 123})", city::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
+        MapDepsT(R"({"ref": 123.34})", city::getBuilderWLocator(), {makeRef("ref")}, FAILURE(customRefExpected())),
         MapDepsT(
-            R"({"ref": "1.2.3.4"})", geo::getBuilderHandlerNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
+            R"({"ref": "1.2.3.4"})", city::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
         // No result
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerNoResult(false),
+                 city::getBuilderLocatorNoResult(false),
                  {makeRef("ref")},
                  FAILURE(customRefExpected())),
         // Partial result
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, false, false, false, false, false, false, false),
+            {makeRef("ref")},
+            FAILURE(customRefExpected())),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(true, false, false, false, false, false, false, false, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"city_name": "City"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, true, false, false, false, false, false, false, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"continent_code": "CC"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, true, false, false, false, false, false, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"continent_name": "Continent"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, true, false, false, false, false, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"country_iso_code": "CI"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, true, false, false, false, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"country_name": "Country"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, false, true, false, false, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"location": {"lat": 1.23}})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, false, false, true, false, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"location": {"lon": 4.56}})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, false, false, false, true, false, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"postal_code": "12345"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, false, false, false, false, true, false, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"timezone": "TZ"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, false, false, false, false, false, true, false),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"region_iso_code": "RC"})"}))),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})",
+            city::getBuilderLocatorResult(false, false, false, false, false, false, false, false, false, false, true),
+            {makeRef("ref")},
+            SUCCESS(customRefExpected(json::Json {R"({"region_name": "Region"})"}))),
         MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, false, false, false),
-                 {makeRef("ref")},
-                 FAILURE(customRefExpected())),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(true, false, false, false, false, false, false, false, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"city_name": "City"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, true, false, false, false, false, false, false, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"continent_code": "CC"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, true, false, false, false, false, false, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"continent_name": "Continent"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, true, false, false, false, false, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"country_iso_code": "CI"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, true, false, false, false, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"country_name": "Country"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, true, false, false, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"location": {"lat": 1.23}})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, true, false, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"location": {"lon": 4.56}})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, true, false, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"postal_code": "12345"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, true, false, false),
-                 {makeRef("ref")},
-                 SUCCESS(customRefExpected(json::Json {R"({"timezone": "TZ"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, false, true, false),
-                {makeRef("ref")},
-                SUCCESS(customRefExpected(json::Json {R"({"region_iso_code": "RC"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                geo::getBuilderHandlerResult(false, false, false, false, false, false, false, false, false, false, true),
-                {makeRef("ref")},
-                SUCCESS(customRefExpected(json::Json {R"({"region_name": "Region"})"}))),
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 geo::getBuilderHandlerResult(true, true, true, true, true, true, true, true, true, true, true),
+                 city::getBuilderLocatorResult(true, true, true, true, true, true, true, true, true, true, true),
                  {makeRef("ref")},
                  SUCCESS(customRefExpected(json::Json {R"(
                     {

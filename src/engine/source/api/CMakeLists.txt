@@ -23,6 +23,7 @@ add_library(api STATIC
   ${ENGINE_API_SOURCE_DIR}/registry.cpp
   ${ENGINE_API_SOURCE_DIR}/router/handlers.cpp
   ${ENGINE_API_SOURCE_DIR}/tester/handlers.cpp
+  ${ENGINE_API_SOURCE_DIR}/geo/handlers.cpp
 )
 
 target_include_directories(api
@@ -37,6 +38,7 @@ target_include_directories(api
   ${ENGINE_API_SOURCE_DIR}/policy
   ${ENGINE_API_SOURCE_DIR}/router
   ${ENGINE_API_SOURCE_DIR}/tester
+  ${ENGINE_API_SOURCE_DIR}/geo
 )
 
 target_link_libraries(api
@@ -55,6 +57,7 @@ target_link_libraries(api
     api::iapi
     builder::ibuilder
     logpar
+    geo::igeo
 )
 
 # Tests
@@ -85,6 +88,7 @@ if(ENGINE_BUILD_TEST)
     ${TEST_SRC_UNIT_DIR}/adapter_test.cpp
     ${TEST_SRC_UNIT_DIR}/api_test.cpp
     ${TEST_SRC_UNIT_DIR}/registry_test.cpp
+    ${TEST_SRC_UNIT_DIR}/geo/handlers_test.cpp
   )
 
   target_link_libraries(api_utest
@@ -99,6 +103,7 @@ if(ENGINE_BUILD_TEST)
     kvdb::mocks
     router::mocks
     builder::mocks
+    geo::mocks
 )
 gtest_discover_tests(api_utest)
 endif(ENGINE_BUILD_TEST)
