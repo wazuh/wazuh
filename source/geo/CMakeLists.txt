@@ -55,28 +55,38 @@ set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
+set(MMDB_PATH_TEST ${TEST_SRC_DIR}/testdb.mmdb)
+
+add_library(geo_mocks INTERFACE)
+target_include_directories(geo_mocks INTERFACE ${TEST_MOCK_DIR})
+target_link_libraries(geo_mocks INTERFACE geo::igeo)
+add_library(geo::mocks ALIAS geo_mocks)
 
 add_executable(geo_utest
     ${SRCS}
-    ${UNIT_SRC_DIR}/manager.cpp
+    ${UNIT_SRC_DIR}/manager_test.cpp
+    ${UNIT_SRC_DIR}/locator_test.cpp
 )
 target_include_directories(geo_utest
     PRIVATE
     ${TEST_SRC_DIR}
     ${SRC_DIR}
+    ${INC_DIR}/geo
 )
 target_link_libraries(geo_utest
     PRIVATE
-    geo # Ensure it compiles
+    geo::mocks # Ensure it compiles
     ${PRIVATE_LINKS}
     ${PUBLIC_LINKS}
     gtest_main
+    store::mocks
 )
+target_compile_definitions(geo_utest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
 
 add_executable(geo_ctest
     ${COMPONENT_SRC_DIR}/manager.cpp
 )
-target_link_libraries(geo_ctest PRIVATE geo::igeo gtest_main)
+target_link_libraries(geo_ctest PRIVATE geo gtest_main)
 gtest_discover_tests(geo_ctest)
 
 endif(ENGINE_BUILD_TEST)

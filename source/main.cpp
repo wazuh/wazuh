@@ -5,6 +5,7 @@
 #include <cmds/apiExcept.hpp>
 #include <cmds/catalog.hpp>
 #include <cmds/config.hpp>
+#include <cmds/geo.hpp>
 #include <cmds/graph.hpp>
 #include <cmds/kvdb.hpp>
 #include <cmds/metrics.hpp>
@@ -47,6 +48,7 @@ int main(int argc, char* argv[])
     cmd::router::configure(app);
     cmd::metrics::configure(app);
     cmd::policy::configure(app);
+    cmd::geo::configure(app);
 
     try
     {
