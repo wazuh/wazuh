@@ -243,14 +243,12 @@ int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_windows.wpk",
                  task->wpk_version);
     } else if (!strcmp(agent_info->platform, "darwin")) {
-        snprintf(path_url, OS_SIZE_2048, "%smacos/%s/pkg/",
-                 repository_url, agent_info->architecture);
+        snprintf(path_url, OS_SIZE_2048, "%smacos/%s/%s/",
+                 repository_url, agent_info->architecture, agent_info->package_type);
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
                  task->wpk_version, agent_info->architecture);
     } else {
         if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_LINUX_VERSION_REPOSITORY, true) >= 0) {
-            snprintf(path_url, OS_SIZE_2048, "%slinux/%s/",
-                     repository_url, agent_info->architecture);
             if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_STRUCTURE_REPOSITORY, true) >= 0) {
                 if (task->package_type) {
                     if (agent_info->package_type) {
@@ -286,9 +284,13 @@ int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_
                 } else {
                     package_architecture = agent_info->architecture;
                 }
+                snprintf(path_url, OS_SIZE_2048, "%slinux/%s/%s/",
+                         repository_url, agent_info->architecture, agent_info->package_type);
                 snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_linux_%s.%s.wpk",
                          task->wpk_version, package_architecture, agent_info->package_type);
             } else {
+                snprintf(path_url, OS_SIZE_2048, "%slinux/%s/",
+                         repository_url, agent_info->architecture);
                 snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_linux_%s.wpk",
                          task->wpk_version, agent_info->architecture);
             }
