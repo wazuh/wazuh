@@ -135,7 +135,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload package to S3
         working-directory: packages

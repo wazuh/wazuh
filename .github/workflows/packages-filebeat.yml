@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       revision:
-        description: | 
+        description: |
           Revision used to naming Filebeat package wazuh-filebeat-X.X.tar.gz.
           Default 0.0.
         required: false
@@ -16,7 +16,7 @@ on:
         required: false
         default: "0.0"
         type: string
-    
+
 jobs:
   Filebeat-module-generation:
     runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Package files, change permissions, create tar and upload to S3
         working-directory: extensions/filebeat/7.x/wazuh-module
