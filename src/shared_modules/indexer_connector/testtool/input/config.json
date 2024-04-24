@@ -1,10 +1,10 @@
 {
-  "name": "wazuh-states-vulnerabilities",
+  "name": "wazuh-states-vulnerabilities-cluster",
   "enabled": "yes",
   "hosts": ["https://0.0.0.0:9200"],
   "ssl": {
-    "certificate_authorities": ["~/root-ca.pem"],
-    "certificate": "~/indexer.pem",
-    "key": "~/indexer-key.pem"
+    "certificate_authorities": ["/etc/filebeat/certs/root-ca.pem"],
+    "certificate": "/etc/filebeat/certs/filebeat.pem",
+    "key": "/etc/filebeat/certs/filebeat-key.pem"
   }
 }

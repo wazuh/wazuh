@@ -135,6 +135,12 @@ int main(const int argc, const char* argv[])
                                                             << " : " << formattedStr << std::endl;
                                               }
                                           });
+
+        if (!cmdArgParser.getAgentIdSyncEvent().empty())
+        {
+            indexerConnector.sync(cmdArgParser.getAgentIdSyncEvent());
+        }
+
         // Read events file.
         // If the events file path is empty, then the events are generated
         // automatically.

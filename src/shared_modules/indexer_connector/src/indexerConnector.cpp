@@ -34,35 +34,19 @@ constexpr auto MAX_WAIT_TIME {60};
 constexpr auto START_TIME {1};
 constexpr auto DOUBLE_FACTOR {2};
 
-std::unordered_map<IndexerConnector*, std::unique_ptr<ThreadDispatchQueue>> QUEUE_MAP;
-
 // Single thread because the events needs to be processed in order.
 constexpr auto DATABASE_WORKERS = 1;
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
+constexpr auto SYNC_WORKERS = 1;
+constexpr auto SYNC_QUEUE_LIMIT = 4096;
 
-IndexerConnector::IndexerConnector(
-    const nlohmann::json& config,
-    const std::string& templatePath,
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
-        logFunction,
-    const uint32_t& timeout)
+static void initConfiguration(SecureCommunication& secureCommunication, const nlohmann::json& config)
 {
-    if (logFunction)
-    {
-        Log::assignLogFunction(logFunction);
-    }
-
-    // Get index name.
-    const auto& indexName {config.at("name").get_ref<const std::string&>()};
-
     std::string caRootCertificate;
     std::string sslCertificate;
     std::string sslKey;
     std::string username;
     std::string password;
-
-    auto secureCommunication = SecureCommunication::builder();
 
     if (config.contains("ssl"))
     {
@@ -103,6 +87,65 @@ IndexerConnector::IndexerConnector(
         .sslCertificate(sslCertificate)
         .sslKey(sslKey)
         .caRootCertificate(caRootCertificate);
+}
+
+void IndexerConnector::saveDocuments(const std::vector<Document>& documents)
+{
+    for (const auto& document : documents)
+    {
+        if (document.deleted)
+        {
+            m_db->delete_(document.id);
+        }
+        else
+        {
+            m_db->put(document.id, document.data);
+        }
+    }
+}
+
+static void builderBulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
+{
+    bulkData.append(R"({"delete":{"_index":")");
+    bulkData.append(index);
+    bulkData.append(R"(","_id":")");
+    bulkData.append(id);
+    bulkData.append(R"("}})");
+    bulkData.append("\n");
+}
+
+static void builderBulkIndex(std::string& bulkData, std::string_view id, std::string_view index, std::string_view data)
+{
+    bulkData.append(R"({"index":{"_index":")");
+    bulkData.append(index);
+    bulkData.append(R"(","_id":")");
+    bulkData.append(id);
+    bulkData.append(R"("}})");
+    bulkData.append("\n");
+    bulkData.append(data);
+    bulkData.append("\n");
+}
+
+IndexerConnector::IndexerConnector(
+    const nlohmann::json& config,
+    const std::string& templatePath,
+    const std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
+        logFunction,
+    const uint32_t& timeout)
+{
+    if (logFunction)
+    {
+        Log::assignLogFunction(logFunction);
+    }
+
+    // Get index name.
+    m_indexName = config.at("name").get_ref<const std::string&>();
+
+    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
+
+    auto secureCommunication = SecureCommunication::builder();
+    initConfiguration(secureCommunication, config);
 
     // Read template file.
     std::ifstream templateFile(templatePath);
@@ -115,9 +158,11 @@ IndexerConnector::IndexerConnector(
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
-    QUEUE_MAP[this] = std::make_unique<ThreadDispatchQueue>(
+    m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [=](std::queue<std::string>& dataQueue)
         {
+            std::scoped_lock lock(m_syncMutex);
+
             if (!m_initialized && m_initializeThread.joinable())
             {
                 logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
@@ -134,6 +179,7 @@ IndexerConnector::IndexerConnector(
             std::string bulkData;
             url.append("/_bulk");
 
+            std::vector<Document> documents;
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
@@ -143,49 +189,80 @@ IndexerConnector::IndexerConnector(
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    bulkData.append(R"({"delete":{"_index":")");
-                    bulkData.append(indexName);
-                    bulkData.append(R"(","_id":")");
-                    bulkData.append(id);
-                    bulkData.append(R"("}})");
-                    bulkData.append("\n");
+                    builderBulkDelete(bulkData, id, m_indexName);
+                    documents.push_back({id, data, true});
                 }
                 else
                 {
-                    bulkData.append(R"({"index":{"_index":")");
-                    bulkData.append(indexName);
-                    bulkData.append(R"(","_id":")");
-                    bulkData.append(id);
-                    bulkData.append(R"("}})");
-                    bulkData.append("\n");
-                    bulkData.append(parsedData.at("data").dump());
-                    bulkData.append("\n");
+                    const auto dataString = parsedData.at("data").dump();
+                    builderBulkIndex(bulkData, id, m_indexName, dataString);
+                    documents.push_back({id, dataString, false});
                 }
             }
             // Process data.
             HTTPRequest::instance().post(
                 HttpURL(url),
                 bulkData,
-                [&](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                [&](const std::string& error, const long statusCode)
+                [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
+                [](const std::string& error, const long statusCode)
                 {
-                    // TODO: Need to handle the case when the index is not created yet, to avoid losing data.
                     logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
                     throw std::runtime_error(error);
                 },
                 "",
                 DEFAULT_HEADERS,
                 secureCommunication);
+
+            // Save documents to the database.
+            saveDocuments(documents);
         },
-        DATABASE_BASE_PATH + indexName,
+        DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK);
+
+    m_syncQueue = std::make_unique<ThreadSyncQueue>(
+        [=](const std::string& agentId)
+        {
+            try
+            {
+                std::scoped_lock lock(m_syncMutex);
+                nlohmann::json responseJson;
+                auto url = selector->getNext().append("/").append(m_indexName).append("/_search");
+
+                nlohmann::json postData;
+
+                // TODO: Add scroll support.
+                postData["query"]["match"]["agent.id"] = agentId;
+                postData["size"] = 10000;
+                postData["_source"] = nlohmann::json::array({"_id"});
+
+                logDebug2(IC_NAME, "Payload: %s", postData.dump().c_str());
+
+                HTTPRequest::instance().post(
+                    HttpURL(url),
+                    postData.dump(),
+                    [&responseJson](const std::string& response) { responseJson = nlohmann::json::parse(response); },
+                    [](const std::string& error, const long) { throw std::runtime_error(error); },
+                    "",
+                    DEFAULT_HEADERS,
+                    secureCommunication);
+                logDebug2(IC_NAME, "Response: %s", responseJson.dump().c_str());
+                diff(responseJson, agentId, secureCommunication, selector);
+            }
+            catch (const std::exception& e)
+            {
+                logError(IC_NAME, "Failed to sync agent '%s' with the indexer.", agentId.c_str());
+                logDebug1(IC_NAME, "Error: %s", e.what());
+            }
+        },
+        SYNC_WORKERS,
+        SYNC_QUEUE_LIMIT);
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
         [=]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
-            std::unique_lock<std::mutex> lock(m_mutex);
+            std::unique_lock lock(m_mutex);
             auto warningPrinted {false};
             do
             {
@@ -197,14 +274,14 @@ IndexerConnector::IndexerConnector(
                         sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
                     }
 
-                    initialize(templateData, indexName, selector, secureCommunication);
+                    initialize(templateData, selector, secureCommunication);
                 }
                 catch (const std::exception& e)
                 {
                     logDebug1(IC_NAME,
                               "Unable to initialize IndexerConnector for index '%s': %s. Retrying in %ld "
                               "seconds.",
-                              indexName.c_str(),
+                              m_indexName.c_str(),
                               e.what(),
                               sleepTime.count());
                     if (!warningPrinted)
@@ -212,11 +289,11 @@ IndexerConnector::IndexerConnector(
                         logWarn(IC_NAME,
                                 "IndexerConnector initialization failed for index '%s', retrying until the connection "
                                 "is successful.",
-                                indexName.c_str());
+                                m_indexName.c_str());
                         warningPrinted = true;
                     }
                 }
-            } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [&]() { return m_stopping.load(); }));
+            } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [this]() { return m_stopping.load(); }));
         });
 }
 
@@ -224,8 +301,6 @@ IndexerConnector::~IndexerConnector()
 {
     m_stopping.store(true);
     m_cv.notify_all();
-
-    QUEUE_MAP.erase(this);
 
     if (m_initializeThread.joinable())
     {
@@ -235,11 +310,98 @@ IndexerConnector::~IndexerConnector()
 
 void IndexerConnector::publish(const std::string& message)
 {
-    QUEUE_MAP[this]->push(message);
+    m_dispatcher->push(message);
+}
+
+void IndexerConnector::sync(const std::string& agentId)
+{
+    m_syncQueue->push(agentId);
+}
+
+void IndexerConnector::diff(nlohmann::json& responseJson,
+                            const std::string& agentId,
+                            const SecureCommunication& secureCommunication,
+                            const std::shared_ptr<ServerSelector>& selector)
+{
+    std::vector<std::pair<std::string, bool>> status;
+    std::vector<std::pair<std::string, bool>> actions;
+
+    // Move elements to vector.
+    for (const auto& hit : responseJson.at("hits").at("hits"))
+    {
+        if (hit.contains("_id"))
+        {
+            status.emplace_back(hit.at("_id").get_ref<const std::string&>(), false);
+        }
+    }
+
+    for (const auto& [key, value] : m_db->seek(agentId))
+    {
+        bool found {false};
+        for (auto& [id, data] : status)
+        {
+            if (key.compare(id) == 0)
+            {
+                data = true;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            actions.emplace_back(key, false);
+        }
+    }
+
+    for (const auto& [id, data] : status)
+    {
+        if (!data)
+        {
+            actions.emplace_back(id, true);
+        }
+    }
+
+    auto url = selector->getNext();
+    url.append("/_bulk");
+
+    std::string bulkData;
+    for (const auto& [id, deleted] : actions)
+    {
+        if (deleted)
+        {
+            builderBulkDelete(bulkData, id, m_indexName);
+        }
+        else
+        {
+            std::string data;
+            if (!m_db->get(id, data))
+            {
+                throw std::runtime_error("Failed to get data from the database.");
+            }
+            builderBulkIndex(bulkData, id, m_indexName, data);
+        }
+    }
+
+    if (!bulkData.empty())
+    {
+        logDebug2(IC_NAME, "Payload: %s", bulkData.c_str());
+        HTTPRequest::instance().post(
+            HttpURL(url),
+            bulkData,
+            [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
+            [](const std::string& error, const long statusCode)
+            {
+                logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
+                throw std::runtime_error(error);
+            },
+            "",
+            DEFAULT_HEADERS,
+            secureCommunication);
+    }
 }
 
 void IndexerConnector::initialize(const nlohmann::json& templateData,
-                                  const std::string& indexName,
                                   const std::shared_ptr<ServerSelector>& selector,
                                   const SecureCommunication& secureCommunication)
 {
@@ -259,11 +421,13 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     };
 
     // Define the success callback
-    auto onSuccess = [&](const std::string& response) {
+    auto onSuccess = [](const std::string&)
+    {
+        // Not used
     };
 
     // Initialize template.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
+    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
                                 templateData,
                                 onSuccess,
                                 onError,
@@ -272,7 +436,7 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                 secureCommunication);
 
     // Initialize Index.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/" + indexName),
+    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/" + m_indexName),
                                 templateData.at("template"),
                                 onSuccess,
                                 onError,
@@ -281,5 +445,5 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                 secureCommunication);
 
     m_initialized = true;
-    logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", indexName.c_str());
+    logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
 }
