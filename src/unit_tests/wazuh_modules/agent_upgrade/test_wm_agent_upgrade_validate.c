@@ -150,10 +150,14 @@ void test_wm_agent_upgrade_validate_system_windows_ok(void **state)
     char *os_major = "10";
     char *os_minor = NULL;
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_non_null(package_type);
+    assert_string_equal(package_type, "msi");
+    os_free(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_rhel_ok(void **state)
@@ -163,10 +167,14 @@ void test_wm_agent_upgrade_validate_system_rhel_ok(void **state)
     char *os_major = "7";
     char *os_minor = NULL;
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_non_null(package_type);
+    assert_string_equal(package_type, "rpm");
+    os_free(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
@@ -176,10 +184,14 @@ void test_wm_agent_upgrade_validate_system_ubuntu_ok(void **state)
     char *os_major = "20";
     char *os_minor = "04";
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_non_null(package_type);
+    assert_string_equal(package_type, "deb");
+    os_free(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_darwin_x64_ok(void **state)
@@ -189,10 +201,14 @@ void test_wm_agent_upgrade_validate_system_darwin_x64_ok(void **state)
     char *os_major = "10";
     char *os_minor = "15";
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_non_null(package_type);
+    assert_string_equal(package_type, "pkg");
+    os_free(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_darwin_arm_ok(void **state)
@@ -202,10 +218,14 @@ void test_wm_agent_upgrade_validate_system_darwin_arm_ok(void **state)
     char *os_major = "10";
     char *os_minor = "15";
     char *arch = "arm64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_non_null(package_type);
+    assert_string_equal(package_type, "pkg");
+    os_free(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state)
@@ -215,10 +235,12 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state
     char *os_major = "11";
     char *os_minor = "4";
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+    assert_null(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_invalid_platform_suse(void **state)
@@ -228,10 +250,12 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_suse(void **state)
     char *os_major = "11";
     char *os_minor = NULL;
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+    assert_null(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_invalid_platform_rhel(void **state)
@@ -241,10 +265,12 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_rhel(void **state)
     char *os_major = "5";
     char *os_minor = "7";
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+    assert_null(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_invalid_platform_centos(void **state)
@@ -254,10 +280,12 @@ void test_wm_agent_upgrade_validate_system_invalid_platform_centos(void **state)
     char *os_major = "5";
     char *os_minor = NULL;
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+    assert_null(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_invalid_arch(void **state)
@@ -267,10 +295,12 @@ void test_wm_agent_upgrade_validate_system_invalid_arch(void **state)
     char *os_major = "18";
     char *os_minor = "04";
     char *arch = NULL;
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
+    assert_null(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_rolling_opensuse(void **state)
@@ -280,10 +310,14 @@ void test_wm_agent_upgrade_validate_system_rolling_opensuse(void **state)
     char *os_major = "";
     char *os_minor = "";
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_non_null(package_type);
+    assert_string_equal(package_type, "rpm");
+    os_free(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_rolling_archlinux(void **state)
@@ -293,10 +327,12 @@ void test_wm_agent_upgrade_validate_system_rolling_archlinux(void **state)
     char *os_major = "";
     char *os_minor = "";
     char *arch = "x64";
+    char *package_type = NULL;
 
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch);
+    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_null(package_type); // Not recognized
 }
 
 void test_wm_agent_upgrade_validate_wpk_version_windows_https_ok(void **state)
@@ -308,6 +344,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_https_ok(void **state)
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("msi", agent->package_type);
 
     task->use_http = false;
     os_strdup("v4.0.0", task->wpk_version);
@@ -335,6 +372,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_http_ok(void **state)
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("msi", agent->package_type);
 
     task->use_http = true;
     os_strdup("v3.13.1", task->wpk_version);
@@ -364,6 +402,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_invalid_version(void **s
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("msi", agent->package_type);
 
     task->use_http = true;
     os_strdup("v4.2.0", task->wpk_version);
@@ -392,6 +431,7 @@ void test_wm_agent_upgrade_validate_wpk_version_windows_invalid_repo(void **stat
     os_strdup("windows", agent->platform);
     os_strdup("10", agent->major_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("msi", agent->package_type);
 
     task->use_http = true;
     os_strdup("v4.2.0", task->wpk_version);
@@ -418,6 +458,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_https_ok(void **state)
     os_strdup("18", agent->major_version);
     os_strdup("04", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("deb", agent->package_type);
 
     task->use_http = false;
     os_strdup("v4.0.0", task->wpk_version);
@@ -446,6 +487,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_http_ok(void **state)
     os_strdup("18", agent->major_version);
     os_strdup("04", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("deb", agent->package_type);
 
     task->use_http = true;
     os_strdup("v3.13.1", task->wpk_version);
@@ -474,6 +516,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_str_version(void *
     os_strdup("18", agent->major_version);
     os_strdup("04", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("deb", agent->package_type);
 
     task->use_http = true;
     os_strdup("v.4.1", task->wpk_version);
@@ -494,6 +537,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_version(void **sta
     os_strdup("18", agent->major_version);
     os_strdup("04", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("deb", agent->package_type);
 
     task->use_http = true;
     os_strdup("v4.2.0", task->wpk_version);
@@ -523,6 +567,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_invalid_repo(void **state)
     os_strdup("18", agent->major_version);
     os_strdup("04", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("deb", agent->package_type);
 
     task->use_http = true;
     os_strdup("v4.2.0", task->wpk_version);
@@ -549,6 +594,7 @@ void test_wm_agent_upgrade_validate_wpk_version_ubuntu_old_version(void **state)
     os_strdup("16", agent->major_version);
     os_strdup("04", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("deb", agent->package_type);
 
     task->use_http = false;
     os_strdup("v3.3.0", task->wpk_version);
@@ -576,6 +622,7 @@ void test_wm_agent_upgrade_validate_wpk_version_rhel_old_version(void **state)
     os_strdup("rhel", agent->platform);
     os_strdup("6", agent->major_version);
     os_strdup("x86", agent->architecture);
+    os_strdup("rpm", agent->package_type);
 
     task->use_http = false;
     os_strdup("v3.3.0", task->wpk_version);
@@ -618,6 +665,7 @@ void test_wm_agent_upgrade_validate_wpk_version_macos_https_ok(void **state)
     os_strdup("10", agent->major_version);
     os_strdup("15", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("pkg", agent->package_type);
 
     task->use_http = false;
     os_strdup("v4.0.0", task->wpk_version);
@@ -646,6 +694,7 @@ void test_wm_agent_upgrade_validate_wpk_version_macos_http_ok(void **state)
     os_strdup("10", agent->major_version);
     os_strdup("15", agent->minor_version);
     os_strdup("x64", agent->architecture);
+    os_strdup("pkg", agent->package_type);
 
     task->use_http = true;
     os_strdup("v3.13.1", task->wpk_version);
