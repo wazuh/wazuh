@@ -8,6 +8,7 @@ add_library(cmds STATIC
     src/router.cpp
     src/metrics.cpp
     src/policy.cpp
+    src/geo.cpp
 )
 
 target_link_libraries(cmds
@@ -28,12 +29,13 @@ target_link_libraries(cmds
     conf::iconf
     eMessages
     metrics
-    mmdb::mmdb
+    geo
     schemf
     wdb
     sockiface
     rbac
     date::date
+    geo::igeo
 )
 
 target_include_directories(cmds

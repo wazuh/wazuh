@@ -1,7 +1,7 @@
 #ifndef _GEO_DOWNLOADER_HPP
 #define _GEO_DOWNLOADER_HPP
 
-#include "idownloader.hpp"
+#include <geo/idownloader.hpp>
 
 namespace geo
 {
@@ -11,8 +11,8 @@ public:
     Downloader() = default;
     virtual ~Downloader() = default;
 
-    base::RespOrError<std::string> downloadHTTPS(const std::string& url) override;
-    std::string computeMD5(const std::string& data) override;
+    base::RespOrError<std::string> downloadHTTPS(const std::string& url) const override;
+    std::string computeMD5(const std::string& data) const override;
 };
 } // namespace geo
 

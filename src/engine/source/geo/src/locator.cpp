@@ -7,6 +7,7 @@
 #include <shared_mutex>
 #include <sstream>
 
+#include "dbEntry.hpp"
 #include "manager.hpp"
 
 namespace

@@ -21,7 +21,7 @@ size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* use
 namespace geo
 {
 // Function to download content of the URL into a std::string in memory
-base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
+base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url) const
 {
     CURL* curl;
     CURLcode res;
@@ -63,7 +63,7 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
 }
 
 // Function to compute the MD5 hash of input data
-std::string Downloader::computeMD5(const std::string& data)
+std::string Downloader::computeMD5(const std::string& data) const
 {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (!ctx)
