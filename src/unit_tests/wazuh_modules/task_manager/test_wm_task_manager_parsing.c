@@ -172,7 +172,7 @@ void test_wm_task_manager_decode_status_timeout(void **state)
 
     const char *ret = wm_task_manager_decode_status(status);
 
-    assert_string_equal(ret, "Timeout reached while waiting for the response from the agent");
+    assert_string_equal(ret, "Timeout reached while waiting for the response from the agent, check the result manually on the agent for more information");
 }
 
 void test_wm_task_manager_decode_status_legacy(void **state)
