@@ -15,73 +15,73 @@ MapOp dumpFailTransform(const std::string& trace, const std::shared_ptr<const Ru
 }
 
 // Only for the MMDB City / Country db
-json::Json mapGeoToECS(const std::shared_ptr<::mmdb::IResult>& result)
+json::Json mapGeoToECS(const std::string& ip, const std::shared_ptr<geo::ILocator>& locator)
 {
     json::Json cityData;
     cityData.setObject();
 
     // Geo data
-    auto city = result->getString("city.names.en");
+    auto city = locator->getString(ip, "city.names.en");
     if (!base::isError(city))
     {
         cityData.setString(getResponse(city), "/city_name");
     }
 
-    auto continentCode = result->getString("continent.code");
+    auto continentCode = locator->getString(ip, "continent.code");
     if (!base::isError(continentCode))
     {
         cityData.setString(getResponse(continentCode), "/continent_code");
     }
 
-    auto continentName = result->getString("continent.names.en");
+    auto continentName = locator->getString(ip, "continent.names.en");
     if (!base::isError(continentName))
     {
         cityData.setString(getResponse(continentName), "/continent_name");
     }
 
-    auto countryIsoCode = result->getString("country.iso_code");
+    auto countryIsoCode = locator->getString(ip, "country.iso_code");
     if (!base::isError(countryIsoCode))
     {
         cityData.setString(getResponse(countryIsoCode), "/country_iso_code");
     }
 
-    auto countryName = result->getString("country.names.en");
+    auto countryName = locator->getString(ip, "country.names.en");
     if (!base::isError(countryName))
     {
         cityData.setString(getResponse(countryName), "/country_name");
     }
 
-    auto lat = result->getDouble("location.latitude");
+    auto lat = locator->getDouble(ip, "location.latitude");
     if (!base::isError(lat))
     {
         cityData.setDouble(getResponse(lat), "/location/lat");
     }
 
-    auto lon = result->getDouble("location.longitude");
+    auto lon = locator->getDouble(ip, "location.longitude");
     if (!base::isError(lon))
     {
         cityData.setDouble(getResponse(lon), "/location/lon");
     }
 
-    auto postalCode = result->getString("postal.code");
+    auto postalCode = locator->getString(ip, "postal.code");
     if (!base::isError(postalCode))
     {
         cityData.setString(getResponse(postalCode), "/postal_code");
     }
 
-    auto timeZone = result->getString("location.time_zone");
+    auto timeZone = locator->getString(ip, "location.time_zone");
     if (!base::isError(timeZone))
     {
         cityData.setString(getResponse(timeZone), "/timezone");
     }
 
-    auto regionIsoCode = result->getString("subdivisions.0.iso_code");
+    auto regionIsoCode = locator->getString(ip, "subdivisions.0.iso_code");
     if (!base::isError(regionIsoCode))
     {
         cityData.setString(getResponse(regionIsoCode), "/region_iso_code");
     }
 
-    auto regionName = result->getString("subdivisions.0.names.en");
+    auto regionName = locator->getString(ip, "subdivisions.0.names.en");
     if (!base::isError(regionName))
     {
         cityData.setString(getResponse(regionName), "/region_name");
@@ -90,18 +90,18 @@ json::Json mapGeoToECS(const std::shared_ptr<::mmdb::IResult>& result)
     return cityData;
 }
 
-json::Json mapAStoECS(const std::shared_ptr<::mmdb::IResult>& result)
+json::Json mapAStoECS(const std::string& ip, const std::shared_ptr<geo::ILocator>& locator)
 {
     json::Json asData;
     asData.setObject();
 
-    auto asn = result->getUint32("autonomous_system_number");
+    auto asn = locator->getUint32(ip, "autonomous_system_number");
     if (!base::isError(asn))
     {
         asData.setInt64(getResponse(asn), "/number");
     }
 
-    auto asnOrg = result->getString("autonomous_system_organization");
+    auto asnOrg = locator->getString(ip, "autonomous_system_organization");
     if (!base::isError(asnOrg))
     {
         asData.setString(getResponse(asnOrg), "/organization/name");
@@ -112,12 +112,10 @@ json::Json mapAStoECS(const std::shared_ptr<::mmdb::IResult>& result)
 
 } // namespace
 
-MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager)
+MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
 {
-    return [mmdbManager](const std::vector<OpArg>& opArgs,
-                         const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
+    return [geoManager](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
-
         utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
         utils::assertRef(opArgs, 0);
 
@@ -130,13 +128,13 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
             throw std::runtime_error(fmt::format("The reference '{}' is not an IP.", ipRef.dotPath()));
         }
 
-        auto resDB = mmdbManager->getHandler("mm-geolite2-city");
+        auto resDB = geoManager->getLocator(geo::Type::CITY);
         // TODO Temporary error handling, this should be mandatory
         auto runstate = buildCtx->runState();
         const auto name = buildCtx->context().opName;
         if (base::isError(resDB))
         {
-            const auto trace =  fmt::format("{} -> Failure: handler error: {}", name, base::getError(resDB).message);
+            const auto trace = fmt::format("{} -> Failure: handler error: {}", name, base::getError(resDB).message);
             return dumpFailTransform(trace, runstate);
         }
 
@@ -147,9 +145,7 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
         const std::string notFoundDBTrace {fmt::format("{} -> Failure: IP Not found in DB", name)};
         const std::string emptyDataTrace {fmt::format("{} -> Failure: Empty wcs data", name)};
 
-        // auto dbHandler = base::getResponse<std::shared_ptr<::mmdb::IHandler>>(resDB);
-        return [=, dbHandler = base::getResponse(resDB), srcRef = ipRef.jsonPath()](
-                   base::ConstEvent event) -> MapResult
+        return [=, locator = base::getResponse(resDB), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
             // Get the ip
             auto ipStr = event->getString(srcRef);
@@ -158,23 +154,7 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
                 RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
-            // Check if the ip is valid
-            std::shared_ptr<::mmdb::IResult> result;
-            try
-            {
-                result = dbHandler->lookup(ipStr.value());
-            }
-            catch (std::runtime_error& e)
-            {
-                RETURN_FAILURE(runstate, json::Json {}, notValidIPTrace + " " + e.what());
-            }
-
-            if (!result->hasData())
-            {
-                RETURN_FAILURE(runstate, json::Json {}, notFoundDBTrace);
-            }
-
-            auto geo = mapGeoToECS(result);
+            auto geo = mapGeoToECS(ipStr.value(), locator);
 
             if (geo.size() == 0)
             {
@@ -186,10 +166,9 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
     };
 };
 
-MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManager)
+MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
 {
-    return [mmdbManager](const std::vector<OpArg>& opArgs,
-                         const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
+    return [geoManager](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         const auto name = buildCtx->context().opName;
 
@@ -212,17 +191,15 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
             throw std::runtime_error(fmt::format("The reference '{}' is not an IP.", ipRef.dotPath()));
         }
 
-        auto resDB = mmdbManager->getHandler("mm-geolite2-asn");
+        auto resDB = geoManager->getLocator(geo::Type::ASN);
         // TODO Temporary error handling, this should be mandatory
         auto runstate = buildCtx->runState();
         if (base::isError(resDB))
         {
-            return dumpFailTransform("Error getting mmdb handler: " + base::getError(resDB).message, runstate);
+            return dumpFailTransform("Error getting geo asn locator: " + base::getError(resDB).message, runstate);
         }
 
-        // auto dbHandler = base::getResponse<std::shared_ptr<::mmdb::IHandler>>(resDB);
-        return [=, dbHandler = base::getResponse(resDB), srcRef = ipRef.jsonPath()](
-                   base::ConstEvent event) -> MapResult
+        return [=, locator = base::getResponse(resDB), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
             // Get the ip
             auto ipStr = event->getString(srcRef);
@@ -231,23 +208,7 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<::mmdb::IManager>& mmdbManage
                 RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
             }
 
-            // Check if the ip is valid
-            std::shared_ptr<::mmdb::IResult> result;
-            try
-            {
-                result = dbHandler->lookup(ipStr.value());
-            }
-            catch (std::runtime_error& e)
-            {
-                RETURN_FAILURE(runstate, json::Json {}, notValidIPTrace + " " + e.what());
-            }
-
-            if (!result->hasData())
-            {
-                RETURN_FAILURE(runstate, json::Json {}, notFoundDBTrace);
-            }
-
-            auto as = mapAStoECS(result);
+            auto as = mapAStoECS(ipStr.value(), locator);
 
             if (as.size() == 0)
             {
