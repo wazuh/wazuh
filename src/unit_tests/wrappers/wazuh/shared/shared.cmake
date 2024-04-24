@@ -1,6 +1,7 @@
 set(HASH_OP_WRAPPERS "-Wl,--wrap,OSHash_Add \
                       -Wl,--wrap,OSHash_Add_ex \
                       -Wl,--wrap,OSHash_Begin \
+                      -Wl,--wrap,OSHash_Begin_ex \
                       -Wl,--wrap,OSHash_Clean \
                       -Wl,--wrap,OSHash_Create \
                       -Wl,--wrap,OSHash_Delete_ex \
