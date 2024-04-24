@@ -19,6 +19,7 @@
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/common.h"
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
+#include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
 
 #define _XOPEN_SOURCE
@@ -30,6 +31,15 @@ char * w_timestamp_to_string(uint64_t timestamp);
 char * w_timestamp_to_journalctl_since(uint64_t timestamp);
 char * find_library_path(const char * library_name);
 w_journal_lib_t * w_journal_lib_init();
+cJSON * entry_as_json(w_journal_context_t * ctx);
+char * get_field_ptr(w_journal_context_t * ctx, const char * field);
+char * create_plain_syslog(const char * timestamp,
+                           const char * hostname,
+                           const char * syslog_identifier,
+                           const char * pid,
+                           const char * message);
+char * entry_as_syslog(w_journal_context_t * ctx);
+w_journal_entry_t * w_journal_entry_dump(w_journal_context_t * ctx, w_journal_entry_dump_type_t type);
 
 // Mocks
 
@@ -70,7 +80,15 @@ int __wrap_sd_journal_get_data(sd_journal * j, const char * field, const void **
 
 int __wrap_sd_journal_restart_data(sd_journal * j) { return mock_type(int); }
 
-int __wrap_sd_journal_enumerate_data(sd_journal * j, const void ** data, size_t * length) { return mock_type(int); }
+int __wrap_sd_journal_enumerate_data(sd_journal * j, const void ** data, size_t * length) {
+
+    int retval = mock_type(int);
+    if (retval > 0) {
+        *data = mock_ptr_type(char *);
+        *length = strlen(*data);
+    }
+    return retval;
+}
 
 int __wrap_sd_journal_get_cutoff_realtime_usec(sd_journal * j, uint64_t * from, uint64_t * to) {
     int64_t ret = mock_type(int64_t);
@@ -1288,6 +1306,9 @@ int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timesta
 }
 */
 // Create unit test for w_journal_context_seek_timestamp
+static void test_w_journal_context_seek_timestamp_null_params(void ** state) {
+    assert_int_equal(w_journal_context_seek_timestamp(NULL, 0), -1);
+}
 
 // Test for w_journal_context_seek_timestamp with future timestamp
 static void test_w_journal_context_seek_timestamp_future_timestamp(void ** state) {
@@ -1598,6 +1619,81 @@ static void test_w_journal_context_seek_timestamp_seek_timestamp_fail(void ** st
     w_journal_context_free(ctx);
 }
 
+// Test for w_journal_context_seek_timestamp with error when seek the timestamp
+static void test_w_journal_context_seek_timestamp_fail_seek(void ** state) {
+    // test_w_journal_context_create_success
+    // Define a pointer to w_journal_context_t
+    w_journal_context_t * ctx = NULL;
+
+    // Expectativas de llamada a w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE * maps_file = (FILE *) 0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_root_owned
+
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    void * handle = (void *) 1; // Simulate handle
+    void * mock_function = (void *) 0xabcdef;
+
+    // Set expectations for dlsym wrap
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+
+    // Perform the function under test
+    struct timeval expected_time = {.tv_sec = 1234, .tv_usec = 5678};
+    struct timeval actual_time;
+    will_return(__wrap_gettimeofday, &expected_time);
+    will_return(__wrap_sd_journal_get_cutoff_realtime_usec, 0); // Mocked oldest timestamp
+    will_return(__wrap_sd_journal_seek_realtime_usec, -1);
+
+    int ret = w_journal_context_seek_timestamp(ctx, 1234567);
+
+    // Check the result
+    assert_int_equal(ret, -1);
+
+    // Memory release
+    expect_function_call(__wrap_sd_journal_close);
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456); // Mocked handle
+    will_return(__wrap_dlclose, 0);                          // Simulate dlclose success
+    w_journal_context_free(ctx);
+}
+
 // Test for w_journal_context_seek_timestamp with error when getting next entry
 static void test_w_journal_context_seek_timestamp_next_fail(void ** state) {
     // test_w_journal_context_create_success
@@ -1742,6 +1838,84 @@ static void test_w_journal_context_seek_timestamp_success(void ** state) {
 
     // Check the result
     assert_int_equal(ret, 0);
+
+    // Memory release
+    expect_function_call(__wrap_sd_journal_close);
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456); // Mocked handle
+    will_return(__wrap_dlclose, 0);                          // Simulate dlclose success
+    w_journal_context_free(ctx);
+}
+
+static void test_w_journal_context_seek_timestamp_success_new_entry(void ** state) {
+    // test_w_journal_context_create_success
+    // Define a pointer to w_journal_context_t
+    w_journal_context_t * ctx = NULL;
+
+    // Expectativas de llamada a w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456); // Mocked handle
+
+    // test_find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+
+    // Simulate the successful opening of a file
+    FILE * maps_file = (FILE *) 0x123456; // Simulated address
+    will_return(__wrap_fopen, maps_file);
+
+    // Simulate a line containing the searched library
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+
+    // test_is_owned_by_root_root_owned
+
+    const char * library_path = "/libsystemd.so.0";
+
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+
+    void * handle = (void *) 1; // Simulate handle
+    void * mock_function = (void *) 0xabcdef;
+
+    // Set expectations for dlsym wrap
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+
+    // Perform the function under test
+    struct timeval expected_time = {.tv_sec = 1234, .tv_usec = 5678};
+    struct timeval actual_time;
+    will_return(__wrap_gettimeofday, &expected_time);
+    will_return(__wrap_sd_journal_get_cutoff_realtime_usec, 0); // Mocked oldest timestamp
+    will_return(__wrap_sd_journal_seek_realtime_usec, 0);
+    will_return(__wrap_sd_journal_next, 1);
+
+    // update timestamp
+    will_return(__wrap_sd_journal_get_realtime_usec, 123456); // Mocked timestamp
+
+    int ret = w_journal_context_seek_timestamp(ctx, 123457);
+
+    // Check the result
+    assert_int_equal(ret, 1);
 
     // Memory release
     expect_function_call(__wrap_sd_journal_close);
@@ -2829,6 +3003,1538 @@ static void test_w_journal_context_next_newest_filtered_filter_apply_fail(void *
     w_journal_filters_list_free(filter_list);
 }
 
+// Test entry_as_json
+void test_entry_as_json_empty(void ** state) {
+
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+
+    // Expect
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 0x123456);
+    will_return(__wrap_sd_journal_restart_data, 0);
+    // Empty entry
+    will_return(__wrap_sd_journal_enumerate_data, 0);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    assert_null(entry_as_json(ctx));
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_json_fail_parse_field(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+
+    // Expect
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 0x123456);
+    will_return(__wrap_sd_journal_restart_data, 0);
+    // Empty entry
+    will_return(__wrap_sd_journal_enumerate_data, 1);
+    will_return(__wrap_sd_journal_enumerate_data, "field >> no equal sign");
+    will_return(__wrap_sd_journal_enumerate_data, 0);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    assert_null(entry_as_json(ctx));
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_json_success(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+
+    // Expect
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 0x123456);
+    will_return(__wrap_sd_journal_restart_data, 0);
+    // 3 entryes
+    will_return(__wrap_sd_journal_enumerate_data, 1);
+    will_return(__wrap_sd_journal_enumerate_data, "field=value");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "field");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "value");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+
+    will_return(__wrap_sd_journal_enumerate_data, 1);
+    will_return(__wrap_sd_journal_enumerate_data, "field2=123");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "field2");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "123");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+
+    will_return(__wrap_sd_journal_enumerate_data, 1);
+    will_return(__wrap_sd_journal_enumerate_data, "field3=");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "field3");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+
+    will_return(__wrap_sd_journal_enumerate_data, 0);
+
+    assert_non_null(entry_as_json(ctx));
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+// Test get_field_ptr
+void test_get_field_ptr_fail_get_data(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+
+    // Expect
+    expect_string(__wrap_sd_journal_get_data, field, "field");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    assert_null(get_field_ptr(ctx, "field"));
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_get_field_ptr_fail_parse(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+
+    // Expect
+    expect_string(__wrap_sd_journal_get_data, field, "field");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "field >> no equal sign");
+
+    assert_null(get_field_ptr(ctx, "field"));
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_get_field_ptr_empty_field(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+
+    // Expect
+    expect_string(__wrap_sd_journal_get_data, field, "field");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "field=");
+
+    char * value = get_field_ptr(ctx, "field");
+    assert_non_null(value);
+    assert_string_equal(value, "");
+    os_free(value);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_get_field_ptr_success(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+
+    // Expect
+    expect_string(__wrap_sd_journal_get_data, field, "field");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "field=value");
+
+    char * val = get_field_ptr(ctx, "field");
+    assert_non_null(val);
+    assert_string_equal(val, "value");
+    os_free(val);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+// Test create_plain_syslog
+void test_create_plain_syslog_with_pid(void ** state) {
+
+    char * retval = create_plain_syslog("<timestamp>", "hosname", "tag", "pid", "message");
+    assert_non_null(retval);
+    assert_string_equal(retval, "<timestamp> hosname tag[pid]: message");
+    os_free(retval);
+}
+
+void test_create_plain_syslog_without_pid(void ** state) {
+
+    char * retval = create_plain_syslog("<timestamp>", "hosname", "tag", NULL, "message");
+    assert_non_null(retval);
+    assert_string_equal(retval, "<timestamp> hosname tag: message");
+    os_free(retval);
+}
+
+// Test entry_as_syslog
+void test_entry_as_syslog_success(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_PID=<pid>");
+
+    // Get timestamp
+
+    will_return(__wrap_gmtime_r, timestamp);
+
+    // Check the result
+    char * retval = entry_as_syslog(ctx);
+    assert_non_null(retval);
+    assert_string_equal(retval, "Apr 19 16:19:34 <hostname> <tag>[<pid>]: <message>");
+    os_free(retval);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_syslog_success_system_pid(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_PID=<spid>");
+
+    // Get timestamp
+
+    will_return(__wrap_gmtime_r, timestamp);
+
+    // Check the result
+    char * retval = entry_as_syslog(ctx);
+    assert_non_null(retval);
+    assert_string_equal(retval, "Apr 19 16:19:34 <hostname> <tag>[<spid>]: <message>");
+    os_free(retval);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_syslog_success_no_pid(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "_PID");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    // Get timestamp
+
+    will_return(__wrap_gmtime_r, timestamp);
+
+    // Check the result
+    char * retval = entry_as_syslog(ctx);
+    assert_non_null(retval);
+    assert_string_equal(retval, "Apr 19 16:19:34 <hostname> <tag>: <message>");
+    os_free(retval);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_syslog_missing_hostname(void ** state) {
+
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_PID=<pid>");
+
+    // Get timestamp
+    will_return(__wrap_gmtime_r, timestamp);
+
+    // Debug msg
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(9002): Failed to get the required fields, discarted log with timestamp '1618849174000000'");
+
+    // Check the result
+    char * retval = entry_as_syslog(ctx);
+    assert_null(retval);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_syslog_missing_tag(void ** state) {
+
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_PID=<spid>");
+
+    // Get timestamp
+    will_return(__wrap_gmtime_r, timestamp);
+
+    // Debug msg
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(9002): Failed to get the required fields, discarted log with timestamp '1618849174000000'");
+
+    // Check the result
+    char * retval = entry_as_syslog(ctx);
+    assert_null(retval);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_syslog_missing_message(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_PID=<spid>");
+
+    // Get timestamp
+    will_return(__wrap_gmtime_r, timestamp);
+
+    // Debug msg
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(9002): Failed to get the required fields, discarted log with timestamp '1618849174000000'");
+
+    // Check the result
+    char * retval = entry_as_syslog(ctx);
+    assert_null(retval);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_entry_as_syslog_missing_timestamp(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_PID=<spid>");
+
+    // Get timestamp
+    will_return(__wrap_gmtime_r, 0);
+
+    // Debug msg
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(9002): Failed to get the required fields, discarted log with timestamp '1618849174000000'");
+
+    // Check the result
+    char * retval = entry_as_syslog(ctx);
+    assert_null(retval);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+// Test w_journal_entry_dump
+void test_w_journal_entry_dump_null_params(void ** state) {
+    assert_null(w_journal_entry_dump(NULL, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG));
+    assert_null(w_journal_entry_dump(NULL, W_JOURNAL_ENTRY_DUMP_TYPE_JSON));
+}
+
+void test_w_journal_entry_dump_invalid_type(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    ctx->timestamp = 123456;
+    ctx->journal = (void *) 0x123456;
+
+    assert_null(w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_INVALID));
+
+    // Test Free invalid
+    w_journal_entry_t * entry = calloc(1, sizeof(w_journal_entry_t));
+    entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_INVALID;
+    entry->timestamp = ctx->timestamp;
+    assert_null(w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_INVALID));
+    w_journal_entry_free(entry);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_w_journal_entry_dump_json_success(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    ctx->timestamp = 123456;
+    ctx->journal = (void *) 0x123456;
+
+    // Expect
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 0x123456);
+    will_return(__wrap_sd_journal_restart_data, 0);
+    // 3 entryes
+    will_return(__wrap_sd_journal_enumerate_data, 1);
+    will_return(__wrap_sd_journal_enumerate_data, "field=value");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "field");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "value");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+
+    will_return(__wrap_sd_journal_enumerate_data, 1);
+    will_return(__wrap_sd_journal_enumerate_data, "field2=123");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "field2");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "123");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+
+    will_return(__wrap_sd_journal_enumerate_data, 1);
+    will_return(__wrap_sd_journal_enumerate_data, "field3=");
+    expect_string(__wrap_cJSON_AddStringToObject, name, "field3");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *) 1);
+
+    will_return(__wrap_sd_journal_enumerate_data, 0);
+
+    w_journal_entry_t * entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
+    assert_non_null(entry);
+    assert_non_null(entry->data.json);
+    assert_int_equal(entry->type, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
+    assert_int_equal(entry->timestamp, ctx->timestamp);
+
+    // Free entry (test)
+    expect_function_call(__wrap_cJSON_Delete);
+    w_journal_entry_free(entry);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_w_journal_entry_dump_syslog_fail_json(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    ctx->timestamp = 123456;
+    ctx->journal = (void *) 0x123456;
+
+    // Expect
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 0x123456);
+    will_return(__wrap_sd_journal_restart_data, 0);
+    // Empty entry
+    will_return(__wrap_sd_journal_enumerate_data, 0);
+    expect_function_call(__wrap_cJSON_Delete);
+
+    w_journal_entry_t * entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_JSON);
+    assert_null(entry);
+
+    // Free entry (test)
+    w_journal_entry_free(entry);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_w_journal_entry_dump_syslog_success(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    ctx->journal = (void *) 0x123456;
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Expect
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_PID=<pid>");
+
+    // Get timestamp
+    will_return(__wrap_gmtime_r, timestamp);
+
+    w_journal_entry_t * entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
+    assert_non_null(entry);
+    assert_non_null(entry->data.syslog);
+    assert_int_equal(entry->type, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
+    assert_int_equal(entry->timestamp, ctx->timestamp);
+
+    // Free entry (test)
+    w_journal_entry_free(entry);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_w_journal_entry_dump_syslog_fail(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    ctx->journal = (void *) 0x123456;
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Extract fail
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, -1);
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_PID=<pid>");
+
+    // Get timestamp
+    will_return(__wrap_gmtime_r, timestamp);
+
+    // Debug msg
+    expect_string(__wrap__mdebug2,
+                  formatted_msg,
+                  "(9002): Failed to get the required fields, discarted log with timestamp '1618849174000000'");
+
+    // Get timestamp
+
+    w_journal_entry_t * entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
+    assert_null(entry);
+    // Free entry (test)
+    w_journal_entry_free(entry);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+// Test w_journal_entry_to_string
+void test_w_journal_entry_to_string_null_params(void ** state) { assert_null(w_journal_entry_to_string(NULL)); }
+
+void test_w_journal_entry_to_string_syslog(void ** state) {
+    // init ctx
+    w_journal_context_t * ctx = NULL;
+    // >>>> Start Init conext
+    //      w_journal_lib_init
+    expect_string(__wrap_dlopen, filename, W_LIB_SYSTEMD);
+    expect_value(__wrap_dlopen, flags, RTLD_LAZY);
+    will_return(__wrap_dlopen, (void *) 0x123456);
+    //      find_library_path_success
+    expect_string(__wrap_fopen, path, "/proc/self/maps");
+    expect_string(__wrap_fopen, mode, "r");
+    FILE * maps_file = (FILE *) 0x123456;
+    will_return(__wrap_fopen, maps_file);
+    char * simulated_line = strdup("00400000-0040b000 r-xp 00000000 08:01 6711792           /libsystemd.so.0\n");
+    will_return(__wrap_getline, simulated_line);
+    expect_value(__wrap_fclose, _File, 0x123456);
+    will_return(__wrap_fclose, 1);
+    //      is_owned_by_root_root_owned
+    const char * library_path = "/libsystemd.so.0";
+    struct stat mock_stat;
+    mock_stat.st_uid = 0;
+    expect_string(__wrap_stat, __file, library_path);
+    will_return(__wrap_stat, &mock_stat);
+    will_return(__wrap_stat, 0);
+    void * handle = (void *) 1;
+    void * mock_function = (void *) 0xabcdef;
+    //     dlsym
+    setup_dlsym_expectations("sd_journal_open");
+    setup_dlsym_expectations("sd_journal_close");
+    setup_dlsym_expectations("sd_journal_previous");
+    setup_dlsym_expectations("sd_journal_next");
+    setup_dlsym_expectations("sd_journal_seek_tail");
+    setup_dlsym_expectations("sd_journal_seek_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_realtime_usec");
+    setup_dlsym_expectations("sd_journal_get_data");
+    setup_dlsym_expectations("sd_journal_restart_data");
+    setup_dlsym_expectations("sd_journal_enumerate_data");
+    setup_dlsym_expectations("sd_journal_get_cutoff_realtime_usec");
+    will_return(__wrap_sd_journal_open, 0);
+    w_journal_context_create(&ctx);
+    // <<<< End init conetxt
+    ctx->journal = (void *) 0x123456;
+    uint64_t timestamp = 1618849174000000; // Timestamp in microseconds (2021-04-19 16:19:34)
+    ctx->timestamp = timestamp;
+
+    // Expect
+
+    // Extract
+    expect_string(__wrap_sd_journal_get_data, field, "_HOSTNAME");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "_HOSTNAME=<hostname>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_IDENTIFIER");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_IDENTIFIER=<tag>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "MESSAGE");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "MESSAGE=<message>");
+
+    expect_string(__wrap_sd_journal_get_data, field, "SYSLOG_PID");
+    will_return(__wrap_sd_journal_get_data, 0);
+    will_return(__wrap_sd_journal_get_data, "SYSLOG_PID=<pid>");
+
+    // Get timestamp
+    will_return(__wrap_gmtime_r, timestamp);
+
+    w_journal_entry_t * entry = w_journal_entry_dump(ctx, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
+    assert_non_null(entry);
+    assert_non_null(entry->data.syslog);
+    assert_int_equal(entry->type, W_JOURNAL_ENTRY_DUMP_TYPE_SYSLOG);
+    assert_int_equal(entry->timestamp, ctx->timestamp);
+
+    char * str = w_journal_entry_to_string(entry);
+    assert_non_null(str);
+    assert_string_equal(str, "Apr 19 16:19:34 <hostname> <tag>[<pid>]: <message>");
+
+    // Free entry (test)
+    os_free(str);
+    w_journal_entry_free(entry);
+
+    // >>>> Start context free
+    expect_value(__wrap_dlclose, handle, (void *) 0x123456);
+    will_return(__wrap_dlclose, 0);
+    expect_function_call(__wrap_sd_journal_close);
+    w_journal_context_free(ctx);
+    // <<<< End Context free
+}
+
+void test_w_journal_entry_to_string_json(void ** state) {
+    w_journal_entry_t * entry = calloc(1, sizeof(w_journal_entry_t));
+    entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_JSON;
+    entry->timestamp = 123456;
+    entry->data.json = (cJSON *) 0x123456;
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("json_string"));
+    char * str = w_journal_entry_to_string(entry);
+
+    assert_non_null(str);
+    assert_string_equal(str, "json_string");
+
+    os_free(str);
+    os_free(entry);
+}
+
+void test_w_journal_entry_to_string_invalid_type(void ** state) {
+
+    w_journal_entry_t * entry = calloc(1, sizeof(w_journal_entry_t));
+    entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_INVALID;
+    entry->timestamp = 123456;
+    entry->data.json = (cJSON *) 0x123456;
+
+    char * str = w_journal_entry_to_string(entry);
+
+    assert_null(str);
+
+    os_free(entry);
+}
+
 int main(void) {
 
     const struct CMUnitTest tests[] = {
@@ -2853,6 +4559,7 @@ int main(void) {
         cmocka_unit_test(test_w_journal_context_create_lib_init_fail),
         cmocka_unit_test(test_w_journal_context_create_journal_open_fail),
         cmocka_unit_test(test_w_journal_context_free_valid),
+        cmocka_unit_test(test_w_journal_context_free_null),
         cmocka_unit_test(test_w_journal_context_update_timestamp_success),
         cmocka_unit_test(test_w_journal_context_update_timestamp_ctx_null),
         cmocka_unit_test(test_w_journal_context_update_timestamp_fail),
@@ -2860,12 +4567,15 @@ int main(void) {
         cmocka_unit_test(test_w_journal_context_seek_most_recent_seek_tail_fail),
         cmocka_unit_test(test_w_journal_context_seek_most_recent_success),
         cmocka_unit_test(test_w_journal_context_seek_most_recent_ctx_null),
+        cmocka_unit_test(test_w_journal_context_seek_timestamp_null_params),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_future_timestamp),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_fail_read_old_ts),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_change_ts),
+        cmocka_unit_test(test_w_journal_context_seek_timestamp_fail_seek),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_seek_timestamp_fail),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_next_fail),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_success),
+        cmocka_unit_test(test_w_journal_context_seek_timestamp_success_new_entry),
         cmocka_unit_test(test_w_journal_context_next_newest_ctx_null),
         cmocka_unit_test(test_w_journal_context_next_newest_update_timestamp),
         cmocka_unit_test(test_w_journal_context_next_newest_success),
@@ -2882,7 +4592,40 @@ int main(void) {
         cmocka_unit_test(test_w_journal_context_next_newest_filtered_is_debug),
         cmocka_unit_test(test_w_journal_context_next_newest_filtered_is_debug_false),
         cmocka_unit_test(test_w_journal_context_next_newest_filtered_filter_apply),
-        cmocka_unit_test(test_w_journal_context_next_newest_filtered_filter_apply_fail)
+        cmocka_unit_test(test_w_journal_context_next_newest_filtered_filter_apply_fail),
+        // Test entry_as_json
+        cmocka_unit_test(test_entry_as_json_empty),
+        cmocka_unit_test(test_entry_as_json_fail_parse_field),
+        cmocka_unit_test(test_entry_as_json_success),
+        // Test get_field_ptr
+        cmocka_unit_test(test_get_field_ptr_fail_get_data),
+        cmocka_unit_test(test_get_field_ptr_fail_parse),
+        cmocka_unit_test(test_get_field_ptr_empty_field),
+        cmocka_unit_test(test_get_field_ptr_success),
+        // Test create_plain_syslog
+        cmocka_unit_test(test_create_plain_syslog_with_pid),
+        cmocka_unit_test(test_create_plain_syslog_without_pid),
+        // Test entry_as_syslog
+        cmocka_unit_test(test_entry_as_syslog_success),
+        cmocka_unit_test(test_entry_as_syslog_success_system_pid),
+        cmocka_unit_test(test_entry_as_syslog_success_no_pid),
+        cmocka_unit_test(test_entry_as_syslog_missing_hostname),
+        cmocka_unit_test(test_entry_as_syslog_missing_tag),
+        cmocka_unit_test(test_entry_as_syslog_missing_message),
+        cmocka_unit_test(test_entry_as_syslog_missing_timestamp),
+        // Test w_journal_entry_dump
+        cmocka_unit_test(test_w_journal_entry_dump_null_params),
+        cmocka_unit_test(test_w_journal_entry_dump_invalid_type),
+        cmocka_unit_test(test_w_journal_entry_dump_json_success),
+        cmocka_unit_test(test_w_journal_entry_dump_syslog_fail_json),
+        cmocka_unit_test(test_w_journal_entry_dump_syslog_success),
+        cmocka_unit_test(test_w_journal_entry_dump_syslog_fail),
+        // Test w_journal_entry_to_string
+        cmocka_unit_test(test_w_journal_entry_to_string_null_params),
+        cmocka_unit_test(test_w_journal_entry_to_string_syslog),
+        cmocka_unit_test(test_w_journal_entry_to_string_json),
+        cmocka_unit_test(test_w_journal_entry_to_string_invalid_type),
+
     };
 
     return cmocka_run_group_tests(tests, group_setup, group_teardown);
