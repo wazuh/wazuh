@@ -9,6 +9,10 @@
 
 namespace geo
 {
+/**
+ * @brief Interface for querying data from a geo database.
+ *
+ */
 class ILocator
 {
 public:
@@ -17,6 +21,7 @@ public:
     /**
      * @brief Get the string data at the given path.
      *
+     * @param ip Target ip to query
      * @param path The path to the data.
      * @return Either the data as a string or an error if the data could not be retrieved.
      * @throws std::runtime_error if the path is invalid or the data is not a string.
@@ -26,6 +31,7 @@ public:
     /**
      * @brief Get the Uint32 data at the given path.
      *
+     * @param ip Target ip to query
      * @param path The path to the data.
      * @return base::RespOrError<uint32_t> Either the data as a uint32_t or an error if the data could not be retrieved.
      */
@@ -34,6 +40,7 @@ public:
     /**
      * @brief Get the Double data at the given path.
      *
+     * @param ip Target ip to query
      * @param path The path to the data.
      * @return base::RespOrError<double>  Either the data as a double or an error if the data could not be retrieved.
      */
@@ -42,6 +49,7 @@ public:
     /**
      * @brief Get the data at the given path as a json object.
      *
+     * @param ip Target ip to query
      * @param path The path to the data.
      * @return base::RespOrError<json::Json>  Either the data as a json object or an error if the data could not be
      * retrieved.

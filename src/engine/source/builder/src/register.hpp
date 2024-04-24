@@ -15,8 +15,8 @@
 // Map builders
 #include "builders/opmap/activeResponse.hpp"
 #include "builders/opmap/map.hpp"
-#include "builders/opmap/opBuilderHelperMap.hpp"
 #include "builders/opmap/mmdb.hpp"
+#include "builders/opmap/opBuilderHelperMap.hpp"
 #include "builders/opmap/upgradeConfirmation.hpp"
 #include "builders/opmap/wdb.hpp"
 
@@ -214,9 +214,10 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
         "merge_value", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::opBuilderHelperMergeValue});
     // Transform helpers: MMDB functions
     registry->template add<builders::OpBuilderEntry>(
-        "geoip", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::mmdb::getMMDBGeoBuilder(deps.mmdbManager)});
+        "geoip",
+        {schemf::STypeToken::create(schemf::Type::OBJECT), builders::mmdb::getMMDBGeoBuilder(deps.geoManager)});
     registry->template add<builders::OpBuilderEntry>(
-        "as", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::mmdb::getMMDBASNBuilder(deps.mmdbManager)});
+        "as", {schemf::STypeToken::create(schemf::Type::OBJECT), builders::mmdb::getMMDBASNBuilder(deps.geoManager)});
     // Global event helpers
     registry->template add<builders::OpBuilderEntry>(
         "erase_custom_fields", {schemf::runtimeValidation(), builders::opBuilderHelperEraseCustomFields});
