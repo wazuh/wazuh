@@ -1,7 +1,7 @@
 from opensearchpy import OpenSearch
 from urllib.parse import urlparse
 from wazuh.manager import read_ossec_conf
-from wazuh import agent
+from wazuh.agent import get_agents
 
 import json
 import logging
@@ -28,12 +28,10 @@ def set_logger():
 
 
 def create_indexer_client(config: dict):
-    # For the production development it will be important to check if the `vulnerability-detection` section
-    # is enabled.
     indexer_config = config['indexer']
 
     # Parse the first defined indexer node.
-    # TODO: what should we do if there are many hosts and many ssl certificates?
+    # TODO: if the first host is not reacheable, try to connecto to the other ones. If there are none, raise an error
     indexer_url = urlparse(indexer_config['hosts'][0])
 
     # Provide a CA bundle if you use intermediate CAs with your root CA.
@@ -77,10 +75,35 @@ def create_index(client: OpenSearch, index_name: str):
         logging.error(f"Error during index creation: {e}")
 
 
-def consolidate_agents_vd_state(data: list) -> list:
-    # TODO: here we should filter the information gathered from the different indices and consolidated it in such a way
-    # that we end up with the latest information only.
-    return data
+def consolidate_agent_vd_state(consolidated_index_name: str, documents: list, agent_id: str, node_name: str) -> list:
+    # TODO: create a Document class to simplify information access and manipulation?
+    consolidated_documents = []
+    for document in documents:
+        # Discard documents that belong to other agents or were indexed in other nodes. node_name is always the name of
+        # the node the agent is currently connected to.
+        #
+        # TODO: is this the correct way to keep only the latest vulnerabilities? Is there any information from previous
+        # nodes that we would like to keep?
+        agent = document['_source']['agent']
+        if agent['id'] != agent_id or agent['ephemeral_id'] != node_name:
+            continue
+
+        # Modify the index name and remove the node name from the document ID
+        document['_index'] = consolidated_index_name
+        document_id = remove_node_name(document['_id'])
+        document['_id'] = document_id
+
+        # If a document exists, it is updated; if it does not exist, a new document is indexed with the parameters
+        # specified in the doc field
+        #
+        # TODO: what should we do if the document already exists in the consolidated index? Compare it? Update it?
+        consolidated_documents.append({'doc': document, 'doc_as_upsert': True})
+
+    return consolidated_documents
+
+
+def remove_node_name(document_id: str) -> str:
+    return document_id[document_id.find('_')+1:]
 
 
 if __name__ == "__main__":
@@ -99,44 +122,48 @@ if __name__ == "__main__":
     cluster_name = config['cluster']['name']
     consolidated_index_name = f'{VD_INDEX_BASE_NAME}-{cluster_name}'
 
-    # Create consolidated index if it not exists yet
+    # Create consolidated index if it doesn't exist yet
     if not client.indices.exists(consolidated_index_name):
         create_index(client, consolidated_index_name)
 
-    select = ['id', 'node_name', 'lastKeepAlive']
+    select = ['id', 'node_name']
     query = 'lastKeepAlive<30s'
     index_regex = VD_INDEX_BASE_NAME+'*'
 
     while True:
-        # Ask wazuh-db the id and node of all agents whose last-keepalive is less than 30s
-        # Obtain IDs and last keep alive from agents
-        agents = agent.get_agents(select=select, q=query).to_dict()['affected_items']
-        logging.info(f"{len(agents)} agents obtained")
+        # Ask wazuh-db the id and node_name of all agents whose lastKeepAlive is less than 30s
+        agents = get_agents(select=select, q=query).to_dict()['affected_items']
+        logging.info(f"Found {len(agents)} agent/s")
 
         # Get the indices where the agents' VD state is stored
+        #
+        # TODO: we could avoid this request call by obtaining the cluster information from `cluster.get_nodes_info`
+        # which uses the local client and construct the indices names ourselves.
         indices = client.indices.get(index=index_regex)
+        logging.info(f"Found {len(indices)} indices matching the expression")
 
-        # Option 1: consolidating the information manually
-        data = []
-        for index in indices:
-            hits = client.search(index=index)['hits']
-            data.append(hits)
+        # Collect the documents from all the indices
+        documents = client.search(index=','.join(indices))['hits']['hits']
+        logging.info(f"Found {len(documents)} documents")
 
-        consolidated_data = consolidate_agents_vd_state(data)
-        client.indices.create(index=consolidated_index_name, body=consolidated_data)
+        # Filter the documents agent by agent and discard the older ones
+        consolidated_documents = []
+        for a in agents:
+            agent_id = a['id']
+            logging.info(f"Consolidating agent {agent_id} vulnerability state")
 
-        # Option 2: combine documents from all the indices into one.
-        # https://opensearch.org/docs/latest/im-plugin/reindex-data/#combine-one-or-more-indexes
-        # The number of shards of the source and destination indexes must be the same.
-        # body = {
-        #     'conflicts': 'proceed',
-        #     'source': {
-        #         'index': indices
-        #     },
-        #     'dest': {
-        #         'index': consolidated_index_name
-        #     }
-        # }
-        # client.reindex(body=body)
+            consolidated_docs = consolidate_agent_vd_state(consolidated_index_name, documents, agent_id, a['node_name'])
+            consolidated_documents.extend(consolidated_docs)
+        
+        # The body takes multiple actions and metadata separated by newlines.
+        # See https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#request-body
+        body = ''
+        for d in consolidated_documents:
+            body += '{"update":{"_index":"' + consolidated_index_name  + '","_id":"' + d['_id'] + '"}}\n'
+            body += json.dumps(d)
+            body += '\n'
+
+        # We are sending all the consolidated documents in a single request, shall we split them into multiple ones?
+        client.bulk(index=consolidated_index_name, body=body)
 
         time.sleep(10)
