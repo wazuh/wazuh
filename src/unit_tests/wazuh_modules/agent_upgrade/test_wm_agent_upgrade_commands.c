@@ -180,6 +180,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -237,6 +238,7 @@ void test_wm_agent_upgrade_validate_agent_task_upgrade_custom_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -293,6 +295,7 @@ void test_wm_agent_upgrade_validate_agent_task_version_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -350,6 +353,7 @@ void test_wm_agent_upgrade_validate_agent_task_system_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, os_major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, os_minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_GLOBAL_DB_FAILURE);
 
     int ret = wm_agent_upgrade_validate_agent_task(agent_task);
@@ -485,6 +489,7 @@ void test_wm_agent_upgrade_analyze_agent_ok(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -562,6 +567,7 @@ void test_wm_agent_upgrade_analyze_agent_duplicated_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -639,6 +645,7 @@ void test_wm_agent_upgrade_analyze_agent_unknown_err(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, major);
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, minor);
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, arch);
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -1335,6 +1342,7 @@ void test_wm_agent_upgrade_process_upgrade_custom_command(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, "18");
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, "04");
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, "x86_64");
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version
@@ -1584,6 +1592,7 @@ void test_wm_agent_upgrade_process_upgrade_command(void **state)
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_major, "18");
     expect_string(__wrap_wm_agent_upgrade_validate_system, os_minor, "04");
     expect_string(__wrap_wm_agent_upgrade_validate_system, arch, "x86_64");
+    will_return(__wrap_wm_agent_upgrade_validate_system, "deb");
     will_return(__wrap_wm_agent_upgrade_validate_system, WM_UPGRADE_SUCCESS);
 
     // wm_agent_upgrade_validate_version

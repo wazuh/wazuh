@@ -158,11 +158,13 @@ int __wrap_wm_agent_upgrade_validate_status(const char* connection_status) {
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
+int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch, char **package_type) {
     check_expected(platform);
     check_expected(os_major);
     check_expected(os_minor);
     check_expected(arch);
+
+    os_strdup(mock_type(char*), *package_type);
 
     return mock();
 }
