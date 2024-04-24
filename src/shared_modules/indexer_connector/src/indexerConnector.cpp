@@ -363,7 +363,7 @@ void IndexerConnector::diff(nlohmann::json& responseJson,
     }
 
     auto url = selector->getNext();
-    url.append("/_bulk");
+    url.append("/_bulk?refresh=wait_for");
 
     std::string bulkData;
     for (const auto& [id, deleted] : actions)
