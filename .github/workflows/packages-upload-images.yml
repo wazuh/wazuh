@@ -1,12 +1,14 @@
-run-name: Package - Upload Docker images with ${{ inputs.tag }}
+run-name: Package - Upload Docker images with ${{ inputs.docker_image_tag }}
 on:
   workflow_dispatch:
     inputs:
-      tag:
+      docker_image_tag:
         description: |
-          Tag name of the Docker image to be uploaded
-          (Use developer to set branch name.
-          Use auto to set src/VERSION content)
+          Tag name of the Docker image to be uploaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
+          Default is 'auto'.
         required: false
         default: auto
   push:
@@ -27,7 +29,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           skip_after_successful_duplicate: 'false'
 
-      - uses: actions/checkout@v4
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
 
       - name: Get changed files
         uses: dorny/paths-filter@v2
@@ -76,74 +79,98 @@ jobs:
               - 'packages/rpms/utils/**'       
             compile_windows_agent:
               - 'packages/windows/**'
+            commom_wpk_builder:
+              - packages/wpk/wpkpack.py
+              - packages/wpk/run.sh
+              - packages/wpk/generate_wpk_package.sh
+              - packages/wpk/common/*
+            linux_wpk_builder_x86_64: 
+              - packages/wpk/wpkpack.py
+              - packages/wpk/run.sh
+              - packages/wpk/generate_wpk_package.sh
+              - packages/wpk/linux/x86_64/*
 
       - name: Set tag and WAZUH_WORKFLOWS_BRANCH
         run: |
-          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
-          if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
-          else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
+          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' src/VERSION)
+          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
           echo "WAZUH_WORKFLOWS_BRANCH=1-migrate-upload-packages-workflows" >> $GITHUB_ENV
 
       - name: Request pkg_deb_manager_builder_amd64 update 
         if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
+          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request pkg_rpm_manager_builder_amd64 update
         if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
+          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Request pkg_deb_agent_builder_amd64 update
         if: steps.changes.outputs.pkg_deb_agent_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f tag=${{ env.TAG }} -f system=deb -f architecture=amd64 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=amd64 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
       - name: Request pkg_deb_agent_builder_i386 update
         if: steps.changes.outputs.pkg_deb_agent_builder_i386 == 'true'
         run: |
-          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f tag=${{ env.TAG }} -f system=deb -f architecture=i386 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=i386 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
       - name: Request pkg_rpm_agent_builder_amd64 update
         if: steps.changes.outputs.pkg_rpm_agent_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
       - name: Request pkg_rpm_agent_builder_i386 update
         if: steps.changes.outputs.pkg_rpm_agent_builder_i386 == 'true'
         run: |
-          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
       - name: Request pkg_rpm_legacy_builder_amd64 update
         if: steps.changes.outputs.pkg_rpm_legacy_builder_amd64 == 'true'
         run: |
-          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=true -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=true -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
       - name: Request pkg_rpm_legacy_builder_i386 update
         if: steps.changes.outputs.pkg_rpm_legacy_builder_i386 == 'true'
         run: |
-          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f tag=${{ env.TAG }} -f system=rpm -f architecture=i386 -f legacy=true -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=i386 -f legacy=true -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
       - name: Request compile_windows_agent update
         if: steps.changes.outputs.compile_windows_agent == 'true'
         run: |
-          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f tag=${{ env.TAG }} -f system=windows -f architecture=windows -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=windows -f architecture=windows -f legacy=false -f source_reference=22080-migrate-and-adapt-the-wazuh-agent-subsystem
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request commom_wpk_builder update
+        if: steps.changes.outputs.commom_wpk_builder == 'true'
+        run: |
+          gh workflow run packages-upload-wpk-images.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=common -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request linux_wpk_builder_x86_64 update
+        if: steps.changes.outputs.linux_wpk_builder_x86_64 == 'true'
+        run: |
+          gh workflow run packages-upload-wpk-images.yml --repo wazuh/wazuh-agent-packages -r ${{ env.WAZUH_WORKFLOWS_BRANCH }} -f docker_image_tag=${{ env.TAG }} -f system=linux -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
