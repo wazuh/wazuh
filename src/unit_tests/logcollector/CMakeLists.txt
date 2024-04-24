@@ -132,7 +132,10 @@ else()
                                     -Wl,--wrap,sd_journal_next -Wl,--wrap,sd_journal_seek_tail \
                                     -Wl,--wrap,sd_journal_seek_realtime_usec -Wl,--wrap,sd_journal_get_realtime_usec \
                                     -Wl,--wrap,sd_journal_get_data -Wl,--wrap,sd_journal_restart_data \
-                                    -Wl,--wrap,sd_journal_enumerate_data -Wl,--wrap,sd_journal_get_cutoff_realtime_usec")
+                                    -Wl,--wrap,sd_journal_enumerate_data -Wl,--wrap,sd_journal_get_cutoff_realtime_usec \
+                                    -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
+                                    -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,pthread_rwlock_wrlock \
+                                    -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_Delete")
 endif()
 
 list(LENGTH logcollector_names count)
