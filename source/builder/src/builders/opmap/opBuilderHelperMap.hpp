@@ -20,10 +20,8 @@ namespace builder::builders
 /**
  * @brief Transforms a string to uppercase and append or remplace it in the event `e`
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition i.e : `<field>: +upcase/<str>|$<ref>`
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `uppercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -32,10 +30,8 @@ MapOp opBuilderHelperStringUP(const std::vector<OpArg>& opArgs, const std::share
 /**
  * @brief Transforms a string to lowercase and append or remplace it in the event `e`
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition i.e : `<field>: +downcase/<str>|$<ref>`
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `lowercase` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -44,11 +40,8 @@ MapOp opBuilderHelperStringLO(const std::vector<OpArg>& opArgs, const std::share
 /**
  * @brief Transforms a string, trim it and append or remplace it in the event `e`
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * i.e : `<field>: +trim/[begin | end | both]/char`
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `trim` transformation.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -57,25 +50,24 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Transform a list of arguments into a single strim with all of them concatenated
+ * @brief Helper function to build a MapOp that concatenates strings from OpArgs.
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * i.e : '<field>: +concat/<stringA>|$<referenceA>/<stringB>|$<referenceB>/...'
- * @param definitions handler with definitions
- * @return base::Expression The lifter with the `concat` transformation.
+ * This function constructs a MapOp that concatenates strings from OpArgs, either directly
+ * provided as values or retrieved from references in the event.
+ *
+ * @param atleastOne Flag indicating whether concatenation should occur even if some
+ *                   references are not found (`true`), or concatenation should only
+ *                   occur when all references are resolved (`false`).
+ * @return A MapBuilder function that constructs the MapOp.
  */
-MapBuilder opBuilderHelperStringConcat(bool safe = true);
+MapBuilder opBuilderHelperStringConcat(bool atleastOne = false);
 
 /**
  * @brief Transforms an array of strings into a single string field result of concatenate
  * them with a separator between (not at the start or the end).
  * i.e: '<field>: +join/$<array_reference1>/<separator>'
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @throw std::runtime_error if the parameter is not a reference or if theres no
  * Value argument for the separator.
  * @return base::Expression
@@ -87,10 +79,8 @@ MapOp opBuilderHelperStringFromArray(const std::vector<OpArg>& opArgs,
  * @brief Transforms a string of hexa digits into an ASCII string
  * i.e: 'targetField: +decode_base16/48656C6C6F20776F726C6421' then 'targetField' would be
  * 'Hello world!'
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @throw std::runtime_error if the parameter is not a reference
  * @return base::Expression
  */
@@ -101,10 +91,8 @@ MapOp opBuilderHelperStringFromHexa(const std::vector<OpArg>& opArgs, const std:
  * i.e: 'targetField: +hex_to_number/0x1234' then 'targetField' would be 4660
  * Fail if the string is not a valid hexadecimal number or the reference is not found.
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression
  *
  * @throw std::runtime_error if the parameter is not a reference, or more than one
@@ -122,9 +110,8 @@ MapOp opBuilderHelperHexToNumber(const std::vector<OpArg>& opArgs, const std::sh
  * New substring: 'dummy'
  * Result:'String with values: dummytras, dummypert, dummy, fldummyible, dummydummyes'
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @throw std::runtime_error if the first parameter is empty
  * @return base::Expression
  */
@@ -157,11 +144,8 @@ MapOp opBuilderHelperNumberToString(const std::vector<OpArg>& opArgs, const std:
  * @brief Transforms an integer. Stores the result of a mathematical operation
  * of a single or a set of values or references into the target field.
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * i.e : `<field>: +int_calculate/[sum|sub|mul|div]/[value1|$<ref1>]/.../[valueN|$<refN>]`
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `mathematical operation` transformation.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -176,10 +160,8 @@ MapOp opBuilderHelperIntCalc(const std::vector<OpArg>& opArgs, const std::shared
  * @brief Delete a field of the json event
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * i.e : '<field>: +delete
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `delete` transformation.
  */
 TransformOp opBuilderHelperDeleteField(const Reference& targetField,
@@ -190,10 +172,8 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
  * @brief Renames a field of the json event
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * i.e : '<field>: +rename/$<sourceField>
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `rename` transformation.
  */
 TransformOp opBuilderHelperRenameField(const Reference& targetField,
@@ -208,9 +188,8 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
  * - If source or target are not arrays or objects
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `merge` transformation.
  *
  * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
@@ -227,9 +206,8 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
  * - If source or target are not arrays or objects
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `merge` transformation.
  *
  * @throw std::runtime_error if the parameters size is not 1 or is not a reference.
@@ -242,7 +220,9 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
 /**
  * @brief Function that returns a builder for the operation to erase custom fields from an event.
  *
- * @param schema A shared pointer to the schema to check the fields.
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return A HelperBuilder object that erases custom fields from an event.
  */
 TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
@@ -257,10 +237,8 @@ TransformOp opBuilderHelperEraseCustomFields(const Reference& targetField,
  * @brief Builds regex extract operation.
  * Maps into an auxiliary field the part of the field value that matches a regexp
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `regex extract` transformation.
  * @throw std::runtime_error if the parameter is the regex is invalid.
  */
@@ -274,9 +252,8 @@ MapOp opBuilderHelperRegexExtract(const std::vector<OpArg>& opArgs, const std::s
  * @brief Get the Builder Array Append Split
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression
  */
 TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
@@ -289,10 +266,8 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
 /**
  * @brief Get the Internet Protocol version of an IP address.
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The lifter with the `ip version` transformation.
  */
 MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
@@ -303,10 +278,9 @@ MapOp opBuilderHelperIPVersionFromIPStr(const std::vector<OpArg>& opArgs,
 //*************************************************
 /**
  * @brief Get unix epoch time in seconds from system clock
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ *
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @throw std::runtime_error if the parameter is not a reference
  * @return base::Expression
  */
@@ -315,10 +289,9 @@ MapOp opBuilderHelperEpochTimeFromSystem(const std::vector<OpArg>& opArgs,
 
 /**
  * @brief Transform epoch time in seconds to human readable string
- * @param targetField target field where the string will be stored
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ *
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @throw std::runtime when type of number of paramter missmatch
  * @return base::Expression
  */
@@ -333,10 +306,8 @@ MapOp opBuilderHelperDateFromEpochTime(const std::vector<OpArg>& opArgs,
  * @brief Builds helper SHA1 hash calculated from a strings or a reference.
  * <field>: +sha1/<string1>|$<string_reference1>
  *
- * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition.
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return base::Expression The Lifter with the SHA1 hash.
  * @throw std::runtime_error if the parameter size is not one.
  */
@@ -351,10 +322,8 @@ MapOp opBuilderHelperHashSHA1(const std::vector<OpArg>& opArgs, const std::share
  * the definition object, where the key is specified with a reference to another field.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition.
- * @param definitions handler with definitions
- * @param schema schema to validate fields
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @param isMerge true if the helper is used in a merge operation (merge_key_in), false if only get the value
  * @return base::Expression
  */
@@ -366,8 +335,9 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
 /**
  * @brief Get the 'get_key_in' function helper builder
  *
- * <field>: +get_key_in/$<definition_object>|$<object_reference>/$<key>
- * @param schema schema to validate fields
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return builder
  */
 TransformOp opBuilderHelperGetValue(const Reference& targetField,
@@ -378,7 +348,9 @@ TransformOp opBuilderHelperGetValue(const Reference& targetField,
  * @brief Get the 'merge_key_in' function helper builder
  *
  * <field>: +merge_key_in/$<definition_object>|$<object_reference>/$<key>
- * @param schema schema to validate fields
+ * @param targetField target field of the helper
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return builder
  */
 TransformOp opBuilderHelperMergeValue(const Reference& targetField,
