@@ -524,10 +524,11 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
     };
 }
 
-// field: +concat/string1|$ref1/string2|$ref2
-MapBuilder opBuilderHelperStringConcat(bool safe)
+// field: +concat/string1|$ref1/string2|$ref2 -> atleastOne is False
+// field: +concat_any/string1|$ref1/string2|$ref2 -> atleastOne is True
+MapBuilder opBuilderHelperStringConcat(bool atleastOne)
 {
-    return [safe](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
+    return [atleastOne](const std::vector<OpArg>& opArgs, const std::shared_ptr<const IBuildCtx>& buildCtx) -> MapOp
     {
         // Assert expected number of parameters
         builder::builders::utils::assertSize(opArgs, 2, builder::builders::utils::MAX_OP_ARGS);
@@ -586,7 +587,7 @@ MapBuilder opBuilderHelperStringConcat(bool safe)
 
                     if (!isExist)
                     {
-                        if (safe)
+                        if (!atleastOne)
                         {
                             RETURN_FAILURE(
                                 runState, json::Json {}, failureTrace1 + fmt::format("Reference '{}' not found", ref));
