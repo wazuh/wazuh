@@ -24,9 +24,8 @@ namespace builder::builders::opfilter
  * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal (case sensitive) and the values are a string.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `string_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -42,9 +41,8 @@ FilterOp opBuilderHelperStringEqual(const Reference& targetField,
  * Only do not pass events if the fields are equal (case sensitive) and the values are a
  * string.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `string_not_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -60,9 +58,8 @@ FilterOp opBuilderHelperStringNotEqual(const Reference& targetField,
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `string_greater` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -78,9 +75,8 @@ FilterOp opBuilderHelperStringGreaterThan(const Reference& targetField,
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `string_greater_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -96,9 +92,8 @@ FilterOp opBuilderHelperStringGreaterThanEqual(const Reference& targetField,
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `string_less` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -114,9 +109,8 @@ FilterOp opBuilderHelperStringLessThan(const Reference& targetField,
  * or another field <$ref>. Only pass the filter if the event has both fields
  * of type string and passes the condition.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `string_less_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -130,9 +124,8 @@ FilterOp opBuilderHelperStringLessThanEqual(const Reference& targetField,
  *
  * The filter passes if both strings are equal (case sensitive) on the first N characters.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return xpression The lifter with the `starts_with` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -146,9 +139,8 @@ FilterOp opBuilderHelperStringStarts(const Reference& targetField,
  *
  * The filter passes if the first one contains all of the seccond one.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return xpression The lifter with the `contains` filter.
  * @throw std::runtime_error if the parameter is not a string.
  */
@@ -167,9 +159,8 @@ FilterOp opBuilderHelperStringContains(const Reference& targetField,
  * The filter checks if a field in the JSON event is equal to a value.
  * Only pass events if the fields are equal and the values are a integer.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `int_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -184,9 +175,8 @@ FilterOp opBuilderHelperIntEqual(const Reference& targetField,
  * The filter checks if a field in the JSON event is not equal to a value.
  * Only pass events if the fields are not equal and the values are a integer.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `int_not_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -201,9 +191,8 @@ FilterOp opBuilderHelperIntNotEqual(const Reference& targetField,
  * The filter checks if a field in the JSON event is less than a value.
  * Only pass events if the fields are less than and the values are a integer.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `int_less` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -218,9 +207,8 @@ FilterOp opBuilderHelperIntLessThan(const Reference& targetField,
  * The filter checks if a field in the JSON event is less than equal a value.
  * Only pass events if the fields are less than equal and the values are a integer.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `int_less_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -235,9 +223,8 @@ FilterOp opBuilderHelperIntLessThanEqual(const Reference& targetField,
  * The filter checks if a field in the JSON event is greater than a value.
  * Only pass events if the fields are greater than and the values are a integer.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `int_greater` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -253,9 +240,8 @@ FilterOp opBuilderHelperIntGreaterThan(const Reference& targetField,
  * The filter checks if a field in the JSON event is greater than equal a value.
  * Only pass events if the fields are greater than equal and the values are a integer.
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `int_greater_or_equal` filter.
  * @throw std::runtime_error if the parameter is not a integer.
  */
@@ -282,9 +268,8 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
  * Checks that the field value matches a regular expression
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `regex` filter.
  */
 FilterOp opBuilderHelperRegexMatch(const Reference& targetField,
@@ -296,9 +281,8 @@ FilterOp opBuilderHelperRegexMatch(const Reference& targetField,
  * Checks that the field value doesn't match a regular expression
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `regex_not` filter.
  */
 FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
@@ -310,9 +294,8 @@ FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
  * is in the specified CIDR range.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return Expression The lifter with the `ip_cidr_match` filter.
  * @throw  std::runtime_error if the parameter is not a cidr.
  */
@@ -321,68 +304,64 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
                                const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `array_contains` helper function that filters events if the field
- * is an array and contains one of the specified values.
+ * @brief Create the helper function `array_contains` that filters events if the field
+ * is an array and contains all the specified values.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  *
  * @throws std::runtime_error if cannot create the filter.
  */
 FilterOp opBuilderHelperContains(const Reference& targetField,
-                                       const std::vector<OpArg>& opArgs,
-                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
+                                 const std::vector<OpArg>& opArgs,
+                                 const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `array_contains` helper function that filters events if the field
- * is an array and contains one of the specified values.
+ * @brief Create the helper function `array_contains` that filters events if the field
+ * is an array and contains at least one of the specified values.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  *
  * @throws std::runtime_error if cannot create the filter.
  */
 FilterOp opBuilderHelperContainsAny(const Reference& targetField,
-                                       const std::vector<OpArg>& opArgs,
-                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
  * @brief Create `array_not_contains` helper function that filters events if the field
  * is an array and does not contains any of the specified values.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  *
  * @throws std::runtime_error if cannot create the filter.
  */
 FilterOp opBuilderHelperNotContains(const Reference& targetField,
-                                          const std::vector<OpArg>& opArgs,
-                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 /**
- * @brief Create `array_not_contains` helper function that filters events if the field
- * is an array and does not contains any of the specified values.
+ * @brief Create the helper function `array_not_contains_any` that filters events if the field
+ * is an array and does not contain at least one of the specified values.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  *
  * @throws std::runtime_error if cannot create the filter.
  */
 FilterOp opBuilderHelperNotContainsAny(const Reference& targetField,
-                                          const std::vector<OpArg>& opArgs,
-                                          const std::shared_ptr<const IBuildCtx>& buildCtx);
+                                       const std::vector<OpArg>& opArgs,
+                                       const std::shared_ptr<const IBuildCtx>& buildCtx);
 
 //*************************************************
 //*                Type filters                   *
@@ -393,9 +372,8 @@ FilterOp opBuilderHelperNotContainsAny(const Reference& targetField,
  * expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNumber(const Reference& targetField,
@@ -407,9 +385,8 @@ FilterOp opBuilderHelperIsNumber(const Reference& targetField,
  * the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNotNumber(const Reference& targetField,
@@ -421,9 +398,8 @@ FilterOp opBuilderHelperIsNotNumber(const Reference& targetField,
  * the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsString(const Reference& targetField,
@@ -435,9 +411,8 @@ FilterOp opBuilderHelperIsString(const Reference& targetField,
  * of the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNotString(const Reference& targetField,
@@ -449,9 +424,8 @@ FilterOp opBuilderHelperIsNotString(const Reference& targetField,
  * expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsBool(const Reference& targetField,
@@ -463,9 +437,8 @@ FilterOp opBuilderHelperIsBool(const Reference& targetField,
  * the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNotBool(const Reference& targetField,
@@ -477,9 +450,8 @@ FilterOp opBuilderHelperIsNotBool(const Reference& targetField,
  * the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsArray(const Reference& targetField,
@@ -491,9 +463,8 @@ FilterOp opBuilderHelperIsArray(const Reference& targetField,
  * of the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNotArray(const Reference& targetField,
@@ -505,9 +476,8 @@ FilterOp opBuilderHelperIsNotArray(const Reference& targetField,
  * the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsObject(const Reference& targetField,
@@ -519,9 +489,8 @@ FilterOp opBuilderHelperIsObject(const Reference& targetField,
  * of the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNotObject(const Reference& targetField,
@@ -533,9 +502,8 @@ FilterOp opBuilderHelperIsNotObject(const Reference& targetField,
  * expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNull(const Reference& targetField,
@@ -547,9 +515,8 @@ FilterOp opBuilderHelperIsNull(const Reference& targetField,
  * the expected type.
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperIsNotNull(const Reference& targetField,
@@ -566,9 +533,8 @@ FilterOp opBuilderHelperIsNotNull(const Reference& targetField,
  * <field>: +match_value/$<definition_array>|$<array_reference>
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperMatchValue(const Reference& targetField,
@@ -581,10 +547,8 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
  * <field>: +exists_key_in/$<definition_object>|$<object_reference>
  *
  * @param targetField target field of the helper
- * @param rawName name of the helper as present in the raw definition
- * @param rawParameters vector of parameters as present in the raw definition
- * @param definitions handler with definitions
- * @param schema schema to validate fields
+ * @param opArgs Vector of operation arguments containing numeric values to be converted.
+ * @param buildCtx Shared pointer to the build context used for the conversion operation.
  * @return FilterOp
  */
 FilterOp opBuilderHelperMatchKey(const Reference& targetField,

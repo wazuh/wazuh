@@ -801,7 +801,6 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
 //*************************************************
 //*               Array filters                   *
 //*************************************************
-// TODO: update to handle any json type
 FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
                                       const std::vector<OpArg>& opArgs,
                                       bool atleastOne,

@@ -211,7 +211,7 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
     registry->template add<builders::OpBuilderEntry>(
-        "concat_any", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat(false)});
+        "concat_any", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat(true)});
     registry->template add<builders::OpBuilderEntry>(
         "replace", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringReplace});
     registry->template add<builders::OpBuilderEntry>(
