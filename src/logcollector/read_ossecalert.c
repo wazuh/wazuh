@@ -31,7 +31,6 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     EVP_MD_CTX *context = EVP_MD_CTX_new();
     os_sha1 output;
     int64_t current_position = w_ftell(lf->fp);
-    bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     if (OS_SHA1_File_Nbytes(lf->file, &context, output, OS_BINARY, current_position) < 0) {
         merror(FAIL_SHA1_GEN, lf->file);
