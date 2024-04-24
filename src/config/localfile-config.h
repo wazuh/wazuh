@@ -409,7 +409,7 @@ cJSON * w_journal_filter_list_as_json(w_journal_filters_list_t filter_lst);
  *
  * The list pointer is invalid after the call.
  */
-void w_journal_free_filters_list(w_journal_filters_list_t list);
+void w_journal_filters_list_free(w_journal_filters_list_t list);
 
 /**
  * @brief Merge configuration of two journald log readers, if possible
