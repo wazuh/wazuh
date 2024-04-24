@@ -80,7 +80,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,OSList_SetMaxSize -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_Delete_ex \
                              -Wl,--wrap,OSHash_Free -Wl,--wrap,os_remove_rules_list -Wl,--wrap,os_remove_decoders_list \
                              -Wl,--wrap,os_remove_cdblist -Wl,--wrap,os_remove_cdbrules -Wl,--wrap,os_remove_eventlist \
-                             -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,time -Wl,--wrap,difftime \
+                             -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex -Wl,--wrap,time -Wl,--wrap,difftime \
                              -Wl,--wrap,OSHash_Next -Wl,--wrap,FOREVER -Wl,--wrap,OS_CreateEventList \
                              -Wl,--wrap,ReadDecodeXML -Wl,--wrap,Lists_OP_LoadList -Wl,--wrap,Lists_OP_MakeAll \
                              -Wl,--wrap,Rules_OP_ReadRules -Wl,--wrap,OS_ListLoadRules -Wl,--wrap,_setlevels \
@@ -157,7 +157,7 @@ LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
 
 list(APPEND analysisd_names "test_analysis-state")
 list(APPEND analysisd_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
-                            -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin \
+                            -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex \
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
