@@ -128,11 +128,16 @@ if __name__ == "__main__":
 
     select = ['id', 'node_name']
     query = 'lastKeepAlive<30s'
-    index_regex = VD_INDEX_BASE_NAME+'*'
+    index_regex = consolidated_index_name+'*'
 
     while True:
         # Ask wazuh-db the id and node_name of all agents whose lastKeepAlive is less than 30s
         agents = get_agents(select=select, q=query).to_dict()['affected_items']
+        if len(agents) == 0:
+            logging.info(f"No agents found. Skipping...")
+            time.sleep(10)
+            continue
+
         logging.info(f"Found {len(agents)} agent/s")
 
         # Get the indices where the agents' VD state is stored
@@ -144,6 +149,11 @@ if __name__ == "__main__":
 
         # Collect the documents from all the indices
         documents = client.search(index=','.join(indices))['hits']['hits']
+        if len(documents) == 0:
+            logging.info(f"No documents found. Skipping...")
+            time.sleep(10)
+            continue
+
         logging.info(f"Found {len(documents)} documents")
 
         # Filter the documents agent by agent and discard the older ones
