@@ -713,6 +713,422 @@ void test_wm_agent_upgrade_validate_wpk_version_macos_http_ok(void **state)
     assert_string_equal(task->wpk_sha1, "4a313b1312c23a213f2e3209fe0909dd");
 }
 
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_x86_64(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("centos", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("rpm", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_x86_64.rpm.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_aarch64(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("centos", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("aarch64", agent->architecture);
+    os_strdup("rpm", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/aarch64/rpm/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/aarch64/rpm/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_aarch64.rpm.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_rpm(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("centos", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("rpm", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("rpm", task->package_type);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_x86_64.rpm.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("centos", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("rpm", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("deb", task->package_type);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, formatted_msg, "(8169): Agent '0' with platform 'centos' won't be upgraded using package 'deb' without the force option. Ignoring...");
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_x86_64.rpm.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb_force(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("centos", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("rpm", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("deb", task->package_type);
+    task->force_upgrade = true;
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8170): Agent '0' with platform 'centos' will be upgraded using package 'deb'");
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_amd64.deb.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_x86_64(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("ubuntu", agent->platform);
+    os_strdup("18", agent->major_version);
+    os_strdup("04", agent->minor_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("deb", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_amd64.deb.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_aarch64(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("ubuntu", agent->platform);
+    os_strdup("18", agent->major_version);
+    os_strdup("04", agent->minor_version);
+    os_strdup("aarch64", agent->architecture);
+    os_strdup("deb", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/arm64/deb/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/arm64/deb/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_arm64.deb.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_deb(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("ubuntu", agent->platform);
+    os_strdup("18", agent->major_version);
+    os_strdup("04", agent->minor_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("deb", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("deb", task->package_type);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_amd64.deb.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_rpm(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("ubuntu", agent->platform);
+    os_strdup("18", agent->major_version);
+    os_strdup("04", agent->minor_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("deb", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("rpm", task->package_type);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, formatted_msg, "(8169): Agent '0' with platform 'ubuntu' won't be upgraded using package 'rpm' without the force option. Ignoring...");
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/amd64/deb/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_amd64.deb.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_rpm_force(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("ubuntu", agent->platform);
+    os_strdup("18", agent->major_version);
+    os_strdup("04", agent->minor_version);
+    os_strdup("x86_64", agent->architecture);
+    os_strdup("deb", agent->package_type);
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("rpm", task->package_type);
+    task->force_upgrade = true;
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8170): Agent '0' with platform 'ubuntu' will be upgraded using package 'rpm'");
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/x86_64/rpm/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_x86_64.rpm.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_x86_64(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+
+    os_strdup("unsupported", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("x86_64", agent->architecture);
+    agent->package_type = NULL;
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, formatted_msg, "(8171): Agent '0' with unsupported platform 'unsupported' won't be upgraded without a default package.");
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+    assert_string_equal(task->wpk_repository, "packages.wazuh.com/4.x/wpk/");
+    assert_null(task->wpk_file);
+    assert_null(task->wpk_sha1);
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_aarch64(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+
+    os_strdup("unsupported", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("aarch64", agent->architecture);
+    agent->package_type = NULL;
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+
+    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, formatted_msg, "(8171): Agent '0' with unsupported platform 'unsupported' won't be upgraded without a default package.");
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
+    assert_string_equal(task->wpk_repository, "packages.wazuh.com/4.x/wpk/");
+    assert_null(task->wpk_file);
+    assert_null(task->wpk_sha1);
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_rpm(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("unsupported", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("i386", agent->architecture);
+    agent->package_type = NULL;
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("rpm", task->package_type);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8172): Agent '0' with unsupported platform 'unsupported' will be upgraded with package 'rpm'");
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/i386/rpm/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/i386/rpm/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_i386.rpm.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
+
+void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_deb(void **state)
+{
+    wm_agent_info *agent = state[0];
+    wm_upgrade_task *task = state[1];
+    char *versions = NULL;
+
+    os_strdup("unsupported", agent->platform);
+    os_strdup("8", agent->major_version);
+    os_strdup("i386", agent->architecture);
+    agent->package_type = NULL;
+
+    task->use_http = false;
+    os_strdup("v4.9.0", task->wpk_version);
+    os_strdup("deb", task->package_type);
+
+    os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8172): Agent '0' with unsupported platform 'unsupported' will be upgraded with package 'deb'");
+
+    expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/i386/deb/versions");
+    expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
+    will_return(__wrap_wurl_http_get, versions);
+
+    int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_repository, "https://packages.wazuh.com/4.x/wpk/linux/i386/deb/");
+    assert_string_equal(task->wpk_file, "wazuh_agent_v4.9.0_linux_i386.deb.wpk");
+    assert_string_equal(task->wpk_sha1, "231ef123a32d312b4123c21313ee6780");
+}
 
 void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
 {
@@ -1303,6 +1719,20 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_macos_http_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_rhel_old_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_no_version, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_x86_64, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_aarch64, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_rpm, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb_force, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_x86_64, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_aarch64, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_deb, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_rpm, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_rpm_force, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_x86_64, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_aarch64, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_rpm, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_deb, setup_validate_wpk_version, teardown_validate_wpk_version),
         // wm_agent_upgrade_validate_version
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_custom_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
