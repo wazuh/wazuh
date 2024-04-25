@@ -269,6 +269,9 @@ base::OptError Locator::lookup(const std::string& ip, const std::shared_ptr<DbEn
         return base::Error {LIBMMD_ERROR + MMDB_strerror(mmdb_error)};
     }
 
+    m_cachedIp = ip;
+    m_cachedResult = result;
+
     return base::noError();
 }
 
