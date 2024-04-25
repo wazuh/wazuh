@@ -34,6 +34,18 @@ static int teardown_group(void **state) {
 
 /* OS_SHA1_File_Nbytes */
 
+void OS_SHA1_File_Nbytes_context_null (void **state)
+{
+    const char *path = "/home/test_file";
+    EVP_MD_CTX *context = NULL;
+    os_sha1 output;
+    ssize_t nbytes = 4096;
+
+    int mode = OS_BINARY;
+
+    assert_int_equal(OS_SHA1_File_Nbytes(path, &context, output, mode, nbytes), -3);
+}
+
 void OS_SHA1_File_Nbytes_unable_open_file (void **state)
 {
     const char *path = "/home/test_file";
@@ -193,6 +205,7 @@ void test_sha1_file_fail(void **state)
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Tests OS_SHA1_File_Nbytes
+        cmocka_unit_test(OS_SHA1_File_Nbytes_context_null),
         cmocka_unit_test(OS_SHA1_File_Nbytes_unable_open_file),
         cmocka_unit_test(OS_SHA1_File_Nbytes_ok),
         cmocka_unit_test(OS_SHA1_File_Nbytes_num_bytes_exceded),

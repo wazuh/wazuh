@@ -146,6 +146,11 @@ int OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sh
     int64_t n;
     unsigned char md[SHA_DIGEST_LENGTH];
 
+    if (c == NULL || *c == NULL) {
+        mdebug1("Context for file '%s' can not be NULL.", fname);
+        return -3;
+    }
+
     memset(output, 0, sizeof(os_sha1));
     buf[OS_MAXSTR - 1] = '\0';
 
