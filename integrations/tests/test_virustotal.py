@@ -99,14 +99,14 @@ sys_args_template = [
 ]
 
 vt_response_data = {
-        'attributes': {
-            'last_analysis_stats': {
-                'malicious': 2
-            },
-            'sha1': 'valid_sha1_value',
-            'last_analysis_date': 'valid_date_value'
-        }
+    'attributes': {
+        'last_analysis_stats': {
+            'malicious': 2
+        },
+        'sha1': 'valid_sha1_value',
+        'last_analysis_date': 'valid_date_value'
     }
+}
 
 def test_main_bad_arguments_exit():
     """Test that main function exits when wrong number of arguments are passed."""
@@ -276,7 +276,6 @@ def test_request_virustotal_info_md5_after_check_fail_8():
 def test_request_virustotal_info_md5_after_check_ok():
     """Test that the md5_after field from alerts are valid md5 hash."""
     with patch('virustotal.query_api', return_value=vt_response_data), \
-         patch('virustotal.in_database', return_value=False), \
          patch('virustotal.debug'):
 
         response = virustotal.request_virustotal_info(alert_template_md5[8], apikey_virustotal)
@@ -309,9 +308,7 @@ def test_request_info_from_api_timeout_and_retries_expired():
 def test_request_info_from_api_timeout_and_retries_not_expired():
     """Test that the query_api function fails with retries when an Timeout exception happens (retries not expired)."""
     virustotal.retries = 2
-    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), alert_output]), patch(
-        'virustotal.in_database', return_value=False
-    ), patch('virustotal.debug') as debug:
+    with patch('virustotal.query_api', side_effect=[Timeout(), Timeout(), alert_output]), patch('virustotal.debug') as debug:
         response = virustotal.request_info_from_api(alert_template_md5[8], {'virustotal': {}}, apikey_virustotal)
         debug.assert_has_calls(
             [

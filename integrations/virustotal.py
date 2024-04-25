@@ -253,13 +253,6 @@ def request_virustotal_info(alert: any, apikey: str):
     return alert_output
 
 
-def in_database(data, hash):
-    result = data['response_code']
-    if result == 0:
-        return False
-    return True
-
-
 def query_api(hash: str, apikey: str) -> any:
     """Send a request to VT API and fetch information to build message
 
@@ -287,7 +280,7 @@ def query_api(hash: str, apikey: str) -> any:
 
     debug('# Querying VirusTotal API')
     response = requests.get(
-        f'https://www.virustotal.com/api/v3/files/{hash}', headers=headers, timeout=timeout    
+        f'https://www.virustotal.com/api/v3/files/{hash}', headers=headers, timeout=timeout
     )
 
     if response.status_code == 200:
