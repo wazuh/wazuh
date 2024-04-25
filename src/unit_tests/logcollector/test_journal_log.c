@@ -21,7 +21,7 @@
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
-#include "../wrappers/posix/dlfcn_wrappers.h"
+#include "../wrappers/linux/dlfcn_wrappers.h"
 
 #define _XOPEN_SOURCE
 

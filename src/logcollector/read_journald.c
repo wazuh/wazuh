@@ -100,9 +100,9 @@ bool w_journald_can_read(unsigned long owner_id) {
         }
 
         // Set the pointer to the journal log
-        pthread_mutex_lock(&gs_journald_ofe.mutex);
+        w_mutex_lock(&gs_journald_ofe.mutex);
         uint64_t lr_ts = gs_journald_ofe.last_read_timestamp;
-        pthread_mutex_unlock(&gs_journald_ofe.mutex);
+        w_mutex_unlock(&gs_journald_ofe.mutex);
 
         int ret = gs_journald_ofe.only_future_events
                       ? w_journal_context_seek_most_recent(gs_journald_global.journal_ctx)
@@ -174,9 +174,9 @@ void * read_journald(logreader * lf, int * rc, __attribute__((unused)) int drop_
     }
 
     // Update timestamp
-    pthread_mutex_lock(&gs_journald_ofe.mutex);
+    w_mutex_lock(&gs_journald_ofe.mutex);
     gs_journald_ofe.last_read_timestamp = gs_journald_global.journal_ctx->timestamp;
-    pthread_mutex_unlock(&gs_journald_ofe.mutex);
+    w_mutex_unlock(&gs_journald_ofe.mutex);
 
     return NULL;
 }
@@ -195,9 +195,9 @@ cJSON * w_journald_get_status_as_JSON() {
         return NULL;
     }
 
-    pthread_mutex_lock(&gs_journald_ofe.mutex);
+    w_mutex_lock(&gs_journald_ofe.mutex);
     uint64_t timestamp = gs_journald_ofe.last_read_timestamp;
-    pthread_mutex_unlock(&gs_journald_ofe.mutex);
+    w_mutex_unlock(&gs_journald_ofe.mutex);
 
     // Convert the timestamp uint64_t to a string
     char timestamp_str[OS_SIZE_256] = {0};
@@ -228,9 +228,9 @@ void w_journald_set_status_from_JSON(cJSON * global_json) {
     }
 
     // Set the timestamp
-    pthread_mutex_lock(&gs_journald_ofe.mutex);
+    w_mutex_lock(&gs_journald_ofe.mutex);
     gs_journald_ofe.last_read_timestamp = timestamp_uint;
-    pthread_mutex_unlock(&gs_journald_ofe.mutex);
+    w_mutex_unlock(&gs_journald_ofe.mutex);
 
     mdebug2(LOGCOLLECTOR_JOURNAL_LOG_SET_LAST, timestamp_uint);
 }

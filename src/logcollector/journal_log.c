@@ -148,7 +148,13 @@ STATIC INLINE char * find_library_path(const char * library_name) {
     while (getline(&line, &len, maps_file) != -1) {
         if (strstr(line, library_name) != NULL) {
             char * path_start = strchr(line, '/');
+            if (path_start == NULL) {                
+                break; // Never happens
+            }
             char * path_end = strchr(path_start, '\n');
+            if (path_end == NULL) {                
+                break; // Never happens
+            }
             *path_end = '\0';
             path = strndup(path_start, path_end - path_start);
             break;
@@ -575,7 +581,8 @@ w_journal_entry_t * w_journal_entry_dump(w_journal_context_t * ctx, w_journal_en
         return NULL;
     }
 
-    w_journal_entry_t * entry = calloc(1, sizeof(w_journal_entry_t));
+    w_journal_entry_t * entry = NULL;
+    os_calloc(1, sizeof(w_journal_entry_t), entry);
     entry->type = W_JOURNAL_ENTRY_DUMP_TYPE_INVALID;
     entry->timestamp = ctx->timestamp;
 
