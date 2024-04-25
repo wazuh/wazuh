@@ -55,14 +55,9 @@ w_journal_entry_t * __wrap_w_journal_entry_dump(w_journal_context_t * ctx, w_jou
     return mock_type(w_journal_entry_t *);
 }
 
-char * __wrap_w_journal_entry_to_string(w_journal_entry_t * entry) { 
-        return mock_type(char *);
- }
+char * __wrap_w_journal_entry_to_string(w_journal_entry_t * entry) { return mock_type(char *); }
 
-void __wrap_w_journal_entry_free(w_journal_entry_t * entry) { 
-    function_called();
-    return; 
-}
+void __wrap_w_journal_entry_free(w_journal_entry_t * entry) { function_called(); }
 
 /* Aux setters */
 void set_gs_journald_ofe(bool exist, bool ofe, uint64_t timestamp);
@@ -78,10 +73,7 @@ int __wrap_w_msg_hash_queues_push(
     return mock_type(int);
 }
 
-int __wrap_can_read() {
-
-    return mock_type(int);
-}
+int __wrap_can_read() { return mock_type(int); }
 
 /* Test w_journald_can_read */
 void test_w_journald_can_read_disable(void ** state) {
@@ -165,7 +157,6 @@ void test_w_journald_set_ofe(void ** state) {
     w_journald_set_ofe(false);
 }
 
-
 void test_read_journald_can_read_false(void ** state) {
 
     // Prepare environment
@@ -200,15 +191,16 @@ void test_read_journald_next_entry_error(void ** state) {
 
     // Fail get nex entry
     will_return(__wrap_w_journal_context_next_newest_filtered, -1);
-    expect_string(__wrap__merror, formatted_msg, "(1610): Failed to get the next entry, disabling journal log: Operation not permitted.");
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "(1610): Failed to get the next entry, disabling journal log: Operation not permitted.");
 
     assert_null(read_journald(&lf, &rc, 0));
     assert_true(journald_isDisabled());
-
 }
 
 void test_read_journald_next_entry_no_new_entry(void ** state) {
- 
+
     // Prepare environment
     w_journal_context_t ctxt = {0};
     set_gs_journald_global(0, false, &ctxt);
@@ -255,7 +247,6 @@ void test_read_journald_dump_entry_error(void ** state) {
 
     assert_null(read_journald(&lf, &rc, 0));
     assert_false(journald_isDisabled());
-
 }
 
 void test_read_journald_dump_entry_max_len(void ** state) {
@@ -279,10 +270,10 @@ void test_read_journald_dump_entry_max_len(void ** state) {
     will_return(__wrap_w_journal_entry_to_string, strdup("MAX_STR_>>>_16_|xxxxxxxx"));
     expect_function_call(__wrap_w_journal_entry_free);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(9007): Message size > maximum allowed, The message will be truncated.");
+    expect_string(
+        __wrap__mdebug1, formatted_msg, "(9007): Message size > maximum allowed, The message will be truncated.");
 
     will_return(__wrap_isDebug, 0);
-
 
     // Check message
     expect_string(__wrap_w_msg_hash_queues_push, str, "MAX_STR_>>>_16_|");
@@ -294,7 +285,6 @@ void test_read_journald_dump_entry_max_len(void ** state) {
 
     assert_null(read_journald(&lf, &rc, 0));
     assert_false(journald_isDisabled());
-
 }
 
 void test_read_journald_dump_entry_debug(void ** state) {
@@ -322,7 +312,6 @@ void test_read_journald_dump_entry_debug(void ** state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(9008): Reading from journal: 'message test'.");
 
-
     // Check message
     expect_string(__wrap_w_msg_hash_queues_push, str, "message test");
     expect_value(__wrap_w_msg_hash_queues_push, size, strlen("message test") + 1);
@@ -333,9 +322,7 @@ void test_read_journald_dump_entry_debug(void ** state) {
 
     assert_null(read_journald(&lf, &rc, 0));
     assert_false(journald_isDisabled());
-
 }
-
 
 int main(void) {
 
