@@ -50,7 +50,7 @@ main() {
         case "${1}" in
         "-b"|"--branch")
             if [ -n "${2}" ]; then
-                REFERENCE="$(echo ${2} | cut -d'/' -f2)"
+                REFERENCE="${2}"
                 shift 2
             else
                 echo "ERROR: Missing branch."
