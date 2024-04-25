@@ -21,6 +21,7 @@
 #include "../wrappers/externals/pcre2/pcre2_wrappers.h"
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../wrappers/libc/stdio_wrappers.h"
+#include "../wrappers/posix/dlfcn_wrappers.h"
 
 #define _XOPEN_SOURCE
 
@@ -99,30 +100,6 @@ int __wrap_sd_journal_get_cutoff_realtime_usec(sd_journal * j, uint64_t * from, 
     return ret;
 }
 
-// Mock dlsym function to simulate the loading of valid and invalid functions
-// Mock dlsym function
-extern void * __real_dlsym(void * handle, const char * symbol);
-void * __wrap_dlsym(void * handle, const char * symbol) {
-    if (test_mode) {
-        check_expected_ptr(handle);
-        check_expected_ptr(symbol);
-        return mock_ptr_type(void *);
-    } else {
-        return __real_dlsym(handle, symbol);
-    }
-}
-
-// Mock dlerror function
-extern char * __real_dlerror(void);
-char * __wrap_dlerror(void) {
-    if (test_mode) {
-        return mock_ptr_type(char *);
-    } else {
-        return __real_dlerror();
-    }
-}
-
-// Mock gmtime_r function
 extern unsigned int __real_gmtime_r(const time_t * t, struct tm * tm);
 unsigned int __wrap_gmtime_r(__attribute__((__unused__)) const time_t * t, __attribute__((__unused__)) struct tm * tm) {
     unsigned int mock = mock_type(unsigned int);
@@ -133,48 +110,6 @@ unsigned int __wrap_gmtime_r(__attribute__((__unused__)) const time_t * t, __att
     }
 }
 
-// Mock getline function
-extern ssize_t __real_getline(char ** lineptr, size_t * n, FILE * stream);
-ssize_t __wrap_getline(char ** lineptr, size_t * n, FILE * stream) {
-    if (test_mode) {
-        // Asegurarse de que se pase un puntero no nulo para lineptr
-        assert_non_null(lineptr);
-
-        // Configurar la línea simulada y su longitud
-        *lineptr = mock_ptr_type(char *);
-        *n = strlen(*lineptr);
-
-        // Retornar la longitud de la línea simulada
-        return *n;
-    } else {
-        return __real_getline(lineptr, n, stream);
-    }
-}
-
-// Mock dlopen function
-extern void * __real_dlopen(const char * filename, int flags);
-void * __wrap_dlopen(const char * filename, int flags) {
-    if (test_mode) {
-        check_expected_ptr(filename);
-        check_expected(flags);
-        return mock_ptr_type(void *);
-    } else {
-        return __real_dlopen(filename, flags);
-    }
-}
-
-// Mock dlclose function
-extern int __real_dlclose(void * handle);
-int __wrap_dlclose(void * handle) {
-    if (test_mode) {
-        check_expected_ptr(handle);
-        return mock();
-    } else {
-        return __real_dlclose(handle);
-    }
-}
-
-// Mock debug function
 int __wrap_isDebug() { return mock(); }
 
 /* setup/teardown */

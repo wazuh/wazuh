@@ -64,4 +64,6 @@ int __wrap_fputc(char character, FILE *stream);
 
 FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc);
 
+ssize_t __wrap_getline(char ** lineptr, size_t * n, FILE * stream);
+
 #endif
