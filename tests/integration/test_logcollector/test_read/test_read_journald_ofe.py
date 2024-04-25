@@ -154,13 +154,13 @@ def test_configuration_location(test_configuration, test_metadata, truncate_moni
     if 'expected_logs' in test_metadata:
         # Append regex to expected logs
         for i, log_message in enumerate(test_metadata['expected_logs']):
-            test_metadata['expected_logs'][i] = f".*logcollector.* {log_message}"
+            test_metadata['expected_logs'][i] = f".*logcollector.*{log_message}.*"
         assert_list_logs(test_metadata['expected_logs'])
     
     if 'unexpected_logs' in test_metadata:
         # Append regex to unexpected logs
         for i, log_message in enumerate(test_metadata['unexpected_logs']):
-            test_metadata['unexpected_logs'][i] = f".*logcollector.* {log_message}"
+            test_metadata['unexpected_logs'][i] = f".*logcollector.*{log_message}.*"
         assert_not_list_logs(test_metadata['unexpected_logs'])
 
     # Get the localfile list from the runtime configuration

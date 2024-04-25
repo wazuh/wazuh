@@ -8,7 +8,7 @@
   metadata:
     expected_logs:
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal
+      - .*Monitoring journal entries.
     expected_config:
       logformat: journald
       only-future-events: 'yes'
@@ -26,7 +26,7 @@
     expected_logs:
       - .*Invalid location value 'bad location'.*Default value will be used
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal
+      - .*Monitoring journal entries.
     expected_config:
       logformat: journald
       only-future-events: 'yes'
@@ -42,7 +42,7 @@
     expected_logs:
       - .*Missing 'location' element when using 'journald' as 'log_format'. Default value will be used.
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal.*
+      - .*Monitoring journal entries..*
     expected_config:
       logformat: journald
       only-future-events: 'yes'
@@ -96,7 +96,7 @@
   metadata:
     expected_logs:
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal
+      - .*Monitoring journal entries.
     expected_config: 
       logformat: journald
       filters_disabled: false
@@ -153,7 +153,7 @@
   metadata:
     expected_logs:
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal
+      - .*Monitoring journal entries.
     expected_config: 
       logformat: journald
       filters_disabled: false
@@ -211,7 +211,7 @@
     expected_logs:
       - .*The filters of the journald log will be disabled in the merge.*
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal
+      - .*Monitoring journal entries.
     expected_config: 
       logformat: journald
       filters_disabled: true
@@ -271,7 +271,7 @@
       - .*Error compiling the PCRE2 expression.*
       - .*Cannot add filter, the block will be ignored
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal
+      - .*Monitoring journal entries.
     expected_config: 
       logformat: journald
       filters_disabled: false
@@ -330,7 +330,7 @@
   metadata:
     expected_logs:
       - .*Socket target for 'journald' -> agent
-      - .*Monitoring the journal
+      - .*Monitoring journal entries.
     expected_config: 
       logformat: journald
       only-future-events: 'no'
