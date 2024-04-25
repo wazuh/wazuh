@@ -197,5 +197,7 @@ if __name__ == "__main__":
             logging.info(f'Updating documents. Request body: {body}')
             response = client.bulk(index=consolidated_index_name, body=body)
             logging.info(f'Response: {response}')
+        else:
+            logging.info('Consolidated index already up-to-date. Sleeping...')
 
         time.sleep(10)
