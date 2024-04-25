@@ -83,6 +83,20 @@ public:
      * @copydoc ILocator::getAsJson
      */
     base::RespOrError<json::Json> getAsJson(const std::string& ip, const DotPath& path) override;
+
+    /**
+     * @brief Retrieves the cached IP address.
+     *
+     * @return The cached IP address.
+     */
+    inline const std::string& getCachedIp() const { return m_cachedIp; }
+
+    /**
+     * @brief Retrieves the cached lookup result.
+     *
+     * @return The cached lookup result.
+     */
+    inline const MMDB_lookup_result_s& getCachedResult() const { return m_cachedResult; }
 };
 
 } // namespace geo
