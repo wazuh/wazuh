@@ -113,8 +113,11 @@ function ExtractDebugSymbols(){
 
     #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
-	Write-Host "Compressing debug symbols to debug-symbols.zip"
-	Compress-Archive -Path $pdbFiles -Force -DestinationPath ".\debug-symbols.zip"
+
+    $ZIP_NAME = "$($MSI_NAME.Replace('.msi', '-debug-symbols.zip'))"
+
+	Write-Host "Compressing debug symbols to $ZIP_NAME"
+	Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME"
 
 	Remove-Item -Path "*.pdb"
 }
