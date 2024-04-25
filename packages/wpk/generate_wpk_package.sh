@@ -188,7 +188,7 @@ function main() {
             ;;
         "-b"|"--branch")
             if [ -n "${2}" ]; then
-                local BRANCH="$(echo ${2} | cut -d'/' -f2)"
+                local BRANCH="${2}"
                 local HAVE_BRANCH=true
                 shift 2
             else
