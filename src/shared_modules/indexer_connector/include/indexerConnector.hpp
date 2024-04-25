@@ -62,6 +62,7 @@ class EXPORTED IndexerConnector final
     std::string m_indexName;
     std::mutex m_syncMutex;
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
+    std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
 
     /**
      * @brief Intialize method used to load template data and initialize the index.
@@ -76,22 +77,34 @@ class EXPORTED IndexerConnector final
                     const SecureCommunication& secureCommunication);
 
     /**
-     * @brief Save documents into the database.
-     * @param documents Documents to be saved.
-     */
-    void saveDocuments(const std::vector<Document>& documents);
-
-    /**
      * @brief This method is used to calculate the diff between the inventory database and the indexer.
      * @param responseJson Response JSON.
      * @param agentId Agent ID.
      * @param secureCommunication Secure communication.
      * @param selector Server selector.
      */
-    void diff(nlohmann::json& responseJson,
+    void diff(const nlohmann::json& responseJson,
               const std::string& agentId,
               const SecureCommunication& secureCommunication,
               const std::shared_ptr<ServerSelector>& selector);
+
+    /**
+     * @brief Get agent ids of documents from the indexer.
+     * @param url Indexer URL.
+     * @param agentId Agent ID.
+     * @param secureCommunication Secure communication.
+     * @return Agent documents.
+     */
+    nlohmann::json getAgentDocumentsIds(const std::string& url,
+                                        const std::string& agentId,
+                                        const SecureCommunication& secureCommunication) const;
+
+    /**
+     * @brief Abuse control.
+     * @param agentId Agent ID.
+     * @return True if the agent is abusing the indexer, false otherwise.
+     */
+    bool abuseControl(const std::string& agentId);
 
 public:
     /**

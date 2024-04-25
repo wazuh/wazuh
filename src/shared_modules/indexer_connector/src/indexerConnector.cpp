@@ -37,8 +37,13 @@ constexpr auto DOUBLE_FACTOR {2};
 // Single thread because the events needs to be processed in order.
 constexpr auto DATABASE_WORKERS = 1;
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
+
+// Sync configuration
 constexpr auto SYNC_WORKERS = 1;
 constexpr auto SYNC_QUEUE_LIMIT = 4096;
+
+// Abuse control
+constexpr auto MINIMAL_SYNC_TIME {30}; // In minutes
 
 static void initConfiguration(SecureCommunication& secureCommunication, const nlohmann::json& config)
 {
@@ -87,21 +92,6 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
         .sslCertificate(sslCertificate)
         .sslKey(sslKey)
         .caRootCertificate(caRootCertificate);
-}
-
-void IndexerConnector::saveDocuments(const std::vector<Document>& documents)
-{
-    for (const auto& document : documents)
-    {
-        if (document.deleted)
-        {
-            m_db->delete_(document.id);
-        }
-        else
-        {
-            m_db->put(document.id, document.data);
-        }
-    }
 }
 
 static void builderBulkDelete(std::string& bulkData, std::string_view id, std::string_view index)
@@ -159,7 +149,7 @@ IndexerConnector::IndexerConnector(
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-        [=](std::queue<std::string>& dataQueue)
+        [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
 
@@ -190,13 +180,13 @@ IndexerConnector::IndexerConnector(
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
                     builderBulkDelete(bulkData, id, m_indexName);
-                    documents.push_back({id, data, true});
+                    m_db->delete_(id);
                 }
                 else
                 {
                     const auto dataString = parsedData.at("data").dump();
                     builderBulkIndex(bulkData, id, m_indexName, dataString);
-                    documents.push_back({id, dataString, false});
+                    m_db->put(id, dataString);
                 }
             }
             // Process data.
@@ -212,41 +202,24 @@ IndexerConnector::IndexerConnector(
                 "",
                 DEFAULT_HEADERS,
                 secureCommunication);
-
-            // Save documents to the database.
-            saveDocuments(documents);
         },
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
-        [=](const std::string& agentId)
+        [this, selector, secureCommunication](const std::string& agentId)
         {
             try
             {
                 std::scoped_lock lock(m_syncMutex);
-                nlohmann::json responseJson;
-                auto url = selector->getNext().append("/").append(m_indexName).append("/_search");
-
-                nlohmann::json postData;
-
-                // TODO: Add scroll support.
-                postData["query"]["match"]["agent.id"] = agentId;
-                postData["size"] = 10000;
-                postData["_source"] = nlohmann::json::array({"_id"});
-
-                logDebug2(IC_NAME, "Payload: %s", postData.dump().c_str());
-
-                HTTPRequest::instance().post(
-                    HttpURL(url),
-                    postData.dump(),
-                    [&responseJson](const std::string& response) { responseJson = nlohmann::json::parse(response); },
-                    [](const std::string& error, const long) { throw std::runtime_error(error); },
-                    "",
-                    DEFAULT_HEADERS,
-                    secureCommunication);
-                logDebug2(IC_NAME, "Response: %s", responseJson.dump().c_str());
-                diff(responseJson, agentId, secureCommunication, selector);
+                if (!abuseControl(agentId))
+                {
+                    logDebug2(IC_NAME, "Syncing agent '%s' with the indexer.", agentId.c_str());
+                    diff(getAgentDocumentsIds(selector->getNext(), agentId, secureCommunication),
+                         agentId,
+                         secureCommunication,
+                         selector);
+                }
             }
             catch (const std::exception& e)
             {
@@ -259,7 +232,7 @@ IndexerConnector::IndexerConnector(
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
-        [=]()
+        [this, templateData, selector, secureCommunication]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock lock(m_mutex);
@@ -297,6 +270,73 @@ IndexerConnector::IndexerConnector(
         });
 }
 
+bool IndexerConnector::abuseControl(const std::string& agentId)
+{
+    const auto currentTime = std::chrono::system_clock::now();
+    if (const auto lastSync = m_lastSync.find(agentId); lastSync != m_lastSync.end())
+    {
+        const auto diff = std::chrono::duration_cast<std::chrono::minutes>(currentTime - lastSync->second);
+        if (diff.count() < MINIMAL_SYNC_TIME)
+        {
+            logDebug2(IC_NAME, "Agent '%s' ommited due to abuse control.", agentId.c_str());
+            return true;
+        }
+    }
+    m_lastSync[agentId] = currentTime;
+    return false;
+}
+
+nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
+                                                      const std::string& agentId,
+                                                      const SecureCommunication& secureCommunication) const
+{
+    nlohmann::json postData;
+    nlohmann::json responseJson;
+    constexpr auto ELEMENTS_PER_QUERY {10000}; // The max value for queries is 10000 in the wazuh-indexer.
+
+    postData["query"]["match"]["agent.id"] = agentId;
+    postData["size"] = ELEMENTS_PER_QUERY;
+    postData["_source"] = nlohmann::json::array({"_id"});
+
+    HTTPRequest::instance().post(
+        HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
+        postData.dump(),
+        [&responseJson](const std::string& response) { responseJson = nlohmann::json::parse(response); },
+        [](const std::string& error, const long) { throw std::runtime_error(error); },
+        "",
+        DEFAULT_HEADERS,
+        secureCommunication);
+
+    // If the response have more than ELEMENTS_PER_QUERY elements, we need to scroll.
+    if (responseJson.at("hits").at("total").at("value").get<int>() > ELEMENTS_PER_QUERY)
+    {
+        const auto scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
+        const auto scrollUrl = url + "/_search/scroll";
+        const auto scrollData = R"({"scroll":"1m","scroll_id":")" + scrollId + "\"}";
+
+        while (responseJson.at("hits").at("hits").size() < responseJson.at("hits").at("total").at("value").get<int>())
+        {
+            HTTPRequest::instance().post(
+                HttpURL(scrollUrl),
+                scrollData,
+                [&responseJson](const std::string& response)
+                {
+                    auto newResponse = nlohmann::json::parse(response);
+                    for (const auto& hit : newResponse.at("hits").at("hits"))
+                    {
+                        responseJson.at("hits").at("hits").push_back(hit);
+                    }
+                },
+                [](const std::string& error, const long) { throw std::runtime_error(error); },
+                "",
+                DEFAULT_HEADERS,
+                secureCommunication);
+        }
+    }
+
+    return responseJson;
+}
+
 IndexerConnector::~IndexerConnector()
 {
     m_stopping.store(true);
@@ -318,7 +358,7 @@ void IndexerConnector::sync(const std::string& agentId)
     m_syncQueue->push(agentId);
 }
 
-void IndexerConnector::diff(nlohmann::json& responseJson,
+void IndexerConnector::diff(const nlohmann::json& responseJson,
                             const std::string& agentId,
                             const SecureCommunication& secureCommunication,
                             const std::shared_ptr<ServerSelector>& selector)
@@ -385,7 +425,6 @@ void IndexerConnector::diff(nlohmann::json& responseJson,
 
     if (!bulkData.empty())
     {
-        logDebug2(IC_NAME, "Payload: %s", bulkData.c_str());
         HTTPRequest::instance().post(
             HttpURL(url),
             bulkData,
