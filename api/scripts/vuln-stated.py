@@ -79,7 +79,7 @@ def create_index(client: OpenSearch, index_name: str):
 def consolidate_agent_vd_state(documents: list, agent_id: str, node_name: str) -> list:
     # TODO: create a Document class to simplify information access and manipulation?
     consolidated_documents = []
-    for idx, document in enumerate(documents):
+    for document in documents:
         # Discard documents that belong to other agents or were indexed in other nodes. node_name is always the name of
         # the node the agent is currently connected to.
         agent = document['_source']['agent']
@@ -93,7 +93,6 @@ def consolidate_agent_vd_state(documents: list, agent_id: str, node_name: str) -
         # If a document exists, it is updated; if it does not exist, a new document is indexed with the parameters
         # specified in the doc field
         consolidated_documents.append({'doc': document['_source'], 'doc_as_upsert': True})
-        documents.pop(idx)
 
     return consolidated_documents
 
