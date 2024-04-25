@@ -75,7 +75,7 @@ def create_index(client: OpenSearch, index_name: str):
         logging.error(f"Error during index creation: {e}")
 
 
-def consolidate_agent_vd_state(consolidated_index_name: str, documents: list, agent_id: str, node_name: str) -> list:
+def consolidate_agent_vd_state(documents: list, agent_id: str, node_name: str) -> list:
     # TODO: create a Document class to simplify information access and manipulation?
     consolidated_documents = []
     for document in documents:
@@ -88,16 +88,15 @@ def consolidate_agent_vd_state(consolidated_index_name: str, documents: list, ag
         if agent['id'] != agent_id or agent['ephemeral_id'] != node_name:
             continue
 
-        # Modify the index name and remove the node name from the document ID
-        document['_index'] = consolidated_index_name
+        # Remove the node name from the document ID. Include it in the source just to put it in the body later.
         document_id = remove_node_name(document['_id'])
-        document['_id'] = document_id
+        document['_source']['_id'] = document_id
 
         # If a document exists, it is updated; if it does not exist, a new document is indexed with the parameters
         # specified in the doc field
         #
         # TODO: what should we do if the document already exists in the consolidated index? Compare it? Update it?
-        consolidated_documents.append({'doc': document, 'doc_as_upsert': True})
+        consolidated_documents.append({'doc': document['_source'], 'doc_as_upsert': True})
 
     return consolidated_documents
 
@@ -162,18 +161,22 @@ if __name__ == "__main__":
             agent_id = a['id']
             logging.info(f"Consolidating agent {agent_id} vulnerability state")
 
-            consolidated_docs = consolidate_agent_vd_state(consolidated_index_name, documents, agent_id, a['node_name'])
+            consolidated_docs = consolidate_agent_vd_state(documents, agent_id, a['node_name'])
             consolidated_documents.extend(consolidated_docs)
         
         # The body takes multiple actions and metadata separated by newlines.
         # See https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#request-body
         body = ''
         for d in consolidated_documents:
-            body += '{"update":{"_index":"' + consolidated_index_name  + '","_id":"' + d['_id'] + '"}}\n'
+            # TODO: find a cleaner way of getting the document ID rather than including it in the object and deleting it.
+            body += '{"update":{"_index":"' + consolidated_index_name  + '","_id":"' + d['doc']['_id'] + '"}}\n'
+            del d['doc']['_id']
             body += json.dumps(d)
             body += '\n'
 
+        logging.info(f'Updating documents. Request body: {body}')
         # We are sending all the consolidated documents in a single request, shall we split them into multiple ones?
-        client.bulk(index=consolidated_index_name, body=body)
+        response = client.bulk(index=consolidated_index_name, body=body)
+        logging.info(f'Response: {response}')
 
         time.sleep(10)
