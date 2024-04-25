@@ -1993,7 +1993,11 @@ int wdb_parse_syscollector(wdb_t * wdb, const char * query, char * input, char *
             break;
 
         default:
-            snprintf(output, OS_MAXSTR + 1, "ok ");
+            if (action == INTEGRITY_CHECK_GLOBAL) {
+                snprintf(output, OS_MAXSTR + 1, "ok full_data");
+            } else {
+                snprintf(output, OS_MAXSTR + 1, "ok ");
+            }
         }
 
         return component;

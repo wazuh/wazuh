@@ -122,6 +122,8 @@ class EXPORTED Syscollector final
         std::mutex                                                              m_mutex;
         std::unique_ptr<SysNormalizer>                                          m_spNormalizer;
         std::string                                                             m_scanTime;
+        std::time_t                                                          m_scanDuration;
+        std::unordered_map<std::string, time_t>           m_lastSyncMsg;
 };
 
 

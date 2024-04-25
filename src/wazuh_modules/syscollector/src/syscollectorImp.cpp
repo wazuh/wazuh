@@ -1602,6 +1602,7 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Starting evaluation.");
     m_scanTime = Utils::getCurrentTimestamp();
 
+    const time_t startScan = time(nullptr);
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
     TRY_CATCH_TASK(scanNetwork);
@@ -1609,6 +1610,7 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanHotfixes);
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
+    m_scanDuration = time(nullptr) - startScan;
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -1634,6 +1636,15 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     {
         scan();
         sync();
+        m_lastSyncMsg["syscollector_osinfo"] = 0;
+        m_lastSyncMsg["syscollector_hwinfo"] = 0;
+        m_lastSyncMsg["syscollector_processes"] = 0;
+        m_lastSyncMsg["syscollector_packages"] = 0;
+        m_lastSyncMsg["syscollector_hotfixes"] = 0;
+        m_lastSyncMsg["syscollector_ports"] = 0;
+        m_lastSyncMsg["syscollector_network_iface"] = 0;
+        m_lastSyncMsg["syscollector_network_protocol"] = 0;
+        m_lastSyncMsg["syscollector_network_address"] = 0;
     }
 
     while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
@@ -1657,10 +1668,50 @@ void Syscollector::push(const std::string& data)
         auto rawData{data};
         Utils::replaceFirst(rawData, "dbsync ", "");
         const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
+        bool pushMessage = true;
+        bool skipSyncMsg = false;
+
+        const std::string component = Utils::splitIndex(rawData, ' ', 0);
+        const std::string topic = Utils::splitIndex(rawData, ' ', 1);
+        const nlohmann::json syncInfoJson = nlohmann::json::parse(Utils::splitIndex(rawData, ' ', 2));
+
+        const time_t id = std::stol(syncInfoJson.at("id").dump());
 
         try
         {
-            m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
+            const auto itComponent = m_lastSyncMsg.find(component);
+
+            if (itComponent != m_lastSyncMsg.end())
+            {
+                if (m_intervalValue + m_scanDuration < (id - itComponent->second))
+                {
+                    if (0 != itComponent->second)
+                    {
+                        skipSyncMsg = true;
+                    }
+                    else
+                    {
+                        itComponent->second = id;
+                    }
+                }
+
+                if (0 == topic.compare("full_data"))
+                {
+                    skipSyncMsg = false;
+                    pushMessage = false;
+                }
+
+                if (skipSyncMsg)
+                {
+                    m_logFunction(LOG_DEBUG_VERBOSE, "Synchronization in progress. Discarded message: " + rawData);
+                    pushMessage = false;
+                }
+
+                if (pushMessage)
+                {
+                    m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
+                }
+            }
         }
         // LCOV_EXCL_START
         catch (const std::exception& ex)
