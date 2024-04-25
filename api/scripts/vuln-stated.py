@@ -7,6 +7,7 @@ import json
 import logging
 import sys
 import time
+import re
 
 # Logger parameters
 LOGGING_MSG_FORMAT = '%(asctime)s vuln-stated: %(levelname)s: %(message)s'
@@ -76,31 +77,55 @@ def create_index(client: OpenSearch, index_name: str):
         logging.error(f"Error during index creation: {e}")
 
 
-def consolidate_agent_vd_state(documents: list, agent_id: str, node_name: str) -> list:
+def consolidate_agent_vd_state(dictionary: dict, consolidated_documents: list, documents: list, agent_ids: list) -> list:
     # TODO: create a Document class to simplify information access and manipulation?
-    consolidated_documents = []
-    for document in documents:
-        # Discard documents that belong to other agents or were indexed in other nodes. node_name is always the name of
-        # the node the agent is currently connected to.
-        agent = document['_source']['agent']
-        if agent['id'] != agent_id or agent['ephemeral_id'] != node_name:
+    # TODO: do every 24 hours
+    for doc in consolidated_documents:
+        consolidated_agent_id = doc['_source']['agent']['id']
+
+        if consolidated_agent_id not in agent_ids:
+            logging.debug('Agent not exists')
+            dictionary['to_delete'].append(doc['_id'])
             continue
 
-        # Remove the node name from the document ID. Include it in the source just to put it in the body later.
+    for document in documents:
+        continue_outer_loop = False
         document_id = remove_node_name(document['_id'])
-        document['_source']['_id'] = document_id
+        agent = document['_source']['agent']
 
-        # If a document exists, it is updated; if it does not exist, a new document is indexed with the parameters
-        # specified in the doc field
-        consolidated_documents.append({'doc': document['_source'], 'doc_as_upsert': True})
+        for doc in consolidated_documents:
+            if doc['_id'] == document_id:
+                logging.debug('Continue outer loop')
+                continue_outer_loop = True
+                break
 
-    return consolidated_documents
+            id_regex = re.match(fr'{agent["id"]}_.*_{document["_source"]["vulnerability"]["id"]}', doc['_id'])
+            if id_regex:
+                logging.debug('Matched document regex')
+                dictionary['to_delete'].append(doc['_id'])
+                break
+
+        if continue_outer_loop:
+            continue
+
+        dictionary['to_add'].append({'id': document_id, 'source': document['_source']})
 
 
 def remove_node_name(document_id: str) -> str:
-    parts = document_id.split('_')
-    document_id = parts[1] + '_' + parts[3]
-    return document_id
+    return document_id[document_id.find('_')+1:]
+
+
+def build_request_body(consolidated_index_name: str, dictionary: dict) -> str:
+    body = ''
+    for document_id in dictionary['to_delete']:
+        body += '{"delete":{"_index":"' + consolidated_index_name  + '","_id":"' + document_id + '"}}\n'
+        
+    for document in dictionary['to_add']:
+        body += '{"create":{"_index":"' + consolidated_index_name  + '","_id":"' + document['id'] + '"}}\n'
+        body += json.dumps(document['source'])
+        body += '\n'
+    
+    return body
 
 
 if __name__ == "__main__":
@@ -120,12 +145,14 @@ if __name__ == "__main__":
     consolidated_index_name = f'{VD_INDEX_BASE_NAME}-{cluster_name}'
 
     # Create consolidated index if it doesn't exist yet
+    created_consolidated_index = False
     if not client.indices.exists(consolidated_index_name):
         create_index(client, consolidated_index_name)
+        created_consolidated_index = True
 
-    select = ['id', 'node_name']
+    select = ['id']
     query = 'lastKeepAlive<30s'
-    index_regex = consolidated_index_name+'*'
+    index_regex = consolidated_index_name+'-*'
 
     while True:
         # Ask wazuh-db the id and node_name of all agents whose lastKeepAlive is less than 30s
@@ -153,28 +180,22 @@ if __name__ == "__main__":
 
         logging.info(f"Found {len(documents)} documents")
 
-        # Filter the documents agent by agent and discard the older ones
         consolidated_documents = []
-        for a in agents:
-            agent_id = a['id']
-            logging.info(f"Consolidating agent {agent_id} vulnerability state")
+        if not created_consolidated_index:
+            consolidated_documents = client.search(index=consolidated_index_name)['hits']['hits']
+            logging.info(f"Found {len(consolidated_documents)} consolidated documents")
 
-            consolidated_docs = consolidate_agent_vd_state(documents, agent_id, a['node_name'])
-            consolidated_documents.extend(consolidated_docs)
+        # Filter the documents agent by agent and discard the older ones
+        dictionary = {'to_add': [], 'to_delete': []}
+        agent_ids = [a['id'] for a in agents]
+        consolidate_agent_vd_state(dictionary, consolidated_documents, documents, agent_ids)
 
         # The body takes multiple actions and metadata separated by newlines.
         # See https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#request-body
-        body = ''
-        for d in consolidated_documents:
-            # TODO: find a cleaner way of getting the document ID rather than including it in the object and deleting it.
-            body += '{"update":{"_index":"' + consolidated_index_name  + '","_id":"' + d['doc']['_id'] + '"}}\n'
-            del d['doc']['_id']
-            body += json.dumps(d)
-            body += '\n'
-
-        logging.info(f'Updating documents. Request body: {body}')
-        # We are sending all the consolidated documents in a single request, shall we split them into multiple ones?
-        response = client.bulk(index=consolidated_index_name, body=body)
-        logging.info(f'Response: {response}')
+        body = build_request_body(consolidated_index_name, dictionary)
+        if body != '':
+            logging.info(f'Updating documents. Request body: {body}')
+            response = client.bulk(index=consolidated_index_name, body=body)
+            logging.info(f'Response: {response}')
 
         time.sleep(10)
