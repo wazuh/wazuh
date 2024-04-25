@@ -414,9 +414,11 @@ void LogCollectorStart()
             current->read = read_journald;
             w_journald_set_ofe(current->future);
 
-            for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
-                mdebug1(LOGCOLLECTOR_SOCKET_TARGET, JOURNALD_LOG, current->target[tg_idx]);
-                w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
+            if (current->target != NULL) {
+                for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
+                    mdebug1(LOGCOLLECTOR_SOCKET_TARGET, JOURNALD_LOG, current->target[tg_idx]);
+                    w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
+                }
             }
 #else
             minfo(LOGCOLLECTOR_JOURNALD_ONLY_LINUX);
