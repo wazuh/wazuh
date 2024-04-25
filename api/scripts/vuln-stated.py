@@ -65,7 +65,8 @@ def create_index(client: OpenSearch, index_name: str):
 
         # Replace index pattern to match indices from different cluster and nodes
         template_body['index_patterns'] = f'{VD_INDEX_BASE_NAME}*'
-        # TODO: without deleting the priority it fails with "unknown key [priority] in the template". Validate with the indexer team
+        # TODO: without deleting the priority it fails with "unknown key [priority] in the template".
+        # Validate with the indexer team
         del template_body['priority']
         client.indices.put_template(name=index_name, body=template_body)
 
@@ -78,12 +79,9 @@ def create_index(client: OpenSearch, index_name: str):
 def consolidate_agent_vd_state(documents: list, agent_id: str, node_name: str) -> list:
     # TODO: create a Document class to simplify information access and manipulation?
     consolidated_documents = []
-    for document in documents:
+    for idx, document in enumerate(documents):
         # Discard documents that belong to other agents or were indexed in other nodes. node_name is always the name of
         # the node the agent is currently connected to.
-        #
-        # TODO: is this the correct way to keep only the latest vulnerabilities? Is there any information from previous
-        # nodes that we would like to keep?
         agent = document['_source']['agent']
         if agent['id'] != agent_id or agent['ephemeral_id'] != node_name:
             continue
@@ -94,15 +92,16 @@ def consolidate_agent_vd_state(documents: list, agent_id: str, node_name: str) -
 
         # If a document exists, it is updated; if it does not exist, a new document is indexed with the parameters
         # specified in the doc field
-        #
-        # TODO: what should we do if the document already exists in the consolidated index? Compare it? Update it?
         consolidated_documents.append({'doc': document['_source'], 'doc_as_upsert': True})
+        documents.pop(idx)
 
     return consolidated_documents
 
 
 def remove_node_name(document_id: str) -> str:
-    return document_id[document_id.find('_')+1:]
+    parts = document_id.split('_')
+    document_id = parts[1] + '_' + parts[3]
+    return document_id
 
 
 if __name__ == "__main__":
@@ -163,7 +162,7 @@ if __name__ == "__main__":
 
             consolidated_docs = consolidate_agent_vd_state(documents, agent_id, a['node_name'])
             consolidated_documents.extend(consolidated_docs)
-        
+
         # The body takes multiple actions and metadata separated by newlines.
         # See https://opensearch.org/docs/latest/api-reference/document-apis/bulk/#request-body
         body = ''
