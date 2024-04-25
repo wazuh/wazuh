@@ -285,7 +285,7 @@ int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_
                     package_architecture = agent_info->architecture;
                 }
                 snprintf(path_url, OS_SIZE_2048, "%slinux/%s/%s/",
-                         repository_url, agent_info->architecture, agent_info->package_type);
+                         repository_url, package_architecture, agent_info->package_type);
                 snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_linux_%s.%s.wpk",
                          task->wpk_version, package_architecture, agent_info->package_type);
             } else {

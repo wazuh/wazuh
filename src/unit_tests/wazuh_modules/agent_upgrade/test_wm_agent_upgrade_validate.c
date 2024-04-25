@@ -307,8 +307,8 @@ void test_wm_agent_upgrade_validate_system_rolling_opensuse(void **state)
 {
     (void) state;
     char *platform = "opensuse-tumbleweed";
-    char *os_major = "";
-    char *os_minor = "";
+    char *os_major = NULL;
+    char *os_minor = NULL;
     char *arch = "x64";
     char *package_type = NULL;
 
@@ -324,8 +324,8 @@ void test_wm_agent_upgrade_validate_system_rolling_archlinux(void **state)
 {
     (void) state;
     char *platform = "arch";
-    char *os_major = "";
-    char *os_minor = "";
+    char *os_major = NULL;
+    char *os_minor = NULL;
     char *arch = "x64";
     char *package_type = NULL;
 
