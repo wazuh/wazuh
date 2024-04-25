@@ -168,6 +168,7 @@ function build_package() {
     # create package
     if packagesbuild ${AGENT_PKG_FILE} --build-folder ${DESTINATION} ; then
         echo "The wazuh agent package for macOS has been successfully built."
+        pkg_name+=".pkg"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
             mkdir -p ${CHECKSUMDIR}
