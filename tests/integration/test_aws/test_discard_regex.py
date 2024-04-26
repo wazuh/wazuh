@@ -30,11 +30,11 @@ configurator.configure_test(configuration_file='configuration_bucket_discard_reg
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_discard_regex(
-        configuration, metadata, create_test_bucket, manage_bucket_files, load_wazuh_basic_configuration,
+        test_configuration, metadata, create_test_bucket, manage_bucket_files, load_wazuh_basic_configuration,
         set_wazuh_configuration, clean_s3_cloudtrail_db, configure_local_internal_options_function,
         truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):
@@ -164,11 +164,11 @@ configurator.configure_test(configuration_file='configuration_cloudwatch_discard
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_discard_regex_json(
-        configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
         load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):
@@ -288,11 +288,11 @@ configurator.configure_test(configuration_file='configuration_cloudwatch_discard
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_discard_regex_simple_text(
-        configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
         load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):
@@ -411,11 +411,11 @@ configurator.configure_test(configuration_file='configuration_inspector_discard_
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_discard_regex(
-        configuration, metadata, load_wazuh_basic_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration,
         set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
         truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):

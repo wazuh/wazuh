@@ -27,11 +27,11 @@ configurator.configure_test(configuration_file='bucket_configuration_defaults.ya
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_defaults(
-        configuration, metadata, create_test_bucket, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, create_test_bucket, load_wazuh_basic_configuration, set_wazuh_configuration,
         clean_s3_cloudtrail_db, configure_local_internal_options_function, truncate_monitored_files,
         restart_wazuh_function, file_monitoring
 ):
@@ -122,10 +122,10 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_default
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_service_defaults(configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
+def test_service_defaults(test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
                           set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
                           truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
@@ -222,10 +222,10 @@ configurator.configure_test(configuration_file='inspector_configuration_defaults
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_inspector_defaults(configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
+def test_inspector_defaults(test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
                             set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
                             truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):

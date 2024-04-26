@@ -35,11 +35,11 @@ configurator.configure_test(configuration_file='bucket_configuration_without_onl
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_without_only_logs_after(
-    configuration, metadata, upload_and_delete_file_to_s3, load_wazuh_basic_configuration, set_wazuh_configuration,
+    test_configuration, metadata, upload_and_delete_file_to_s3, load_wazuh_basic_configuration, set_wazuh_configuration,
     clean_s3_cloudtrail_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
     file_monitoring
 ):
@@ -165,11 +165,11 @@ configurator.configure_test(configuration_file='service_configuration_without_on
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_service_without_only_logs_after(
-    configuration, metadata, create_log_stream_in_existent_group, load_wazuh_basic_configuration,
+    test_configuration, metadata, create_log_stream_in_existent_group, load_wazuh_basic_configuration,
     set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files,
     restart_wazuh_function, file_monitoring
 ):
@@ -283,11 +283,11 @@ configurator.configure_test(configuration_file='bucket_configuration_with_only_l
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_with_only_logs_after(
-    configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
@@ -412,11 +412,11 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_with_on
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_with_only_logs_after(
-    configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
@@ -539,11 +539,11 @@ configurator.configure_test(configuration_file='inspector_configuration_with_onl
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_with_only_logs_after(
-    configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
     configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """

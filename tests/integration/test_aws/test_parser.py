@@ -27,11 +27,11 @@ configurator.configure_test(configuration_file='configuration_bucket_and_service
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_and_service_missing(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):
@@ -96,11 +96,11 @@ configurator.configure_test(configuration_file='configuration_type_missing_in_bu
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_type_missing_in_bucket(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):
@@ -164,11 +164,11 @@ configurator.configure_test(configuration_file='configuration_type_missing_in_se
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_type_missing_in_service(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):
@@ -233,11 +233,11 @@ configurator.configure_test(configuration_file='configuration_values_in_bucket.y
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_empty_values_in_bucket(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):
@@ -301,11 +301,11 @@ configurator.configure_test(configuration_file='configuration_values_in_service.
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_empty_values_in_service(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):
@@ -370,11 +370,11 @@ configurator.configure_test(configuration_file='configuration_values_in_bucket.y
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_invalid_values_in_bucket(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):
@@ -438,11 +438,11 @@ configurator.configure_test(configuration_file='configuration_values_in_service.
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_invalid_values_in_service(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):
@@ -506,11 +506,11 @@ configurator.configure_test(configuration_file='configuration_multiple_bucket_an
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_multiple_bucket_and_service_tags(
-        configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
+        test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function_without_exception,
         file_monitoring
 ):

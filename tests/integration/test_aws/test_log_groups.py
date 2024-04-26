@@ -33,11 +33,11 @@ configurator.configure_test(configuration_file='configuration_log_groups.yaml',
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_log_groups(
-        configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
         load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):
