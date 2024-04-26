@@ -183,6 +183,31 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
     return return_code;
 }
 
+char *wm_agent_upgrade_translate_arch(const char *platform, const char *package_type, char *arch) {
+    if (!strcmp(arch, "x86_64")) {
+        if (!strcmp(platform, "darwin")) {
+            if (!strcmp(package_type, "pkg")) {
+                return "intel64";
+            }
+        } else {
+            if (!strcmp(package_type, "deb")) {
+                return "amd64";
+            }
+        }
+    } else if (!strcmp(arch, "aarch64")) {
+        if (!strcmp(platform, "darwin")) {
+            if (!strcmp(package_type, "pkg")) {
+                return "arm64";
+            }
+        } else {
+            if (!strcmp(package_type, "deb")) {
+                return "arm64";
+            }
+        }
+    }
+    return arch;
+}
+
 int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) {
 
     char repository[OS_BUFFER_SIZE] = "";
@@ -243,10 +268,19 @@ int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_
         snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_windows.wpk",
                  task->wpk_version);
     } else if (!strcmp(agent_info->platform, "darwin")) {
-        snprintf(path_url, OS_SIZE_2048, "%smacos/%s/%s/",
-                 repository_url, agent_info->architecture, agent_info->package_type);
-        snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
-                 task->wpk_version, agent_info->architecture);
+        if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_STRUCTURE_REPOSITORY, true) >= 0) {
+            // Resolve package architecture
+            package_architecture = wm_agent_upgrade_translate_arch(agent_info->platform, agent_info->package_type, agent_info->architecture);
+            snprintf(path_url, OS_SIZE_2048, "%smacos/%s/%s/",
+                    repository_url, agent_info->package_type, package_architecture);
+            snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.%s.wpk",
+                    task->wpk_version, package_architecture, agent_info->package_type);
+        } else {
+            snprintf(path_url, OS_SIZE_2048, "%smacos/%s/%s/",
+                    repository_url, agent_info->architecture, agent_info->package_type);
+            snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_macos_%s.wpk",
+                    task->wpk_version, agent_info->architecture);
+        }
     } else {
         if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_LINUX_VERSION_REPOSITORY, true) >= 0) {
             if (compare_wazuh_versions(task->wpk_version, WM_UPGRADE_NEW_VERSION_STRUCTURE_REPOSITORY, true) >= 0) {
@@ -273,19 +307,10 @@ int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_
                     os_free(versions_url);
                     return WM_UPGRADE_SYSTEM_NOT_SUPPORTED;
                 }
-                if (!strcmp(agent_info->package_type, "deb")) {
-                    if (!strcmp(agent_info->architecture, "x86_64")) {
-                        package_architecture = "amd64";
-                    } else if (!strcmp(agent_info->architecture, "aarch64")) {
-                        package_architecture = "arm64";
-                    } else {
-                        package_architecture = agent_info->architecture;
-                    }
-                } else {
-                    package_architecture = agent_info->architecture;
-                }
+                // Resolve package architecture
+                package_architecture = wm_agent_upgrade_translate_arch(agent_info->platform, agent_info->package_type, agent_info->architecture);
                 snprintf(path_url, OS_SIZE_2048, "%slinux/%s/%s/",
-                         repository_url, package_architecture, agent_info->package_type);
+                         repository_url, agent_info->package_type, package_architecture);
                 snprintf(file_url, OS_SIZE_2048, "wazuh_agent_%s_linux_%s.%s.wpk",
                          task->wpk_version, package_architecture, agent_info->package_type);
             } else {
