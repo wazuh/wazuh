@@ -128,6 +128,7 @@ static int group_teardown(void ** state) {
 
 // Test is_owned_by_root
 
+// Test is_owned_by_root with root owned
 void test_is_owned_by_root_root_owned(void ** state) {
     (void) state;
 
@@ -146,6 +147,7 @@ void test_is_owned_by_root_root_owned(void ** state) {
     assert_true(result);
 }
 
+// Test is_owned_by_root with not root owned
 void test_is_owned_by_root_not_root_owned(void ** state) {
     (void) state;
 
@@ -164,6 +166,7 @@ void test_is_owned_by_root_not_root_owned(void ** state) {
     assert_false(result);
 }
 
+// Test is_owned_by_root with stat fails
 void test_is_owned_by_root_stat_fails(void ** state) {
     (void) state;
 
@@ -184,6 +187,7 @@ void test_is_owned_by_root_stat_fails(void ** state) {
 
 // Test load_and_validate_function
 
+// Test load_and_validate_function success
 static void test_load_and_validate_function_success(void ** state) {
     // Arrange
     void * handle = (void *) 1; // Simulate handle
@@ -203,6 +207,7 @@ static void test_load_and_validate_function_success(void ** state) {
     assert_non_null(function_pointer);
 }
 
+// Test load_and_validate_function failure
 static void test_load_and_validate_function_failure(void ** state) {
     // Arrange
     void * handle = NULL; // Simulate invalid handle
@@ -236,7 +241,7 @@ static void test_w_get_epoch_time(void ** state) {
     uint64_t result = w_get_epoch_time();
 
     // Cant assert the result because it is a time value and the wrapper is not set in the test
-    // assert_int_equal(result, 0);
+
 }
 
 // Test w_timestamp_to_string
@@ -1208,39 +1213,9 @@ static void test_w_journal_context_seek_most_recent_ctx_null(void ** state) {
     assert_int_equal(ret, -1);
 }
 
-/*
-int w_journal_context_seek_timestamp(w_journal_context_t * ctx, uint64_t timestamp) {
-    // If the timestamp is in the future or invalid, seek the most recent entry
-    if (timestamp == 0 || timestamp > w_get_epoch_time()) {
-        mwarn(LOGCOLLECTOR_JOURNAL_LOG_FUTURE_TS, timestamp);
-        return w_journal_context_seek_most_recent(ctx);
-    }
+// Test w_journal_context_seek_timestamp
 
-    // Check if the timestamp is older than the oldest available
-    uint64_t oldest;
-    int err = w_journal_context_get_oldest_timestamp(ctx, &oldest);
-
-    if (err < 0) {
-        mwarn(LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_OLD_TS, strerror(-err));
-    } else if (timestamp < oldest) {
-        mwarn(LOGCOLLECTOR_JOURNAL_LOG_CHANGE_TS, timestamp);
-        timestamp = oldest;
-    }
-
-    err = ctx->lib->seek_timestamp(ctx->journal, timestamp);
-    if (err < 0) {
-        return err;
-    }
-
-    err = ctx->lib->next(ctx->journal);
-    if (err > 0) // if the cursor change, update timestamp
-    {
-        w_journal_context_update_timestamp(ctx);
-    }
-    return err;
-}
-*/
-// Create unit test for w_journal_context_seek_timestamp
+// Test for w_journal_context_seek_timestamp with null params
 static void test_w_journal_context_seek_timestamp_null_params(void ** state) {
     assert_int_equal(w_journal_context_seek_timestamp(NULL, 0), -1);
 }
@@ -2014,12 +1989,15 @@ static void test_w_journal_context_next_newest_success(void ** state) {
 }
 
 // Test w_journal_filter_apply
+
+// Test for w_journal_filter_apply with null params
 void test_w_journal_filter_apply_null_params(void ** state) {
 
     assert_int_equal(w_journal_filter_apply(NULL, (w_journal_filter_t *) 0x1), -1);
     assert_int_equal(w_journal_filter_apply((w_journal_context_t *) 0x1, NULL), -1);
 }
 
+// Test for w_journal_filter_apply with fail to get data
 void test_w_journal_filter_apply_fail_get_data_ignore_test(void ** state) {
 
     // init ctx
@@ -2097,6 +2075,7 @@ void test_w_journal_filter_apply_fail_get_data_ignore_test(void ** state) {
     w_journal_filter_free(ufilters);
 }
 
+// Test for w_journal_filter_apply with fail parse data
 void test_w_journal_filter_apply_fail_parse(void ** state) {
 
     // init ctx
@@ -2165,6 +2144,7 @@ void test_w_journal_filter_apply_fail_parse(void ** state) {
     w_journal_filter_free(ufilters);
 }
 
+// Test for w_journal_filter_apply with empty field
 void test_w_journal_filter_apply_empty_field(void ** state) {
 
     // init ctx
@@ -2233,6 +2213,7 @@ void test_w_journal_filter_apply_empty_field(void ** state) {
     w_journal_filter_free(ufilters);
 }
 
+// Test for w_journal_filter_apply with match fail
 void test_w_journal_filter_apply_match_fail(void ** state) {
 
     // init ctx
@@ -2301,6 +2282,7 @@ void test_w_journal_filter_apply_match_fail(void ** state) {
     w_journal_filter_free(ufilters);
 }
 
+// Test for w_journal_filter_apply with match success
 void test_w_journal_filter_apply_match_success(void ** state) {
 
     // init ctx
@@ -4473,35 +4455,46 @@ void test_w_journal_entry_to_string_invalid_type(void ** state) {
 int main(void) {
 
     const struct CMUnitTest tests[] = {
+        // Test is_owned_by_root
         cmocka_unit_test(test_is_owned_by_root_root_owned),
         cmocka_unit_test(test_is_owned_by_root_not_root_owned),
         cmocka_unit_test(test_is_owned_by_root_stat_fails),
+        // Test load_and_validate_function
         cmocka_unit_test(test_load_and_validate_function_success),
         cmocka_unit_test(test_load_and_validate_function_failure),
+        // Test w_get_epoch_time
         cmocka_unit_test(test_w_get_epoch_time),
+        // Test w_timestamp_to_string
         cmocka_unit_test(test_w_timestamp_to_string),
         cmocka_unit_test(test_w_timestamp_to_journalctl_since_success),
         cmocka_unit_test(test_w_timestamp_to_journalctl_since_failure),
+        // Test find_library_path
         cmocka_unit_test(test_find_library_path_success),
         cmocka_unit_test(test_find_library_path_failure),
+        // Test w_journal_context_create
         cmocka_unit_test(test_w_journal_lib_init_dlopen_fail),
         cmocka_unit_test(test_w_journal_lib_init_find_library_path_fail),
         cmocka_unit_test(test_w_journal_lib_init_is_owned_by_root_fail),
         cmocka_unit_test(test_w_journal_lib_init_load_and_validate_function_fail),
         cmocka_unit_test(test_w_journal_lib_init_success),
+        // Test w_journal_context_create
         cmocka_unit_test(test_w_journal_context_create_success),
         cmocka_unit_test(test_w_journal_context_create_null_pointer),
         cmocka_unit_test(test_w_journal_context_create_lib_init_fail),
         cmocka_unit_test(test_w_journal_context_create_journal_open_fail),
-        cmocka_unit_test(test_w_journal_context_free_valid),
+        // Test w_journal_context_free
         cmocka_unit_test(test_w_journal_context_free_null),
+        cmocka_unit_test(test_w_journal_context_free_valid),
+        // Test w_journal_context_update_timestamp
         cmocka_unit_test(test_w_journal_context_update_timestamp_success),
         cmocka_unit_test(test_w_journal_context_update_timestamp_ctx_null),
         cmocka_unit_test(test_w_journal_context_update_timestamp_fail),
+        // Test w_journal_context_seek_timestamp
         cmocka_unit_test(test_w_journal_context_seek_most_recent_update_tamestamp),
         cmocka_unit_test(test_w_journal_context_seek_most_recent_seek_tail_fail),
         cmocka_unit_test(test_w_journal_context_seek_most_recent_success),
         cmocka_unit_test(test_w_journal_context_seek_most_recent_ctx_null),
+        // Test w_journal_context_seek_timestamp
         cmocka_unit_test(test_w_journal_context_seek_timestamp_null_params),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_future_timestamp),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_fail_read_old_ts),
@@ -4511,6 +4504,7 @@ int main(void) {
         cmocka_unit_test(test_w_journal_context_seek_timestamp_next_fail),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_success),
         cmocka_unit_test(test_w_journal_context_seek_timestamp_success_new_entry),
+        // Test w_journal_context_next_newest
         cmocka_unit_test(test_w_journal_context_next_newest_ctx_null),
         cmocka_unit_test(test_w_journal_context_next_newest_update_timestamp),
         cmocka_unit_test(test_w_journal_context_next_newest_success),
@@ -4521,6 +4515,7 @@ int main(void) {
         cmocka_unit_test(test_w_journal_filter_apply_empty_field),
         cmocka_unit_test(test_w_journal_filter_apply_match_fail),
         cmocka_unit_test(test_w_journal_filter_apply_match_success),
+        // Test w_journal_context_next_newest_filtered
         cmocka_unit_test(test_w_journal_context_next_newest_filtered_null_filters),
         cmocka_unit_test(test_w_journal_context_next_newest_filtered_no_filters),
         cmocka_unit_test(test_w_journal_context_next_newest_filtered_one_filter),
