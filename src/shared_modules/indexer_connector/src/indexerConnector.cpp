@@ -222,7 +222,7 @@ IndexerConnector::IndexerConnector(
             }
             catch (const std::exception& e)
             {
-                logError(IC_NAME, "Failed to sync agent '%s' with the indexer.", agentId.c_str());
+                logWarn(IC_NAME, "Failed to sync agent '%s' with the indexer.", agentId.c_str());
                 logDebug1(IC_NAME, "Error: %s", e.what());
             }
         },
