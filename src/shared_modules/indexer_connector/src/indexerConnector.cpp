@@ -169,7 +169,6 @@ IndexerConnector::IndexerConnector(
             std::string bulkData;
             url.append("/_bulk?refresh=wait_for");
 
-            std::vector<Document> documents;
             while (!dataQueue.empty())
             {
                 auto data = dataQueue.front();
@@ -341,6 +340,8 @@ IndexerConnector::~IndexerConnector()
 {
     m_stopping.store(true);
     m_cv.notify_all();
+
+    m_dispatcher->cancel();
 
     if (m_initializeThread.joinable())
     {

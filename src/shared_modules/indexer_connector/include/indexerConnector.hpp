@@ -38,17 +38,6 @@ using ThreadSyncQueue = Utils::AsyncDispatcher<std::string, std::function<void(c
 class EXPORTED IndexerConnector final
 {
     /**
-     * @brief Document structure.
-     *
-     */
-    struct Document
-    {
-        std::string id;   ///< Document ID.
-        std::string data; ///< Document data.
-        bool deleted;     ///< Document deleted status.
-    };
-
-    /**
      * @brief Initialized status.
      *
      */
