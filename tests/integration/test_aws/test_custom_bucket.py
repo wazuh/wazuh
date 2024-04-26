@@ -28,10 +28,10 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_custom_bucket_defaults(configuration, metadata, create_test_bucket, set_test_sqs_queue,
+def test_custom_bucket_defaults(test_configuration, metadata, create_test_bucket, set_test_sqs_queue,
                                 load_wazuh_basic_configuration, set_wazuh_configuration,
                                 configure_local_internal_options_function, truncate_monitored_files,
                                 restart_wazuh_function, file_monitoring
@@ -134,10 +134,10 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('configuration, metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_custom_bucket_logs(configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
+def test_custom_bucket_logs(test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
                             load_wazuh_basic_configuration, set_wazuh_configuration,
                             configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
                             file_monitoring
