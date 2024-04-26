@@ -20,8 +20,6 @@ setup_build(){
     package_name="$4"
 
     rpm_build_dir=${build_dir}/rpmbuild
-    file_name="$package_name-${REVISION}"
-    src_file="${file_name}.src.rpm"
 
     mkdir -p ${rpm_build_dir}/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 
@@ -58,6 +56,7 @@ build_package(){
     package_name="$1"
     debug="$2"
     short_commit_hash="$3"
+    wazuh_version="$4"
 
     if [ "${ARCHITECTURE_TARGET}" = "i386" ] || [ "${ARCHITECTURE_TARGET}" = "armhf" ]; then
         linux="linux32"
@@ -76,34 +75,29 @@ build_package(){
         return 1
     fi
 
-    if [[ "${IS_STAGE}" == "yes" ]]; then
-        rpm_file="${file_name}.${ARCH}.rpm"
-    else
-        # Replace "-" with "_" between BUILD_TARGET and Version
-        base_name="$(sed 's/-/_/2' <<< "$file_name")"
-        rpm_file="${base_name}_${ARCH}_${short_commit_hash}.rpm"
-    fi
-
     $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
-        --define "_threads ${JOBS}" --define "_release ${REVISION}" \
+        --define "_threads ${JOBS}" --define "_release ${REVISION}" --define "_isstage ${IS_STAGE}" \
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
-        --define "_rpmfilename ${rpm_file}" \
+        --define "_version ${wazuh_version}" --define "_hashcommit ${short_commit_hash}" \
         --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
     return 0
 }
 
-get_checksum(){
+get_package_and_checksum(){
     src="$3"
+    export RPM_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "\.rpm$")
+    export SRC_NAME=$(ls -R ${rpm_build_dir}/SRPMS | grep "\.src\.rpm$")
+
     if [[ "${checksum}" == "yes" ]]; then
-        cd "${rpm_build_dir}/RPMS" && sha512sum ${rpm_file} > /var/local/wazuh/${rpm_file}.sha512
+        cd "${rpm_build_dir}/RPMS" && sha512sum $RPM_NAME > /var/local/wazuh/$RPM_NAME.sha512
         if [[ "${src}" == "yes" ]]; then
-            cd "${rpm_build_dir}/SRPMS" && sha512sum ${src_file} > /var/local/wazuh/${src_file}.sha512
+            cd "${rpm_build_dir}/SRPMS" && sha512sum $SRC_NAME > /var/local/wazuh/$SRC_NAME.sha512
         fi
     fi
 
     if [[ "${src}" == "yes" ]]; then
-        mv ${rpm_build_dir}/SRPMS/${src_file} /var/local/wazuh
+        mv ${rpm_build_dir}/SRPMS/$SRC_NAME /var/local/wazuh
     else
-        mv ${rpm_build_dir}/RPMS/${rpm_file} /var/local/wazuh
+        mv ${rpm_build_dir}/RPMS/$RPM_NAME /var/local/wazuh
     fi
 }

@@ -58,7 +58,7 @@ build_package(){
     fi
 }
 
-get_checksum(){
+get_package_and_checksum(){
     wazuh_version="$1"
     short_commit_hash="$2"
     base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${REVISION}"
