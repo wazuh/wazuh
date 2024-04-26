@@ -61,6 +61,15 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
 int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task)  __attribute__((nonnull(4)));
 
 /**
+ * Translate architecture based on platform and package type if necessary
+ * @param platform Agent platform
+ * @param package_type Package type
+ * @param arch Agent architecture
+ * @return Translated architecture
+*/
+char *wm_agent_upgrade_translate_arch(const char *platform, const char *package_type, char *arch);
+
+/**
  * Check if a WPK exist for the upgrade version
  * @param agent_info structure with the agent information
  * @param task structure with the task information
