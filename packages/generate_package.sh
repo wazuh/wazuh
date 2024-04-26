@@ -35,7 +35,7 @@ clean() {
     exit_code=$1
 
     # Clean the files
-    rm -rf ${DOCKERFILE_PATH}/{*.sh,*.tar.gz,wazuh-*}
+    find "${DOCKERFILE_PATH}" \( -name '*.sh' -o -name '*.tar.gz' -o -name 'wazuh-*' \) ! -name 'docker_builder.sh' -exec rm -rf {} +
 
     exit ${exit_code}
 }
@@ -67,7 +67,7 @@ build_pkg() {
         # This was necessary because we don't have permission to overwrite an existing container.
         # Also, ensure that the same adjustment is made in the else condition.
         CONTAINER_NAME="pkg_${SYSTEM}_legacy_builder_${ARCHITECTURE}"
-        if [ "$SYSTEM" != "rpm"]; then
+        if [ "$SYSTEM" != "rpm" ]; then
             echo "Legacy mode is only available for RPM packages."
             clean 1
         fi
@@ -123,7 +123,7 @@ help() {
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
-    echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
+    echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: False."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package."
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
