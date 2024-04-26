@@ -216,7 +216,7 @@ typedef struct w_input_range_t{
 ///< Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
     int64_t offset;  ///< Position to read
-    SHA_CTX context;    ///< It stores the hashed data calculated so far
+    EVP_MD_CTX *context;    ///< It stores the hashed data calculated so far
     os_sha1 hash;       ///< Content file SHA1 hash
 } os_file_status_t;
 
@@ -267,19 +267,19 @@ int can_read();
  * @brief Update the read position in file status hash table
  * @param path the path is the hash key
  * @param pos new read position
- * @param context SHA1 context.
+ * @param context EVP_MD_CTX context.
  * @return 0 on succes, otherwise -1
  */
-int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
+int w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX *context);
 
 /**
- * @brief Get SHA1 context or initialize it
+ * @brief Get EVP_MD_CTX context or initialize it
  * @param lf Structure that contains file information, with `fd` and `file` non-null.
- * @param context SHA1 context.
+ * @param context EVP_MD_CTX context.
  * @param position end file position.
  * @return true if returns a valid context, false in otherwise.
  */
-bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
+bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;

@@ -579,6 +579,7 @@ void test_initialize_file_diff_data_abspath_fail(void **state) {
     diff_data *diff = *state;
 
     expect_abspath(GENERIC_PATH, 0);
+    errno = 0;
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6711): Cannot get absolute path of 'c:\\file\\path': Success (0)");
 #else
