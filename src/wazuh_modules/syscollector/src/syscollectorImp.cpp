@@ -1660,31 +1660,41 @@ void Syscollector::push(const std::string& data)
         Utils::replaceFirst(rawData, "dbsync ", "");
         const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
         bool pushMessage = true;
+        std::string component;
+        std::string topic;
+        time_t id;
+        bool parseSuccesfull = true;
 
         try
         {
-            const std::string component = Utils::splitIndex(rawData, ' ', 0);
-            const std::string topic = Utils::splitIndex(rawData, ' ', 1);
+            component = Utils::splitIndex(rawData, ' ', 0);
+            topic = Utils::splitIndex(rawData, ' ', 1);
             const nlohmann::json syncInfoJson = nlohmann::json::parse(Utils::splitIndex(rawData, ' ', 2));
+            id = std::stol(syncInfoJson.at("id").dump());
+        }
+        catch (...)
+        {
+            parseSuccesfull = false;
+        }
 
-            const time_t id = std::stol(syncInfoJson.at("id").dump());
-
-            const auto itComponent = m_lastSyncMsg.find(component);
-
-            if (itComponent == m_lastSyncMsg.end())
+        try
+        {
+            if (parseSuccesfull)
             {
-                m_lastSyncMsg[component] = id;
-            }
+                const auto itComponent = m_lastSyncMsg.find(component);
 
-            if ((m_intervalValue + m_scanDuration <= (id - m_lastSyncMsg[component])) && (2 * (m_intervalValue + m_scanDuration) > (id - m_lastSyncMsg[component])))
-            {
-                if (0 != m_lastSyncMsg[component])
+                if (itComponent == m_lastSyncMsg.end())
+                {
+                    m_lastSyncMsg[component] = id;
+                }
+
+                if (m_intervalValue + m_scanDuration <= id - m_lastSyncMsg[component] &&
+                        (2 * (m_intervalValue + m_scanDuration) > id - m_lastSyncMsg[component]))
                 {
                     m_logFunction(LOG_DEBUG_VERBOSE, "Synchronization in progress. Discarded message: " + rawData);
                     pushMessage = false;
+                    m_lastSyncMsg[component] = id;
                 }
-
-                m_lastSyncMsg[component] = id;
             }
 
             if (pushMessage)
