@@ -40,7 +40,6 @@ case "$1" in
 
         ${SCRIPTS_DIR}/gen_ossec.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf
         ${SCRIPTS_DIR}/add_localfiles.sh ${DIR} >> ${DIR}/etc/ossec.conf
-
     else
         ${SCRIPTS_DIR}/gen_ossec.sh conf agent ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf.new
         chmod 660 ${DIR}/etc/ossec.conf.new
@@ -68,7 +67,6 @@ case "$1" in
 
     # Install the SCA files
     if [ -d "${SCA_BASE_DIR}" ]; then
-
         . ${SCRIPTS_DIR}/src/init/dist-detect.sh
 
         SCA_DIR="${DIST_NAME}/${DIST_VER}"
@@ -90,7 +88,6 @@ case "$1" in
         SCA_TMP_FILE="${SCA_TMP_DIR}/sca.files"
 
         if [ -r ${SCA_TMP_FILE} ]; then
-
             rm -f ${DIR}/ruleset/sca/* || true
 
             for sca_file in $(cat ${SCA_TMP_FILE}); do
@@ -142,8 +139,8 @@ case "$1" in
             systemctl daemon-reload > /dev/null 2>&1
         fi
     fi
-    # Remove old ossec user and group if exists and change ownwership of files
 
+    # Remove old ossec user and group if exists and change ownwership of files
     if getent group ossec > /dev/null 2>&1; then
         find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \; > /dev/null 2>&1 || true
         if getent passwd ossec > /dev/null 2>&1; then
@@ -158,10 +155,13 @@ case "$1" in
             find ${DIR}/ -group ossec -user ossecr -exec chown wazuh:wazuh {} \; > /dev/null 2>&1 || true
             deluser ossecr > /dev/null 2>&1
         fi
-        if getent group ossec > /dev/null 2>&1; then 
+        if getent group ossec > /dev/null 2>&1; then
             delgroup ossec > /dev/null 2>&1
         fi
     fi
+
+    find ${DIR} -nogroup -exec chgrp ${GROUP} {} \; > /dev/null 2>&1
+    find ${DIR} -nouser -exec chown ${USER} {} \; > /dev/null 2>&1
 
     if [ ! -z "$2" ]; then
         if [ -f ${WAZUH_TMP_DIR}/wazuh.restart ] ; then
