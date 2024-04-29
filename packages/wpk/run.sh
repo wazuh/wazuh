@@ -90,6 +90,8 @@ main() {
                     HAVE_PKG_NAME_LINUX=true
                 elif [ "${PKG_NAME: -4}" == ".deb" ]; then
                     HAVE_PKG_NAME_LINUX=true
+                elif [ "${PKG_NAME: -4}" == ".apk" ]; then
+                    HAVE_PKG_NAME_LINUX=true
                 fi
                 shift 2
             fi
