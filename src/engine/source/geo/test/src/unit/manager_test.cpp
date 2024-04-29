@@ -106,8 +106,9 @@ protected:
 
     auto getManagerWithDb(const std::string& path, Type type)
     {
+        auto docName = base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
         EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadColResp({std::filesystem::path(path).filename().string()})));
+            .WillOnce(testing::Return(storeReadColResp(docName)));
 
         json::Json docJson;
         docJson.setString(path, PATH_PATH);
@@ -133,7 +134,7 @@ TEST_F(GeoManagerTest, Initialize)
 TEST_F(GeoManagerTest, InitializeAddingDbs)
 {
     EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadColResp({"db1", "db2"})));
+        .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
 
     auto doc1File = getTmpDb();
     json::Json doc1;
@@ -174,7 +175,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 {
     // Failure doc
     EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadColResp({"db1", "db2"})));
+        .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
 
     auto doc1File = getTmpDb();
     json::Json doc1;
@@ -203,7 +204,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
 {
     EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadColResp({"db1", "db2"})));
+        .WillOnce(testing::Return(storeReadColResp({"geo/db1", "geo/db2"})));
 
     auto doc1File = getTmpDb();
     json::Json doc1;

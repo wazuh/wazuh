@@ -48,17 +48,18 @@ protected:
         mockDownloader = std::make_shared<mocks::MockDownloader>();
 
         auto path = getTmpDb();
+        auto internalName =
+            base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
 
         EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadColResp({std::filesystem::path(path).filename().string()})));
+            .WillOnce(testing::Return(storeReadColResp({internalName})));
 
         json::Json docJson;
         docJson.setString(path, PATH_PATH);
         docJson.setString(typeName(Type::CITY), TYPE_PATH);
         docJson.setString("hash", HASH_PATH);
 
-        auto internalName =
-            base::Name(fmt::format("{}/{}", INTERNAL_NAME, std::filesystem::path(path).filename().string()));
+
         EXPECT_CALL(*mockStore, readInternalDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(docJson)));
 
         manager = std::make_shared<Manager>(mockStore, mockDownloader);
