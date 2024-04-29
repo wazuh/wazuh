@@ -69,7 +69,7 @@ function help() {
     echo "    -t,   --target-system <target> [Required] Select target wpk to build [linux/windows/macos]"
     echo "    -b,   --branch <branch>        [Required] Select Git branch or tag e.g. $BRANCH"
     echo "    -d,   --destination <path>     [Required] Set the destination path of package."
-    echo "    -pn,  --package-name <name>    [Required] Package name to pack on wpk."
+    echo "    -pn,  --package-name <name>    [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk."
     echo "    -o,   --output <name>          [Required] Name to the output package."
     echo "    -k,   --key-dir <path>         [Optional] Set the WPK key path to sign package."
     echo "    --aws-wpk-key                  [Optional] AWS Secrets manager Name/ARN to get WPK private key."
@@ -200,7 +200,7 @@ function main() {
                 PKG_NAME=`basename ${PKG_NAME}`
                 shift 2
             else
-                echo "ERROR: Missing package name"
+                echo "ERROR: Missing package file"
                 help 1
             fi
             ;;
@@ -271,7 +271,7 @@ function main() {
                 pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 clean ${COMMON_BUILDER_DOCKERFILE} 0
             else
-                echo "ERROR: Cannot build WPK without a package name."
+                echo "ERROR: Cannot build WPK without a package."
                 help 1
             fi
         else
