@@ -337,25 +337,24 @@ function main() {
     fi
 
     if [[ "${HAVE_TARGET}" == true ]] && [[ "${HAVE_BRANCH}" == true ]] && [[ "${HAVE_DESTINATION}" == true ]] && [[ "${HAVE_OUT_NAME}" == true ]]; then
-        if [[ "${TARGET}" == "windows" || "${TARGET}" == "macos" ]]; then
+        if [[ "${TARGET}" == "linux" || "${TARGET}" == "windows" || "${TARGET}" == "macos" ]]; then
             if [[ "${HAVE_PKG_NAME}" == true ]]; then
-                if [[ ${BUILD_DOCKER} == "yes" ]]; then
-                    build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
-                fi
+                build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 local CONTAINER_NAME="${COMMON_BUILDER}"
-                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
+                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 clean ${COMMON_BUILDER_DOCKERFILE} 0
+            elif [[ "${TARGET}" == "linux" ]]; then
+                build_container ${LINUX_BUILDER} ${LINUX_BUILDER_DOCKERFILE} || clean ${LINUX_BUILDER_DOCKERFILE} 1
+                local CONTAINER_NAME="${LINUX_BUILDER}"
+                build_wpk_linux ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${LINUX_BUILDER_DOCKERFILE} 1
+                clean ${LINUX_BUILDER_DOCKERFILE} 0
             else
-                echo "ERROR: No MSI/PKG package name specified for Windows or macOS WPK"
+                echo "ERROR: Only Linux can be built without a package name."
                 help 1
             fi
         else
-            if [[ ${BUILD_DOCKER} == "yes" ]]; then
-                build_container ${LINUX_BUILDER} ${LINUX_BUILDER_DOCKERFILE} || clean ${LINUX_BUILDER_DOCKERFILE} 1
-            fi
-            local CONTAINER_NAME="${LINUX_BUILDER}"
-            build_wpk_linux ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${OUT_NAME} ${CHECKSUM} ${INSTALLATION_PATH} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${LINUX_BUILDER_DOCKERFILE} 1
-            clean ${LINUX_BUILDER_DOCKERFILE} 0
+            echo "ERROR: Target system must be linux, windows or macos."
+            help 1
         fi
     else
         echo "ERROR: Need more parameters"
