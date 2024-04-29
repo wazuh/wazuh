@@ -42,3 +42,12 @@ runs:
           cmake .. -DCMAKE_PROJECT_NAME=http-request -DSRC_FOLDER=${SRC_FOLDER} && make -j2
         shell: bash
 
+      - name: Build keystore
+        run: |
+          cd src
+          SRC_FOLDER=$(pwd)
+
+          cd shared_modules/keystore
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_PROJECT_NAME=keystore -DSRC_FOLDER=${SRC_FOLDER} && make -j2
+        shell: bash
