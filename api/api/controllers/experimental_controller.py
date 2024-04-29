@@ -33,6 +33,7 @@ def check_experimental_feature_value(func):
     return wrapper
 
 
+@deprecate_endpoint()
 @check_experimental_feature_value
 async def clear_rootcheck_database(request, pretty: bool = False, wait_for_complete: bool = False,
                                    agents_list: list = None) -> web.Response:
@@ -114,6 +115,7 @@ async def clear_syscheck_database(request, pretty: bool = False, wait_for_comple
     return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
 
 
+@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_cis_cat_results(request, pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                               offset: int = 0, limit: int = None, select: str = None, sort: str = None,
