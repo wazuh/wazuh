@@ -3,7 +3,6 @@ set -x
 DIRECTORY="wazuh*"
 REPOSITORY="https://github.com/wazuh/wazuh"
 REFERENCE=""
-JOBS="4"
 OUT_NAME=""
 CHECKSUM="no"
 PKG_NAME=""
@@ -26,7 +25,6 @@ help() {
     echo "    -b,   --branch <branch>      [Required] Select Git branch or tag e.g. master"
     echo "    -o,   --output <name>        [Required] Name to the output package."
     echo "    -pn,  --package-name <name>  [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk."
-    echo "    -j,   --jobs <number>        [Optional] Number of parallel jobs when compiling."
     echo "    -c,   --checksum             [Optional] Whether Generate checksum or not."
     echo "    --aws-wpk-key                [Optional] AWS Secrets manager Name/ARN to get WPK private key."
     echo "    --aws-wpk-cert               [Optional] AWS secrets manager Name/ARN to get WPK certificate."
@@ -75,12 +73,6 @@ main() {
                     echo "ERROR: missing package file."
                     help 1
                 fi
-                shift 2
-            fi
-            ;;
-        "-j"|"--jobs")
-            if [ -n "${2}" ]; then
-                JOBS="${2}"
                 shift 2
             fi
             ;;

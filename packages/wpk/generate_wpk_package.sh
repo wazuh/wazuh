@@ -21,13 +21,12 @@ function pack_wpk() {
     local BRANCH="${1}"
     local DESTINATION="${2}"
     local CONTAINER_NAME="${3}"
-    local JOBS="${4}"
-    local PACKAGE_NAME="${5}"
-    local OUT_NAME="${6}"
-    local CHECKSUM="${7}"
-    local AWS_REGION="${8}"
-    local WPK_KEY="${9}"
-    local WPK_CERT="${10}"
+    local PACKAGE_NAME="${4}"
+    local OUT_NAME="${5}"
+    local CHECKSUM="${6}"
+    local AWS_REGION="${7}"
+    local WPK_KEY="${8}"
+    local WPK_CERT="${9}"
 
     if [[ "${CHECKSUM}" == "yes" ]]; then
         CHECKSUM_FLAG="-c"
@@ -44,7 +43,7 @@ function pack_wpk() {
 
     docker run -t --rm ${MOUNT_KEYDIR_FLAG} -v ${DESTINATION}:/var/local/wazuh:Z -v ${PKG_PATH}:/var/pkg:Z -v ${DESTINATION}:/var/local/checksum:Z \
         -e AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY" \
-        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -j ${JOBS} -o ${OUT_NAME} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
+        ${CONTAINER_NAME}:${DOCKER_TAG} -b ${BRANCH} -o ${OUT_NAME} --aws-wpk-key-region ${AWS_REGION} ${WPK_KEY_FLAG} ${WPK_CERT_FLAG} -pn ${PACKAGE_NAME} ${CHECKSUM_FLAG}
 
     return $?
 }
@@ -73,7 +72,6 @@ function help() {
     echo "    --aws-wpk-key                  [Optional] AWS Secrets manager Name/ARN to get WPK private key."
     echo "    --aws-wpk-cert                 [Optional] AWS secrets manager Name/ARN to get WPK certificate."
     echo "    --aws-wpk-key-region           [Optional] AWS Region where secrets are stored."
-    echo "    -j,   --jobs <number>          [Optional] Number of parallel jobs when compiling."
     echo "    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no"
     echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes"
     echo "    --tag <name>                   [Optional] Tag to use with the docker image."
@@ -102,7 +100,6 @@ function main() {
     local TARGET=""
     local BRANCH=""
     local DESTINATION="${CURRENT_PATH}/output"
-    local JOBS="4"
     local CONTAINER_NAME=""
     local PKG_NAME=""
     local OUT_NAME=""
@@ -169,15 +166,6 @@ function main() {
                     local HAVE_KEYDIR=true
                 fi
                 shift 2
-            fi
-            ;;
-        "-j"|"--jobs")
-            if [ -n "${2}" ]; then
-                local JOBS="${2}"
-                shift 2
-            else
-                echo "ERROR: Missing jobs."
-                help 1
             fi
             ;;
         "-pn"|"--package-name")
@@ -256,7 +244,7 @@ function main() {
             if [[ "${HAVE_PKG_NAME}" == true ]]; then
                 build_container ${COMMON_BUILDER} ${COMMON_BUILDER_DOCKERFILE} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 local CONTAINER_NAME="${COMMON_BUILDER}"
-                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${JOBS} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
+                pack_wpk ${BRANCH} ${DESTINATION} ${CONTAINER_NAME} ${PKG_NAME} ${OUT_NAME} ${CHECKSUM} ${CHECKSUMDIR} ${AWS_REGION} ${WPK_KEY} ${WPK_CERT} || clean ${COMMON_BUILDER_DOCKERFILE} 1
                 clean ${COMMON_BUILDER_DOCKERFILE} 0
             else
                 echo "ERROR: Cannot build WPK without a package."
