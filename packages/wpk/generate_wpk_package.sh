@@ -109,7 +109,6 @@ function main() {
     local CONTAINER_NAME=""
     local PKG_NAME=""
     local OUT_NAME=""
-    local NO_COMPILE=false
     local WPK_KEY=""
     local WPK_CERT=""
     local AWS_REGION="us-east-1"
