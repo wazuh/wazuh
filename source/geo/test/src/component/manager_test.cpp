@@ -41,22 +41,22 @@ protected:
         asnPath = getTmpDb();
         cityPath = getTmpDb();
 
+        auto asnName = base::Name(fmt::format(
+            "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(asnPath).filename().string()));
+        auto cityName = base::Name(fmt::format(
+            "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(cityPath).filename().string()));
+
         EXPECT_CALL(*mockStore, readInternalCol(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadColResp({std::filesystem::path(asnPath).filename().string(),
-                                                        std::filesystem::path(cityPath).filename().string()})));
+            .WillOnce(testing::Return(storeReadColResp({asnName, cityName})));
         json::Json asnJson;
         asnJson.setString(asnPath, PATH_PATH);
         asnJson.setString(typeName(Type::ASN), TYPE_PATH);
         asnJson.setString("asnHash", HASH_PATH);
-        auto asnName = base::Name(fmt::format(
-            "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(asnPath).filename().string()));
 
         json::Json cityJson;
         cityJson.setString(cityPath, PATH_PATH);
         cityJson.setString(typeName(Type::CITY), TYPE_PATH);
         cityJson.setString("cityHash", HASH_PATH);
-        auto cityName = base::Name(fmt::format(
-            "{}{}{}", INTERNAL_NAME, base::Name::SEPARATOR_S, std::filesystem::path(cityPath).filename().string()));
 
         EXPECT_CALL(*mockStore, readInternalDoc(asnName)).WillOnce(testing::Return(storeReadDocResp(asnJson)));
         EXPECT_CALL(*mockStore, readInternalDoc(cityName)).WillOnce(testing::Return(storeReadDocResp(cityJson)));

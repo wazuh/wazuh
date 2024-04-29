@@ -40,8 +40,7 @@ Manager::Manager(const std::shared_ptr<store::IStoreInternal>& store, const std:
     auto dbs = base::getResponse(dbsResp);
     for (const auto& db : dbs)
     {
-        auto docName = base::Name(INTERNAL_NAME + db);
-        auto dbResp = m_store->readInternalDoc(docName);
+        auto dbResp = m_store->readInternalDoc(db);
         if (base::isError(dbResp))
         {
             LOG_ERROR("Geo cannot read internal document '{}': {}", db, base::getError(dbResp).message);
@@ -56,7 +55,7 @@ Manager::Manager(const std::shared_ptr<store::IStoreInternal>& store, const std:
         if (base::isError(addResp))
         {
             LOG_ERROR("Geo cannot add db '{}': {}", path, base::getError(addResp).message);
-            m_store->deleteInternalDoc(docName);
+            m_store->deleteInternalDoc(db);
             LOG_TRACE("Geo deleted internal document '{}'", db);
         }
     }
@@ -84,6 +83,7 @@ base::OptError Manager::upsertStoreEntry(const std::string& path)
     auto doc = store::Doc();
     doc.setString(path, PATH_PATH);
     doc.setString(hash, HASH_PATH);
+    doc.setString(typeName(m_dbs.at(dbPath.filename().string())->type), TYPE_PATH);
 
     return m_store->upsertInternalDoc(internalName, doc);
 }
