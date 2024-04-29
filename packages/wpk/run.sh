@@ -10,6 +10,7 @@ INSTALLATION_PATH="/var/ossec"
 PKG_NAME=""
 HAVE_PKG_NAME_WIN=false
 HAVE_PKG_NAME_MAC=false
+HAVE_PKG_NAME_LINUX=false
 AWS_REGION="us-east-1"
 KEYPATH="/etc/wazuh"
 WPKCERT="${KEYPATH}/wpkcert.pem"
@@ -85,6 +86,10 @@ main() {
                     HAVE_PKG_NAME_WIN=true
                 elif [ "${PKG_NAME: -4}" == ".pkg" ]; then
                     HAVE_PKG_NAME_MAC=true
+                elif [ "${PKG_NAME: -4}" == ".rpm" ]; then
+                    HAVE_PKG_NAME_LINUX=true
+                elif [ "${PKG_NAME: -4}" == ".deb" ]; then
+                    HAVE_PKG_NAME_LINUX=true
                 fi
                 shift 2
             fi
@@ -185,28 +190,27 @@ main() {
     if [ "${DIST_NAME}" = "centos" ]; then
         ${PYTHON} /usr/local/bin/wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} *
     else
-
-      if [ "${HAVE_PKG_NAME_WIN}" == true ]; then
-          CURRENT_DIR=$(pwd)
-          echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1"
-          cd ${OUTDIR}
-          cp ${CURRENT_DIR}/src/win32/{upgrade.bat,do_upgrade.ps1} .
-          cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
-          wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1
-          rm -f upgrade.bat do_upgrade.ps1 ${PKG_NAME}
-      elif [ "${HAVE_PKG_NAME_MAC}" == true ]; then
-          CURRENT_DIR=$(pwd)
-          echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer_mac.sh"
-          cd ${OUTDIR}
-          cp ${CURRENT_DIR}/src/init/pkg_installer_mac.sh .
-          cp ${CURRENT_DIR}/upgrade.sh .
-          cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
-          wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer_mac.sh
-          rm -f upgrade.sh pkg_installer_mac.sh ${PKG_NAME}
-      else
-          echo "ERROR: MSI/PKG package is needed to build the Windows or macOS WPK"
-          help 1
-      fi
+        if [ "${HAVE_PKG_NAME_WIN}" == true ]; then
+            CURRENT_DIR=$(pwd)
+            echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1"
+            cd ${OUTDIR}
+            cp ${CURRENT_DIR}/src/win32/{upgrade.bat,do_upgrade.ps1} .
+            cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
+            wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1
+            rm -f upgrade.bat do_upgrade.ps1 ${PKG_NAME}
+        elif [ "${HAVE_PKG_NAME_MAC}" == true ] || [ "${HAVE_PKG_NAME_LINUX}" == true ]; then
+            CURRENT_DIR=$(pwd)
+            echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer.sh"
+            cd ${OUTDIR}
+            cp ${CURRENT_DIR}/src/init/pkg_installer.sh .
+            cp ${CURRENT_DIR}/upgrade.sh .
+            cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
+            wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer.sh
+            rm -f upgrade.sh pkg_installer.sh ${PKG_NAME}
+        else
+            echo "ERROR: a package (MSI/PKG/RPM/DEB) is needed to build the WPK"
+            help 1
+        fi
     fi
     echo "PACKED FILE -> ${OUTPUT}"
     cd ${OUTDIR}
