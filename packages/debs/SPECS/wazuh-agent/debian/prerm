@@ -9,9 +9,12 @@ case "$1" in
     upgrade|deconfigure)
 
       # Stop the services before uninstalling the package
-      systemctl stop wazuh-agent || true
-      service wazuh-agent stop || true
-      ${DIR}/bin/wazuh-control stop || true
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
+          systemctl stop wazuh-agent > /dev/null 2>&1
+      elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "running" > /dev/null 2>&1; then
+          service wazuh-agent stop > /dev/null 2>&1
+      fi
+      ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
 
       # Process: wazuh-execd
       if pgrep -f "wazuh-execd" > /dev/null 2>&1; then
@@ -56,14 +59,6 @@ case "$1" in
 
       if pgrep -f "wazuh-modulesd" > /dev/null 2>&1; then
         kill -9 $(pgrep -f "wazuh-modulesd") > /dev/null 2>&1
-      fi
-
-      if [ -d ${DIR}/logs/wazuh ]; then
-        mv ${DIR}/logs/wazuh ${DIR}/logs/ossec
-      fi
-
-      if [ -d ${DIR}/queue/sockets ]; then
-        mv ${DIR}/queue/sockets ${DIR}/queue/ossec
       fi
 
     ;;
