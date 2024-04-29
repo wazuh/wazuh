@@ -56,6 +56,14 @@ case "$1" in
 
             OSMYSHELL="/sbin/nologin"
 
+            if [ -d ${DIR}/logs/wazuh ]; then
+                mv ${DIR}/logs/wazuh ${DIR}/logs/ossec
+            fi
+
+            if [ -d ${DIR}/queue/sockets ]; then
+                mv ${DIR}/queue/sockets ${DIR}/queue/ossec
+            fi
+
             if [ -f ${DIR}/queue/sockets/.agent_info ]; then
                 mv ${DIR}/queue/sockets/.agent_info ${DIR}/queue/ossec/
             fi
