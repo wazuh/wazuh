@@ -16,6 +16,11 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 
+constexpr auto MAX_DELAY_TIME
+{
+    300
+};
+
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
 {                                                                       \
@@ -1053,7 +1058,7 @@ void Syscollector::registerWithRsync()
             auto jsonData(nlohmann::json::parse(dataString));
             auto it{jsonData.find("data")};
 
-            m_lastSyncMsg = time(nullptr);
+            m_lastSyncMsg = std::time(nullptr);
 
             if (!m_stopping)
             {
@@ -1186,6 +1191,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_processes = processes;
     m_hotfixes = hotfixes;
     m_notify = notifyOnFirstScan;
+    m_currentIntervalValue = m_intervalValue;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -1630,14 +1636,17 @@ void Syscollector::sync()
 
 void Syscollector::syncAlgorithm()
 {
-    if ((long int)time(nullptr) - m_lastSyncMsg > m_intervalValue)
+    m_currentIntervalValue = m_intervalValue / 2 >= MAX_DELAY_TIME ? MAX_DELAY_TIME : m_intervalValue / 2;
+
+    if (std::chrono::seconds{std::time(nullptr) - m_lastSyncMsg} > std::chrono::seconds{m_currentIntervalValue})
     {
         scan();
         sync();
+        m_currentIntervalValue = m_intervalValue;
     }
     else
     {
-        m_logFunction(LOG_DEBUG_VERBOSE, "Synchronization in progress, scan postponed until next interval.");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Syscollector synchronization process concluded recently, delaying scan for " + std::to_string(m_currentIntervalValue) + " second/s");
     }
 }
 
@@ -1651,7 +1660,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         sync();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(lock, std::chrono::seconds{m_currentIntervalValue}, [&]()
 {
     return m_stopping;
 }))

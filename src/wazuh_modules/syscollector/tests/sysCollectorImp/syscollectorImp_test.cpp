@@ -2362,7 +2362,7 @@ TEST_F (SyscollectorImpTest, SyncOverlap)
     {
         [](const modules_log_level_t /*level*/, const std::string & log)
         {
-            std::string expectedStr {"Synchronization in progress, scan postponed until next interval."};
+            std::string expectedStr {"Syscollector synchronization process concluded recently, delaying scan for 1 second/s"};
 
             if (log.find("Discarded") != std::string::npos)
             {
