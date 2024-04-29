@@ -29,8 +29,6 @@ option(ENGINE_BUILD_UBSAN "Enable undefined behavior sanitizer" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_BUILD_COVERAGE "Enables the coverage report" OFF)
-option(ENGINE_PROFILE_BUILD "Enables profiling through Tracy" OFF)
-option(ENGINE_PROFILE_MEMORY "Enables memory profiling in Tracy" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTOBUF "Generate code using Protocol Buffers" OFF)
 
