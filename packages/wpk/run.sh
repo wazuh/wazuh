@@ -6,7 +6,6 @@ REFERENCE=""
 JOBS="4"
 OUT_NAME=""
 CHECKSUM="no"
-INSTALLATION_PATH="/var/ossec"
 PKG_NAME=""
 HAVE_PKG_NAME_WIN=false
 HAVE_PKG_NAME_MAC=false
@@ -29,7 +28,6 @@ help() {
     echo "    -o,   --output <name>        [Required] Name to the output package."
     echo "    -pn,  --package-name <name>  [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk."
     echo "    -r,   --revision <rev>       [Optional] Revision of the package. By default: 1."
-    echo "    -p,   --path <path>          [Optional] Installation path for the package. By default: /var."
     echo "    -j,   --jobs <number>        [Optional] Number of parallel jobs when compiling."
     echo "    -c,   --checksum             [Optional] Whether Generate checksum or not."
     echo "    --aws-wpk-key                [Optional] AWS Secrets manager Name/ARN to get WPK private key."
@@ -65,12 +63,6 @@ main() {
         "-r"|"--revision")
             if [ -n "${2}" ]; then
                 REVISION="${2}"
-                shift 2
-            fi
-            ;;
-        "-p"|"--path")
-            if [ -n "${2}" ]; then
-                INSTALLATION_PATH="${2}"
                 shift 2
             fi
             ;;
@@ -140,16 +132,9 @@ main() {
         rm -f wpkcert.key.json
     fi
 
-
     # Get Wazuh
     curl -sL ${REPOSITORY}/tarball/${REFERENCE} | tar zx
     cd ${DIRECTORY}
-
-    # Get info
-    . src/init/dist-detect.sh
-    VERSION=$(cat src/VERSION)
-    SHORT_VERSION=$(cat src/VERSION | cut -dv -f2)
-    ARCH=$(uname -m)
 
     # Create package
     if [ -z "${OUTPUT}" ]
