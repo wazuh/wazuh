@@ -256,7 +256,9 @@
                         <File Id="VISTA_SEC.TXT" Name="vista_sec.txt" Source="vista_sec.txt" />
                     </Component>
                     <Component Id="WIN32UI.EXE" DiskId="1" Guid="E7ACBC6F-D8A0-410B-B8D2-2AD9F5152BA0">
-                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe"/>
+                        <File Id="WIN32UI.EXE" Name="win32ui.exe" Source="os_win32ui.exe">
+                            <util:PermissionEx User="Users" GenericAll="yes" />
+                        </File>
                         <File Id="WIN32UI.EXE.MANIFEST" Name="win32ui.exe.manifest" Source="win32ui.exe.manifest" />
                     </Component>
                     <Component Id="REMOVE_OLD_NSIS" Guid="3536239B-022D-4A9B-A7F8-2F64132115ED">
