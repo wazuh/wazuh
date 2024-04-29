@@ -2362,7 +2362,7 @@ TEST_F (SyscollectorImpTest, SyncOverlap)
     {
         [](const modules_log_level_t /*level*/, const std::string & log)
         {
-            std::string expectedStr {R"(Synchronization in progress. Discarded message: syscollector_packages checksum_fail {"begin":"0005a2bdc731445bbe68d6706e452937bdbc9e2f","end":"fff931b8ce752c06e9b219189281b7eae4285d44","id":1713982197})"};
+            std::string expectedStr {"Synchronization in progress, scan postponed until next interval."};
 
             if (log.find("Discarded") != std::string::npos)
             {
