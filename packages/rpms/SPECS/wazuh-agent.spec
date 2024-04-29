@@ -214,6 +214,11 @@ fi
 
 # Stop the services to upgrade the package
 if [ $1 = 2 ]; then
+  if [ ! -d "%{_localstatedir}" ]; then
+    echo "Error: Directory %{_localstatedir} does not exist. Cannot perform upgrade" >&2
+    exit 1
+  fi
+
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
     systemctl stop wazuh-agent.service > /dev/null 2>&1
     touch %{_localstatedir}/tmp/wazuh.restart
