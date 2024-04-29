@@ -665,9 +665,11 @@ void wm_remove_sid(pid_t sid) {
                 return;
             }
         }
+        merror("Child process %d not found.", sid);
         w_mutex_unlock(&wm_children_mutex);
+    } else {
+        merror("Child process %d couldn't be deleted as the children list is empty.", sid);
     }
-    merror("Child process %d not found.", sid);
 }
 
 // Terminate every child process group. Doesn't wait for them!
