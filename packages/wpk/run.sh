@@ -19,11 +19,6 @@ OUTDIR="/var/local/wazuh"
 CHECKSUMDIR="/var/local/checksum"
 REVISION="1"
 
-if command -v python3 > /dev/null ; then
-    PYTHON="python3"
-else
-    PYTHON=""
-fi
 
 help() {
     echo
@@ -92,6 +87,9 @@ main() {
                     HAVE_PKG_NAME_LINUX=true
                 elif [ "${PKG_NAME: -4}" == ".apk" ]; then
                     HAVE_PKG_NAME_LINUX=true
+                else
+                    echo "ERROR: missing package file."
+                    help 1
                 fi
                 shift 2
             fi
@@ -143,7 +141,6 @@ main() {
     fi
 
 
-    NO_COMPILE=false
     # Get Wazuh
     curl -sL ${REPOSITORY}/tarball/${REFERENCE} | tar zx
     cd ${DIRECTORY}
@@ -157,102 +154,39 @@ main() {
     # Create package
     if [ -z "${OUTPUT}" ]
     then
-        if [ "${DIST_NAME}" = "centos" ]
-        then
-            BUILD_TARGET="agent"
-            NO_COMPILE=false
-        else
-            BUILD_TARGET="winagent"
-            NO_COMPILE=true
-        fi
         OUTPUT="${OUTDIR}/${OUT_NAME}"
-
         mkdir -p ${OUTDIR}
     fi
 
-    WAZUH_VERSION=$(cat src/VERSION)
-    MAJOR=$(echo ${WAZUH_VERSION} | cut -dv -f2 | cut -d. -f1)
-    MINOR=$(echo ${WAZUH_VERSION} | cut -d. -f2)
-
-    if [ "${NO_COMPILE}" == false ]; then
-        # Execute gmake deps if the version is greater or equal to 3.5
-        if [[ ${MAJOR} -ge 4 || (${MAJOR} -ge 3 && ${MINOR} -ge 5) ]]; then
-            make -C src deps TARGET=${BUILD_TARGET}
-        fi
-
-        # Compile agent
-        make -C src -j ${JOBS} TARGET=${BUILD_TARGET} || exit 1
-        # Clean unuseful files
-        clean
-        # Preload vars for installer
-        preload
-    fi
-
     # Compress and sign package
-    if [ "${DIST_NAME}" = "centos" ]; then
-        ${PYTHON} /usr/local/bin/wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} *
+    if [ "${HAVE_PKG_NAME_WIN}" == true ]; then
+        CURRENT_DIR=$(pwd)
+        echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1"
+        cd ${OUTDIR}
+        cp ${CURRENT_DIR}/src/win32/{upgrade.bat,do_upgrade.ps1} .
+        cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
+        wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1
+        rm -f upgrade.bat do_upgrade.ps1 ${PKG_NAME}
+    elif [ "${HAVE_PKG_NAME_MAC}" == true ] || [ "${HAVE_PKG_NAME_LINUX}" == true ]; then
+        CURRENT_DIR=$(pwd)
+        echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer.sh"
+        cd ${OUTDIR}
+        cp ${CURRENT_DIR}/src/init/pkg_installer.sh .
+        cp ${CURRENT_DIR}/upgrade.sh .
+        cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
+        wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer.sh
+        rm -f upgrade.sh pkg_installer.sh ${PKG_NAME}
     else
-        if [ "${HAVE_PKG_NAME_WIN}" == true ]; then
-            CURRENT_DIR=$(pwd)
-            echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1"
-            cd ${OUTDIR}
-            cp ${CURRENT_DIR}/src/win32/{upgrade.bat,do_upgrade.ps1} .
-            cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
-            wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1
-            rm -f upgrade.bat do_upgrade.ps1 ${PKG_NAME}
-        elif [ "${HAVE_PKG_NAME_MAC}" == true ] || [ "${HAVE_PKG_NAME_LINUX}" == true ]; then
-            CURRENT_DIR=$(pwd)
-            echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer.sh"
-            cd ${OUTDIR}
-            cp ${CURRENT_DIR}/src/init/pkg_installer.sh .
-            cp ${CURRENT_DIR}/upgrade.sh .
-            cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
-            wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.sh pkg_installer.sh
-            rm -f upgrade.sh pkg_installer.sh ${PKG_NAME}
-        else
-            echo "ERROR: a package (MSI/PKG/RPM/DEB) is needed to build the WPK"
-            help 1
-        fi
+        echo "ERROR: a package (MSI/PKG/RPM/DEB) is needed to build the WPK"
+        help 1
     fi
+
     echo "PACKED FILE -> ${OUTPUT}"
     cd ${OUTDIR}
+
     if [[ ${CHECKSUM} == "yes" ]]; then
         mkdir -p ${CHECKSUMDIR}
         sha512sum "${OUT_NAME}" > "${CHECKSUMDIR}/${OUT_NAME}.sha512"
-    fi
-}
-
-clean() {
-    rm -rf ./{api,framework}
-    rm -rf doc gen_ossec.sh add_localfiles.sh Jenkinsfile*
-    rm -rf src/{addagent,analysisd,client-agent,config,error_messages,external/*}
-    rm -rf src/{headers,logcollector,monitord,os_auth,os_crypto,os_csyslogd}
-    rm -rf src/{os_dbd,os_execd,os_integrator,os_maild,os_net,os_regex,os_xml,os_zlib}
-    rm -rf src/{remoted,reportd,shared,unit_tests,wazuh_db}
-
-    # Clean syscheckd folder
-    find src/syscheckd -type f -not -name "wazuh-syscheckd" -not -name "libfimdb.dylib" -not -name "libfimdb.so" -delete
-
-
-    if [[ "${BUILD_TARGET}" != "winagent" ]]; then
-        rm -rf src/win32
-    fi
-
-    rm -rf src/*.a
-
-    find etc/templates/config -not -name "sca.files" -delete 2>/dev/null
-    find etc/templates/* -maxdepth 0 -not -name "en" -not -name "config" | xargs rm -rf
-}
-
-preload() {
-    echo 'USER_UPDATE="y"' > etc/preloaded-vars.conf
-    echo 'USER_LANGUAGE="en"' >> etc/preloaded-vars.conf
-    echo 'USER_NO_STOP="y"' >> etc/preloaded-vars.conf
-    echo 'USER_BINARYINSTALL="y"'>> etc/preloaded-vars.conf
-    if [[ "${BUILD_TARGET}" != "winagent" ]]; then
-        echo 'USER_INSTALL_TYPE="agent"' >> etc/preloaded-vars.conf
-    else
-        echo 'USER_INSTALL_TYPE="winagent"' >> etc/preloaded-vars.conf
     fi
 }
 
