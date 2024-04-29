@@ -455,8 +455,28 @@ fi
 
 %postun
 
-# If the package is been uninstalled
-if [ $1 = 0 ];then
+DELETE_WAZUH_USER_AND_GROUP=0
+
+# If the upgrade downgrades to earlier versions, it will create the ossec
+# group and user, we need to delete wazuh ones
+if [ $1 = 1 ]; then
+  if command -v %{_localstatedir}/bin/ossec-control > /dev/null 2>&1; then
+    find %{_localstatedir} -group wazuh -exec chgrp ossec {} +
+    find %{_localstatedir} -user wazuh -exec chown ossec {} +
+    DELETE_WAZUH_USER_AND_GROUP=1
+  fi
+
+  if [ ! -f %{_localstatedir}/etc/client.keys ]; then
+    if [ -f %{_localstatedir}/etc/client.keys.rpmsave ]; then
+      mv %{_localstatedir}/etc/client.keys.rpmsave %{_localstatedir}/etc/client.keys
+    elif [ -f %{_localstatedir}/etc/client.keys.rpmnew ]; then
+      mv %{_localstatedir}/etc/client.keys.rpmnew %{_localstatedir}/etc/client.keys
+    fi
+  fi
+fi
+
+# If the package is been uninstalled or we want to delete wazuh user and group
+if [ $1 = 0 ] || [ $DELETE_WAZUH_USER_AND_GROUP = 1 ]; then
   # Remove the wazuh user if it exists
   if getent passwd wazuh > /dev/null 2>&1; then
     userdel wazuh >/dev/null 2>&1
@@ -468,15 +488,17 @@ if [ $1 = 0 ];then
     groupdel wazuh >/dev/null 2>&1
   fi
 
-  # Remove lingering folders and files
-  rm -rf %{_localstatedir}/etc/shared/
-  rm -rf %{_localstatedir}/queue/
-  rm -rf %{_localstatedir}/var/
-  rm -rf %{_localstatedir}/bin/
-  rm -rf %{_localstatedir}/logs/
-  rm -rf %{_localstatedir}/backup/
-  rm -rf %{_localstatedir}/ruleset/
-  rm -rf %{_localstatedir}/tmp
+  if [ $1 = 0 ];then
+    # Remove lingering folders and files
+    rm -rf %{_localstatedir}/etc/shared/
+    rm -rf %{_localstatedir}/queue/
+    rm -rf %{_localstatedir}/var/
+    rm -rf %{_localstatedir}/bin/
+    rm -rf %{_localstatedir}/logs/
+    rm -rf %{_localstatedir}/backup/
+    rm -rf %{_localstatedir}/ruleset/
+    rm -rf %{_localstatedir}/tmp
+  fi
 fi
 
 # posttrans code is the last thing executed in a install/upgrade
