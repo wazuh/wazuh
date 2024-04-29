@@ -461,15 +461,17 @@ TEST_F(GeoManagerTest, ComplexUseCase)
         threads.emplace_back(locatorFn, manager, type1);
     }
 
+    // Expectations by the manager threads
+    EXPECT_CALL(*mockStore, deleteInternalDoc(internalName0)).WillRepeatedly(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName0, testing::_)).WillRepeatedly(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, deleteInternalDoc(internalName1)).WillRepeatedly(testing::Return(storeOk()));
+    EXPECT_CALL(*mockStore, upsertInternalDoc(internalName1, testing::_)).WillRepeatedly(testing::Return(storeOk()));
+
     // Add a thread to remove the db0
     threads.emplace_back(
-        [&error, &errorMsg, times, type0, dbPath0, internalName0](std::shared_ptr<IManager> manager,
-                                                                  std::shared_ptr<MockStore> mockStore)
+        [&error, &errorMsg, times, type0, dbPath0](std::shared_ptr<IManager> manager,
+                                                   std::shared_ptr<MockStore> mockStore)
         {
-            EXPECT_CALL(*mockStore, deleteInternalDoc(internalName0)).WillRepeatedly(testing::Return(storeOk()));
-            EXPECT_CALL(*mockStore, upsertInternalDoc(internalName0, testing::_))
-                .WillRepeatedly(testing::Return(storeOk()));
-
             bool action = true;
             for (int i = 0; i < times; i++)
             {
@@ -504,13 +506,9 @@ TEST_F(GeoManagerTest, ComplexUseCase)
 
     // Add a thread to remove the db1
     threads.emplace_back(
-        [&error, &errorMsg, times, type1, dbPath1, internalName1](std::shared_ptr<IManager> manager,
-                                                                  std::shared_ptr<store::mocks::MockStore> mockStore)
+        [&error, &errorMsg, times, type1, dbPath1](std::shared_ptr<IManager> manager,
+                                                   std::shared_ptr<store::mocks::MockStore> mockStore)
         {
-            EXPECT_CALL(*mockStore, deleteInternalDoc(internalName1)).WillRepeatedly(testing::Return(storeOk()));
-            EXPECT_CALL(*mockStore, upsertInternalDoc(internalName1, testing::_))
-                .WillRepeatedly(testing::Return(storeOk()));
-
             bool action = true;
             for (int i = 0; i < times; i++)
             {

@@ -146,11 +146,20 @@ base::OptError Manager::removeDbUnsafe(const std::string& path)
     }
 
     {
+        // We need to hold the entry so the lock is not released after the entry is removed
+        auto entry = m_dbs.at(name);
+
         // Lock the database entry internal mutex for write
-        std::unique_lock lockEntry(m_dbs.at(name)->rwMutex);
+        std::unique_lock<std::shared_mutex> lockEntry(entry->rwMutex);
 
         // Remove the database
         m_dbs.erase(name);
+
+        // Unlock the entry mutex
+        lockEntry.unlock();
+
+        // Freed the entry
+        entry.reset();
     }
 
     // Remove the type from the map if it was the one in use
@@ -303,6 +312,7 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
         if (MMDB_SUCCESS != status)
         {
             // Remove the database
+            lockEntry.unlock();
             removeDbUnsafe(path);
 
             return base::Error {fmt::format("Cannot add database '{}': {}", path, MMDB_strerror(status))};
