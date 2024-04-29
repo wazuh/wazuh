@@ -16,7 +16,6 @@ WPKCERT="${KEYPATH}/wpkcert.pem"
 WPKKEY="${KEYPATH}/wpkcert.key"
 OUTDIR="/var/local/wazuh"
 CHECKSUMDIR="/var/local/checksum"
-REVISION="1"
 
 
 help() {
@@ -27,7 +26,6 @@ help() {
     echo "    -b,   --branch <branch>      [Required] Select Git branch or tag e.g. master"
     echo "    -o,   --output <name>        [Required] Name to the output package."
     echo "    -pn,  --package-name <name>  [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk."
-    echo "    -r,   --revision <rev>       [Optional] Revision of the package. By default: 1."
     echo "    -j,   --jobs <number>        [Optional] Number of parallel jobs when compiling."
     echo "    -c,   --checksum             [Optional] Whether Generate checksum or not."
     echo "    --aws-wpk-key                [Optional] AWS Secrets manager Name/ARN to get WPK private key."
@@ -58,12 +56,6 @@ main() {
             else
                 echo "ERROR: Missing output name."
                 help 1
-            fi
-            ;;
-        "-r"|"--revision")
-            if [ -n "${2}" ]; then
-                REVISION="${2}"
-                shift 2
             fi
             ;;
         "-pn"|"--package-name")
