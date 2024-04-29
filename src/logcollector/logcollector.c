@@ -2040,11 +2040,13 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     int i = 0, r = 0, j = -1;
     IT_control f_control = 0;
     time_t curr_time = 0;
+#ifdef __linux__
+    unsigned long thread_id = (unsigned long) pthread_self();
+#endif
 #ifndef WIN32
     int int_error = 0;
     struct timeval fp_timeout;
     struct stat tmp_stat;
-    unsigned long thread_id = (unsigned long) pthread_self();
 #else
     BY_HANDLE_FILE_INFORMATION lpFileInformation;
     memset(&lpFileInformation, 0, sizeof(BY_HANDLE_FILE_INFORMATION));
