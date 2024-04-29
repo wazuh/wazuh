@@ -10,12 +10,6 @@
 # Foundation.
 
 CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
-LINUX_BUILDER_X86_64="linux_wpk_builder_x86_64"
-LINUX_BUILDER_X86_64_DOCKERFILE="${CURRENT_PATH}/linux/x86_64"
-LINUX_BUILDER_AARCH64="linux_wpk_builder_aarch64"
-LINUX_BUILDER_AARCH64_DOCKERFILE="${CURRENT_PATH}/linux/aarch64"
-LINUX_BUILDER_ARMV7HL="linux_wpk_builder_armv7hl"
-LINUX_BUILDER_ARMV7HL_DOCKERFILE="${CURRENT_PATH}/linux/armv7hl"
 COMMON_BUILDER="common_wpk_builder"
 COMMON_BUILDER_DOCKERFILE="${CURRENT_PATH}/common"
 CHECKSUM="no"
@@ -81,7 +75,6 @@ function help() {
     echo "    --aws-wpk-key                  [Optional] AWS Secrets manager Name/ARN to get WPK private key."
     echo "    --aws-wpk-cert                 [Optional] AWS secrets manager Name/ARN to get WPK certificate."
     echo "    --aws-wpk-key-region           [Optional] AWS Region where secrets are stored."
-    echo "    -a,   --architecture <arch>    [Optional] Target architecture of the package [x86_64]."
     echo "    -j,   --jobs <number>          [Optional] Number of parallel jobs when compiling."
     echo "    -p,   --path <path>            [Optional] Installation path for the package. By default: /var/ossec."
     echo "    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no"
@@ -112,7 +105,6 @@ function main() {
     local TARGET=""
     local BRANCH=""
     local DESTINATION="${CURRENT_PATH}/output"
-    local ARCHITECTURE="x86_64"
     local JOBS="4"
     local CONTAINER_NAME=""
     local PKG_NAME=""
@@ -132,8 +124,6 @@ function main() {
     local HAVE_OUT_NAME=false
     local HAVE_WPK_KEY=false
     local HAVE_WPK_CERT=false
-    local LINUX_BUILDER="${LINUX_BUILDER_X86_64}"
-    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_X86_64_DOCKERFILE}"
 
     while [ -n "${1}" ]
     do
@@ -183,36 +173,6 @@ function main() {
                     local HAVE_KEYDIR=true
                 fi
                 shift 2
-            fi
-            ;;
-        "-a"|"--architecture")
-            if [ -n "${2}" ]; then
-                if [[ "${2}" == "x86_64" ]] || [[ "${2}" == "amd64" ]]; then
-                    local ARCHITECTURE="x86_64"
-                    local LINUX_BUILDER="${LINUX_BUILDER_X86_64}"
-                    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_X86_64_DOCKERFILE}"
-                    shift 2
-                elif [[ "${2}" == "aarch64" ]]; then
-                    local ARCHITECTURE="${2}"
-                    local LINUX_BUILDER="${LINUX_BUILDER_AARCH64}"
-                    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_AARCH64_DOCKERFILE}"
-                    shift 2
-                    echo "Architecture not supported currently. Issue: https://github.com/wazuh/wazuh/issues/22400"
-                    help 1
-                elif [[ "${2}" == "armv7hl" ]]; then
-                    local ARCHITECTURE="${2}"
-                    local LINUX_BUILDER="${LINUX_BUILDER_ARMV7HL}"
-                    local LINUX_BUILDER_DOCKERFILE="${LINUX_BUILDER_ARMV7HL_DOCKERFILE}"
-                    shift 2
-                    echo "Architecture not supported currently. Issue: https://github.com/wazuh/wazuh/issues/22400"
-                    help 1
-                else
-                    echo "Architecture must be x86_64/amd64, aarch64 or armv7hl"
-                    help 1
-                fi
-            else
-              echo "ERROR: Missing architecture."
-              help 1
             fi
             ;;
         "-j"|"--jobs")
