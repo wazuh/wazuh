@@ -74,8 +74,19 @@ fi
 
 # Check installation result
 RESULT=$?
-
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Installation result = ${RESULT}" >> ./logs/upgrade.log
+
+# Start Agent if not already running
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking Wazuh Agent status." >> ./logs/upgrade.log
+
+if ./bin/wazuh-control status; then
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Wazuh Agent is already running." >> ./logs/upgrade.log
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Starting Wazuh Agent." >> ./logs/upgrade.log
+    ./bin/wazuh-control start >> ./logs/upgrade.log 2>&1
+    sleep 1
+fi
+
 
 # Wait connection
 status="pending"
