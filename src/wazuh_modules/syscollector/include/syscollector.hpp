@@ -100,6 +100,7 @@ class EXPORTED Syscollector final
         void scan();
         void sync();
         void syncLoop(std::unique_lock<std::mutex>& lock);
+        void syncAlgorithm();
         std::shared_ptr<ISysInfo>                                               m_spInfo;
         std::function<void(const std::string&)>                                 m_reportDiffFunction;
         std::function<void(const std::string&)>                                 m_reportSyncFunction;
@@ -122,8 +123,7 @@ class EXPORTED Syscollector final
         std::mutex                                                              m_mutex;
         std::unique_ptr<SysNormalizer>                                          m_spNormalizer;
         std::string                                                             m_scanTime;
-        std::time_t                                                          m_scanDuration;
-        std::unordered_map<std::string, time_t>           m_lastSyncMsg;
+        time_t                                                                   m_lastSyncMsg;
 };
 
 

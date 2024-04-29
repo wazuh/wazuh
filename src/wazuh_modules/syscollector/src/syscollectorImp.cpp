@@ -1053,6 +1053,8 @@ void Syscollector::registerWithRsync()
             auto jsonData(nlohmann::json::parse(dataString));
             auto it{jsonData.find("data")};
 
+            m_lastSyncMsg = time(nullptr);
+
             if (!m_stopping)
             {
                 if (it != jsonData.end())
@@ -1602,7 +1604,6 @@ void Syscollector::scan()
     m_logFunction(LOG_INFO, "Starting evaluation.");
     m_scanTime = Utils::getCurrentTimestamp();
 
-    const time_t startScan = time(nullptr);
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
     TRY_CATCH_TASK(scanNetwork);
@@ -1610,7 +1611,6 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanHotfixes);
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
-    m_scanDuration = time(nullptr) - startScan;
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
@@ -1628,6 +1628,19 @@ void Syscollector::sync()
     m_logFunction(LOG_DEBUG, "Ending syscollector sync");
 }
 
+void Syscollector::syncAlgorithm()
+{
+    if ((long int)time(nullptr) - m_lastSyncMsg > m_intervalValue)
+    {
+        scan();
+        sync();
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Synchronization in progress, scan postponed until next interval.");
+    }
+}
+
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
     m_logFunction(LOG_INFO, "Module started.");
@@ -1643,8 +1656,7 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
     return m_stopping;
 }))
     {
-        scan();
-        sync();
+        syncAlgorithm();
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
@@ -1659,48 +1671,10 @@ void Syscollector::push(const std::string& data)
         auto rawData{data};
         Utils::replaceFirst(rawData, "dbsync ", "");
         const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
-        bool pushMessage = true;
-        std::string component;
-        std::string topic;
-        time_t id;
-        bool parseSuccesfull = true;
 
         try
         {
-            component = Utils::splitIndex(rawData, ' ', 0);
-            topic = Utils::splitIndex(rawData, ' ', 1);
-            const nlohmann::json syncInfoJson = nlohmann::json::parse(Utils::splitIndex(rawData, ' ', 2));
-            id = std::stol(syncInfoJson.at("id").dump());
-        }
-        catch (...)
-        {
-            parseSuccesfull = false;
-        }
-
-        try
-        {
-            if (parseSuccesfull)
-            {
-                const auto itComponent = m_lastSyncMsg.find(component);
-
-                if (itComponent == m_lastSyncMsg.end())
-                {
-                    m_lastSyncMsg[component] = id;
-                }
-
-                if (m_intervalValue + m_scanDuration <= id - m_lastSyncMsg[component] &&
-                        (2 * (m_intervalValue + m_scanDuration) > id - m_lastSyncMsg[component]))
-                {
-                    m_logFunction(LOG_DEBUG_VERBOSE, "Synchronization in progress. Discarded message: " + rawData);
-                    pushMessage = false;
-                    m_lastSyncMsg[component] = id;
-                }
-            }
-
-            if (pushMessage)
-            {
-                m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-            }
+            m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
         }
         // LCOV_EXCL_START
         catch (const std::exception& ex)
