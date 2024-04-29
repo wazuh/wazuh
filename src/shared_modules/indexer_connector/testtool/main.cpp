@@ -35,7 +35,7 @@ float generateRandomFloat(float min, float max)
 
 int generateRandomInt(int min, int max)
 {
-    std::uniform_int_distribution<int> distr(min, max);
+    std::uniform_int_distribution distr(min, max);
     return distr(ENG);
 }
 
@@ -104,92 +104,120 @@ int main(const int argc, const char* argv[])
         }
         const auto configuration = nlohmann::json::parse(configurationFile);
 
-        // Create indexer connector.
-        IndexerConnector indexerConnector(configuration,
-                                          cmdArgParser.getTemplateFilePath(),
-                                          [](const int logLevel,
-                                             const std::string& tag,
-                                             const std::string& file,
-                                             const int line,
-                                             const std::string& func,
-                                             const std::string& message,
-                                             va_list args)
-                                          {
-                                              auto pos = file.find_last_of('/');
-                                              if (pos != std::string::npos)
-                                              {
-                                                  pos++;
-                                              }
-                                              std::string fileName = file.substr(pos, file.size() - pos);
-                                              char formattedStr[MAXLEN] = {0};
-                                              vsnprintf(formattedStr, MAXLEN, message.c_str(), args);
+        // Open file to write log.
+        std::ofstream logFile;
+        if (!cmdArgParser.getLogFilePath().empty())
+        {
+            logFile.open(cmdArgParser.getLogFilePath());
+            if (!logFile.is_open())
+            {
+                throw std::runtime_error("Failed to open log file: " + cmdArgParser.getLogFilePath());
+            }
+        }
 
-                                              if (logLevel != LOG_ERROR)
-                                              {
-                                                  std::cout << tag << ":" << fileName << ":" << line << " " << func
-                                                            << " : " << formattedStr << std::endl;
-                                              }
-                                              else
-                                              {
-                                                  std::cerr << tag << ":" << fileName << ":" << line << " " << func
-                                                            << " : " << formattedStr << std::endl;
-                                              }
-                                          });
+        // Create indexer connector.
+        IndexerConnector indexerConnector(
+            configuration,
+            cmdArgParser.getTemplateFilePath(),
+            [&logFile](const int logLevel,
+                       const std::string& tag,
+                       const std::string& file,
+                       const int line,
+                       const std::string& func,
+                       const std::string& message,
+                       va_list args)
+            {
+                auto pos = file.find_last_of('/');
+                if (pos != std::string::npos)
+                {
+                    pos++;
+                }
+                std::string fileName = file.substr(pos, file.size() - pos);
+                char formattedStr[MAXLEN] = {0};
+                vsnprintf(formattedStr, MAXLEN, message.c_str(), args);
+
+                if (logLevel != LOG_ERROR)
+                {
+                    std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+                }
+                else
+                {
+                    std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+                }
+
+                if (logFile.is_open())
+                {
+                    logFile << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
+                }
+                // Flush the log file every time a message is written.
+                logFile.flush();
+            });
 
         if (!cmdArgParser.getAgentIdSyncEvent().empty())
         {
             indexerConnector.sync(cmdArgParser.getAgentIdSyncEvent());
         }
-
-        // Read events file.
-        // If the events file path is empty, then the events are generated
-        // automatically.
-        if (!cmdArgParser.getEventsFilePath().empty())
+        else
         {
-            std::ifstream eventsFile(cmdArgParser.getEventsFilePath());
-            if (!eventsFile.is_open())
-            {
-                throw std::runtime_error("Could not open events file.");
-            }
-            const auto events = nlohmann::json::parse(eventsFile);
 
-            indexerConnector.publish(events.dump());
-        }
-        else if (cmdArgParser.getAutoGenerated())
-        {
-            const auto n = cmdArgParser.getNumberOfEvents();
-            // Read template file.
-
-            std::ifstream templateFile(cmdArgParser.getTemplateFilePath());
-            if (!templateFile.is_open())
+            // Read events file.
+            // If the events file path is empty, then the events are generated
+            // automatically.
+            if (!cmdArgParser.getEventsFilePath().empty())
             {
-                throw std::runtime_error("Could not open template file.");
-            }
-
-            nlohmann::json templateData;
-            templateFile >> templateData;
-
-            if (n == 0)
-            {
-                throw std::runtime_error("Number of events must be greater than 0.");
-            }
-            else
-            {
-                for (size_t i = 0; i < n; ++i)
+                std::ifstream eventsFile(cmdArgParser.getEventsFilePath());
+                if (!eventsFile.is_open())
                 {
-                    nlohmann::json randomData =
-                        fillWithRandomData(templateData.at("template").at("mappings").at("properties"));
-                    nlohmann::json event;
-                    event["id"] = generateRandomString(20);
-                    event["operation"] = "INSERT";
-                    event["data"] = std::move(randomData);
+                    throw std::runtime_error("Could not open events file.");
+                }
+                const auto events = nlohmann::json::parse(eventsFile);
 
-                    indexerConnector.publish(event.dump());
+                indexerConnector.publish(events.dump());
+            }
+            else if (cmdArgParser.getAutoGenerated())
+            {
+                const auto n = cmdArgParser.getNumberOfEvents();
+                // Read template file.
+
+                std::ifstream templateFile(cmdArgParser.getTemplateFilePath());
+                if (!templateFile.is_open())
+                {
+                    throw std::runtime_error("Could not open template file.");
+                }
+
+                nlohmann::json templateData;
+                templateFile >> templateData;
+
+                if (n == 0)
+                {
+                    throw std::runtime_error("Number of events must be greater than 0.");
+                }
+                else
+                {
+                    for (size_t i = 0; i < n; ++i)
+                    {
+                        nlohmann::json randomData =
+                            fillWithRandomData(templateData.at("template").at("mappings").at("properties"));
+                        nlohmann::json event;
+                        event["id"] = generateRandomString(20);
+                        event["operation"] = "INSERT";
+                        event["data"] = std::move(randomData);
+
+                        indexerConnector.publish(event.dump());
+                    }
                 }
             }
         }
-        std::cout << "Press enter to stop the indexer connector tool..." << std::endl;
-        std::cin.get();
+
+        if (cmdArgParser.getWaitTime() > 0)
+        {
+            std::this_thread::sleep_for(std::chrono::seconds(cmdArgParser.getWaitTime()));
+        }
+        else
+        {
+            std::cout << "Press enter to stop the indexer connector tool... \n";
+            std::cin.get();
+        }
     }
     catch (const std::exception& e)
     {
