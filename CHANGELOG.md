@@ -79,6 +79,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded docker-compose V1 to V2 in API Integration test scripts. ([#17750](https://github.com/wazuh/wazuh/pull/17750))
 - Refactored how cluster status dates are treated in the cluster. ([#17015](https://github.com/wazuh/wazuh/pull/17015))
 - The log message about file rotation and signature from wazuh-monitord has been updated. ([#21602](https://github.com/wazuh/wazuh/pull/21602))
+- Improved Wazuh-DB performance by adjusting SQLite synchronization policy. ([#22774](https://github.com/wazuh/wazuh/pull/22774))
 
 #### Fixed
 - Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
@@ -183,6 +184,16 @@ All notable changes to this project will be documented in this file.
 #### Deleted
 
 - Removed external `python-jose` and `ecdsa` library dependencies. ([#21749](https://github.com/wazuh/wazuh/pull/21749))
+
+
+## [v4.7.4]
+
+### Manager
+
+#### Fixed
+
+- Fixed an issue where wazuh-db was retaining labels of deleted agents. ([#22933](https://github.com/wazuh/wazuh/pull/22933))
+- Improved stability by ensuring workers resume normal operations even during master node downtime. ([#22994](https://github.com/wazuh/wazuh/pull/22994))
 
 
 ## [v4.7.3]

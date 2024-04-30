@@ -449,13 +449,19 @@ WriteManager()
     echo "<ossec_config>" >> $NEWCONFIG
 
     if [ "$EMAILNOTIFY" = "yes"   ]; then
-        sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
+        GLOBAL_CONTENT=$(sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
         s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
         s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
+        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}")
     else
-        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
+        GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
     fi
+
+    if [ "$UPDATE_CHECK" = "no" ]; then
+        GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
+    fi
+
+    echo "$GLOBAL_CONTENT" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Alerts level
@@ -1086,7 +1092,7 @@ InstallLocal()
 
     # Install templates files
     ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/templates
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json ${INSTALLDIR}/templates/vd_states_template.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/index-template.json ${INSTALLDIR}/templates/vd_states_template.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks

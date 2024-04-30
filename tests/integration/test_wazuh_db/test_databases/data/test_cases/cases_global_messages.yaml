@@ -361,6 +361,6 @@
   metadata:
     test_case:
     - input: global sql PRAGMA synchronous
-      output: ok [{"synchronous":2}]
+      output: ok [{"synchronous":1}]
       stage: global sync type
       use_regex: "no"
