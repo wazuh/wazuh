@@ -98,12 +98,7 @@ class WazuhException(Exception):
         1121: {'message': "Error connecting with socket",
                'remediation': "Please ensure the selected module is running and properly configured"},
         1122: {'message': 'Experimental features are disabled',
-               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml or '
-                              f"using API endpoint https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/"
-                              'reference.html#operation/api.controllers.manager_controller.put_api_config or '
-                              f"https://documentation.wazuh.com/{DOCU_VERSION}/"
-                              'user-manual/api/reference.html#operation/'
-                              'api.controllers.cluster_controller.put_api_config'},
+               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml'},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},

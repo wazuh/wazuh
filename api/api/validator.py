@@ -205,10 +205,19 @@ api_config_schema = {
                             },
                         }
                     }
+                },
+                "indexer": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "allow": {
+                            "type": "boolean"
+                        }
+                    }
                 }
             }
-        },
-    },
+        }
+    }
 }
 
 WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
