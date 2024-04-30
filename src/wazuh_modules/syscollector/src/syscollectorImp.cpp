@@ -16,7 +16,7 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 
-constexpr auto MAX_DELAY_TIME
+constexpr std::chrono::second MAX_DELAY_TIME
 {
     300
 };
