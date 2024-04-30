@@ -221,4 +221,3 @@ services:
     image: integration_test_nginx-lb
     entrypoint:
       - /scripts/entrypoint.sh
-      - ${ENV_MODE}
