@@ -15,16 +15,6 @@ class Locator final : public ILocator
 private:
     std::weak_ptr<DbEntry> m_weakDbEntry; ///< The weak pointer to the database entry.
 
-    inline std::optional<std::shared_ptr<DbEntry>> getEntry() const
-    {
-        if (!m_weakDbEntry.expired())
-        {
-            return m_weakDbEntry.lock();
-        }
-
-        return std::nullopt;
-    }
-
     std::string m_cachedIp;              ///< The cached IP address.
     MMDB_lookup_result_s m_cachedResult; ///< The cached lookup result.
 

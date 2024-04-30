@@ -297,17 +297,25 @@ base::RespOrError<MMDB_entry_data_s> Locator::getEData(const DotPath& path)
 base::RespOrError<std::string> Locator::getString(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = getEntry();
-    if (!entry)
+    auto entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
     {
         return base::Error {"Database is not available"};
     }
 
     // Hold read lock on the map
-    std::shared_lock lock(entry.value()->rwMutex);
+    std::shared_lock lock(entry->rwMutex);
+
+    // Check the entry is not expired while holding the lock
+    entry.reset();
+    entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
+    {
+        return base::Error {"Database is not available"};
+    }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry.value());
+    auto lookError = lookup(ip, entry);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
@@ -333,24 +341,25 @@ base::RespOrError<std::string> Locator::getString(const std::string& ip, const D
 base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = getEntry();
-    if (!entry)
+    auto entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
     {
         return base::Error {"Database is not available"};
     }
 
     // Hold read lock on the map
-    std::shared_lock lock(entry.value()->rwMutex);
+    std::shared_lock lock(entry->rwMutex);
 
     // Check the entry is not expired while holding the lock
-    entry = getEntry();
-    if (!entry)
+    entry.reset();
+    entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
     {
         return base::Error {"Database is not available"};
     }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry.value());
+    auto lookError = lookup(ip, entry);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
@@ -376,24 +385,25 @@ base::RespOrError<uint32_t> Locator::getUint32(const std::string& ip, const DotP
 base::RespOrError<double> Locator::getDouble(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = getEntry();
-    if (!entry)
+    auto entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
     {
         return base::Error {"Database is not available"};
     }
 
     // Hold read lock on the map
-    std::shared_lock lock(entry.value()->rwMutex);
+    std::shared_lock lock(entry->rwMutex);
 
     // Check the entry is not expired while holding the lock
-    entry = getEntry();
-    if (!entry)
+    entry.reset();
+    entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
     {
         return base::Error {"Database is not available"};
     }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry.value());
+    auto lookError = lookup(ip, entry);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
@@ -419,24 +429,25 @@ base::RespOrError<double> Locator::getDouble(const std::string& ip, const DotPat
 base::RespOrError<json::Json> Locator::getAsJson(const std::string& ip, const DotPath& path)
 {
     // Check if the database entry is still valid
-    auto entry = getEntry();
-    if (!entry)
+    auto entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
     {
         return base::Error {"Database is not available"};
     }
 
     // Hold read lock on the map
-    std::shared_lock lock(entry.value()->rwMutex);
+    std::shared_lock lock(entry->rwMutex);
 
     // Check the entry is not expired while holding the lock
-    entry = getEntry();
-    if (!entry)
+    entry.reset();
+    entry = m_weakDbEntry.lock();
+    if (entry == nullptr)
     {
         return base::Error {"Database is not available"};
     }
 
     // Lookup the IP address in the database
-    auto lookError = lookup(ip, entry.value());
+    auto lookError = lookup(ip, entry);
     if (base::isError(lookError))
     {
         return base::getError(lookError);
