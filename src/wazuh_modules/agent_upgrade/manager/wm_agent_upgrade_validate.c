@@ -37,8 +37,7 @@ static const char* rolling_platforms[] = {
 
 static const char* deb_platforms[] = {
     "debian",
-    "ubuntu",
-    "raspbian"
+    "ubuntu"
 };
 
 static const char* rpm_platforms[] = {
