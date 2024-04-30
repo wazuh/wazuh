@@ -564,12 +564,14 @@ void test_wm_agent_upgrade_parse_upgrade_command_success(void **state)
     char *error = NULL;
     char *repo = "wazuh.com";
     char *ver = "v4.0.0";
+    char *package_type = "rpm";
 
     cJSON *params = cJSON_CreateObject();
     cJSON_AddStringToObject(params, "wpk_repo", repo);
     cJSON_AddStringToObject(params, "version", ver);
     cJSON_AddTrueToObject(params, "use_http");
     cJSON_AddTrueToObject(params, "force_upgrade");
+    cJSON_AddStringToObject(params, "package_type", package_type);
 
     wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
 
@@ -584,6 +586,7 @@ void test_wm_agent_upgrade_parse_upgrade_command_success(void **state)
     assert_string_equal(upgrade_task->custom_version, ver);
     assert_int_equal(upgrade_task->use_http, true);
     assert_int_equal(upgrade_task->force_upgrade, true);
+    assert_string_equal(upgrade_task->package_type, package_type);
     assert_null(upgrade_task->wpk_file);
     assert_null(upgrade_task->wpk_sha1);
     assert_null(error);
@@ -608,6 +611,7 @@ void test_wm_agent_upgrade_parse_upgrade_command_default(void **state)
     assert_null(upgrade_task->custom_version);
     assert_int_equal(upgrade_task->use_http, false);
     assert_int_equal(upgrade_task->force_upgrade, false);
+    assert_null(upgrade_task->package_type);
     assert_null(upgrade_task->wpk_file);
     assert_null(upgrade_task->wpk_sha1);
     assert_null(error);
@@ -699,6 +703,49 @@ void test_wm_agent_upgrade_parse_upgrade_command_invalid_force(void **state)
 
     assert_non_null(error);
     assert_string_equal(error, "Parameter \"force_upgrade\" should be true or false");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_command_invalid_package_type(void **state)
+{
+    char *error = NULL;
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddNumberToObject(params, "package_type", 123);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Parameter \"package_type\" should be a string'");
+
+    wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Parameter \"package_type\" should be a string");
+}
+
+void test_wm_agent_upgrade_parse_upgrade_command_invalid_package_type_value(void **state)
+{
+    char *error = NULL;
+    char *package_type = "msi";
+
+    cJSON *params = cJSON_CreateObject();
+    cJSON_AddStringToObject(params, "package_type", package_type);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, formatted_msg, "(8103): Error parsing command: 'Invalid parameter \"package_type\", value should be \"rpm\" or \"deb\"'");
+
+    wm_upgrade_task* upgrade_task = wm_agent_upgrade_parse_upgrade_command(params, &error);
+
+    cJSON_Delete(params);
+
+    state[0] = (void*)error;
+    state[1] = NULL;
+
+    assert_non_null(error);
+    assert_string_equal(error, "Invalid parameter \"package_type\", value should be \"rpm\" or \"deb\"");
 }
 
 void test_wm_agent_upgrade_parse_upgrade_command_invalid_json(void **state)
@@ -1490,6 +1537,8 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_version_type, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_http, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_force, teardown_parse_upgrade),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_package_type, teardown_parse_upgrade),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_package_type_value, teardown_parse_upgrade),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_command_invalid_json, teardown_parse_upgrade),
         // wm_agent_upgrade_parse_upgrade_custom_command
         cmocka_unit_test_teardown(test_wm_agent_upgrade_parse_upgrade_custom_command_success, teardown_parse_upgrade_custom),

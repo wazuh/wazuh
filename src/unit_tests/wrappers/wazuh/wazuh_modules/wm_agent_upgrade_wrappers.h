@@ -53,7 +53,7 @@ int __wrap_wm_agent_upgrade_validate_id(int agent_id);
 
 int __wrap_wm_agent_upgrade_validate_status(const char* connection_status);
 
-int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
+int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch, char **package_type);
 
 int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task);
 
