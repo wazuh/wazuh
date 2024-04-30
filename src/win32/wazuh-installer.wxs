@@ -47,6 +47,7 @@
         <WixVariable Id="WixUIBannerBmp" Value="ui\bannrbmp.jpg" />
         <WixVariable Id="WixUIDialogBmp" Value="ui\dlgbmp.jpg" />
         <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Run Agent configuration interface" />
+        <Property Id="GENERATE_DUMP" Value="1" />
         <Property Id="ARPNOMODIFY" Value="yes" />
         <Property Id="ARPNOREPAIR" Value="yes" />
         <Property Id="ApplicationFolderName" Value="ossec-agent" />
@@ -65,6 +66,7 @@
 
         <Property Id="WixShellExecTarget" Value="[APPLICATIONFOLDER]win32ui.exe" />
         <CustomAction Id="LaunchUI" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
+        <CustomAction Id="GenerateDumpAction" BinaryKey="WixCA" DllEntry="WixShellExec" Impersonate="yes" />
 
         <Property Id="OSSECINSTALLED">
             <RegistrySearch Id="OssecInstalled" Type="raw" Root="HKLM" Key="System\CurrentControlSet\Services\OssecSvc" Name="DisplayName" />
@@ -128,12 +130,13 @@
         <!-- Close the Wazuh agent GUI -->
         <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="deferred" Impersonate="no"/>
 
-
         <UI>
             <UIRef Id="WixUI_Advanced" />
-            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
-            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
+            <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="CustomCheckDialog" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
+            <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog" Value="CustomCheckDialog" />
             <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction" Value="LaunchUI">WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed</Publish>
+            <Publish Dialog="CustomCheckDialog" Control="Next" Event="NewDialog" Value="VerifyReadyDlg" />
+            <Publish Dialog="CustomCheckDialog" Control="Back" Event="NewDialog" Value="InstallDirDlg" />
         </UI>
         <InstallExecuteSequence>
             <!-- Set OS VERSION -->
@@ -699,4 +702,24 @@
         </Feature>
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
     </Product>
+    <Fragment>
+        <UI>
+	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="Wazuh Agent Setup">
+                <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="30"
+                    Text="Select this option to enable automatic core dump generation in case the installation fails." />
+
+                <Control Id="GenerateDumpCheckbox" Type="CheckBox" X="20" Y="100" Width="330" Height="17"
+                    Property="GENERATE_DUMP" CheckBoxValue="1"
+                    Text="Enable automatic dump generation" />
+
+                <Control Id="Next" Type="PushButton" X="236" Y="243" Width="75" Height="23" Default="yes" Text="Next">
+                    <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+                </Control>
+
+                <Control Id="Back" Type="PushButton" X="156" Y="243" Width="75" Height="23" Text="Back">
+                    <Publish Event="NewDialog" Value="InstallDirDlg">1</Publish>
+                </Control>
+            </Dialog>
+        </UI>
+    </Fragment>
 </Wix>
