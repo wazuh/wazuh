@@ -16,7 +16,7 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 
-constexpr std::chrono::second MAX_DELAY_TIME
+constexpr std::chrono::seconds MAX_DELAY_TIME
 {
     300
 };
@@ -1058,7 +1058,7 @@ void Syscollector::registerWithRsync()
             auto jsonData(nlohmann::json::parse(dataString));
             auto it{jsonData.find("data")};
 
-            m_lastSyncMsg = std::time(nullptr);
+            m_lastSyncMsg = Utils::secondsSinceEpoch();
 
             if (!m_stopping)
             {
@@ -1180,7 +1180,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_reportDiffFunction = reportDiffFunction;
     m_reportSyncFunction = reportSyncFunction;
     m_logFunction = logFunction;
-    m_intervalValue = interval;
+    m_intervalValue = std::chrono::seconds{interval};
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
     m_os = os;
@@ -1638,7 +1638,7 @@ void Syscollector::syncAlgorithm()
 {
     m_currentIntervalValue = m_intervalValue / 2 >= MAX_DELAY_TIME ? MAX_DELAY_TIME : m_intervalValue / 2;
 
-    if (std::chrono::seconds{std::time(nullptr) - m_lastSyncMsg} > std::chrono::seconds{m_currentIntervalValue})
+    if (Utils::secondsSinceEpoch() - m_lastSyncMsg > m_currentIntervalValue)
     {
         scan();
         sync();
@@ -1646,7 +1646,7 @@ void Syscollector::syncAlgorithm()
     }
     else
     {
-        m_logFunction(LOG_DEBUG_VERBOSE, "Syscollector synchronization process concluded recently, delaying scan for " + std::to_string(m_currentIntervalValue) + " second/s");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Syscollector synchronization process concluded recently, delaying scan for " + std::to_string(m_currentIntervalValue.count()) + " second/s");
     }
 }
 
