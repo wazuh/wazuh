@@ -127,6 +127,16 @@ All notable changes to this project will be documented in this file.
 - Removed external `python-jose` and `ecdsa` library dependencies. ([#21749](https://github.com/wazuh/wazuh/pull/21749))
 
 
+## [v4.7.4]
+
+### Manager
+
+#### Fixed
+
+- Fixed an issue where wazuh-db was retaining labels of deleted agents. ([#22933](https://github.com/wazuh/wazuh/pull/22933))
+- Improved stability by ensuring workers resume normal operations even during master node downtime. ([#22994](https://github.com/wazuh/wazuh/pull/22994))
+
+
 ## [v4.7.3]
 
 ### Manager
