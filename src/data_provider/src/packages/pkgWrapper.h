@@ -41,7 +41,11 @@ class PKGWrapper final : public IPackageWrapper
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime {UNKNOWN_VALUE}
         {
-            getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+            if (Utils::endsWith(ctx.package, ".app")) {
+                getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
+            } else {
+                getPkgDataRcp(ctx.filePath + "/" + ctx.package);
+            }
         }
 
         ~PKGWrapper() = default;
@@ -223,6 +227,86 @@ class PKGWrapper final : public IPackageWrapper
                 if (file.is_open())
                 {
                     getDataFnc(file);
+                }
+            }
+        }
+
+        void getPkgDataRcp(const std::string& filePath)
+        {
+            const auto isBinaryFnc
+            {
+                [&filePath]()
+                {
+                    // If first line is "bplist00" it's a binary plist file
+                    std::fstream file {filePath, std::ios_base::in};
+                    std::string line;
+                    return std::getline(file, line) && Utils::startsWith(line, PLIST_BINARY_START);
+                }
+            };
+            const auto isBinary { isBinaryFnc() };
+
+            static const auto getValueFnc
+            {
+                [](const std::string & val)
+                {
+                    const auto start{val.find(">")};
+                    const auto end{val.rfind("<")};
+                    return val.substr(start + 1, end - start - 1);
+                }
+            };
+
+            const auto getDataFncRcp
+            {
+                [this, &filePath](std::istream & data)
+                {
+                    std::string line;
+
+                    while (std::getline(data, line))
+                    {
+                        line = Utils::trim(line, " \t");
+
+                        if (line == "<key>PackageIdentifier</key>" &&
+                            std::getline(data, line))
+                        {
+                            auto reverseDNSName = getValueFnc(line);
+                            auto tokens = Utils::split(reverseDNSName, '.');
+                            if (tokens.size() == 1) {
+                                m_name = reverseDNSName;
+                            } else {
+                                m_name = *tokens.rbegin();
+                                m_vendor = reverseDNSName.substr(0, reverseDNSName.size() - m_name.size() - 1);
+                            }
+                        }
+                        else if (line == "<key>PackageVersion</key>" &&
+                                 std::getline(data, line))
+                        {
+                            m_version = getValueFnc(line);
+                        }
+                        else if (line == "<key>InstallDate</key>" &&
+                                 std::getline(data, line))
+                        {
+                            m_installTime = getValueFnc(line);
+                        }
+                    }
+
+                    m_multiarch = UNKNOWN_VALUE;
+                    m_source = "installer"; // pkgutil? pkg?
+                    m_location = filePath;
+                }
+            };
+
+            if (isBinary)
+            {
+                auto xmlContent { binaryToXML(filePath) };
+                getDataFncRcp(xmlContent);
+            }
+            else
+            {
+                std::fstream file { filePath, std::ios_base::in };
+
+                if (file.is_open())
+                {
+                    getDataFncRcp(file);
                 }
             }
         }
