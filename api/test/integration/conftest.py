@@ -138,7 +138,7 @@ def down_env(env_mode: str):
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode, "down" ],
+        current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode, "down"],
                                            stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
@@ -370,7 +370,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
     os.makedirs(test_logs_path, exist_ok=True)
 
     # Add clean_up_env as fixture finalizer
-    request.addfinalizer(clean_up_env(env_mode))
+    request.addfinalizer(lambda: clean_up_env(env_mode))
 
     test_filename = request.node.config.args[0].split('_')
     if 'rbac' in test_filename:
@@ -395,7 +395,6 @@ def api_test(request: _pytest.fixtures.SubRequest):
     retries = 0
 
     while retries < max_retries:
-        time.sleep(10)
         managers_health = check_health(only_check_master_health=env_mode == standalone_env_mode)
         agents_health = check_health(node_type='agent', agents=list(range(1, 9)))
         nginx_health = check_health(node_type='nginx-lb')
@@ -412,6 +411,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
             return
 
         retries += 1
+        time.sleep(10)
 
 
 def get_health():
