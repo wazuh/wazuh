@@ -92,7 +92,6 @@ services:
       - nginx-lb
       - wazuh-agent2
     depends_on:
-      - wazuh-agent1
       - nginx-lb
 
   wazuh-agent3:
@@ -112,7 +111,6 @@ services:
       - nginx-lb
       - wazuh-agent3
     depends_on:
-      - wazuh-agent2
       - nginx-lb
 
   wazuh-agent4:
@@ -132,7 +130,6 @@ services:
       - nginx-lb
       - wazuh-agent4
     depends_on:
-      - wazuh-agent3
       - nginx-lb
 
   wazuh-agent5:
@@ -153,7 +150,6 @@ services:
       - wazuh-agent5
       - agent_old
     depends_on:
-      - wazuh-agent4
       - nginx-lb
 
   wazuh-agent6:
@@ -174,7 +170,6 @@ services:
       - wazuh-agent6
       - agent_old
     depends_on:
-      - wazuh-agent5
       - nginx-lb
 
   wazuh-agent7:
@@ -195,7 +190,6 @@ services:
       - wazuh-agent7
       - agent_old
     depends_on:
-      - wazuh-agent6
       - nginx-lb
 
   wazuh-agent8:
@@ -216,7 +210,6 @@ services:
       - wazuh-agent8
       - agent_old
     depends_on:
-      - wazuh-agent7
       - nginx-lb
 
   nginx-lb:
