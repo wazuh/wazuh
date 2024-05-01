@@ -14,7 +14,3 @@
   <plugin_decoder>JSON_Decoder</plugin_decoder>
 </decoder>
 
-<decoder name="aws_json">
-    <prematch>Wazuh-AWS</prematch>
-    <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
-</decoder>
