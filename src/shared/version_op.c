@@ -586,19 +586,6 @@ os_info *get_unix_version()
 
             regfree(&regexCompiled);
             fclose(version_release);
-        // Ubuntu
-        } else if (version_release = wfopen("/etc/lsb-release","r"), version_release){
-            info->os_name = strdup("Ubuntu");
-            info->os_platform = strdup("ubuntu");
-            while (fgets(buff, sizeof(buff) - 1, version_release)) {
-                tag = strtok_r(buff, "=", &save_ptr);
-                if (tag && strcmp(tag,"DISTRIB_RELEASE") == 0){
-                    info->os_version = strdup(strtok_r(NULL, "\n", &save_ptr));
-                    break;
-                }
-            }
-
-            fclose(version_release);
         // Gentoo
         } else if (version_release = wfopen("/etc/gentoo-release","r"), version_release){
             info->os_name = strdup("Gentoo");
@@ -634,6 +621,18 @@ os_info *get_unix_version()
                 }
             }
             regfree(&regexCompiled);
+            fclose(version_release);
+        // Ubuntu
+        } else if (version_release = wfopen("/etc/lsb-release","r"), version_release){
+            info->os_name = strdup("Ubuntu");
+            info->os_platform = strdup("ubuntu");
+            while (fgets(buff, sizeof(buff) - 1, version_release)) {
+                tag = strtok_r(buff, "=", &save_ptr);
+                if (tag && strcmp(tag,"DISTRIB_RELEASE") == 0){
+                    info->os_version = strdup(strtok_r(NULL, "\n", &save_ptr));
+                    break;
+                }
+            }
             fclose(version_release);
         // Debian
         } else if (version_release = wfopen("/etc/debian_version","r"), version_release){
