@@ -27,17 +27,36 @@ function remove_upgrade_files {
 
 function get_wazuh_installation_directory {
     Start-NativePowerShell {
-        $Env:WAZUH_REG_PATH = "HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"
+        $path1 = "HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"
+        $key1 = "WazuhInstallDir"
+
+        $path2 = "HKLM:\SOFTWARE\WOW6432Node\ossec"
+        $key2 = "Install_Dir"
+
+        $WazuhInstallDir = $null
+
         try {
-            $WazuhInstallDir = (Get-ItemProperty -Path $Env:WAZUH_REG_PATH).WazuhInstallDir
-            if ($null -eq $WazuhInstallDir) {
-                throw "Couldn't find a registry key for HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent\WazuhInstallDir."
-            }
-            return $WazuhInstallDir
+            $WazuhInstallDir = (Get-ItemProperty -Path $path1 -ErrorAction SilentlyContinue).$key1
         }
         catch {
-            return $null
+            $WazuhInstallDir = $null
         }
+
+        if ($null -eq $WazuhInstallDir) {
+            try {
+                $WazuhInstallDir = (Get-ItemProperty -Path $path2 -ErrorAction SilentlyContinue).$key2
+            }
+            catch {
+                $WazuhInstallDir = $null
+            }
+        }
+
+        if ($null -eq $WazuhInstallDir) {
+            Write-output "$(Get-Date -format u) - Couldn't find Wazuh in the registry. Upgrade will assume current path is correct" >> .\upgrade\upgrade.log
+            $WazuhInstallDir = (Get-Location).Path.TrimEnd('\')
+        }
+
+        return $WazuhInstallDir
     }
 }
 
@@ -83,14 +102,6 @@ function install
 
 # Check that the Wazuh installation runs on the expected path
 $wazuhDir = get_wazuh_installation_directory
-
-if ($null -eq $wazuhDir) {
-    Write-Output "$(Get-Date -format u) - Wazuh installation directory not found or registry key is missing. Aborting." >> .\upgrade\upgrade.log
-    Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
-    remove_upgrade_files
-    exit 1
-}
-
 $normalizedWazuhDir = $wazuhDir.TrimEnd('\')
 $currentDir = (Get-Location).Path.TrimEnd('\')
 
