@@ -471,6 +471,7 @@ wdb_t * wdb_open_tasks() {
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db2(const char * agent_id) {
     char path[OS_FLSIZE + 1];
+    char path_temp[OS_FLSIZE + 1];
     char buffer[4096];
     FILE *source;
     FILE *dest;
@@ -494,8 +495,9 @@ int wdb_create_agent_db2(const char * agent_id) {
     }
 
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
+    snprintf(path_temp, OS_FLSIZE, "%s.new", path);
 
-    if (!(dest = wfopen(path, "w"))) {
+    if (!(dest = wfopen(path_temp, "w"))) {
         merror("Couldn't create database '%s': %s (%d)", path, strerror(errno), errno);
         fclose(source);
         return -1;
@@ -503,7 +505,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
         if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            unlink(path);
+            unlink(path_temp);
             result = -1;
             break;
         }
@@ -511,18 +513,24 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     fclose(source);
     if (fclose(dest) == -1) {
-        merror("Couldn't create file %s completely ", path);
+        merror("Couldn't create file %s completely", path_temp);
         return -1;
     }
 
     if (result < 0) {
-        unlink(path);
+        unlink(path_temp);
         return -1;
     }
 
-    if (chmod(path, 0640) < 0) {
-        merror(CHMOD_ERROR, path, errno, strerror(errno));
-        unlink(path);
+    if (chmod(path_temp, 0640) < 0) {
+        merror(CHMOD_ERROR, path_temp, errno, strerror(errno));
+        unlink(path_temp);
+        return -1;
+    }
+
+    if (OS_MoveFile(path_temp, path) < 0) {
+        merror(RENAME_ERROR, path_temp, path, errno, strerror(errno));
+        unlink(path_temp);
         return -1;
     }
 

@@ -273,6 +273,7 @@ int main(int argc, char ** argv)
     snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
+    minfo("Graceful process shutdown.");
 
     return EXIT_SUCCESS;
 
