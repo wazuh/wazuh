@@ -186,6 +186,7 @@ IndexerConnector::IndexerConnector(
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock<std::mutex> lock(m_mutex);
+            auto warningPrinted {false};
             do
             {
                 try
@@ -200,14 +201,20 @@ IndexerConnector::IndexerConnector(
                 }
                 catch (const std::exception& e)
                 {
-                    // Improved logging message
-                    logWarn(IC_NAME,
-                            "Error initializing IndexerConnector for index '%s': %s. Retrying in %ld seconds. Maximum "
-                            "wait time: %ld seconds.",
-                            indexName.c_str(),
-                            e.what(),
-                            sleepTime.count(),
-                            MAX_WAIT_TIME);
+                    logDebug1(IC_NAME,
+                              "Unable to initialize IndexerConnector for index '%s': %s. Retrying in %ld "
+                              "seconds.",
+                              indexName.c_str(),
+                              e.what(),
+                              sleepTime.count());
+                    if (!warningPrinted)
+                    {
+                        logWarn(IC_NAME,
+                                "IndexerConnector initialization failed for index '%s', retrying until the connection "
+                                "is successful.",
+                                indexName.c_str());
+                        warningPrinted = true;
+                    }
                 }
             } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [&]() { return m_stopping.load(); }));
         });
@@ -236,56 +243,43 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
                                   const std::shared_ptr<ServerSelector>& selector,
                                   const SecureCommunication& secureCommunication)
 {
-    // Initialize template.
-    HTTPRequest::instance().put(
-        HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
-        templateData,
-        [&](const std::string& response) {},
-        [&](const std::string& error, const long statusCode)
+    // Define the error callback
+    auto onError = [](const std::string& error, const long statusCode)
+    {
+        if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
         {
-            if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
+            std::string errorMessage = error;
+            if (statusCode != NOT_USED)
             {
-                std::string errorMessage = "Failed to initialize template for index '" + indexName + "'. ";
-                if (statusCode != NOT_USED)
-                {
-                    errorMessage += "HTTP error: " + error + " (Status code: " + std::to_string(statusCode) + ").";
-                }
-                else
-                {
-                    errorMessage += "Error: " + error;
-                }
-                throw std::runtime_error(errorMessage);
+                errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
             }
-        },
-        "",
-        DEFAULT_HEADERS,
-        secureCommunication);
+
+            throw std::runtime_error(errorMessage);
+        }
+    };
+
+    // Define the success callback
+    auto onSuccess = [&](const std::string& response) {
+    };
+
+    // Initialize template.
+    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/_index_template/" + indexName + "_template"),
+                                templateData,
+                                onSuccess,
+                                onError,
+                                "",
+                                DEFAULT_HEADERS,
+                                secureCommunication);
 
     // Initialize Index.
-    HTTPRequest::instance().put(
-        HttpURL(selector->getNext() + "/" + indexName),
-        templateData.at("template"),
-        [&](const std::string& response) {},
-        [&](const std::string& error, const long statusCode)
-        {
-            if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
-            {
-                std::string errorMessage = "Failed to initialize for index '" + indexName + "'. ";
-                if (statusCode != NOT_USED)
-                {
-                    errorMessage += "HTTP error: " + error + " (Status code: " + std::to_string(statusCode) + ").";
-                }
-                else
-                {
-                    errorMessage += "Error: " + error;
-                }
-                throw std::runtime_error(errorMessage);
-            }
-        },
-        "",
-        DEFAULT_HEADERS,
-        secureCommunication);
+    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/" + indexName),
+                                templateData.at("template"),
+                                onSuccess,
+                                onError,
+                                "",
+                                DEFAULT_HEADERS,
+                                secureCommunication);
 
     m_initialized = true;
-    logInfo(IC_NAME, "IndexerConnector initialized.");
+    logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", indexName.c_str());
 }

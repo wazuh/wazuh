@@ -18,13 +18,13 @@
 typedef char os_sha1[41];
 
 int __wrap_OS_SHA1_File(const char *fname, os_sha1 output, int mode);
-int __wrap_OS_SHA1_File_Nbytes(const char *fname, SHA_CTX *c, os_sha1 output, int mode, ssize_t nbytes);
-void __wrap_OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf);
+int __wrap_OS_SHA1_File_Nbytes(const char *fname, EVP_MD_CTX **c, os_sha1 output, int mode, ssize_t nbytes);
+void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf);
 #ifndef WIN32
-int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 output, int mode, int64_t nbytes,
+int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sha1 output, int mode, int64_t nbytes,
                                       ino_t fd_check);
 #else
-int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, SHA_CTX * c, os_sha1 output, int mode, int64_t nbytes,
+int __wrap_OS_SHA1_File_Nbytes_with_fp_check(const char * fname, EVP_MD_CTX ** c, os_sha1 output, int mode, int64_t nbytes,
                                       DWORD fd_check);
 #endif
 

@@ -1294,10 +1294,8 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
                 ifaceTableDataList.push_back(std::move(ifaceTableData));
 
-
                 if (item.find("IPv4") != item.end())
                 {
-
                     // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
                     protoTableData["iface"]   = item.at("name");
@@ -1316,6 +1314,10 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = IPV4;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        // Remove unwanted fields for dbsync_network_address table
+                        addressTableData.erase("dhcp");
+                        addressTableData.erase("metric");
+
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }
@@ -1340,6 +1342,10 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = IPV6;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        // Remove unwanted fields for dbsync_network_address table
+                        addressTableData.erase("dhcp");
+                        addressTableData.erase("metric");
+
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }

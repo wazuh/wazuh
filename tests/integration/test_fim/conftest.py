@@ -103,7 +103,9 @@ def install_audit():
     # Check distro
     linux_distro = distro.id()
 
-    if re.match(linux_distro, "centos"):
+    if re.match(linux_distro, "darwin"):
+        return
+    elif re.match(linux_distro, "centos"):
         package_management = "yum"
         audit = "audit"
         option = "--assumeyes"

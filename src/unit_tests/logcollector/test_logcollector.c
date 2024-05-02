@@ -32,8 +32,7 @@
 
 extern OSHash *files_status;
 
-bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
-void w_initialize_file_status();
+bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
 char * w_save_files_status_to_cJSON();
 void w_save_file_status();
@@ -41,11 +40,12 @@ void w_load_files_status(cJSON *global_json);
 void w_initialize_file_status();
 int w_update_hash_node(char * path, int64_t pos);
 int w_set_to_last_line_read(logreader *lf);
+void free_files_status_data(os_file_status_t *data);
 
 // Auxiliar structs
 typedef struct test_logcollector_s {
     logreader *log_reader;
-    SHA_CTX *context;
+    EVP_MD_CTX *context;
     os_file_status_t *status;
     OSHashNode *node;
 } test_logcollector_t;
@@ -69,11 +69,16 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+void free_os_file_status_t_struct(os_file_status_t *data) {
+    EVP_MD_CTX_free(data->context);
+    os_free(data);
+}
+
 static int setup_local_hashmap(void **state) {
     if (setup_hashmap(state) != 0) {
         return 1;
     }
-    __real_OSHash_SetFreeDataPointer(mock_hashmap, free);
+    __real_OSHash_SetFreeDataPointer(mock_hashmap, (void (*)(void *))free_os_file_status_t_struct);
     files_status = mock_hashmap;
     return 0;
 }
@@ -96,7 +101,7 @@ static int setup_log_context(void **state) {
     }
 
     test_struct->log_reader = calloc(1, sizeof(logreader));
-    test_struct->context = calloc(1, sizeof(SHA_CTX));
+    test_struct->context = EVP_MD_CTX_new();
     test_struct->status = calloc(1, sizeof(os_file_status_t));
     test_struct->node = calloc(1, sizeof(OSHashNode));
 
@@ -121,7 +126,7 @@ static int teardown_log_context(void **state) {
     Free_Logreader(test_struct->log_reader);
 
     free(test_struct->log_reader);
-    free(test_struct->context);
+    EVP_MD_CTX_free(test_struct->context);
     free(test_struct->status);
     free(test_struct->node);
     free(test_struct);
@@ -201,7 +206,7 @@ static int teardown_regex(void **state) {
 /* w_get_hash_context */
 
 void test_w_get_hash_context_NULL_file_exist(void ** state) {
-    SHA_CTX context;
+    EVP_MD_CTX *context = NULL;
     int64_t position = 10;
     test_logcollector_t *test_struct = *state;
 
@@ -226,7 +231,7 @@ void test_w_get_hash_context_NULL_file_exist(void ** state) {
 }
 
 void test_w_get_hash_context_NULL_file_not_exist(void ** state) {
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t position = 10;
     test_logcollector_t *test_struct = *state;
     logreader *lf = test_struct->log_reader;
@@ -245,6 +250,7 @@ void test_w_get_hash_context_NULL_file_not_exist(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, -1);
 
     bool ret = w_get_hash_context (lf, &context, position);
+    EVP_MD_CTX_free(context);
     assert_false(ret);
 }
 
@@ -253,11 +259,10 @@ void test_w_get_hash_context_done(void ** state) {
     test_logcollector_t *test_struct = *state;
 
     logreader *lf = test_struct->log_reader;
-    SHA_CTX *context = test_struct->context;
+    EVP_MD_CTX *context = test_struct->context;
     os_file_status_t *data = test_struct->status;
 
     lf->file = strdup("/test_path");
-    data->context.num = 123;
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, lf->file);
@@ -270,7 +275,7 @@ void test_w_get_hash_context_done(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, "32bb98743e298dee0a654a654765c765d765ae80");
     will_return(__wrap_OS_SHA1_File_Nbytes_with_fp_check, -1);
 
-    bool ret = w_get_hash_context (lf, context, position);
+    bool ret = w_get_hash_context (lf, &context, position);
 
     assert_false(ret);
 }
@@ -279,7 +284,7 @@ void test_w_get_hash_context_done(void ** state) {
 void test_w_update_file_status_fail_update_add_table_hash(void ** state) {
     char * path = "test/test.log";
     long pos = 0;
-    SHA_CTX context = {0};
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
 
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
@@ -291,7 +296,7 @@ void test_w_update_file_status_fail_update_add_table_hash(void ** state) {
     expect_string(__wrap_OSHash_Add_ex, key, path);
     will_return(__wrap_OSHash_Add_ex, 0);
 
-    int retval = w_update_file_status(path, pos, &context);
+    int retval = w_update_file_status(path, pos, context);
 
     assert_int_equal(retval,-1);
 }
@@ -300,7 +305,7 @@ void test_w_update_file_status_update_fail_add_OK(void ** state) {
 
     char * path = "test/test.log";
     long pos = 0;
-    SHA_CTX context = {0};
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
 
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
@@ -312,7 +317,7 @@ void test_w_update_file_status_update_fail_add_OK(void ** state) {
     expect_string(__wrap_OSHash_Add_ex, key, path);
     will_return(__wrap_OSHash_Add_ex, 2);
 
-    int retval = w_update_file_status(path, pos, &context);
+    int retval = w_update_file_status(path, pos, context);
 
     assert_int_equal(retval,0);
 
@@ -324,17 +329,21 @@ void test_w_update_file_status_update_OK(void ** state) {
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    __real_OSHash_Add_ex(mock_hashmap, path, strdup("data_to_replace"));
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, path, data);
 
     long pos = 0;
-    SHA_CTX context = {0};
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
 
     expect_value(__wrap_OS_SHA1_Stream, buf, NULL);
     will_return(__wrap_OS_SHA1_Stream, "a7a899f25aeda32989d1029839ef2e594835c211");
 
     will_return(__wrap_OSHash_Update_ex, 1);
 
-    int retval = w_update_file_status(path, pos, &context);
+    int retval = w_update_file_status(path, pos, context);
 
     assert_int_equal(retval,0);;
 }
@@ -1440,7 +1449,11 @@ void test_w_load_files_status_OK(void ** state) {
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
 
-    __real_OSHash_Add_ex(mock_hashmap, file, strdup("data to be replaced"));
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, file, data);
     cJSON *global_json = (cJSON*)1;
 
     int mode = OS_BINARY;
@@ -1662,7 +1675,11 @@ void test_w_initialize_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
-    __real_OSHash_Add_ex(mock_hashmap, file, strdup("data to be replaced"));
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, file, data);
 
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, 1);
@@ -1812,7 +1829,11 @@ void test_w_update_hash_node_OK(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
-    __real_OSHash_Add_ex(mock_hashmap, path, strdup("data to be replaced"));
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, path, data);
 
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, path);
     expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
@@ -1843,7 +1864,11 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
-    __real_OSHash_Add_ex(mock_hashmap, log_reader.file, strdup("data to be replaced"));
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, log_reader.file, data);
 
     expect_any(__wrap_OSHash_Get_ex, self);
     expect_string(__wrap_OSHash_Get_ex, key, "test");

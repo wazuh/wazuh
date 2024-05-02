@@ -28,7 +28,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     }
 
     /* Obtain context to calculate hash */
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     os_sha1 output;
     int64_t current_position = w_ftell(lf->fp);
 
@@ -36,7 +36,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
         merror(FAIL_SHA1_GEN, lf->file);
     }
 
-    w_update_file_status(lf->file, current_position, &context);
+    w_update_file_status(lf->file, current_position, context);
 
     memset(syslog_msg, '\0', OS_SIZE_2048 + 1);
 

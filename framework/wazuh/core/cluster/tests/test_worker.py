@@ -682,7 +682,7 @@ async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_i
     assert await worker_handler.recv_agent_groups_periodic_information(task_id=b'17',
                                                                        info_type='agent-groups') == 'check'
     get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_w_g_err')
-    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger, b'syn_w_g_err', 0)
+    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger, b'syn_w_g_err')
     send_request_mock.assert_called_once_with(command=b'syn_w_g_e', data=b'{"updated_chunks": 1}')
     check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger)
     assert 'Starting.' in logger._info
@@ -691,7 +691,7 @@ async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_i
 
     assert await worker_handler.recv_agent_groups_entire_information(task_id=b'17', info_type='agent-groups') == 'check'
     get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_wgc_err')
-    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger_c, b'syn_wgc_err', 0)
+    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger_c, b'syn_wgc_err')
     send_request_mock.assert_called_once_with(command=b'syn_wgc_e', data=b'{"updated_chunks": 1}')
     check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger_c)
     assert 'Starting.' in logger_c._info

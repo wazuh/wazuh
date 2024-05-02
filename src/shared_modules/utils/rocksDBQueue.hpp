@@ -13,9 +13,9 @@
 #define _ROCKSDB_QUEUE_HPP
 
 #include "rocksdb/db.h"
+#include "rocksdb/filter_policy.h"
+#include "rocksdb/table.h"
 #include <filesystem>
-#include <functional>
-#include <iostream>
 #include <stdexcept>
 #include <string>
 
@@ -27,21 +27,34 @@ public:
     explicit RocksDBQueue(const std::string& connectorName)
     {
         // RocksDB initialization.
+        // Read cache is used to cache the data read from the disk.
+        m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+        rocksdb::BlockBasedTableOptions tableOptions;
+        tableOptions.block_cache = m_readCache;
+
+        // Write buffer manager is used to manage the memory used for writing data to the disk.
+        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(64 * 1024 * 1024);
+
         rocksdb::Options options;
+        options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));
         options.create_if_missing = true;
         options.keep_log_file_num = 1;
         options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+        options.max_open_files = 64;
+        options.write_buffer_manager = m_writeManager;
+        options.num_levels = 4;
+
+        options.write_buffer_size = 32 * 1024 * 1024;
+        options.max_write_buffer_number = 2;
 
         rocksdb::DB* db;
 
         // Create directories recursively if they do not exist
         std::filesystem::create_directories(std::filesystem::path(connectorName));
 
-        rocksdb::Status status = rocksdb::DB::Open(options, connectorName, &db);
-
-        if (!status.ok())
+        if (const auto status = rocksdb::DB::Open(options, connectorName, &db); !status.ok())
         {
-            throw std::runtime_error("Failed to open RocksDB database");
+            throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
         }
 
         m_db.reset(db);
@@ -63,7 +76,7 @@ public:
             m_last = 0;
         }
 
-        for (; it->Valid(); it->Next())
+        while (it->Valid())
         {
             auto key = std::stoull(it->key().ToString());
             if (key > m_last)
@@ -76,15 +89,16 @@ public:
                 m_first = key;
             }
             ++m_size;
+
+            it->Next();
         }
     }
 
     void push(const T& data)
     {
         // RocksDB enqueue element.
-        auto status = m_db->Put(rocksdb::WriteOptions(), std::to_string(++m_last), data);
-
-        if (!status.ok())
+        ++m_last;
+        if (const auto status = m_db->Put(rocksdb::WriteOptions(), std::to_string(m_last), data); !status.ok())
         {
             throw std::runtime_error("Failed to enqueue element");
         }
@@ -149,6 +163,8 @@ public:
 
 private:
     std::unique_ptr<rocksdb::DB> m_db;
+    std::shared_ptr<rocksdb::Cache> m_readCache;
+    std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
     uint64_t m_size;
     uint64_t m_first;
     uint64_t m_last;
