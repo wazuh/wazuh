@@ -194,6 +194,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get
 list(APPEND wdb_tests_names "test_wdb_pool")
 list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 
+list(APPEND wdb_tests_names "test_create_agent_db")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wfopen,--wrap,fopen,--wrap,fclose,--wrap,fflush,--wrap,fgets,--wrap,fgetpos,--wrap,fopen,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,chmod,--wrap,stat,--wrap,OS_MoveFile ${DEBUG_OP_WRAPPERS}")
+
 # Add extra compiling flags
 add_compile_options(-Wall)
 link_directories(${SRC_FOLDER}/build/shared_modules/router)
