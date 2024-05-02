@@ -261,7 +261,7 @@ void wm_remove_handle(HANDLE hProcess) {
     HANDLE * p_hProcess = NULL;
 
     w_mutex_lock(&wm_children_mutex);
-    if (wm_children_list) {
+    if (wm_children_list != NULL) {
         OSList_foreach(node_it, wm_children_list) {
             p_hProcess = (HANDLE *)node_it->data;
             if (p_hProcess && *p_hProcess == hProcess) {
