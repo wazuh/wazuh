@@ -4,25 +4,28 @@ name: int_calculate
 # Indicates whether the helper function supports a variable number of arguments
 variadic: true
 
-# Minimum number of parameters required for the helper function
-minimum_arguments: 3   # The function must have at least 3 parameters to work correctly
-
 # Arguments expected by the helper function
 arguments:
-  - type: string  # Expected type of the main argument is string
-    sources: value   # Main argument can be a direct value
-    only_values:
+  - id: 1
+    type: string  # Expected type is string
+    source: value   # References not allowed
+    allowed_values:
       - sum
       - sub
       - mul
       - div
 
-  - type: integer  # Expected type of the secondary argument is integer
-    sources: both # includes values or references (their names start with $)
+  - id: 2
+    type: integer  # Expected type of the secondary argument is integer
+    source: both # includes values or references (their names start with $)
+
+  - id: 3
+    type: integer  # Expected type of the secondary argument is integer
+    source: both # includes values or references (their names start with $)
 
 special_cases:
-  - description: Division by zero
+  - brief: Division by zero
     arguments:
-      - div
-      - 0
-    explanation: The function raises an error when attempting to divide by zero.
+      - 1: div
+      - 3: 0
+    details: The function raises an error when attempting to divide by zero.
