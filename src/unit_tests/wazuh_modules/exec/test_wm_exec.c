@@ -48,7 +48,6 @@ static int teardown_modules(void ** state) {
     // wm_kill_timeout to default value
     wm_kill_timeout = 0;
     test_mode = false;
-    wm_children_pool_destroy();
     return 0;
 }
 

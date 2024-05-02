@@ -153,9 +153,6 @@ void wm_remove_sid(pid_t sid);
 // Initialize children pool
 void wm_children_pool_init();
 
-// Destroy children pool
-void wm_children_pool_destroy();
-
 // Terminate every child process group
 void wm_kill_children();
 

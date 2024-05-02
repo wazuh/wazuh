@@ -11,6 +11,13 @@
 
 #include "wmodules.h"
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove STATIC qualifier from tests
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #ifdef __MACH__
 #include <mach/clock.h>
 #include <mach/mach.h>
@@ -38,7 +45,7 @@ typedef struct ThreadInfo {
 #endif
 } ThreadInfo;
 
-static OSList * wm_children_list = NULL;    // Child process list
+STATIC OSList * wm_children_list = NULL;    // Child process list
 
 // Clean node data
 static void wm_children_node_clean(pid_t *p_sid) {
@@ -51,15 +58,6 @@ void wm_children_pool_init() {
     w_mutex_init(&wm_children_mutex, NULL);
     wm_children_list = OSList_Create();
     OSList_SetFreeDataPointer(wm_children_list, (void (*)(void *))wm_children_node_clean);
-}
-
-// Destroy children pool
-
-void wm_children_pool_destroy() {
-    w_mutex_lock(&wm_children_mutex);
-    OSList_Destroy(wm_children_list);
-    wm_children_list = NULL;
-    w_mutex_unlock(&wm_children_mutex);
 }
 
 #ifdef WIN32
@@ -252,8 +250,6 @@ void wm_append_handle(HANDLE hProcess) {
             merror("Child process handle %p could not be registered in the children list.", hProcess);
             os_free(p_hProcess);
         }
-    } else {
-        merror("Child process handle %p could not be registered because the children list is unreferenced.", hProcess);
     }
     w_mutex_unlock(&wm_children_mutex);
 }
@@ -275,9 +271,7 @@ void wm_remove_handle(HANDLE hProcess) {
                 return;
             }
         }
-        merror("Child process handle %p could not be deleted because it was not found in the children list.", hProcess);
-    } else {
-        merror("Child process %p could not be deleted because the children list is unreferenced.", hProcess);
+        mwarn("Child process handle %p could not be removed because it was not found in the children list.", hProcess);
     }
     w_mutex_unlock(&wm_children_mutex);
 }
@@ -297,8 +291,12 @@ void wm_kill_children() {
             TerminateProcess(*p_hProcess, ERROR_PROC_NOT_FOUND);
         }
     }
+
+    // Release dynamic children's list
+    OSList_Destroy(wm_children_list);
+    wm_children_list = NULL;
+
     w_mutex_unlock(&wm_children_mutex);
-    wm_children_pool_destroy();
 }
 
 #else
@@ -654,8 +652,6 @@ void wm_append_sid(pid_t sid) {
             merror("Child process ID %d could not be registered in the children list.", sid);
             os_free(p_sid);
         }
-    } else {
-        merror("Child process ID %d could not be registered because the children list is unreferenced.", sid);
     }
     w_mutex_unlock(&wm_children_mutex);
 }
@@ -678,9 +674,7 @@ void wm_remove_sid(pid_t sid) {
                 return;
             }
         }
-        merror("Child process ID %d could not be deleted because it was not found in the children list.", sid);
-    } else {
-        merror("Child process ID %d could not be deleted because the children list is unreferenced.", sid);
+        mwarn("Child process ID %d could not be removed because it was not found in the children list.", sid);
     }
     w_mutex_unlock(&wm_children_mutex);
 }
@@ -752,8 +746,12 @@ void wm_kill_children() {
             }
         }
     }
+
+    // Release dynamic children's list
+    OSList_Destroy(wm_children_list);
+    wm_children_list = NULL;
+
     w_mutex_unlock(&wm_children_mutex);
-    wm_children_pool_destroy();
 }
 
 #endif // WIN32
