@@ -1,7 +1,3 @@
-# Finding MSI useful constants
-$Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
-$Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
-
 # Check if there is an upgrade in progress
 if (Test-Path ".\upgrade\upgrade_in_progress") {
     write-output "$(Get-Date -format u) - There is an upgrade in progress. Aborting..." >> .\upgrade\upgrade.log
@@ -19,6 +15,23 @@ if (Test-Path "$env:windir\sysnative") {
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
+}
+
+
+function get_wazuh_installation_directory {
+    Start-NativePowerShell {
+        $Env:WAZUH_REG_PATH = "HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"
+        try {
+            $WazuhInstallDir = (Get-ItemProperty -Path $Env:WAZUH_REG_PATH).WazuhInstallDir
+            if ($null -eq $WazuhInstallDir) {
+                throw "Couldn't find a registry key for HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent\WazuhInstallDir."
+            }
+            return $WazuhInstallDir
+        }
+        catch {
+            return $null
+        }
+    }
 }
 
 # Check process status
@@ -59,6 +72,24 @@ function install
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
     cmd /c start /wait (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
+}
+
+# Check that the Wazuh installation runs on the expected path
+$wazuhDir = get_wazuh_installation_directory
+
+if ($null -eq $wazuhDir) {
+    Write-Output "$(Get-Date -format u) - Wazuh installation directory not found or registry key is missing. Aborting." >> .\upgrade\upgrade.log
+    Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    exit 1
+}
+
+$normalizedWazuhDir = $wazuhDir.TrimEnd('\')
+$currentDir = (Get-Location).Path.TrimEnd('\')
+
+if ($normalizedWazuhDir -ne $currentDir) {
+    Write-Output "$(Get-Date -format u) - Current working directory is not the Wazuh installation directory. Aborting." >> .\upgrade\upgrade.log
+    Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    exit 1
 }
 
 # Get current version
