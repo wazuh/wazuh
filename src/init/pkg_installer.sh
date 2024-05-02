@@ -1,11 +1,6 @@
 #!/bin/bash
 # Copyright (C) 2015, Wazuh Inc.
 
-WAZUH_HOME=$(pwd)
-if [ "${WAZUH_HOME}" = "/" ]; then
-    echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong, interrupting upgrade." >> ./logs/upgrade.log
-    exit 1
-fi
 
 LOCK=./var/upgrade/upgrade_in_progress_pid
 cat /dev/null >> $LOCK
@@ -22,6 +17,30 @@ echo $$ > $LOCK
 echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade started." >> ./logs/upgrade.log
 
 OS=$(uname)
+WAZUH_HOME=$(pwd)
+
+echo "$(date +"%Y/%m/%d %H:%M:%S") - Checking execution path." >> ./logs/upgrade.log
+
+if [[ "$OS" == "Darwin" ]]; then
+    if [ "${WAZUH_HOME}" != "/Library/Ossec" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong (it should be /Library/Ossec), interrupting upgrade." >> ./logs/upgrade.log
+        echo -ne "2" > ./var/upgrade/upgrade_result
+        rm -f $LOCK
+        exit 1
+    fi
+elif [[ "$OS" == "Linux" ]]; then
+    if [ "${WAZUH_HOME}" != "/var/ossec" ]; then
+        echo "$(date +"%Y/%m/%d %H:%M:%S") - Execution path is wrong (it should be /var/ossec), interrupting upgrade." >> ./logs/upgrade.log
+        echo -ne "2" > ./var/upgrade/upgrade_result
+        rm -f $LOCK
+        exit 1
+    fi
+else
+    echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. Unsupported OS." >> ./logs/upgrade.log
+    echo -ne "2" > ./var/upgrade/upgrade_result
+    rm -f $LOCK
+    exit 1
+fi
 
 if [[ "$OS" == "Darwin" ]]; then
     installer -pkg ./var/upgrade/wazuh-agent* -target / >> ./logs/upgrade.log 2>&1
