@@ -56,8 +56,10 @@ void wm_children_pool_init() {
 // Destroy children pool
 
 void wm_children_pool_destroy() {
+    w_mutex_lock(&wm_children_mutex);
     OSList_Destroy(wm_children_list);
     wm_children_list = NULL;
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 #ifdef WIN32
@@ -239,16 +241,21 @@ DWORD WINAPI Reader(LPVOID args) {
 void wm_append_handle(HANDLE hProcess) {
     HANDLE * p_hProcess = NULL;
 
-    os_calloc(1, sizeof(HANDLE), p_hProcess);
-    *p_hProcess = hProcess;
+    w_mutex_lock(&wm_children_mutex);
+    if (wm_children_list != NULL) {
+        os_calloc(1, sizeof(HANDLE), p_hProcess);
+        *p_hProcess = hProcess;
 
-    if (wm_children_list) {
-        if (OSList_AddData(wm_children_list, (void *)p_hProcess)) {
-            return;
+        void * retval = OSList_AddData(wm_children_list, (void *)p_hProcess);
+
+        if (retval == NULL) {
+            merror("Child process handle %p could not be registered in the children list.", hProcess);
+            os_free(p_hProcess);
         }
+    } else {
+        merror("Child process handle %p could not be registered because the children list is unreferenced.", hProcess);
     }
-    merror("Child process handle %p could not be registered.", hProcess);
-    os_free(p_hProcess);
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Remove process from pool
@@ -257,8 +264,8 @@ void wm_remove_handle(HANDLE hProcess) {
     OSListNode * node_it = NULL;
     HANDLE * p_hProcess = NULL;
 
+    w_mutex_lock(&wm_children_mutex);
     if (wm_children_list) {
-        w_mutex_lock(&wm_children_mutex);
         OSList_foreach(node_it, wm_children_list) {
             p_hProcess = (HANDLE *)node_it->data;
             if (p_hProcess && *p_hProcess == hProcess) {
@@ -268,9 +275,11 @@ void wm_remove_handle(HANDLE hProcess) {
                 return;
             }
         }
-        w_mutex_unlock(&wm_children_mutex);
+        merror("Child process handle %p could not be deleted because it was not found in the children list.", hProcess);
+    } else {
+        merror("Child process %p could not be deleted because the children list is unreferenced.", hProcess);
     }
-    merror("Child process %p not found.", hProcess);
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Terminate every child process group. Doesn't wait for them!
@@ -632,19 +641,23 @@ void* reader(void *args) {
 // Add process group to pool
 
 void wm_append_sid(pid_t sid) {
-
     pid_t * p_sid = NULL;
 
-    os_calloc(1, sizeof(pid_t), p_sid);
-    *p_sid = sid;
+    w_mutex_lock(&wm_children_mutex);
+    if (wm_children_list != NULL) {
+        os_calloc(1, sizeof(pid_t), p_sid);
+        *p_sid = sid;
 
-    if (wm_children_list) {
-        if (OSList_AddData(wm_children_list, (void *)p_sid)) {
-            return;
+        void * retval = OSList_AddData(wm_children_list, (void *)p_sid);
+
+        if (retval == NULL) {
+            merror("Child process ID %d could not be registered in the children list.", sid);
+            os_free(p_sid);
         }
+    } else {
+        merror("Child process ID %d could not be registered because the children list is unreferenced.", sid);
     }
-    merror("Child process sid %d could not be registered.", sid);
-    os_free(p_sid);
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Remove process group from pool
@@ -654,8 +667,8 @@ void wm_remove_sid(pid_t sid) {
     OSListNode * node_it = NULL;
     pid_t * p_sid = NULL;
 
-    if (wm_children_list) {
-        w_mutex_lock(&wm_children_mutex);
+    w_mutex_lock(&wm_children_mutex);
+    if (wm_children_list != NULL) {
         OSList_foreach(node_it, wm_children_list) {
             p_sid = (pid_t *)node_it->data;
             if (p_sid && *p_sid == sid) {
@@ -665,11 +678,11 @@ void wm_remove_sid(pid_t sid) {
                 return;
             }
         }
-        merror("Child process %d not found.", sid);
-        w_mutex_unlock(&wm_children_mutex);
+        merror("Child process ID %d could not be deleted because it was not found in the children list.", sid);
     } else {
-        merror("Child process %d couldn't be deleted as the children list is empty.", sid);
+        merror("Child process ID %d could not be deleted because the children list is unreferenced.", sid);
     }
+    w_mutex_unlock(&wm_children_mutex);
 }
 
 // Terminate every child process group. Doesn't wait for them!
