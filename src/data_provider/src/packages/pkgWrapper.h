@@ -265,16 +265,21 @@ class PKGWrapper final : public IPackageWrapper
                     {
                         line = Utils::trim(line, " \t");
 
-                        if (line == "<key>PackageIdentifier</key>" &&
+                        if (line == "<key>PackageFileName</key>" &&
                             std::getline(data, line))
                         {
-                            auto reverseDNSName = getValueFnc(line);
-                            auto tokens = Utils::split(reverseDNSName, '.');
-                            if (tokens.size() == 1) {
-                                m_name = reverseDNSName;
-                            } else {
-                                m_name = *tokens.rbegin();
-                                m_vendor = reverseDNSName.substr(0, reverseDNSName.size() - m_name.size() - 1);
+                            m_name = getValueFnc(line);
+                            m_name = m_name.substr(0, m_name.find(".pkg"));
+                            Utils::replaceAll(m_name, "_", " ");
+                        }
+                        else if (line == "<key>PackageIdentifier</key>" &&
+                            std::getline(data, line))
+                        {
+                            m_description = getValueFnc(line);
+                            auto reverseDomainName = Utils::split(m_description, '.');
+                            if (reverseDomainName.size() > 1)
+                            {
+                                m_vendor = reverseDomainName[1];
                             }
                         }
                         else if (line == "<key>PackageVersion</key>" &&
@@ -290,7 +295,7 @@ class PKGWrapper final : public IPackageWrapper
                     }
 
                     m_multiarch = UNKNOWN_VALUE;
-                    m_source = "installer"; // pkgutil? pkg?
+                    m_source = "receipts";
                     m_location = filePath;
                 }
             };
