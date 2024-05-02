@@ -18,6 +18,13 @@ if (Test-Path "$env:windir\sysnative") {
 }
 
 
+function remove_upgrade_files {
+    Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
+    Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
+    Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+}
+
+
 function get_wazuh_installation_directory {
     Start-NativePowerShell {
         $Env:WAZUH_REG_PATH = "HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"
@@ -80,6 +87,7 @@ $wazuhDir = get_wazuh_installation_directory
 if ($null -eq $wazuhDir) {
     Write-Output "$(Get-Date -format u) - Wazuh installation directory not found or registry key is missing. Aborting." >> .\upgrade\upgrade.log
     Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
     exit 1
 }
 
@@ -89,6 +97,7 @@ $currentDir = (Get-Location).Path.TrimEnd('\')
 if ($normalizedWazuhDir -ne $currentDir) {
     Write-Output "$(Get-Date -format u) - Current working directory is not the Wazuh installation directory. Aborting." >> .\upgrade\upgrade.log
     Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
     exit 1
 }
 
@@ -138,8 +147,6 @@ Else
     write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 
-Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
-Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
-Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+remove_upgrade_files
 
 exit 0
