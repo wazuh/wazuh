@@ -7,6 +7,7 @@
 WAZUH_GROUP       = wazuh
 INSTALLDIR       ?= /var/ossec
 
+MV_FILE        = mv -f
 RM_FILE        = rm -f
 INSTALL_DIR    = install -o root -g ${WAZUH_GROUP} -m 0750 -d
 INSTALL_RW_DIR = install -o root -g ${WAZUH_GROUP} -m 0770 -d
@@ -34,10 +35,12 @@ install:
 	$(INSTALL_CONFIG_FILE) api/configuration/api.yaml ${INSTALLDIR}/api/configuration
 
 	$(INSTALL_DIR) $(INSTALLDIR)/api/scripts
-	$(INSTALL_FILE) scripts/wazuh-apid.py ${INSTALLDIR}/api/scripts
+	$(INSTALL_FILE) scripts/wazuh_apid.py ${INSTALLDIR}/api/scripts
 
     # Install scripts/%.py on $(INSTALLDIR)/bin/%
 	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
+	
+	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_apid $(INSTALLDIR)/bin/wazuh-apid
 
 restore:
     # Restore old API config
