@@ -422,7 +422,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
         if (cJSON_IsNumber(mtu)) {
             char _mtu[OS_SIZE_128];
-            snprintf(_mtu, OS_SIZE_128 - 1, "%d", mtu->valueint);
+            snprintf(_mtu, OS_SIZE_128 - 1, "%ld", (int64_t)mtu->valuedouble);
             fillData(lf,"netinfo.iface.mtu",_mtu);
             wm_strcat(&msg, _mtu, '|');
         } else {
@@ -456,7 +456,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
         if (cJSON_IsNumber(tx_bytes)) {
             char txbytes[OS_SIZE_512];
-            snprintf(txbytes, OS_SIZE_512 - 1, "%d", tx_bytes->valueint);
+            snprintf(txbytes, OS_SIZE_512 - 1, "%ld", (int64_t)tx_bytes->valuedouble);
             fillData(lf,"netinfo.iface.tx_bytes",txbytes);
             wm_strcat(&msg, txbytes, '|');
         } else {
@@ -465,7 +465,7 @@ int decode_netinfo(Eventinfo *lf, cJSON * logJSON, int *socket) {
 
         if (cJSON_IsNumber(rx_bytes)) {
             char rxbytes[OS_SIZE_512];
-            snprintf(rxbytes, OS_SIZE_512 - 1, "%d", rx_bytes->valueint);
+            snprintf(rxbytes, OS_SIZE_512 - 1, "%ld", (int64_t)rx_bytes->valuedouble);
             fillData(lf,"netinfo.iface.rx_bytes",rxbytes);
             wm_strcat(&msg, rxbytes, '|');
         } else {
