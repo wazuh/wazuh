@@ -4,55 +4,30 @@ from pathlib import Path
 
 import yaml
 
+tests = []
+reference_counter = 0
+maximum_number_of_arguments = 40
 
-def generate_value(value_type: type, is_valid=True):
+
+def convert_string_to_type(str_type: str):
     """
-    Generates a random value of the specified type.
+    Convert a string representation of a type to the actual type.
 
     Args:
-        value_type (type): The type of value to generate (int, float, str).
-        is_valid (bool, optional): Indicates whether the generated value should be valid or not.
-            Defaults to True.
+        str_type (str): The string representation of the type ('integer' or 'string').
 
     Returns:
-        int, float, or str: A randomly generated value of the specified type.
-
-    Raises:
-        ValueError: If an invalid value_type is provided.
-
-    Example:
-        >>> generate_value(int)
-        5
-        >>> generate_value(float)
-        3.142
-        >>> generate_value(str)
-        'abcdef'
+        type: The corresponding type.
 
     """
-    if is_valid:
-        if value_type == int:
-            return random.randint(0, 9)
-        elif value_type == str:
-            return "".join(
-                random.choice("abcdefghijklmnopqrstuvwxyz")
-                for _ in range(random.randint(1, 10))
-            )
-    else:
-        data_types = [int, float, str]
-        data_types.remove(value_type)
-        selected_type = random.choice(data_types)
-
-        if selected_type == bool:
-            return random.choice([True, False])
-        if selected_type == int:
-            return random.randint(0, 10)
-        elif selected_type == float:
-            return random.uniform(0, 10)
-        elif selected_type == str:
-            return "".join(
-                random.choice("abcdefghijklmnopqrstuvwxyz")
-                for _ in range(random.randint(1, 10))
-            )
+    if str_type == "integer":
+        return int
+    elif str_type == "string":
+        return str
+    elif str_type == "float":
+        return float
+    elif str_type == "boolean":
+        return bool
 
 
 def load_yaml(file_path):
@@ -73,748 +48,564 @@ def load_yaml(file_path):
             print(exc)
 
 
-def convert_string_to_type(str_type: str):
-    """
-    Convert a string representation of a type to the actual type.
-
-    Args:
-        str_type (str): The string representation of the type ('integer' or 'string').
-
-    Returns:
-        type: The corresponding type.
-
-    """
-    if str_type == "integer":
-        return int
-    elif str_type == "string":
-        return str
+def get_minimum_arguments(yaml_data):
+    return len(yaml_data["arguments"])
 
 
-def process_yaml_data(spec):
-    """
-    Processes YAML data and extracts relevant information.
+def is_variadic(yaml_data):
+    return yaml_data["variadic"]
 
-    Args:
-        spec (dict): The YAML data.
 
-    Returns:
-        tuple: A tuple containing variadic, name, min_args, parameters, special_parameters, sources, types, and only_values.
+def get_name(yaml_data):
+    return yaml_data["name"]
 
-    """
-    variadic = spec.get("variadic")
-    name = spec.get("name")
-    min_args = spec.get("minimum_arguments")
-    target_field_type = convert_string_to_type(spec["target_field"]["type"])
-    relationship = ""
-    special_parameters = []
+
+def get_allowed_values(yaml_data, argument_id):
+    for argument in yaml_data["arguments"]:
+        if argument["id"] == argument_id + 1:
+            return argument.get("allowed_values", [])
+    return []
+
+
+def get_sources(yaml_data):
     sources = []
-    only_values = None
+    for argument in yaml_data["arguments"]:
+        if argument["source"]:
+            sources.append(argument["source"])
+    return sources
 
-    def special_cases():
-        nonlocal relationship
-        special_cases = spec.get("special_cases", [])
-        for case in special_cases:
-            relationship = case["relationship"]
 
-    special_cases()
+def get_types(yaml_data):
+    types = []
+    for argument in yaml_data["arguments"]:
+        types.append(argument["type"])
+    return types
 
-    def special_parameter():
-        nonlocal special_parameters
-        special_cases = spec.get("special_cases", [])
-        for case in special_cases:
-            special_parameters.append(case.get("arguments", []))
 
-    special_parameter()
-
-    if "arguments" in spec:
-        for i, argument in enumerate(spec["arguments"]):
-            local_source = []
-            if argument.get("sources", []) == "both":
-                local_source.append("reference")
-                local_source.append("value")
-            else:
-                local_source.append(argument.get("sources", []))
-            sources.append(local_source)
-            if "only_values" in argument:
-                only_values = argument["only_values"]
+def change_source(source):
+    if source == "value":
+        return "reference"
+    elif source == "reference":
+        return "value"
     else:
-        print("No argument specifications found in the YAML file.")
-
-    return (
-        variadic,
-        name,
-        min_args,
-        relationship,
-        sources,
-        only_values,
-        target_field_type,
-        special_parameters,
-    )
+        return source
 
 
-def generate_operations(repeat, operations=None):
-    """
-    Generate combinations of operations and value sources.
-
-    Args:
-        repeat (int): Number of repetitions for the value sources.
-        operations (list, optional): List of operations to include in the combinations.
-            Defaults to None.
-
-    Returns:
-        list: List of generated combinations of operations and value sources.
-    """
-    results = []
-    value_combinations = list(itertools.product(["reference", "value"], repeat=repeat))
-    if operations is not None:
-        operation_combination = {operation: False for operation in operations}
-        for operation in operations:
-            for combo in value_combinations:
-                if len(set(combo)) == 1 or (
-                    combo[0] != combo[1] and not operation_combination[operation]
-                ):
-                    results.append((operation,) + combo)
-                    if combo[0] != combo[1]:
-                        operation_combination[operation] = True
-    else:
-        for combo in value_combinations:
-            results.append(combo)
-    return results
+def change_type(type_):
+    data_types = [int, float, str, list]
+    data_types.remove(type_)
+    selected_type = random.choice(data_types)
+    return selected_type
 
 
-def generate_test_with_fewer_parameters_than_min_args(name, min_args, new_tests):
-    """
-    Generate a test with fewer parameters than the specified minimum arguments.
-
-    Args:
-        min_args (int): The minimum number of arguments required.
-        name (str): The name of the function being tested.
-        new_tests (list): List to which the generated test will be appended.
-
-    Returns:
-        None
-
-    """
-    few_parameters = ["0"] * (min_args - 1)
-    normalize_list = []
-    normalize_list.append(
-        {"check": [{"target_field": f"{name}({', '.join(few_parameters)})"}]}
-    )
-    new_test = {
-        "fail": "buildtime",
-        "asset_definition": {"name": "decoder/test/0", "normalize": normalize_list},
-        "description": "few parameters",
-    }
-    new_tests.append(new_test)
-
-
-def generate_test_with_more_parameters_than_max_args(
-    name, min_args, variadic, new_tests
-):
-    """
-    Generates a test case with more parameters than the maximum allowed arguments.
-
-    Args:
-        name (str): The name of the function being tested.
-        min_args (int): The minimum number of arguments required for the function.
-        variadic (bool): Indicates whether the function supports a variable number of arguments.
-        new_tests (list): The list to which the generated test case will be appended.
-
-    Returns:
-        None
-
-    """
-    # Generate parameters exceeding the maximum allowed arguments
-    few_parameters = ["0"] * (min_args + 15)
-
-    # Prepare normalization list for the test case
-    normalize_list = [
-        {"check": [{"target_field": f"{name}({', '.join(few_parameters)})"}]}
-    ]
-
-    # Create the new test case
-    new_test = {
-        "asset_definition": {"name": "decoder/test/0", "normalize": normalize_list},
-        "description": "more parameters",
-    }
-
-    # Set the test result based on variadic support
-    if not variadic:
-        new_test["fail"] = "buildtime"
-    else:
-        new_test["should_pass"] = True
-
-    # Append the new test case to the list of tests
-    new_tests.append(new_test)
-
-
-def generate_test_with_non_exist_target_field(
-    name, min_args, target_field_type, new_tests
-):
-    """
-    Generates a test case for a non-existent target field.
-
-    Args:
-        name (str): The name of the function being tested.
-        min_args (int): The minimum number of arguments required for the function.
-        target_field_type (type): The type of the target field.
-        new_tests (list): The list to which the generated test case will be appended.
-
-    Returns:
-        None
-
-    """
-    # Generate values for the target field
-    values = [generate_value(target_field_type) for _ in range(min_args)]
-
-    # Prepare normalization list for the test case
-    normalize_list = [
-        {"check": [{"target_field": f"{name}({', '.join(map(repr, values))})"}]}
-    ]
-
-    # Create the new test case
-    new_test = {
-        "asset_definition": {"name": "decoder/test/0", "normalize": normalize_list},
-        "description": "target field non exist",
-        "fail": "runtime",
-    }
-
-    # Append the new test case to the list of tests
-    new_tests.append(new_test)
-
-
-def generate_test_with_different_sources(
-    name, min_args, target_field_type, relationship, sources, arguments, new_tests
-):
-    """
-    Generates test cases with different sources for function arguments.
-
-    Args:
-        name (str): The name of the function being tested.
-        min_args (int): The minimum number of arguments required for the function.
-        target_field_type (type): The type of the target field.
-        relationship (str): The relationship between arguments (e.g., "Equal").
-        sources (list): The list of argument sources (e.g., ["value", "reference"]).
-        arguments (list): The list of function arguments with their specifications.
-        new_tests (list): The list to which the generated test cases will be appended.
-
-    Returns:
-        None
-
-    """
-    test_cases = []
-    params = {}
-    normalize_list = []
-    values = []
-    counter_reference = 0
-
-    # Iterate through sources and generate values accordingly
-    for i, source in enumerate(sources):
-        if len(source) == 2:
-            counter_reference += 1
-            values.append(f"$_eventJson.ref_{counter_reference}")
-            params[f"ref_{counter_reference}"] = generate_value(
-                convert_string_to_type(arguments[i]["type"])
+def generate_random_value(type_, allowed_values):
+    if len(allowed_values) == 0:
+        if type_ == int:
+            return random.randint(1, 9)
+        elif type_ == float:
+            return random.uniform(1, 9)
+        elif type_ == str:
+            return "".join(
+                random.choice("abcdefghijklmnopqrstuvwxyz")
+                for _ in range(random.randint(1, 10))
             )
-        else:
-            if source[0] == "value":
-                counter_reference += 1
-                values.append(f"$_eventJson.ref_{counter_reference}")
-                params[f"ref_{counter_reference}"] = generate_value(
-                    convert_string_to_type(arguments[i]["type"])
-                )
-            else:
-                values.append(
-                    generate_value(convert_string_to_type(arguments[i]["type"]))
-                )
-
-    # Handle the case when the number of parameters is less than the minimum required
-    argument = arguments[-1:]
-    if len(params) < min_args:
-        diff = min_args - len(values)
-        for _ in range(diff):
-            source = argument[0].get("source", [])
-            if len(source) == 2:
-                counter_reference += 1
-                values.append(f"$_eventJson.ref_{counter_reference}")
-                params[f"ref_{counter_reference}"] = generate_value(
-                    convert_string_to_type(arguments[i]["type"])
-                )
-            else:
-                if source == "value":
-                    counter_reference += 1
-                    values.append(f"$_eventJson.ref_{counter_reference}")
-                    params[f"ref_{counter_reference}"] = generate_value(
-                        convert_string_to_type(arguments[i]["type"])
-                    )
-                else:
-                    values.append(
-                        generate_value(convert_string_to_type(arguments[i]["type"]))
-                    )
-
-    # Prepare stage map for normalization
-    stage_map = {"map": []}
-    target_field_value = 0
-    if relationship == "Equal":
-        target_field_value = values[0]
+        elif type_ == list:
+            return [1, "str", 1.2, False]
     else:
-        target_field_value = generate_value(target_field_type)
+        return random.choice(allowed_values)
 
-    # Construct the normalization list
-    if len(params) == 0:
+
+def generate_value(type_, allowed_values):
+    return generate_random_value(type_, allowed_values)
+
+
+def generate_reference(type_, allowed_values):
+    global reference_counter
+    reference_counter += 1
+    return {
+        "name": f"ref{reference_counter}",
+        "value": generate_random_value(type_, allowed_values),
+    }
+
+
+def get_target_field_type(yaml_data):
+    return yaml_data["target_field"]["type"]
+
+
+def target_field_is_array(yaml_data):
+    return yaml_data["target_field"]["is_array"]
+
+
+def generate_specif_reference(value):
+    global reference_counter
+    reference_counter += 1
+    return {
+        "name": f"ref{reference_counter}",
+        "value": value,
+    }
+
+
+def generate_argument(type_, source, allowed_values, only_values):
+    if source == "value":
+        return generate_value(type_, allowed_values)
+    elif source == "reference":
+        return generate_reference(type_, allowed_values)
+    else:
+        if only_values:
+            argument = generate_value(type_, allowed_values)
+        else:
+            argument = generate_reference(type_, allowed_values)
+        return argument
+
+
+def generate_specific_argument(source, type_):
+    if source == "value":
+        return generate_value(type_, [])
+    elif source == "reference":
+        return generate_reference(type_, [])
+
+
+def generate_raw_template(yaml_data):
+    sources = get_sources(yaml_data)
+    sources_expanded = []
+    for source in sources:
+        if source == "both":
+            sources_expanded.append(["value", "reference"])
+        else:
+            sources_expanded.append(source)
+
+    # If an element is a list, we treat it as a single element
+    data_processed = [x if isinstance(x, list) else [x] for x in sources_expanded]
+
+    # Generate all possible combinations
+    combinations = list(itertools.product(*data_processed))
+    return combinations
+
+
+def generate_combination_template(yaml_data, allowed_values):
+    combinations = generate_raw_template(yaml_data)
+
+    expected_combinations = [
+        replacement + combination[1:]
+        for replacement, combination in itertools.product(
+            itertools.product(allowed_values), combinations
+        )
+    ]
+
+    return expected_combinations
+
+
+def fewer_arguments_than_the_minimum_required(yaml_data):
+    minimum_arguments = get_minimum_arguments(yaml_data)
+    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    # Generate test cases with argument count ranging from 0 to minimum_arguments
+    for num_arguments in range(minimum_arguments):
+        parameters = [
+            "0"
+        ] * num_arguments  # Generate empty strings for the current number of arguments
+        helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in parameters)})"
+        normalize_list = [{"check": [{"target_field": helper}]}]
+        new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+        new_test = {
+            "expected_result": "failure_in_buildtime",
+            "inputs": [],
+        }
+        test_data["test_cases"].append(new_test)
+        test_data["assets_definition"].append(new_asset_definition)
+        test_data["description"] = f"Test with fewer parameters for helper function."
+    tests.append(test_data)
+
+
+def different_sources(yaml_data):
+    sources = get_sources(yaml_data)
+    types = get_types(yaml_data)
+    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    for i in range(len(types)):  # Iterating over the number of arguments
+        inputs = []
+        all_arguments = []
+        new_sources = sources[
+            :
+        ]  # Copying the list of sources to not modify the original
+        normalize_list = []
+
+        # Expected a success result if source is both
+        if sources[i] == "both":
+            continue
+
+        new_source = change_source(sources[i])  # Changing the source for this argument
+        new_sources[i] = new_source  # Updating the new list of sources
+
+        # Fetching unique values allowed for the current argument
+        allowed_values = get_allowed_values(yaml_data, i)
+        allowed_values_index = None
+        if len(allowed_values) != 0:
+            allowed_values_index = i
+            allowed_values = []
+
+        # Generating the three arguments with the modified source for one in each iteration
+        current_arguments = []
+        for j in range(len(types)):
+            if type(allowed_values_index) != None:
+                if i != allowed_values_index:
+                    allowed_values = get_allowed_values(yaml_data, j)
+
+            argument = generate_argument(
+                convert_string_to_type(types[j]), new_sources[j], allowed_values, True
+            )
+            if isinstance(argument, dict):
+                inputs.append({argument["name"]: argument["value"]})
+                current_arguments.append(f"$eventJson.{argument['name']}")
+            else:
+                current_arguments.append(argument)
+
+        all_arguments.append(current_arguments)
+        stage_map = {"map": []}
+        helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments[0])})"
+        target_field_value = generate_specific_argument(
+            "value", convert_string_to_type(get_target_field_type(yaml_data))
+        )
+        if len(inputs) == 0:
+            stage_map["map"].append({"target_field": target_field_value})
+        else:
+            stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
+            stage_map["map"].append({"target_field": target_field_value})
+
+        normalize_list.append(stage_map)
+        normalize_list.append({"check": [{"target_field": helper}]})
+
+        new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+        new_test = {
+            "expected_result": "failure_in_builtime",
+            "inputs": inputs,
+        }
+        test_data["test_cases"].append(new_test)
+        test_data["assets_definition"].append(new_asset_definition)
+        test_data["description"] = "Generate sources other than those allowed"
+
+    if len(test_data["assets_definition"]) != 0:
+        tests.append(test_data)
+
+
+def different_types(yaml_data, source):
+    types = get_types(yaml_data)
+    has_allowed_values = False
+    for i in range(len(types)):
+        allowed_values = get_allowed_values(yaml_data, i)
+        break
+
+    if allowed_values:
+        template = generate_combination_template(yaml_data, allowed_values)
+        has_allowed_values = True
+    else:
+        template = generate_raw_template(yaml_data)
+
+    for case in template:
+        all_arguments = []
+        normalize_list = []
+        inputs = []
+        test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+
+        if has_allowed_values:
+            if (
+                case.count(change_source(source))
+                == get_minimum_arguments(yaml_data) - 1
+            ):
+                continue
+        else:
+            if case.count(change_source(source)) == get_minimum_arguments(yaml_data):
+                continue
+
+        for argument, type_ in zip(case, types):
+            if type(type_) == type:
+                if argument == source:
+                    valid_type = change_type(type_)
+                else:
+                    valid_type = type_
+            else:
+                if argument == source:
+                    valid_type = change_type(convert_string_to_type(type_))
+                else:
+                    valid_type = convert_string_to_type(type_)
+
+            if argument == "value":
+                all_arguments.append(generate_specific_argument("value", valid_type))
+            elif argument == "reference":
+                reference = generate_specific_argument("reference", valid_type)
+                all_arguments.append(f"$eventJson.{reference['name']}")
+                inputs.append({reference["name"]: reference["value"]})
+            else:
+                all_arguments.append(argument)
+
+        stage_map = {"map": []}
+        helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+        target_field_value = generate_specific_argument(
+            "value", convert_string_to_type(get_target_field_type(yaml_data))
+        )
+        if len(inputs) == 0:
+            stage_map["map"].append({"target_field": target_field_value})
+        else:
+            stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
+            stage_map["map"].append({"target_field": target_field_value})
+
+        normalize_list.append(stage_map)
+        normalize_list.append({"check": [{"target_field": helper}]})
+
+        expected_result = "failure_in_buildtime"
+        if source == "reference":
+            expected_result = "failure_in_runtime"
+
+        new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+        new_test = {
+            "expected_result": expected_result,
+            "inputs": inputs,
+        }
+        test_data["test_cases"].append(new_test)
+        test_data["assets_definition"].append(new_asset_definition)
+        test_data["description"] = (
+            f"Generate types other than those allowed for the source {source}"
+        )
+
+        tests.append(test_data)
+
+
+def different_target_field_type(yaml_data):
+    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    normalize_list = []
+    # Generate values for the target field
+    values = [
+        generate_specific_argument(
+            "value", convert_string_to_type(get_target_field_type(yaml_data))
+        )
+        for _ in range(get_minimum_arguments(yaml_data))
+    ]
+
+    stage_map = {"map": []}
+    helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in values)})"
+    target_field_value = generate_specific_argument(
+        "value", change_type(convert_string_to_type(get_target_field_type(yaml_data)))
+    )
+
+    stage_map["map"].append({"target_field": target_field_value})
+
+    normalize_list.append(stage_map)
+    normalize_list.append({"check": [{"target_field": helper}]})
+
+    # Create the new test case
+    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+    new_test = {
+        "expected_result": "failure_in_runtime",
+        "inputs": [],
+    }
+
+    test_data["test_cases"].append(new_test)
+    test_data["assets_definition"].append(new_asset_definition)
+    test_data["description"] = "Target field with diferent type"
+
+    # Append the new test case to the list of tests
+    tests.append(test_data)
+
+
+def variadic(yaml_data):
+    sources = get_sources(yaml_data)
+    types = get_types(yaml_data)
+    inputs = []
+    normalize_list = []
+    all_arguments = []
+    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    if is_variadic(yaml_data):
+        number_of_arguments = maximum_number_of_arguments + 1
+    else:
+        number_of_arguments = get_minimum_arguments(yaml_data) + 1
+
+    for i in range(number_of_arguments):
+        j = i % get_minimum_arguments(yaml_data)
+        argument = generate_argument(
+            convert_string_to_type(types[j]), sources[j], [], i % 2 == 0
+        )
+
+        if isinstance(argument, dict):
+            inputs.append({argument["name"]: argument["value"]})
+            all_arguments.append(f"$eventJson.{argument['name']}")
+        else:
+            all_arguments.append(argument)
+
+    stage_map = {"map": []}
+    helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+    target_field_value = generate_specific_argument(
+        "value", convert_string_to_type(get_target_field_type(yaml_data))
+    )
+    if len(inputs) == 0:
         stage_map["map"].append({"target_field": target_field_value})
     else:
         stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
         stage_map["map"].append({"target_field": target_field_value})
 
     normalize_list.append(stage_map)
-    normalize_list.append(
-        {"check": [{"target_field": f"{name}({', '.join(map(repr, values))})"}]}
-    )
+    normalize_list.append({"check": [{"target_field": helper}]})
 
-    # Define the asset definition
-    asset = {"name": "decoder/test/0", "normalize": normalize_list}
-
-    # Define the expected outcome based on the source types
-    expected = {"fail": "runtime"}
-    if len(sources) == 1:
-        if len(sources[0]) == 2:
-            expected = {"should_pass": True}
-
-    # Append the test case to the list of test cases
-    test_cases.append(
-        {"asset_definition": asset, "params": params, "expected": expected}
-    )
-
-    # Create the new test
+    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
     new_test = {
-        "test_cases": test_cases,
-        "description": "Value and Reference with invalid source type",
+        "expected_result": "failure_in_builtime",
+        "inputs": inputs,
     }
+    test_data["test_cases"].append(new_test)
+    test_data["assets_definition"].append(new_asset_definition)
+    test_data["description"] = "Generate more arguments than the maximum allowed"
 
-    # Append the new test to the list of tests
-    new_tests.append(new_test)
-
-
-def generate_test_with_invalid_params_type_in_value_source(
-    name,
-    last_argument,
-    template,
-    repeat,
-    special_parameters,
-    relationship,
-    target_field_type,
-    new_tests,
-):
-    # Get the type of the last argument
-    type = convert_string_to_type(last_argument[0].get("type", []))
-
-    # Iterate over each case in the template
-    for case in template:
-        # Find the indices where 'value' occurs in the case
-        values_indices = [i for i, val in enumerate(case) if val == "value"]
-
-        # Check if the number of 'value's matches the repeat value
-        if len(values_indices) == repeat:
-            # Generate combinations of 'valid' and 'invalid' values
-            replacements = ["valid", "invalid"]
-            combinations = itertools.product(replacements, repeat=repeat)
-            test_cases = []
-            for combination in combinations:
-                # Replace 'value' occurrences with 'valid' or 'invalid' values
-                new_case = list(case)
-                for index, new_value in zip(values_indices, combination):
-                    new_case[index] = new_value
-
-                values = []
-                normalize_list = []
-                expected = {}
-                count = 0
-
-                # Generate values based on the new case
-                for param in new_case:
-                    if param == "valid":
-                        values.append(generate_value(type))
-                        count += 1
-                        if count == repeat:
-                            expected["should_pass"] = True
-                            count = 0
-                    elif param == "invalid":
-                        values.append(generate_value(type, False))
-                    else:
-                        values.append(param)
-
-                if "should_pass" not in expected:
-                    expected["should_pass"] = False
-
-                # Prepare stage map for normalization
-                stage_map = {"map": []}
-                target_field_value = 0
-                if relationship == "Equal":
-                    target_field_value = values[0]
-                else:
-                    target_field_value = generate_value(target_field_type)
-
-                stage_map["map"].append({"target_field": target_field_value})
-                normalize_list.append(stage_map)
-                normalize_list.append(
-                    {
-                        "check": [
-                            {"target_field": f"{name}({', '.join(map(repr, values))})"}
-                        ]
-                    }
-                )
-
-                # Prepare asset definition
-                asset = {"name": "decoder/test/0", "normalize": normalize_list}
-                test_cases.append({"asset_definition": asset, "expected": expected})
-
-            # Add generated test cases to the list of new tests
-            new_test = {
-                "test_cases": test_cases,
-                "description": "Values with valid and invalid params type",
-            }
-            new_tests.append(new_test)
+    tests.append(test_data)
 
 
-def generate_test_with_invalid_params_type_in_reference_source(
-    name,
-    last_argument,
-    template,
-    repeat,
-    special_parameters,
-    relationship,
-    target_field_type,
-    new_tests,
-):
-    """
-    Generates test cases with invalid parameter types in reference sources.
-
-    Args:
-        name (str): The name of the function being tested.
-        last_argument (list): The last argument specifications.
-        template (list): The template for generating test cases.
-        repeat (int): The number of repetitions.
-        special_parameters (list): List of special parameters.
-        relationship (str): The relationship between arguments (e.g., "Equal").
-        target_field_type (type): The type of the target field.
-        new_tests (list): The list to which the generated test cases will be appended.
-
-    Returns:
-        None
-
-    """
-    # Get the type of the last argument
-    type = convert_string_to_type(last_argument[0].get("type", []))
-
-    # Iterate over each case in the template
-    for case in template:
-        # Find the indices where 'reference' occurs in the case
-        values_indices = [i for i, val in enumerate(case) if val == "reference"]
-
-        # Check if the number of 'reference's matches the repeat value
-        if len(values_indices) == repeat:
-            # Generate combinations of 'valid' and 'invalid' values
-            replacements = ["valid", "invalid"]
-            combinations = itertools.product(replacements, repeat=repeat)
-            test_cases = []
-            for combination in combinations:
-                # Replace 'reference' occurrences with 'valid' or 'invalid' values
-                new_case = list(case)
-                for index, new_value in zip(values_indices, combination):
-                    new_case[index] = new_value
-
-                values = []
-                all_values = []
-                normalize_list = []
-                params = {}
-                count = 0
-
-                # Generate values and parameters based on the new case
-                for i, param in enumerate(new_case):
-                    if param == "valid":
-                        value = generate_value(type)
-                        values.append(f"$_eventJson.ref_{i}")
-                        all_values.append(value)
-                        params[f"ref_{i}"] = value
-                        count += 1
-                        if count == repeat:
-                            params["should_pass"] = True
-                            count = 0
-                    elif param == "invalid":
-                        value = generate_value(type, False)
-                        values.append(f"$_eventJson.ref_{i}")
-                        all_values.append(value)
-                        params[f"ref_{i}"] = value
-                    else:
-                        values.append(param)
-                        all_values.append(param)
-
-                if "should_pass" not in params:
-                    params["should_pass"] = False
-                test_cases.append(params)
-
-            # Prepare stage map for normalization
-            target_field_value = 0
-            if relationship == "Equal":
-                target_field_value = values[0]
-            else:
-                target_field_value = generate_value(target_field_type)
-
-            stage_map = {"map": []}
-            stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
-            stage_map["map"].append({"target_field": target_field_value})
-            normalize_list.append(stage_map)
-            normalize_list.append(
-                {"check": [{"target_field": f"{name}({', '.join(map(repr, values))})"}]}
-            )
-
-            # Prepare asset definition
-            new_test = {
-                "asset_definition": {
-                    "name": "decoder/test/0",
-                    "normalize": normalize_list,
-                },
-                "description": "References with valid and invalid params type",
-                "test_cases": test_cases,
-            }
-            new_tests.append(new_test)
-
-
-def generate_test_with_invalid_params_type_in_value_reference_source(
-    name,
-    last_argument,
-    template,
-    repeat,
-    special_parameters,
-    relationship,
-    target_field_type,
-    new_tests,
-):
-    """
-    Generates test cases with invalid parameter types in value and reference sources.
-
-    Args:
-        name (str): The name of the function being tested.
-        last_argument (list): The last argument specifications.
-        template (list): The template for generating test cases.
-        repeat (int): The number of repetitions.
-        special_parameters (list): List of special parameters.
-        relationship (str): The relationship between arguments (e.g., "Equal").
-        target_field_type (type): The type of the target field.
-        new_tests (list): The list to which the generated test cases will be appended.
-
-    Returns:
-        None
-
-    """
-    type = convert_string_to_type(last_argument[0].get("type", []))
-
-    # Iterate over each case in the template
-    for case in template:
-        # Check if the case contains 'value' or 'reference'
-        if "value" in case or "reference" in case:
-            values_indices = [i for i, val in enumerate(case) if val == "value"]
-            reference_indices = [i for i, val in enumerate(case) if val == "reference"]
-
-            replacements = ["valid", "invalid"]
-            combinations = itertools.product(
-                replacements, repeat=len(values_indices) + len(reference_indices)
-            )
-            test_cases = []
-
-            for combination in combinations:
-                new_case = list(case)
-                value_combination = combination[: len(values_indices)]
-                reference_combination = combination[len(values_indices) :]
-
-                for index, new_value in zip(values_indices, value_combination):
-                    new_case[index] = f"value:{new_value}"
-                for index, new_value in zip(reference_indices, reference_combination):
-                    new_case[index] = f"reference:{new_value}"
-                values = []
-                normalize_list = []
-                all_values = []
-                params = {}
-                expected = {}
-                count = 0
-
-                # Generate values and parameters based on the new case
-                for i, param in enumerate(new_case):
-                    if ":" in param:
-                        parts = param.split(":")
-                        if parts[1] == "valid":
-                            if parts[0] == "value":
-                                value = generate_value(type)
-                                all_values.append(value)
-                                values.append(value)
-                            else:
-                                value = generate_value(type)
-                                values.append(f"$_eventJson.ref{i}")
-                                all_values.append(value)
-                                params[f"ref{i}"] = value
-                            count = count + 1
-                            if count == repeat:
-                                expected["should_pass"] = True
-                        else:
-                            if parts[0] == "value":
-                                value = generate_value(type, False)
-                                values.append(value)
-                                all_values.append(value)
-                                expected["fail"] = "buildtime"
-                            else:
-                                value = generate_value(type, False)
-                                values.append(f"$_eventJson.ref{i}")
-                                all_values.append(value)
-                                params[f"ref{i}"] = value
-                                if "fail" not in expected:
-                                    expected["fail"] = "runtime"
-                    else:
-                        values.append(param)
-                        all_values.append(param)
-
-                # Prepare stage map for normalization
-                stage_map = {"map": []}
-                target_field_value = 0
-                if relationship == "Equal":
-                    target_field_value = values[0]
-                else:
-                    target_field_value = generate_value(target_field_type)
-                stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
-                stage_map["map"].append({"target_field": target_field_value})
-                normalize_list.append(stage_map)
-                normalize_list.append(
-                    {
-                        "check": [
-                            {"target_field": f"{name}({', '.join(map(repr, values))})"}
-                        ]
-                    }
-                )
-                asset = {"name": "decoder/test/0", "normalize": normalize_list}
-                test_cases.append(
-                    {"asset_definition": asset, "params": params, "expected": expected}
-                )
-            new_test = {
-                "test_cases": test_cases,
-                "description": "Value and reference with valid and invalid params type",
-            }
-            new_tests.append(new_test)
-
-
-def generate_test_with_non_exist_reference(
-    name, min_args, last_argument, template, relationship, target_field_type, new_tests
-):
-    """
-    Generates test cases with non-existent references.
-
-    Args:
-        name (str): The name of the function being tested.
-        min_args (int): The minimum number of arguments required.
-        last_argument (list): Specifications of the last argument.
-        template (list): Template for generating test cases.
-        relationship (str): The relationship between arguments (e.g., "Equal").
-        target_field_type (type): Type of the target field.
-        new_tests (list): List to which the generated test cases will be appended.
-
-    Returns:
-        None
-
-    """
-    # Convert string type to Python type
-    type = convert_string_to_type(last_argument[0].get("type", []))
-    test_cases = []
-
-    # Iterate through the template to generate test cases
-    for case in template:
-        values = []
-        normalize_list = []
-        params = {}
-        expected = {"fail": "runtime"}
-        count = 0
-
-        # Generate values and parameters based on the template
-        for i, source in enumerate(case):
-            if source == "value":
-                values.append(generate_value(type))
-                count = count + 1
-                if count == min_args:
-                    expected = {"should_pass": True}
-            elif source == "reference":
-                values.append(f"$ref{i}")
-            else:
-                values.append(source)
-
-        # Prepare stage map for normalization
-        stage_map = {"map": []}
-        target_field_value = generate_value(target_field_type)
-
-        stage_map["map"].append({"target_field": target_field_value})
-        normalize_list.append(stage_map)
-        normalize_list.append(
-            {"check": [{"target_field": f"{name}({', '.join(map(repr, values))})"}]}
-        )
-
-        asset = {"name": "decoder/test/0", "normalize": normalize_list}
-        test_cases.append(
-            {"asset_definition": asset, "params": params, "expected": expected}
-        )
-
-    # Prepare the new test case
-    new_test = {
-        "test_cases": test_cases,
-        "description": "References not found",
-    }
-    new_tests.append(new_test)
-
-
-def generate_test_with_invalid_special_case(
-    name, min_args, relationship, target_field_type, new_tests
-):
-    """
-    Generates a test case with invalid special case.
-
-    Args:
-        name (str): The name of the function being tested.
-        min_args (int): The minimum number of arguments required.
-        relationship (str): The relationship between arguments (e.g., "Equal").
-        target_field_type (type): Type of the target field.
-        new_tests (list): List to which the generated test case will be appended.
-
-    Returns:
-        None
-
-    """
-    values = []
+def reference_not_exist(yaml_data):
+    sources = get_sources(yaml_data)
+    types = get_types(yaml_data)
+    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
     normalize_list = []
+    inputs = []
+    all_arguments = []
 
-    # Generate values based on the target field type
-    for _ in range(min_args):
-        values.append(generate_value(target_field_type))
+    for i in range(len(sources)):
+        allowed_values = get_allowed_values(yaml_data, i)
 
-    # Prepare stage map for normalization
+        argument = generate_argument(
+            convert_string_to_type(types[i]), sources[i], allowed_values, False
+        )
+
+        if isinstance(argument, dict):
+            all_arguments.append(f"$eventJson.{argument['name']}")
+        else:
+            all_arguments.append(argument)
+
     stage_map = {"map": []}
-    target_field_value = 0
-
-    # Determine target field value based on the relationship
-    if relationship == "Equal":
-        target_field_value = generate_value(target_field_type)
-    else:
-        target_field_value = values[0]
-
-    stage_map["map"].append({"target_field": target_field_value})
-    normalize_list.append(stage_map)
-    normalize_list.append(
-        {"check": [{"target_field": f"{name}({', '.join(map(repr, values))})"}]}
+    helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+    target_field_value = generate_specific_argument(
+        "value", convert_string_to_type(get_target_field_type(yaml_data))
     )
+    if len(inputs) == 0:
+        stage_map["map"].append({"target_field": target_field_value})
+    else:
+        stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
+        stage_map["map"].append({"target_field": target_field_value})
+
+    normalize_list.append(stage_map)
+    normalize_list.append({"check": [{"target_field": helper}]})
+
+    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+    new_test = {
+        "expected_result": "failure_in_runtime",
+        "inputs": inputs,
+    }
+    test_data["test_cases"].append(new_test)
+    test_data["assets_definition"].append(new_asset_definition)
+    test_data["description"] = "Generate arguments with references that do not exist"
+
+    tests.append(test_data)
+
+
+def target_field_not_exist(yaml_data):
+    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    # Generate values for the target field
+    values = [
+        generate_specific_argument(
+            "value", convert_string_to_type(get_target_field_type(yaml_data))
+        )
+        for _ in range(get_minimum_arguments(yaml_data))
+    ]
+
+    # Prepare normalization list for the test case
+    normalize_list = [
+        {
+            "check": [
+                {
+                    "target_field": f"{get_name(yaml_data)}({', '.join(str(v) for v in values)})"
+                }
+            ]
+        }
+    ]
 
     # Create the new test case
+    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
     new_test = {
-        "asset_definition": {"name": "decoder/test/0", "normalize": normalize_list},
-        "description": "Invalid special case",
-        "fail": "runtime",
+        "expected_result": "failure_in_runtime",
+        "inputs": [],
     }
 
-    new_tests.append(new_test)
+    test_data["test_cases"].append(new_test)
+    test_data["assets_definition"].append(new_asset_definition)
+    test_data["description"] = "Target field not exists"
+
+    # Append the new test case to the list of tests
+    tests.append(test_data)
+
+
+def generate_test_cases_fail_at_buildtime(yaml_data):
+    fewer_arguments_than_the_minimum_required(yaml_data)
+    variadic(yaml_data)
+    different_sources(yaml_data)
+    different_types(yaml_data, "value")
+
+
+def generate_test_cases_fail_at_runtime(yaml_data):
+    reference_not_exist(yaml_data)
+    different_types(yaml_data, "reference")
+    target_field_not_exist(yaml_data)
+    different_target_field_type(yaml_data)
+
+
+def generate_test_cases_success(yaml_data):
+    types = get_types(yaml_data)
+
+    for i, type in enumerate(types):
+        allowed_values = get_allowed_values(yaml_data, i)
+        break
+
+    if allowed_values:
+        template = generate_combination_template(yaml_data, allowed_values)
+    else:
+        template = generate_raw_template(yaml_data)
+
+    for case in template:
+        all_arguments = []
+        inputs = []
+        test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+        normalize_list = []
+        for argument, type_ in zip(case, types):
+            if argument == "value":
+                all_arguments.append(
+                    generate_specific_argument("value", convert_string_to_type(type_))
+                )
+            elif argument == "reference":
+                reference = generate_specific_argument(
+                    "reference", convert_string_to_type(type_)
+                )
+                all_arguments.append(f"$eventJson.{reference['name']}")
+                inputs.append({reference["name"]: reference["value"]})
+            else:
+                all_arguments.append(argument)
+
+        stage_map = {"map": []}
+        helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+        target_field_value = generate_specific_argument(
+            "value", convert_string_to_type(get_target_field_type(yaml_data))
+        )
+        if len(inputs) == 0:
+            stage_map["map"].append({"target_field": target_field_value})
+        else:
+            stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
+            stage_map["map"].append({"target_field": target_field_value})
+
+        normalize_list.append(stage_map)
+        normalize_list.append({"check": [{"target_field": helper}]})
+
+        new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+        new_test = {
+            "expected_result": "success",
+            "inputs": inputs,
+        }
+        test_data["test_cases"].append(new_test)
+        test_data["assets_definition"].append(new_asset_definition)
+        test_data["description"] = "Generate valid arguments"
+
+        tests.append(test_data)
 
 
 def main():
@@ -826,85 +617,18 @@ def main():
         # Check if the file is a YML type
         if file_path.suffix == ".yml" or file_path.suffix == ".yaml":
             # Load the file and process it
-            spec = load_yaml(file_path)
-            (
-                variadic,
-                name,
-                min_args,
-                relationship,
-                sources,
-                only_values,
-                target_field_type,
-                special_parameters,
-            ) = process_yaml_data(spec)
-            new_tests = []
-            repeat = min_args
-            template = generate_operations(repeat, only_values)
+            yaml_data = load_yaml(file_path)
 
-            generate_test_with_fewer_parameters_than_min_args(name, min_args, new_tests)
-            generate_test_with_more_parameters_than_max_args(
-                name, min_args, variadic, new_tests
-            )
-            generate_test_with_non_exist_target_field(
-                name, min_args, target_field_type, new_tests
-            )
-            generate_test_with_different_sources(
-                name,
-                min_args,
-                target_field_type,
-                relationship,
-                sources,
-                spec["arguments"],
-                new_tests,
-            )
-            generate_test_with_invalid_params_type_in_value_source(
-                name,
-                spec["arguments"][-1:],
-                template,
-                repeat,
-                special_parameters,
-                relationship,
-                target_field_type,
-                new_tests,
-            )
-            generate_test_with_invalid_params_type_in_reference_source(
-                name,
-                spec["arguments"][-1:],
-                template,
-                repeat,
-                special_parameters,
-                relationship,
-                target_field_type,
-                new_tests,
-            )
-            generate_test_with_invalid_params_type_in_value_reference_source(
-                name,
-                spec["arguments"][-1:],
-                template,
-                repeat,
-                special_parameters,
-                relationship,
-                target_field_type,
-                new_tests,
-            )
-            generate_test_with_non_exist_reference(
-                name,
-                min_args,
-                spec["arguments"][-1:],
-                template,
-                relationship,
-                target_field_type,
-                new_tests,
-            )
-
-            generate_test_with_invalid_special_case(
-                name, min_args, relationship, target_field_type, new_tests
-            )
+            generate_test_cases_fail_at_buildtime(yaml_data)
+            generate_test_cases_fail_at_runtime(yaml_data)
+            generate_test_cases_success(yaml_data)
 
             # Save results in YAML file
-            output_file_path = script_dir / f"{name}_output.yml"
+            output_file_path = script_dir / f"{get_name(yaml_data)}_output.yml"
             with open(output_file_path, "w") as file:
-                yaml.dump(new_tests, file)
+                yaml.dump(tests, file)
+
+            tests.clear()
 
 
 if __name__ == "__main__":
