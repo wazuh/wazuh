@@ -1,0 +1,22 @@
+# Name of the helper function
+name: int_equal
+
+# Arguments expected by the helper function
+arguments:
+  - type: integer  # Expected type of the main argument is integer
+    sources: both
+
+target_field:
+  type: integer
+  is_array: false
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+# Minimum number of parameters required for the helper function
+minimum_arguments: 1   # The function must have at least 2 parameters to work correctly
+
+special_cases:
+  - description: Target field equal to argument
+    relationship: Equal
+    explanation: Checks if the target field matches the argument
