@@ -159,7 +159,7 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
     // If the response have more than ELEMENTS_PER_QUERY elements, we need to scroll.
     if (responseJson.at("hits").at("total").at("value").get<int>() > ELEMENTS_PER_QUERY)
     {
-        const auto scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
+        const auto& scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
         const auto scrollUrl = url + "/_search/scroll";
         const auto scrollData = R"({"scroll":"1m","scroll_id":")" + scrollId + "\"}";
 
@@ -409,6 +409,7 @@ IndexerConnector::IndexerConnector(
         ELEMENTS_PER_BULK);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
+        // coverity[missing_lock]
         [this, selector, secureCommunication](const std::string& agentId)
         {
             try
