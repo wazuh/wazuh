@@ -10,15 +10,12 @@ It is required to use -k or --aws-wpk-key, --aws-wpk-cert parameters
     -t,   --target-system <target> [Required] Select target wpk to build [linux/windows/macos]
     -b,   --branch <branch>        [Required] Select Git branch or tag e.g.
     -d,   --destination <path>     [Required] Set the destination path of package.
-    -pn,  --package-name <name>    [Required for windows and macos] Package name to pack on wpk.
+    -pn,  --package-name <name>    [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk.
     -o,   --output <name>          [Required] Name to the output package.
     -k,   --key-dir <path>         [Optional] Set the WPK key path to sign package.
     --aws-wpk-key                  [Optional] AWS Secrets manager Name/ARN to get WPK private key.
     --aws-wpk-cert                 [Optional] AWS secrets manager Name/ARN to get WPK certificate.
     --aws-wpk-key-region           [Optional] AWS Region where secrets are stored.
-    -a,   --architecture <arch>    [Optional] Target architecture of the package [x86_64].
-    -j,   --jobs <number>          [Optional] Number of parallel jobs when compiling.
-    -p,   --path <path>            [Optional] Installation path for the package. By default: /var/ossec.
     -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no
     --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes
     --tag <name>                   [Optional] Tag to use with the docker image.

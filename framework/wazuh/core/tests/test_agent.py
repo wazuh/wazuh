@@ -1355,25 +1355,25 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     ([1, 2, 3, 4],
      [
          call(command='test', agents_chunk=[1, 2, 3, 4], wpk_repo=None, version=None, force=None, use_http=None,
-              file_path=None, installer=None, get_result=None)
+              package_type=None, file_path=None, installer=None, get_result=None)
      ],
      False),
     ([i for i in range(16)],
      [
          call(command='test', agents_chunk=[i for i in range(10)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
          call(command='test', agents_chunk=[i for i in range(10, 16)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
      ],
      False),
     ([i for i in range(13)],
      [
          call(command='test', agents_chunk=[i for i in range(5)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
          call(command='test', agents_chunk=[i for i in range(5, 10)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
          call(command='test', agents_chunk=[i for i in range(10, 13)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
      ],
      True)
 ])

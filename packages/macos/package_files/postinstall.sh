@@ -15,28 +15,30 @@ INSTALLATION_SCRIPTS_DIR="${DIR}/packages_files/agent_installation_scripts"
 SCA_BASE_DIR="${INSTALLATION_SCRIPTS_DIR}/sca"
 
 if [ -f "${DIR}/WAZUH_PKG_UPGRADE" ]; then
-  upgrade="true"
+    upgrade="true"
 fi
 
 if [ -f "${DIR}/WAZUH_PKG_UPGRADE" ]; then
-  rm -f ${DIR}/WAZUH_PKG_UPGRADE
+    rm -f ${DIR}/WAZUH_PKG_UPGRADE
 fi
 
 if [ -f "${DIR}/WAZUH_RESTART" ]; then
-  restart="true"
+    restart="true"
 fi
 
 if [ -f "${DIR}/WAZUH_RESTART" ]; then
-  rm -f ${DIR}/WAZUH_RESTART
+    rm -f ${DIR}/WAZUH_RESTART
 fi
 
 if [ -n "${upgrade}" ]; then
+    echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
     rm -rf ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared}
     cp -rf ${DIR}/config_files/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/etc/
     rm -rf ${DIR}/config_files/
 fi
 
 # Default for all directories
+echo "Seting permissions and ownership for directories and files"
 chmod -R 750 ${DIR}/
 chown -R root:${GROUP} ${DIR}/
 
@@ -82,13 +84,24 @@ chmod 770 ${DIR}/.ssh
 chmod -R 770 ${DIR}/var
 chown -R root:${GROUP} ${DIR}/var
 
-. ${INSTALLATION_SCRIPTS_DIR}/src/init/dist-detect.sh
-
+# Check if the distribution detection script exists
+if [ -f "${INSTALLATION_SCRIPTS_DIR}/src/init/dist-detect.sh" ]; then
+    echo "Running the dist-detect.sh script..."
+    . "${INSTALLATION_SCRIPTS_DIR}/src/init/dist-detect.sh"
+else
+    echo "Error: dist-detect.sh script not found."
+fi
 
 if [ -z "${upgrade}" ]; then
-    ${INSTALLATION_SCRIPTS_DIR}/gen_ossec.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} ${DIR} > ${DIR}/etc/ossec.conf
-    chown root:wazuh ${DIR}/etc/ossec.conf
-    chmod 0640 ${DIR}/etc/ossec.conf
+    echo "Generating Wazuh configuration for a fresh installation."
+
+    if [ -f "${INSTALLATION_SCRIPTS_DIR}/gen_ossec.sh" ]; then
+        ${INSTALLATION_SCRIPTS_DIR}/gen_ossec.sh conf agent ${DIST_NAME} ${DIST_VER}.${DIST_SUBVER} ${DIR} > ${DIR}/etc/ossec.conf
+        chown root:wazuh ${DIR}/etc/ossec.conf
+        chmod 0640 ${DIR}/etc/ossec.conf
+    else
+        echo "Error: ${INSTALLATION_SCRIPTS_DIR}/gen_ossec.sh script not found."
+    fi
 fi
 
 SCA_DIR="${DIST_NAME}/${DIST_VER}"
@@ -97,6 +110,7 @@ mkdir -p ${DIR}/ruleset/sca
 SCA_TMP_DIR="${SCA_BASE_DIR}/${SCA_DIR}"
 
 # Install the configuration files needed for this hosts
+echo "Installing SCA configuration files..."
 if [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}/sca.files" ]; then
     SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}"
 elif [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/sca.files" ]; then
@@ -120,7 +134,12 @@ fi
 
 # Register and configure agent if Wazuh environment variables are defined
 if [ -z "${upgrade}" ]; then
-  ${INSTALLATION_SCRIPTS_DIR}/src/init/register_configure_agent.sh ${DIR} > /dev/null || :
+    echo "Running the register_configure_agent.sh script..."
+    if [ -f "${INSTALLATION_SCRIPTS_DIR}/src/init/register_configure_agent.sh" ]; then
+        ${INSTALLATION_SCRIPTS_DIR}/src/init/register_configure_agent.sh ${DIR} > /dev/null || :
+    else
+        echo "Error: ${INSTALLATION_SCRIPTS_DIR}/src/init/register_configure_agent.sh script not found."
+    fi
 fi
 
 # Remove backup file created in register_configure_agent step
@@ -129,27 +148,39 @@ if [ -e ${DIR}/etc/ossec.confre ]; then
 fi
 
 # Install the service
-${INSTALLATION_SCRIPTS_DIR}/src/init/darwin-init.sh ${DIR}
+echo "Running the darwin-init.sh script..."
+if [ -f "${INSTALLATION_SCRIPTS_DIR}/src/init/darwin-init.sh" ]; then
+    ${INSTALLATION_SCRIPTS_DIR}/src/init/darwin-init.sh ${DIR}
+else
+    echo "Error: ${INSTALLATION_SCRIPTS_DIR}/src/init/darwin-init.sh script not found."
+fi
 
 # Remove temporary directory
+echo "Removing temporary files..."
 rm -rf ${DIR}/packages_files
 
 # Remove old ossec user and group if exists and change ownwership of files
 
 if [[ $(dscl . -read /Groups/ossec) ]]; then
-  find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \ > /dev/null 2>&1 || true
-  if [[ $(dscl . -read /Users/ossec) ]]; then
-    find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \ > /dev/null 2>&1 || true
-    sudo /usr/bin/dscl . -delete "/Users/ossec"
-  fi
-  sudo /usr/bin/dscl . -delete "/Groups/ossec"
+    echo "Changing group from Ossec to Wazuh"
+    find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \ > /dev/null 2>&1 || true
+    if [[ $(dscl . -read /Users/ossec) ]]; then
+        echo "Changing user from Ossec to Wazuh"
+        find ${DIR}/ -group ossec -user ossec -exec chown wazuh:wazuh {} \ > /dev/null 2>&1 || true
+        echo "Removing Ossec user"
+        sudo /usr/bin/dscl . -delete "/Users/ossec"
+    fi
+    echo "Removing Ossec group"
+    sudo /usr/bin/dscl . -delete "/Groups/ossec"
 fi
 
 # Remove 4.1.5 patch
 if [ -f ${DIR}/queue/alerts/sockets ]; then
-  rm ${DIR}/queue/alerts/sockets
+    echo "Removing 4.1.5 patch file socket"
+    rm ${DIR}/queue/alerts/sockets
 fi
 
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
+    echo "Restarting Wazuh..."
     ${DIR}/bin/wazuh-control restart
 fi
