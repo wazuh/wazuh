@@ -2,76 +2,95 @@ import os
 import sys
 import subprocess
 import argparse
+from pathlib import Path
+from typing import Tuple, Optional
 
-environment_directory = ""
+SCRIPT_DIR = Path(__file__).resolve().parent
+WAZUH_DIR = Path(SCRIPT_DIR).resolve().parent.parent.parent.parent
 
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-WAZUH_DIR = os.path.realpath(os.path.join(SCRIPT_DIR, '../../../..'))
 
-def parse_arguments():
-    global environment_directory
-
+def parse_arguments() -> Tuple[str, str]:
     parser = argparse.ArgumentParser(description='Run Behave tests for Wazuh.')
     parser.add_argument('-e', '--environment', help='Environment directory')
+    parser.add_argument(
+        '-f', '--feature', help='Feature file to run (default: all features)')
 
     args = parser.parse_args()
-    environment_directory = args.environment
+    return args.environment, args.feature
 
-def check_config_file():
-    global environment_directory
-    global WAZUH_DIR
 
-    if not environment_directory:
-        environment_directory = os.path.join(WAZUH_DIR, 'environment')
+def get_config_file(env_dir: Path) -> Path:
+    conf_path = env_dir / "engine" / "general.conf"
 
-    serv_conf_file = os.path.join(environment_directory, 'engine', 'general.conf')
-
-    if not os.path.isdir(environment_directory):
-        print(f"Error: Environment directory {environment_directory} not found.")
+    if not conf_path.exists():
+        print(f"Error: Configuration file {conf_path} not found.")
         sys.exit(1)
 
-    if not os.path.isfile(serv_conf_file):
-        print(f"Error: Configuration file {serv_conf_file} not found.")
+    if not conf_path.is_file():
+        print(f"Error: {conf_path} is not a file.")
         sys.exit(1)
 
-    return serv_conf_file
+    return conf_path
 
-def run_behave_tests(integration_tests_dir):
-    exit_code = 0
 
-    for features_dir in [d for d, _, _ in os.walk(integration_tests_dir) if 'features' in d]:
-        steps_dir = os.path.join(os.path.dirname(features_dir), 'steps')
+def run_behave_tests(it_path: Path, feature_path: Optional[Path]) -> int:
+    result_code = 0
 
-        if os.path.isdir(steps_dir):
-            print(f"Running Behave in {features_dir}")
-            result = subprocess.run(['behave', features_dir, '--tags', '~exclude', '--format', 'progress2'])
-            
-            if result.returncode != 0:
-                exit_code = 1
+    if feature_path:
+        print(f"\n\n=====> Start Behave {feature_path}")
+        result = subprocess.run(
+            ['behave', feature_path.as_posix(), '--tags', '~exclude', '--format', 'progress2'])
+        print(f"<===== End")
+        if result.returncode != 0:
+            result_code = 1
 
-    print(f"Exit code {exit_code}")
-    return exit_code
+    else:
+        failed_tests = []
+        for test_dir in it_path.iterdir():
+            if test_dir.is_dir() and (test_dir / "features").is_dir() and (test_dir / "steps").is_dir():
+                print(f"\n\n=====> Start Behave {test_dir}")
+                result = subprocess.run(
+                    ['behave', test_dir, '--tags', '~exclude', '--format', 'progress2'])
+                print(f"<===== End")
+                if result.returncode != 0:
+                    result_code = 1
+                    failed_tests.append(test_dir.name)
+
+        if len(failed_tests) > 0:
+            print(f"\n\n=====> Failed tests:")
+            for test in failed_tests:
+                print(f"    {test}")
+
+    return result_code
+
 
 def main():
-    global environment_directory
-    global WAZUH_DIR
-    global SCRIPT_DIR
+    env_dir, specific_feature = parse_arguments()
 
-    parse_arguments()
-    serv_conf_file = check_config_file()
+    # Get paths
+    engine_path = WAZUH_DIR / "src" / "engine"
+    env_path = Path(env_dir).resolve()
+    conf_path = get_config_file(env_path)
+    it_path = engine_path / "test" / "integration_tests"
+    feature_path = it_path / specific_feature if specific_feature else None
 
-    engine_src_dir = os.path.join(WAZUH_DIR, 'src', 'engine')
-    integration_tests_dir = os.path.join(engine_src_dir, 'test', 'integration_tests')
+    # Set environment variables so the tests can use the paths
+    os.environ['ENGINE_DIR'] = engine_path.as_posix()
+    os.environ['ENV_DIR'] = env_path.as_posix()
+    os.environ['WAZUH_DIR'] = WAZUH_DIR.as_posix()
+    os.environ['CONF_FILE'] = conf_path.as_posix()
 
-    os.environ['ENGINE_DIR'] = engine_src_dir
-    os.environ['ENV_DIR'] = environment_directory
-    os.environ['WAZUH_DIR'] = os.path.realpath(os.path.join(SCRIPT_DIR, '../../../..'))
-    os.environ['CONF_FILE'] = serv_conf_file
+    print(f'Testing environment: {env_path}')
+    print(f'Using configuration file: {conf_path}')
+    print(f'Running tests from: {it_path}')
+    print(f'Engine path: {engine_path}')
+    print(f'Wazuh path: {WAZUH_DIR}')
 
-    exit_code = run_behave_tests(integration_tests_dir)
+    exit_code = run_behave_tests(it_path, feature_path)
     print(f"Exit code {exit_code}")
 
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()
