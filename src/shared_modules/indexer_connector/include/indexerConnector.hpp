@@ -12,6 +12,7 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
+#include "rocksDBWrapper.hpp"
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
 #else
@@ -22,12 +23,13 @@ static constexpr auto DEFAULT_INTERVAL = 60u;
 
 class ServerSelector;
 class SecureCommunication;
-
+#include "threadDispatcher.h"
 #include "threadEventDispatcher.hpp"
 #include <json.hpp>
 #include <string>
 
 using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
+using ThreadSyncQueue = Utils::AsyncDispatcher<std::string, std::function<void(const std::string&)>>;
 
 /**
  * @brief IndexerConnector class.
@@ -44,6 +46,13 @@ class EXPORTED IndexerConnector final
     std::condition_variable m_cv;
     std::mutex m_mutex;
     std::atomic<bool> m_stopping {false};
+    std::unique_ptr<Utils::RocksDBWrapper> m_db;
+    std::unique_ptr<ThreadSyncQueue> m_syncQueue;
+    std::string m_indexName;
+    std::mutex m_syncMutex;
+    std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
+    std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
+
     /**
      * @brief Intialize method used to load template data and initialize the index.
      *
@@ -53,9 +62,38 @@ class EXPORTED IndexerConnector final
      * @param secureCommunication Secure communication.
      */
     void initialize(const nlohmann::json& templateData,
-                    const std::string& indexName,
                     const std::shared_ptr<ServerSelector>& selector,
                     const SecureCommunication& secureCommunication);
+
+    /**
+     * @brief This method is used to calculate the diff between the inventory database and the indexer.
+     * @param responseJson Response JSON.
+     * @param agentId Agent ID.
+     * @param secureCommunication Secure communication.
+     * @param selector Server selector.
+     */
+    void diff(const nlohmann::json& responseJson,
+              const std::string& agentId,
+              const SecureCommunication& secureCommunication,
+              const std::shared_ptr<ServerSelector>& selector);
+
+    /**
+     * @brief Get agent ids of documents from the indexer.
+     * @param url Indexer URL.
+     * @param agentId Agent ID.
+     * @param secureCommunication Secure communication.
+     * @return Agent documents.
+     */
+    nlohmann::json getAgentDocumentsIds(const std::string& url,
+                                        const std::string& agentId,
+                                        const SecureCommunication& secureCommunication) const;
+
+    /**
+     * @brief Abuse control.
+     * @param agentId Agent ID.
+     * @return True if the agent is abusing the indexer, false otherwise.
+     */
+    bool abuseControl(const std::string& agentId);
 
 public:
     /**
@@ -85,6 +123,14 @@ public:
      * @param message Message to be published.
      */
     void publish(const std::string& message);
+
+    /**
+     * @brief Sync the inventory database with the indexer.
+     * This method is used to synchronize the inventory database to the indexer.
+     *
+     * @param agentId Agent ID.
+     */
+    void sync(const std::string& agentId);
 };
 
 #endif // _INDEXER_CONNECTOR_HPP

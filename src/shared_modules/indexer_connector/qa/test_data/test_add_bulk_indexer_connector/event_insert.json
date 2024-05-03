@@ -6,6 +6,7 @@
         "build": {
           "original": "sample_build_1"
         },
+        "ephemeral_id": "eph_id_1",
         "id": "000",
         "name": "agent_name_1",
         "type": "agent_type_1",

@@ -1,11 +1,12 @@
 {
     "id": "000_pkghash_CVE-2022-1234",
-    "operation": "INSERT",
+    "operation": "DELETED",
     "data":{
       "agent": {
         "build": {
           "original": "sample_build_1"
         },
+        "ephemeral_id": "eph_id_1",
         "id": "000",
         "name": "agent_name_1",
         "type": "agent_type_1",

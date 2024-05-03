@@ -1,0 +1,57 @@
+name: Indexer connector
+
+on:
+  workflow_dispatch:
+  pull_request:
+  # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+  # Path filtering
+    paths:
+      - ".github/workflows/-tests.yml"
+      - ".github/actions/compile_and_test/action.yml"
+      - ".github/actions/indexer_connector_deps/action.yml"
+      - "src/shared_modules/indexer_connector/**"
+      - "src/wazuh_modules/http-request/**"
+
+jobs:
+  indexer_connector-qa:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Project dependencies
+        uses: ./.github/actions/indexer_connector_deps
+
+      # indexer connector
+      - name: Indexer connector
+        uses: ./.github/actions/compile
+        with:
+          path: src/shared_modules/indexer_connector
+
+      # Install python dependencies
+      - name: Install dependencies
+        run: |
+          pip install -r src/shared_modules/indexer_connector/qa/requirements.txt
+
+      # Create folder for test logs
+      - name: Create folder for test logs
+        run: |
+          mkdir -p ${{ github.workspace }}/qa_logs
+
+      # Run indexer connector tests.
+      - name: Run tests
+        run: |
+          cd src
+          python -m pytest -vv shared_modules/indexer_connector/qa/ --log-cli-level=DEBUG
+          rm -rf tmp
+
+      # Upload log files of the tests
+      - name: Upload log files
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: QA log files
+          path: ${{ github.workspace }}/qa_logs

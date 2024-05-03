@@ -10,28 +10,33 @@
  */
 #include "abstractWait.h"
 
+#ifndef _PROMISE_FACTORY_HPP
+#define _PROMISE_FACTORY_HPP
+
 enum PromiseType
 {
     NORMAL,
     SLEEP
 };
 
-template <PromiseType osType>
+template<PromiseType osType>
 class PromiseFactory final
 {
-    public:
-        static std::shared_ptr<IWait> getPromiseObject()
-        {
-            return std::make_shared<PromiseWaiting>();
-        }
+public:
+    static std::shared_ptr<IWait> getPromiseObject()
+    {
+        return std::make_shared<PromiseWaiting>();
+    }
 };
 
-template <>
+template<>
 class PromiseFactory<PromiseType::SLEEP> final
 {
-    public:
-        static std::shared_ptr<IWait> getPromiseObject()
-        {
-            return std::make_shared<BusyWaiting>();
-        }
+public:
+    static std::shared_ptr<IWait> getPromiseObject()
+    {
+        return std::make_shared<BusyWaiting>();
+    }
 };
+
+#endif // _PROMISE_FACTORY_HPP
