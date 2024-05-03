@@ -139,7 +139,11 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             }
             cJSON_AddItemToObject(file, "query", query);
         }
-        cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
+        // Invalid configuration for journal logs
+        if (list[i].journal_log == NULL) {
+            cJSON_AddStringToObject(file, "ignore_binaries", list[i].filter_binary ? "yes" : "no");
+        }
+
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
 
@@ -195,6 +199,15 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddStringToObject(multiline, "regex", w_expression_get_regex_pattern(list[i].multiline->regex));
             cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
             cJSON_AddItemToObject(file, "multiline_regex", multiline);
+        }
+        if (list[i].journal_log != NULL && list[i].journal_log->filters != NULL) {
+
+            cJSON * filters = w_journal_filter_list_as_json(list[i].journal_log->filters);
+            if (filters != NULL) {
+                cJSON_AddItemToObject(file, "filters", filters);
+            }
+
+            cJSON_AddBoolToObject(file, "filters_disabled", list[i].journal_log->disable_filters);
         }
         if (list[i].regex_ignore != NULL) {
             OSListNode *node_it;

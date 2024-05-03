@@ -1,0 +1,353 @@
+- name: Journald default configuration
+  description: A basic configuration for journald, 1 block without filters
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries.
+    expected_config:
+      logformat: journald
+      only-future-events: 'yes'
+      target: 
+        - agent
+
+- name: Journald, ignore bad location
+  description: A basic configuration for journald ignore the bad location
+  configuration_parameters:
+    - - location:
+          value: bad location
+      - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - .*Invalid location value 'bad location'.*Default value will be used
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries.
+    expected_config:
+      logformat: journald
+      only-future-events: 'yes'
+      target: 
+        - agent
+
+- name: Journald, ignore missing location
+  description: A basic configuration for journald ignore the missing location
+  configuration_parameters:
+    - - log_format:
+          value: journald
+  metadata:
+    expected_logs:
+      - .*Missing 'location' element when using 'journald' as 'log_format'. Default value will be used.
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries..*
+    expected_config:
+      logformat: journald
+      only-future-events: 'yes'
+      target: 
+        - agent
+
+- name: Journald fail basic configuration
+  description: A basic configuration for journald, 1 block without filters, but fails building the filter (Missing field)
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: '\w+'
+           attributes:
+             - not_field: 'syslogtag'
+             - ignore_if_missing: 'yes'
+  metadata:
+    expected_logs:
+      - ".*The field for the journal filter cannot be empty.*"
+      - ".*Cannot add filter, the block will be ignored.*"
+    journal_disabled: True
+
+- name: Test merge 2 blocks of journal and both with filters
+  description: Test merge blocks of journal and both with filters, the localfiles merge on one logreader
+  configuration_parameters:
+    # Block 1
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 1A'
+           attributes:
+             - field: 'field 1A'
+             - ignore_if_missing: 'yes'
+      - filter:
+           value: 'Filter 1B'
+           attributes:
+             - field: 'field 1B'
+    # Block 2
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 2A'
+           attributes:
+             - field: 'field 2A'
+  metadata:
+    expected_logs:
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries.
+    expected_config: 
+      logformat: journald
+      filters_disabled: false
+      filters:
+      - - expression: Filter 1A
+          field: field 1A
+          ignore_if_missing: true
+        - expression: Filter 1B
+          field: field 1B
+          ignore_if_missing: false
+      - - expression: Filter 2A
+          field: field 2A
+          ignore_if_missing: false
+      only-future-events: 'yes'
+      target:
+      - agent
+
+- name: Test merge with 3 blocks and all with filters
+  description: Test merge 3 blocks and all with filters, the localfiles merge on one logreader
+  configuration_parameters:
+    # Block 1
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 1A'
+           attributes:
+             - field: 'field 1A'
+             - ignore_if_missing: 'yes'
+      - filter:
+           value: 'Filter 1B'
+           attributes:
+             - field: 'field 1B'
+    # Block 2
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 2A'
+           attributes:
+             - field: 'field 2A'
+    # Block 3
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 3A'
+           attributes:
+             - field: 'field 3A'
+             - ignore_if_missing: 'no'
+  metadata:
+    expected_logs:
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries.
+    expected_config: 
+      logformat: journald
+      filters_disabled: false
+      filters:
+      - - expression: Filter 1A
+          field: field 1A
+          ignore_if_missing: true
+        - expression: Filter 1B
+          field: field 1B
+          ignore_if_missing: false
+      - - expression: Filter 2A
+          field: field 2A
+          ignore_if_missing: false
+      - - expression: Filter 3A
+          field: field 3A
+          ignore_if_missing: false
+      only-future-events: 'yes'
+      target:
+      - agent
+
+
+- name: Test merge with 3 blocks and 1 without filters
+  description: Test merge with 3 blocks and 1 without filters, then the global filters are disabled
+  configuration_parameters:
+    # Block 1
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 1A'
+           attributes:
+             - field: 'field 1A'
+             - ignore_if_missing: 'yes'
+      - filter:
+           value: 'Filter 1B'
+           attributes:
+             - field: 'field 1B'
+    # Block 2
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+    # Block 3
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 3A'
+           attributes:
+             - field: 'field 3A'
+             - ignore_if_missing: 'no'
+  metadata:
+    expected_logs:
+      - .*The filters of the journald log will be disabled in the merge.*
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries.
+    expected_config: 
+      logformat: journald
+      filters_disabled: true
+      filters:
+      - - expression: 'Filter 1A'
+          field: field 1A
+          ignore_if_missing: true
+        - expression: 'Filter 1B'
+          field: field 1B
+          ignore_if_missing: false
+      - - expression: 'Filter 3A'
+          field: field 3A
+          ignore_if_missing: false
+      only-future-events: 'yes'
+      target:
+      - agent
+
+
+- name: Test merge with 3 blocks and all with filters, but 1 block fails compiling the regex
+  description: Test merge with 3 blocks and all with filters, but 1 block fails compiling the regex, the block will be ignored
+  configuration_parameters:
+    # Block 1
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: '\w+ Filter 1A'
+           attributes:
+             - field: 'field 1A'
+             - ignore_if_missing: 'yes'
+      - filter:
+           value: '\w+ Filter 1B'
+           attributes:
+             - field: 'field 1B'
+    # Block 2
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: '\w+ [ Filter 2A'
+           attributes:
+             - field: 'field 2A'
+    # Block 3
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: '\w+ Filter 3A'
+           attributes:
+             - field: 'field 3A'
+             - ignore_if_missing: 'no'
+  metadata:
+    expected_logs:
+      - .*Error compiling the PCRE2 expression.*
+      - .*Cannot add filter, the block will be ignored
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries.
+    expected_config: 
+      logformat: journald
+      filters_disabled: false
+      filters:
+      - - expression: \w+ Filter 1A
+          field: field 1A
+          ignore_if_missing: true
+        - expression: \w+ Filter 1B
+          field: field 1B
+          ignore_if_missing: false
+      - - expression: \w+ Filter 3A
+          field: field 3A
+          ignore_if_missing: false
+      only-future-events: 'yes'
+      target:
+      - agent
+
+- name: Test merge with 3 blocks and all with filters, preserve only-future-events from last block
+  description: Test merge with 3 blocks and all with filters, preserve only-future-events from last block
+  configuration_parameters:
+    # Block 1
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 1A'
+           attributes:
+             - field: 'field 1A'
+             - ignore_if_missing: 'yes'
+      - filter:
+           value: 'Filter 1B'
+           attributes:
+             - field: 'field 1B'
+    # Block 2
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 2A'
+           attributes:
+             - field: 'field 2A'
+    # Block 3
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - filter:
+           value: 'Filter 3A'
+           attributes:
+             - field: 'field 3A'
+             - ignore_if_missing: 'no'
+      - only-future-events:
+          value: 'no'
+  metadata:
+    expected_logs:
+      - .*Socket target for 'journald' -> agent
+      - .*Monitoring journal entries.
+    expected_config: 
+      logformat: journald
+      only-future-events: 'no'
+      filters:
+      - - expression: Filter 1A
+          field: field 1A
+          ignore_if_missing: true
+        - expression: Filter 1B
+          field: field 1B
+          ignore_if_missing: false
+      - - expression: Filter 2A
+          field: field 2A
+          ignore_if_missing: false
+      - - expression: Filter 3A
+          field: field 3A
+          ignore_if_missing: false
+      filters_disabled: false
+      max-size: '0'
+      target:
+      - agent

@@ -12,6 +12,11 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/externals/pcre2/pcre2_wrappers.h"
+#else
+#define w_pcre2_match_data_create_from_pattern pcre2_match_data_create_from_pattern
+#define w_pcre2_match                          pcre2_match
+#define w_pcre2_match_data_free                pcre2_match_data_free
+#define w_pcre2_get_ovector_pointer            pcre2_get_ovector_pointer
 #endif
 
 void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type) {
@@ -224,23 +229,23 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
 
         case EXP_TYPE_PCRE2:
 
-            if (match_data = pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL), !match_data) {
+            if (match_data = w_pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL), !match_data) {
                 break;
             }
-            captured_groups = pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test,
+            captured_groups = w_pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test,
                                           strlen(str_test), 0, 0, match_data, NULL);
 
             /* successful match */
             if (captured_groups > 0) {
                 retval = true;
-                ovector = pcre2_get_ovector_pointer(match_data);
+                ovector = w_pcre2_get_ovector_pointer(match_data);
                 ret_match = str_test + ovector[1] - 1;
 
                 if (regex_match) {
                     w_expression_PCRE2_fill_regex_match(captured_groups, str_test, match_data, regex_match);
                 }
             }
-            pcre2_match_data_free(match_data);
+            w_pcre2_match_data_free(match_data);
             break;
 
         case EXP_TYPE_STRING:
@@ -282,7 +287,7 @@ void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_t
     memset((void *) *sub_strings, 0, sizeof(char *) * captured_groups);
     str_sizes->sub_strings_size = sizeof(char *) * captured_groups;
 
-    ovector = pcre2_get_ovector_pointer(match_data);
+    ovector = w_pcre2_get_ovector_pointer(match_data);
     for (int i = 1; i < captured_groups; i++) {
         size_t substring_length = ovector[2 * i + 1] - ovector[2 * i];
         regex_match->sub_strings[i - 1] = w_strndup(str_test + ovector[2 * i], substring_length);

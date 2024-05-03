@@ -225,6 +225,16 @@
 /* Logcollector */
 
 #define LOGCOLLECTOR_FILE_NOT_EXIST           "(9000): File '%s' no longer exists."
+#define LOGCOLLECTOR_SOCKET_TARGET            "(9001): Socket target for '%s' -> %s"
+
+#define LOGCOLLECTOR_JOURNAL_LOG_NOT_SYSLOG   "(9002): Failed to get the required fields, discarted log with timestamp '%" PRIu64 "'"
+#define LOGCOLLECTOR_JOURNAL_LOG_FIELD_ERROR  "(9003): Failed to get data field '%s' from entry with timestamp '%" PRIu64 "'. Error: %s"
+#define LOGCOLLECTOR_JOURNAL_LOG_CHECK_FILTER "(9004): Checking filters for timestamp '%s'"
+#define LOGCOLLECTOR_JOURNAL_LOG_NOT_OWNER    "(9005): Skipping is not the owner of the journal log."
+#define LOGCOLLECTOR_JOURNAL_LOG_NO_NEW       "(9006): No new entries in the journal."
+#define LOGCOLLECTOR_JOURNAL_LOG_TRUNCATED    "(9007): Message size > maximum allowed, The message will be truncated."
+#define LOGCOLLECTOR_JOURNAL_LOG_READING      "(9008): Reading from journal: '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_SET_LAST     "(9009): Setting last read timestamp to '%" PRIu64 "'"
 
 /* Analysisd */
 
