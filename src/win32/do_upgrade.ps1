@@ -1,7 +1,3 @@
-# Finding MSI useful constants
-$Env:WAZUH_DEF_REG_START_PATH = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\"
-$Env:WAZUH_PUBLISHER_VALUE    = "Wazuh, Inc."
-
 # Check if there is an upgrade in progress
 if (Test-Path ".\upgrade\upgrade_in_progress") {
     write-output "$(Get-Date -format u) - There is an upgrade in progress. Aborting..." >> .\upgrade\upgrade.log
@@ -19,6 +15,49 @@ if (Test-Path "$env:windir\sysnative") {
     Set-Alias Start-NativePowerShell "$env:windir\sysnative\WindowsPowerShell\v1.0\powershell.exe"
 } else {
     Set-Alias Start-NativePowerShell "$env:windir\System32\WindowsPowerShell\v1.0\powershell.exe"
+}
+
+
+function remove_upgrade_files {
+    Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
+    Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
+    Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+}
+
+
+function get_wazuh_installation_directory {
+    Start-NativePowerShell {
+        $path1 = "HKLM:\SOFTWARE\WOW6432Node\Wazuh, Inc.\Wazuh Agent"
+        $key1 = "WazuhInstallDir"
+
+        $path2 = "HKLM:\SOFTWARE\WOW6432Node\ossec"
+        $key2 = "Install_Dir"
+
+        $WazuhInstallDir = $null
+
+        try {
+            $WazuhInstallDir = (Get-ItemProperty -Path $path1 -ErrorAction SilentlyContinue).$key1
+        }
+        catch {
+            $WazuhInstallDir = $null
+        }
+
+        if ($null -eq $WazuhInstallDir) {
+            try {
+                $WazuhInstallDir = (Get-ItemProperty -Path $path2 -ErrorAction SilentlyContinue).$key2
+            }
+            catch {
+                $WazuhInstallDir = $null
+            }
+        }
+
+        if ($null -eq $WazuhInstallDir) {
+            Write-output "$(Get-Date -format u) - Couldn't find Wazuh in the registry. Upgrade will assume current path is correct" >> .\upgrade\upgrade.log
+            $WazuhInstallDir = (Get-Location).Path.TrimEnd('\')
+        }
+
+        return $WazuhInstallDir
+    }
 }
 
 # Check process status
@@ -59,6 +98,18 @@ function install
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade processs." >> .\upgrade\upgrade.log
     cmd /c start /wait (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
+}
+
+# Check that the Wazuh installation runs on the expected path
+$wazuhDir = get_wazuh_installation_directory
+$normalizedWazuhDir = $wazuhDir.TrimEnd('\')
+$currentDir = (Get-Location).Path.TrimEnd('\')
+
+if ($normalizedWazuhDir -ne $currentDir) {
+    Write-Output "$(Get-Date -format u) - Current working directory is not the Wazuh installation directory. Aborting." >> .\upgrade\upgrade.log
+    Write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+    remove_upgrade_files
+    exit 1
 }
 
 # Get current version
@@ -107,8 +158,6 @@ Else
     write-output "$(Get-Date -format u) - New version: $($new_version)." >> .\upgrade\upgrade.log
 }
 
-Remove-Item -Path ".\upgrade\*"  -Exclude "*.log", "upgrade_result" -ErrorAction SilentlyContinue
-Remove-Item -Path ".\wazuh-agent*.msi" -ErrorAction SilentlyContinue
-Remove-Item -Path ".\do_upgrade.ps1" -ErrorAction SilentlyContinue
+remove_upgrade_files
 
 exit 0
