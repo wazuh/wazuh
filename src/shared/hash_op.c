@@ -16,6 +16,7 @@ static unsigned int _os_genhash(const OSHash *self, const char *key) __attribute
 
 int _OSHash_Add(OSHash *self, const char *key, void *data, int update);
 
+
 /* Create hash
  * Returns NULL on error
  */
@@ -599,6 +600,16 @@ OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i){
     }
 
     return NULL;
+}
+
+OSHashNode *OSHash_Begin_ex(const OSHash *self, unsigned int *i){
+
+    OSHashNode *result;
+    w_rwlock_wrlock((pthread_rwlock_t *)&self->mutex);
+    result = OSHash_Begin(self, i);
+    w_rwlock_unlock((pthread_rwlock_t *)&self->mutex);
+
+    return result;
 }
 
 OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current){

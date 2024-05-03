@@ -354,3 +354,13 @@
       output: ok [{"id":0,*,"last_keepalive":253402300799,"group_sync_status":"synced","sync_status":"synced","connection_status":"active","disconnection_time":0,"group_config_status":"synced","status_code":0}]
       stage: global manager get-agent-info success post update without IP
       use_regex: "yes"
+
+- name: Synchronization value
+  description: Check global db synchronization value
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: global sql PRAGMA synchronous
+      output: ok [{"synchronous":1}]
+      stage: global sync type
+      use_regex: "no"

@@ -195,7 +195,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(actionOrchestrator->run());
+    EXPECT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // This file shouldn't exist because it's a test for raw data
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
@@ -233,7 +233,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(actionOrchestrator->run());
+    EXPECT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // This file should exist because deleteDownloadedContent is not enabled
     EXPECT_TRUE(std::filesystem::exists(downloadPath));
@@ -273,7 +273,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
-    EXPECT_NO_THROW(actionOrchestrator->run());
+    EXPECT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // This file shouldn't exist because deleteDownloadedContent is enabled
     EXPECT_FALSE(std::filesystem::exists(downloadPath));
@@ -301,7 +301,8 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
         std::make_shared<ActionOrchestrator>(routerProvider, m_parameters, m_spStopActionCondition)};
 
     // Trigger orchestration with an offset of zero.
-    ASSERT_NO_THROW(actionOrchestrator->run(0));
+    constexpr auto OFFSET {0};
+    ASSERT_NO_THROW(actionOrchestrator->run(ActionOrchestrator::UpdateData::createContentUpdateData(OFFSET)));
 
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
@@ -317,92 +318,18 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 }
 
 /**
- * @brief Tests the execution of the orchestration and correct store of the downloaded file hash.
- *
- */
-TEST_F(ActionOrchestratorTest, OfflineDownloadDownloadedFileHashStore)
-{
-    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-
-    // Configure the action to download a snapshot in offline mode.
-    const auto inputFile {m_inputFilesDir / SNAPSHOT_FILE_NAME};
-    m_parameters["configData"]["contentSource"] = "offline";
-    m_parameters["configData"]["compressionType"] = "zip";
-    m_parameters["configData"]["url"] = "file://" + inputFile.string();
-
-    {
-        // Trigger orchestration in a reduced scope so that the database is closed.
-        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
-    }
-
-    const auto EXPECTED_DB_PATH {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
-    constexpr auto EXPECTED_HASH {"83f5b8992df285cdd0235bb0304e236047614d60"};
-    auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH)};
-    EXPECT_EQ(wrapper.getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString(), EXPECTED_HASH);
-}
-
-/**
- * @brief Tests the execution of the orchestration three times on different instances: The first two with the same input
- * file and the third one with the same file but modified.
- *
- */
-TEST_F(ActionOrchestratorTest, OfflineDownloadSameAndModifiedFileDifferentInstances)
-{
-    // Create temp test file with dummy data.
-    const auto testName {::testing::UnitTest::GetInstance()->current_test_info()->name()};
-    const auto inputFilePath {std::filesystem::current_path() / testName};
-    std::ofstream testFileStream {inputFilePath};
-    if (testFileStream.good())
-    {
-        testFileStream << testName << std::endl;
-    }
-    testFileStream.close();
-
-    // Set config.
-    m_parameters["configData"]["contentSource"] = "offline";
-    m_parameters["configData"]["compressionType"] = "raw";
-    m_parameters["configData"]["url"] = "file://" + inputFilePath.string();
-
-    {
-        // Run first orchestration. File should be published.
-        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
-    }
-
-    {
-        // Run second orchestration. File should not be published since it didn't change.
-        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(0);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
-    }
-
-    // Modify input file.
-    testFileStream.open(inputFilePath, std::ios_base::app);
-    testFileStream << testName << std::endl;
-    testFileStream.close();
-
-    {
-        // Run third orchestration. File should be published since it has changed.
-        EXPECT_CALL(*m_spMockRouterProvider, send(::testing::_)).Times(1);
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run());
-    }
-
-    // Remove input test file.
-    std::filesystem::remove(inputFilePath);
-}
-
-/**
  * @brief Tests the offset update process execution with a valid offset.
  *
  */
 TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
 {
     constexpr auto OFFSET {1234};
+    auto updateData {ActionOrchestrator::UpdateData::createOffsetUpdateData(OFFSET)};
 
     {
         // Trigger orchestrator in a reduced scope to avoid conflicts with the RocksDB connection below.
-        ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
-                            .run(OFFSET, ActionOrchestrator::UpdateType::OFFSET));
+        ASSERT_NO_THROW(
+            ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData));
     }
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
@@ -412,14 +339,38 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
 }
 
 /**
- * @brief Tests the offset update process execution with an invalid offset. An exception is expected.
+ * @brief Tests the offset update data creation with an invalid offset. An exception is expected.
  *
  */
-TEST_F(ActionOrchestratorTest, RunOffsetUpdateInvalidOffsetThrows)
+TEST_F(ActionOrchestratorTest, OffsetUpdateDataInvalidOffsetThrows)
 {
     constexpr auto OFFSET {-100};
+    EXPECT_THROW(ActionOrchestrator::UpdateData::createOffsetUpdateData(OFFSET), std::invalid_argument);
+}
 
-    EXPECT_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition)
-                     .run(OFFSET, ActionOrchestrator::UpdateType::OFFSET),
-                 std::invalid_argument);
+/**
+ * @brief Tests the file hash update process execution.
+ *
+ */
+TEST_F(ActionOrchestratorTest, RunFileHashUpdate)
+{
+    constexpr auto HASH_VALUE {"hash"};
+
+    auto updateData {ActionOrchestrator::UpdateData::createHashUpdateData(HASH_VALUE)};
+
+    ASSERT_NO_THROW(ActionOrchestrator(m_spMockRouterProvider, m_parameters, m_spStopActionCondition).run(updateData));
+
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    const auto fullDatabasePath {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
+    auto wrapper {Utils::RocksDBWrapper(fullDatabasePath)};
+    EXPECT_EQ(wrapper.getLastKeyValue(Components::Columns::DOWNLOADED_FILE_HASH).second.ToString(), HASH_VALUE);
+}
+
+/**
+ * @brief Tests the file hash update data creation with an empty hash. An exception is expected.
+ *
+ */
+TEST_F(ActionOrchestratorTest, FileHashUpdateDataInvalidHashThrows)
+{
+    EXPECT_THROW(ActionOrchestrator::UpdateData::createHashUpdateData(""), std::invalid_argument);
 }

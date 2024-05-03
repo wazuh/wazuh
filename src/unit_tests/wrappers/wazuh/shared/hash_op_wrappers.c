@@ -80,6 +80,23 @@ void *__wrap_OSHash_Begin(const OSHash *self, __attribute__((unused)) unsigned i
     return mock_type(OSHashNode*);
 }
 
+void * __real_OSHash_Begin_ex(const OSHash *self, unsigned int *i);
+void * __wrap_OSHash_Begin_ex(const OSHash *self, __attribute__((unused)) unsigned int *i) {
+    OSHashNode* retval;
+
+    if (test_mode){
+        check_expected(self);
+        retval = mock_type(OSHashNode*);
+
+        if (mock_hashmap != NULL) {
+            __real_OSHash_Begin(mock_hashmap, i);
+        }
+
+        return retval;
+    }
+    return __real_OSHash_Begin_ex(self, i);
+}
+
 void *__real_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void *__wrap_OSHash_Clean(__attribute__((unused)) OSHash *self,
                           __attribute__((unused)) void (*cleaner)(void*)) {

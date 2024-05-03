@@ -68,6 +68,9 @@ t1_config_parameters, t1_config_metadata, t1_case_ids = configuration.get_test_c
 t2_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_global_messages.yaml')
 t2_config_parameters, t2_config_metadata, t2_case_ids = configuration.get_test_cases_data(t2_cases_path)
 
+t3_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_tasks_messages.yaml')
+t3_config_parameters, t3_config_metadata, t3_case_ids = configuration.get_test_cases_data(t3_cases_path)
+
 # Variables
 receiver_sockets_params = [(WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT = 20
@@ -311,3 +314,66 @@ def test_wazuh_db_range_checksum(configure_sockets_environment_module, connect_t
     log_monitor.start(callback=make_callback('range checksum avoided', prefix=WAZUH_DB_PREFIX,
                                              escape=True), timeout=WAZUH_DB_CHECKSUM_CALCULUS_TIMEOUT)
     assert log_monitor.callback_result, 'Checksum Range wasn´t avoided the second time'
+
+
+@pytest.mark.parametrize('test_metadata', t3_config_metadata, ids=t3_case_ids)
+def test_wazuh_db_messages_tasks(test_metadata, daemons_handler_module, connect_to_sockets_module,
+                                  clean_databases, clean_registered_agents):
+    '''
+    description: Check that every global input message in wazuh-db socket generates the proper output to wazuh-db
+                 socket. To do this, it performs a query to the socket with a command taken from the input list of
+                 stages (test_case, input field) and compare the result with the input list of stages (test_case,
+                 output field).
+
+    wazuh_min_version: 4.2.0
+
+    tier: 0
+
+    parameters:
+        - test_metadata:
+            type: dict
+            brief: Test case metadata.
+        - daemons_handler_module:
+            type: fixture
+            brief: Handler of Wazuh daemons.
+        - connect_to_sockets_module:
+            type: fixture
+            brief: Module scope version of 'connect_to_sockets' fixture.
+        - clean_databases:
+            type: fixture
+            brief: Delete databases.
+        - clean_registered_agents:
+            type: fixture
+            brief: Remove all agents of wazuhdb.
+
+    assertions:
+        - Verify that the socket response matches the expected output of the yaml input file.
+
+    input_description:
+        - Test cases are defined in the global_messages.yaml file. This file contains cases to insert, upgrade, label,
+          select, get-all-agents, sync-agent-info-get, sync-agent-info-set, belongs table, reset connection status,
+          get-agents-by-connection-status, disconnect-agents, delete and keepalive commands in global database.
+
+    expected_output:
+        - r'Failed test case stage .*'
+        - r'Error when executing * in daemon'
+
+    tags:
+        - wazuh_db
+        - wdb_socket
+    '''
+    for index, stage in enumerate(test_metadata['test_case']):
+        if 'ignore' in stage and stage['ignore'] == 'yes':
+            continue
+
+        command = stage['input']
+        expected_output = stage['output']
+
+        response = query_wdb(command, False, True)
+
+        if 'use_regex' in stage and stage['use_regex'] == 'yes':
+            match = True if regex_match(expected_output, response) else False
+        else:
+            match = validate_wazuh_db_response(expected_output, response)
+        assert match, 'Failed test case stage {}: {}. Expected: {}. Response: {}' \
+            .format(index + 1, stage['stage'], expected_output, response)

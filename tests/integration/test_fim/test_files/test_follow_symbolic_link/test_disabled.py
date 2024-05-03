@@ -63,6 +63,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.platforms import MACOS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import EVENT_TYPE_ADDED, EVENT_TYPE_DELETED, LINKS_SCAN_FINALIZED
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
@@ -76,7 +77,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Pytest marks to run on any service type on linux or windows.
-pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.darwin, pytest.mark.darwin, pytest.mark.tier(level=0)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_disabled.yaml')
@@ -93,6 +94,10 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 def test_disabled(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                   configure_local_internal_options, folder_to_monitor, symlink_target, symlink,
                   symlink_new_target, daemons_handler, start_monitoring):
+
+    if sys.platform == MACOS and not test_metadata['fim_mode'] == 'scheduled':
+        pytest.skip(reason="Realtime and whodata are not supported on macos")
+
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     testfile_name = 'testie.txt'
 

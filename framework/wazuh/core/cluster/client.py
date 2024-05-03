@@ -177,7 +177,7 @@ class AbstractClient(common.Handler):
 
             self.logger.info("Successfully connected to master.")
             self.connected = True
-        except Exception as e:        
+        except Exception as e:
             self.logger.error(f"Could not connect to master: {str(e)}.")
             self.transport.close()
 

@@ -206,7 +206,7 @@ def test_create_wazuh_socket_message(origin, command, parameters):
 async def test_wazuh_async_socket_connect():
     """Test socket connection."""
     s = WazuhAsyncSocket()
-    with patch('asyncio.open_unix_connection', 
+    with patch('asyncio.open_unix_connection',
                return_value=(StreamReader(),
                              StreamWriter(protocol=BaseProtocol(),
                                           transport=BaseTransport(),
