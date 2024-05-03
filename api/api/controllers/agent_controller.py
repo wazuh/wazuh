@@ -1376,13 +1376,13 @@ async def get_group_file(group_id: str, file_name: str, raw: bool = False, prett
     data = raise_if_exc(await dapi.distribute_function())
 
     if raw:
-        mimetype, _ = mimetypes.guess_type(file_name)
-        if mimetype is None:
-            mimetype = 'text/plain'
+        content_type, _ = mimetypes.guess_type(file_name)
+        if content_type is None:
+            content_type = 'text/plain'
         if file_name == 'agent.conf':
-            mimetype = 'application/xml'
+            content_type = 'application/xml'
 
-        return ConnexionResponse(body=data['data'], mimetype=mimetype)
+        return ConnexionResponse(body=data['data'], content_type=content_type)
 
     return json_response(data, pretty=pretty)
 
