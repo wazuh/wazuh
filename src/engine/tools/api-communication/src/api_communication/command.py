@@ -11,6 +11,7 @@ import api_communication.proto.metrics_pb2 as metrics
 import api_communication.proto.policy_pb2 as policy
 import api_communication.proto.router_pb2 as router
 import api_communication.proto.tester_pb2 as tester
+import api_communication.proto.geo_pb2 as geo
 
 
 def get_command(message: Message) -> Tuple[Optional[str], str]:
@@ -133,5 +134,16 @@ def get_command(message: Message) -> Tuple[Optional[str], str]:
     elif isinstance(message, tester.RunPost_Request):
         return None, 'tester.run/post'
 
+    # Geo
+    elif isinstance(message, geo.DbList_Request):
+        return None, 'geo.db/list'
+    elif isinstance(message, geo.DbPost_Request):
+        return None, 'geo.db/post'
+    elif isinstance(message, geo.DbDelete_Request):
+        return None, 'geo.db/delete'
+    elif isinstance(message, geo.DbRemoteUpsert_Request):
+        return None, 'geo.db/remoteUpsert'
+
+    # Unknown
     else:
-        return 'Unknown message type', ''
+        return 'api-communication does not have the api command for the request, check the get_command method', ''

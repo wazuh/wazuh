@@ -5,13 +5,16 @@ import shlex
 import time
 from api_communication.client import APIClient
 from api_communication.proto import router_pb2 as api_router
+from pathlib import Path
 
-BINARY_PATH = os.environ.get("WAZUH_DIR", "") + "/src/engine/build/main"
+BINARY_PATH = (Path(os.environ.get("WAZUH_DIR", "")) /
+               "src/engine/build/main").resolve().as_posix()
 CONF_FILE = os.environ.get("CONF_FILE", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
-SOCKET_PATH = ENV_DIR + "/queue/sockets/engine-api"
+SOCKET_PATH = (Path(ENV_DIR) / "queue/sockets/engine-api").resolve().as_posix()
 
 api_client = APIClient(SOCKET_PATH)
+
 
 class UpDownEngine:
     def __init__(self):
@@ -31,7 +34,8 @@ class UpDownEngine:
             current_attempt += 1
 
         if current_attempt == max_attempts:
-            raise Exception(f"All attempts exhausted after {max_attempts} tries. The operation could not be completed.")
+            raise Exception(
+                f"All attempts exhausted after {max_attempts} tries. The operation could not be completed.")
 
     def send_stop_command(self):
         """
@@ -39,11 +43,13 @@ class UpDownEngine:
         """
         try:
             self.process.terminate()
-            print(f"Termination signal sent to the process with PID {self.process.pid}")
+            print(
+                f"Termination signal sent to the process with PID {self.process.pid}")
             self.process.wait()
             print(f"Process with PID {self.process.pid} has finished")
         except Exception as e:
-            print(f"Could not find the process with PID {self.process.pid}: {e}")
+            print(
+                f"Could not find the process with PID {self.process.pid}: {e}")
 
     def send_start_command(self):
         try:
@@ -60,7 +66,8 @@ class UpDownEngine:
             self.process = subprocess.Popen(args)
 
             if self.process.returncode is not None and self.process.returncode != 0:
-                print(f"Error: Process exited with code {self.process.returncode}")
+                print(
+                    f"Error: Process exited with code {self.process.returncode}")
 
             # Wait for a moment to ensure the process has started
             self.wait_to_live()
