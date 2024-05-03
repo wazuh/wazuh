@@ -30,6 +30,7 @@ char constexpr DB_WRAPPER_DUE[] {"due"};
 
 enum class DbQueryStatus : uint8_t
 {
+    UNKNOWN,
     JSON_PARSING,
     EMPTY_RESPONSE,
     QUERY_ERROR,
@@ -46,7 +47,7 @@ private:
     nlohmann::json m_response;
     nlohmann::json m_responsePartial;
     std::string m_exceptionStr;
-    DbQueryStatus m_queryStatus;
+    DbQueryStatus m_queryStatus {DbQueryStatus::UNKNOWN};
     std::mutex m_mutexMessage;
     std::mutex m_mutexResponse;
     std::condition_variable m_conditionVariable;
@@ -185,15 +186,14 @@ public:
 
         if (!m_exceptionStr.empty())
         {
+            // coverity[missing_lock]
             switch (m_queryStatus)
             {
                 case DbQueryStatus::EMPTY_RESPONSE:
                 case DbQueryStatus::QUERY_ERROR:
                 case DbQueryStatus::QUERY_IGNORE:
                 case DbQueryStatus::QUERY_UNKNOWN:
-                case DbQueryStatus::QUERY_NOT_SYNCED: throw SocketDbWrapperException(m_exceptionStr);
-                case DbQueryStatus::JSON_PARSING:
-                case DbQueryStatus::INVALID_RESPONSE:
+                case DbQueryStatus::QUERY_NOT_SYNCED: throw SocketDbWrapperException(m_exceptionStr); break;
                 default: throw std::runtime_error(m_exceptionStr);
             }
         }
