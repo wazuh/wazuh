@@ -1,4 +1,4 @@
-aiohttp==3.9.3
+aiohttp==3.9.5
 aiohttp-cache==2.2.0
 aiohttp-cors==0.7.0
 aiohttp-jinja2==1.5.1
@@ -42,7 +42,7 @@ greenlet==2.0.2
 grpc-google-iam-v1==0.12.3
 grpcio==1.58.0
 hiredis==2.2.3
-idna==2.9
+idna==3.7
 importlib-metadata==3.10.1
 inflection==0.3.1
 itsdangerous==2.0.0
