@@ -87,7 +87,10 @@ namespace Utils
         void pop(std::string_view columnName)
         {
             std::scoped_lock lock {m_mutex};
-            m_queue.pop(columnName);
+            if (!m_canceled)
+            {
+                m_queue.pop(columnName);
+            }
         }
 
         bool empty() const
