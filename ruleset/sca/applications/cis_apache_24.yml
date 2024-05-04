@@ -376,7 +376,7 @@ checks:
       - https://httpd.apache.org/docs/2.4/mod/core.html#timeout
     condition: all
     rules:
-      - 'f:$main-conf -> !r:^# && && r:timeout|Timeout && n:\s+(\d+) compare <= 10'
+      - 'f:$main-conf -> !r:^# && r:timeout|Timeout && n:\s+(\d+) compare <= 10'
 
   #9.2:Set the KeepAlive directive to On
   - id: 10021
