@@ -106,6 +106,8 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
         response = requests.get(f"https://github.com/wazuh/wazuh/tarball/{current_branch}")
         if response.status_code == 404:
             pytest.fail("Current branch tarball doesn't exist")
+        elif not response.ok:
+            pytest.fail(f"Couldn't obtain branch tarball: {response.reason}")
 
     os.chdir(env_path)
     max_retries = 3
