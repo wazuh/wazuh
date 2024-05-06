@@ -74,9 +74,35 @@ protected:
 
     std::string getTmpDb()
     {
-        std::string file = std::tmpnam(nullptr);
-        file += ".mmdb";
+        // Create a template for the temporary file name with "XXXXXX" at the end
+        char template_name[] = "/tmp/tempXXXXXX";
+
+        // Create a temporary file and get its file descriptor
+        int fd = mkstemp(template_name);
+        if (fd == -1)
+        {
+            throw std::runtime_error(fmt::format("Failed to create temporary file: {}", strerror(errno)));
+        }
+
+        // Close the file descriptor since we'll be using C++ streams
+        close(fd);
+
+        // Convert the temporary file name to a std::string
+        std::string temp_file = template_name;
+
+        // Rename the temporary file with the ".mmdb" extension
+        std::string file = temp_file + ".mmdb";
+        if (rename(temp_file.c_str(), file.c_str()) != 0)
+        {
+            // If renaming fails, remove the temporary file
+            std::cerr << "Failed to rename temporary file: " << strerror(errno) << std::endl;
+            std::remove(temp_file.c_str());
+            throw std::runtime_error(fmt::format("Failed to rename temporary file: {}", strerror(errno)));
+        }
+
+        // Add the file to the list of temporary files
         tmpFiles.emplace_back(file);
+
         // Read test db
         std::ifstream ifs(g_maxmindDbPath, std::ios::binary);
         if (!ifs.is_open())

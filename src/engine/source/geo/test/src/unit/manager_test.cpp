@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -42,9 +43,35 @@ protected:
 
     std::string getTmpDb()
     {
-        std::string file = std::tmpnam(nullptr);
-        file += ".mmdb";
+        // Create a template for the temporary file name with "XXXXXX" at the end
+        char template_name[] = "/tmp/tempXXXXXX";
+
+        // Create a temporary file and get its file descriptor
+        int fd = mkstemp(template_name);
+        if (fd == -1)
+        {
+            throw std::runtime_error(fmt::format("Failed to create temporary file: {}", strerror(errno)));
+        }
+
+        // Close the file descriptor since we'll be using C++ streams
+        close(fd);
+
+        // Convert the temporary file name to a std::string
+        std::string temp_file = template_name;
+
+        // Rename the temporary file with the ".mmdb" extension
+        std::string file = temp_file + ".mmdb";
+        if (rename(temp_file.c_str(), file.c_str()) != 0)
+        {
+            // If renaming fails, remove the temporary file
+            std::cerr << "Failed to rename temporary file: " << strerror(errno) << std::endl;
+            std::remove(temp_file.c_str());
+            throw std::runtime_error(fmt::format("Failed to rename temporary file: {}", strerror(errno)));
+        }
+
+        // Add the file to the list of temporary files
         tmpFiles.emplace_back(file);
+
         // Read test db
         std::ifstream ifs(g_maxmindDbPath, std::ios::binary);
         if (!ifs.is_open())
@@ -388,8 +415,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDb)
     auto content = getContentDb(dbFile);
     auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(hashUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
     EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
     EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
@@ -418,7 +444,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbAlreadeyUpdated)
 
     auto manager = getManagerWithDb(dbPath, dbType);
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(hashUrl))
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(dbHash)));
     EXPECT_CALL(*mockStore, readInternalDoc(internalName)).WillOnce(testing::Return(storeReadDocResp(dbDoc)));
 
@@ -447,7 +473,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbErrorDownloadingHash)
 {
     auto manager = getEmptyManager();
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
+    EXPECT_CALL(*mockDownloader, downloadMD5(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
 
     base::OptError error;
     ASSERT_NO_THROW(error = manager.remoteUpsertDb("any", Type::ASN, "dbUrl", "hashUrl"));
@@ -468,8 +494,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbFailOneDownload)
     auto content = getContentDb(dbFile);
     auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(hashUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
     EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
         .WillOnce(testing::Return(base::Error {"error"}))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
@@ -497,8 +522,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbFailOneHash)
     auto content = getContentDb(dbFile);
     auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(hashUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
     EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
@@ -529,8 +553,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbErrorWriting)
     auto content = getContentDb(dbFile);
     auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(hashUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
     EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
     EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash));
@@ -554,8 +577,7 @@ TEST_F(GeoManagerTest, RemoteUpsertDbFailInternalStore)
     auto content = getContentDb(dbFile);
     auto internalName = base::Name(INTERNAL_NAME) + base::Name(std::filesystem::path(dbFile).filename().string());
 
-    EXPECT_CALL(*mockDownloader, downloadHTTPS(hashUrl))
-        .WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
+    EXPECT_CALL(*mockDownloader, downloadMD5(hashUrl)).WillOnce(testing::Return(base::RespOrError<std::string>(hash)));
     EXPECT_CALL(*mockDownloader, downloadHTTPS(dbUrl))
         .WillOnce(testing::Return(base::RespOrError<std::string>(content)));
     EXPECT_CALL(*mockDownloader, computeMD5(content)).WillOnce(testing::Return(hash)).WillOnce(testing::Return(hash));
