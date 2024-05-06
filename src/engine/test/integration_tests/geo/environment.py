@@ -8,6 +8,7 @@ dbs_path = Path(__file__).resolve().parent / "data" / "dbs"
 
 
 def before_feature(context, feature):
+    context.up_down_engine = up_down_engine
     up_down_engine.send_start_command()
 
 

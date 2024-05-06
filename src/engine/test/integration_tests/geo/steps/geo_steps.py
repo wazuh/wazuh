@@ -3,12 +3,12 @@ from pathlib import Path
 import shutil
 import os
 
+from google.protobuf.json_format import ParseDict
+from behave import given, when, then
+
 from api_communication.client import APIClient
 from api_communication.proto import geo_pb2 as api_geo
 from api_communication.proto import engine_pb2 as api_engine
-
-from google.protobuf.json_format import ParseDict
-from behave import given, when, then
 
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = (Path(ENV_DIR) / "queue/sockets/engine-api").as_posix()
@@ -121,6 +121,27 @@ def step_impl(context):
     assert error is None, f"{error}"
 
     context.response = response
+
+
+@when('I send a request to remotely upsert a database with path to "{name}", type "{type}", db url "{dbUrl}" and hash url "{hashUrl}"')
+def step_impl(context, name: str, type: str, dbUrl: str, hashUrl: str):
+    request = api_geo.DbRemoteUpsert_Request()
+    request.path = get_db_path(name).as_posix()
+    request.type = type
+    request.dbUrl = dbUrl
+    request.hashUrl = hashUrl
+
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    assert error is None, f"{error}"
+
+    context.response = response
+
+
+@when('I restart the engine')
+def step_impl(context):
+    context.up_down_engine.send_stop_command()
+    context.up_down_engine.send_start_command()
+
 
 ####################################################################################################
 # THEN

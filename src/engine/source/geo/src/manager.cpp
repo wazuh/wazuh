@@ -242,7 +242,7 @@ Manager::remoteUpsertDb(const std::string& path, Type type, const std::string& d
     }
 
     // Download the database hash
-    auto hashResp = m_downloader->downloadHTTPS(hashUrl);
+    auto hashResp = m_downloader->downloadMD5(hashUrl);
     if (base::isError(hashResp))
     {
         return base::Error {

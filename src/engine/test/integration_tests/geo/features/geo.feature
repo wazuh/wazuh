@@ -45,3 +45,21 @@ Feature: Manage Geolocation Databases
         Then the response should be a "success"
         Then the response should include "testdb-asn.mmdb"
         And the response should include "testdb-city.mmdb"
+
+    Scenario: Remotely upsert a geolocation database
+        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://github.com/wazuh/wazuh/raw/11334-dev-new-wazuh-engine/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://github.com/wazuh/wazuh/raw/11334-dev-new-wazuh-engine/src/engine/test/integration_tests/geo/data/base.md5"
+        Then the response should be a "success"
+        And the database list "should" include "testdb-city.mmdb"
+
+    Scenario: Added db persists after restart
+        Given an existing db file "testdb-city.mmdb"
+        When I send a request to add a database with path to "testdb-city.mmdb" and type "city"
+        Then the response should be a "success"
+        When I restart the engine
+        Then the database list "should" include "testdb-city.mmdb"
+
+    Scenario: Remotely added db persists after restart
+        When I send a request to remotely upsert a database with path to "testdb-city.mmdb", type "city", db url "https://github.com/wazuh/wazuh/raw/11334-dev-new-wazuh-engine/src/engine/test/integration_tests/geo/data/base.mmdb" and hash url "https://github.com/wazuh/wazuh/raw/11334-dev-new-wazuh-engine/src/engine/test/integration_tests/geo/data/base.md5"
+        Then the response should be a "success"
+        When I restart the engine
+        Then the database list "should" include "testdb-city.mmdb"
