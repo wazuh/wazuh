@@ -1,0 +1,70 @@
+2024-05-06 09:26:57.307 18875:18875 start.cpp:137 at runStart(): debug: Logging configuration: filePath='dev/stdout', level='debug', flushInterval=1ms.
+2024-05-06 09:26:57.307 18875:18875 start.cpp:141 at runStart(): info: Logging initialized.
+2024-05-06 09:26:57.307 18875:18875 fileDriver.cpp:10 at FileDriver(): debug: Engine file driver init with path '/home/bee/Project/wazuh/src/engine/____test/integration/engine/store' and create 'false'.
+2024-05-06 09:26:57.307 18875:18875 start.cpp:204 at runStart(): info: Store initialized.
+2024-05-06 09:26:57.307 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'internal/rbac/model/0'.
+2024-05-06 09:26:57.307 18875:18875 start.cpp:210 at runStart(): info: RBAC initialized.
+2024-05-06 09:26:57.307 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (KVDB)
+2024-05-06 09:26:57.329 18875:18875 start.cpp:218 at runStart(): info: KVDB initialized.
+2024-05-06 09:26:57.329 18875:18875 fileDriver.cpp:231 at readCol(): debug: FileDriver readCol name: 'geo'.
+2024-05-06 09:26:57.329 18875:18875 manager.cpp:36 at Manager(): debug: Geo module do not have dbs in the store: File '/home/bee/Project/wazuh/src/engine/____test/integration/engine/store/geo' does not exist
+2024-05-06 09:26:57.329 18875:18875 start.cpp:232 at runStart(): info: Geo initialized.
+2024-05-06 09:26:57.329 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'schema/engine-schema/0'.
+2024-05-06 09:26:57.496 18875:18875 start.cpp:249 at runStart(): info: Schema initialized.
+2024-05-06 09:26:58.294 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'schema/wazuh-logpar-types/0'.
+2024-05-06 09:26:58.367 18875:18875 start.cpp:271 at runStart(): info: HLP initialized.
+2024-05-06 09:26:58.367 18875:18875 start.cpp:287 at runStart(): info: Builder initialized.
+2024-05-06 09:26:58.367 18875:18875 catalog.cpp:30 at Catalog(): debug: Engine catalog: constructor: Asset schema name: ''.
+2024-05-06 09:26:58.367 18875:18875 start.cpp:295 at runStart(): info: Catalog initialized.
+2024-05-06 09:26:58.367 18875:18875 start.cpp:301 at runStart(): info: Policy manager initialized.
+2024-05-06 09:26:58.367 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (EventQueue)
+2024-05-06 09:26:58.367 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (EventQueueDelta)
+2024-05-06 09:26:58.368 18875:18875 concurrentQueue.hpp:258 at ConcurrentQueue(): info: The queue will be flooded in the file: /home/bee/Project/wazuh/src/engine/____test/integration/logs/engine-flood.log
+2024-05-06 09:26:58.372 18875:18875 start.cpp:319 at runStart(): debug: Event queue created.
+2024-05-06 09:26:58.372 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (TestQueue)
+2024-05-06 09:26:58.372 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (TestQueueDelta)
+2024-05-06 09:26:58.379 18875:18875 concurrentQueue.hpp:263 at ConcurrentQueue(): info: No flooding file provided, the queue will not be flooded.
+2024-05-06 09:26:58.381 18875:18875 start.cpp:325 at runStart(): debug: Test queue created.
+2024-05-06 09:26:58.381 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'router/router/0'.
+2024-05-06 09:26:58.381 18875:18875 orchestrator.cpp:171 at getEntriesFromStore(): warning: Router: router/router/0 table is empty
+2024-05-06 09:26:58.381 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'router/tester/0'.
+2024-05-06 09:26:58.382 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'policy/wazuh/0'.
+2024-05-06 09:26:58.382 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'policy/wazuh/0'.
+2024-05-06 09:26:58.382 18875:18875 fileDriver.cpp:93 at readDoc(): debug: FileDriver readDoc name: 'router/eps/0'.
+2024-05-06 09:26:58.382 18875:18929 worker.cpp:20 at operator()(): debug: Router Worker 11110836155918405334 started
+2024-05-06 09:26:58.382 18875:18875 start.cpp:340 at runStart(): info: Router initialized.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:347 at runStart(): debug: API created.
+2024-05-06 09:26:58.382 18875:18930 worker.cpp:20 at operator()(): debug: Router Worker 13134507679647807888 started
+2024-05-06 09:26:58.382 18875:18875 start.cpp:357 at runStart(): debug: Configuration manager API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:361 at runStart(): debug: Metrics API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:365 at runStart(): debug: KVDB API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:369 at runStart(): debug: Catalog API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:375 at runStart(): debug: Policy API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:380 at runStart(): debug: Router API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:387 at runStart(): debug: Graph API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:392 at runStart(): debug: Tester API registered.
+2024-05-06 09:26:58.382 18875:18875 start.cpp:396 at runStart(): debug: Geo API registered.
+2024-05-06 09:26:58.383 18875:18875 engineServer.cpp:37 at changeUVTreadPoolWorkerSize(): debug: Thread pool worker size set to 1
+2024-05-06 09:26:58.383 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (endpointAPI)
+2024-05-06 09:26:58.383 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (endpointAPIRate)
+2024-05-06 09:26:58.386 18875:18875 engineServer.cpp:114 at addEndpoint(): debug: Adding endpoint API
+2024-05-06 09:26:58.386 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (endpointEvent)
+2024-05-06 09:26:58.386 18875:18875 metricsManager.cpp:55 at getMetricsScope(): info: MetricsManager: Created new scope: (endpointEventRate)
+2024-05-06 09:26:58.390 18875:18875 engineServer.cpp:114 at addEndpoint(): debug: Adding endpoint EVENT
+2024-05-06 09:26:58.390 18875:18875 start.cpp:428 at runStart(): debug: Server configured.
+2024-05-06 09:26:58.390 18875:18875 engineServer.cpp:80 at start(): info: Starting the server...
+2024-05-06 09:27:06.201 18875:18875 engineServer.cpp:108 at request_stop(): debug: Requesting stop
+2024-05-06 09:27:06.201 18875:18875 engineServer.cpp:89 at stop(): info: Stopping the server
+2024-05-06 09:27:06.201 18875:18875 engineServer.cpp:90 at stop(): debug: Closing handlers
+2024-05-06 09:27:06.201 18875:18875 engineServer.cpp:99 at stop(): debug: Stopping loop
+2024-05-06 09:27:06.201 18875:18875 engineServer.cpp:101 at stop(): debug: Running loop once
+2024-05-06 09:27:06.201 18875:18875 engineServer.cpp:103 at stop(): info: Server closed
+2024-05-06 09:27:06.201 18875:18875 unixDatagram.cpp:183 at operator()(): info: [Endpoint: /home/bee/Project/wazuh/src/engine/____test/integration/queue/sockets/queue] Closed.
+2024-05-06 09:27:06.201 18875:18875 unixStream.cpp:94 at operator()(): info: [Endpoint: /home/bee/Project/wazuh/src/engine/____test/integration/queue/sockets/engine-api] Closed
+2024-05-06 09:27:06.201 18875:18875 engineServer.cpp:83 at start(): info: Server stopped
+2024-05-06 09:27:06.201 18875:18875 start.cpp:374 at operator()(): debug: Policy API terminated.
+2024-05-06 09:27:06.201 18875:18875 start.cpp:352 at operator()(): info: API terminated.
+2024-05-06 09:27:06.202 18875:18875 fileDriver.cpp:129 at updateDoc(): debug: FileDriver updateDoc name: 'router/tester/0'.
+2024-05-06 09:27:06.210 18875:18929 worker.cpp:46 at operator()(): debug: Router Worker 11110836155918405334 finished
+2024-05-06 09:27:06.311 18875:18930 worker.cpp:46 at operator()(): debug: Router Worker 13134507679647807888 finished
+2024-05-06 09:27:06.313 18875:18875 start.cpp:223 at operator()(): info: KVDB terminated.

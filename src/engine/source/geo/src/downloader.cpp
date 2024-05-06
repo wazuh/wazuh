@@ -16,6 +16,12 @@ size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* use
     userp->append((char*)contents, size * nmemb);
     return size * nmemb;
 }
+
+bool isMD5Hash(const std::string& str)
+{
+    // Check if the string has 32 characters and consists of hexadecimal digits
+    return str.size() == 32 && std::all_of(str.begin(), str.end(), ::isxdigit);
+}
 } // namespace
 
 namespace geo
@@ -34,9 +40,12 @@ base::RespOrError<std::string> Downloader::downloadHTTPS(const std::string& url)
     {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 
-        // If you want libcurl to perform the SSL certificate verification
-        // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
-        // curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+        // Enable SSL certificate verification
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 1L);
+
+        // Set option to follow redirects
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 
         // Specify the write callback function
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
@@ -105,5 +114,29 @@ std::string Downloader::computeMD5(const std::string& data) const
     }
 
     return ss.str();
+}
+
+base::RespOrError<std::string> Downloader::downloadMD5(const std::string& url) const
+{
+    auto response = downloadHTTPS(url);
+    if (base::isError(response))
+    {
+        return base::getError(response);
+    }
+
+    auto hash = base::getResponse(response);
+
+    // Remove trailing newline character
+    if (!hash.empty() && hash[hash.size() - 1] == '\n')
+    {
+        hash.pop_back();
+    }
+
+    if (!isMD5Hash(hash))
+    {
+        return base::Error {fmt::format("Invalid MD5 hash: '{}'", hash)};
+    }
+
+    return hash;
 }
 } // namespace geo
