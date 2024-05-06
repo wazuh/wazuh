@@ -151,3 +151,36 @@ TEST_F(RocksDBSafeQueuePrefixTest, CreateFolderRecursively)
     std::error_code ec;
     std::filesystem::remove_all(DATABASE_NAME, ec);
 }
+
+TEST_F(RocksDBSafeQueuePrefixTest, ClearQueue)
+{
+    queue->push("000", "test");
+    queue->push("000", "test2");
+    queue->push("000", "test3");
+    queue->push("001", "test4");
+    queue->push("001", "test5");
+
+    EXPECT_EQ(3, queue->size("000"));
+    EXPECT_EQ(2, queue->size("001"));
+
+    queue->clear("000");
+    EXPECT_EQ(0, queue->size("000"));
+    EXPECT_EQ(2, queue->size("001"));
+
+    queue->clear("001");
+    EXPECT_EQ(0, queue->size("001"));
+}
+
+TEST_F(RocksDBSafeQueuePrefixTest, ClearAllQueue)
+{
+    queue->push("000", "test");
+    queue->push("000", "test2");
+    queue->push("000", "test3");
+    queue->push("001", "test4");
+    queue->push("001", "test5");
+
+    queue->clear("");
+    EXPECT_EQ(0, queue->size("000"));
+    EXPECT_EQ(0, queue->size("001"));
+    EXPECT_TRUE(queue->empty());
+}

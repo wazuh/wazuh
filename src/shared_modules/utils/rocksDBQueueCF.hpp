@@ -223,6 +223,44 @@ public:
         return value;
     }
 
+    void clear(std::string_view id)
+    {
+        auto deleteElement = [this](const std::string& key)
+        {
+            if (!m_db->Delete(rocksdb::WriteOptions(), key).ok())
+            {
+                throw std::runtime_error("Failed to clear element, can't delete it");
+            }
+        };
+
+        if (id.empty())
+        {
+            // Clear all elements from the queue.
+            for (const auto& metadata : m_queueMetadata)
+            {
+                for (auto i = metadata.second.head; i <= metadata.second.tail; ++i)
+                {
+                    deleteElement(std::string(metadata.first) + "_" + std::to_string(i));
+                }
+            }
+            m_queueMetadata.clear();
+        }
+        else
+        {
+            if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
+            {
+                // Clear all elements from the queue.
+                for (auto i = it->second.head; i <= it->second.tail; ++i)
+                {
+                    deleteElement(std::string(id) + "_" + std::to_string(i));
+                    ++it->second.head;
+                    --it->second.size;
+                }
+                m_queueMetadata.erase(it);
+            }
+        }
+    }
+
 private:
     std::shared_ptr<rocksdb::DB> m_db;
     std::shared_ptr<rocksdb::Cache> m_readCache;
