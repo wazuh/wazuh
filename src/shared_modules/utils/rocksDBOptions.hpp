@@ -18,8 +18,8 @@
 
 namespace Utils
 {
-    constexpr auto ROCKSDB_WRITE_BUFFER_SIZE = 64 * 1024 * 1024;
-    constexpr auto ROCKSDB_WRITE_BUFFER_MANAGER_SIZE = 64 * 1024 * 1024;
+    constexpr auto ROCKSDB_WRITE_BUFFER_SIZE = 32 * 1024 * 1024;
+    constexpr auto ROCKSDB_WRITE_BUFFER_MANAGER_SIZE = 32 * 1024 * 1024;
     constexpr auto ROCKSDB_MAX_WRITE_BUFFER_NUMBER = 2;
     constexpr auto ROCKSDB_MAX_OPEN_FILES = 256;
     constexpr auto ROCKSDB_NUM_LEVELS = 4;
