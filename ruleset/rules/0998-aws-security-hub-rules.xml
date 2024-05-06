@@ -238,7 +238,7 @@
 
   <rule id="99836" level="12">
     <if_sid>99807</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">CloudTrail.6</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^CloudTrail.6$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - The S3 bucket used to store CloudTrail logs is publicly accessible.</description>
@@ -250,7 +250,7 @@
 
   <rule id="99837" level="12">
     <if_sid>99809</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">CodeBuild.1</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^CodeBuild.1$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - CodeBuild Bitbucket source repository URL contains sensitive credentials.</description>
@@ -262,7 +262,7 @@
 
   <rule id="99838" level="12">
     <if_sid>99809</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">CodeBuild.2</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^CodeBuild.2$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - CodeBuild project environment variable contain clear text credentials.</description>
@@ -274,7 +274,7 @@
 
   <rule id="99839" level="12">
     <if_sid>99810</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">DMS.1</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^DMS.1$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Database Migration Service replication instance is public.</description>
@@ -283,7 +283,7 @@
 
   <rule id="99840" level="12">
     <if_sid>99811</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">DocumentDB.3</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^DocumentDB.3$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon DocumentDB manual cluster snapshot is public.</description>
@@ -292,7 +292,7 @@
 
   <rule id="99841" level="12">
     <if_sid>99812</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">EC2.1</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^EC2.1$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - EBS snapshot is publicly restorable.</description>
@@ -301,7 +301,7 @@
 
   <rule id="99842" level="12">
     <if_sid>99812</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">EC2.19</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^EC2.19$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Security groups allow unrestricted access to ports with high risk.</description>
@@ -310,7 +310,7 @@
 
   <rule id="99843" level="12">
     <if_sid>99818</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">EMR.2</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^EMR.2$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon EMR block public access setting not enabled.</description>
@@ -319,7 +319,7 @@
 
   <rule id="99844" level="12">
     <if_sid>99819</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">ES.2</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^ES.2$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Elasticsearch domain is publicly accessible.</description>
@@ -331,7 +331,7 @@
 
   <rule id="99845" level="12">
     <if_sid>99821</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">IAM.4</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^IAM.4$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - IAM root user access key exist.</description>
@@ -340,7 +340,7 @@
 
   <rule id="99846" level="12">
     <if_sid>99821</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">IAM.6</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^IAM.6$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Hardware MFA not enabled for the root user.</description>
@@ -352,7 +352,7 @@
 
   <rule id="99847" level="12">
     <if_sid>99821</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">IAM.9</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^IAM.9$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - MFA not enabled for the root user.</description>
@@ -364,7 +364,7 @@
 
   <rule id="99848" level="12">
     <if_sid>99822</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">KMS.3</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^KMS.3$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - AWS KMS keys is scheduled for deletion.</description>
@@ -376,7 +376,7 @@
 
   <rule id="99849" level="12">
     <if_sid>99823</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">Lambda.1</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^Lambda.1$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Lambda function policies allow public access.</description>
@@ -385,7 +385,7 @@
 
   <rule id="99850" level="12">
     <if_sid>99825</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">Neptune.3</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^Neptune.3$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Neptune DB cluster snapshot is public.</description>
@@ -394,7 +394,7 @@
 
   <rule id="99851" level="12">
     <if_sid>99826</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">Opensearch.2</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^Opensearch.2$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - OpenSearch domain is publicly accessible.</description>
@@ -403,7 +403,7 @@
 
   <rule id="99852" level="12">
     <if_sid>99827</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">RDS.1</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^RDS.1$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - RDS snapshot is public.</description>
@@ -412,7 +412,7 @@
 
   <rule id="99853" level="12">
     <if_sid>99827</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">RDS.2</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^RDS.2$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon RDS instance is publicly accessible.</description>
@@ -421,7 +421,7 @@
 
   <rule id="99854" level="12">
     <if_sid>99828</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">Redshift.1</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^Redshift.1$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub -  Amazon Redshift cluster is publicly accessible.</description>
@@ -430,7 +430,7 @@
 
   <rule id="99855" level="12">
     <if_sid>99829</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">S3.2</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.2$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 general purpose bucket permits public read access.</description>
@@ -439,7 +439,7 @@
 
   <rule id="99856" level="12">
     <if_sid>99829</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">S3.3</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.3$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 general purpose bucket permits public write access.</description>
@@ -448,7 +448,7 @@
 
   <rule id="99857" level="12">
     <if_sid>99829</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">S3.19</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.19$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 access point block public access settings aren't enabled.</description>
@@ -457,7 +457,7 @@
 
   <rule id="99858" level="12">
     <if_sid>99831</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">SSM.4</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^SSM.4$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - AWS Systems Manager document is public.</description>
@@ -470,7 +470,7 @@
 
   <rule id="99859" level="12">
     <if_sid>99812</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">EC2.9</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^EC2.9$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon EC2 Instance uses a public IPv4 address.</description>
@@ -479,7 +479,7 @@
 
   <rule id="99860" level="12">
     <if_sid>99829</if_sid>
-    <field name="aws.finding.Compliance.SecurityControlId">S3.8</field>
+    <field name="aws.finding.Compliance.SecurityControlId">^S3.8$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 general purpose bucket allows public access at the bucket level.</description>
