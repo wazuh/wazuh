@@ -990,7 +990,7 @@ endif
 
 #### OpenSSL ##########
 
-OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared
+OPENSSL_FLAGS = enable-weak-ssl-ciphers no-shared no-tls1_3
 
 ifeq (${uname_M}, i386)
 ifeq ($(findstring BSD,${uname_S}), BSD)
@@ -1339,7 +1339,7 @@ GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
 DEPS_VERSION = 25
-RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
+RESOURCES_URL_BASE := https://packages-dev.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
