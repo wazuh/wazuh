@@ -247,15 +247,19 @@ nlohmann::json SysInfo::getPorts() const
             std::string localport = "";
             std::string remoteip = "";
             std::string remoteport = "";
+            std::string statedata = "";
             const auto data{Utils::split(line, ' ')};
             auto localdata{Utils::split(data[5], ':')};
             auto remotedata{Utils::split(data[6], ':')};
-            auto statedata{Utils::toLowerCase(data[7])};
 
             localip = localdata[0];
             localport = localdata[1];
             remoteip = remotedata[0];
             remoteport = remotedata[1];
+
+            if((data[4] != "udp4") && (data[4] != "udp6")) {
+              statedata=toLowerCase(data[7]);
+            }
 
             if(statedata == "listen") {
               statedata = "listening";
@@ -277,7 +281,7 @@ nlohmann::json SysInfo::getPorts() const
               remoteport = remotedata[3];
             } else if(remoteport == "*") {
                 remoteip = "";
-                remoteport = "";
+                remoteport = "0";
             }
 
             if(data[0] != "?") {
