@@ -9492,15 +9492,6 @@ paths:
                       - type: object
                         description: "The output format depends on the type of file that has been requested: rootkit
                         file, rootkit trojans or rcl"
-            application/xml:
-              schema:
-                properties:
-                  data:
-                    oneOf:
-                      - type: array
-                      - type: object
-                        description: "The output format depends on the type of file that has been requested: rootkit
-                        file, rootkit trojans or rcl"
               example:
                 data:
                   vars: 
@@ -9522,6 +9513,12 @@ paths:
                       checks:
                         - "f:/etc/fstab -> !r:/tmp;"
                 error: 0
+            application/xml:
+              schema:
+                type: string
+            text/plain:
+              schema:
+                type: string
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':
