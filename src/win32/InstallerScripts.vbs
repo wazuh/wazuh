@@ -351,6 +351,9 @@ public function config()
         grantAdminPerm = "icacls """ & install_dir & """ /grant *S-1-5-32-544:F /t"
         WshShell.run grantAdminPerm, 0, True
 
+        grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:F /t"
+        WshShell.run grantSystemPerm, 0, True
+
         userSID = GetUserSID()
         grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
         WshShell.run grantUserPerm, 0, True
