@@ -80,8 +80,7 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10,
-                 build: bool = True) -> dict:
+def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
     """Build all Docker environments needed for the current test.
 
     Parameters
@@ -89,81 +88,70 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
     env_mode : str
         Indicates the environment to be used in the process.
     interval : int
-        Time interval between every healthcheck.
-    interval_build_env : int
-        Time interval between every docker environment healthcheck.
+        Time interval between every build.
     build : bool
         Flag to indicate if images need to be built.
-
-    Returns
-    -------
-    dict
-        Dict with healthchecks parameters.
     """
-    os.chdir(env_path)
-    values = {
-        'interval': interval,
-        'max_retries': 90,
-        'retries': 0
-    }
-    values_build_env = {
-        'interval': interval_build_env,
-        'max_retries': 3,
-        'retries': 0
-    }
-   # Get current branch or tag
-    with open('../../../../.git/HEAD', 'r') as f:
+    # Get current branch or tag
+    with open('../../../.git/HEAD', 'r') as f:
         ref = f.readline().strip()
+
     if ref.startswith("ref:"):
         current_branch = ref.split("refs/heads/")[1]
     else:
         current_branch = ref.split("/")[-1]
-        
-    os.makedirs(test_logs_path, exist_ok=True)
+
+    if build:
+        # Ping the current branch tarball used to build the manager image.
+        response = requests.get(f"https://github.com/wazuh/wazuh/tarball/{current_branch}")
+        if response.status_code == 404:
+            pytest.fail("Current branch tarball doesn't exist")
+        elif not response.ok:
+            pytest.fail(f"Couldn't obtain branch tarball: {response.reason}")
+
+    os.chdir(env_path)
+    max_retries = 3
+    retries = 0
+
     with open(docker_log_path, mode='w') as f_docker:
-        while values_build_env['retries'] < values_build_env['max_retries']:
+        while retries < max_retries:
             if build:
-                current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
-                    "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", 
-                    "--build-arg", f"ENV_MODE={env_mode}",
-                    "--no-cache"],
+                build_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
+                    "build", "--build-arg", f"WAZUH_BRANCH={current_branch}",
+                    "--build-arg", f"ENV_MODE={env_mode}", "--no-cache"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
-                current_process.wait()
-            current_process = subprocess.Popen(
+                build_process.wait()
+            up_process = subprocess.Popen(
                 ["docker", "compose", "--profile", env_mode, "up", "-d"],
                 env=dict(os.environ, ENV_MODE=env_mode),
                 stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
-            current_process.wait()
+            up_process.wait()
 
-            if current_process.returncode == 0:
-                time.sleep(values_build_env['interval'])
+            if up_process.returncode == 0:
                 break
-            else:
-                time.sleep(values_build_env['interval'])
-                values_build_env['retries'] += 1
+            
+            time.sleep(interval)
+            retries += 1
+
     os.chdir(current_path)
 
-    return values
 
-
-def down_env():
+def down_env(env_mode: str):
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "down", "-t0" ], stdout=f_docker,
-                                           stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode, "down"],
+                                           stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
 
 
-def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None,
+def check_health(node_type: str = 'manager', agents: list = None,
                  only_check_master_health: bool = False):
     """Check the Wazuh nodes health.
 
     Parameters
     ----------
-    interval : int
-        Time interval between every healthcheck.
     node_type : str
         Can be agent, manager or nginx-lb.
     agents : list
@@ -177,7 +165,6 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
     bool
         True if all healthchecks passed, False otherwise.
     """
-    time.sleep(interval)
     if node_type == 'manager':
         nodes_to_check = ['master'] if only_check_master_health else env_cluster_nodes
         for node in nodes_to_check:
@@ -368,7 +355,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         Object that contains information about the current test
     """
 
-    def clean_up_env():
+    def clean_up_env(env_mode: str):
         """Clean temporary folder, save environment logs and status; and stop and remove all Docker containers."""
         clean_tmp_folder()
         if request.session.testsfailed > 0:
@@ -377,14 +364,15 @@ def api_test(request: _pytest.fixtures.SubRequest):
         # Get the environment current status
         global environment_status
         environment_status = get_health()
-        down_env()
+        down_env(env_mode)
 
     # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
     mode = request.node.config.getoption("-m")
     env_mode = standalone_env_mode if mode == 'standalone' else cluster_env_mode
+    os.makedirs(test_logs_path, exist_ok=True)
 
     # Add clean_up_env as fixture finalizer
-    request.addfinalizer(clean_up_env)
+    request.addfinalizer(lambda: clean_up_env(env_mode))
 
     test_filename = request.node.config.args[0].split('_')
     if 'rbac' in test_filename:
@@ -403,27 +391,29 @@ def api_test(request: _pytest.fixtures.SubRequest):
         enable_white_mode()
 
     general_procedure(module)
-    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'), env_mode=env_mode)
+    build_and_up(build=request.config.getoption('--nobuild'), env_mode=env_mode)
 
-    while values['retries'] < values['max_retries']:
-        managers_health = check_health(interval=values['interval'],
-                                       only_check_master_health=env_mode == standalone_env_mode)
-        agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
-        nginx_health = check_health(interval=values['interval'], node_type='nginx-lb')
+    max_retries = 30
+    retries = 0
+
+    while retries < max_retries:
+        managers_health = check_health(only_check_master_health=env_mode == standalone_env_mode)
+        agents_health = check_health(node_type='agent', agents=list(range(1, 9)))
+        nginx_health = check_health(node_type='nginx-lb')
+
         # Check if entrypoint was successful
         try:
-            error_message = subprocess.check_output(["docker", "exec", "-t",
-                                                     "env-wazuh-master-1", "sh", "-c",
+            error_message = subprocess.check_output(["docker", "exec", "-t", "env-wazuh-master-1", "sh", "-c",
                                                      "cat /entrypoint_error"]).decode().strip()
             pytest.fail(error_message)
         except subprocess.CalledProcessError:
             pass
 
         if managers_health and agents_health and nginx_health:
-            time.sleep(values['interval'])
             return
-        else:
-            values['retries'] += 1
+
+        retries += 1
+        time.sleep(10)
 
 
 def get_health():
