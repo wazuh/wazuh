@@ -69,3 +69,8 @@ _deps
 # Test output files
 *.log
 *.csv
+
+# Helper test output file
+test/helper_tests/map/*output.yml
+test/helper_tests/filter/*output.yml
+test/helper_tests/transformation/*output.yml
