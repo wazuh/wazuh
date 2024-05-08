@@ -1339,7 +1339,6 @@ GUNZIP := gunzip
 GZIP := gzip
 CURL := curl -so
 DEPS_VERSION = 25
-EXTERNAL_SRC_ONLY = yes
 RESOURCES_URL_BASE := https://packages-dev.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
