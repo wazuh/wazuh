@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+
 import itertools
 import random
 from pathlib import Path
 
 import yaml
 
-tests = []
+tests = {"build_test": [], "run_test": []}
 reference_counter = 0
 maximum_number_of_arguments = 40
 
@@ -110,7 +112,7 @@ def generate_random_value(type_, allowed_values):
                 for _ in range(random.randint(1, 10))
             )
         elif type_ == list:
-            return [1, "str", 1.2, False]
+            return [1, 23, 56, 7]
     else:
         return random.choice(allowed_values)
 
@@ -197,36 +199,31 @@ def generate_combination_template(yaml_data, allowed_values):
 
 def fewer_arguments_than_the_minimum_required(yaml_data):
     minimum_arguments = get_minimum_arguments(yaml_data)
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
     # Generate test cases with argument count ranging from 0 to minimum_arguments
     for num_arguments in range(minimum_arguments):
+        test_data = {"assets_definition": {}, "should_pass": False, "description": ""}
         parameters = [
             "0"
         ] * num_arguments  # Generate empty strings for the current number of arguments
         helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in parameters)})"
         normalize_list = [{"map": [{"target_field": helper}]}]
-        new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-        new_test = {
-            "expected_result": "failure_in_buildtime",
-            "inputs": [],
-        }
-        test_data["test_cases"].append(new_test)
-        test_data["assets_definition"].append(new_asset_definition)
+        asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+
+        test_data["assets_definition"] = asset_definition
+        test_data["should_pass"] = False
         test_data["description"] = f"Test with fewer parameters for helper function."
-    tests.append(test_data)
+        tests["build_test"].append(test_data)
 
 
 def different_sources(yaml_data):
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    test_data = {"assets_definition": {}}
     for i in range(len(types)):  # Iterating over the number of arguments
-        inputs = []
         all_arguments = []
         new_sources = sources[
             :
         ]  # Copying the list of sources to not modify the original
-        normalize_list = []
 
         # Expected a success result if source is both
         if sources[i] == "both":
@@ -253,148 +250,164 @@ def different_sources(yaml_data):
                 convert_string_to_type(types[j]), new_sources[j], allowed_values, True
             )
             if isinstance(argument, dict):
-                inputs.append({argument["name"]: argument["value"]})
                 current_arguments.append(f"$eventJson.{argument['name']}")
             else:
                 current_arguments.append(argument)
 
         all_arguments.append(current_arguments)
-        stage_map = {"map": []}
+
         helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments[0])})"
+        normalize_list = [{"map": {"target_field": helper}}]
 
-        if target_field_is_array(yaml_data):
-            value = generate_specific_argument(
-                "value",
-                convert_string_to_type(get_target_field_type(yaml_data)),
-            )
-            if type(value) == list:
-                target_field_value = value
-            else:
-                target_field_value = [value]
-        else:
-            value = generate_specific_argument(
-                "value",
-                convert_string_to_type(get_target_field_type(yaml_data)),
-            )
-
-            if type(value) == list:
-                target_field_value = value[0]
-            else:
-                target_field_value = value
-
-        if len(inputs) == 0:
-            stage_map["map"].append({"target_field": target_field_value})
-        else:
-            stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
-            stage_map["map"].append({"target_field": target_field_value})
-
-        stage_map["map"].append({"target_field": helper})
-
-        normalize_list.append(stage_map)
-
-        new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-        new_test = {
-            "expected_result": "failure_in_builtime",
-            "inputs": inputs,
-        }
-        test_data["test_cases"].append(new_test)
-        test_data["assets_definition"].append(new_asset_definition)
+        asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+        test_data["assets_definition"] = asset_definition
+        test_data["should_pass"] = False
         test_data["description"] = "Generate sources other than those allowed"
 
-    if len(test_data["assets_definition"]) != 0:
-        tests.append(test_data)
+        if len(test_data["assets_definition"]):
+            tests["build_test"].append(test_data)
 
 
-def different_types(yaml_data, source):
+def different_types_values(yaml_data):
     if get_target_field_type(yaml_data) == "all":
         return
 
     types = get_types(yaml_data)
-    has_allowed_values = False
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
         break
 
     if allowed_values:
         template = generate_combination_template(yaml_data, allowed_values)
-        has_allowed_values = True
     else:
         template = generate_raw_template(yaml_data)
 
     for case in template:
         all_arguments = []
-        normalize_list = []
-        inputs = []
-        test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+        test_data = {"assets_definition": {}}
 
-        if has_allowed_values:
-            if (
-                case.count(change_source(source))
-                == get_minimum_arguments(yaml_data) - 1
-            ):
-                continue
-        else:
-            if case.count(change_source(source)) == get_minimum_arguments(yaml_data):
-                continue
-
-        for argument, type_ in zip(case, types):
-            if type(type_) == type:
-                if argument == source:
+        if "value" in case:
+            for argument, type_ in zip(case, types):
+                if type(type_) == type:
                     valid_type = change_type(type_)
                 else:
-                    valid_type = type_
-            else:
-                if argument == source:
                     valid_type = change_type(convert_string_to_type(type_))
+
+                if argument == "value":
+                    all_arguments.append(
+                        generate_specific_argument("value", valid_type)
+                    )
+                elif argument == "reference":
+                    reference = generate_specific_argument("reference", valid_type)
+                    all_arguments.append(f"$eventJson.{reference['name']}")
                 else:
-                    valid_type = convert_string_to_type(type_)
+                    all_arguments.append(argument)
 
-            if argument == "value":
-                all_arguments.append(generate_specific_argument("value", valid_type))
-            elif argument == "reference":
-                reference = generate_specific_argument("reference", valid_type)
-                all_arguments.append(f"$eventJson.{reference['name']}")
-                inputs.append({reference["name"]: reference["value"]})
+            helper = (
+                f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+            )
+
+            normalize_list = [{"map": [{"target_field": helper}]}]
+
+            asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+
+            test_data["assets_definition"] = asset_definition
+            test_data["should_pass"] = False
+            test_data["description"] = (
+                f"Generate types other than those allowed for the source 'value'"
+            )
+
+            if len(test_data["assets_definition"]):
+                tests["build_test"].append(test_data)
+
+
+def different_types_references(yaml_data):
+    if get_target_field_type(yaml_data) == "all":
+        return
+
+    types = get_types(yaml_data)
+    for i in range(len(types)):
+        allowed_values = get_allowed_values(yaml_data, i)
+        break
+
+    if allowed_values:
+        template = generate_combination_template(yaml_data, allowed_values)
+    else:
+        template = generate_raw_template(yaml_data)
+
+    for case in template:
+        test_data = {"assets_definition": {}, "test_cases": []}
+        all_arguments = []
+        input = {}
+        normalize_list = []
+
+        if "reference" in case:
+            for argument, type_ in zip(case, types):
+                if type(type_) == type:
+                    if argument == "reference":
+                        valid_type = change_type(type_)
+                    else:
+                        valid_type = type_
+                else:
+                    if argument == "reference":
+                        valid_type = change_type(convert_string_to_type(type_))
+                    else:
+                        valid_type = convert_string_to_type(type_)
+
+                if argument == "value":
+                    all_arguments.append(
+                        generate_specific_argument("value", valid_type)
+                    )
+                elif argument == "reference":
+                    reference = generate_specific_argument("reference", valid_type)
+                    input[reference["name"]] = reference["value"]
+                    all_arguments.append(f"$eventJson.{reference['name']}")
+                else:
+                    all_arguments.append(argument)
+
+            stage_map = {"map": []}
+            helper = (
+                f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+            )
+
+            if target_field_is_array(yaml_data):
+                value = generate_specific_argument(
+                    "value",
+                    convert_string_to_type(get_target_field_type(yaml_data)),
+                )
+                if type(value) == list:
+                    target_field_value = value
+                else:
+                    target_field_value = [value]
             else:
-                all_arguments.append(argument)
+                value = generate_specific_argument(
+                    "value",
+                    convert_string_to_type(get_target_field_type(yaml_data)),
+                )
 
-        stage_map = {"map": []}
-        helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
-        target_field_value = generate_specific_argument(
-            "value", convert_string_to_type(get_target_field_type(yaml_data))
-        )
-        if len(inputs) == 0:
-            stage_map["map"].append({"target_field": target_field_value})
-        else:
             stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
             stage_map["map"].append({"target_field": target_field_value})
+            stage_map["map"].append({"target_field": helper})
 
-        normalize_list.append(stage_map)
-        normalize_list.append({"check": [{"target_field": helper}]})
+            normalize_list.append(stage_map)
 
-        expected_result = "failure_in_buildtime"
-        if source == "reference":
-            expected_result = "failure_in_runtime"
+            asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
 
-        new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-        new_test = {
-            "expected_result": expected_result,
-            "inputs": inputs,
-        }
-        test_data["test_cases"].append(new_test)
-        test_data["assets_definition"].append(new_asset_definition)
-        test_data["description"] = (
-            f"Generate types other than those allowed for the source {source}"
-        )
+            test_data["assets_definition"] = asset_definition
+            test_data["test_cases"].append({"input": input, "should_pass": False})
+            test_data["description"] = (
+                f"Generate types other than those allowed for the source 'reference'"
+            )
 
-        tests.append(test_data)
+            if len(test_data["assets_definition"]):
+                tests["run_test"].append(test_data)
 
 
 def different_target_field_type(yaml_data):
     if get_target_field_type(yaml_data) == "all":
         return
 
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    test_data = {"assets_definition": {}, "test_cases": []}
     normalize_list = []
     # Generate values for the target field
     values = [
@@ -410,7 +423,7 @@ def different_target_field_type(yaml_data):
     if target_field_is_array(yaml_data):
         value = generate_specific_argument(
             "value",
-            convert_string_to_type(get_target_field_type(yaml_data)),
+            change_type(convert_string_to_type(get_target_field_type(yaml_data))),
         )
         if type(value) == list:
             target_field_value = value
@@ -419,7 +432,7 @@ def different_target_field_type(yaml_data):
     else:
         value = generate_specific_argument(
             "value",
-            convert_string_to_type(get_target_field_type(yaml_data)),
+            change_type(convert_string_to_type(get_target_field_type(yaml_data))),
         )
 
         if type(value) == list:
@@ -433,27 +446,22 @@ def different_target_field_type(yaml_data):
     normalize_list.append(stage_map)
 
     # Create the new test case
-    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-    new_test = {
-        "expected_result": "failure_in_runtime",
-        "inputs": [],
-    }
+    asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
 
-    test_data["test_cases"].append(new_test)
-    test_data["assets_definition"].append(new_asset_definition)
-    test_data["description"] = "Target field with diferent type"
+    test_data["assets_definition"] = asset_definition
+    test_data["test_cases"].append({"should_pass": False})
+    test_data["description"] = "Different target field type"
 
-    # Append the new test case to the list of tests
-    tests.append(test_data)
+    if len(test_data["assets_definition"]):
+        tests["run_test"].append(test_data)
 
 
 def variadic(yaml_data):
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
-    inputs = []
-    normalize_list = []
     all_arguments = []
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    test_data = {"assets_definition": {}}
+
     if is_variadic(yaml_data):
         number_of_arguments = maximum_number_of_arguments + 1
     else:
@@ -466,62 +474,29 @@ def variadic(yaml_data):
         )
 
         if isinstance(argument, dict):
-            inputs.append({argument["name"]: argument["value"]})
             all_arguments.append(f"$eventJson.{argument['name']}")
         else:
             all_arguments.append(argument)
 
-    stage_map = {"map": []}
     helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
 
-    if target_field_is_array(yaml_data):
-        value = generate_specific_argument(
-            "value",
-            convert_string_to_type(get_target_field_type(yaml_data)),
-        )
-        if type(value) == list:
-            target_field_value = value
-        else:
-            target_field_value = [value]
-    else:
-        value = generate_specific_argument(
-            "value",
-            convert_string_to_type(get_target_field_type(yaml_data)),
-        )
+    normalize_list = [{"target_field": helper}]
 
-        if type(value) == list:
-            target_field_value = value[0]
-        else:
-            target_field_value = value
+    asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
 
-    if len(inputs) == 0:
-        stage_map["map"].append({"target_field": target_field_value})
-    else:
-        stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
-        stage_map["map"].append({"target_field": target_field_value})
+    test_data["assets_definition"] = asset_definition
+    test_data["should_pass"] = False
+    test_data["description"] = "Generate sources other than those allowed"
 
-    stage_map["map"].append({"target_field": helper})
-
-    normalize_list.append(stage_map)
-
-    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-    new_test = {
-        "expected_result": "failure_in_builtime",
-        "inputs": inputs,
-    }
-    test_data["test_cases"].append(new_test)
-    test_data["assets_definition"].append(new_asset_definition)
-    test_data["description"] = "Generate more arguments than the maximum allowed"
-
-    tests.append(test_data)
+    if len(test_data["assets_definition"]):
+        tests["build_test"].append(test_data)
 
 
 def reference_not_exist(yaml_data):
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    test_data = {"assets_definition": {}, "test_cases": []}
     normalize_list = []
-    inputs = []
     all_arguments = []
 
     for i in range(len(sources)):
@@ -559,29 +534,22 @@ def reference_not_exist(yaml_data):
         else:
             target_field_value = value
 
-    if len(inputs) == 0:
-        stage_map["map"].append({"target_field": target_field_value})
-    else:
-        stage_map["map"].append({"_eventJson": "parse_json($event.original)"})
-        stage_map["map"].append({"target_field": target_field_value})
-
+    stage_map["map"].append({"target_field": target_field_value})
     stage_map["map"].append({"target_field": helper})
     normalize_list.append(stage_map)
 
-    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-    new_test = {
-        "expected_result": "failure_in_runtime",
-        "inputs": inputs,
-    }
-    test_data["test_cases"].append(new_test)
-    test_data["assets_definition"].append(new_asset_definition)
+    asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+
+    test_data["assets_definition"] = asset_definition
+    test_data["test_cases"].append({"should_pass": False})
     test_data["description"] = "Generate arguments with references that do not exist"
 
-    tests.append(test_data)
+    if len(test_data["assets_definition"]):
+        tests["run_test"].append(test_data)
 
 
 def target_field_not_exist(yaml_data):
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    test_data = {"assets_definition": {}, "test_cases": []}
     # Generate values for the target field
     values = [
         generate_specific_argument(
@@ -602,30 +570,26 @@ def target_field_not_exist(yaml_data):
     ]
 
     # Create the new test case
-    new_asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-    new_test = {
-        "expected_result": "failure_in_runtime",
-        "inputs": [],
-    }
+    asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
 
-    test_data["test_cases"].append(new_test)
-    test_data["assets_definition"].append(new_asset_definition)
-    test_data["description"] = "Target field not exists"
+    test_data["assets_definition"] = asset_definition
+    test_data["test_cases"].append({"should_pass": False})
+    test_data["description"] = "Target field not exist"
 
-    # Append the new test case to the list of tests
-    tests.append(test_data)
+    if len(test_data["assets_definition"]):
+        tests["run_test"].append(test_data)
 
 
 def generate_test_cases_fail_at_buildtime(yaml_data):
     fewer_arguments_than_the_minimum_required(yaml_data)
     variadic(yaml_data)
     different_sources(yaml_data)
-    different_types(yaml_data, "value")
+    different_types_values(yaml_data)
 
 
 def generate_test_cases_fail_at_runtime(yaml_data):
     reference_not_exist(yaml_data)
-    different_types(yaml_data, "reference")
+    different_types_references(yaml_data)
     target_field_not_exist(yaml_data)
     different_target_field_type(yaml_data)
 
@@ -647,8 +611,7 @@ def generate_test_cases_success_values(yaml_data):
             if case.count("reference") == get_minimum_arguments(yaml_data):
                 continue
             all_arguments = []
-            inputs = []
-            test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+            test_data = {"assets_definition": {}, "test_cases": []}
             normalize_list = []
             for argument, type_ in zip(case, types):
                 if argument == "value":
@@ -689,19 +652,17 @@ def generate_test_cases_success_values(yaml_data):
             stage_map["map"].append({"target_field": helper})
             normalize_list.append(stage_map)
 
-            new_asset_definition = {
+            asset_definition = {
                 "name": "decoder/test/0",
                 "normalize": normalize_list,
             }
-            new_test = {
-                "expected_result": "success",
-                "inputs": inputs,
-            }
-            test_data["test_cases"].append(new_test)
-            test_data["assets_definition"].append(new_asset_definition)
+
+            test_data["assets_definition"] = asset_definition
+            test_data["test_cases"].append({"should_pass": True})
             test_data["description"] = "Generate only valid values"
 
-            tests.append(test_data)
+            if len(test_data["assets_definition"]):
+                tests["run_test"].append(test_data)
 
 
 def generate_test_cases_success_reference(yaml_data):
@@ -716,29 +677,24 @@ def generate_test_cases_success_reference(yaml_data):
     else:
         template = generate_raw_template(yaml_data)
 
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
-    inputs = []
+    test_data = {"assets_definition": {}, "test_cases": []}
+    tc = []
     for k in range(10):
+        input = {}
         for case in template:
             if case.count("values") == get_minimum_arguments(yaml_data):
                 continue
             all_arguments = []
             normalize_list = []
-            i = 0
             for argument, type_ in zip(case, types):
                 if argument == "reference":
                     all_arguments.append(f"$_eventJson.ref_{i}")
-                    inputs.append(
-                        {
-                            f"ref_{i}": generate_random_value(
-                                convert_string_to_type(type_), []
-                            )
-                        }
+                    input[f"ref_{k}"] = generate_random_value(
+                        convert_string_to_type(type_), []
                     )
+                    tc.append({"input": input, "should_pass": True})
                 else:
                     all_arguments.append(argument)
-
-                i = i + 1
 
             stage_map = {"map": []}
             helper = (
@@ -771,16 +727,17 @@ def generate_test_cases_success_reference(yaml_data):
     stage_map["map"].append({"target_field": helper})
     normalize_list.append(stage_map)
 
-    new_asset_definition = {
+    asset_definition = {
         "name": "decoder/test/0",
         "normalize": normalize_list,
     }
-    new_test = {"expected_result": "success", "inputs": inputs}
-    test_data["test_cases"].append(new_test)
-    test_data["assets_definition"] = new_asset_definition
-    test_data["description"] = "Generate only valid references"
 
-    tests.append(test_data)
+    test_data["assets_definition"] = asset_definition
+    test_data["test_cases"] = tc
+    test_data["description"] = "Generate only valid values"
+
+    if len(test_data["assets_definition"]):
+        tests["run_test"].append(test_data)
 
 
 def main():
@@ -804,7 +761,8 @@ def main():
             with open(output_file_path, "w") as file:
                 yaml.dump(tests, file)
 
-            tests.clear()
+            tests["build_test"].clear()
+            tests["run_test"].clear()
 
 
 if __name__ == "__main__":
