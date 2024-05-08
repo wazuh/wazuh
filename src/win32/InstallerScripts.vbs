@@ -348,10 +348,10 @@ public function config()
         setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:r /q"
         WshShell.run setPermsInherit, 0, True
 
-        grantAdminPerm = "icacls """ & install_dir & """ /grant *S-1-5-32-544:F /t"
+        grantAdminPerm = "icacls """ & install_dir & """ /grant *S-1-5-32-544:(OI)(CI)F"
         WshShell.run grantAdminPerm, 0, True
 
-        grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:F /t"
+        grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:(OI)(CI)F"
         WshShell.run grantSystemPerm, 0, True
 
         userSID = GetUserSID()
