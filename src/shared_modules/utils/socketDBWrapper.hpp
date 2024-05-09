@@ -15,12 +15,14 @@
 #include "json.hpp"
 #include "socketClient.hpp"
 #include "socketDBWrapperException.hpp"
+#include "singleton.hpp"
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <utility>
 
 auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {5000};
+auto constexpr WDB_SOCKET {"queue/db/wdb"};
 
 char constexpr DB_WRAPPER_OK[] = {"ok"};
 char constexpr DB_WRAPPER_ERROR[] = {"err"};
@@ -40,7 +42,7 @@ enum class DbQueryStatus : uint8_t
     INVALID_RESPONSE
 };
 
-class SocketDBWrapper final
+class SocketDBWrapper final : public Singleton<SocketDBWrapper>
 {
 private:
     std::unique_ptr<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_dbSocket;
@@ -51,15 +53,17 @@ private:
     std::mutex m_mutexMessage;
     std::mutex m_mutexResponse;
     std::condition_variable m_conditionVariable;
-    std::string m_socketPath;
+    std::atomic<bool> m_teardown {false};
+public:
 
-    void initializeSocket()
+    void init() 
     {
         m_dbSocket =
-            std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(m_socketPath);
+            std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(WDB_SOCKET);
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
+                std::cerr << "Received (SOCKETDBWRAPPER) data: " << body << std::endl;
                 std::scoped_lock lock {m_mutexResponse};
                 std::string responsePacket(body, bodySize);
 
@@ -148,25 +152,18 @@ private:
             });
     }
 
-public:
-    explicit SocketDBWrapper(std::string socketPath)
-        : m_socketPath(std::move(socketPath))
-    {
-        initializeSocket();
-    }
-
     void query(const std::string& query, nlohmann::json& response)
     {
         // Acquire lock to avoid multiple threads sending queries at the same time
         std::scoped_lock lockMessage {m_mutexMessage};
 
+        if (m_teardown.load())
+        {
+            return;
+        }
+
         // Acquire lock before clearing the response
         std::unique_lock lockResponse {m_mutexResponse};
-
-        if (!m_dbSocket)
-        {
-            initializeSocket();
-        }
 
         m_response.clear();
         m_responsePartial.clear();
@@ -174,14 +171,14 @@ public:
         m_exceptionStr.clear();
 
         m_dbSocket->send(query.c_str(), query.size());
-        if (const auto res =
-                m_conditionVariable.wait_for(lockResponse, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
-            res == std::cv_status::timeout)
+        std::cerr << "m_conditionVariable.wait(lockResponse) - BEFORE" << std::endl;
+        m_conditionVariable.wait(lockResponse);
+        std::cerr << "m_conditionVariable.wait(lockResponse) - AFTER" << std::endl;
+
+        // Check if the object was destroyed. If so, return and do not process the response
+        if(m_teardown.load())
         {
-            // Restart the socket connection to avoid the reception of old messages
-            m_dbSocket->stop();
-            initializeSocket();
-            throw std::runtime_error("Timeout waiting for DB response");
+            return;
         }
 
         if (!m_exceptionStr.empty())
@@ -199,6 +196,18 @@ public:
         }
 
         response = m_response;
+    }
+
+    /**
+     * @brief Teardown the Socket DB Wrapper object
+     *
+    */
+    void teardown()
+    {
+        std::cerr<<"Teardown SocketDBWrapper"<<std::endl;
+        m_teardown.store(true);
+        m_conditionVariable.notify_all();
+        m_dbSocket->stop();  
     }
 };
 

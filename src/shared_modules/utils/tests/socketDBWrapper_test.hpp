@@ -13,17 +13,21 @@
 #define _SOCKET_DB_WRAPPER_TEST_HPP
 
 #include "socketServer.hpp"
+#include "socketDBWrapper.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <thread>
 
-auto constexpr TEST_SOCKET {"tmp/temp_sock"};
+auto constexpr TEST_SOCKET {"queue/db/wdb"};
+
 
 class SocketDBWrapperTest : public ::testing::Test
 {
 protected:
     SocketDBWrapperTest()
-        : m_sleepTime {0} {};
+        : m_sleepTime {0} {
+            SocketDBWrapper::instance().init();
+        };
     ~SocketDBWrapperTest() override = default;
 
     void SetUp() override
@@ -34,6 +38,7 @@ protected:
         m_socketServer->listen(
             [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
             {
+                std::cerr<<"Received (SOCKET SERVER) data: "<<data<<std::endl;
                 std::ignore = dataHeader;
                 std::ignore = sizeHeader;
 
@@ -44,12 +49,14 @@ protected:
 
                 for (const auto& response : m_responses)
                 {
+                    std::cerr<<"send (SOCKET SERVER) data: "<<response.c_str()<<std::endl;
                     m_socketServer->send(fd, response.c_str(), response.size());
                 }
             });
     };
     void TearDown() override
     {
+        std::cerr<<"TearDown"<<std::endl;
         m_socketServer->stop();
         m_socketServer.reset();
         m_query.clear();

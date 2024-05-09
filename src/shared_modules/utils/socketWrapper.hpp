@@ -679,6 +679,7 @@ public:
             // Send the data.
             while (bufferSize != amountSent)
             {
+                std::cerr<<"Sending data to socket"<<std::endl;
                 const auto ret =
                     T::send(m_sock, m_sendDataBuffer.data() + amountSent, bufferSize - amountSent, MSG_NOSIGNAL);
 
