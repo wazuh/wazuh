@@ -64,7 +64,7 @@ router_provider_send_fb_func router_provider_send_fb_func_ptr = NULL;
 ROUTER_PROVIDER_HANDLE rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE syscollector_handle = NULL;
 char *manager_node_name = NULL;
-int disable_manager_scan = 0;
+int disable_manager_scan = 1;
 #endif // CLIENT
 
 long syscollector_sync_max_eps = 10;    // Database synchronization number of events per second (default value)
@@ -185,7 +185,7 @@ void* wm_sys_main(wm_sys_t *sys) {
         }
 #ifndef CLIENT
         // Load router module only for manager if is enabled
-        disable_manager_scan = getDefine_Int("vulnerability-detection", "disable_scan_manager",0 ,1);
+        disable_manager_scan = getDefine_Int("vulnerability-detection", "disable_scan_manager", 0, 1);
         if (router_module_ptr = so_get_module_handle("router"), router_module_ptr) {
                 router_provider_create_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_create");
                 router_provider_send_fb_func_ptr = so_get_function_sym(router_module_ptr, "router_provider_send_fb");
