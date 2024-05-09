@@ -171,6 +171,13 @@ def step_impl(context, should: str, name: str):
 
 @then('the error message "{message}" is returned')
 def step_impl(context, message: str):
+    # find '{name}' and replace it with the db path
+    index = message.find("'{")
+    if index != -1:
+        index2 = message.find("}'", index)
+        assert index2 != -1, "missing '}}"
+        message = message[:index+1] + get_db_path(message[index+2:index2]).as_posix() + message[index2+1:]
+
     assert context.response.error == message, f'expected "{message}" but got "{context.response.error}"'
 
 
