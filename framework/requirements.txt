@@ -39,7 +39,7 @@ grpcio==1.58.0
 httpcore==1.0.2
 httpx==0.26.0
 h11==0.14.0
-idna==2.9
+idna==3.7.0
 importlib-metadata==6.8.0
 inflection==0.3.1
 Jinja2==3.1.3
