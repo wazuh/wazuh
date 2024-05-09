@@ -9,6 +9,7 @@ set -x
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+export PATH=/usr/local/bin:/Applications/CMake.app/Contents/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH
 CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
 ARCH="intel64"
 WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
