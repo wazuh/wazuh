@@ -16,7 +16,7 @@ Feature: Manage Geolocation Databases
         Given a non-existent db file "nonexistent.mmdb"
         When I send a request to add a database with path to "nonexistent.mmdb" and type "city"
         Then the response should be a "failure"
-        And the error message "Cannot add database '/home/bee/Project/wazuh/src/engine/test/integration_tests/geo/data/dbs/nonexistent.mmdb': Error opening the specified MaxMind DB file" is returned
+        And the error message "Cannot add database '{nonexistent.mmdb}': Error opening the specified MaxMind DB file" is returned
 
     Scenario: Attempt to add a database with an invalid type
         Given an existing db file "testdb-city.mmdb"
