@@ -63,7 +63,6 @@ router_provider_create_func router_provider_create_func_ptr = NULL;
 router_provider_send_fb_func router_provider_send_fb_func_ptr = NULL;
 ROUTER_PROVIDER_HANDLE rsync_handle = NULL;
 ROUTER_PROVIDER_HANDLE syscollector_handle = NULL;
-char *manager_node_name = NULL;
 int disable_manager_scan = 1;
 #endif // CLIENT
 
@@ -105,7 +104,7 @@ static void wm_sys_send_diff_message(const void* data) {
 #ifndef CLIENT
     if(!disable_manager_scan)
     {
-        char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
+        char* msg_to_send = adapt_delta_message(data, "localhost", "000", "127.0.0.1", NULL);
         if (msg_to_send && router_provider_send_fb_func_ptr) {
             router_provider_send_fb_func_ptr(syscollector_handle, msg_to_send, syscollector_deltas_SCHEMA);
         }
@@ -119,7 +118,7 @@ static void wm_sys_send_dbsync_message(const void* data) {
 #ifndef CLIENT
     if(!disable_manager_scan)
     {
-        char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", manager_node_name, NULL);
+        char* msg_to_send = adapt_sync_message(data, "localhost", "000", "127.0.0.1", NULL);
         if (msg_to_send && router_provider_send_fb_func_ptr) {
             router_provider_send_fb_func_ptr(rsync_handle, msg_to_send, syscollector_synchronization_SCHEMA);
         }
@@ -197,7 +196,6 @@ void* wm_sys_main(wm_sys_t *sys) {
             } else {
                 mwarn("Failed to load router module.");
             }
-            manager_node_name = get_node_name();
 #endif // CLIENT
     } else {
 #ifdef __hpux
@@ -262,7 +260,6 @@ void* wm_sys_main(wm_sys_t *sys) {
 #ifndef CLIENT
     so_free_library(router_module_ptr);
     router_module_ptr = NULL;
-    os_free(manager_node_name);
 #endif // CLIENT
     syscollector_module = NULL;
     mtinfo(WM_SYS_LOGTAG, "Module finished.");

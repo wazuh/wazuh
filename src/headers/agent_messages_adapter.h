@@ -29,10 +29,9 @@ void *agent_data_hash_duplicator(void* data);
  * @param name Name of the agent.
  * @param id Id of the agent.
  * @param ip Ip of the agent.
- * @param node_name Node name which the agent is reporting to.
  * @return char* Returns a string representation of the JSON formatted message. Must be freed by the caller.
  */
-char* adapt_delta_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name, const OSHash *agent_data_hash);
+char* adapt_delta_message(const char* data, const char* name, const char* id, const char* ip, const OSHash *agent_data_hash);
 
 /**
  * @brief Takes a syscollector synchronization message and adapts it to a format compatible with the defined flatbuffer schema.
@@ -41,9 +40,8 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
  * @param name Name of the agent.
  * @param id Id of the agent.
  * @param ip Ip of the agent.
- * @param node_name Node name which the agent is reporting to.
  * @return char* Returns a string representation of the JSON formatted message. Must be freed by the caller.
  */
-char* adapt_sync_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name, const OSHash *agent_data_hash);
+char* adapt_sync_message(const char* data, const char* name, const char* id, const char* ip, const OSHash *agent_data_hash);
 
 #endif // _AGENT_MESSAGES_HELPER_HPP

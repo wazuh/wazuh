@@ -75,7 +75,6 @@ void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite
         j_data = cJSON_CreateObject();
 
         cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
-        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
         switch (component)
