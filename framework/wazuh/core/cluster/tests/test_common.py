@@ -1539,7 +1539,7 @@ def test_error_receiving_agent_information():
 
 
 @patch("wazuh.core.cluster.common.WazuhDBConnection")
-def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
+def test_send_data_to_wdb(WazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class MockWazuhDBConnection:
@@ -1554,6 +1554,8 @@ def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
                 raise TimeoutError
             elif self.exceptions == 1:
                 return ''
+            elif self.exceptions == 2:
+                raise Exception('Cannot execute Global database query; FOREIGN KEY constraint failed')
             else:
                 raise Exception
 
@@ -1571,6 +1573,11 @@ def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
     result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
                                              timeout=15)
     assert result['updated_chunks'] == 2
+
+    WazuhDBConnection_mock.return_value.exceptions += 1
+    result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
+                                             timeout=15)
+    assert result['updated_chunks'] == 0
 
     WazuhDBConnection_mock.return_value.exceptions += 1
     result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
