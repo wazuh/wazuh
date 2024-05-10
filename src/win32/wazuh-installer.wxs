@@ -190,7 +190,7 @@
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  
             <Custom Action="SetPermissionsCustomActionDataValue" Before="InstallFinalize"/>
-            <Custom Action="SetPermissions" After="SetPermissionsCustomActionDataValue"></Custom>
+            <Custom Action="SetPermissions" After="SetPermissionsCustomActionDataValue"/>
         </InstallExecuteSequence>
 
         <Directory Id="TARGETDIR" Name="SourceDir">
