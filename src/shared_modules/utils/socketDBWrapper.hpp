@@ -13,15 +13,14 @@
 #define _SOCKET_DB_WRAPPER_HPP
 
 #include "json.hpp"
+#include "singleton.hpp"
 #include "socketClient.hpp"
 #include "socketDBWrapperException.hpp"
-#include "singleton.hpp"
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <utility>
 
-auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {5000};
 auto constexpr WDB_SOCKET {"queue/db/wdb"};
 
 char constexpr DB_WRAPPER_OK[] = {"ok"};
@@ -54,12 +53,11 @@ private:
     std::mutex m_mutexResponse;
     std::condition_variable m_conditionVariable;
     std::atomic<bool> m_teardown {false};
-public:
 
-    void init() 
+public:
+    void init()
     {
-        m_dbSocket =
-            std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(WDB_SOCKET);
+        m_dbSocket = std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(WDB_SOCKET);
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
@@ -169,11 +167,16 @@ public:
         // coverity[missing_lock]
         m_exceptionStr.clear();
 
+        if (!m_dbSocket)
+        {
+            throw std::runtime_error("Socket DB Wrapper not initialized");
+        }
+
         m_dbSocket->send(query.c_str(), query.size());
         m_conditionVariable.wait(lockResponse);
 
         // Check if the object was destroyed. If so, return and do not process the response
-        if(m_teardown.load())
+        if (m_teardown.load())
         {
             return;
         }
@@ -198,12 +201,12 @@ public:
     /**
      * @brief Teardown the Socket DB Wrapper object
      *
-    */
+     */
     void teardown()
     {
         m_teardown.store(true);
         m_conditionVariable.notify_all();
-        m_dbSocket->stop();  
+        m_dbSocket->stop();
     }
 };
 
