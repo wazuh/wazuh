@@ -38,7 +38,6 @@ protected:
         m_socketServer->listen(
             [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
             {
-                std::cerr<<"Received (SOCKET SERVER) data: "<<data<<std::endl;
                 std::ignore = dataHeader;
                 std::ignore = sizeHeader;
 
@@ -49,14 +48,13 @@ protected:
 
                 for (const auto& response : m_responses)
                 {
-                    std::cerr<<"send (SOCKET SERVER) data: "<<response.c_str()<<std::endl;
                     m_socketServer->send(fd, response.c_str(), response.size());
                 }
             });
     };
     void TearDown() override
     {
-        std::cerr<<"TearDown"<<std::endl;
+        SocketDBWrapper::instance().teardown();
         m_socketServer->stop();
         m_socketServer.reset();
         m_query.clear();

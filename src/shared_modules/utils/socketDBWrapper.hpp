@@ -63,7 +63,6 @@ public:
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
-                std::cerr << "Received (SOCKETDBWRAPPER) data: " << body << std::endl;
                 std::scoped_lock lock {m_mutexResponse};
                 std::string responsePacket(body, bodySize);
 
@@ -171,9 +170,7 @@ public:
         m_exceptionStr.clear();
 
         m_dbSocket->send(query.c_str(), query.size());
-        std::cerr << "m_conditionVariable.wait(lockResponse) - BEFORE" << std::endl;
         m_conditionVariable.wait(lockResponse);
-        std::cerr << "m_conditionVariable.wait(lockResponse) - AFTER" << std::endl;
 
         // Check if the object was destroyed. If so, return and do not process the response
         if(m_teardown.load())
@@ -204,7 +201,6 @@ public:
     */
     void teardown()
     {
-        std::cerr<<"Teardown SocketDBWrapper"<<std::endl;
         m_teardown.store(true);
         m_conditionVariable.notify_all();
         m_dbSocket->stop();  
