@@ -1685,6 +1685,7 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     result : dict
         Dict containing number of updated chunks, error messages (if any) and time spent.
     """
+    ignored_wdb_exceptions = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
     result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
     wdb_conn = WazuhDBConnection()
     before = time.perf_counter()
@@ -1705,6 +1706,9 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
                 except TimeoutError as e:
                     raise e
                 except Exception as e:
+                    if any(ignored_exception in str(e) for ignored_exception in ignored_wdb_exceptions):
+                        continue
+
                     result['error_messages']['chunks'].append((i, str(e)))
     except TimeoutError:
         result['error_messages']['others'].append(f'Timeout while processing {info_type} chunks.')
@@ -1714,7 +1718,6 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     result['time_spent'] = time.perf_counter() - before
     wdb_conn.close()
     return result
-
 
 def asyncio_exception_handler(loop, context: Dict):
     """Exception handler used in the protocol.
