@@ -258,7 +258,7 @@ nlohmann::json SysInfo::getPorts() const
             remoteport = remotedata[1];
 
             if((data[4] != "udp4") && (data[4] != "udp6")) {
-              statedata=toLowerCase(data[7]);
+              statedata = Utils::toLowerCase(data[7]);
             }
 
             if(statedata == "listen") {
