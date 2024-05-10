@@ -117,7 +117,7 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
         <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
 
-        <CustomAction Id="SetCustomActionDataValue2" Return="check" Property="SetPermissions" Value="&quot;[APPLICATIONFOLDER]&quot;" />
+        <CustomAction Id="SetPermissionsCustomActionDataValue" Return="check" Property="SetPermissions" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="SetPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetPermissions" Return="check" Execute="deferred" Impersonate="no"/>
 
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
@@ -189,8 +189,8 @@
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  
-            <Custom Action="SetCustomActionDataValue2" Before="InstallFinalize"/>
-            <Custom Action="SetPermissions" After="SetCustomActionDataValue2"></Custom>
+            <Custom Action="SetPermissionsCustomActionDataValue" Before="InstallFinalize"/>
+            <Custom Action="SetPermissions" After="SetPermissionsCustomActionDataValue"></Custom>
         </InstallExecuteSequence>
 
         <Directory Id="TARGETDIR" Name="SourceDir">
