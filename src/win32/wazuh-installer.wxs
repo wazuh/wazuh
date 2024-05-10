@@ -193,8 +193,6 @@
             <Custom Action="SetPermissions" After="SetCustomActionDataValue2"></Custom>
         </InstallExecuteSequence>
 
-
-
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFilesFolder" Name="PFiles">
                 <Directory Id="APPLICATIONFOLDER" Name="ossec-agent">
