@@ -339,29 +339,7 @@ public function config()
     objFile.WriteLine strNewText
     objFile.Close
 
-    If GetVersion() >= 6 Then
-        Set WshShell = CreateObject("WScript.Shell")
-
-        ' Remove last backslash from home_dir
-        install_dir = Left(home_dir, Len(home_dir) - 1)
-
-        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:r /q"
-        WshShell.run setPermsInherit, 0, True
-
-        grantAdminPerm = "icacls """ & install_dir & """ /grant *S-1-5-32-544:(OI)(CI)F"
-        WshShell.run grantAdminPerm, 0, True
-
-        grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:(OI)(CI)F"
-        WshShell.run grantSystemPerm, 0, True
-
-        userSID = GetUserSID()
-        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
-        WshShell.run grantUserPerm, 0, True
-
-        ' Remove Everyone group for ossec.conf
-        remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
-        WshShell.run remEveryonePerms, 0, True
-    End If
+    SetWazuhPermissions()
 
     config = 0
 
@@ -410,6 +388,40 @@ Public Function StartWazuhSvc()
 	Set WshShell = CreateObject("WScript.Shell")
     StartSvc = "NET START WazuhSvc"
     WshShell.run StartSvc, 0, True
+End Function
+
+Public Function SetWazuhPermissions()
+    strArgs = Session.Property("CustomActionData")
+    args = Split(strArgs, "/+/")
+
+    home_dir= Replace(args(0), Chr(34), "")
+
+    If GetVersion() >= 6 Then
+        Set WshShell = CreateObject("WScript.Shell")
+
+        ' Remove last backslash from home_dir
+        install_dir = Left(home_dir, Len(home_dir) - 1)
+
+        remEveryonePerms = "icacls """ & install_dir & """ /reset /t"
+        WshShell.run remEveryonePerms, 0, True
+
+        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:r /q"
+        WshShell.run setPermsInherit, 0, True
+
+        grantAdminPerm = "icacls """ & install_dir & """ /grant *S-1-5-32-544:(OI)(CI)F"
+        WshShell.run grantAdminPerm, 0, True
+
+        grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:(OI)(CI)F"
+        WshShell.run grantSystemPerm, 0, True
+
+        userSID = GetUserSID()
+        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
+        WshShell.run grantUserPerm, 0, True
+
+        ' Remove Everyone group for ossec.conf
+        remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
+        WshShell.run remEveryonePerms, 0, True
+    End If
 End Function
 
 Private Function GetUserSID()
