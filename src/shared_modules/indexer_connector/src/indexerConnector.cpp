@@ -335,6 +335,11 @@ IndexerConnector::IndexerConnector(
     // Get index name.
     m_indexName = config.at("name").get_ref<const std::string&>();
 
+    if (Utils::haveUpperCaseCharacters(m_indexName))
+    {
+        throw std::runtime_error("Index name must be lowercase.");
+    }
+
     m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
 
     auto secureCommunication = SecureCommunication::builder();
