@@ -113,7 +113,9 @@
         <CustomAction Id="CheckSvcRunning" BinaryKey="InstallerScripts" VBScriptCall="CheckSvcRunning" Return="check" Execute="immediate" Impersonate="no"/>
 
         <CustomAction Id="SetCustomActionDataValue" Return="check" Property="CustomAction_InstallerScripts" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[OS_VERSION]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_PROTOCOL]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
+        <CustomAction Id="SetCustomActionDataForSetWazuhPermissions" Return="check" Property="SetWazuhPermissions" Value="&quot;[APPLICATIONFOLDER]&quot;/+/&quot;[OS_VERSION]&quot;/+/&quot;[WAZUH_MANAGER]&quot;/+/&quot;[WAZUH_MANAGER_PORT]&quot;/+/&quot;[WAZUH_PROTOCOL]&quot;/+/&quot;[NOTIFY_TIME]&quot;/+/&quot;[WAZUH_REGISTRATION_SERVER]&quot;/+/&quot;[WAZUH_REGISTRATION_PORT]&quot;/+/&quot;[WAZUH_REGISTRATION_PASSWORD]&quot;/+/&quot;[WAZUH_KEEP_ALIVE_INTERVAL]&quot;/+/&quot;[WAZUH_TIME_RECONNECT]&quot;/+/&quot;[WAZUH_REGISTRATION_CA]&quot;/+/&quot;[WAZUH_REGISTRATION_CERTIFICATE]&quot;/+/&quot;[WAZUH_REGISTRATION_KEY]&quot;/+/&quot;[WAZUH_AGENT_NAME]&quot;/+/&quot;[WAZUH_AGENT_GROUP]&quot;/+/&quot;[ENROLLMENT_DELAY]&quot;" />
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
+        <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
 
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
@@ -172,6 +174,10 @@
             <!-- Install functions -->
             <Custom Action="SetCustomActionDataValue" After="InstallInitialize">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
             <Custom Action="CustomAction_InstallerScripts" After="SetCustomActionDataValue">(NOT WIX_UPGRADE_DETECTED) AND (NOT PATCH) AND (NOT Installed)</Custom>
+
+            <!-- Set Wazuh permissions on upgrade -->
+            <Custom Action="SetCustomActionDataForSetWazuhPermissions" After="InstallInitialize">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
+            <Custom Action="SetWazuhPermissions" After="SetCustomActionDataForSetWazuhPermissions">(WIX_UPGRADE_DETECTED) OR (PATCH)</Custom>
 
             <!-- Start services if necessary -->
             <Custom Action="StartWazuhSvc" After="InstallServices">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>

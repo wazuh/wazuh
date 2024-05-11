@@ -79,7 +79,7 @@ public function config()
             Else
                 protocol_list=Array(LCase(WAZUH_PROTOCOL))
             End If
-            If WAZUH_MANAGER <> "" Then 
+            If WAZUH_MANAGER <> "" Then
                 Set re = new regexp
                 re.Pattern = "\s+<server>(.|\n)+?</server>"
                 If InStr(WAZUH_MANAGER,",") Then
@@ -91,7 +91,7 @@ public function config()
                 unique_protocol_list=get_unique_array_values(protocol_list)
 
                 if ( UBound(protocol_list) >= UBound(ip_list) And UBound(unique_protocol_list) = 0 ) Or (WAZUH_PROTOCOL = "") Or ( UBound(unique_protocol_list) = 0 And LCase(unique_protocol_list(0)) = "tcp" ) Then
-                    ip_list=get_unique_array_values(ip_list) 
+                    ip_list=get_unique_array_values(ip_list)
                 End If
 
                 not_replaced = True
@@ -151,7 +151,7 @@ public function config()
                 End If
             End If
         End If
-        
+
         If WAZUH_REGISTRATION_SERVER <> "" or WAZUH_REGISTRATION_PORT <> "" or WAZUH_REGISTRATION_PASSWORD <> "" or WAZUH_REGISTRATION_CA <> "" or WAZUH_REGISTRATION_CERTIFICATE <> "" or WAZUH_REGISTRATION_KEY <> "" or WAZUH_AGENT_NAME <> "" or WAZUH_AGENT_GROUP <> "" or ENROLLMENT_DELAY <> "" Then
             enrollment_list = "    <enrollment>" & vbCrLf
             enrollment_list = enrollment_list & "      <enabled>yes</enabled>" & vbCrLf
@@ -162,12 +162,12 @@ public function config()
 
             If WAZUH_REGISTRATION_SERVER <> "" Then
                 strText = Replace(strText, "    </enrollment>", "      <manager_address>" & WAZUH_REGISTRATION_SERVER & "</manager_address>"& vbCrLf &"    </enrollment>")
-            End If  
-            
+            End If
+
             If WAZUH_REGISTRATION_PORT <> "" Then
                 strText = Replace(strText, "    </enrollment>", "      <port>" & WAZUH_REGISTRATION_PORT & "</port>"& vbCrLf &"    </enrollment>")
             End If
-            
+
             If WAZUH_REGISTRATION_PASSWORD <> "" Then
                 Set objFile = objFSO.CreateTextFile(home_dir & "authd.pass", ForWriting)
                 objFile.WriteLine WAZUH_REGISTRATION_PASSWORD
@@ -339,26 +339,7 @@ public function config()
     objFile.WriteLine strNewText
     objFile.Close
 
-    If GetVersion() >= 6 Then
-        Set WshShell = CreateObject("WScript.Shell")
-
-        ' Remove last backslash from home_dir
-        install_dir = Left(home_dir, Len(home_dir) - 1)
-
-        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:d /q"
-        WshShell.run setPermsInherit, 0, True
-
-        remUserPerm = "icacls """ & install_dir & """ /remove *S-1-5-32-545 /q"
-        WshShell.run remUserPerm, 0, True
-
-        userSID = GetUserSID()
-        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
-        WshShell.run grantUserPerm, 0, True
-
-        ' Remove Everyone group for ossec.conf
-        remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
-        WshShell.run remEveryonePerms, 0, True
-    End If
+    SetWazuhPermissions()
 
     config = 0
 
@@ -407,6 +388,40 @@ Public Function StartWazuhSvc()
 	Set WshShell = CreateObject("WScript.Shell")
     StartSvc = "NET START WazuhSvc"
     WshShell.run StartSvc, 0, True
+End Function
+
+Public Function SetWazuhPermissions()
+    strArgs = Session.Property("CustomActionData")
+    args = Split(strArgs, "/+/")
+
+    home_dir= Replace(args(0), Chr(34), "")
+
+    If GetVersion() >= 6 Then
+        Set WshShell = CreateObject("WScript.Shell")
+
+        ' Remove last backslash from home_dir
+        install_dir = Left(home_dir, Len(home_dir) - 1)
+
+        remEveryonePerms = "icacls """ & install_dir & """ /reset /t"
+        WshShell.run remEveryonePerms, 0, True
+
+        setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:r /q"
+        WshShell.run setPermsInherit, 0, True
+
+        grantAdminPerm = "icacls """ & install_dir & """ /grant *S-1-5-32-544:(OI)(CI)F"
+        WshShell.run grantAdminPerm, 0, True
+
+        grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:(OI)(CI)F"
+        WshShell.run grantSystemPerm, 0, True
+
+        userSID = GetUserSID()
+        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
+        WshShell.run grantUserPerm, 0, True
+
+        ' Remove Everyone group for ossec.conf
+        remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
+        WshShell.run remEveryonePerms, 0, True
+    End If
 End Function
 
 Private Function GetUserSID()
