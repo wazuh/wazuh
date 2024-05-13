@@ -9,8 +9,6 @@
             attributes:
               - type: SERVICE_TYPE
             elements:
-              - aws_profile:
-                  value: qa
               - aws_log_groups:
                   value: LOG_GROUP_NAME
               - remove_log_streams:
