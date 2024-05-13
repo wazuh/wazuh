@@ -460,3 +460,32 @@ Public Function SetPermissions()
 
     SetPermissions = 0 
 End Function
+
+Public Function VerifyOrCreateRegistryKey()
+    On Error Resume Next
+    Dim strKeyPath, oReg
+    Dim objCtx, objLocator, objServices
+    Const HKEY_LOCAL_MACHINE = &H80000002
+
+    Set objCtx = CreateObject("WbemScripting.SWbemNamedValueSet")
+    objCtx.Add "__ProviderArchitecture", 64
+    objCtx.Add "__RequiredArchitecture", True
+
+    Set objLocator = CreateObject("WbemScripting.SWbemLocator")
+    Set objServices = objLocator.ConnectServer(".", "root\default", "", "", , , , objCtx)
+    Set oReg = objServices.Get("StdRegProv")
+
+    strKeyPath = "SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\wazuh-agent.exe"
+
+    oReg.CreateKey HKEY_LOCAL_MACHINE, strKeyPath
+    oReg.SetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder", "C:\Dumps"
+    oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpType", 2
+    oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpCount", 10
+
+    Set objCtx = Nothing
+    Set objLocator = Nothing
+    Set objServices = Nothing
+    Set oReg = Nothing
+
+    VerifyOrCreateRegistryKey = 0
+End Function
