@@ -6,7 +6,7 @@
   ID: 99800 - 99860
 -->
 
-<group name="amazon,securityhub">
+<group name="amazon,securityhub,">
 
   <rule id="99800" level="0">
     <if_sid>80200</if_sid>
@@ -242,9 +242,11 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - The S3 bucket used to store CloudTrail logs is publicly accessible.</description>
-    <group>cis_aws_foundations_benchmark_2.3,cis_aws_foundations_benchmark_3.3</group>
+    <group>cis_aws_foundations_benchmark_2.3,cis_aws_foundations_benchmark_3.3,</group>
     <mitre>
       <id>T1213</id>
+      <id>T1119</id>
+      <id>T1530</id>
     </mitre>
   </rule>
 
@@ -254,7 +256,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - CodeBuild Bitbucket source repository URL contains sensitive credentials.</description>
-    <group>pci_dss_8.2.1,nist_800_53_SA.3</group>
+    <group>pci_dss_8.2.1,nist_800_53_SA.3,</group>
     <mitre>
       <id>T1213.003</id>
     </mitre>
@@ -266,7 +268,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - CodeBuild project environment variable contain clear text credentials.</description>
-    <group>pci_dss_8.2.1,nist_800_53_IA.5,nist_800_53_SA.3</group>
+    <group>pci_dss_8.2.1,nist_800_53_IA.5,nist_800_53_SA.3,</group>
     <mitre>
       <id>T1552</id>
     </mitre>
@@ -278,7 +280,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Database Migration Service replication instance is public.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99840" level="12">
@@ -287,7 +289,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon DocumentDB manual cluster snapshot is public.</description>
-    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99841" level="12">
@@ -296,7 +298,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - EBS snapshot is publicly restorable.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99842" level="12">
@@ -305,7 +307,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Security groups allow unrestricted access to ports with high risk.</description>
-    <group>nist_800_53_AC.4,nist_800_53_CA.9,nist_800_53_CM.2,nist_800_53_CM.7,nist_800_53_SC.7</group>
+    <group>nist_800_53_AC.4,nist_800_53_CA.9,nist_800_53_CM.2,nist_800_53_CM.7,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99843" level="12">
@@ -314,7 +316,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon EMR block public access setting not enabled.</description>
-    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99844" level="12">
@@ -323,7 +325,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Elasticsearch domain is publicly accessible.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
     <mitre>
       <id>T1530</id>
     </mitre>
@@ -335,7 +337,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - IAM root user access key exist.</description>
-    <group>pci_dss_2.1,pci_dss_2.2,pci_dss_7.2.1,cis_aws_foundations_benchmark_1.12,cis_aws_foundations_benchmark_1.4,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_AC.6</group>
+    <group>pci_dss_2.1,pci_dss_2.2,pci_dss_7.2.1,cis_aws_foundations_benchmark_1.12,cis_aws_foundations_benchmark_1.4,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_AC.6,</group>
   </rule>
 
   <rule id="99846" level="12">
@@ -344,7 +346,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Hardware MFA not enabled for the root user.</description>
-    <group>pci_dss_8.3.1,cis_aws_foundations_benchmark_1.14,cis_aws_foundations_benchmark_1.6,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_IA.2</group>
+    <group>pci_dss_8.3.1,cis_aws_foundations_benchmark_1.14,cis_aws_foundations_benchmark_1.6,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_IA.2,</group>
     <mitre>
       <id>T1556.006</id>
     </mitre>
@@ -356,7 +358,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - MFA not enabled for the root user.</description>
-    <group>pci_dss_8.3.1,cis_aws_foundations_benchmark_1.13,cis_aws_foundations_benchmark_1.5,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_IA.2</group>
+    <group>pci_dss_8.3.1,cis_aws_foundations_benchmark_1.13,cis_aws_foundations_benchmark_1.5,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_IA.2,</group>
     <mitre>
       <id>T1556.006</id>
     </mitre>
@@ -368,7 +370,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - AWS KMS keys is scheduled for deletion.</description>
-    <group>nist_800_53_SC.12</group>
+    <group>nist_800_53_SC.12,</group>
     <mitre>
       <id>T1485</id>
     </mitre>
@@ -380,7 +382,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Lambda function policies allow public access.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99850" level="12">
@@ -389,7 +391,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Neptune DB cluster snapshot is public.</description>
-    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99851" level="12">
@@ -398,7 +400,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - OpenSearch domain is publicly accessible.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99852" level="12">
@@ -407,7 +409,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - RDS snapshot is public.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99853" level="12">
@@ -416,7 +418,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon RDS instance is publicly accessible.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99854" level="12">
@@ -425,7 +427,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub -  Amazon Redshift cluster is publicly accessible.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99855" level="12">
@@ -434,7 +436,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 general purpose bucket permits public read access.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99856" level="12">
@@ -443,7 +445,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 general purpose bucket permits public write access.</description>
-    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>pci_dss_1.2.1,pci_dss_1.3.1,pci_dss_1.3.2,pci_dss_1.3.4,pci_dss_1.3.6,pci_dss_7.2.1,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99857" level="12">
@@ -452,7 +454,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 access point block public access settings aren't enabled.</description>
-    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99858" level="12">
@@ -461,7 +463,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - AWS Systems Manager document is public.</description>
-    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <!--
@@ -474,7 +476,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon EC2 Instance uses a public IPv4 address.</description>
-    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
   <rule id="99860" level="12">
@@ -483,7 +485,7 @@
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
     <description>AWS Security Hub - Amazon S3 general purpose bucket allows public access at the bucket level.</description>
-    <group>cis_aws_foundations_benchmark_2.1.5,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7</group>
+    <group>cis_aws_foundations_benchmark_2.1.5,nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
-</group>
+,</group>
 
