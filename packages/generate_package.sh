@@ -113,6 +113,7 @@ build() {
 }
 
 help() {
+    set +x
     echo
     echo "Usage: $0 [OPTIONS]"
     echo
