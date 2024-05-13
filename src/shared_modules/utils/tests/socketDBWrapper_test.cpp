@@ -14,7 +14,6 @@
 #include "socketDBWrapper.hpp"
 
 // temp header
-#include "wazuhDBQueryBuilder.hpp"
 #include <chrono>
 #include <thread>
 
@@ -79,7 +78,6 @@ TEST_F(SocketDBWrapperTest, InvalidTest)
     nlohmann::json output;
     EXPECT_THROW(SocketDBWrapper::instance().query(m_query, output), std::exception);
 }
-
 
 TEST_F(SocketDBWrapperTest, OkTest)
 {

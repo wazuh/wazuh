@@ -57,6 +57,7 @@ private:
 public:
     void init()
     {
+        m_teardown.store(false);
         m_dbSocket = std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(WDB_SOCKET);
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
@@ -173,7 +174,8 @@ public:
         }
 
         m_dbSocket->send(query.c_str(), query.size());
-        m_conditionVariable.wait(lockResponse);
+        m_conditionVariable.wait(
+            lockResponse, [this] { return !m_response.empty() || !m_exceptionStr.empty() || m_teardown.load(); });
 
         // Check if the object was destroyed. If so, return and do not process the response
         if (m_teardown.load())
