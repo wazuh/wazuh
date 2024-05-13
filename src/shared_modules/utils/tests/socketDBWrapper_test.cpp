@@ -23,7 +23,6 @@ TEST_F(SocketDBWrapperTest, EmptyTest)
     m_responses = std::vector<std::string> {" "};
 
     nlohmann::json output;
-    // The exception captured here is the timeout
     EXPECT_THROW(SocketDBWrapper::instance().query(m_query, output), std::exception);
 }
 
