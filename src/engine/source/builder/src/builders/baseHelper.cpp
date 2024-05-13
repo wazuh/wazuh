@@ -181,7 +181,8 @@ base::Expression toExpression(const TransformOp& op, const std::string& name)
 base::Expression baseHelperBuilder(const std::string& helperName,
                                    const Reference& targetField,
                                    std::vector<OpArg>& opArgs,
-                                   const std::shared_ptr<const IBuildCtx>& buildCtx)
+                                   const std::shared_ptr<const IBuildCtx>& buildCtx,
+                                   HelperType helperType)
 {
     // Resolve definition
     for (auto i = 0; i < opArgs.size(); ++i)
@@ -207,6 +208,26 @@ base::Expression baseHelperBuilder(const std::string& helperName,
     }
 
     const auto& [validationInfo, builder] = base::getResponse<OpBuilderEntry>(resp);
+
+    // Check builder is the same type as the helper type
+    switch (helperType)
+    {
+        case HelperType::MAP:
+            if (!std::holds_alternative<MapBuilder>(builder) && !std::holds_alternative<TransformBuilder>(builder))
+            {
+                throw std::runtime_error(
+                    fmt::format("Operation builder '{}' is not a map/transform builder", helperName));
+            }
+            break;
+        case HelperType::FILTER:
+            if (!std::holds_alternative<FilterBuilder>(builder))
+            {
+                throw std::runtime_error(fmt::format("Operation builder '{}' is not a filter builder", helperName));
+            }
+            break;
+        default: throw std::runtime_error("Invalid helper type");
+    }
+
     schemf::ValidationToken validationToken;
     // Resolve validator if needed
     if (std::holds_alternative<DynamicValToken>(validationInfo))
@@ -395,7 +416,7 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
             fmt::format("Invalid type for operation definition, got '{}'", json::Json::typeToStr(jValue.type())));
     }
 
-    auto expression = baseHelperBuilder(helperName, targetField, opArgs, buildCtx);
+    auto expression = baseHelperBuilder(helperName, targetField, opArgs, buildCtx, helperType);
     return expression;
 }
 

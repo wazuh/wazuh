@@ -12,3 +12,4 @@ parents:
 normalize:
   - map:
       - wazuh.isInternal: delete()
+      - tmp.json: parse_json($event.original)

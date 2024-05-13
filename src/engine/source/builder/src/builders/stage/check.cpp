@@ -46,7 +46,7 @@ getTermBuilder(const std::shared_ptr<const IBuildCtx>& buildCtx)
     {
         std::function<bool(base::Event)> buildedFn;
 
-        auto op = baseHelperBuilder(token.name, token.targetField, token.args, buildCtx);
+        auto op = baseHelperBuilder(token.name, token.targetField, token.args, buildCtx, builders::HelperType::FILTER);
 
         if (op->isAnd())
         {

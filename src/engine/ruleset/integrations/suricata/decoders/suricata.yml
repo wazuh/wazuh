@@ -15,11 +15,12 @@ metadata:
   description: Decoder for Suricata open source network analysis and threat detection software.
 
 check:
-  - suricata: parse_json($event.original)
-  - suricata.event_type: exists()
+  - tmp.json.event_type: exists()
 
 normalize:
   - map:
+      - suricata: rename($tmp.json)
+      - tmp: delete()
       - destination.address: $suricata.dest_ip
       - destination.bytes: $suricata.flow.bytes_toclient
       - destination.domain: $suricata.http.hostname
