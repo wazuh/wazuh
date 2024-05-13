@@ -478,7 +478,7 @@ Public Function VerifyOrCreateRegistryKey()
     strKeyPath = "SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\wazuh-agent.exe"
 
     oReg.CreateKey HKEY_LOCAL_MACHINE, strKeyPath
-    oReg.SetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder", "C:\Dumps"
+    oReg.SetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder", "C:\Users\wazuh\AppData\Local\CrashDumps"
     oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpType", 2
     oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpCount", 10
 
