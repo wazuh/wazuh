@@ -706,14 +706,18 @@
         <MajorUpgrade Schedule="afterInstallInitialize" AllowDowngrades="yes" />
     </Product>
     <Fragment>
+        <Binary Id="CustomImage" SourceFile="ui\bannrbmp.jpg" />
         <UI>
 	        <Dialog Id="CustomCheckDialog" Width="370" Height="270" Title="Wazuh Agent Setup">
+                <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" 
+                    Text="CustomImage" />
+
                 <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="30"
-                    Text="Select this option to enable automatic core dump generation in case the installation fails." />
+                    Text="Enable this option to activate crash dump generation on process failure." />
 
                 <Control Id="GenerateDumpCheckbox" Type="CheckBox" X="20" Y="100" Width="330" Height="17"
                     Property="GENERATE_DUMP" CheckBoxValue="1"
-                    Text="Enable automatic dump generation" />
+                    Text="Enable crash dump generation" />
 
                 <Control Id="Next" Type="PushButton" X="236" Y="243" Width="75" Height="23" Default="yes" Text="Next">
                     <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
