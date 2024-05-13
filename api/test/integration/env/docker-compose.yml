@@ -209,3 +209,5 @@ services:
       - ${ENV_MODE}
     depends_on:
       - wazuh-master
+      - wazuh-worker1
+      - wazuh-worker2
