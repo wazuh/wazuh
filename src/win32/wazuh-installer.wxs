@@ -712,12 +712,12 @@
                 <Control Id="BannerBitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="44" 
                     Text="CustomImage" />
 
-                <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="30"
-                    Text="Enable this option to activate crash dump generation on process failure." />
+                <Control Id="Description" Type="Text" X="20" Y="60" Width="330" Height="60"
+                    Text="Enabling this option allows Wazuh to generate debug information in the event of an agent failure.&#x0A;This information could be useful to detect and fix the problem that caused it." />
 
-                <Control Id="GenerateDumpCheckbox" Type="CheckBox" X="20" Y="100" Width="330" Height="17"
+                <Control Id="GenerateDumpCheckbox" Type="CheckBox" X="20" Y="150" Width="330" Height="17"
                     Property="GENERATE_DUMP" CheckBoxValue="1"
-                    Text="Enable crash dump generation" />
+                    Text="Enable debug information generation" />
 
                 <Control Id="Next" Type="PushButton" X="236" Y="243" Width="75" Height="23" Default="yes" Text="Next">
                     <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
