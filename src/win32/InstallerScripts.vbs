@@ -482,7 +482,6 @@ Public Function CreateDumpRegistryKey()
     oReg.CreateKey HKEY_LOCAL_MACHINE, strKeyPath
     oReg.SetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder", "%LOCALAPPDATA%\WazuhCrashDumps"
     oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpType", 2
-    oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpCount", 10
 
     Set objCtx = Nothing
     Set objLocator = Nothing
