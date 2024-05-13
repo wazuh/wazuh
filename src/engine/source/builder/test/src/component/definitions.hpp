@@ -78,6 +78,28 @@ auto constexpr DECODER_STAGE_NOT_FOUND_JSON = R"({
     ]
 })";
 
+auto constexpr DECODER_MAP_ON_CHECK_JSON = R"z({
+    "name": "decoder/test/0",
+    "check": [
+        {
+            "field": "map(1)"
+        }
+    ]
+})z";
+
+auto constexpr DECODER_FILTER_ON_MAP_JSON = R"z({
+    "name": "decoder/test/0",
+    "normalize": [
+        {
+            "map": [
+                {
+                    "field": "filter(1)"
+                }
+            ]
+        }
+    ]
+})z";
+
 auto constexpr DECODER_PARENT_WITHOUT_CHECK_JSON = R"({
     "name": "decoder/parent-test/0",
     "parents": ["decoder/Input"]

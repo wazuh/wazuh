@@ -20,16 +20,17 @@ TransformBuilder toTransform(const OpBuilder& builder, const Reference& targetFi
 
 base::Expression toExpression(const TransformOp& op, const std::string& name);
 
-base::Expression baseHelperBuilder(const std::string& helperName,
-                                   const Reference& targetField,
-                                   std::vector<OpArg>& opArgs,
-                                   const std::shared_ptr<const IBuildCtx>& buildCtx);
-
 enum class HelperType
 {
     MAP,
     FILTER
 };
+
+base::Expression baseHelperBuilder(const std::string& helperName,
+                                   const Reference& targetField,
+                                   std::vector<OpArg>& opArgs,
+                                   const std::shared_ptr<const IBuildCtx>& buildCtx,
+                                   HelperType helperType);
 
 base::Expression baseHelperBuilder(const json::Json& definition,
                                    const std::shared_ptr<const IBuildCtx>& buildCtx,
