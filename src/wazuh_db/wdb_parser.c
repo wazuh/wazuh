@@ -5521,7 +5521,6 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         j_agent_info = cJSON_CreateObject();
 
         cJSON_AddStringToObject(j_agent_info, "agent_id", input);
-        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
         cJSON_AddStringToObject(j_msg_to_send, "action", "deleteAgent");

@@ -5,7 +5,6 @@ table AgentInfo {
     agent_ip:string;
     agent_name:string;
     agent_version:string;
-    node_name:string;
 }
 
 table syscollector_hotfixes {
