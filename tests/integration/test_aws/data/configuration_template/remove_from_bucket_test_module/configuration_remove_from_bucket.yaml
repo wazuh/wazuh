@@ -9,8 +9,6 @@
             attributes:
               - type: BUCKET_TYPE
             elements:
-              - aws_profile:
-                  value: qa
               - name:
                   value: BUCKET_NAME
               - remove_from_bucket:

@@ -11,15 +11,17 @@ import pytest
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 from wazuh_testing.modules.aws.utils import log_stream_exists, file_exists
+from wazuh_testing.modules.aws.patterns import REMOVE_S3_FILE
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TestConfigurator, local_internal_options
+from .configurator import configurator
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
-configurator = TestConfigurator(module='remove_from_bucket_test_module')
+configurator.module = 'remove_from_bucket_test_module'
 
 # ---------------------------------------------------- TEST_REMOVE_FROM_BUCKET -----------------------------------------
 # Configure T1 test
@@ -32,9 +34,9 @@ configurator.configure_test(configuration_file='configuration_remove_from_bucket
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_remove_from_bucket(
-    test_configuration, metadata, mark_cases_as_skipped, upload_and_delete_file_to_s3, load_wazuh_basic_configuration,
-    set_wazuh_configuration, clean_s3_cloudtrail_db, configure_local_internal_options_function,
-    truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files, s3_client,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: The uploaded file was removed after the execution.
@@ -53,15 +55,24 @@ def test_remove_from_bucket(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - upload_and_delete_file_to_s3:
+        - mark_cases_as_skipped:
             type: fixture
-            brief: Upload a file to S3 bucket for the day of the execution.
+            brief: Mark certain tests as skipped.
+        - create_test_bucket:
+            type: fixture
+            brief: Create temporal bucket.
+        - manage_bucket_files:
+            type: fixture
+            brief: Create and delete the resources for the test.
+        - s3_client:
+            type: fixture
+            brief: S3 client to access AWS.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -96,14 +107,13 @@ def test_remove_from_bucket(
         'wodles/aws/aws-s3',
         '--bucket', bucket_name,
         '--remove',
-        '--aws_profile', 'qa',
         '--type', metadata['bucket_type'],
         '--debug', '2'
     ]
 
     if path is not None:
-        parameters.insert(6, path)
-        parameters.insert(6, '--trail_prefix')
+        parameters.insert(4, path)
+        parameters.insert(4, '--trail_prefix')
 
     # Check AWS module started
     log_monitor.start(
@@ -121,7 +131,14 @@ def test_remove_from_bucket(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    assert not file_exists(filename=metadata['uploaded_file'], bucket_name=bucket_name)
+    log_monitor.start(
+        timeout=TIMEOUT[20],
+        callback=event_monitor.make_aws_callback(pattern=fr"{REMOVE_S3_FILE}")
+    )
+
+    assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_no_existent_log_group']
+
+    assert not file_exists(filename=metadata['uploaded_file'], bucket_name=bucket_name, client=s3_client)
 
     # Detect any ERROR message
     log_monitor.start(
@@ -143,9 +160,9 @@ configurator.configure_test(configuration_file='configuration_remove_log_stream.
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_remove_log_stream(
-    test_configuration, metadata, create_log_stream, load_wazuh_basic_configuration, set_wazuh_configuration,
-    clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
-    file_monitoring
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        logs_clients, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: The created log stream was removed after the execution.
@@ -170,9 +187,18 @@ def test_remove_log_stream(
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - create_log_stream:
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
             type: fixture
             brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
+        - logs_clients:
+            type: fixture
+            brief: CloudWatch Logs client to check the log stream existence.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -207,7 +233,6 @@ def test_remove_log_stream(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', 'qa',
         '--regions', 'us-east-1',
         '--aws_log_groups', log_group_name,
         '--remove-log-streams',
@@ -230,7 +255,9 @@ def test_remove_log_stream(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    assert not log_stream_exists(log_stream=metadata['log_stream'], log_group=log_group_name)
+    for log_client in logs_clients:
+        assert not log_stream_exists(log_stream=metadata['log_stream_name'], log_group=log_group_name,
+                                     client=log_client)
 
     # Detect any ERROR message
     log_monitor.start(
