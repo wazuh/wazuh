@@ -130,6 +130,7 @@
         <!-- Close the Wazuh agent GUI -->
         <CustomAction Id="CloseGUI" BinaryKey="InstallerScripts" VBScriptCall="KillGUITask" Return="check" Execute="deferred" Impersonate="no"/>
 
+        <CustomAction Id="VerifyOrCreateRegistryKey" BinaryKey="InstallerScripts" VBScriptCall="VerifyOrCreateRegistryKey" Return="check" Execute="deferred" Impersonate="yes" />
         <UI>
             <UIRef Id="WixUI_Advanced" />
             <Publish Dialog="InstallDirDlg" Control="Next" Event="NewDialog" Value="CustomCheckDialog" Order="4"><![CDATA[WIXUI_DONTVALIDATEPATH OR WIXUI_INSTALLDIR_VALID="1"]]></Publish>
@@ -194,6 +195,8 @@
  
             <Custom Action="SetPermissionsCustomActionDataValue" Before="InstallFinalize"/>
             <Custom Action="SetPermissions" After="SetPermissionsCustomActionDataValue"/>
+
+            <Custom Action="VerifyOrCreateRegistryKey" Before="InstallFinalize">GENERATE_DUMP = "1"</Custom>
         </InstallExecuteSequence>
 
         <Directory Id="TARGETDIR" Name="SourceDir">
