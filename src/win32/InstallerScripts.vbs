@@ -462,6 +462,8 @@ Public Function SetPermissions()
 End Function
 
 Public Function VerifyOrCreateRegistryKey()
+
+Public Function CreateDumpRegistryKey()
     On Error Resume Next
     Dim strKeyPath, oReg
     Dim objCtx, objLocator, objServices
@@ -478,7 +480,7 @@ Public Function VerifyOrCreateRegistryKey()
     strKeyPath = "SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\wazuh-agent.exe"
 
     oReg.CreateKey HKEY_LOCAL_MACHINE, strKeyPath
-    oReg.SetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder", "C:\Users\wazuh\AppData\Local\CrashDumps"
+    oReg.SetStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder", "%LOCALAPPDATA%\WazuhCrashDumps"
     oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpType", 2
     oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpCount", 10
 
@@ -487,5 +489,6 @@ Public Function VerifyOrCreateRegistryKey()
     Set objServices = Nothing
     Set oReg = Nothing
 
-    VerifyOrCreateRegistryKey = 0
+    CreateDumpRegistryKey = 0
 End Function
+
