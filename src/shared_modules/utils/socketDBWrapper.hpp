@@ -52,12 +52,13 @@ private:
     std::mutex m_mutexMessage;
     std::mutex m_mutexResponse;
     std::condition_variable m_conditionVariable;
-    std::atomic<bool> m_teardown {false};
+    bool m_teardown {false};
+    bool m_dataReady {false};
 
 public:
     void init()
     {
-        m_teardown.store(false);
+        m_teardown = false;
         m_dbSocket = std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(WDB_SOCKET);
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
@@ -145,6 +146,7 @@ public:
                         m_queryStatus = DbQueryStatus::INVALID_RESPONSE;
                         m_exceptionStr = "DB query invalid response: " + responsePacket;
                     }
+                    m_dataReady = true;
                     m_conditionVariable.notify_one();
                 }
             });
@@ -154,8 +156,9 @@ public:
     {
         // Acquire lock to avoid multiple threads sending queries at the same time
         std::scoped_lock lockMessage {m_mutexMessage};
+        m_dataReady = false;
 
-        if (m_teardown.load())
+        if (m_teardown)
         {
             return;
         }
@@ -174,14 +177,7 @@ public:
         }
 
         m_dbSocket->send(query.c_str(), query.size());
-        m_conditionVariable.wait(
-            lockResponse, [this] { return !m_response.empty() || !m_exceptionStr.empty() || m_teardown.load(); });
-
-        // Check if the object was destroyed. If so, return and do not process the response
-        if (m_teardown.load())
-        {
-            return;
-        }
+        m_conditionVariable.wait(lockResponse, [this] { return m_dataReady || m_teardown; });
 
         if (!m_exceptionStr.empty())
         {
@@ -206,7 +202,7 @@ public:
      */
     void teardown()
     {
-        m_teardown.store(true);
+        m_teardown = true;
         m_conditionVariable.notify_all();
         m_dbSocket->stop();
     }
