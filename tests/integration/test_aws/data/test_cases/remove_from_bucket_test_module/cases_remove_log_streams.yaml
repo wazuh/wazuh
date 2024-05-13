@@ -4,5 +4,7 @@
     SERVICE_TYPE: cloudwatchlogs
     LOG_GROUP_NAME: temporary-log-group
   metadata:
+    resource_type: log_group
     service_type: cloudwatchlogs
     log_group_name: temporary-log-group
+    log_stream_name: wazuh-cloudwatchlogs-integration-tests-stream

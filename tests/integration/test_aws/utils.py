@@ -40,7 +40,8 @@ ERROR_MESSAGE = {
     "incorrect_discard_regex_message": "The AWS module did not show the correct message about discard regex or, "
                                        "did not process the expected amount of logs",
     "failed_sqs_message_retrieval": "The AWS module did not retrieve the expected message from the SQS Queue",
-    "failed_message_handling": "The AWS module did not handle the expected message"
+    "failed_message_handling": "The AWS module did not handle the expected message",
+    "file_not_removed": "The AWS did not show the expected removed file from S3 message"
 }
 
 TIMEOUT = {
