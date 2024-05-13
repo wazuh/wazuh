@@ -131,14 +131,13 @@ TEST_P(BuildPolicy, Doc)
     {
         auto response = expected.failCase()(
             m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
-        try
-        {
-            m_spBuilder->buildPolicy("policy/test/0");
-        }
-        catch (const std::exception& e)
-        {
-            EXPECT_STREQ(e.what(), response.c_str());
-        }
+
+        ASSERT_THROW(
+            try { m_spBuilder->buildPolicy("policy/test/0"); } catch (const std::exception& e) {
+                ASSERT_STREQ(e.what(), response.c_str());
+                throw;
+            },
+            std::runtime_error);
     }
 }
 
@@ -353,14 +352,13 @@ TEST_P(BuildAsset, Doc)
     {
         auto response = expected.failCase()(
             m_spMocks->m_spStore, m_spMocks->m_spDefBuilder, m_spMocks->m_spDef, m_spMocks->m_spSchemf);
-        try
-        {
-            m_spBuilder->buildAsset("decoder/test/0");
-        }
-        catch (const std::exception& e)
-        {
-            EXPECT_STREQ(e.what(), response.c_str());
-        }
+
+        ASSERT_THROW(
+            try { m_spBuilder->buildAsset("decoder/test/0"); } catch (const std::exception& e) {
+                EXPECT_STREQ(e.what(), response.c_str());
+                throw;
+            },
+            std::runtime_error);
     }
 }
 
@@ -422,6 +420,29 @@ INSTANTIATE_TEST_SUITE_P(
                        EXPECT_CALL(*store, readDoc(testing::_))
                            .WillOnce(testing::Return(json::Json {DECODER_STAGE_NOT_FOUND_JSON}));
                        return "Could not find builder for stage 'check_not_found'";
+                   })),
+        BuildA(nullptr,
+               FAILURE(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_))
+                           .WillOnce(testing::Return(json::Json {DECODER_MAP_ON_CHECK_JSON}));
+                       return "Operation builder 'map' is not a filter builder";
+                   })),
+        BuildA(nullptr,
+               FAILURE(
+                   [](const std::shared_ptr<MockStore>& store,
+                      const std::shared_ptr<MockDefinitionsBuilder>& defBuild,
+                      const std::shared_ptr<defs::mocks::MockDefinitions>& def,
+                      const std::shared_ptr<schemf::mocks::MockSchema>& schemf)
+                   {
+                       EXPECT_CALL(*store, readDoc(testing::_))
+                           .WillOnce(testing::Return(json::Json {DECODER_FILTER_ON_MAP_JSON}));
+                       return "In stage 'normalize' builder for block 'map' failed with error: Operation builder "
+                              "'filter' is not a map/transform builder";
                    })),
         BuildA(base::And::create("decoder/test/0",
                                  {base::And::create("condition",
