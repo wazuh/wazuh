@@ -265,6 +265,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GET_AGENTS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
+    WDB_STMT_GLOBAL_GET_AGENTS_TO_RECALCULATE_GROUP_HASH,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT,
     WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS,
@@ -1160,6 +1161,16 @@ int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 int wdb_parse_get_groups_integrity(wdb_t * wdb, char * input, char* output);
 
 /**
+ * @brief Function to recalculate the agent group hash in global.db.
+ *
+ * @param wdb The global struct database.
+ * @param output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output);
+
+/**
  * @brief Function to get all the agent information.
  *
  * @param wdb The global struct database.
@@ -1332,14 +1343,25 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
 
 /**
  * @brief Function to recalculate the agent group hash.
+ *        Compares the new hash with the old one, if they are different it updates it in the database.
  *
  * @param [in] wdb The global struct database.
  * @param [in] agent_id Int with the agent id.
  * @param [in] sync_status String with the sync_status to be set.
+ * @param [in] old_hash String with the old hash.
  * @return WDBC_OK Success.
  *         WDBC_ERROR On error.
  */
-int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status);
+int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status, const char* old_hash);
+
+/**
+ * @brief Function to recalculate the agent group hash for all agents.
+ *
+ * @param [in] wdb The global struct database.
+ * @return OS_SUCCESS Success.
+ *         OS_INVALID On error.
+ */
+int wdb_global_recalculate_all_agent_groups_hash(wdb_t* wdb);
 
 /**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
