@@ -2,6 +2,7 @@
 
 import argparse
 import itertools
+import json
 import random
 import shutil
 from pathlib import Path
@@ -53,12 +54,18 @@ def convert_string_to_type(str_type: str):
     """
     if str_type == "integer":
         return int
+    if str_type == "object":
+        return json
+    if str_type == "array":
+        return list
     elif str_type == "string":
         return str
     elif str_type == "float":
         return float
     elif str_type == "boolean":
         return bool
+    elif str_type == "all":
+        return random.choice([int, str, float, list, bool])
 
 
 def load_yaml(file_path):
@@ -137,13 +144,15 @@ def generate_random_value(type_, allowed_values):
             return random.uniform(1, 9)
         elif type_ == bool:
             return True
+        elif type_ == json:
+            return json.dumps({"key": "value"})
         elif type_ == str:
             return "".join(
                 random.choice("abcdefghijklmnopqrstuvwxyz")
                 for _ in range(random.randint(1, 10))
             )
         elif type_ == list:
-            return [1, 23, 56, 7]
+            return [7]
     else:
         return random.choice(allowed_values)
 
@@ -318,7 +327,7 @@ def filter_invalid_arguments(values):
 
 def different_types_values(yaml_data):
     types = get_types(yaml_data)
-    all_types = [str, int, float, list, bool]
+    all_types = [str, int, float, list, bool, json]
 
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
@@ -383,7 +392,7 @@ def same_value_types(dictionary):
 
 def different_types_references(yaml_data):
     types = get_types(yaml_data)
-    all_types = [str, int, float, list, bool]
+    all_types = [str, int, float, list, bool, json]
 
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
@@ -462,7 +471,7 @@ def different_target_field_type(yaml_data):
     # Generate values for the target field
     values = [
         generate_specific_argument(
-            "value", convert_string_to_type(get_target_field_type(yaml_data))
+            "value", convert_string_to_type(get_types(yaml_data)[0])
         )
         for _ in range(get_minimum_arguments(yaml_data))
     ]
@@ -583,7 +592,7 @@ def target_field_not_exist(yaml_data):
     # Generate values for the target field
     values = [
         generate_specific_argument(
-            "value", convert_string_to_type(get_target_field_type(yaml_data))
+            "value", convert_string_to_type(get_types(yaml_data)[0])
         )
         for _ in range(get_minimum_arguments(yaml_data))
     ]
@@ -736,6 +745,7 @@ def main():
                 input_file = input_file.resolve()
             if input_file == file_path:
                 yaml_data = load_yaml(file_path)
+                break
         else:
             # Check if the file is a YML type
             if file_path.suffix == ".yml" or file_path.suffix == ".yaml":
@@ -774,7 +784,7 @@ def main():
 
         # Define the output file path
         output_file_path = output_dir / f"{get_name(yaml_data)}.yml"
-        tests["helper_type"] = "map"
+        tests["helper_type"] = "filter"
         with open(output_file_path, "w") as file:
             yaml.dump(tests, file)
 
