@@ -9,8 +9,6 @@
             attributes:
               - type: SERVICE_TYPE
             elements:
-              - aws_profile:
-                  value: qa
               - only_logs_after:
                   value: 2023-JAN-12
               - regions:

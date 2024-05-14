@@ -9,8 +9,6 @@
             attributes:
               - type: cloudtrail
             elements:
-              - aws_profile:
-                  value: qa
               - name:
                   value: wazuh-cloudtrail-integration-tests
               - regions:
@@ -19,8 +17,6 @@
             attributes:
               - type: cloudtrail
             elements:
-              - aws_profile:
-                  value: qa
               - name:
                   value: wazuh-cloudtrail-integration-tests
               - regions:
@@ -29,8 +25,6 @@
             attributes:
               - type: cloudwatchlogs
             elements:
-              - aws_profile:
-                  value: qa
               - aws_log_groups:
                   value: wazuh-cloudwatchlogs-integration-tests
               - regions:
@@ -39,8 +33,6 @@
             attributes:
               - type: cloudwatchlogs
             elements:
-              - aws_profile:
-                  value: qa
               - aws_log_groups:
                   value: wazuh-cloudwatchlogs-integration-tests
               - regions:

@@ -7,7 +7,5 @@
             value: 'no'
         - bucket:
             elements:
-              - aws_profile:
-                  value: qa
               - name:
                   value: wazuh-cloudtrail-integration-tests

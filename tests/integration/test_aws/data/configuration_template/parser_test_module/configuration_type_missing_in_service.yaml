@@ -7,7 +7,5 @@
             value: 'no'
         - service:
             elements:
-              - aws_profile:
-                  value: qa
               - name:
                   aws_log_groups: wazuh-cloudwatch-integration-tests

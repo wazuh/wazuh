@@ -6,7 +6,8 @@
     ONLY_LOGS_AFTER: 2022-NOV-20
   metadata:
     service_type: cloudwatchlogs
+    resource_type: log_group
     log_group_name: wazuh-cloudwatchlogs-integration-tests
+    log_stream_name: wazuh-cloudwatchlogs-integration-tests-stream
     only_logs_after: 2022-NOV-20
     expected_results: 3
-    log_stream: permanent-logs
