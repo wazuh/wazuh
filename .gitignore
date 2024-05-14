@@ -71,6 +71,6 @@ _deps
 *.csv
 
 # Helper test output file
-test/helper_tests/map/*output.yml
-test/helper_tests/filter/*output.yml
-test/helper_tests/transformation/*output.yml
+test/helper_tests/map/outputs/*
+test/helper_tests/filter/outputs/*
+test/helper_tests/transformation/outputs/*
