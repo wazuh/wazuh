@@ -21,6 +21,7 @@
         <Property Id="WAZUH_AGENT_NAME" Secure="yes"/>
         <Property Id="WAZUH_AGENT_GROUP" Secure="yes"/>
         <!-- Deprecated options -->
+        
         <Property Id="ADDRESS" Secure="yes"/>
         <Property Id="GROUP" Secure="yes"/>
         <Property Id="SERVER_PORT" Secure="yes"/>
