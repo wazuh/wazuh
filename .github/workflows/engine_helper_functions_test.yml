@@ -69,5 +69,4 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/helper_tests/initialState.py -e /tmp/actions
 
     - name: Healper Functions Test
-      # Run integration tests using behave
       run: python3 ${{env.ENGINE_DIR}}/test/helper_tests/run.py -e /tmp/actions --failure_cases

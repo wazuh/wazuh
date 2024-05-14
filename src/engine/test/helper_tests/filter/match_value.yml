@@ -1,0 +1,15 @@
+# Name of the helper function
+name: match_value
+
+# Arguments expected by the helper function
+arguments:
+  - id: 1
+    type: array  # Expected type is integer
+    source: both # includes values or references (their names start with $)
+
+target_field:
+  type: all
+  is_array: false
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
