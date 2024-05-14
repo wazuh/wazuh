@@ -354,7 +354,7 @@ def handle_test_result(
                         "description": {
                             "message": description,
                             "asset": asset,
-                            "response": response,
+                            "response": result,
                             "expected": expected,
                         },
                     }
@@ -372,7 +372,7 @@ def handle_test_result(
                         "description": {
                             "message": description,
                             "asset": asset,
-                            "response": response,
+                            "response": result,
                             "expected": expected,
                         },
                     }
@@ -517,28 +517,17 @@ def run_test_cases_executor(api_client, socket_path):
                     for file in files:
                         helper_name = file.stem
                         for i, build_tests in enumerate(load_yaml(file)["build_test"]):
-                            if i == 0:
-                                create_asset_for_buildtime(
-                                    api_client,
-                                    build_tests["id"],
-                                    build_tests["assets_definition"],
-                                    helper_name,
-                                    build_tests["description"],
-                                    build_tests["should_pass"],
-                                    successful_tests,
-                                    failure_tests,
-                                )
-                            else:
-                                update_asset(
-                                    api_client,
-                                    build_tests["id"],
-                                    build_tests["assets_definition"],
-                                    helper_name,
-                                    build_tests["description"],
-                                    build_tests["should_pass"],
-                                    successful_tests,
-                                    failure_tests,
-                                )
+                            run_command(f"engine-clear -f --api-sock {socket_path}")
+                            create_asset_for_buildtime(
+                                api_client,
+                                build_tests["id"],
+                                build_tests["assets_definition"],
+                                helper_name,
+                                build_tests["description"],
+                                build_tests["should_pass"],
+                                successful_tests,
+                                failure_tests,
+                            )
                         for _, run_tests in enumerate(load_yaml(file)["run_test"]):
                             run_command(f"engine-clear -f --api-sock {socket_path}")
                             delete_session(api_client)
