@@ -6,7 +6,7 @@
   ID: 99800 - 99860
 -->
 
-<group name="amazon,securityhub,">
+<group name="aws_security_hub,">
 
   <rule id="99800" level="0">
     <if_sid>80200</if_sid>
@@ -336,7 +336,7 @@
     <field name="aws.finding.Compliance.SecurityControlId">^IAM.4$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
-    <description>AWS Security Hub - IAM root user access key exist.</description>
+    <description>AWS Security Hub - IAM root user access key exists.</description>
     <group>pci_dss_2.1,pci_dss_2.2,pci_dss_7.2.1,cis_aws_foundations_benchmark_1.12,cis_aws_foundations_benchmark_1.4,nist_800_53_AC.2,nist_800_53_AC.3,nist_800_53_AC.6,</group>
   </rule>
 
@@ -369,7 +369,7 @@
     <field name="aws.finding.Compliance.SecurityControlId">^KMS.3$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
-    <description>AWS Security Hub - AWS KMS keys is scheduled for deletion.</description>
+    <description>AWS Security Hub - AWS KMS keys scheduled for deletion.</description>
     <group>nist_800_53_SC.12,</group>
     <mitre>
       <id>T1485</id>
@@ -453,7 +453,7 @@
     <field name="aws.finding.Compliance.SecurityControlId">^S3.19$</field>
     <field name="aws.finding.Compliance.Status">FAILED</field>
     <field name="aws.finding.RecordState">ACTIVE</field>
-    <description>AWS Security Hub - Amazon S3 access point block public access settings aren't enabled.</description>
+    <description>AWS Security Hub - Amazon S3 access point block public access settings are not enabled.</description>
     <group>nist_800_53_AC.3,nist_800_53_AC.4,nist_800_53_AC.6,nist_800_53_AC.21,nist_800_53_SC.7,</group>
   </rule>
 
