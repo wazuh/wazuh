@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
+import argparse
 import itertools
 import random
+import shutil
 from pathlib import Path
 
 import yaml
@@ -9,6 +11,33 @@ import yaml
 tests = {"build_test": [], "run_test": []}
 reference_counter = 0
 maximum_number_of_arguments = 40
+id_counter = 0
+input_file = ""
+
+
+def parse_arguments():
+    global input_file
+
+    parser = argparse.ArgumentParser(description="Run Helpers test for Engine.")
+    parser.add_argument(
+        "-i",
+        "--input_file",
+        help="Absolute or relative path where the description of the helper function is located",
+    )
+
+    args = parser.parse_args()
+    input_file = args.input_file
+
+
+def reset_id():
+    global id_counter
+    id_counter = 0
+
+
+def increase_id():
+    global id_counter
+    id_counter = id_counter + 1
+    return id_counter
 
 
 def convert_string_to_type(str_type: str):
@@ -94,7 +123,7 @@ def change_source(source):
 
 
 def change_type(type_):
-    data_types = [int, float, str, list]
+    data_types = [int, float, str, list, bool]
     data_types.remove(type_)
     selected_type = random.choice(data_types)
     return selected_type
@@ -106,6 +135,8 @@ def generate_random_value(type_, allowed_values):
             return random.randint(1, 9)
         elif type_ == float:
             return random.uniform(1, 9)
+        elif type_ == bool:
+            return True
         elif type_ == str:
             return "".join(
                 random.choice("abcdefghijklmnopqrstuvwxyz")
@@ -212,6 +243,7 @@ def fewer_arguments_than_the_minimum_required(yaml_data):
         test_data["assets_definition"] = asset_definition
         test_data["should_pass"] = False
         test_data["description"] = f"Test with fewer parameters for helper function."
+        test_data["id"] = increase_id()
         tests["build_test"].append(test_data)
 
 
@@ -264,13 +296,29 @@ def different_sources(yaml_data):
         test_data["assets_definition"] = asset_definition
         test_data["should_pass"] = False
         test_data["description"] = "Generate sources other than those allowed"
+        test_data["id"] = increase_id()
 
         if len(test_data["assets_definition"]):
             tests["build_test"].append(test_data)
 
 
+def filter_invalid_arguments(values):
+    type_counts = {}
+    for value in values:
+        value_type = type(value)
+        if value_type in type_counts:
+            type_counts[value_type] += 1
+        else:
+            type_counts[value_type] = 1
+    for count in type_counts.values():
+        if count > 1:
+            return False
+    return True
+
+
 def different_types_values(yaml_data):
     types = get_types(yaml_data)
+    all_types = [str, int, float, list, bool]
 
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
@@ -282,46 +330,60 @@ def different_types_values(yaml_data):
         template = generate_raw_template(yaml_data)
 
     for case in template:
-        test_data = {"assets_definition": {}, "should_pass": False, "description": ""}
-        all_arguments = []
+        if case.count("reference") == 0:
+            for k in range(case.count("value")):
+                all_types.remove(convert_string_to_type(types[k]))
+                for all_type in all_types:
+                    test_data = {
+                        "assets_definition": {},
+                        "should_pass": False,
+                        "description": "",
+                    }
+                    all_arguments = []
+                    for index, (argument, type_) in enumerate(zip(case, types)):
+                        if argument == "value":
+                            valid_type = convert_string_to_type(type_)
+                            if k == index:
+                                valid_type = all_type
+                            all_arguments.append(
+                                generate_specific_argument("value", valid_type)
+                            )
+                        else:
+                            all_arguments.append(argument)
 
-        if "value" in case:
-            for argument, type_ in zip(case, types):
-                if type(type_) == type:
-                    valid_type = change_type(type_)
-                else:
-                    valid_type = change_type(convert_string_to_type(type_))
+                    if filter_invalid_arguments(all_arguments):
+                        helper = f"{get_name(yaml_data)}({', '.join(str(v) if v is not True else 'true' for v in all_arguments)})"
 
-                if argument == "value":
-                    all_arguments.append(
-                        generate_specific_argument("value", valid_type)
+                    normalize_list = [{"check": [{"target_field": helper}]}]
+
+                    asset_definition = {
+                        "name": "decoder/test/0",
+                        "normalize": normalize_list,
+                    }
+
+                    test_data["assets_definition"] = asset_definition
+                    test_data["should_pass"] = False
+                    test_data["description"] = (
+                        f"Generate types other than those allowed for the source 'value'"
                     )
-                elif argument == "reference":
-                    reference = generate_specific_argument("reference", valid_type)
-                    all_arguments.append(f"$eventJson.{reference['name']}")
-                else:
-                    all_arguments.append(argument)
+                    test_data["id"] = increase_id()
 
-            helper = (
-                f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
-            )
+                    if len(test_data["assets_definition"]):
+                        tests["build_test"].append(test_data)
 
-            normalize_list = [{"check": [{"target_field": helper}]}]
-
-            asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
-
-            test_data["assets_definition"] = asset_definition
-            test_data["should_pass"] = False
-            test_data["description"] = (
-                f"Generate types other than those allowed for the source 'value'"
-            )
-
-            if len(test_data["assets_definition"]):
-                tests["build_test"].append(test_data)
+                all_types.append(convert_string_to_type(types[k]))
 
 
-def different_types_reference(yaml_data):
+def same_value_types(dictionary):
+    if len(dictionary) < 1:
+        return True
+    value_types = set(type(value) for value in dictionary.values())
+    return len(value_types) > 1
+
+
+def different_types_references(yaml_data):
     types = get_types(yaml_data)
+    all_types = [str, int, float, list, bool]
 
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
@@ -333,64 +395,69 @@ def different_types_reference(yaml_data):
         template = generate_raw_template(yaml_data)
 
     for case in template:
-        test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
-        all_arguments = []
-        input = {}
+        if case.count("value") == 0:
+            tc = []
+            for k in range(case.count("reference")):
+                all_types.remove(convert_string_to_type(types[k]))
+                for all_type in all_types:
+                    test_data = {
+                        "assets_definition": {},
+                        "test_cases": [],
+                        "description": "",
+                    }
+                    all_arguments = []
+                    input = {}
+                    for index, (argument, type_) in enumerate(zip(case, types)):
+                        if argument == "reference":
+                            valid_type = convert_string_to_type(type_)
+                            if k == index:
+                                valid_type = all_type
 
-        if "reference" in case:
-            for argument, type_ in zip(case, types):
-                if type(type_) == type:
-                    if argument == "reference":
-                        valid_type = change_type(type_)
-                    else:
-                        valid_type = type_
-                else:
-                    if argument == "reference":
-                        valid_type = change_type(convert_string_to_type(type_))
-                    else:
-                        valid_type = convert_string_to_type(type_)
+                            input[f"ref{index}"] = generate_specific_argument(
+                                "value", valid_type
+                            )
 
-                if argument == "value":
-                    all_arguments.append(
-                        generate_specific_argument("value", valid_type)
-                    )
-                elif argument == "reference":
-                    reference = generate_specific_argument("reference", valid_type)
-                    input[reference["name"]] = reference["value"]
-                    all_arguments.append(f"$eventJson.{reference['name']}")
-                else:
-                    all_arguments.append(argument)
+                            all_arguments.append(f"$eventJson.ref{index}")
+                        else:
+                            all_arguments.append(argument)
 
-            helper = (
-                f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
-            )
+                    if not same_value_types(input):
+                        tc.append(
+                            {"input": input, "id": increase_id(), "should_pass": False}
+                        )
+                    helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+                all_types.append(convert_string_to_type(types[k]))
 
-            normalize_list = [
-                {"map": [{"eventJson": "parse_json($event.original)"}]},
+    normalize_list = [
+        {"map": [{"eventJson": "parse_json($event.original)"}]},
+        {
+            "check": [{"target_field": helper}],
+            "map": [
                 {
-                    "check": [{"target_field": helper}],
-                    "map": [
-                        {
-                            "verification_field": "It is used to verify if the check passed correctly"
-                        }
-                    ],
-                },
-            ]
+                    "verification_field": "It is used to verify if the check passed correctly"
+                }
+            ],
+        },
+    ]
 
-            asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+    asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
 
-            test_data["assets_definition"] = asset_definition
-            test_data["test_cases"].append({"input": input})
-            test_data["description"] = (
-                f"Generate types other than those allowed for the source 'reference'"
-            )
+    test_data["assets_definition"] = asset_definition
+    test_data["test_cases"] = tc
+    test_data["description"] = (
+        f"Generate types other than those allowed for the source 'reference'"
+    )
 
-            if len(test_data["assets_definition"]):
-                tests["run_test"].append(test_data)
+    if len(test_data["assets_definition"]):
+        tests["run_test"].append(test_data)
 
 
 def different_target_field_type(yaml_data):
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    test_data = {
+        "assets_definition": [],
+        "test_cases": [{"should_pass": False, "id": increase_id()}],
+        "description": "",
+    }
     normalize_list = []
     # Generate values for the target field
     values = [
@@ -459,14 +526,18 @@ def variadic(yaml_data):
     test_data["assets_definition"] = asset_definition
     test_data["should_pass"] = False
     test_data["description"] = "Generate more arguments than the maximum allowed"
-
+    test_data["id"] = increase_id()
     tests["build_test"].append(test_data)
 
 
 def reference_not_exist(yaml_data):
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
-    test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
+    test_data = {
+        "assets_definition": {},
+        "test_cases": [{"should_pass": False, "id": increase_id()}],
+        "description": "",
+    }
 
     all_arguments = []
 
@@ -504,7 +575,11 @@ def reference_not_exist(yaml_data):
 
 
 def target_field_not_exist(yaml_data):
-    test_data = {"assets_definition": [], "test_cases": [], "description": ""}
+    test_data = {
+        "assets_definition": [],
+        "test_cases": [{"should_pass": False, "id": increase_id()}],
+        "description": "",
+    }
     # Generate values for the target field
     values = [
         generate_specific_argument(
@@ -548,7 +623,7 @@ def generate_test_cases_fail_at_buildtime(yaml_data):
 
 def generate_test_cases_fail_at_runtime(yaml_data):
     reference_not_exist(yaml_data)
-    different_types_reference(yaml_data)
+    different_types_references(yaml_data)
     target_field_not_exist(yaml_data)
     different_target_field_type(yaml_data)
 
@@ -599,9 +674,7 @@ def generate_test_cases_success(yaml_data):
                     ]
                 }
             ]
-            new_test = {
-                "input": input,
-            }
+            new_test = {"input": input, "id": increase_id()}
 
             normalize_list.append(
                 {
@@ -623,6 +696,7 @@ def generate_test_cases_success(yaml_data):
             test_data["test_cases"].append(new_test)
         else:
             test_data["should_pass"] = True
+            test_data["id"] = increase_id()
 
         test_data["description"] = "Generate valid arguments"
 
@@ -634,27 +708,80 @@ def generate_test_cases_success(yaml_data):
 
 
 def main():
+    parse_arguments()
+    global input_file
+    if input_file:
+        input_file = Path(input_file)
+
     # Get the directory where the script is located
     script_dir = Path(__file__).resolve().parent
+    yaml_data = None
+
+    # Define the path to the output directory
+    output_dir = script_dir / "outputs"
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Clean the output directory after processing all files
+    for item in output_dir.iterdir():
+        if item.is_file() or item.is_symlink():
+            item.unlink()
+        elif item.is_dir():
+            shutil.rmtree(item)
 
     # Loop through the files in the directory
     for file_path in script_dir.iterdir():
-        # Check if the file is a YML type
-        if file_path.suffix == ".yml" or file_path.suffix == ".yaml":
-            # Load the file and process it
-            yaml_data = load_yaml(file_path)
+        if input_file:
+            # If input_file is relative, convert it to absolute
+            if not input_file.is_absolute():
+                input_file = input_file.resolve()
+            if input_file == file_path:
+                yaml_data = load_yaml(file_path)
+        else:
+            # Check if the file is a YML type
+            if file_path.suffix == ".yml" or file_path.suffix == ".yaml":
+                # Load the file and process it
+                yaml_data = load_yaml(file_path)
 
-            generate_test_cases_fail_at_buildtime(yaml_data)
-            generate_test_cases_fail_at_runtime(yaml_data)
-            generate_test_cases_success(yaml_data)
+                if yaml_data:
+                    reset_id()
 
-            # Save results in YAML file
-            output_file_path = script_dir / f"{get_name(yaml_data)}_output.yml"
-            with open(output_file_path, "w") as file:
-                yaml.dump(tests, file)
+                    generate_test_cases_fail_at_buildtime(yaml_data)
+                    generate_test_cases_fail_at_runtime(yaml_data)
+                    generate_test_cases_success(yaml_data)
 
-            tests["build_test"].clear()
-            tests["run_test"].clear()
+                    # Save results in YAML file
+                    # Define the path to the output directory
+                    output_dir = script_dir / "outputs"
+                    output_dir.mkdir(
+                        parents=True, exist_ok=True
+                    )  # Create the "outputs" directory if it doesn't exist
+
+                    # Define the output file path
+                    output_file_path = output_dir / f"{get_name(yaml_data)}.yml"
+                    tests["helper_type"] = "filter"
+                    with open(output_file_path, "w") as file:
+                        yaml.dump(tests, file)
+
+                    tests["build_test"].clear()
+                    tests["run_test"].clear()
+
+    if yaml_data:
+        reset_id()
+
+        generate_test_cases_fail_at_buildtime(yaml_data)
+        generate_test_cases_fail_at_runtime(yaml_data)
+        generate_test_cases_success(yaml_data)
+
+        # Define the output file path
+        output_file_path = output_dir / f"{get_name(yaml_data)}.yml"
+        tests["helper_type"] = "map"
+        with open(output_file_path, "w") as file:
+            yaml.dump(tests, file)
+
+        tests["build_test"].clear()
+        tests["run_test"].clear()
+    else:
+        print(f"File '{input_file}' not exist")
 
 
 if __name__ == "__main__":
