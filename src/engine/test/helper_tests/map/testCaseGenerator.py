@@ -111,16 +111,18 @@ def get_special_cases(yaml_data, argument_id):
 
 def get_sources(yaml_data):
     sources = []
-    for argument in yaml_data["arguments"].values():
-        if argument["source"]:
-            sources.append(argument["source"])
+    if 0 < len(yaml_data["arguments"]):
+        for argument in yaml_data["arguments"].values():
+            if argument["source"]:
+                sources.append(argument["source"])
     return sources
 
 
 def get_types(yaml_data):
     types = []
-    for argument in yaml_data["arguments"].values():
-        types.append(argument["type"])
+    if 0 < len(yaml_data["arguments"]):
+        for argument in yaml_data["arguments"].values():
+            types.append(argument["type"])
     return types
 
 
@@ -716,7 +718,7 @@ def generate_test_cases_success(yaml_data):
             elif argument == "reference":
                 if get_minimum_arguments(yaml_data) == 1:
                     reference = generate_argument(
-                        type_, argument, allowed_values, False
+                        convert_string_to_type(type_), argument, allowed_values, False
                     )
                 else:
                     reference = generate_specific_argument(

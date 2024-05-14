@@ -3,11 +3,9 @@ name: date_from_epoch
 
 # Arguments expected by the helper function
 arguments:
-  - id: 1
+  1:
     type: integer # Expected type is string
     source: reference # Includes only references (their names start with $)
-    allowed_values: # this helper only receive epoch
-      - 1553436105
 
 # Indicates whether the helper function supports a variable number of arguments
 variadic: False

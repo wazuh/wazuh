@@ -3,7 +3,7 @@ name: hex_to_number
 
 # Arguments expected by the helper function
 arguments:
-  - id: 1
+  1:
     type: string # Expected type is string
     source: reference # Includes only references (their names start with $)
     allowed_values: # this helper only receive hexadecimal
