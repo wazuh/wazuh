@@ -21,7 +21,6 @@ DESTINATION="${CURRENT_PATH}/output/" # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
 VERBOSE="no"                          # Enables the full log by using `set -exf`.
 DEBUG="no"                            # Enables debug symbols while compiling.
-CHECKSUMDIR=""                        # Directory to store the checksum of the package.
 CHECKSUM="no"                         # Enables the checksum generation.
 IS_STAGE="no"                         # Enables release package naming.
 CERT_APPLICATION_ID=""                # Apple Developer ID certificate to sign Apps and binaries.
@@ -172,8 +171,7 @@ function build_package() {
         pkg_name+=".pkg"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
-            mkdir -p ${CHECKSUMDIR}
-            cd ${DESTINATION} && shasum -a512 "${pkg_name}" > "${CHECKSUMDIR}/${pkg_name}.sha512"
+            shasum -a512 "${DESTINATION}/${pkg_name}" > "${DESTINATION}/${pkg_name}.sha512"
         fi
         clean_and_exit 0
     else
@@ -331,14 +329,8 @@ function main() {
             shift 1
             ;;
         "-c"|"--checksum")
-            if [ -n "$2" ]; then
-                CHECKSUMDIR="$2"
-                CHECKSUM="yes"
-                shift 2
-            else
-                CHECKSUM="yes"
-                shift 1
-            fi
+            CHECKSUM="yes"
+            shift 1
             ;;
         "--is_stage")
             IS_STAGE="yes"
@@ -427,10 +419,6 @@ function main() {
         echo "Error: architecture not supported."
         echo "Supported architectures: intel64, arm64"
         exit 1
-    fi
-
-    if [ -z "${CHECKSUMDIR}" ]; then
-        CHECKSUMDIR="${DESTINATION}"
     fi
 
     if [[ "${BUILD}" != "no" ]]; then
