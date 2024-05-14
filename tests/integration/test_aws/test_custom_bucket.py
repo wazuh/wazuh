@@ -31,14 +31,14 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_custom_bucket_defaults(test_configuration, metadata, create_test_bucket, set_test_sqs_queue,
-                                load_wazuh_basic_configuration, set_wazuh_configuration,
-                                configure_local_internal_options_function, truncate_monitored_files,
-                                restart_wazuh_function, file_monitoring
+def test_custom_bucket_defaults(
+        test_configuration, metadata, create_test_bucket, set_test_sqs_queue,
+        load_wazuh_basic_configuration, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files,
+        restart_wazuh_function, file_monitoring
 ):
     """
     description: Test the AWS S3 custom bucket module is invoked with the expected parameters and no error occurs.
-
     test_phases:
         - setup:
             - Load Wazuh light configuration.
@@ -54,17 +54,19 @@ def test_custom_bucket_defaults(test_configuration, metadata, create_test_bucket
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
 
     wazuh_min_version: 4.7.0
-
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - upload_and_delete_file_to_s3:
+        - create_test_bucket:
             type: fixture
-            brief: Upload a file to S3 bucket for the day of the execution.
+            brief: Create temporal bucket.
+        - set_test_sqs_queue:
+            type: fixture
+            brief: Create temporal SQS queue.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -83,11 +85,9 @@ def test_custom_bucket_defaults(test_configuration, metadata, create_test_bucket
         - file_monitoring:
             type: fixture
             brief: Handle the monitoring of a specified file.
-
     assertions:
         - Check in the log that the module was called with correct parameters.
         - Check in the log that no errors occurs.
-
     input_description:
         - The `configuration_defaults` file provides the module configuration for this test.
         - The `cases_defaults` file provides the test cases.
@@ -137,15 +137,15 @@ configurator.configure_test(configuration_file='custom_bucket_configuration.yaml
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_custom_bucket_logs(test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
-                            load_wazuh_basic_configuration, set_wazuh_configuration,
-                            configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
-                            file_monitoring
+def test_custom_bucket_logs(
+        test_configuration, metadata, create_test_bucket, set_test_sqs_queue, manage_bucket_files,
+        load_wazuh_basic_configuration, set_wazuh_configuration,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
+        file_monitoring
 ):
     """
     description: Test the AWS S3 custom bucket module is invoked with the expected parameters and retrieve
     the messages from the SQS Queue.
-
     test_phases:
         - setup:
             - Load Wazuh light configuration.
@@ -164,17 +164,22 @@ def test_custom_bucket_logs(test_configuration, metadata, create_test_bucket, se
             - Deletes the file created in the S3 Bucket.
 
     wazuh_min_version: 4.7.0
-
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - upload_and_delete_file_to_s3:
+        - create_test_bucket:
             type: fixture
-            brief: Upload a file to S3 bucket for the day of the execution.
+            brief: Create temporal bucket.
+        - set_test_sqs_queue:
+            type: fixture
+            brief: Create temporal SQS queue.
+        - manage_bucket_files:
+            type: fixture
+            brief: S3 buckets manager.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -193,15 +198,10 @@ def test_custom_bucket_logs(test_configuration, metadata, create_test_bucket, se
         - file_monitoring:
             type: fixture
             brief: Handle the monitoring of a specified file.
-        - upload_and_delete_file_to_s3:
-            type: fixture
-            brief: Upload a file to S3 bucket for the day of the execution.
-
     assertions:
         - Check in the log that the module was called with correct parameters.
         - Check that the module retrieved a message from the SQS Queue.
         - Check that the module processed a message from the SQS Queue.
-
     input_description:
         - The `configuration_defaults` file provides the module configuration for this test.
         - The `cases_defaults` file provides the test cases.

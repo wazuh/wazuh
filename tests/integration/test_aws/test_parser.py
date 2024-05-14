@@ -13,12 +13,13 @@ from wazuh_testing import session_parameters
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
+from .configurator import configurator
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
-configurator = TestConfigurator(module='parser_test_module')
+configurator.module = 'parser_test_module'
 
 # --------------------------------------------TEST_BUCKET_AND_SERVICE_MISSING ------------------------------------------
 # Configure T1 test
@@ -51,7 +52,7 @@ def test_bucket_and_service_missing(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -120,7 +121,7 @@ def test_type_missing_in_bucket(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -188,7 +189,7 @@ def test_type_missing_in_service(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -257,7 +258,7 @@ def test_empty_values_in_bucket(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -325,7 +326,7 @@ def test_empty_values_in_service(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -394,7 +395,7 @@ def test_invalid_values_in_bucket(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -424,7 +425,7 @@ def test_invalid_values_in_bucket(
         - The `configuration_values_in_bucket` file provides the configuration for this test.
     """
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_aws_invalid_value,
     )
 
@@ -462,7 +463,7 @@ def test_invalid_values_in_service(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -530,7 +531,7 @@ def test_multiple_bucket_and_service_tags(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:

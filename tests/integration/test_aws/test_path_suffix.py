@@ -16,12 +16,13 @@ from wazuh_testing.modules.aws.utils import path_exist
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
+from .configurator import configurator
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
-configurator = TestConfigurator(module='path_suffix_test_module')
+configurator.module = 'path_suffix_test_module'
 
 # ---------------------------------------------------- TEST_PATH -------------------------------------------------------
 # Configure T1 test
@@ -34,8 +35,9 @@ configurator.configure_test(configuration_file='configuration_path_suffix.yaml',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_path_suffix(
-    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, load_wazuh_basic_configuration,  create_test_bucket, manage_bucket_files,
+        set_wazuh_configuration, clean_s3_cloudtrail_db, configure_local_internal_options_function,
+        truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: Only logs within a path_suffix are processed.
@@ -58,12 +60,18 @@ def test_path_suffix(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_bucket:
+            type: fixture
+            brief: Create temporal bucket.
+        - manage_bucket_files:
+            type: fixture
+            brief: S3 buckets manager.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -98,15 +106,11 @@ def test_path_suffix(
     only_logs_after = metadata['only_logs_after']
     path_suffix = metadata['path_suffix']
     expected_results = metadata['expected_results']
-    pattern = (
-        fr".*No logs found in 'AWSLogs/{path_suffix}/'. "
-        fr"Check the provided prefix and the location of the logs for the bucket type '{bucket_type}'*"
-    )
+    pattern = fr".*WARNING: Bucket:  -  No files were found in '{bucket_name}/{path_suffix}/'. No logs will be processed.\n+"
 
     parameters = [
         'wodles/aws/aws-s3',
         '--bucket', bucket_name,
-        '--aws_profile', 'qa',
         '--trail_suffix', path_suffix,
         '--only_logs_after', only_logs_after,
         '--type', bucket_type,
