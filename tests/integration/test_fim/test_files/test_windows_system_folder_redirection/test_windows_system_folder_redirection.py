@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2023, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -91,7 +91,7 @@ def test_windows_system_monitoring(test_configuration, test_metadata,configure_l
             - Clean logs files and restart wazuh to apply the configuration.
         - test:
             - In case of monitoring Sysnative, check it is redirected to System32.
-            - Create, Update and Delete files in monitored folders, and check logs appear.
+            - Write file in monitored folders, and check logs appear.
         - teardown:
             - Delete custom monitored folder
             - Restore configuration
@@ -102,38 +102,31 @@ def test_windows_system_monitoring(test_configuration, test_metadata,configure_l
     tier: 1
 
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Configuration values for ossec.conf.
-        - metadata:
+        - test_metadata:
             type: dict
             brief: Test case data.
-        - test_folders:
-            type: dict
-            brief: List of folders to be created for monitoring.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local_internal_options.conf file.
+        - truncate_monitored_files:
+            type: fixture
+            brief: Truncate all the log files and json alerts files before and after the test execution.
         - set_wazuh_configuration:
             type: fixture
             brief: Set ossec.conf configuration.
-        - create_monitored_folders_module:
+        - folder_to_monitor:
+            type: str
+            brief: Folder created for monitoring.
+        - daemons_handler:
             type: fixture
-            brief: Create a given list of folders when the module starts. Delete the folders at the end of the module.
-        - configure_local_internal_options_function:
-            type: fixture
-            brief: Set local_internal_options.conf file.
-        - restart_syscheck_function:
-            type: fixture
-            brief: restart syscheckd daemon, and truncate the ossec.log.
-        - wait_syscheck_start:
-            type: fixture
-            brief: check that the starting FIM scan is detected.
+            brief: Handler of Wazuh daemons.
 
     assertions:
-        - Verify that for each modified file a 'diff' file is generated.
-        - Verify that FIM events include the 'content_changes' field.
-        - Verify that FIM events truncate the modifications made in a monitored file
-          when it matches the 'nodiff' tag.
-        - Verify that FIM events include the modifications made in a monitored file
-          when it does not match the 'nodiff' tag.
+        - Verify that for each modified file a FIM event is generated.
+        - Verify that log due to folder converted is generated.
 
     input_description: The file 'configuration_windows_system_folder_redirection.yaml' provides the configuration
                        template.
@@ -142,7 +135,7 @@ def test_windows_system_monitoring(test_configuration, test_metadata,configure_l
 
     expected_output:
         - r'.*fim_adjust_path.*Convert '(.*) to '(.*)' to process the FIM events.'
-        - r'.*Sending FIM event: (.+)$' ('added', 'modified', and 'deleted' events)'
+        - r'.*Sending FIM event: (.+)$' ('added' events)'
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
