@@ -2,9 +2,18 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import json
 import sys
-from aws_bucket import AWSCustomBucket
+from os import path
+import json
+from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
+
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+import aws_tools
+
+WAF_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/waf.html'
+WAF_DEPRECATED_MESSAGE = 'The functionality to process WAF logs stored in S3 via Kinesis was deprecated ' \
+                           'in {release}. Consider configuring WAF to store its logs directly in an S3 ' \
+                           'bucket instead. Check {url} for more information.'
 
 
 class AWSWAFBucket(AWSCustomBucket):
@@ -20,6 +29,22 @@ class AWSWAFBucket(AWSCustomBucket):
     def __init__(self, **kwargs):
         kwargs['db_table_name'] = 'waf'
         AWSCustomBucket.__init__(self, **kwargs)
+        if self.check_waf_type():
+            self.service = 'WAFLogs'
+            self.type = "WAFNative"
+        else:
+            self.type = "WAFKinesis"
+
+    def check_waf_type(self):
+        try:
+            return 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs', Delimiter='/', MaxKeys=1)
+        except Exception as err:
+            if hasattr(err, 'message'):
+                aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
+            else:
+                aws_tools.debug(f"+++ Unexpected error: {err}", 2)
+            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            sys.exit(7)
 
     def load_information_from_file(self, log_key):
         """Load data from a WAF log file."""
@@ -56,3 +81,32 @@ class AWSWAFBucket(AWSCustomBucket):
                         sys.exit(9)
 
         return json.loads(json.dumps(content))
+
+    def get_service_prefix(self, account_id):
+        return AWSLogsBucket.get_service_prefix(self, account_id)
+        
+    def get_full_prefix(self, account_id, account_region, acl_name=None):
+        if self.type == "WAFNative":
+            path = self.client.list_objects_v2(Bucket=self.bucket)
+            if 'Contents' in path:
+                for obj in path['Contents']:
+                    log_key = obj['Key']
+                parts = log_key.split("/")
+                acl_name = parts[parts.index("WAFLogs") + 2]
+            return AWSLogsBucket.get_full_prefix(self, account_id, account_region, acl_name)
+        else:
+            return self.prefix
+
+    def get_base_prefix(self):
+        if self.type == "WAFNative":
+            return AWSLogsBucket.get_base_prefix(self)
+        else:
+            return self.prefix
+
+    def iter_regions_and_accounts(self, account_id, regions):
+        if self.type == "WAFNative":
+            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+        else:
+            print(WAF_DEPRECATED_MESSAGE.format(release="5.0", url=WAF_URL))
+            self.check_prefix = True
+            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)    
