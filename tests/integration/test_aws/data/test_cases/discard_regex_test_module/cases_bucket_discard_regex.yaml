@@ -13,7 +13,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: eventSource
     discard_regex: .*sts.amazonaws.com.*
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 1
 
 - name: vpc_discard_regex
@@ -32,7 +32,7 @@
     discard_field: action
     discard_regex: "REJECT"
     vpc_name: wazuh-vpc-integration-tests
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 5
 
 - name: config_discard_regex
@@ -50,7 +50,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: configuration.complianceType
     discard_regex: .*COMPLIANT.*
-    found_logs: 5
+    expected_results: 5
     skipped_logs: 1
 
 - name: alb_discard_regex
@@ -68,7 +68,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: elb_status_code
     discard_regex: '403'
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 5
 
 - name: clb_discard_regex
@@ -86,7 +86,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: elb_status_code
     discard_regex: '403'
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 5
 
 - name: nlb_discard_regex
@@ -104,7 +104,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: type
     discard_regex: tls
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 5
 
 - name: kms_discard_regex
@@ -122,7 +122,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: eventName
     discard_regex: GenerateDataKey
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 1
 
 - name: macie_discard_regex
@@ -140,7 +140,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: severity
     discard_regex: CRITICAL
-    found_logs: 3
+    expected_results: 3
     skipped_logs: 1
 
 - name: trusted_advisor_discard_regex
@@ -158,7 +158,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: status
     discard_regex: OK
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 1
 
 - name: guardduty_discard_regex
@@ -176,7 +176,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: partition
     discard_regex: aws
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 1
 
 - name: native_guardduty_discard_regex
@@ -194,7 +194,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: partition
     discard_regex: aws
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 1
 
 - name: waf_discard_regex
@@ -212,7 +212,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: action
     discard_regex: BLOCK
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 1
 
 - name: server_access_discard_regex
@@ -230,7 +230,7 @@
     only_logs_after: 2022-NOV-20
     discard_field: http_status
     discard_regex: '404'
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 1
 
 - name: cisco_umbrella_discard_regex
@@ -248,6 +248,6 @@
     only_logs_after: 2022-NOV-20
     discard_field: action
     discard_regex: Allowed
-    found_logs: 1
+    expected_results: 1
     skipped_logs: 5
     path: dnslogs

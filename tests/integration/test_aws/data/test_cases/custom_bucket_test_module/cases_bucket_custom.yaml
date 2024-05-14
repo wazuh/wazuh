@@ -7,3 +7,4 @@
     sqs_name: wazuh-sqs-integration-tests-t1
     bucket_name: wazuh-sqs-bucket-integration-test-t1
     bucket_type: cloudtrail
+    expected_results: 1
