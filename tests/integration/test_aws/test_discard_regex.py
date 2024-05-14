@@ -34,14 +34,13 @@ configurator.configure_test(configuration_file='configuration_bucket_discard_reg
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_discard_regex(
-        test_configuration, metadata, create_test_bucket, manage_bucket_files, load_wazuh_basic_configuration,
-        set_wazuh_configuration, clean_s3_cloudtrail_db, configure_local_internal_options_function,
-        truncate_monitored_files, restart_wazuh_function, file_monitoring,
+        test_configuration, metadata, create_test_bucket, manage_bucket_files,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):
     """
     description: Check that some bucket logs are excluded when the regex and field defined in <discard_regex>
                  match an event.
-
     test_phases:
         - setup:
             - Load Wazuh light configuration.
@@ -57,16 +56,20 @@ def test_bucket_discard_regex(
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
-
     wazuh_min_version: 4.6.0
-
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_bucket:
+            type: fixture
+            brief: Create temporal bucket.
+        - manage_bucket_files:
+            type: fixture
+            brief: S3 buckets manager.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -88,12 +91,10 @@ def test_bucket_discard_regex(
         - file_monitoring:
             type: fixture
             brief: Handle the monitoring of a specified file.
-
     assertions:
         - Check in the log that the module was called with correct parameters.
         - Check the expected number of events were forwarded to analysisd.
         - Check the database was created and updated accordingly.
-
     input_description:
         - The `configuration_bucket_discard_regex` file provides the module configuration for this test.
         - The `cases_bucket_discard_regex` file provides the test cases.
@@ -103,7 +104,7 @@ def test_bucket_discard_regex(
     only_logs_after = metadata['only_logs_after']
     discard_field = metadata['discard_field']
     discard_regex = metadata['discard_regex']
-    found_logs = metadata['found_logs']
+    expected_results = metadata['expected_results']
     skipped_logs = metadata['skipped_logs']
     path = metadata['path'] if 'path' in metadata else None
 
@@ -143,7 +144,7 @@ def test_bucket_discard_regex(
     log_monitor.start(
         timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed,
-        accumulations=found_logs
+        accumulations=expected_results
     )
 
     log_monitor.start(
@@ -175,7 +176,6 @@ def test_cloudwatch_discard_regex_json(
     """
     description: Check that some CloudWatch JSON logs are excluded when the regex and field defined in <discard_regex>
                  match an event.
-
     test_phases:
         - setup:
             - Load Wazuh light configuration.
@@ -191,16 +191,23 @@ def test_cloudwatch_discard_regex_json(
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
-
     wazuh_min_version: 4.6.0
-
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
+            type: fixture
+            brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -222,12 +229,10 @@ def test_cloudwatch_discard_regex_json(
         - file_monitoring:
             type: fixture
             brief: Handle the monitoring of a specified file.
-
     assertions:
         - Check in the log that the module was called with correct parameters.
         - Check the expected number of events were forwarded to analysisd.
         - Check the database was created and updated accordingly.
-
     input_description:
         - The `configuration_cloudwatch_discard_regex` file provides the module configuration for this test.
         - The `cases_cloudwatch_discard_regex` file provides the test cases.
@@ -299,7 +304,6 @@ def test_cloudwatch_discard_regex_simple_text(
     """
     description: Check that some CloudWatch simple text logs are excluded when the regex defined in <discard_regex>
                  matches an event.
-
     test_phases:
         - setup:
             - Load Wazuh light configuration.
@@ -318,14 +322,22 @@ def test_cloudwatch_discard_regex_simple_text(
             - Delete the uploaded file
 
     wazuh_min_version: 4.6.0
-
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
+            type: fixture
+            brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -347,12 +359,10 @@ def test_cloudwatch_discard_regex_simple_text(
         - file_monitoring:
             type: fixture
             brief: Handle the monitoring of a specified file.
-
     assertions:
         - Check in the log that the module was called with correct parameters.
         - Check the expected number of events were forwarded to analysisd.
         - Check the database was created and updated accordingly.
-
     input_description:
         - The `configuration_cloudwatch_discard_regex_simple_text` file provides
         the module configuration for this test.
@@ -422,7 +432,6 @@ def test_inspector_discard_regex(
     """
     description: Check that some Inspector logs are excluded when the regex and field defined in <discard_regex>
                  match an event.
-
     test_phases:
         - setup:
             - Load Wazuh light configuration.
@@ -438,11 +447,9 @@ def test_inspector_discard_regex(
         - teardown:
             - Truncate wazuh logs.
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
-
     wazuh_min_version: 4.6.0
-
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -469,12 +476,10 @@ def test_inspector_discard_regex(
         - file_monitoring:
             type: fixture
             brief: Handle the monitoring of a specified file.
-
     assertions:
         - Check in the log that the module was called with correct parameters.
         - Check the expected number of events were forwarded to analysisd.
         - Check the database was created and updated accordingly.
-
     input_description:
         - The `configuration_inspector_discard_regex` file provides the module configuration for this test.
         - The `cases_inspector_discard_regex` file provides the test cases.

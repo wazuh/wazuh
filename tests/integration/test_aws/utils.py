@@ -35,6 +35,7 @@ ERROR_MESSAGE = {
     "incorrect_service_calls_amount": "The AWS module was not called for bucket or service the right amount of times",
     "unexpected_number_of_events_found": "Some logs may have been processed, "
                                          "or the results found are more than expected",
+    "event_not_found": "The expected log pattern was not found",
     "incorrect_marker": "The AWS module did not use the correct marker",
     "incorrect_no_region_found_message": "The AWS module did not show correct message about non-existent region",
     "incorrect_discard_regex_message": "The AWS module did not show the correct message about discard regex or, "
@@ -45,9 +46,11 @@ ERROR_MESSAGE = {
 }
 
 TIMEOUT = {
-
     10: 10,
-    20: 20
+    20: 20,
+    30: 30,
+    40: 40,
+    50: 50
 }
 
 # Paths
