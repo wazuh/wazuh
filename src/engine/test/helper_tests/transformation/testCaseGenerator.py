@@ -252,9 +252,8 @@ def fewer_arguments_than_the_minimum_required(yaml_data):
 def different_sources(yaml_data):
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
-    test_data = {"assets_definition": {}}
     for i in range(len(types)):  # Iterating over the number of arguments
-        all_arguments = []
+        test_data = {"assets_definition": {}}
         new_sources = sources[
             :
         ]  # Copying the list of sources to not modify the original
@@ -288,9 +287,9 @@ def different_sources(yaml_data):
             else:
                 current_arguments.append(argument)
 
-        all_arguments.append(current_arguments)
-
-        helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments[0])})"
+        helper = (
+            f"{get_name(yaml_data)}({', '.join(str(v) for v in current_arguments)})"
+        )
         normalize_list = [{"map": {"target_field": helper}}]
 
         asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
@@ -384,6 +383,9 @@ def same_value_types(dictionary):
 
 
 def different_types_references(yaml_data):
+    if "reference" not in get_sources(yaml_data):
+        return
+
     types = get_types(yaml_data)
     if types.count("all") != 0:
         return
@@ -558,6 +560,8 @@ def variadic(yaml_data):
 
 
 def reference_not_exist(yaml_data):
+    if all(source == "value" for source in get_sources(yaml_data)):
+        return
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
     test_data = {"assets_definition": {}, "test_cases": []}
@@ -672,21 +676,41 @@ def generate_test_cases_success_values(yaml_data):
     else:
         template = generate_raw_template(yaml_data)
 
-    for all_type in all_types:
-        for case in template:
-            if case.count("reference") == get_minimum_arguments(yaml_data):
-                continue
-            all_arguments = []
-            test_data = {"assets_definition": {}, "test_cases": []}
-            normalize_list = []
-            for argument, type_ in zip(case, types):
+    for case in template:
+        if case.count("reference") == get_minimum_arguments(yaml_data):
+            continue
+        all_arguments = []
+        for argument, type_ in zip(case, types):
+            if type_ == "all":
+                for all_type in all_types:
+                    if argument == "value":
+                        all_arguments.append(
+                            generate_specific_argument("value", all_type)
+                        )
+                    else:
+                        all_arguments.append(argument)
+            else:
                 if argument == "value":
-                    all_arguments.append(generate_specific_argument("value", all_type))
+                    all_arguments.append(
+                        generate_specific_argument(
+                            "value", convert_string_to_type(type_)
+                        )
+                    )
                 else:
                     all_arguments.append(argument)
 
+        for argument in all_arguments:
+            test_data = {"assets_definition": {}}
+            normalize_list = []
             stage_map = {"map": []}
-            helper = f"{get_name(yaml_data)}({', '.join(str(v) if v is not True else 'true' for v in all_arguments)})"
+            if "all" in get_types(yaml_data):
+                if argument is True:
+                    argument = "true"
+                helper = f"{get_name(yaml_data)}({argument})"
+            else:
+                helper = (
+                    f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
+                )
 
             if target_field_is_array(yaml_data):
                 value = generate_specific_argument(
@@ -725,6 +749,9 @@ def generate_test_cases_success_values(yaml_data):
             if len(test_data["assets_definition"]):
                 tests["build_test"].append(test_data)
 
+            if "all" not in get_types(yaml_data):
+                break
+
 
 def generate_test_cases_success_reference(yaml_data):
     types = get_types(yaml_data)
@@ -741,22 +768,23 @@ def generate_test_cases_success_reference(yaml_data):
 
     test_data = {"assets_definition": {}, "test_cases": []}
     tc = []
+    normalize_list = []
+    stage_map = {"map": []}
     for all_type in all_types:
-        input = {}
         for case in template:
+            input = {}
             if case.count("values") == get_minimum_arguments(yaml_data):
                 continue
             all_arguments = []
-            normalize_list = []
-            for argument, type_ in zip(case, types):
+            for ind, (argument, type_) in enumerate(zip(case, types)):
                 if argument == "reference":
                     all_arguments.append(f"$eventJson.ref")
-                    input[f"ref"] = generate_random_value(all_type, [])
-                    tc.append({"input": input, "id": increase_id()})
+                    input[f"ref{ind}"] = generate_random_value(all_type, [])
                 else:
                     all_arguments.append(argument)
 
-            stage_map = {"map": []}
+            if input:
+                tc.append({"input": input, "id": increase_id()})
             helper = (
                 f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
             )
@@ -793,10 +821,11 @@ def generate_test_cases_success_reference(yaml_data):
     }
 
     test_data["assets_definition"] = asset_definition
-    test_data["test_cases"] = tc
+    if tc:
+        test_data["test_cases"] = tc
     test_data["description"] = "Generate only valid references"
 
-    if len(test_data["assets_definition"]):
+    if len(test_data["test_cases"]):
         tests["run_test"].append(test_data)
 
 
@@ -829,6 +858,7 @@ def main():
                 input_file = input_file.resolve()
             if input_file == file_path:
                 yaml_data = load_yaml(file_path)
+                break
         else:
             # Check if the file is a YML type
             if file_path.suffix == ".yml" or file_path.suffix == ".yaml":
