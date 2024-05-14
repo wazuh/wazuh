@@ -33,7 +33,7 @@ configurator.configure_test(configuration_file='configuration_log_groups.yaml',
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('test_configuration metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_log_groups(
@@ -63,12 +63,21 @@ def test_log_groups(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
+            type: fixture
+            brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
         - create_log_stream:
             type: fixture
             brief: Create a log stream with events for the day of execution.

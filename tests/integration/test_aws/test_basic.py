@@ -52,18 +52,24 @@ def test_bucket_defaults(
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_bucket:
+            type: fixture
+            brief: Create temporal bucket.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
+        - clean_s3_cloudtrail_db:
+            type: fixture
+            brief: Delete the DB file before and after the test execution.
         - configure_local_internal_options_function:
             type: fixture
             brief: Apply changes to the local_internal_options.conf configuration.
@@ -106,13 +112,13 @@ def test_bucket_defaults(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    # # Detect any ERROR message
-    # log_monitor.start(
-    #     timeout=session_parameters.default_timeout,
-    #     callback=event_monitor.callback_detect_all_aws_err
-    # )
-    #
-    # assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
+    # Detect any ERROR message
+    log_monitor.start(
+        timeout=session_parameters.default_timeout,
+        callback=event_monitor.callback_detect_all_aws_err
+    )
+
+    assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
 # -------------------------------------------- TEST_CLOUDWATCH_DEFAULTS ------------------------------------------------
@@ -125,9 +131,10 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_default
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_service_defaults(test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
-                          set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
-                          truncate_monitored_files, restart_wazuh_function, file_monitoring
+def test_service_defaults(
+        test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
+        set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
+        truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -146,12 +153,15 @@ def test_service_defaults(test_configuration, metadata, create_test_log_group, l
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -225,9 +235,10 @@ configurator.configure_test(configuration_file='inspector_configuration_defaults
 @pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
-def test_inspector_defaults(test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
-                            set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
-                            truncate_monitored_files, restart_wazuh_function, file_monitoring
+def test_inspector_defaults(
+        test_configuration, metadata, create_test_log_group, load_wazuh_basic_configuration,
+        set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
+        truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: The module is invoked with the expected parameters and no error occurs.
@@ -246,12 +257,15 @@ def test_inspector_defaults(test_configuration, metadata, create_test_log_group,
             - Restore initial configuration, both ossec.conf and local_internal_options.conf.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.

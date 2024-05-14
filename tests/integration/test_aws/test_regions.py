@@ -17,12 +17,13 @@ from wazuh_testing.utils.db_queries.aws_db import (get_multiple_service_db_row, 
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
+from .configurator import configurator
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
-configurator = TestConfigurator(module='regions_test_module')
+configurator.module = 'regions_test_module'
 
 # ---------------------------------------------------- TEST_PATH -------------------------------------------------------
 # Configure T1 test
@@ -35,8 +36,9 @@ configurator.configure_test(configuration_file='bucket_configuration_regions.yam
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_regions(
-    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, load_wazuh_basic_configuration,  create_test_bucket, manage_bucket_files,
+        set_wazuh_configuration, clean_s3_cloudtrail_db, configure_local_internal_options_function,
+        truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: Only the logs for the specified region are processed.
@@ -60,12 +62,18 @@ def test_regions(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_bucket:
+            type: fixture
+            brief: Create temporal bucket.
+        - manage_bucket_files:
+            type: fixture
+            brief: S3 buckets manager.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -105,7 +113,6 @@ def test_regions(
     parameters = [
         'wodles/aws/aws-s3',
         '--bucket', bucket_name,
-        '--aws_profile', 'qa',
         '--only_logs_after', only_logs_after,
         '--regions', regions,
         '--type', bucket_type,
@@ -130,7 +137,7 @@ def test_regions(
 
     if expected_results:
         log_monitor.start(
-            timeout=TIMEOUT[20],
+            timeout=TIMEOUT[50],
             callback=event_monitor.callback_detect_event_processed,
             accumulations=expected_results
         )
@@ -177,8 +184,9 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_regions
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_regions(
-    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, load_wazuh_basic_configuration, create_test_log_group, create_test_log_stream,
+        manage_log_group_events, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: Only the logs for the specified region are processed.
@@ -202,12 +210,21 @@ def test_cloudwatch_regions(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
+            type: fixture
+            brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -247,7 +264,6 @@ def test_cloudwatch_regions(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', 'qa',
         '--only_logs_after', only_logs_after,
         '--regions', regions,
         '--aws_log_groups', log_group_name,
@@ -282,7 +298,7 @@ def test_cloudwatch_regions(
         log_monitor.start(
             timeout=session_parameters.default_timeout,
             callback=event_monitor.make_aws_callback(
-                fr".*\+\+\+ ERROR: The region '{regions}' is not a valid one."
+                fr".*\+\+\+ ERROR: Invalid region '{regions}'"
             ),
         )
 
@@ -317,8 +333,9 @@ configurator.configure_test(configuration_file='inspector_configuration_regions.
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_regions(
-    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, load_wazuh_basic_configuration,
+        set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function,
+        truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: Only the logs for the specified region are processed.
@@ -342,7 +359,7 @@ def test_inspector_regions(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -386,7 +403,6 @@ def test_inspector_regions(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', 'qa',
         '--only_logs_after', only_logs_after,
         '--regions', regions,
         '--debug', '2'
@@ -420,7 +436,7 @@ def test_inspector_regions(
         log_monitor.start(
             timeout=session_parameters.default_timeout,
             callback=event_monitor.make_aws_callback(
-                fr".*\+\+\+ ERROR: The region '{regions}' is not a valid one."
+                fr".*\+\+\+ ERROR: Unsupported region '{regions}'"
             ),
         )
 

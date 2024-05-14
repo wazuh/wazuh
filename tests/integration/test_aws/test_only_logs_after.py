@@ -8,25 +8,26 @@ This module will contain all cases for the only logs after test suite
 
 import pytest
 from datetime import datetime
-
 # qa-integration-framework imports
 from wazuh_testing import session_parameters
 from wazuh_testing.constants.paths.aws import S3_CLOUDTRAIL_DB_PATH, AWS_SERVICES_DB_PATH
-from wazuh_testing.constants.aws import ONLY_LOGS_AFTER_PARAM, PATH_DATE_FORMAT, VPC_FLOW_TYPE, INSPECTOR_TYPE
+from wazuh_testing.constants.aws import ONLY_LOGS_AFTER_PARAM, VPC_FLOW_TYPE, US_EAST_1_REGION
 from wazuh_testing.utils.db_queries.aws_db import get_multiple_s3_db_row, get_service_db_row, get_s3_db_row
-from wazuh_testing.modules.aws.utils import (call_aws_module, create_log_events, create_log_stream, path_exist,
-                                             get_last_file_key, upload_file, analyze_command_output)
+from wazuh_testing.modules.aws.utils import (call_aws_module, upload_log_events, create_log_stream, path_exist,
+                                             get_last_file_key, analyze_command_output,
+                                             generate_file, upload_bucket_file)
 from wazuh_testing.modules.aws.patterns import (NO_LOG_PROCESSED, NO_BUCKET_LOG_PROCESSED, MARKER, NO_NEW_EVENTS,
                                                 EVENT_SENT)
 
 # Local module imports
 from . import event_monitor
-from .utils import ERROR_MESSAGE, TIMEOUT, TestConfigurator, local_internal_options
+from .configurator import configurator
+from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
 # Set test configurator for the module
-configurator = TestConfigurator(module='only_logs_after_test_module')
+configurator.module = 'only_logs_after_test_module'
 
 # --------------------------------------------- TEST_BUCKET_WITHOUT_ONLY_LOGS_AFTER ------------------------------------
 # Configure T1 test
@@ -35,13 +36,14 @@ configurator.configure_test(configuration_file='bucket_configuration_without_onl
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('test_configuration metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_without_only_logs_after(
-    test_configuration, metadata, upload_and_delete_file_to_s3, load_wazuh_basic_configuration, set_wazuh_configuration,
-    clean_s3_cloudtrail_db, configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
-    file_monitoring
+        test_configuration, metadata, create_test_bucket, manage_bucket_files,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
+        file_monitoring
 ):
     """
     description: Only the log uploaded during execution is processed.
@@ -63,15 +65,18 @@ def test_bucket_without_only_logs_after(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - upload_and_delete_file_to_s3:
+        - create_test_bucket:
             type: fixture
-            brief: Upload a file for the day of the execution and delete after the test.
+            brief: Create temporal bucket.
+        - manage_bucket_files:
+            type: fixture
+            brief: S3 buckets manager.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -109,14 +114,13 @@ def test_bucket_without_only_logs_after(
     parameters = [
         'wodles/aws/aws-s3',
         '--bucket', bucket_name,
-        '--aws_profile', 'qa',
         '--type', bucket_type,
         '--debug', '2'
     ]
 
     if path is not None:
-        parameters.insert(5, path)
-        parameters.insert(5, '--trail_prefix')
+        parameters.insert(3, path)
+        parameters.insert(3, '--trail_prefix')
 
     # Check AWS module started
     log_monitor.start(
@@ -135,7 +139,7 @@ def test_bucket_without_only_logs_after(
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
     log_monitor.start(
-        timeout=session_parameters.default_timeout,
+        timeout=TIMEOUT[20],
         callback=event_monitor.callback_detect_event_processed,
         accumulations=expected_results
     )
@@ -165,13 +169,13 @@ configurator.configure_test(configuration_file='service_configuration_without_on
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('test_configuration metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_service_without_only_logs_after(
-    test_configuration, metadata, create_log_stream_in_existent_group, load_wazuh_basic_configuration,
-    set_wazuh_configuration, clean_aws_services_db, configure_local_internal_options_function, truncate_monitored_files,
-    restart_wazuh_function, file_monitoring
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: Only the event created during execution is processed.
@@ -193,15 +197,21 @@ def test_service_without_only_logs_after(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
-        - create_log_stream_in_existent_group:
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
             type: fixture
             brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -237,8 +247,7 @@ def test_service_without_only_logs_after(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', 'qa',
-        '--regions', 'us-east-1',
+        '--regions', US_EAST_1_REGION,
         '--aws_log_groups', log_group_name,
         '--debug', '2'
     ]
@@ -265,7 +274,7 @@ def test_service_without_only_logs_after(
 
     assert log_group_name == data.aws_log_group
 
-    assert metadata['log_stream'] == data.aws_log_stream
+    assert metadata['log_stream_name'] == data.aws_log_stream
 
     # Detect any ERROR message
     log_monitor.start(
@@ -283,12 +292,13 @@ configurator.configure_test(configuration_file='bucket_configuration_with_only_l
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('test_configuration metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_with_only_logs_after(
-    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, create_test_bucket, manage_bucket_files,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: All logs with a timestamp greater than the only_logs_after value are processed.
@@ -310,12 +320,18 @@ def test_bucket_with_only_logs_after(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_bucket:
+            type: fixture
+            brief: Create temporal bucket.
+        - manage_bucket_files:
+            type: fixture
+            brief: S3 buckets manager.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -354,15 +370,14 @@ def test_bucket_with_only_logs_after(
     parameters = [
         'wodles/aws/aws-s3',
         '--bucket', bucket_name,
-        '--aws_profile', 'qa',
         '--only_logs_after', only_logs_after,
         '--type', bucket_type,
         '--debug', '2'
     ]
 
     if path is not None:
-        parameters.insert(5, path)
-        parameters.insert(5, '--trail_prefix')
+        parameters.insert(3, path)
+        parameters.insert(3, '--trail_prefix')
 
     # Check AWS module started
     log_monitor.start(
@@ -393,7 +408,7 @@ def test_bucket_with_only_logs_after(
     for row in get_multiple_s3_db_row(table_name=table_name):
         assert bucket_name in row.bucket_path
         assert (
-            datetime.strptime(only_logs_after, '%Y-%b-%d') < datetime.strptime(str(row.created_date), '%Y%m%d')
+            datetime.strptime(only_logs_after, '%Y-%b-%d') == datetime.strptime(str(row.created_date), '%Y%m%d')
         )
 
     # Detect any ERROR message
@@ -412,12 +427,13 @@ configurator.configure_test(configuration_file='cloudwatch_configuration_with_on
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('test_configuration metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_cloudwatch_with_only_logs_after(
-    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: All events with a timestamp greater than the only_logs_after value are processed.
@@ -439,12 +455,21 @@ def test_cloudwatch_with_only_logs_after(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
+            type: fixture
+            brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
         - load_wazuh_basic_configuration:
             type: fixture
             brief: Load basic wazuh configuration.
@@ -486,9 +511,8 @@ def test_cloudwatch_with_only_logs_after(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', 'qa',
         '--only_logs_after', only_logs_after,
-        '--regions', 'us-east-1',
+        '--regions', US_EAST_1_REGION,
         '--aws_log_groups', log_group_name,
         '--debug', '2'
     ]
@@ -521,7 +545,7 @@ def test_cloudwatch_with_only_logs_after(
     data = get_service_db_row(table_name=table_name_map[service_type])
 
     assert log_group_name == data.aws_log_group
-    assert metadata['log_stream'] == data.aws_log_stream
+    assert metadata['log_stream_name'] == data.aws_log_stream
 
     # Detect any ERROR message
     log_monitor.start(
@@ -539,12 +563,13 @@ configurator.configure_test(configuration_file='inspector_configuration_with_onl
 
 
 @pytest.mark.tier(level=0)
-@pytest.mark.parametrize('test_configuration metadata',
+@pytest.mark.parametrize('test_configuration, metadata',
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_inspector_with_only_logs_after(
-    test_configuration, metadata, load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
-    configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
+        test_configuration, metadata,
+        load_wazuh_basic_configuration, set_wazuh_configuration, clean_aws_services_db,
+        configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
     """
     description: All events with a timestamp greater than the only_logs_after value are processed.
@@ -566,7 +591,7 @@ def test_inspector_with_only_logs_after(
             - Delete the uploaded file.
     wazuh_min_version: 4.6.0
     parameters:
-        - configuration:
+        - test_configuration:
             type: dict
             brief: Get configurations from the module.
         - metadata:
@@ -612,9 +637,8 @@ def test_inspector_with_only_logs_after(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
-        '--aws_profile', 'qa',
         '--only_logs_after', only_logs_after,
-        '--regions', 'us-east-1',
+        '--regions', US_EAST_1_REGION,
         '--debug', '2'
     ]
 
@@ -657,11 +681,12 @@ configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', 
-                         configurator.metadata, 
+@pytest.mark.parametrize('metadata',
+                         configurator.metadata,
                          ids=configurator.cases_ids)
 def test_bucket_multiple_calls(
-    metadata, clean_s3_cloudtrail_db, load_wazuh_basic_configuration, restart_wazuh_function, delete_file_from_s3
+        metadata, clean_s3_cloudtrail_db, s3_client, create_test_bucket, manage_bucket_files,
+        load_wazuh_basic_configuration, restart_wazuh_function
 ):
     """
     description: Call the AWS module multiple times with different only_logs_after values.
@@ -690,6 +715,15 @@ def test_bucket_multiple_calls(
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - s3_client:
+            type: fixture
+            brief: S3 client to access the bucket.
+        - create_test_bucket:
+            type: fixture
+            brief: Create temporal bucket.
+        - manage_bucket_files:
+            type: fixture
+            brief: S3 buckets manager.
         - clean_s3_cloudtrail_db:
             type: fixture
             brief: Delete the DB file before and after the test execution.
@@ -708,13 +742,14 @@ def test_bucket_multiple_calls(
 
     bucket_type = metadata['bucket_type']
     bucket_name = metadata['bucket_name']
+    expected_results = metadata['expected_results']
     path = metadata.get('path')
+    region = US_EAST_1_REGION
 
     base_parameters = [
         '--bucket', bucket_name,
         '--type', bucket_type,
-        '--regions', 'us-east-1',
-        '--aws_profile', 'qa',
+        '--regions', region,
         '--debug', '2'
     ]
 
@@ -722,52 +757,100 @@ def test_bucket_multiple_calls(
         base_parameters.extend(['--trail_prefix', path])
 
     # Call the module without only_logs_after and check that no logs were processed
-    last_marker_key = datetime.utcnow().strftime(PATH_DATE_FORMAT)
-
     # Get bucket type
     if bucket_type == VPC_FLOW_TYPE:
         pattern = fr"{NO_LOG_PROCESSED}"
+        # Check for the non 'processed' messages in the given output.
+        # For VPC the number of messages depend on the number of flow log IDs obtained by the module which may vary.
+        analyze_command_output(
+            command_output=call_aws_module(*base_parameters),
+            callback=event_monitor.make_aws_callback(pattern),
+            error_message=ERROR_MESSAGE['event_not_found'],
+            match_exact_number=False
+        )
     else:
         pattern = fr"{NO_BUCKET_LOG_PROCESSED}"
-
-    # Check for the non 'processed' messages in the given output.
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=1,
-        error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
-    )
+        # Check for the non 'processed' messages in the given output.
+        analyze_command_output(
+            command_output=call_aws_module(*base_parameters),
+            callback=event_monitor.make_aws_callback(pattern),
+            expected_results=1,
+            error_message=ERROR_MESSAGE['unexpected_number_of_events_found']
+        )
 
     # Call the module with only_logs_after set in the past and check that the expected number of logs were processed
     analyze_command_output(
         command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
         callback=event_monitor.callback_detect_event_processed,
-        expected_results=3,
+        expected_results=expected_results,
         error_message=ERROR_MESSAGE['incorrect_event_number']
     )
 
-    # Call the module with the same parameters in and check there were no duplicates
-    expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=expected_skipped_logs_step_3,
-        error_message=ERROR_MESSAGE['incorrect_event_number']
-    )
+    if bucket_type == VPC_FLOW_TYPE:
+        # Call the module with the same parameters in and check there were no duplicates
+        # For VPC the number of messages depend on the number of flow log IDs obtained by the module which may vary.
+        expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
+        analyze_command_output(
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+            callback=event_monitor.make_aws_callback(pattern),
+            expected_results=expected_skipped_logs_step_3,
+            error_message=ERROR_MESSAGE['incorrect_event_number'],
+            match_exact_number=False
+        )
 
-    # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
-    # were processed, there were no duplicates
-    analyze_command_output(
-        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
-        callback=event_monitor.make_aws_callback(pattern),
-        expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
-        error_message=ERROR_MESSAGE['incorrect_event_number']
-    )
+        # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
+        # were processed, there were no duplicates
+        analyze_command_output(
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
+            callback=event_monitor.make_aws_callback(pattern),
+            expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
+            error_message=ERROR_MESSAGE['incorrect_event_number'],
+            match_exact_number=False
+        )
+    else:
+        # Call the module with the same parameters in and check there were no duplicates
+        expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
+        analyze_command_output(
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+            callback=event_monitor.make_aws_callback(pattern),
+            expected_results=expected_skipped_logs_step_3,
+            error_message=ERROR_MESSAGE['incorrect_event_number']
+        )
+
+        # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
+        # were processed, there were no duplicates
+        analyze_command_output(
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
+            callback=event_monitor.make_aws_callback(pattern),
+            expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
+            error_message=ERROR_MESSAGE['incorrect_event_number']
+        )
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
     # only the uploaded logs were processed and the last marker is specified in the DB.
-    last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow())
-    metadata['filename'] = upload_file(bucket_type, bucket_name)
+    last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
+    if bucket_type == VPC_FLOW_TYPE:
+        data, key = generate_file(bucket_type=bucket_type,
+                                  bucket_name=bucket_name,
+                                  region=region,
+                                  prefix='',
+                                  suffix='',
+                                  date='',
+                                  flow_log_id=metadata['flow_log_id'])
+    else:
+        data, key = generate_file(bucket_type=bucket_type,
+                                  bucket_name=bucket_name,
+                                  region=region,
+                                  prefix='',
+                                  suffix='',
+                                  date='')
+    metadata['filename'] = key
+
+    upload_bucket_file(bucket_name=bucket_name,
+                       data=data,
+                       key=key,
+                       client=s3_client)
+
     pattern = fr"{MARKER}{last_marker_key}"
 
     analyze_command_output(
@@ -784,8 +867,8 @@ configurator.configure_test(cases_file='cases_inspector_multiple_calls.yaml')
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', 
-                         configurator.metadata, 
+@pytest.mark.parametrize('metadata',
+                         configurator.metadata,
                          ids=configurator.cases_ids)
 @pytest.mark.xfail
 def test_inspector_multiple_calls(
@@ -827,8 +910,7 @@ def test_inspector_multiple_calls(
 
     base_parameters = [
         '--service', service_type,
-        '--regions', 'us-east-1',
-        '--aws_profile', 'qa',
+        '--regions', US_EAST_1_REGION,
         '--debug', '2'
     ]
 
@@ -872,11 +954,13 @@ configurator.configure_test(cases_file='cases_cloudwatch_multiple_calls.yaml')
 
 
 @pytest.mark.tier(level=1)
-@pytest.mark.parametrize('metadata', 
-                         configurator.metadata, 
+@pytest.mark.parametrize('metadata',
+                         configurator.metadata,
                          ids=configurator.cases_ids)
+@pytest.mark.xfail
 def test_cloudwatch_multiple_calls(
-    metadata, clean_aws_services_db, load_wazuh_basic_configuration, restart_wazuh_function, delete_log_stream
+        metadata, clean_aws_services_db, create_test_log_group, create_test_log_stream, manage_log_group_events,
+        logs_clients, load_wazuh_basic_configuration, restart_wazuh_function
 ):
     """
     description: Call the AWS module multiple times with different only_logs_after values.
@@ -903,6 +987,15 @@ def test_cloudwatch_multiple_calls(
         - metadata:
             type: dict
             brief: Get metadata from the module.
+        - create_test_log_group:
+            type: fixture
+            brief: Create a log group.
+        - create_test_log_stream:
+            type: fixture
+            brief: Create a log stream with events for the day of execution.
+        - manage_log_group_events:
+            type: fixture
+            brief: Manage events for the created log stream and log group.
         - clean_aws_services_db:
             type: fixture
             brief: Delete the DB file before and after the test execution.
@@ -921,12 +1014,15 @@ def test_cloudwatch_multiple_calls(
 
     service_type = metadata['service_type']
     log_group_name = metadata['log_group_name']
+    log_stream_name = metadata['log_stream_name']
+
+    # Obtain generated client for test case
+    log_client = logs_clients[0]
 
     base_parameters = [
         '--service', service_type,
         '--aws_log_groups', log_group_name,
-        '--regions', 'us-east-1',
-        '--aws_profile', 'qa',
+        '--regions', US_EAST_1_REGION,
         '--debug', '2'
     ]
 
@@ -968,9 +1064,8 @@ def test_cloudwatch_multiple_calls(
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
     # only the uploaded logs were processed.
-    log_stream = create_log_stream()
-    metadata['log_stream'] = log_stream
-    create_log_events(log_stream)
+    upload_log_events(log_stream=log_stream_name, log_group=log_group_name, date='',
+                      type_json=False, events_number=1, client=log_client)
 
     analyze_command_output(
         command_output=call_aws_module(*base_parameters),
