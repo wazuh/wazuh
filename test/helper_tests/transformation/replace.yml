@@ -6,10 +6,10 @@ variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  - id: 1
+  1:
     type: string  # Accept only string
     source: value # includes only values
-  - id: 2
+  2:
     type: string  # Accept only string
     source: value # includes only values
 

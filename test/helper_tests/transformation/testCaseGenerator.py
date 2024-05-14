@@ -473,18 +473,38 @@ def different_target_field_type(yaml_data):
     if get_target_field_type(yaml_data) == "all":
         return
 
-    test_data = {"assets_definition": {}, "test_cases": []}
+    test_data = {
+        "assets_definition": {},
+        "test_cases": [],
+        "description": "",
+    }
     normalize_list = []
+    tc = []
+    input = {}
     # Generate values for the target field
-    values = [
-        generate_specific_argument(
-            "value", convert_string_to_type(get_target_field_type(yaml_data))
-        )
-        for _ in range(get_minimum_arguments(yaml_data))
-    ]
+    all_arguments = []
+    values = None
+    for type_, source in zip(get_types(yaml_data), get_sources(yaml_data)):
+        if source == "value":
+            values = generate_specific_argument(
+                "value", convert_string_to_type(get_types(yaml_data)[0])
+            )
+            all_arguments.append(values)
+        elif source == "reference":
+            values = generate_specific_argument(
+                "reference", convert_string_to_type(get_types(yaml_data)[0])
+            )
+            all_arguments.append(f"$eventJson.{values['name']}")
+            input[values["name"]] = values["value"]
+            tc.append({"input": input, "id": increase_id(), "should_pass": False})
+        else:
+            values = generate_specific_argument(
+                "value", convert_string_to_type(get_types(yaml_data)[0])
+            )
+            all_arguments.append(values)
 
     stage_map = {"map": []}
-    helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in values)})"
+    helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
 
     if target_field_is_array(yaml_data):
         value = generate_specific_argument(
@@ -515,7 +535,10 @@ def different_target_field_type(yaml_data):
     asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
 
     test_data["assets_definition"] = asset_definition
-    test_data["test_cases"].append({"should_pass": False, "id": increase_id()})
+    if tc:
+        test_data["test_cases"] = tc
+    else:
+        test_data["test_cases"].append({"should_pass": False, "id": increase_id()})
     test_data["description"] = "Different target field type"
 
     if len(test_data["assets_definition"]):

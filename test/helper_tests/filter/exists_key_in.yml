@@ -3,7 +3,7 @@ name: exists_key_in
 
 # Arguments expected by the helper function
 arguments:
-  - id: 1
+  1:
     type: object  # Expected type is integer
     source: both # includes values or references (their names start with $)
 
