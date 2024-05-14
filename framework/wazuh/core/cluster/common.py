@@ -27,6 +27,8 @@ from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
 from wazuh.core.wdb import WazuhDBConnection
 
+IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
+
 class Response:
     """
     Define and store a response from a request.
@@ -1705,7 +1707,10 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
                 except TimeoutError as e:
                     raise e
                 except Exception as e:
-                    result['error_messages']['chunks'].append((i, str(e)))
+                    error = str(e)
+                    if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
+                        continue
+                    result['error_messages']['chunks'].append((i, error))
     except TimeoutError:
         result['error_messages']['others'].append(f'Timeout while processing {info_type} chunks.')
     except Exception as e:
@@ -1714,7 +1719,6 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     result['time_spent'] = time.perf_counter() - before
     wdb_conn.close()
     return result
-
 
 def asyncio_exception_handler(loop, context: Dict):
     """Exception handler used in the protocol.
