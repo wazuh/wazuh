@@ -56,10 +56,10 @@ private:
     bool m_dataReady {false};
 
 public:
-    void init()
+    void init(const std::string& socketPath = WDB_SOCKET)
     {
         m_teardown = false;
-        m_dbSocket = std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(WDB_SOCKET);
+        m_dbSocket = std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(socketPath);
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
