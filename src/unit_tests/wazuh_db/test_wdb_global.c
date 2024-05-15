@@ -9212,6 +9212,116 @@ void test_wdb_global_get_distinct_agent_groups_succes_ok(void **state)
     __real_cJSON_Delete(result);
 }
 
+/* Tests wdb_global_recalculate_all_agent_groups_hash */
+
+void test_wdb_global_recalculate_all_agent_groups_hash_transaction_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+
+    int result = wdb_global_recalculate_all_agent_groups_hash(data->wdb);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_recalculate_all_agent_groups_hash_cache_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot cache statement");
+
+    int result = wdb_global_recalculate_all_agent_groups_hash(data->wdb);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
+void test_wdb_global_recalculate_all_agent_groups_hash_exec_stmt_null(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_exec_stmt, NULL);
+
+    will_return(__wrap_w_is_single_node, 1);
+    will_return(__wrap_w_is_single_node, 1);
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int result = wdb_global_recalculate_all_agent_groups_hash(data->wdb);
+
+    assert_int_equal(result, OS_SUCCESS);
+}
+
+void test_wdb_global_recalculate_all_agent_groups_hash_invalid_id(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *json_agent = NULL;
+
+    json_agent = cJSON_CreateObject();
+    cJSON_AddStringToObject(json_agent, "id", "id_str");
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_exec_stmt, json_agent);
+
+    will_return(__wrap_w_is_single_node, 1);
+    will_return(__wrap_w_is_single_node, 1);
+
+    expect_string(__wrap__merror, formatted_msg, "Invalid element returned by get all agents query");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int result = wdb_global_recalculate_all_agent_groups_hash(data->wdb);
+
+    assert_int_equal(result, OS_INVALID);
+    __real_cJSON_Delete(json_agent);
+}
+
+void test_wdb_global_recalculate_all_agent_groups_hash_recalculate_error(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    cJSON *json_agent = NULL;
+    int agent_id = 1;
+
+    cJSON* j_stmt_result = __real_cJSON_CreateArray();
+    json_agent = cJSON_CreateObject();
+    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(agent_id));
+    cJSON_AddItemToArray(j_stmt_result, json_agent);
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    will_return(__wrap_wdb_exec_stmt, j_stmt_result);
+
+    will_return(__wrap_w_is_single_node, 1);
+    will_return(__wrap_w_is_single_node, 1);
+
+    /* wdb_global_calculate_agent_group_csv */
+    will_return(__wrap_wdb_begin2, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to get groups of agent '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "The groups were empty right after the set for agent '001'");
+
+    /* wdb_global_set_agent_group_context */
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+    expect_string(__wrap__merror, formatted_msg, "There was an error assigning the groups context to agent '001'");
+
+    expect_string(__wrap__merror, formatted_msg, "Couldn't recalculate hash group for agent: '001'");
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    int result = wdb_global_recalculate_all_agent_groups_hash(data->wdb);
+
+    assert_int_equal(result, OS_INVALID);
+    __real_cJSON_Delete(j_stmt_result);
+}
+
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -9680,6 +9790,12 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_exec_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_succes_due, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_get_distinct_agent_groups_succes_ok, test_setup, test_teardown),
+        /* Tests wdb_global_recalculate_all_agent_groups_hash */
+        cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_transaction_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_exec_stmt_null, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_invalid_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_recalculate_error, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
