@@ -6,7 +6,7 @@ variadic: true
 
 # Arguments expected by the helper function
 arguments:
-  - id: 1
+  1:
     type: string  # Expected type is string
     source: value   # References not allowed
     allowed_values:
@@ -15,17 +15,17 @@ arguments:
       - mul
       - div
 
-  - id: 2
+  2:
     type: integer  # Expected type of the secondary argument is integer
     source: both # includes values or references (their names start with $)
 
-  - id: 3
+  3:
     type: integer  # Expected type of the secondary argument is integer
     source: both # includes values or references (their names start with $)
 
 special_cases:
   - brief: Division by zero
     arguments:
-      - 1: div
-      - 3: 0
+      1: div
+      3: 0
     details: The function raises an error when attempting to divide by zero.

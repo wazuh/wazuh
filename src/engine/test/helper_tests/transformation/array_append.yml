@@ -6,7 +6,7 @@ variadic: true
 
 # Arguments expected by the helper function
 arguments:
-  - id: 1
+  1:
     type: all  # Accept any type of json
     source: both # includes values or references (their names start with $)
 
