@@ -3,11 +3,11 @@ name: concat
 
 # Arguments expected by the helper function
 arguments:
-  - id: 1
+  1:
     type: string # Expected type is string
     source: both # Includes values or references (their names start with $)
 
-  - id: 2
+  2:
     type: string # Expected type is string
     source: both # Includes values or references (their names start with $)
 
