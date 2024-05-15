@@ -367,3 +367,7 @@ cJSON* __wrap_wdb_global_get_distinct_agent_groups(   __attribute__((unused)) wd
     *status = mock();
     return mock_ptr_type(cJSON*);
 }
+
+int __wrap_wdb_global_recalculate_all_agent_groups_hash(__attribute__((unused)) wdb_t *wdb) {
+    return mock();
+}
