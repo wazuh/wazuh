@@ -168,7 +168,7 @@ variables:
         <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>yes</update_check>
+        <update_check>no</update_check>
       </global>
 
       <logging>
@@ -197,7 +197,7 @@ variables:
       </vulnerability-detection>
     </ossec_config>
 
-  valid_ossec_conf_with_update_check_disabled:
+  valid_ossec_conf_with_update_check_enabled:
     <ossec_config>
       <global>
         <jsonout_output>yes</jsonout_output>
@@ -207,7 +207,8 @@ variables:
         <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
-        <update_check>no</update_check>
+        <update_check>yes</update_check>
+        <cti-url>http://cti:4041</cti-url>
       </global>
 
       <logging>
