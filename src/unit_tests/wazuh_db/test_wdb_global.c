@@ -8347,6 +8347,75 @@ void test_wdb_global_set_agent_group_context_exec_stmt_error(void **state)
     assert_int_equal(result, WDBC_ERROR);
 }
 
+/* wdb_global_set_agent_group_hash */
+
+void test_wdb_global_set_agent_group_hash_success(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char* csv = "GROUP1,GROUP2,GROUP3";
+    char* hash = "DUMMYHASH";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_SUCCESS);
+
+    wdbc_result result = wdb_global_set_agent_group_hash(data->wdb, agent_id, csv, hash);
+
+    assert_int_equal(result, WDBC_OK);
+}
+
+void test_wdb_global_set_agent_group_hash_init_stmt_error(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char* csv = "GROUP1,GROUP2,GROUP3";
+    char* hash = "DUMMYHASH";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, NULL);
+
+    wdbc_result result = wdb_global_set_agent_group_hash(data->wdb, agent_id, csv, hash);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
+void test_wdb_global_set_agent_group_hash_exec_stmt_error(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+    int agent_id = 1;
+    char* csv = "GROUP1,GROUP2,GROUP3";
+    char* hash = "DUMMYHASH";
+
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_SET);
+    will_return(__wrap_wdb_init_stmt_in_cache, (sqlite3_stmt*)1);
+    expect_value(__wrap_sqlite3_bind_text, pos, 1);
+    expect_string(__wrap_sqlite3_bind_text, buffer, csv);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_text, pos, 2);
+    expect_string(__wrap_sqlite3_bind_text, buffer, hash);
+    will_return(__wrap_sqlite3_bind_text, SQLITE_OK);
+    expect_value(__wrap_sqlite3_bind_int, index, 3);
+    expect_value(__wrap_sqlite3_bind_int, value, agent_id);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
+    will_return(__wrap_wdb_exec_stmt_silent, OS_INVALID);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__mdebug1, formatted_msg, "Error executing setting the agent group hash: ERROR MESSAGE");
+
+    wdbc_result result = wdb_global_set_agent_group_hash(data->wdb, agent_id, csv, hash);
+
+    assert_int_equal(result, WDBC_ERROR);
+}
+
 /* Tests wdb_global_groups_number_get */
 
 void test_wdb_global_groups_number_get_stmt_error(void **state)
@@ -9247,9 +9316,6 @@ void test_wdb_global_recalculate_all_agent_groups_hash_exec_stmt_null(void **sta
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_wdb_exec_stmt, NULL);
 
-    will_return(__wrap_w_is_single_node, 1);
-    will_return(__wrap_w_is_single_node, 1);
-
     expect_function_call(__wrap_cJSON_Delete);
 
     int result = wdb_global_recalculate_all_agent_groups_hash(data->wdb);
@@ -9268,9 +9334,6 @@ void test_wdb_global_recalculate_all_agent_groups_hash_invalid_id(void **state)
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_wdb_exec_stmt, json_agent);
-
-    will_return(__wrap_w_is_single_node, 1);
-    will_return(__wrap_w_is_single_node, 1);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid element returned by get all agents query");
 
@@ -9297,19 +9360,16 @@ void test_wdb_global_recalculate_all_agent_groups_hash_recalculate_error(void **
     will_return(__wrap_wdb_stmt_cache, 1);
     will_return(__wrap_wdb_exec_stmt, j_stmt_result);
 
-    will_return(__wrap_w_is_single_node, 1);
-    will_return(__wrap_w_is_single_node, 1);
-
     /* wdb_global_calculate_agent_group_csv */
     will_return(__wrap_wdb_begin2, -1);
     expect_string(__wrap__mdebug1, formatted_msg, "Cannot begin transaction");
     expect_string(__wrap__mdebug1, formatted_msg, "Unable to get groups of agent '001'");
-    expect_string(__wrap__mwarn, formatted_msg, "The groups were empty right after the set for agent '001'");
+    expect_string(__wrap__mdebug1, formatted_msg, "No groups in belongs table for agent '001'");
 
     /* wdb_global_set_agent_group_context */
-    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_CTX_SET);
+    expect_value(__wrap_wdb_init_stmt_in_cache, statement_index, WDB_STMT_GLOBAL_GROUP_HASH_SET);
     will_return(__wrap_wdb_init_stmt_in_cache, NULL);
-    expect_string(__wrap__merror, formatted_msg, "There was an error assigning the groups context to agent '001'");
+    expect_string(__wrap__merror, formatted_msg, "There was an error assigning the groups hash to agent '001'");
 
     expect_string(__wrap__merror, formatted_msg, "Couldn't recalculate hash group for agent: '001'");
 
@@ -9751,6 +9811,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_init_stmt_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_context_exec_stmt_error, test_setup, test_teardown),
+        /* Tests wdb_global_set_agent_group_hash */
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_hash_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_hash_init_stmt_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_set_agent_group_hash_exec_stmt_error, test_setup, test_teardown),
         /* Tests wdb_global_groups_number_get */
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_stmt_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_groups_number_get_bind_fail, test_setup, test_teardown),
