@@ -1131,15 +1131,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                if (wdb_commit2(wdb) < 0) {
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
-                    result = OS_INVALID;
-                } else {
-                    result = wdb_parse_global_delete_group(wdb, next, output);
-                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
-                        mdebug1("Global DB Cannot rollback transaction.");
-                    }
-                }
+                result = wdb_parse_global_delete_group(wdb, next, output);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_group_delete_group_time(diff);
@@ -1174,15 +1166,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                if (wdb_commit2(wdb) < 0) {
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
-                    result = OS_INVALID;
-                } else {
-                    result = wdb_parse_global_set_agent_groups(wdb, next, output);
-                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
-                        mdebug1("Global DB Cannot rollback transaction.");
-                    }
-                }
+                result = wdb_parse_global_set_agent_groups(wdb, next, output);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_set_agent_groups_time(diff);
