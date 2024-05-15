@@ -58,7 +58,7 @@ def restart_wazuh_function_without_exception(daemon=None):
 
 """Boto3 client fixtures"""
 # Use the environment variable or default to 'dev'
-aws_profile = os.environ.get("AWS_PROFILE", "dev")
+aws_profile = os.environ.get("AWS_PROFILE", "default")
 
 
 @pytest.fixture()
