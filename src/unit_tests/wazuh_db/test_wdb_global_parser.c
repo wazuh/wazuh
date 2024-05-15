@@ -4797,6 +4797,65 @@ void test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash(
     assert_int_equal(ret, OS_INVALID);
 }
 
+/* Tests wdb_parse_global_recalculate_agent_group_hashes */
+
+void test_wdb_parse_global_recalculate_agent_group_hashes_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global recalculate-agent-group-hashes";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: recalculate-agent-group-hashes");
+    will_return(__wrap_wdb_global_recalculate_all_agent_groups_hash, OS_INVALID);
+    expect_string(__wrap__mdebug1, formatted_msg, "Error recalculating group hash of agents in global.db.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error recalculating group hash of agents in global.db");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_recalculate_agent_group_hashes_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global recalculate-agent-group-hashes";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: recalculate-agent-group-hashes");
+    will_return(__wrap_wdb_global_recalculate_all_agent_groups_hash, OS_SUCCESS);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -4982,6 +5041,9 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_result_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_success_with_last_hash, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash, test_setup, test_teardown),
+        /* Tests wdb_parse_global_recalculate_agent_group_hashes */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_recalculate_agent_group_hashes_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_recalculate_agent_group_hashes_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
