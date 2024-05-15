@@ -92,15 +92,15 @@ def get_name(yaml_data):
 
 
 def get_allowed_values(yaml_data, argument_id):
-    for argument in yaml_data["arguments"]:
-        if argument["id"] == argument_id + 1:
+    for id, argument in yaml_data["arguments"].items():
+        if id == argument_id + 1:
             return argument.get("allowed_values", [])
     return []
 
 
 def get_sources(yaml_data):
     sources = []
-    for argument in yaml_data["arguments"]:
+    for argument in yaml_data["arguments"].values():
         if argument["source"]:
             sources.append(argument["source"])
     return sources
@@ -108,7 +108,7 @@ def get_sources(yaml_data):
 
 def get_types(yaml_data):
     types = []
-    for argument in yaml_data["arguments"]:
+    for argument in yaml_data["arguments"].values():
         types.append(argument["type"])
     return types
 
