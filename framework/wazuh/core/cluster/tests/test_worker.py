@@ -607,12 +607,14 @@ async def test_worker_check_agent_groups_checksums(send_request_mock):
 
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
+@patch("wazuh.core.cluster.worker.AsyncWazuhDBConnection")
 @patch('wazuh.core.cluster.worker.WorkerHandler.check_agent_groups_checksums', return_value='')
 @patch('wazuh.core.cluster.common.Handler.send_request', return_value='check')
 @patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
 @patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
 async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_id_mock, update_chunks_wdb_mock,
-                                                            send_request_mock, check_agent_groups_checksums_mock):
+                                                            send_request_mock, check_agent_groups_checksums_mock,
+                                                            asyncwazuhdbconnection_mock):
     """Check that the wazuh-db data reception task is created."""
 
     class LoggerMock:
@@ -644,6 +646,7 @@ async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_i
     assert 'Finished in 0.000s. Updated 1 chunks.' in logger._info
     reset_mock()
 
+    asyncwazuhdbconnection_mock.return_value = AsyncMock()
     assert await worker_handler.recv_agent_groups_entire_information(task_id=b'17', info_type='agent-groups') == 'check'
     get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_wgc_err')
     update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger_c, b'syn_wgc_err', 0)

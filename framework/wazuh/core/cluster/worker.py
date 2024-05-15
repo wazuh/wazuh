@@ -483,6 +483,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         data = await super().get_chunks_in_task_id(task_id, error_command)
         result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
         response = await self.send_request(command=command, data=json.dumps(result).encode())
+        if command == b'syn_wgc_e':
+            # Recalculate group hash before comparing with master's
+            await AsyncWazuhDBConnection().run_wdb_command(command='global recalculate-agent-group-hashes')
         await self.check_agent_groups_checksums(data, logger)
 
         end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
