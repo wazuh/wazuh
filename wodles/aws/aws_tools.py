@@ -385,6 +385,8 @@ def get_script_arguments():
                         help='If fail to parse a file, error out instead of skipping the file', default=False)
     parser.add_argument('-o', '--reparse', action='store_true', dest='reparse',
                         help='Parse the log file, even if its been parsed before', default=False)
+    parser.add_argument('-wa', '--waf_acls', dest='waf_acls', help='Comma delimited list of WAF ACLs to fetch',
+                        default='')
     parser.add_argument('-t', '--type', dest='type', type=str, help='Bucket type.', default='cloudtrail')
     parser.add_argument('-g', '--aws_log_groups', dest='aws_log_groups', help='Name of the log group to be parsed',
                         default='', type=aws_logs_groups_valid_key)

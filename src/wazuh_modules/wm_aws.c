@@ -236,6 +236,7 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
             if (iter->trail_prefix) cJSON_AddStringToObject(buck,"path",iter->trail_prefix);
             if (iter->trail_suffix) cJSON_AddStringToObject(buck,"path_suffix",iter->trail_suffix);
             if (iter->only_logs_after) cJSON_AddStringToObject(buck,"only_logs_after",iter->only_logs_after);
+            if (iter->waf_acls) cJSON_AddStringToObject(buck,"waf_acls",iter->waf_acls);
             if (iter->regions) cJSON_AddStringToObject(buck,"regions",iter->regions);
             if (iter->type) cJSON_AddStringToObject(buck,"type",iter->type);
             if (iter->remove_from_bucket) cJSON_AddStringToObject(buck,"remove_from_bucket","yes"); else cJSON_AddStringToObject(buck,"remove_from_bucket","no");
@@ -426,6 +427,10 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     if (exec_bucket->only_logs_after) {
         wm_strcat(&command, "--only_logs_after", ' ');
         wm_strcat(&command, exec_bucket->only_logs_after, ' ');
+    }
+    if (exec_bucket->waf_acls) {
+        wm_strcat(&command, "--waf_acls", ' ');
+        wm_strcat(&command, exec_bucket->waf_acls, ' ');
     }
     if (exec_bucket->regions) {
         wm_strcat(&command, "--regions", ' ');

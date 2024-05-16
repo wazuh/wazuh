@@ -39,6 +39,7 @@ typedef struct wm_aws_bucket {
     char *discard_regex;                // REGEX to determine if an event should be skipped
     char *sts_endpoint;                 // URL for the VPC endpoint to use to obtain the STS token
     char *service_endpoint;             // URL for the endpoint to use to obtain the logs
+    char *waf_acls;                     // CSV of WAF ACL names to parse
     unsigned int remove_from_bucket:1;  // Remove the logs from the bucket
     struct wm_aws_bucket *next;     // Pointer to next
 } wm_aws_bucket;

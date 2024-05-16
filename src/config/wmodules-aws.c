@@ -36,6 +36,7 @@ static const char *XML_DISCARD_FIELD = "field";
 static const char *XML_DISCARD_REGEX = "discard_regex";
 static const char *XML_STS_ENDPOINT = "sts_endpoint";
 static const char *XML_SERVICE_ENDPOINT = "service_endpoint";
+static const char *XML_WAF_ACLS = "waf_acls";
 static const char *XML_BUCKET_TYPE = "type";
 static const char *XML_SERVICE_TYPE = "type";
 static const char *XML_BUCKET_NAME = "name";
@@ -272,6 +273,11 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                         else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->only_logs_after);
                             os_strdup(children[j]->content, cur_bucket->only_logs_after);
+                        }
+                    } else if (!strcmp(children[j]->element, XML_WAF_ACLS)) {
+                        if (strlen(children[j]->content) != 0) {
+                            free(cur_bucket->waf_acls);
+                            os_strdup(children[j]->content, cur_bucket->waf_acls);
                         }
                     } else if (!strcmp(children[j]->element, XML_REGION)) {
                         if (strlen(children[j]->content) == 0) {
