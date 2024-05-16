@@ -156,7 +156,6 @@ public:
     {
         // Acquire lock to avoid multiple threads sending queries at the same time
         std::scoped_lock lockMessage {m_mutexMessage};
-        m_dataReady = false;
 
         if (m_teardown)
         {
@@ -166,6 +165,7 @@ public:
         // Acquire lock before clearing the response
         std::unique_lock lockResponse {m_mutexResponse};
 
+        m_dataReady = false;
         m_response.clear();
         m_responsePartial.clear();
         // coverity[missing_lock]
