@@ -29,7 +29,7 @@ wnotify_t * notify_queue;
 //static w_queue_t * sock_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 //static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
-static volatile int running = 1;
+static volatile _Atomic(int) running = 1;
 rlim_t nofile;
 
 int main(int argc, char ** argv)
