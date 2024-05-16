@@ -362,7 +362,7 @@ typedef struct wdb_t {
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * id;
     int peer;
-    unsigned int refcount;
+    _Atomic(unsigned int) refcount;
     unsigned int transaction:1;
     _Atomic(time_t) last;
     time_t transaction_begin_time;
