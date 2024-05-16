@@ -20,7 +20,6 @@ suite: files_restrict
 
 targets:
     - agent
-    - manager
 
 daemons:
     - wazuh-syscheckd
@@ -39,9 +38,6 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
-    - Windows 10
-    - Windows Server 2019
-    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
@@ -61,7 +57,6 @@ tags:
 """
 
 import sys
-import time
 import pytest
 import os
 
