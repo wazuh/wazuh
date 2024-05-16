@@ -364,7 +364,7 @@ typedef struct wdb_t {
     int peer;
     unsigned int refcount;
     unsigned int transaction:1;
-    time_t last;
+    _Atomic(time_t) last;
     time_t transaction_begin_time;
     pthread_mutex_t mutex;
     struct stmt_cache_list *cache_list;
