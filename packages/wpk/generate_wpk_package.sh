@@ -63,8 +63,8 @@ function help() {
     echo "Usage: ${0} [OPTIONS]"
     echo "It is required to use -k or --aws-wpk-key, --aws-wpk-cert parameters"
     echo
-    echo "    -t,   --target-system <target> [Required] Select target wpk to build [linux/windows/macos]"
-    echo "    -b,   --branch <branch>        [Required] Select Git branch or tag e.g. $BRANCH"
+    echo "    -t,   --target-system <target> [Required] Select target wpk to build [linux/windows/macos]."
+    echo "    -b,   --branch <branch>        [Required] Select Git branch."
     echo "    -d,   --destination <path>     [Required] Set the destination path of package."
     echo "    -pn,  --package-name <name>    [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk."
     echo "    -o,   --output <name>          [Required] Name to the output package."
@@ -72,8 +72,8 @@ function help() {
     echo "    --aws-wpk-key                  [Optional] AWS Secrets manager Name/ARN to get WPK private key."
     echo "    --aws-wpk-cert                 [Optional] AWS secrets manager Name/ARN to get WPK certificate."
     echo "    --aws-wpk-key-region           [Optional] AWS Region where secrets are stored."
-    echo "    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no"
-    echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes"
+    echo "    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no."
+    echo "    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes."
     echo "    --tag <name>                   [Optional] Tag to use with the docker image."
     echo "    -h,   --help                   Show this help."
     echo

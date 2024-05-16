@@ -17,15 +17,16 @@ TAG=$1
 
 
 help() {
+    set +x
     echo
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "    -b, --branch <branch>     [Optional] Select Git branch to compile Wazuh code."
-    echo "    --sources <path>          [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default: ../../src"
-    echo "    -o, --output <rev>        [Required] Name to the output package"
+    echo "    --sources <path>          [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default: '../../src'."
+    echo "    -o, --output <rev>        [Required] Name to the output package."
     echo "    -j, --jobs <number>       [Optional] Change number of parallel jobs when compiling the Windows agent. By default: 4."
     echo "    -s, --store <path>        [Optional] Set the directory where the package will be stored. By default the current path."
-    echo "    -d, --debug               [Optional] Build the binaries with debug symbols. By default: false."
+    echo "    -d, --debug               [Optional] Build the binaries with debug symbols. By default: no."
     echo "    -t, --trust_verification  [Optional] Build the binaries with trust load images verification. By default: 1 (only warnings)."
     echo "    -c, --ca_name <CA name>   [Optional] CA name to be used to verify the trust of the agent. By default: DigiCert Assured ID Root CA."
     echo "    --dont-build-docker       [Optional] Locally built docker image will be used instead of generating a new one."
