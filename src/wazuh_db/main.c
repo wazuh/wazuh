@@ -137,6 +137,7 @@ int main(int argc, char ** argv)
     snprintf(path_template, sizeof(path_template), "%s/%s/%s", home_path, WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed: %s", path_template);
+    wdb_create_profile();
 
     // Set max open files limit
     struct rlimit rlimit = { nofile, nofile };
