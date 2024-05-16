@@ -134,6 +134,7 @@ typedef struct _global_agent_t {
     uint64_t get_all_agents_queries;
     uint64_t get_distinct_groups_queries;
     uint64_t get_groups_integrity_queries;
+    uint64_t recalculate_agent_group_hashes_queries;
     uint64_t insert_agent_queries;
     uint64_t reset_agents_connection_queries;
     uint64_t select_agent_group_queries;
@@ -155,6 +156,7 @@ typedef struct _global_agent_t {
     struct timeval get_all_agents_time;
     struct timeval get_distinct_groups_time;
     struct timeval get_groups_integrity_time;
+    struct timeval recalculate_agent_group_hashes_time;
     struct timeval insert_agent_time;
     struct timeval reset_agents_connection_time;
     struct timeval select_agent_group_time;
@@ -1029,6 +1031,19 @@ void w_inc_global_agent_get_groups_integrity();
  * @param time Value to increment the counter.
  */
 void w_inc_global_agent_get_groups_integrity_time(struct timeval time);
+
+/**
+ * @brief Increment recalculate-agent-group-hashes global agent queries counter
+ *
+ */
+void w_inc_global_agent_recalculate_agent_group_hashes();
+
+/**
+ * @brief Increment recalculate-agent-group-hashes global agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_agent_recalculate_agent_group_hashes_time(struct timeval time);
 
 /**
  * @brief Increment insert-agent-group global group queries counter
