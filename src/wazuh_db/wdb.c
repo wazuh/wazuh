@@ -474,21 +474,28 @@ int wdb_create_agent_db2(const char * agent_id) {
     FILE *dest;
     size_t nbytes;
     int result = 0;
+    static pthread_mutex_t profile_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+    w_mutex_lock(&profile_mutex);
 
     if (!(source = fopen(WDB_PROF_PATH, "r"))) {
         mdebug1("Profile database not found, creating.");
 
-        if (wdb_create_profile() < 0)
+        if (wdb_create_profile() < 0) {
+            w_mutex_unlock(&profile_mutex);
             return -1;
+        }
 
         // Retry to open
 
         if (!(source = fopen(WDB_PROF_PATH, "r"))) {
+            w_mutex_unlock(&profile_mutex);
             merror("Couldn't open profile '%s'.", WDB_PROF_PATH);
             return -1;
         }
     }
 
+    w_mutex_unlock(&profile_mutex);
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
 
     if (!(dest = fopen(path, "w"))) {
