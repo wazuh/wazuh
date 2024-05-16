@@ -12,6 +12,7 @@ DESTINATION_PATH=$1
 SOURCES_PATH=$2
 BUILD_JOBS=$3
 DEBUG=$4
+MAKE_COMPILATION=$5
 INSTALLATION_SCRIPTS_DIR=${DESTINATION_PATH}/packages_files/agent_installation_scripts
 
 function configure() {
@@ -35,7 +36,7 @@ function build() {
 
     configure
 
-    if [ -z "${USER_BINARYINSTALL}" ]; then
+    if [ "${MAKE_COMPILATION}" == "yes" ]; then
     make -C ${SOURCES_PATH}/src deps TARGET=agent
 
     echo "Generating Wazuh executables"
