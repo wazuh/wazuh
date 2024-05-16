@@ -17,12 +17,13 @@ INSTALLATION_PATH="/Library/Ossec"    # Installation path.
 VERSION=""                            # Default VERSION (branch/tag).
 REVISION="1"                          # Package revision.
 BRANCH_TAG=""                         # Branch that will be downloaded to build package.
-DESTINATION="${CURRENT_PATH}/output/" # Where package will be stored.
+DESTINATION="${CURRENT_PATH}/output" # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
 VERBOSE="no"                          # Enables the full log by using `set -exf`.
 DEBUG="no"                            # Enables debug symbols while compiling.
 CHECKSUM="no"                         # Enables the checksum generation.
 IS_STAGE="no"                         # Enables release package naming.
+MAKE_COMPILATION="yes"                # Set whether or not to compile the code
 CERT_APPLICATION_ID=""                # Apple Developer ID certificate to sign Apps and binaries.
 CERT_INSTALLER_ID=""                  # Apple Developer ID certificate to sign pkg.
 KEYCHAIN=""                           # Keychain where the Apple Developer ID certificate is.
@@ -64,7 +65,7 @@ function notarize_pkg() {
             echo "Adding the ticket to the package."
             if xcrun stapler staple -v "${1}" ; then
                 echo "Ticket added. Ready to release the package."
-                mkdir -p "${DESTINATION}" && cp "${1}" "${DESTINATION}/"
+                mkdir -p "${DESTINATION}/" && cp "${1}" "${DESTINATION}/"
                 return 0
             else
                 echo "Something went wrong while adding the package."
@@ -160,13 +161,13 @@ function build_package() {
         ${CURRENT_PATH}/uninstall.sh
     fi
 
-    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS} ${DEBUG}
+    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS} ${DEBUG} ${MAKE_COMPILATION}
 
     # sign the binaries and the libraries
     sign_binaries
 
     # create package
-    if packagesbuild ${AGENT_PKG_FILE} --build-folder ${DESTINATION} ; then
+    if packagesbuild ${AGENT_PKG_FILE} --build-folder "${DESTINATION}/" ; then
         echo "The wazuh agent package for macOS has been successfully built."
         pkg_name+=".pkg"
         sign_pkg
@@ -193,6 +194,7 @@ function help() {
     echo "    -d, --debug                   [Optional] Build the binaries with debug symbols. By default: no."
     echo "    -c, --checksum <path>         [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
     echo "    --is_stage                    [Optional] Use release name in package"
+    echo "    -nc, --not-compile            [Optional] Set whether or not to compile the code."
     echo "    -h, --help                    [  Util  ] Show this help."
     echo "    -i, --install-deps            [  Util  ] Install build dependencies (Packages)."
     echo "    -x, --install-xcode           [  Util  ] Install X-Code and brew. Can't be executed as root."
@@ -334,6 +336,10 @@ function main() {
             ;;
         "--is_stage")
             IS_STAGE="yes"
+            shift 1
+            ;;
+        "-nc"|"--not-compile")
+            MAKE_COMPILATION="no"
             shift 1
             ;;
         "--keychain")
