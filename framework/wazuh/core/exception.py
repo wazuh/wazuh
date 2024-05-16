@@ -500,12 +500,12 @@ class WazuhException(Exception):
         # HAProxy Helper exceptions
         3041: "Server status check timed out after adding new servers",
         3042: "User configuration is not valid",
-        3043: "Cannot initialize Proxy API",
-        3044: "Unexpected error trying to connect to Proxy API",
-        3045: "Unexpected response from the Proxy API",
+        3043: "Could not initialize Proxy API",
+        3044: "Could not connect to the HAProxy dataplane API",
+        3045: "Could not connect to HAProxy",
         3046: "Invalid credentials for the Proxy API",
         3047: "Invalid HAProxy Dataplane API specification configured",
-        3048: "Cannot detect a valid HAProxy process linked to the Dataplane API",
+        3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
         3049: "Unexpected response from HAProxy Dataplane API",
 
         # RBAC exceptions

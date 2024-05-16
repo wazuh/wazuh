@@ -83,13 +83,8 @@ class HAPHelper:
 
     async def initialize_proxy(self):
         """Initialize HAProxy."""
-        try:
-            await self.proxy.initialize()
-            self.logger.info('Proxy was initialized')
-        except WazuhHAPHelperError as init_exc:
-            self.logger.critical('Cannot initialize the proxy')
-            self.logger.critical(init_exc)
-            raise
+        await self.proxy.initialize()
+        self.logger.info('Proxy was initialized')
 
     async def initialize_wazuh_cluster_configuration(self):
         """Initialize main components of the Wazuh cluster."""
@@ -283,7 +278,7 @@ class HAPHelper:
             await self.update_agent_connections(agent_list=agents_to_balance)
 
         self.logger.info('Waiting for agent connections stability')
-        self.logger.debug(f'Sleeping {self.agent_reconnection_stability_time}s...')
+        self.logger.debug(f'Sleeping {self.agent_reconnection_stability_time}s, waiting for agents reconnection...')
         await asyncio.sleep(self.agent_reconnection_stability_time)
 
     def check_for_balance(self, current_connections_distribution: dict) -> dict:
@@ -417,12 +412,12 @@ class HAPHelper:
                     await asyncio.sleep(self.AGENT_STATUS_SYNC_TIME)
                     await self.balance_agents(affected_servers=unbalanced_connections)
 
-                self.logger.debug(f'Sleeping {self.sleep_time}s...')
+                self.logger.debug(f'Sleeping {self.sleep_time}s before next cycle...')
                 await asyncio.sleep(self.sleep_time)
             except WazuhException as handled_exc:
                 self.logger.error(str(handled_exc))
                 self.logger.warning(
-                    f'Tasks may not perform as expected. Sleeping {self.sleep_time}s ' 'before continuing...'
+                    f'Tasks may not perform as expected. Sleeping {self.sleep_time}s before trying again...'
                 )
                 await asyncio.sleep(self.sleep_time)
 
@@ -531,6 +526,8 @@ class HAPHelper:
             await helper.manage_wazuh_cluster_nodes()
         except KeyError as exc:
             logger.error(f'Missing configuration {exc}. The helper cannot start.')
+        except WazuhHAPHelperError as exc:
+            logger.error(exc)
         except KeyboardInterrupt:
             pass
         except Exception as unexpected_exc:
