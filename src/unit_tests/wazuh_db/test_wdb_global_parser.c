@@ -4808,7 +4808,7 @@ void test_wdb_parse_global_recalculate_agent_group_hashes_error(void **state)
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: recalculate-agent-group-hashes");
     will_return(__wrap_wdb_global_recalculate_all_agent_groups_hash, OS_INVALID);
-    expect_string(__wrap__mdebug1, formatted_msg, "Error recalculating group hash of agents in global.db.");
+    expect_string(__wrap__mwarn, formatted_msg, "Error recalculating group hash of agents in global.db.");
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);

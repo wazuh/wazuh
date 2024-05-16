@@ -9308,12 +9308,32 @@ void test_wdb_global_recalculate_all_agent_groups_hash_cache_fail(void **state)
     assert_int_equal(result, OS_INVALID);
 }
 
+void test_wdb_global_recalculate_all_agent_groups_hash_bind_fail(void **state)
+{
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    will_return(__wrap_wdb_begin2, 1);
+    will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_ERROR);
+    will_return(__wrap_sqlite3_errmsg, "ERROR MESSAGE");
+    expect_string(__wrap__merror, formatted_msg, "DB(global) sqlite3_bind_int(): ERROR MESSAGE");
+
+    int result = wdb_global_recalculate_all_agent_groups_hash(data->wdb);
+
+    assert_int_equal(result, OS_INVALID);
+}
+
 void test_wdb_global_recalculate_all_agent_groups_hash_exec_stmt_null(void **state)
 {
     test_struct_t *data  = (test_struct_t *)*state;
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, NULL);
 
     expect_function_call(__wrap_cJSON_Delete);
@@ -9333,6 +9353,9 @@ void test_wdb_global_recalculate_all_agent_groups_hash_invalid_id(void **state)
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, json_agent);
 
     expect_string(__wrap__merror, formatted_msg, "Invalid element returned by get all agents query");
@@ -9358,6 +9381,9 @@ void test_wdb_global_recalculate_all_agent_groups_hash_recalculate_error(void **
 
     will_return(__wrap_wdb_begin2, 1);
     will_return(__wrap_wdb_stmt_cache, 1);
+    expect_value(__wrap_sqlite3_bind_int, index, 1);
+    expect_value(__wrap_sqlite3_bind_int, value, 0);
+    will_return(__wrap_sqlite3_bind_int, SQLITE_OK);
     will_return(__wrap_wdb_exec_stmt, j_stmt_result);
 
     /* wdb_global_calculate_agent_group_csv */
@@ -9857,6 +9883,7 @@ int main()
         /* Tests wdb_global_recalculate_all_agent_groups_hash */
         cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_transaction_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_cache_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_bind_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_exec_stmt_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_invalid_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_global_recalculate_all_agent_groups_hash_recalculate_error, test_setup, test_teardown),

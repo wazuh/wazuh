@@ -1551,11 +1551,16 @@ int wdb_global_recalculate_all_agent_groups_hash(wdb_t* wdb) {
         return OS_INVALID;
     }
 
-    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_TO_RECALCULATE_GROUP_HASH) < 0) {
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
         mdebug1("Cannot cache statement");
         return OS_INVALID;
     }
-    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_TO_RECALCULATE_GROUP_HASH];
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
+
+    if (sqlite3_bind_int(stmt, 1, 0) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
 
     //Get agents to recalculate hash
     cJSON* j_stmt_result = wdb_exec_stmt(stmt);

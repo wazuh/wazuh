@@ -6030,7 +6030,7 @@ int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
 int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output) {
 
     if (OS_SUCCESS != wdb_global_recalculate_all_agent_groups_hash(wdb)) {
-        mdebug1("Error recalculating group hash of agents in global.db.");
+        mwarn("Error recalculating group hash of agents in global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error recalculating group hash of agents in global.db");
         return OS_INVALID;
     }
