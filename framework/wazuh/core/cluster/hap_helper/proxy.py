@@ -182,7 +182,7 @@ class ProxyAPI:
         elif response.status_code == 401:
             raise WazuhHAPHelperError(3046)
         else:
-            raise WazuhHAPHelperError(3045, extra_message=f'Full response: {response.status_code} | {response.json()}')
+            raise WazuhHAPHelperError(3045, extra_message=response.json()['message'])
 
     async def update_configuration_version(self):
         """Get the last version of the configuration schema and set it."""
