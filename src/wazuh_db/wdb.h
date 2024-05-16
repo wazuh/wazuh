@@ -729,7 +729,7 @@ int wdb_commit2(wdb_t * wdb);
 int wdb_create_global(const char *path);
 
 /* Create profile database */
-int wdb_create_profile(const char *path);
+int wdb_create_profile();
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
