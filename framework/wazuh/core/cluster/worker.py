@@ -452,7 +452,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         error_command = b'syn_wgc_err'
         timeout = self.cluster_items['intervals']['worker']['timeout_agent_groups']
 
-        return await self.recv_agent_groups_information(task_id, info_type, logger, command, error_command, timeout)
+        master_groups_info = await self.recv_agent_groups_information(task_id, info_type, logger,
+                                                                      command, error_command, timeout)
+        await self.recalculate_group_hash(logger)
+
+        return master_groups_info
 
     async def recv_agent_groups_information(self, task_id: bytes, info_type: str, logger: logging.Logger,
                                             command: bytes, error_command: bytes, timeout: int):

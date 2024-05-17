@@ -896,15 +896,16 @@ async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+@patch("wazuh.core.cluster.master.MasterHandler.recalculate_group_hash", return_value=AsyncMock())
 @patch('wazuh.core.cluster.common.SyncWazuhdb')
-async def test_manager_handler_send_entire_agent_groups_information(SyncWazuhdb_mock, AsyncWazuhDBConnection_mock):
+async def test_manager_handler_send_entire_agent_groups_information(syncwazuhdb_mock, recalculate_group_hash_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class LoggerMock:
         """Auxiliary class."""
 
         def __init__(self):
+            self._debug = []
             self._info = []
             self._error = []
 
@@ -915,24 +916,24 @@ async def test_manager_handler_send_entire_agent_groups_information(SyncWazuhdb_
     master_handler = get_master_handler()
     logger = LoggerMock()
     master_handler.task_loggers["Agent-groups send full"] = logger
-    SyncWazuhdb_mock.return_value.retrieve_information = AsyncMock()
-    SyncWazuhdb_mock.return_value.sync = AsyncMock()
+    syncwazuhdb_mock.return_value.retrieve_information = AsyncMock()
+    syncwazuhdb_mock.return_value.sync = AsyncMock()
     assert await master_handler.send_entire_agent_groups_information() is None
-    SyncWazuhdb_mock.assert_called_once_with(manager=master_handler, logger=logger, cmd=b'syn_g_m_w_c',
+    syncwazuhdb_mock.assert_called_once_with(manager=master_handler, logger=logger, cmd=b'syn_g_m_w_c',
                                              data_retriever=ANY,
                                              get_data_command='global sync-agent-groups-get ',
                                              get_payload={'condition': 'all', 'set_synced': False,
                                                           'get_global_hash': False, 'last_id': 0},
                                              pivot_key='last_id', set_data_command='global set-agent-groups',
                                              set_payload={'mode': 'override', 'sync_status': 'synced'})
-    SyncWazuhdb_mock.return_value.retrieve_information.assert_called_once()
-    SyncWazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
+    syncwazuhdb_mock.return_value.retrieve_information.assert_called_once()
+    syncwazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
     assert logger._info == ['Starting.']
 
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
-async def test_manager_handler_send_agent_groups_information(AsyncWazuhDBConnection_mock):
+async def test_manager_handler_send_agent_groups_information(asyncwazuhdbconnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class LoggerMock:

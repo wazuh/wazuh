@@ -607,12 +607,14 @@ async def test_worker_check_agent_groups_checksums(send_request_mock):
 
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
+@patch("wazuh.core.cluster.worker.WorkerHandler.recalculate_group_hash", return_value=AsyncMock())
 @patch('wazuh.core.cluster.worker.WorkerHandler.check_agent_groups_checksums', return_value='')
 @patch('wazuh.core.cluster.common.Handler.send_request', return_value='check')
 @patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
 @patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
 async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_id_mock, update_chunks_wdb_mock,
-                                                            send_request_mock, check_agent_groups_checksums_mock):
+                                                            send_request_mock, check_agent_groups_checksums_mock,
+                                                            recalculate_group_hash_mock):
     """Check that the wazuh-db data reception task is created."""
 
     class LoggerMock:
