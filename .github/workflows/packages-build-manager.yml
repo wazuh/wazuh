@@ -1,4 +1,5 @@
-run-name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }}
+run-name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -51,6 +52,11 @@ on:
         description: Generate package checksum.
         type: boolean
         required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
 
   workflow_call:
     inputs:
@@ -76,6 +82,9 @@ on:
         required: false
       checksum:
         type: boolean
+        required: false
+      id:
+        type: string
         required: false
 
 jobs:

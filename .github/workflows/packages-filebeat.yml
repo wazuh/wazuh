@@ -1,4 +1,5 @@
-name: Packages - Build Filebeat Package
+run-name: Build Filebeat module ${{ inputs.revision }} ${{ inputs.id }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -9,6 +10,11 @@ on:
         required: false
         default: "0.0"
         type: string
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
 
   workflow_call:
     inputs:
@@ -16,6 +22,9 @@ on:
         required: false
         default: "0.0"
         type: string
+      id:
+        type: string
+        required: false
 
 jobs:
   Filebeat-module-generation:
