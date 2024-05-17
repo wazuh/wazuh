@@ -363,9 +363,9 @@ typedef struct wdb_t {
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * id;
     int peer;
-    unsigned int refcount;
+    _Atomic(unsigned int) refcount;
     unsigned int transaction:1;
-    time_t last;
+    _Atomic(time_t) last;
     time_t transaction_begin_time;
     pthread_mutex_t mutex;
     struct stmt_cache_list *cache_list;
@@ -730,7 +730,7 @@ int wdb_commit2(wdb_t * wdb);
 int wdb_create_global(const char *path);
 
 /* Create profile database */
-int wdb_create_profile(const char *path);
+int wdb_create_profile();
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);

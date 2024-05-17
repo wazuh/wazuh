@@ -475,23 +475,28 @@ int wdb_create_agent_db2(const char * agent_id) {
     FILE *dest;
     size_t nbytes;
     int result = 0;
+    static pthread_mutex_t profile_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    snprintf(path, OS_FLSIZE, "%s/%s", WDB2_DIR, WDB_PROF_NAME);
+    w_mutex_lock(&profile_mutex);
 
-    if (!(source = fopen(path, "r"))) {
+    if (!(source = fopen(WDB_PROF_PATH, "r"))) {
         mdebug1("Profile database not found, creating.");
 
-        if (wdb_create_profile(path) < 0)
+        if (wdb_create_profile() < 0) {
+            w_mutex_unlock(&profile_mutex);
             return -1;
+        }
 
         // Retry to open
 
-        if (!(source = fopen(path, "r"))) {
-            merror("Couldn't open profile '%s'.", path);
+        if (!(source = fopen(WDB_PROF_PATH, "r"))) {
+            w_mutex_unlock(&profile_mutex);
+            merror("Couldn't open profile '%s'.", WDB_PROF_PATH);
             return -1;
         }
     }
 
+    w_mutex_unlock(&profile_mutex);
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
 
     if (!(dest = fopen(path, "w"))) {
@@ -635,8 +640,8 @@ int wdb_create_global(const char *path) {
 }
 
 /* Create profile database */
-int wdb_create_profile(const char *path) {
-    return wdb_create_file(path, schema_agents_sql);
+int wdb_create_profile() {
+    return wdb_create_file(WDB_PROF_PATH, schema_agents_sql);
 }
 
 /* Create new database file from SQL script */
