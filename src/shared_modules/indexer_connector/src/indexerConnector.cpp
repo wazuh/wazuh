@@ -21,7 +21,7 @@ constexpr auto NOT_USED {-1};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
-constexpr auto ELEMENTS_PER_BULK {50};
+constexpr auto ELEMENTS_PER_BULK {1000};
 
 namespace Log
 {
