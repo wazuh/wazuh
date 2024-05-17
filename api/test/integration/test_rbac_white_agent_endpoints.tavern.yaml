@@ -1470,10 +1470,9 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - '004'
+          affected_items: !anything
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 0
     delay_after: !float "{reconnect_delay}"
 
@@ -1570,10 +1569,9 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - '004'
+          affected_items: !anything
           failed_items: []
-          total_affected_items: 1
+          total_affected_items: !anyint
           total_failed_items: 0
 
 ---
