@@ -100,7 +100,11 @@ class TestProxyAPI:
         (
             [{'status_code': 401, 'is_success': False}, None, 3046],
             [
-                {'status_code': random.choice([403, 404, 500]), 'is_success': False, 'json.return_value': '{}'},
+                {
+                    'status_code': random.choice([403, 404, 500]),
+                    'is_success': False,
+                    'json.return_value': {'message': 'error'},
+                },
                 None,
                 3045,
             ],
@@ -128,9 +132,7 @@ class TestProxyAPI:
         with pytest.raises(WazuhHAPHelperError, match=f'.*{expected}.*'):
             await getattr(proxy_api, method)(**f_kwargs)
 
-    async def test_update_configuration_version(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_update_configuration_version(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check that `update_configuration_version` method sets the correct version."""
 
         endpoint = 'services/haproxy/configuration/version'
@@ -150,9 +152,7 @@ class TestProxyAPI:
         )
         assert proxy_api.version == version
 
-    async def test_get_runtime_info(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_get_runtime_info(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check the correct output of `get_runtime_info` method."""
 
         endpoint = 'services/haproxy/runtime/info'
@@ -172,9 +172,7 @@ class TestProxyAPI:
         )
         assert ret_val == info
 
-    async def test_get_global_configuration(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_get_global_configuration(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check the correct output of `get_global_configuration` method."""
 
         endpoint = 'services/haproxy/configuration/global'
@@ -194,9 +192,7 @@ class TestProxyAPI:
         )
         assert ret_val == data
 
-    async def test_update_global_configuration(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_update_global_configuration(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check that `update_globla_configuration` method makes the correct request."""
 
         endpoint = 'services/haproxy/configuration/global'
@@ -279,9 +275,7 @@ class TestProxyAPI:
             params={'version': 0},
         )
 
-    async def test_get_backend_servers(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_get_backend_servers(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check the correct output of `get_backend_servers` method."""
 
         endpoint = 'services/haproxy/configuration/servers'
@@ -349,9 +343,7 @@ class TestProxyAPI:
             params={'version': 0},
         )
 
-    async def test_remove_server_from_backend(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_remove_server_from_backend(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check that `remove_server_from_backend` method makes the correct request."""
 
         endpoint = 'services/haproxy/configuration/servers'
@@ -436,9 +428,7 @@ class TestProxyAPI:
             params={'force_reload': True, 'frontend': name, 'version': 1},
         )
 
-    async def test_get_backend_server_runtime_settings(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_get_backend_server_runtime_settings(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check the correct output of `get_backend_server_runtime_settings` method."""
 
         endpoint = 'services/haproxy/runtime/servers'
@@ -492,9 +482,7 @@ class TestProxyAPI:
             params={'backend': backend_name, 'version': 0},
         )
 
-    async def test_get_backend_stats(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_get_backend_stats(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check the correct output of `get_backend_stats` method."""
 
         endpoint = 'services/haproxy/stats/native'
@@ -515,9 +503,7 @@ class TestProxyAPI:
         )
         assert ret_val == data
 
-    async def test_get_backend_server_stats(
-        self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock
-    ):
+    async def test_get_backend_server_stats(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check the correct output of `get_backend_server_stats` method."""
 
         endpoint = 'services/haproxy/stats/native'
@@ -570,9 +556,7 @@ class TestProxy:
         assert proxy.hard_stop_after == expected
 
     @pytest.mark.parametrize('side_effect', [KeyError, IndexError])
-    async def test_initialize_ko(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy, side_effect: Exception
-    ):
+    async def test_initialize_ko(self, proxy_api_mock: mock.MagicMock, proxy: Proxy, side_effect: Exception):
         """Check the correct error handling of `initialize` method."""
 
         proxy_api_mock.get_runtime_info.side_effect = side_effect
@@ -645,9 +629,7 @@ class TestProxy:
         with mock.patch.object(proxy, 'get_current_backends', return_value=current_backends):
             assert await proxy.exists_backend(backend) == expected
 
-    async def test_get_current_frontends(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy
-    ):
+    async def test_get_current_frontends(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check the correct output of `get_current_frontends` method."""
 
         frontends = [
@@ -694,9 +676,7 @@ class TestProxy:
 
         proxy_api_mock.add_frontend.assert_called_once_with(**parameters)
 
-    async def test_get_current_backend_servers(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy
-    ):
+    async def test_get_current_backend_servers(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check the correct output of `get_current_backend_servers` method."""
 
         servers = [
@@ -738,9 +718,7 @@ class TestProxy:
             backend=proxy.wazuh_backend, server_name=manager_name
         )
 
-    async def test_restrain_server_new_connections(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy
-    ):
+    async def test_restrain_server_new_connections(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check that `restrain_server_new_connections` method makes the correct callback."""
 
         server_name = 'foo'
@@ -751,9 +729,7 @@ class TestProxy:
             backend_name=proxy.wazuh_backend, server_name=server_name, state=ProxyServerState.DRAIN
         )
 
-    async def test_allow_server_new_connections(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy
-    ):
+    async def test_allow_server_new_connections(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check that `allow_server_new_connections` method makes the correct callback."""
 
         server_name = 'foo'
@@ -764,9 +740,7 @@ class TestProxy:
             backend_name=proxy.wazuh_backend, server_name=server_name, state=ProxyServerState.READY
         )
 
-    async def test_get_wazuh_server_stats(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy
-    ):
+    async def test_get_wazuh_server_stats(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check the correct output of `get_wazuh_server_stats` method."""
 
         stats = {'foo': 'bar'}
@@ -797,9 +771,7 @@ class TestProxy:
             backend_name=proxy.wazuh_backend, server_name=server_name
         )
 
-    async def test_get_wazuh_backend_stats(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy
-    ):
+    async def test_get_wazuh_backend_stats(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check the correct output of `get_wazuh_backend_stats` method."""
 
         servers = [
@@ -817,9 +789,7 @@ class TestProxy:
             for server in servers:
                 server_stats_mock.assert_any_call(server_name=server['name'])
 
-    async def test_get_wazuh_backend_server_connections(
-        self, proxy_api_mock: mock.MagicMock, proxy: Proxy
-    ):
+    async def test_get_wazuh_backend_server_connections(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check the correct output of `get_wazuh_backend_server_connections` method."""
 
         stats = {
