@@ -50,7 +50,7 @@ execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock"
 HELPER_DEFAULTS = {
     HAPROXY_PORT: 5555,
     HAPROXY_PROTOCOL: 'http',
-    HAPROXY_BACKEND: 'wazuh_cluster',
+    HAPROXY_BACKEND: 'wazuh_reporting',
     HAPROXY_RESOLVER: None,
     EXCLUDED_NODES: [],
     FREQUENCY: 60,
