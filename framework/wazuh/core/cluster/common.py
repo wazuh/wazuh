@@ -25,7 +25,7 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
-from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.wdb import WazuhDBConnection, AsyncWazuhDBConnection
 
 class Response:
     """
@@ -1197,6 +1197,22 @@ class WazuhCommon:
     def __init__(self):
         """Class constructor."""
         self.sync_tasks = {}
+
+    @staticmethod
+    async def recalculate_group_hash(logger) -> None:
+        """Recalculate agent-group hash in the DB.
+
+        Parameters
+        ----------
+        logger : Logger object
+            Logger to use during the recalculation process.
+        """
+        try:
+            # Recalculate group hashes before retrieving agent groups info
+            logger.debug('Recalculating agent-group hash.')
+            await AsyncWazuhDBConnection().run_wdb_command(command='global recalculate-agent-group-hashes')
+        except (exception.WazuhInternalError, exception.WazuhError) as e:
+            logger.warning(f'Error {e.code} executing recalculate agent-group hash command: {e.message}')
 
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
         """Get a logger object.

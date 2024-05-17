@@ -896,9 +896,9 @@ async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection", return_value=AsyncMock())
+@patch("wazuh.core.cluster.master.MasterHandler.recalculate_group_hash", return_value=AsyncMock())
 @patch('wazuh.core.cluster.common.SyncWazuhdb')
-async def test_manager_handler_send_entire_agent_groups_information(syncwazuhdb_mock, asyncwazuhdbconnection_mock):
+async def test_manager_handler_send_entire_agent_groups_information(syncwazuhdb_mock, recalculate_group_hash_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class LoggerMock:
@@ -908,9 +908,6 @@ async def test_manager_handler_send_entire_agent_groups_information(syncwazuhdb_
             self._debug = []
             self._info = []
             self._error = []
-
-        def debug(self, debug):
-            self._debug.append(debug)
 
         def info(self, data):
             """Auxiliary method."""
@@ -932,7 +929,6 @@ async def test_manager_handler_send_entire_agent_groups_information(syncwazuhdb_
     syncwazuhdb_mock.return_value.retrieve_information.assert_called_once()
     syncwazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
     assert logger._info == ['Starting.']
-    assert logger._debug == ['Recalculating agent-group hash.']
 
 
 @pytest.mark.asyncio
