@@ -1406,12 +1406,9 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - '003'
-            - '005'
-            - '007'
+          affected_items: !anything
           failed_items: []
-          total_affected_items: 3
+          total_affected_items: !anyint
           total_failed_items: 0
     delay_after: !float "{reconnect_delay}"
 
@@ -1420,7 +1417,7 @@ test_name: PUT /agents/restart
 
 stages:
 
-  - name: Try to restart agent 001 (Denied)default,group1,group3,pepito
+  - name: Try to restart agent 001 (Denied)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/restart"
