@@ -33,7 +33,7 @@ ID: 87800-87899
   <rule id="87802" level="3">
     <decoded_as>json</decoded_as>
     <field name="azure_tag">azure-ad-graph</field>
-    <description>Azure: AD $(activity)</description>
+    <description>Azure: AD $(activityDisplayName)</description>
     <options>no_full_log</options>
   </rule>
 
