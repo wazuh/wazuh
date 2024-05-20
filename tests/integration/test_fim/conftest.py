@@ -10,6 +10,7 @@ import pytest
 import re
 import subprocess
 import sys
+import win32con
 
 from typing import Any
 from pathlib import Path
@@ -17,6 +18,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
 from wazuh_testing.modules.fim.patterns import MONITORING_PATH
+from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
@@ -151,3 +153,17 @@ def create_links_to_file(folder_to_monitor: str, file_to_monitor: str, test_meta
 
     [file.remove_file(f'test_h{i}') for i in range(hardlink_amount)]
     [file.remove_file(f'test_s{i}') for i in range(symlink_amount)]
+
+
+@pytest.fixture()
+def create_registry(test_metadata: dict) -> None:
+    key = win32con.HKEY_LOCAL_MACHINE
+    sub_key = test_metadata.get('sub_key')
+    arch = win32con.KEY_WOW64_64KEY if test_metadata.get('arch') == 'x64' else win32con.KEY_WOW64_32KEY
+
+    sleep(10)
+    create_registry(key, sub_key, arch)
+
+    yield
+
+    delete_registry(key, sub_key, arch)
