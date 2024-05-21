@@ -73,6 +73,9 @@ def s3_client(boto_session: boto3.Session):
 
     Args:
         boto_session (boto3.Session): Session used to create the client.
+
+    Returns:
+        boto3.resources.base.ServiceResource: S3 client to manage bucket resources.
     """
     return boto_session.resource(service_name="s3", region_name=US_EAST_1_REGION)
 
@@ -83,6 +86,9 @@ def ec2_client(boto_session: boto3.Session):
 
     Args:
         boto_session (boto3.Session): Session used to create the client.
+
+    Returns:
+        Service client instance: EC2 client to manage VPC resources.
     """
     return boto_session.client(service_name="ec2", region_name=US_EAST_1_REGION)
 
@@ -94,6 +100,9 @@ def logs_clients(boto_session: boto3.Session, metadata: dict):
     Args:
         boto_session (boto3.Session): Session used to create the client.
         metadata (dict): Metadata from the module to obtain the defined regions.
+
+    Returns:
+        list(Service client instance): CloudWatch client list to manage the service's resources in multiple regions.
     """
     # A client for each region is required to generate logs accordingly
     return [boto_session.client(service_name="logs", region_name=region)
@@ -106,6 +115,9 @@ def sqs_client(boto_session: boto3.Session):
 
     Args:
         boto_session (boto3.Session): Session used to create the client.
+
+    Returns:
+        Service client instance: SQS client to manage the queue resources.
     """
     return boto_session.client(service_name="sqs", region_name=US_EAST_1_REGION)
 
@@ -154,11 +166,11 @@ def log_groups_manager(logs_clients):
     """Initializes a set to manage the creation and deletion of the log groups used throughout the test session.
 
     Args:
-        logs_clients (Service client instance): CloudWatch Logs client to manage the CloudWatch resources.
+        logs_clients (list(Service client instance)): CloudWatch Logs client list to manage the CloudWatch resources.
 
     Yields:
         log_groups (set): Set of log groups.
-        logs_clients (Service client instance): CloudWatch Logs client to manage the CloudWatch resources.
+        logs_clients (list(Service client instance)): CloudWatch Logs client list to manage the CloudWatch resources.
     """
     # Create log groups set
     log_groups: set = set()
@@ -387,7 +399,7 @@ def create_test_log_group(log_groups_manager,
     """Create a log group.
 
     Args:
-        log_groups_manager (fixture): Log groups set and CloudWatch clients.
+        log_groups_manager (tuple): Log groups set and CloudWatch clients.
         metadata (dict): Log group information.
     """
     # Get log group names
@@ -432,7 +444,7 @@ def create_test_log_stream(metadata: dict, log_groups_manager) -> None:
 
     Args:
         metadata (dict): Log group information.
-        log_groups_manager (fixture): Log groups set and CloudWatch clients.
+        log_groups_manager (tuple): Log groups set and CloudWatch clients.
     """
     # Get log group names
     log_group_names = metadata["log_group_name"].split(',')
@@ -478,7 +490,7 @@ def manage_log_group_events(metadata: dict, logs_clients):
 
     Args:
         metadata (dict): Metadata to get the parameters.
-        logs_clients (Service client instance): CloudWatch Logs client to manage the CloudWatch resources.
+        logs_clients (list(Service client instance)): CloudWatch Logs client list to manage the CloudWatch resources.
     """
     # Get log group names
     log_group_names = metadata["log_group_name"].split(',')

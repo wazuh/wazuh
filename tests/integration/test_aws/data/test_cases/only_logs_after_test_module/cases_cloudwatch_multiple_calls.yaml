@@ -10,3 +10,4 @@
     log_stream_name: wazuh-cloudwatchlogs-integration-tests-stream
     expected_results: 3
     only_logs_after: 2023-JAN-12
+  
