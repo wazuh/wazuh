@@ -488,6 +488,19 @@ class ProxyAPI:
 
         return await self._make_hap_request('services/haproxy/stats/native', query_parameters=query_params)
 
+    async def get_binds(self, frontend: str) -> PROXY_API_RESPONSE:
+        """Returns the binds configured for the given frontend.
+
+        Returns
+        -------
+        PROXY_API_RESPONSE
+            Information of configured frontends.
+        """
+        query_parameters = {'frontend': frontend}
+        return await self._make_hap_request(
+            endpoint='services/haproxy/configuration/binds', query_parameters=query_parameters
+        )
+
 
 class Proxy:
     def __init__(
@@ -634,6 +647,7 @@ class Proxy:
         """
         api_response = await self.api.get_frontends()
         self.logger.debug2('Obtained proxy frontends')
+
         return {frontend['name']: frontend for frontend in api_response['data'] if 'default_backend' in frontend}
 
     async def exists_frontend(self, frontend_name: str) -> bool:
@@ -650,6 +664,34 @@ class Proxy:
             True if exists else False.
         """
         return frontend_name in await self.get_current_frontends()
+
+    async def check_multiple_frontends(self, port: int) -> bool:
+        """Check if there are multiple frontends binding the given port.
+
+        Parameters
+        ----------
+        port : int
+            Port number to check.
+
+        Returns
+        -------
+        bool
+            True if exists mutiple frontends else False.
+        """
+        self.logger.debug(f'Checking multiple frontends for port {port}')
+        frontends = await self.get_current_frontends()
+        port_bind_exists = False
+
+        for frontend in frontends.keys():
+            data = (await self.api.get_binds(frontend=frontend))['data']
+            binds = [bind for bind in data if bind.get('port') == port]
+
+            if binds and port_bind_exists:
+                return True
+            elif binds:
+                port_bind_exists = True
+
+        return False
 
     async def add_new_backend(
         self,
