@@ -434,7 +434,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     // Add all the unix default paths
     std::set<std::string> pypyMacOSPaths =
     {
-        UNIX_PYPI_DEFAULT_BASE_DIRS.begin(), 
+        UNIX_PYPI_DEFAULT_BASE_DIRS.begin(),
         UNIX_PYPI_DEFAULT_BASE_DIRS.end()
     };
 
