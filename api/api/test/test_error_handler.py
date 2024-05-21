@@ -163,7 +163,7 @@ async def test_problem_error_handler(title, detail, ext, error_type, mock_reques
         detail = _cleanup_detail_field(detail)
     problem = {}
     problem.update({'title': title} if title else {'title': 'Bad Request'})
-    problem.update({'type': error_type} if error_type else {})
+    problem.update({'type': error_type} if (error_type and error_type != 'about:blank') else {})
     problem.update({'detail': detail} if detail else {})
     problem.update(ext if ext else {})
     problem.update({'error': problem.pop('code')} if 'code' in problem else {})
