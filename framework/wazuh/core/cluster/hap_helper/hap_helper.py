@@ -476,6 +476,7 @@ class HAPHelper:
         try:
             helper_config = read_cluster_config()['haproxy_helper']
             port_config = get_ossec_conf(section='remote')
+            connection_port = int(port_config.get('remote')[0].get('port', CONNECTION_PORT))
 
             proxy_api = ProxyAPI(
                 username=helper_config[HAPROXY_USER],
@@ -487,7 +488,7 @@ class HAPHelper:
             )
             proxy = Proxy(
                 wazuh_backend=helper_config[HAPROXY_BACKEND],
-                wazuh_connection_port=int(port_config.get('remote')[0].get('port', CONNECTION_PORT)),
+                wazuh_connection_port=connection_port,
                 proxy_api=proxy_api,
                 tag=tag,
                 resolver=helper_config[HAPROXY_RESOLVER],
@@ -511,6 +512,13 @@ class HAPHelper:
             )
 
             await helper.initialize_proxy()
+
+            if await helper.proxy.check_multiple_frontends(port=connection_port):
+                logger.warning(
+                    f'Exists several frontends binding the port "{connection_port}". '
+                    'To ensure the proper function of the helper, '
+                    f'keep only the one related to the backend "{helper_config[HAPROXY_BACKEND]}".',
+                )
 
             if helper.proxy.hard_stop_after is not None:
                 sleep_time = max(helper.proxy.hard_stop_after, cls.get_connection_retry())
