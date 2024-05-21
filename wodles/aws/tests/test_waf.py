@@ -181,10 +181,8 @@ def test_aws_waf_bucket_iter_regions_and_accounts(mock_wazuh_aws_integration, mo
             patch('aws_bucket.AWSCustomBucket.iter_regions_and_accounts') as mock_custom_regions_and_accounts:
         instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
 
-        if instance.type == "WAFNative":
-            instance.iter_regions_and_accounts(account_ids, regions)
-            mock_bucket_regions_and_accounts.assert_called_with(instance, account_ids, regions)
-        else:
-            instance.iter_regions_and_accounts(account_ids, regions)
+        if instance.type != "WAFNative":
             assert instance.check_prefix
-            mock_custom_regions_and_accounts.assert_called_with(instance, account_ids, regions)
+            
+        instance.iter_regions_and_accounts(account_ids, regions)
+        mock_custom_regions_and_accounts.assert_called_with(instance, account_ids, regions)

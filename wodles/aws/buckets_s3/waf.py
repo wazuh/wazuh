@@ -10,6 +10,8 @@ from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
+WAF_NATIVE = 'WAFNative'
+WAF_KINESIS = 'WAFKinesis'
 WAF_URL = 'https://documentation.wazuh.com/current/amazon/services/supported-services/waf.html'
 WAF_DEPRECATED_MESSAGE = 'The functionality to process WAF logs stored in S3 via Kinesis was deprecated ' \
                            'in {release}. Consider configuring WAF to store its logs directly in an S3 ' \
@@ -31,9 +33,9 @@ class AWSWAFBucket(AWSCustomBucket):
         AWSCustomBucket.__init__(self, **kwargs)
         if self.check_waf_type():
             self.service = 'WAFLogs'
-            self.type = "WAFNative"
+            self.type = WAF_NATIVE
         else:
-            self.type = "WAFKinesis"
+            self.type = WAF_KINESIS
 
     def check_waf_type(self):
         try:
@@ -43,7 +45,7 @@ class AWSWAFBucket(AWSCustomBucket):
                 aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
             else:
                 aws_tools.debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            print(f"ERROR: Unexpected error listing S3 objects: {err}")
             sys.exit(7)
 
     def load_information_from_file(self, log_key):
@@ -86,7 +88,7 @@ class AWSWAFBucket(AWSCustomBucket):
         return AWSLogsBucket.get_service_prefix(self, account_id)
         
     def get_full_prefix(self, account_id, account_region, acl_name=None):
-        if self.type == "WAFNative":
+        if self.type == WAF_NATIVE:
             path = self.client.list_objects_v2(Bucket=self.bucket)
             if 'Contents' in path:
                 for obj in path['Contents']:
@@ -98,15 +100,13 @@ class AWSWAFBucket(AWSCustomBucket):
             return self.prefix
 
     def get_base_prefix(self):
-        if self.type == "WAFNative":
+        if self.type == WAF_NATIVE:
             return AWSLogsBucket.get_base_prefix(self)
         else:
             return self.prefix
 
     def iter_regions_and_accounts(self, account_id, regions):
-        if self.type == "WAFNative":
-            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
-        else:
+        if self.type is not WAF_NATIVE:
             print(WAF_DEPRECATED_MESSAGE.format(release="5.0", url=WAF_URL))
             self.check_prefix = True
-            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)    
+        AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)      
