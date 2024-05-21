@@ -83,7 +83,7 @@ pytestmark = [pytest.mark.tier(level=1)]
 
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_diff_size_limit_configured.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_diff_size_limit.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_diff_size.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -95,7 +95,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: '2'}
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_diff_size_limit_configured(test_configuration, test_metadata, configure_local_internal_options,
+def test_diff_size_limit(test_configuration, test_metadata, configure_local_internal_options,
                                     truncate_monitored_files, set_wazuh_configuration, daemons_handler):
     '''
     description: Check if the 'wazuh-syscheckd' daemon limits the size of 'diff' information to generate from
