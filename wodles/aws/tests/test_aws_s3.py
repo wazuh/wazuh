@@ -36,7 +36,7 @@ import aws_utils as utils
     (['main', '--subscriber', 'buckets', '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
     (['main', '--subscriber', 'security_hub', '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
 ])
-@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
+@patch('aws_s3.get_script_arguments', side_effect=aws_s3.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):
     """Test 'main' function makes the expected calls when processing buckets or services.
 

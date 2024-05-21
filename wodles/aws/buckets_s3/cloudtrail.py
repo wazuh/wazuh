@@ -4,12 +4,17 @@
 
 import os
 import sys
+
+# Local imports
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import aws_bucket
+from aws_tools import aws_logger
 
+# Constants
 DYNAMIC_FIELDS = ['additionalEventData', 'responseElements', 'requestParameters']
 
 
+# Classes
 class AWSCloudTrailBucket(aws_bucket.AWSLogsBucket):
     """
     Represents a bucket with AWS CloudTrail logs
@@ -23,7 +28,7 @@ class AWSCloudTrailBucket(aws_bucket.AWSLogsBucket):
 
     def reformat_msg(self, event):
         aws_bucket.AWSBucket.reformat_msg(self, event)
-        # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping
+        # Some fields in CloudTrail are dynamic in nature, which causes problems for ES mapping.
         # ES mapping expects for a dictionary, if the field is any other type (list or string)
         # turn it into a dictionary
         for field_to_cast in DYNAMIC_FIELDS:
@@ -39,6 +44,6 @@ class AWSCloudTrailBucket(aws_bucket.AWSLogsBucket):
                 elif isinstance(disable_api_termination, dict):
                     pass
                 else:
-                    print("WARNING: Could not reformat event {0}".format(event))
+                    aws_logger.warning("Could not reformat event {0}".format(event))
 
         return event

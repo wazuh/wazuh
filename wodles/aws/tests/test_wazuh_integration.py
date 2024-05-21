@@ -77,8 +77,10 @@ def test_default_config(mock_botocore, file_exists, options, retry_attempts, ret
     profile = utils.TEST_AWS_PROFILE
     with patch('wazuh_integration.path.exists', return_value=file_exists):
         if file_exists:
-            with patch('aws_tools.get_aws_config_params') as mock_config, \
-                    patch('aws_tools.set_profile_dict_config'):
+            with patch('wazuh_integration.get_aws_config_params') as mock_config, \
+                patch('wazuh_integration.set_profile_dict_config'):
+                mock_config.sections.return_value = [profile, 1, 2, 3]
+                print(mock_config.sections())
                 mock_config.options(profile).return_value = options
                 profile_config = {option: mock_config.get(profile, option) for option in mock_config.options(profile)}
 

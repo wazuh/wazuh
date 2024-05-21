@@ -7,18 +7,18 @@ import sys
 from os import path
 from datetime import datetime
 
+# Local imports
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
+from aws_tools import ALL_REGIONS
 
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
 
-DEFAULT_DATABASE_NAME = "aws_services"
-DEFAULT_TABLENAME = "aws_services"
-
+# Constants
+DEFAULT_DATABASE_NAME = DEFAULT_TABLENAME = "aws_services"
 AWS_SERVICE_MSG_TEMPLATE = {'integration': 'aws', 'aws': ''}
 
 
+# Classes
 class AWSService(wazuh_integration.WazuhAWSDatabase):
     """
     Represents a service which provides events.
@@ -65,7 +65,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
                  service_endpoint: str = None,
                  iam_role_duration: str = None, **kwargs):
         # DB name
-        self.db_name = 'aws_services'
+        self.db_name = DEFAULT_DATABASE_NAME
         # Table name
         self.db_table_name = db_table_name
 
@@ -146,7 +146,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
         region : str
             AWS region.
         """
-        if region not in aws_tools.ALL_REGIONS:
+        if region not in ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 
     def get_last_log_date(self):

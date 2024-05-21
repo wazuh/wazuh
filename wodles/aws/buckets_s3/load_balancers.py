@@ -5,12 +5,14 @@
 import sys
 import csv
 from os import path
+
+# Local imports
 from aws_bucket import AWSBucket, AWSCustomBucket
-
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
+from aws_tools import aws_logger
 
 
+# Classes
 class AWSLBBucket(AWSCustomBucket):
     """Class that has common methods unique to the load balancers."""
 
@@ -70,9 +72,8 @@ class AWSALBBucket(AWSLBBucket):
                             port += f"{item[1]} "
                         log_entry[field_to_process], log_entry[ip_field] = port.strip(), ip.strip()
                     except (ValueError, IndexError):
-                        aws_tools.debug(f"Unable to process correctly ABL log entry, for field {field_to_process}.",
-                                        msg_level=1)
-                        aws_tools.debug(f"Log Entry: {log_entry}", msg_level=2)
+                        aws_logger.error(f"Unable to process correctly ABL log entry, for field {field_to_process}.")
+                        aws_logger.debug(f"Log Entry: {log_entry}")
 
             return tsv_file
 

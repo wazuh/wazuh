@@ -33,8 +33,9 @@
 import signal
 import sys
 
-
-import aws_tools
+# Local imports
+from aws_tools import (aws_logger, get_script_arguments, get_aws_config_params, ALL_REGIONS,
+                       SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL, arg_validate_security_lake_auth_params, handler)
 import buckets_s3
 import services
 import subscribers
@@ -42,11 +43,14 @@ import subscribers
 
 def main(argv):
     # Parse arguments
-    options = aws_tools.get_script_arguments()
+    options = get_script_arguments()
 
-    if int(options.debug) > 0:
-        aws_tools.debug_level = int(options.debug)
-        aws_tools.debug('+++ Debug mode on - Level: {debug}'.format(debug=options.debug), 1)
+    # Get logging level from argument
+    log_lvl = options.debug
+
+    # Set logging level
+    aws_logger.set_level(log_level=int(log_lvl))
+
 
     try:
         if options.logBucket:
@@ -105,7 +109,7 @@ def main(argv):
                 raise Exception("Invalid type of service")
 
             if not options.regions:
-                aws_config = aws_tools.get_aws_config_params()
+                aws_config = get_aws_config_params()
 
                 profile = options.aws_profile or "default"
 
@@ -113,24 +117,24 @@ def main(argv):
                     options.regions.append(aws_config.get(profile, "region"))
                 else:
                     if service_type == services.inspector.AWSInspector:
-                        aws_tools.debug(
-                            "+++ Warning: No regions were specified, trying to get events from supported regions", 1
+                        aws_logger.debug(
+                            "+++ Warning: No regions were specified, trying to get events from supported regions"
                         )
                         options.regions = services.inspector.SUPPORTED_REGIONS
                     else:
-                        aws_tools.debug(
-                            "+++ Warning: No regions were specified, trying to get events from all regions", 1
+                        aws_logger.debug(
+                            "+++ Warning: No regions were specified, trying to get events from all regions"
                         )
-                        options.regions = aws_tools.ALL_REGIONS
+                        options.regions = ALL_REGIONS
 
             for region in options.regions:
                 try:
                     service_type.check_region(region)
                 except ValueError as exc:
-                    aws_tools.debug(f"+++ ERROR: {exc}", 1)
+                    aws_logger.debug(f"+++ ERROR: {exc}")
                     exit(22)
 
-                aws_tools.debug('+++ Getting alerts from "{}" region.'.format(region), 1)
+                aws_logger.debug('Getting alerts from "{}" region.'.format(region))
 
                 service = service_type(reparse=options.reparse,
                                        access_key=options.access_key,
@@ -152,14 +156,12 @@ def main(argv):
         elif options.subscriber:
             if options.subscriber.lower() == "security_lake":
                 if options.aws_profile:
-                    aws_tools.error(
+                    aws_logger.error(
                         "The AWS Security Lake integration does not make use of the Profile authentication "
                         f"method. Check the available ones for it in "
-                        f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
+                        f"{SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
                     sys.exit(3)
-                aws_tools.arg_validate_security_lake_auth_params(options.external_id,
-                                                                 options.queue,
-                                                                 options.iam_role_arn)
+                arg_validate_security_lake_auth_params(options.external_id, options.queue, options.iam_role_arn)
                 bucket_handler = subscribers.s3_log_handler.AWSSLSubscriberBucket
                 message_processor = subscribers.sqs_message_processor.AWSSSecLakeMessageProcessor
             elif options.subscriber.lower() == "buckets":
@@ -185,21 +187,17 @@ def main(argv):
                 message_processor=message_processor)
             subscriber_queue.sync_events()
     except Exception as err:
-        aws_tools.debug("+++ Error: {}".format(err), 2)
-        if aws_tools.debug_level > 0:
-            raise
-        aws_tools.error(str(err))
+        aws_logger.error("Error: {}".format(err))
         sys.exit(12)
 
 
 if __name__ == '__main__':
     try:
-        aws_tools.debug('Args: {args}'.format(args=str(sys.argv)), 2)
-        signal.signal(signal.SIGINT, aws_tools.handler)
+        aws_logger.debug('Args: {args}'.format
+                         (args=str(sys.argv)))
+        signal.signal(signal.SIGINT, handler)
         main(sys.argv[1:])
         sys.exit(0)
     except Exception as e:
-        aws_tools.error("Unknown error: {}".format(e))
-        if aws_tools.debug_level > 0:
-            raise
+        aws_logger.error("Unknown error: {}".format(e))
         sys.exit(1)

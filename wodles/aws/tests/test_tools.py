@@ -17,18 +17,6 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
 
-@pytest.mark.parametrize('msg_level', range(3))
-@patch('builtins.print')
-def test_debug(mock_print, msg_level):
-    """Test 'debug' function only prints messages with a level equal or greater than the debug level."""
-    msg = "test message"
-    aws_tools.debug(msg, msg_level)
-    if aws_tools.debug_level >= msg_level:
-        mock_print.assert_called_with(f"DEBUG: {msg}")
-    else:
-        mock_print.assert_not_called()
-
-
 def test_arg_valid_date():
     """Test 'arg_valid_date' function returns a string with the expected format."""
     parsed_date = aws_tools.arg_valid_date("2022-JAN-01")
@@ -163,24 +151,18 @@ def test_arg_valid_iam_role_duration_raises_exception_when_invalid_duration_prov
 
 
 @pytest.mark.parametrize("test_input, expected_output", [
-    (('external_id', None, None), "ERROR: Used a subscriber but no --iam_role_arn provided."),
-    (('external_id', None, 'iam_role_arn'), "ERROR: Used a subscriber but no --queue provided."),
-    ((None, 'name', 'iam_role_arn'), "ERROR: Used a subscriber but no --external_id provided.")
+    (('external_id', None, None), "Used a subscriber but no --iam_role_arn provided."),
+    (('external_id', None, 'iam_role_arn'), "Used a subscriber but no --queue provided."),
+    ((None, 'name', 'iam_role_arn'), "Used a subscriber but no --external_id provided.")
 ])
 def test_arg_validate_security_lake_auth_params(test_input, expected_output):
     """Test the arg_validate_security_lake_auth_params function of aws_tools."""
-    captured_output = io.StringIO()
-    sys.stdout = captured_output
-
-    with pytest.raises(SystemExit) as excinfo:
-        aws_tools.arg_validate_security_lake_auth_params(*test_input)
-
-    output = captured_output.getvalue().strip()
-
-    assert output == expected_output
-    assert excinfo.value.code == 21
-
-    sys.stdout = sys.__stdout__
+    with patch('aws_tools.aws_logger.error') as mock_error:
+        with pytest.raises(SystemExit) as excinfo:
+            aws_tools.arg_validate_security_lake_auth_params(*test_input)
+        
+        assert excinfo.value.code == 21
+        mock_error.assert_called_once_with(expected_output)
 
 
 @patch('configparser.RawConfigParser')

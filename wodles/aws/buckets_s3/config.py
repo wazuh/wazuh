@@ -4,16 +4,14 @@
 
 import sys
 import re
-from os import path
 from datetime import datetime
 from time import mktime
 
+# Local imports
 import aws_bucket
+from aws_tools import aws_logger
 
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
-
-
+# Classes
 class AWSConfigBucket(aws_bucket.AWSLogsBucket):
     """
     Represents a bucket with AWS Config logs
@@ -79,7 +77,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
             parsed_date = re.sub(self._leading_zero_regex, r'/\g<num>', date)
             return marker.replace(date, parsed_date)
         except AttributeError:
-            aws_tools.error(f"There was an error while trying to extract a date from the marker '{marker}'")
+            aws_logger.error(f"There was an error while trying to extract a date from the marker '{marker}'")
             sys.exit(16)
 
     def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
@@ -152,7 +150,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 elif isinstance(configuration['securityGroups'], dict):
                     configuration['securityGroups'] = {key: [value] for key, value in security_groups.items()}
                 else:
-                    print("WARNING: Could not reformat event {0}".format(event))
+                    aws_logger.warning("Could not reformat event {0}".format(event))
 
             if 'availabilityZones' in configuration:
                 availability_zones = configuration['availabilityZones']
@@ -169,7 +167,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 elif isinstance(configuration['availabilityZones'], dict):
                     configuration['availabilityZones'] = {key: [value] for key, value in availability_zones.items()}
                 else:
-                    print("WARNING: Could not reformat event {0}".format(event))
+                    aws_logger.warning("Could not reformat event {0}".format(event))
 
             if 'state' in configuration:
                 state = configuration['state']
@@ -178,7 +176,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 elif isinstance(state, dict):
                     pass
                 else:
-                    print("WARNING: Could not reformat event {0}".format(event))
+                    aws_logger.warning("Could not reformat event {0}".format(event))
 
             if 'createdTime' in configuration:
                 created_time = configuration['createdTime']
@@ -190,7 +188,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                         configuration['createdTime'] = mktime(datetime.strptime(date_string,
                                                                                 "%Y-%m-%dT%H:%M:%S.%fZ").timetuple())
                     except Exception:
-                        print("WARNING: Could not reformat event {0}".format(event))
+                        aws_logger.warning("Could not reformat event {0}".format(event))
 
             if 'iamInstanceProfile' in configuration:
                 iam_profile = configuration['iamInstanceProfile']
@@ -199,6 +197,6 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
                 elif isinstance(iam_profile, dict):
                     pass
                 else:
-                    print("WARNING: Could not reformat event {0}".format(event))
+                    aws_logger.warning("Could not reformat event {0}".format(event))
 
         return event

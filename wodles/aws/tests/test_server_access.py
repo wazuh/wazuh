@@ -35,7 +35,7 @@ def test_aws_server_access_initializes_properly(mock_custom_bucket):
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
 @pytest.mark.parametrize('same_prefix_result', [True, False])
-@patch('aws_bucket.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 @patch('aws_bucket.AWSBucket.build_s3_filter_args')
 def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
                                                 same_prefix_result: bool, delete_file: bool, reparse: bool,
@@ -103,24 +103,23 @@ def test_aws_server_access_iter_files_in_bucket(mock_build_filter, mock_debug,
                     mock_same_prefix.assert_called_with(match_start, aws_account_id, aws_region)
 
                     if not instance._same_prefix(match_start, aws_account_id, aws_region):
-                        mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
+                        mock_debug.assert_any_call(f"++ Skipping file with another prefix: {bucket_file['Key']}")
                         continue
 
                     mock_already_processed.assert_called_with(bucket_file['Key'], aws_account_id, aws_region)
                     if instance.reparse:
                         mock_debug.assert_any_call(
-                            f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
-                            1)
+                            f"++ File previously processed, but reparse flag set: {bucket_file['Key']}")
                     else:
-                        mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}", 2)
+                        mock_debug.assert_any_call(f"++ Skipping previously processed file: {bucket_file['Key']}")
                         continue
 
-                    mock_debug.assert_any_call(f"++ Found new log: {bucket_file['Key']}", 2)
+                    mock_debug.assert_any_call(f"++ Found new log: {bucket_file['Key']}")
                     mock_get_log_file.assert_called_with(aws_account_id, bucket_file['Key'])
                     mock_iter_events.assert_called()
 
                     if instance.delete_file:
-                        mock_debug.assert_any_call(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+                        mock_debug.assert_any_call(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}")
 
                     mock_mark_complete.assert_called_with(aws_account_id, aws_region, bucket_file)
 

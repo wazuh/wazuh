@@ -176,7 +176,7 @@ def test_obtain_logs_processes_different_data_types(bucket_name, log_path, conte
             assert formatted_logs is not None
 
 
-@patch('s3_log_handler.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_process_file_sends_expected_messages(mock_debug):
     """Test the 'process_file' function of AWSSubscriberBucket class."""
     with patch('s3_log_handler.wazuh_integration.WazuhIntegration.__init__'):
@@ -289,7 +289,7 @@ def test_sec_hub_obtain_logs_handles_exception():
 
 
 @pytest.mark.parametrize("discard_log", [True, False])
-@patch('s3_log_handler.aws_tools.debug')
+@patch('aws_tools.aws_logger.debug')
 def test_sec_hub_process_file_sends_expected_messages(mock_debug, discard_log):
     """Test 'process_file' method of AWSSecurityHubSubscriberBucket the class sends the events inside the given
     message to AnalysisD."""

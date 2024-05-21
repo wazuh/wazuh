@@ -9,13 +9,19 @@
 
 import argparse
 import configparser
-from os import path
 from datetime import datetime
 from typing import Optional
-import sys
 import re
+import sys
+from os.path import dirname, abspath, join, expanduser
 
-DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
+# Local Imports
+sys.path.insert(0, dirname(dirname(abspath(__file__))))
+from shared.wazuh_cloud_logger import WazuhCloudLogger
+
+
+# CONSTANTS
+DEFAULT_AWS_CONFIG_PATH = join(expanduser('~'), '.aws', 'config')
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
                      'Please use another authentication method instead. Check {url} for more information.'
@@ -33,10 +39,14 @@ RETRY_ATTEMPTS_KEY: str = "max_attempts"
 RETRY_MODE_CONFIG_KEY: str = "retry_mode"
 RETRY_MODE_BOTO_KEY: str = "mode"
 
-# Enable/disable debug mode
-debug_level = 0
+
+# Set AWS logger
+aws_logger = WazuhCloudLogger(
+    logger_name=':aws_wodle:'
+)
 
 
+# Methods
 def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
     """Create a botocore.config.Config object with the specified profile and profile_config.
 
@@ -113,21 +123,8 @@ def remove_prefix(text: str, prefix: str) -> str:
 
 
 def handler(signal, frame):
-    print("ERROR: SIGINT received.")
+    aws_logger.error("SIGINT received.")
     sys.exit(2)
-
-
-def debug(msg, msg_level):
-    if debug_level >= msg_level:
-        print('DEBUG: {debug_msg}'.format(debug_msg=msg))
-
-
-def error(msg):
-    print('ERROR: {error_msg}'.format(error_msg=msg))
-
-
-def info(msg):
-    print('INFO: {msg}'.format(msg=msg))
 
 
 def arg_valid_date(arg_string):
@@ -305,13 +302,13 @@ def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Opt
     """
 
     if iam_role_arn is None:
-        error('Used a subscriber but no --iam_role_arn provided.')
+        aws_logger.error('Used a subscriber but no --iam_role_arn provided.')
         sys.exit(21)
     if name is None:
-        error('Used a subscriber but no --queue provided.')
+        aws_logger.error('Used a subscriber but no --queue provided.')
         sys.exit(21)
     if external_id is None:
-        error('Used a subscriber but no --external_id provided.')
+        aws_logger.error('Used a subscriber but no --external_id provided.')
         sys.exit(21)
 
 
