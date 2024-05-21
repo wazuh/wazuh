@@ -172,9 +172,7 @@ class TestHAPHelper:
         proxy_mock.get_wazuh_server_stats.assert_called_once_with(server_name=node_name)
         assert ret_val == expected
 
-    async def test_backend_servers_state_healthcheck(
-        self, helper: HAPHelper, proxy_mock: mock.MagicMock
-    ):
+    async def test_backend_servers_state_healthcheck(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
         """Check that `backend_servers_state_healthcheck` method makes the correct callbacks."""
         WORKER1 = 'worker1'
         WORKER2 = 'worker2'
@@ -352,9 +350,7 @@ class TestHAPHelper:
             [{'worker1': 0, 'worker2': 4, 'worker3': 0}, {'worker2': 3}],
         ),
     )
-    async def test_check_for_balance(
-        self, helper: HAPHelper, distribution: dict, expected: dict
-    ):
+    async def test_check_for_balance(self, helper: HAPHelper, distribution: dict, expected: dict):
         """Check the correct output of `check_for_balance` method."""
         assert helper.check_for_balance(current_connections_distribution=distribution) == expected
 
@@ -533,9 +529,7 @@ class TestHAPHelper:
                 else:
                     update_agent_connections_mock.assert_not_called()
 
-    async def test_get_connection_retry(
-        self, helper: HAPHelper, proxy_mock: mock.MagicMock
-    ):
+    async def test_get_connection_retry(self, helper: HAPHelper, proxy_mock: mock.MagicMock):
         """Check the correct output of `get_connection_retry` method."""
         CONNECTION_RETRY = 10
 
@@ -546,6 +540,7 @@ class TestHAPHelper:
             assert helper.get_connection_retry() == CONNECTION_RETRY + 2
 
     @pytest.mark.parametrize('hard_stop_after', [None, 8, 12])
+    @pytest.mark.parametrize('multiple_frontends', [True, False])
     async def test_start(
         self,
         read_cluster_config_mock: mock.MagicMock,
@@ -555,6 +550,7 @@ class TestHAPHelper:
         dapi_mock: mock.MagicMock,
         sleep_mock: mock.AsyncMock,
         hard_stop_after: int | None,
+        multiple_frontends: bool,
     ):
         """Check that `start` method makes the correct callbacks."""
         HAPROXY_USER_VALUE = 'test'
@@ -595,6 +591,7 @@ class TestHAPHelper:
         proxy_api_mock.return_value = proxy_api
 
         proxy = mock.MagicMock(hard_stop_after=hard_stop_after)
+        proxy.check_multiple_frontends = mock.AsyncMock(return_value=multiple_frontends)
         proxy_mock.return_value = proxy
 
         dapi = mock.MagicMock()
@@ -603,48 +600,56 @@ class TestHAPHelper:
         read_cluster_config_mock.return_value = {HAPROXY_HELPER: HELPER_CONFIG}
         get_ossec_conf.return_value = {'remote': [{'port': WAZUH_PORT}]}
 
+        logger_mock = mock.MagicMock()
+
         connection_retry = 10
         with mock.patch.object(HAPHelper, 'initialize_proxy', new=mock.AsyncMock()):
             with mock.patch.object(HAPHelper, 'get_connection_retry', return_value=connection_retry):
                 with mock.patch.object(HAPHelper, 'initialize_wazuh_cluster_configuration', new=mock.AsyncMock()):
                     with mock.patch.object(HAPHelper, 'set_hard_stop_after', new=mock.AsyncMock()):
                         with mock.patch.object(HAPHelper, 'manage_wazuh_cluster_nodes', new=mock.AsyncMock()):
-                            await HAPHelper.start()
+                            with mock.patch.object(HAPHelper, '_get_logger', return_value=logger_mock):
+                                await HAPHelper.start()
 
-                            proxy_api_mock.assert_called_once_with(
-                                username=HAPROXY_USER_VALUE,
-                                password=HAPROXY_PASSWORD_VALUE,
-                                tag=TAG,
-                                address=HAPROXY_ADDRESS_VALUE,
-                                port=HAPROXY_PORT_VALUE,
-                                protocol=HAPROXY_PROTOCOL_VALUE,
-                            )
+                                proxy_api_mock.assert_called_once_with(
+                                    username=HAPROXY_USER_VALUE,
+                                    password=HAPROXY_PASSWORD_VALUE,
+                                    tag=TAG,
+                                    address=HAPROXY_ADDRESS_VALUE,
+                                    port=HAPROXY_PORT_VALUE,
+                                    protocol=HAPROXY_PROTOCOL_VALUE,
+                                )
 
-                            proxy_mock.assert_called_once_with(
-                                wazuh_backend=HAPROXY_BACKEND_VALUE,
-                                wazuh_connection_port=WAZUH_PORT,
-                                proxy_api=proxy_api,
-                                tag=TAG,
-                                resolver=HAPROXY_RESOLVER_VALUE,
-                            )
+                                proxy_mock.assert_called_once_with(
+                                    wazuh_backend=HAPROXY_BACKEND_VALUE,
+                                    wazuh_connection_port=WAZUH_PORT,
+                                    proxy_api=proxy_api,
+                                    tag=TAG,
+                                    resolver=HAPROXY_RESOLVER_VALUE,
+                                )
 
-                            dapi_mock.assert_called_once_with(tag=TAG, excluded_nodes=EXCLUDED_NODES_VALUE)
+                                dapi_mock.assert_called_once_with(tag=TAG, excluded_nodes=EXCLUDED_NODES_VALUE)
 
-                            HAPHelper.initialize_proxy.assert_called_once()
-                            if hard_stop_after is not None:
-                                sleep_mock.assert_called_once_with(max(hard_stop_after, connection_retry))
+                                HAPHelper.initialize_proxy.assert_called_once()
 
-                            HAPHelper.initialize_wazuh_cluster_configuration.assert_called_once()
+                                proxy.check_multiple_frontends.assert_called_once_with(port=WAZUH_PORT)
+                                if multiple_frontends:
+                                    logger_mock.warning.assert_called_once()
+                                else:
+                                    assert logger_mock.call_count == 0
 
-                            if hard_stop_after is None:
-                                HAPHelper.set_hard_stop_after.assert_called_once()
+                                if hard_stop_after is not None:
+                                    sleep_mock.assert_called_once_with(max(hard_stop_after, connection_retry))
 
-                            HAPHelper.manage_wazuh_cluster_nodes.assert_called_once()
+                                HAPHelper.initialize_wazuh_cluster_configuration.assert_called_once()
+
+                                if hard_stop_after is None:
+                                    HAPHelper.set_hard_stop_after.assert_called_once()
+
+                                HAPHelper.manage_wazuh_cluster_nodes.assert_called_once()
 
     @pytest.mark.parametrize('exception', [KeyError(), KeyboardInterrupt(), WazuhHAPHelperError(3046)])
-    async def test_start_ko(
-        self, read_cluster_config_mock: mock.MagicMock, exception: Exception
-    ):
+    async def test_start_ko(self, read_cluster_config_mock: mock.MagicMock, exception: Exception):
         """Check the correct error handling of `start` method."""
         read_cluster_config_mock.side_effect = exception
         logger_mock = mock.MagicMock()

@@ -525,6 +525,27 @@ class TestProxyAPI:
         )
         assert ret_val == data
 
+    async def test_get_binds(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
+        """Check the correct output of `get_binds` method."""
+
+        endpoint = 'services/haproxy/configuration/binds'
+        data = {'data': {'foo': 1, 'bar': 2}}
+        request_mock.return_value = mock.MagicMock(
+            **{'status_code': 200, 'is_success': True, 'json.return_value': data}
+        )
+        frontend = 'baz'
+
+        ret_val = await proxy_api.get_binds(frontend=frontend)
+
+        request_mock.assert_called_once_with(
+            method=ProxyAPIMethod.GET.value,
+            url=f'{proxy_api.protocol}://{proxy_api.address}:{proxy_api.port}/v2/{endpoint}',
+            auth=(proxy_api.username, proxy_api.password),
+            json=None,
+            params={'version': 0, 'frontend': frontend},
+        )
+        assert ret_val == data
+
 
 class TestProxy:
     @pytest.fixture
@@ -653,6 +674,23 @@ class TestProxy:
 
         with mock.patch.object(proxy, 'get_current_frontends', return_value=current_frontends):
             assert await proxy.exists_frontend(frontend) == expected
+
+    @pytest.mark.parametrize(
+        'binds,expected',
+        (
+            [({'data': [{'port': '1514'}]}, {'data': [{'port': '1514'}]}), True],
+            [({'data': [{'port': '1514'}]}, {'data': [{'port': '2000'}]}), False],
+        ),
+    )
+    async def test_check_multiple_frontends(
+        self, proxy_api_mock: mock.MagicMock, proxy: Proxy, binds: tuple, expected: bool
+    ):
+        """Check the correct output of `check_multiple_frontends` method."""
+        current_frontends = {'frontend1': {}, 'frontend2': {}}
+        proxy_api_mock.get_binds.side_effect = binds
+
+        with mock.patch.object(proxy, 'get_current_frontends', return_value=current_frontends):
+            assert await proxy.check_multiple_frontends('1514') == expected
 
     async def test_add_new_backend(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check that `add_new_backend` method makes the correct callback."""
