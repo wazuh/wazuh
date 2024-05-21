@@ -9,7 +9,6 @@
             - check_all: 'yes'
             - arch: ARCH
             - restrict_key: RESTRICT_KEY
-            - restrict_value: RESTRICT_VALUE
       - frequency:
           value: 3
     - section: sca
