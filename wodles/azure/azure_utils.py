@@ -5,7 +5,6 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-import logging
 import sys
 from argparse import ArgumentParser
 from datetime import datetime, timedelta, timezone
@@ -19,16 +18,10 @@ from requests import RequestException, post
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from utils import ANALYSISD, MAX_EVENT_SIZE
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
 SOCKET_HEADER = '1:Azure:'
-
 DATETIME_MASK = '%Y-%m-%dT%H:%M:%S.%fZ'
-
-# Logger parameters
-LOGGING_MSG_FORMAT = '%(asctime)s azure: %(levelname)s: %(message)s'
-LOGGING_DATE_FORMAT = '%Y/%m/%d %H:%M:%S'
-LOG_LEVELS = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
-
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html'
 DEPRECATED_MESSAGE = (
     'The {name} authentication parameter was deprecated in {release}. '
@@ -36,17 +29,10 @@ DEPRECATED_MESSAGE = (
 )
 URL_LOGGING = 'https://login.microsoftonline.com'
 
-
-def set_logger(debug_level: int):
-    """Set the logger configuration."""
-    logging.basicConfig(
-        level=LOG_LEVELS.get(debug_level, logging.INFO),
-        format=LOGGING_MSG_FORMAT,
-        datefmt=LOGGING_DATE_FORMAT,
-    )
-    logging.getLogger('azure').setLevel(LOG_LEVELS.get(debug_level, logging.WARNING))
-    logging.getLogger('urllib3').setLevel(logging.ERROR)
-
+# Set Azure logger
+azure_logger = WazuhCloudLogger(
+    logger_name=':azure_wodle:'
+)
 
 def get_script_arguments():
     """Read and parse arguments."""
@@ -326,20 +312,20 @@ def read_auth_file(auth_path: str, fields: tuple):
                     continue
                 credentials[key] = value.replace('\n', '')
         if fields[0] not in credentials or fields[1] not in credentials:
-            logging.error(
-                f'Error: The authentication file does not contains the expected "{fields[0]}" '
+            azure_logger.error(
+                f'Error: The authentication file does not contain the expected "{fields[0]}" '
                 f'and "{fields[1]}" fields.'
             )
             sys.exit(1)
         return credentials[fields[0]], credentials[fields[1]]
     except ValueError:
-        logging.error(
+        azure_logger.error(
             'Error: The authentication file format is not valid. '
             'Make sure that it is composed of only 2 lines with "field = value" format.'
         )
         sys.exit(1)
     except OSError as e:
-        logging.error(f'Error: The authentication file could not be opened: {e}')
+        azure_logger.error(f'Error: The authentication file could not be opened: {e}')
         sys.exit(1)
 
 
@@ -385,10 +371,10 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
             err_msg = f'The "{domain}" tenant domain was not found.'
         else:
             err_msg = 'Couldn\'t get the token for authentication.'
-        logging.error(f'Error: {err_msg}')
+        azure_logger.error(f'Error: {err_msg}')
 
     except RequestException as e:
-        logging.error(
+        azure_logger.error(
             f'Error: An error occurred while trying to obtain the authentication token: {e}'
         )
 
@@ -409,7 +395,7 @@ def send_message(message: str):
 
     # Logs warning if event is bigger than max size
     if len(encoded_msg) > MAX_EVENT_SIZE:
-        logging.warning(
+        azure_logger.warning(
             f'WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.'
         )
 
@@ -418,14 +404,14 @@ def send_message(message: str):
         s.send(encoded_msg)
     except socket_error as e:
         if e.errno == 111:
-            logging.error('ERROR: Wazuh must be running.')
+            azure_logger.error('ERROR: Wazuh must be running.')
             sys.exit(1)
         elif e.errno == 90:
-            logging.error(
+            azure_logger.error(
                 'ERROR: Message too long to send to Wazuh.  Skipping message...'
             )
         else:
-            logging.error(f'ERROR: Error sending message to wazuh: {e}')
+            azure_logger.error(f'ERROR: Error sending message to wazuh: {e}')
             sys.exit(1)
     finally:
         s.close()
@@ -456,5 +442,5 @@ def offset_to_datetime(offset: str):
     if unit == 'd':
         return datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(days=value)
 
-    logging.error('Invalid offset format. Use "h", "m" or "d" time unit.')
+    azure_logger.error('Invalid offset format. Use "h", "m" or "d" time unit.')
     exit(1)
