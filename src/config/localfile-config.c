@@ -642,6 +642,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
             os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
             memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
+            logf[pl].multiline = NULL; // Prevent freeing the multiline config in Remove_Localfile
             log_config->globs[gl].gfiles->file = NULL;
 
             /* Wildcard exclusion, check for date */
@@ -683,6 +684,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 memset(&log_config->globs[gl + 1], 0, sizeof(logreader_glob));
                 os_calloc(1, sizeof(logreader), log_config->globs[gl].gfiles);
                 memcpy(log_config->globs[gl].gfiles, &logf[pl], sizeof(logreader));
+                logf[pl].multiline = NULL; // Prevent freeing the multiline config in Remove_Localfile
                 log_config->globs[gl].gfiles->file = NULL;
             }
 
@@ -800,6 +802,7 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->ffile);
         os_free(logf->file);
         os_free(logf->logformat);
+        w_multiline_log_config_free(&(logf->multiline));
         os_free(logf->djb_program_name);
         os_free(logf->alias);
         os_free(logf->query);
@@ -840,6 +843,7 @@ void Free_Logreader(logreader * logf) {
 
             free(logf->out_format);
         }
+
     }
 }
 
@@ -855,6 +859,8 @@ int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *gl
                 Free_Logreader(&(*logf)[i]);
             } else {
                 free((*logf)[i].file);
+                // If is a glob entry and multiline is set, we need to free the multiline config
+                w_multiline_log_config_free(&(*logf)[i].multiline);
                 if((*logf)[i].fp) {
                     fclose((*logf)[i].fp);
                 }
@@ -967,6 +973,45 @@ const char * multiline_attr_replace_str(w_multiline_replace_type_t replace_type)
 const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     const char * const match_str[ML_MATCH_MAX] = {"start", "all", "end"};
     return match_str[match_type];
+}
+
+void w_multiline_log_config_free(w_multiline_config_t ** config) {
+    if (config == NULL || *config == NULL) {
+        return;
+    }
+
+    if ((*config)->ctxt) {
+        os_free((*config)->ctxt->buffer);
+        os_free((*config)->ctxt);
+    }
+    w_free_expression_t(&((*config)->regex));
+    os_free((*config));
+}
+
+w_multiline_config_t* w_multiline_log_config_clone(w_multiline_config_t* config)
+{
+    if (config == NULL)
+    {
+        return NULL;
+    }
+
+    w_multiline_config_t* new_config = NULL;
+    os_calloc(1, sizeof(w_multiline_config_t), new_config);
+
+    new_config->match_type = config->match_type;
+    new_config->replace_type = config->replace_type;
+    new_config->timeout = config->timeout;
+
+    w_calloc_expression_t(&(new_config->regex), config->regex->exp_type);
+    if (!w_expression_compile(new_config->regex, w_expression_get_regex_pattern(config->regex), 0))
+    {
+        merror_exit("Failed to clone multiline regex"); // Should never happen
+    }
+
+    // No clone the context
+    new_config->ctxt = NULL;
+
+    return new_config;
 }
 
 STATIC int w_logcollector_get_macos_log_type(const char * content) {
