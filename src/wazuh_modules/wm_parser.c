@@ -16,6 +16,12 @@
 #define static
 #endif
 
+#define W_STR_DEBUG     "- DEBUG - "
+#define W_STR_INFO      "- INFO - "
+#define W_STR_CRITICAL  "- CRITICAL - "
+#define W_STR_ERROR     "- ERROR - "
+#define W_STR_WARNING   "- WARNING - "
+
 static int msg_to_print_according_to_debugLevel (char *output, char * tokenized_line, char *str_level, char* service_title);
 
 

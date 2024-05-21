@@ -22,4 +22,12 @@
  */
 void wm_parse_output(char *output, char *logger_name, char *tag, char* service_title);
 
+#define _W_STRING_MAX   67108864  // Max. dynamic string size (64 MB).
+
+#define W_STR_DEBUG     "- DEBUG - "
+#define W_STR_INFO      "- INFO - "
+#define W_STR_CRITICAL  "- CRITICAL - "
+#define W_STR_ERROR     "- ERROR - "
+#define W_STR_WARNING   "- WARNING - "
+
 #endif /*WM_PARSER_H*/
