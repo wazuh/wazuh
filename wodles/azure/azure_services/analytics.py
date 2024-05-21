@@ -5,7 +5,6 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-import logging
 import sys
 from hashlib import md5
 from json import dumps
@@ -27,6 +26,12 @@ from azure_utils import (
 )
 from db import orm
 from db.utils import create_new_row, update_row_object
+from shared.wazuh_cloud_logger import WazuhCloudLogger
+
+# Set Azure logger
+azure_logger = WazuhCloudLogger(
+    logger_name=':azure_wodle:'
+)
 
 URL_ANALYTICS = 'https://api.loganalytics.io'
 
@@ -35,7 +40,7 @@ def start_log_analytics(args):
     """Run the Log Analytics integration processing the logs available for the given time offset. The client or
     application must have "Contributor" permission to read Log Analytics."""
 
-    logging.info('Azure Log Analytics starting.')
+    azure_logger.info('Azure Log Analytics starting.')
 
     # Read credentials
     if args.la_auth_path and args.la_tenant_domain:
@@ -44,8 +49,7 @@ def start_log_analytics(args):
             auth_path=args.la_auth_path, fields=('application_id', 'application_key')
         )
     elif args.la_id and args.la_key and args.la_tenant_domain:
-        logging.debug(f"Log Analytics: Using id and key from configuration for authentication")
-        logging.warning(
+        azure_logger.warning(
             DEPRECATED_MESSAGE.format(
                 name='la_id and la_key', release='4.4', url=CREDENTIALS_URL
             )
@@ -53,13 +57,13 @@ def start_log_analytics(args):
         client = args.la_id
         secret = args.la_key
     else:
-        logging.error(
+        azure_logger.error(
             'Log Analytics: No parameters have been provided for authentication.'
         )
         sys.exit(1)
 
     # Get authentication token
-    logging.info('Log Analytics: Getting authentication token.')
+    azure_logger.info('Log Analytics: Getting authentication token.')
     token = get_token(
         client_id=client,
         secret=secret,
@@ -89,8 +93,8 @@ def start_log_analytics(args):
             tag=args.la_tag,
         )
     except HTTPError as e:
-        logging.error(f'Log Analytics: {e}')
-    logging.info('Azure Log Analytics ending.')
+        azure_logger.error(f'Log Analytics: {e}')
+    azure_logger.info('Azure Log Analytics ending.')
 
 
 def build_log_analytics_query(
@@ -120,7 +124,7 @@ def build_log_analytics_query(
                 offset=offset,
             )
     except orm.AzureORMError as e:
-        logging.error(
+        azure_logger.error(
             f'Error trying to obtain row object from "{orm.LogAnalytics.__tablename__}" using md5="{md5}": '
             f'{e}'
         )
@@ -156,7 +160,7 @@ def build_log_analytics_query(
             filter_value = f'TimeGenerated > {max_str}'
 
     query = f'{query} | order by TimeGenerated asc | where {filter_value} '
-    logging.debug(f'Log Analytics: The search starts for query: "{query}"')
+    azure_logger.info(f'Log Analytics: The search starts for query: "{query}"')
     return {'query': query}
 
 
@@ -181,15 +185,14 @@ def get_log_analytics_events(
     HTTPError
         If the response for the request is not 200 OK.
     """
-    logging.info('Log Analytics: Sending a request to the Log Analytics API.')
-    logging.debug(f"Log Analytics request - URL: {url} - Params: {body} - Headers: {headers}")
+    azure_logger.info('Log Analytics: Sending a request to the Log Analytics API.')
     response = get(url, params=body, headers=headers)
     if response.status_code == 200:
         try:
             columns = response.json()['tables'][0]['columns']
             rows = response.json()['tables'][0]['rows']
             if len(rows) == 0:
-                logging.info('Log Analytics: There are no new results')
+                azure_logger.info('Log Analytics: There are no new results')
             else:
                 time_position = get_time_position(columns)
                 if time_position is not None:
@@ -202,10 +205,10 @@ def get_log_analytics_events(
                         query=query,
                     )
                 else:
-                    logging.error('Error: No TimeGenerated field was found')
+                    azure_logger.error('Error: No TimeGenerated field was found')
 
         except KeyError as e:
-            logging.error(
+            azure_logger.error(
                 f'Error: It was not possible to obtain the columns and rows from the event: "{e}".'
             )
     else:
@@ -256,6 +259,5 @@ def iter_log_analytics_events(columns: list, rows: list, tag: str):
         event = {}
         for c in range(0, len(columns)):
             event[columns[c]['name']] = row[c]
-        logging.info('Log Analytics: Sending event by socket.')
-        logging.debug(f"Event send to socket: {event}")
+        azure_logger.info('Log Analytics: Sending event by socket.')
         send_message(dumps(event))

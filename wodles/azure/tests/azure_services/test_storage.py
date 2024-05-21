@@ -120,7 +120,7 @@ def test_start_storage(
         ('*', None),
     ],
 )
-@patch('azure_utils.logging.error')
+@patch('azure_services.storage.azure_logger.error')
 @patch('azure_services.storage.create_new_row', side_effect=orm.AzureORMError)
 @patch('db.orm.get_row', return_value=None)
 @patch('azure_services.storage.BlockBlobService')
@@ -148,7 +148,7 @@ def test_start_storage_ko(mock_blob, mock_get, mock_create, mock_logging, contai
     mock_logging.assert_called_once()
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.storage.azure_logger.error')
 def test_start_storage_ko_credentials(mock_logging):
     """Test start_storage stops its execution if no valid credentials are provided."""
     args = MagicMock(storage_auth_path=None, account_name=None, account_key=None)
@@ -370,7 +370,7 @@ def test_get_blobs(
         )
 
 
-@patch('azure_utils.logging.debug')
+@patch('azure_services.storage.azure_logger.debug')
 def test_that_empty_blobs_are_omitted(mock_logging):
     """Test get_blobs checks the size of the blob and omits it if is is empty"""
     # List of empty blobs to use
@@ -460,7 +460,7 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
     )
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.storage.azure_logger.error')
 def test_get_blobs_list_blobs_ko(mock_logging):
     """Test get_blobs_list_blobs handles exceptions from 'list_blobs'."""
     m = MagicMock()
@@ -491,7 +491,7 @@ def test_get_blobs_list_blobs_ko(mock_logging):
         AzureHttpError(message='', status_code=''),
     ],
 )
-@patch('azure_services.storage.logging.error')
+@patch('azure_services.storage.azure_logger.error')
 @patch('azure_services.storage.update_row_object')
 def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'get_blob_to_text'."""
@@ -521,7 +521,7 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
 
 
 @pytest.mark.parametrize('exception', [json.JSONDecodeError, TypeError, KeyError])
-@patch('azure_services.storage.logging.error')
+@patch('azure_services.storage.azure_logger.error')
 @patch('azure_services.storage.loads')
 @patch('azure_services.storage.update_row_object')
 def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):

@@ -5,7 +5,6 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-import logging
 import os
 import socket
 import sys
@@ -20,9 +19,6 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from azure_utils import (
     ANALYSISD,
-    LOG_LEVELS,
-    LOGGING_DATE_FORMAT,
-    LOGGING_MSG_FORMAT,
     SOCKET_HEADER,
     URL_LOGGING,
     arg_valid_blob_extension,
@@ -34,25 +30,10 @@ from azure_utils import (
     offset_to_datetime,
     read_auth_file,
     send_message,
-    set_logger,
 )
 
 TEST_DATA_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 TEST_AUTHENTICATION_PATH = os.path.join(TEST_DATA_PATH, 'authentication_files')
-
-
-@pytest.mark.parametrize('debug_level', [0, 1, 2, 3])
-@patch('azure_utils.logging.basicConfig')
-def test_set_logger(mock_logging, debug_level):
-    """Test set_logger sets the expected logging verbosity level."""
-    set_logger(debug_level)
-    mock_logging.assert_called_with(
-        level=LOG_LEVELS.get(debug_level, logging.INFO),
-        format=LOGGING_MSG_FORMAT,
-        datefmt=LOGGING_DATE_FORMAT,
-    )
-    assert logging.getLogger('azure').level == LOG_LEVELS.get(debug_level, logging.WARNING).real
-    assert logging.getLogger('urllib3').level == logging.ERROR.real
 
 
 def test_get_script_arguments(capsys):
@@ -145,7 +126,7 @@ def test_read_auth_file(file_name, fields):
         'invalid_authentication_file_3',
     ],
 )
-@patch('azure_utils.logging.error')
+@patch('azure_utils.azure_logger.error')
 def test_read_auth_file_ko(mock_logging, file_name):
     """Test read_auth_file correctly handles invalid authentication files."""
     with pytest.raises(SystemExit) as err:
@@ -193,7 +174,7 @@ def test_get_token(mock_post):
         (None, None, []),
     ],
 )
-@patch('azure_utils.logging.error')
+@patch('azure_utils.azure_logger.error')
 @patch('azure_utils.post')
 def test_get_token_ko(mock_post, mock_logging, exception, error_msg, error_codes):
     """Test get_token handles exceptions when the 'access_token' field is not present in the response."""
@@ -220,7 +201,7 @@ def test_send_message(mock_connect, mock_send, mock_close):
 
 
 @pytest.mark.parametrize('error_code', [111, 90, 1])
-@patch('azure_utils.logging.error')
+@patch('azure_utils.azure_logger.error')
 @patch('azure_utils.socket.close')
 @patch('azure_utils.socket.send')
 @patch('azure_utils.socket.connect')
@@ -256,7 +237,7 @@ def test_offset_to_datetime(mock_time, offset, expected_date):
     assert result == parse(expected_date)
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_utils.azure_logger.error')
 @patch('azure_utils.datetime')
 def test_offset_to_datetime_ko(mock_time, mock_logging):
     """Test offset_to_datetime handles the exception when an invalid offset format was provided."""

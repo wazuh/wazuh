@@ -52,7 +52,7 @@ def test_update_row_object(mock_get, mock_update, min_date, max_date):
         mock_update.assert_not_called()
 
 
-@patch('azure_utils.logging.error')
+@patch('db.utils.azure_logger.error')
 @patch('db.orm.get_row', side_effect=AttributeError)
 def test_update_row_object_ko(mock_get, mock_logging):
     """Test update_row_object handles ORM errors as expected."""
@@ -62,7 +62,7 @@ def test_update_row_object_ko(mock_get, mock_logging):
     mock_logging.assert_called_once()
 
 
-@patch('azure_utils.logging.error')
+@patch('db.utils.azure_logger.error')
 @patch('db.orm.update_row', side_effect=orm.AzureORMError)
 @patch(
     'db.orm.get_row',
@@ -96,7 +96,7 @@ def test_create_new_row(add_row):
     add_row.assert_called_with(row=item)
 
 
-@patch('azure_utils.logging.error')
+@patch('db.utils.azure_logger.error')
 @patch('db.orm.add_row', side_effect=orm.AzureORMError)
 def test_create_new_row_ko(mock_add_row, mock_logging):
     """Test create_new_row raises an error if when attempting to add a invalid row object."""

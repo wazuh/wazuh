@@ -96,7 +96,7 @@ def test_start_graph(
     )
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.graph.azure_logger.error')
 @patch('azure_services.graph.get_graph_events', side_effect=HTTPError)
 @patch('azure_services.graph.build_graph_url')
 @patch('azure_services.graph.get_token')
@@ -108,7 +108,7 @@ def test_start_graph_ko(mock_auth, mock_token, mock_build, mock_get, mock_loggin
     mock_logging.assert_called_once()
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.graph.azure_logger.error')
 def test_start_graph_ko_credentials(mock_logging):
     """Test start_graph stops its execution if no valid credentials are provided."""
     args = MagicMock(graph_tenant_domain=None)
@@ -127,6 +127,7 @@ def test_start_graph_ko_credentials(mock_logging):
         (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
     ],
 )
+@patch('azure_services.graph.azure_logger.info')
 @patch('azure_services.graph.offset_to_datetime')
 @patch('azure_services.graph.create_new_row')
 @patch('db.orm.get_row', return_value=None)
@@ -170,7 +171,7 @@ def test_build_graph_url(
     assert expected_str in result
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.graph.azure_logger.error')
 @patch('db.orm.get_row', side_effect=orm.AzureORMError)
 def test_build_graph_url_ko(mock_get, mock_logging):
     """Test build_log_analytics_query handles ORM exceptions."""
@@ -212,7 +213,7 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
 
 
 @pytest.mark.parametrize('status_code', [400, 500])
-@patch('azure_utils.logging.error')
+@patch('azure_services.graph.azure_logger.error')
 @patch('azure_services.graph.get')
 def test_get_graph_events_error_responses(mock_get, mock_logging, status_code):
     """Test get_graph_events handles invalid responses from the request module."""

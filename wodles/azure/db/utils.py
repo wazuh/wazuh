@@ -5,7 +5,6 @@
 # This program is free software; you can redistribute
 # it and/or modify it under the terms of GPLv2
 
-import logging
 import sys
 from datetime import datetime
 from hashlib import md5
@@ -17,7 +16,12 @@ sys.path.insert(0, dirname(dirname(abspath(__file__))))
 
 from azure_utils import DATETIME_MASK, offset_to_datetime
 from db import orm
+from shared.wazuh_cloud_logger import WazuhCloudLogger
 
+# Set Azure logger
+azure_logger = WazuhCloudLogger(
+    logger_name=':azure_wodle:'
+)
 
 def update_row_object(
     table: orm.Base, md5_hash: str, new_min: str, new_max: str, query: str = None
@@ -42,7 +46,7 @@ def update_row_object(
         old_min_str = row.min_processed_date
         old_max_str = row.max_processed_date
     except (orm.AzureORMError, AttributeError) as e:
-        logging.error(
+        azure_logger.error(
             f'Error trying to obtain row object from "{table.__tablename__}" using md5="{md5}": {e}'
         )
         sys.exit(1)
@@ -55,7 +59,7 @@ def update_row_object(
     if new_min_date < old_min_date or new_max_date > old_max_date:
         min_ = new_min if new_min_date < old_min_date else old_min_str
         max_ = new_max if new_max_date > old_max_date else old_max_str
-        logging.debug(
+        azure_logger.debug(
             f'Attempting to update a {table.__tablename__} row object. '
             f'MD5: "{md5_hash}", min_date: "{min_}", max_date: "{max_}"'
         )
@@ -64,7 +68,7 @@ def update_row_object(
                 table=table, md5=md5_hash, min_date=min_, max_date=max_, query=query
             )
         except orm.AzureORMError as e:
-            logging.error(f'Error updating row object from {table.__tablename__}: {e}')
+            azure_logger.error(f'Error updating row object from {table.__tablename__}: {e}')
             sys.exit(1)
 
 
@@ -87,7 +91,7 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
     orm.Base
         A copy of the inserted row object.
     """
-    logging.info(
+    azure_logger.info(
         f'{md5_hash} was not found in the database for {table.__tablename__}. Adding it.'
     )
     desired_datetime = (
@@ -102,13 +106,13 @@ def create_new_row(table: orm.Base, md5_hash: str, query: str, offset: str) -> o
         min_processed_date=desired_str,
         max_processed_date=desired_str,
     )
-    logging.debug(
+    azure_logger.debug(
         f'Attempting to insert row object into {table.__tablename__} with md5="{md5_hash}", '
         f'min_date="{desired_str}", max_date="{desired_str}"'
     )
     try:
         orm.add_row(row=item)
     except orm.AzureORMError as e:
-        logging.error(f'Error inserting row object into {table.__tablename__}: {e}')
+        azure_logger.error(f'Error inserting row object into {table.__tablename__}: {e}')
         sys.exit(1)
     return item

@@ -103,7 +103,7 @@ def test_start_log_analytics(
     )
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.analytics.azure_logger.error')
 @patch('azure_services.analytics.get_log_analytics_events', side_effect=HTTPError)
 @patch('azure_services.analytics.build_log_analytics_query')
 @patch('azure_services.analytics.get_token')
@@ -122,7 +122,7 @@ def test_start_log_analytics_ko(mock_auth, mock_token, mock_build, mock_get_logs
     mock_logging.assert_called_once()
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.analytics.azure_logger.error')
 def test_start_log_analytics_ko_credentials(mock_logging):
     """Test start_log_analytics stops its execution if no valid credentials are provided."""
     args = MagicMock(la_tenant_domain=None)
@@ -174,7 +174,7 @@ def test_build_log_analytics_query(mock_get, mock_create, mock_datetime, min_dat
     assert expected_str in result['query']
 
 
-@patch('azure_utils.logging.error')
+@patch('azure_services.analytics.azure_logger.error')
 @patch('db.orm.get_row', side_effect=orm.AzureORMError)
 def test_build_log_analytics_query_ko(mock_get, mock_logging):
     """Test build_log_analytics_query handles ORM exceptions."""
@@ -193,7 +193,7 @@ def test_build_log_analytics_query_ko(mock_get, mock_logging):
         ('log_analytics_events_empty', None),
     ],
 )
-@patch('azure_utils.logging.error')
+@patch('azure_services.analytics.azure_logger.error')
 @patch('azure_services.analytics.update_row_object')
 @patch('azure_services.analytics.iter_log_analytics_events')
 @patch('azure_services.analytics.get_time_position')
