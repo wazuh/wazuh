@@ -707,7 +707,7 @@ def test_get_blobs(mock_send, mock_update, blob_date, min_date, max_date, desire
         assert mock_update.call_count == len(blob_list) if not extension else len(
             [blob.name for blob in blob_list if extension in blob.name])
 
-@patch('azure-logs.logging.debug')
+@patch('azure-logs.azure_logger.debug')
 def test_that_empty_blobs_are_omitted(mock_logging):
     """Test get_blobs checks the size of the blob and omits it if is is empty"""
     azure.args = MagicMock(blobs=None, json_file=False, json_inline=False, reparse=False)
