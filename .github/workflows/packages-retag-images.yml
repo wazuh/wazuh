@@ -69,4 +69,4 @@ jobs:
             new_version=${{ env.NEW_VERSION }}
             old_version=${{ env.OLD_VERSION }}
           fi
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/retag_image.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} $old_version $new_version ${{ inputs.single_docker_image }}
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/retag_image.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} $old_version $new_version ${{ inputs.single_docker_image }}
