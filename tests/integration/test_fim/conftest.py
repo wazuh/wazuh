@@ -19,7 +19,7 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
-from wazuh_testing.modules.fim.patterns import MONITORING_PATH
+from wazuh_testing.modules.fim.patterns import MONITORING_PATH, EVENT_TYPE_SCAN_END
 from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
@@ -163,9 +163,15 @@ def create_registry_key(test_metadata: dict) -> None:
     sub_key = test_metadata.get('sub_key')
     arch = win32con.KEY_WOW64_64KEY if test_metadata.get('arch') == 'x64' else win32con.KEY_WOW64_32KEY
 
-    sleep(10)
     create_registry(key, sub_key, arch)
 
     yield
 
     delete_registry(key, sub_key, arch)
+
+
+@pytest.fixture()
+def detect_end_scan(test_metadata: dict) -> None:
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(timeout=60, callback=generate_callback(EVENT_TYPE_SCAN_END))
+    assert wazuh_log_monitor.callback_result
