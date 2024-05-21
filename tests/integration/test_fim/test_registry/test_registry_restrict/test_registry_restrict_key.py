@@ -57,7 +57,10 @@ tags:
 from pathlib import Path
 
 import os
-import win32con
+import sys
+
+if sys.platform == 'win32':
+    import win32con
 
 import pytest
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
