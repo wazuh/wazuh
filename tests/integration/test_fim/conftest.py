@@ -158,7 +158,7 @@ def create_links_to_file(folder_to_monitor: str, file_to_monitor: str, test_meta
 
 
 @pytest.fixture()
-def create_registry(test_metadata: dict) -> None:
+def create_registry_key(test_metadata: dict) -> None:
     key = win32con.HKEY_LOCAL_MACHINE
     sub_key = test_metadata.get('sub_key')
     arch = win32con.KEY_WOW64_64KEY if test_metadata.get('arch') == 'x64' else win32con.KEY_WOW64_32KEY
