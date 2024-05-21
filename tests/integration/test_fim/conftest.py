@@ -10,7 +10,9 @@ import pytest
 import re
 import subprocess
 import sys
-import win32con
+
+if sys.platform == 'win32':
+    import win32con
 
 from typing import Any
 from pathlib import Path
