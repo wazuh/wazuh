@@ -155,10 +155,9 @@ async def problem_error_handler(request: ConnexionRequest, exc: exceptions.Probl
     """
     problem = {
         "title": exc.title if exc.title else 'Bad Request',
-        "detail": exc.detail if isinstance(exc.detail, dict) \
-                    else _cleanup_detail_field(exc.detail)
+        "detail": exc.detail if isinstance(exc.detail, dict) else _cleanup_detail_field(exc.detail)
     }
-    problem.update({"type": exc.type} if exc.type else {})
+    problem.update({"type": exc.type} if (exc.type and exc.type != 'about:blank') else {})
     problem.update(exc.ext if exc.ext else {})
     if isinstance(problem['detail'], dict):
         for field in ['status', 'type']:
