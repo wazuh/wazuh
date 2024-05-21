@@ -44,6 +44,8 @@ retag_image(){
         docker tag ${IMAGE_ID}:${OLD_TAG} ${IMAGE_ID}:${NEW_TAG}
         # Upload
         docker push ${IMAGE_ID}:${NEW_TAG}
+        docker rmi ${IMAGE_ID}:${OLD_TAG} -f
+        docker rmi ${IMAGE_ID}:${NEW_TAG} -f
     fi
 }
 
