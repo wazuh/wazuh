@@ -191,6 +191,7 @@ def start(params: dict):
                 validate_responses=False
                 )
 
+    app.add_middleware(MiddlewaresTime, MiddlewarePosition.BEFORE_EXCEPTION)
     # Maximum body size that the API can accept (bytes)
     if api_conf['access']['max_request_per_minute'] > 0:
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
@@ -355,6 +356,7 @@ if __name__ == '__main__':
         SecureHeadersMiddleware,
         WazuhAccessLoggerMiddleware,
         CheckExpectHeaderMiddleware,
+        MiddlewaresTime
     )
     from api.signals import lifespan_handler
     from api.uri_parser import APIUriParser

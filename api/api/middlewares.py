@@ -236,6 +236,14 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         await access_log(ConnexionRequest.from_starlette_request(request), response, prev_time)
         return response
 
+class MiddlewaresTime(BaseHTTPMiddleware):
+    """Middlewares times measure."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        start_time = time.time()
+        resp = await call_next(request)
+        logger.info(f"Time: {time.time() - start_time}")
+        return resp
 
 class SecureHeadersMiddleware(BaseHTTPMiddleware):
     """Secure headers Middleware."""
