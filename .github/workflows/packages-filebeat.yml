@@ -55,7 +55,7 @@ jobs:
         working-directory: extensions/filebeat/7.x/wazuh-module
         run: |
           mkdir wazuh
-          cp -r _meta wazuh/; cp -r alerts wazuh/; cp -r archives wazuh/; cp -r module.yml wazuh/
+          cp -r _meta alerts archives module.yml wazuh/
           sudo chown -R root:root wazuh
           sudo chmod 755 wazuh
           sudo chmod 755 wazuh/_meta

@@ -10,7 +10,6 @@ fi
 IMAGES_LIST=(
     "common_wpk_builder"
     "compile_windows_agent"
-    "linux_wpk_builder_x86_64"
     "pkg_deb_agent_builder_i386"
     "pkg_deb_agent_builder_amd64"
     "pkg_deb_agent_builder_arm64"
@@ -31,14 +30,14 @@ retag_image(){
     NEW_TAG="$3"
     GITHUB_REPOSITORY="wazuh/wazuh"
     GITHUB_OWNER="wazuh"
-    IMAGE_ID=ghcr.io/${GITHUB_OWNER}/${DOCKER_IMAGE_NAME}
-    IMAGE_ID=$(echo ${IMAGE_ID} | tr '[A-Z]' '[a-z]')
+    IMAGE_ID=$(echo "ghcr.io/${GITHUB_OWNER}/${DOCKER_IMAGE_NAME}" | tr '[A-Z]' '[a-z]')
 
     # Bring old tag
     pull_output=$(docker pull ${IMAGE_ID}:${OLD_TAG})
 
     if echo "$pull_output" | grep -qi "error"; then
         echo "Failed pulling ${IMAGE_ID}:${OLD_TAG}"
+        exit 1
     else
         # Retag
         docker tag ${IMAGE_ID}:${OLD_TAG} ${IMAGE_ID}:${NEW_TAG}

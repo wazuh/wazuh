@@ -18,6 +18,7 @@ CHECKSUMDIR="/var/local/checksum"
 
 
 help() {
+    set +x
     echo
     echo "Usage: ${0} [OPTIONS]"
     echo "It is required to use -k or --aws-wpk-key, --aws-wpk-cert parameters"

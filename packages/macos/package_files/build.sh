@@ -67,15 +67,10 @@ function build() {
     cp -r ${SOURCES_PATH}/ruleset/sca/darwin ${INSTALLATION_SCRIPTS_DIR}/sca
     cp -r ${SOURCES_PATH}/ruleset/sca/generic ${INSTALLATION_SCRIPTS_DIR}/sca
     cp ${SOURCES_PATH}/etc/templates/config/generic/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/generic/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/15/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/15/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/16/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/16/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/17/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/17/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/18/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/18/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/19/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/19/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/20/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/20/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/21/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/21/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/22/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/22/
-    cp ${SOURCES_PATH}/etc/templates/config/darwin/23/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/23/
+
+    for n in $(seq 15 23); do
+        cp ${SOURCES_PATH}/etc/templates/config/darwin/$n/sca.files ${INSTALLATION_SCRIPTS_DIR}/sca/darwin/$n/
+    done
 
     cp ${SOURCES_PATH}/src/VERSION ${INSTALLATION_SCRIPTS_DIR}/src/
     cp ${SOURCES_PATH}/src/REVISION ${INSTALLATION_SCRIPTS_DIR}/src/

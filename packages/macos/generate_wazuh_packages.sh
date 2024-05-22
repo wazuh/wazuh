@@ -152,7 +152,6 @@ function build_package() {
 
     get_pkgproj_specs $VERSION $pkg_name
 
-
     if [ -d "${INSTALLATION_PATH}" ]; then
 
         echo "\nThe wazuh agent is already installed on this machine."
@@ -182,7 +181,7 @@ function build_package() {
 }
 
 function help() {
-
+    set +x
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "  Build options:"
@@ -432,6 +431,7 @@ function main() {
         build_package
         "${CURRENT_PATH}/uninstall.sh"
     fi
+
     if [ "${NOTARIZE}" = "yes" ]; then
         if [ "${BUILD}" = "yes" ]; then
             notarization_path="${DESTINATION}/${pkg_name}"
@@ -442,6 +442,7 @@ function main() {
         fi
         notarize_pkg "${notarization_path}"
     fi
+
     if [ "${BUILD}" = "no" ] && [ "${NOTARIZE}" = "no" ]; then
         echo "The branch has not been specified and notarization has not been selected."
         help 1
