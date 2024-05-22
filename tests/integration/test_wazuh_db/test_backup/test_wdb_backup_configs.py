@@ -56,6 +56,7 @@ import subprocess
 import pytest
 import time
 import numbers
+import glob
 
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.monitors import file_monitor
@@ -173,7 +174,7 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
 
 
         assert len(result) == int(test_max_files)+1, f'Expected {test_max_files} backup creation messages, but got {result}.'
-        files = os.listdir(backups_path)
+        files = glob.glob(str(backups_path) + '/*.gz')
         total_files = len(files)
         assert total_files == int(test_max_files), f'Wrong backup file ammount, expected {test_max_files}' \
                                                 f' but {total_files} are present in folder: {files}'

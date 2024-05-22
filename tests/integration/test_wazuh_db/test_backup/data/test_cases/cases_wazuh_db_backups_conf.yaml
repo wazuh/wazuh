@@ -50,7 +50,7 @@
     MAX_FILES: '1'
   metadata:
     enabled: 'no'
-    interval: '4s'
+    interval: '5s'
     max_files: '1'
 
 - name: Backup Enabled Interval 5s Max_Files 1
@@ -61,7 +61,7 @@
     MAX_FILES: '1'
   metadata:
     enabled: 'yes'
-    interval: '4s'
+    interval: '5s'
     max_files: '1'
 
 - name: Backup Enabled Interval 5s Max_Files 3
