@@ -149,20 +149,20 @@ def backup_wazuh_configuration() -> None:
 
 
 @pytest.fixture()
-def set_wazuh_configuration(configuration: dict) -> None:
+def set_wazuh_configuration(test_configuration: dict) -> None:
     """Set wazuh configuration
 
     Args:
-        configuration (dict): Configuration template data to write in the ossec.conf
+        test_configuration (dict): Configuration template data to write in the ossec.conf
     """
     # Save current configuration
-    backup_config = wazuh_configuration.get_wazuh_conf()
+    backup_config = configuration.get_wazuh_conf()
 
     # Configuration for testing
-    test_config = wazuh_configuration.set_section_wazuh_conf(configuration.get('sections'))
+    test_config = configuration.set_section_wazuh_conf(test_configuration.get('sections'))
 
     # Set new configuration
-    wazuh_configuration.write_wazuh_conf(test_config)
+    configuration.write_wazuh_conf(test_config)
 
     # Set current configuration
     session_parameters.current_configuration = test_config
@@ -170,7 +170,7 @@ def set_wazuh_configuration(configuration: dict) -> None:
     yield
 
     # Restore previous configuration
-    wazuh_configuration.write_wazuh_conf(backup_config)
+    configuration.write_wazuh_conf(backup_config)
 
 
 @pytest.fixture()
