@@ -491,6 +491,11 @@ class ProxyAPI:
     async def get_binds(self, frontend: str) -> PROXY_API_RESPONSE:
         """Returns the binds configured for the given frontend.
 
+        Parameters
+        ----------
+        frontend : str
+            Frontend to query.
+
         Returns
         -------
         PROXY_API_RESPONSE
