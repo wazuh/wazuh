@@ -515,7 +515,7 @@ class HAPHelper:
 
             if await helper.proxy.check_multiple_frontends(port=connection_port):
                 logger.warning(
-                    f'Exists several frontends binding the port "{connection_port}". '
+                    f'Several frontends exist binding the port "{connection_port}". '
                     'To ensure the proper function of the helper, '
                     f'keep only the one related to the backend "{helper_config[HAPROXY_BACKEND]}".',
                 )
