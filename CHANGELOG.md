@@ -12,14 +12,14 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed an issue in a cluster task where full group synchronization was constantly triggered. ([#23447](https://github.com/wazuh/wazuh/pull/23447))
-- Fix race condition when creating agent database files from a template. ([#23216](https://github.com/wazuh/wazuh/pull/23216))
+- Fixed race condition when creating agent database files from a template. ([#23216](https://github.com/wazuh/wazuh/pull/23216))
 
 ### Agent
 
 #### Fixed
 
-- Fix segmentation fault in logcollector multiline-regex configuration. ([#23468](https://github.com/wazuh/wazuh/pull/23468))
-- Fix crash in fim when processing paths with non UTF-8 characters. ([#23543](https://github.com/wazuh/wazuh/pull/23543))
+- Fixed segmentation fault in logcollector multiline-regex configuration. ([#23468](https://github.com/wazuh/wazuh/pull/23468))
+- Fixed crash in fim when processing paths with non UTF-8 characters. ([#23543](https://github.com/wazuh/wazuh/pull/23543))
 
 
 ## [v4.7.4]
