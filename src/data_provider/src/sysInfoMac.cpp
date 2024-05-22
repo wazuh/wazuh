@@ -442,7 +442,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     pypyMacOSPaths.emplace("/Library/Python/*/*-packages");
     pypyMacOSPaths.emplace("/Library/Frameworks/Python.framework/Versions/*/lib/python*/*-packages");
     pypyMacOSPaths.emplace(
-        "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/*/lib/python*/*-package");
+        "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/*/lib/python*/*-packages");
     pypyMacOSPaths.emplace("/System/Library/Frameworks/Python.framework/*-packages");
 
     static const std::map<std::string, std::set<std::string>> searchPaths =
