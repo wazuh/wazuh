@@ -4,6 +4,7 @@
 
 from json import JSONDecodeError
 from logging import getLogger
+import time
 
 from aiohttp import web, web_request
 from aiohttp.web_exceptions import HTTPException
@@ -38,6 +39,14 @@ def _cleanup_detail_field(detail: str) -> str:
         New value for the detail field.
     """
     return ' '.join(str(detail).replace("\n\n", ". ").replace("\n", "").split())
+
+
+@web.middleware
+async def middlewares_time(request, handler):
+    start_time = time.time()
+    resp = await handler(request)
+    logger.info(f"Time: {time.time() - start_time}")
+    return resp
 
 
 @web.middleware
