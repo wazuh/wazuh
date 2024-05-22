@@ -2,7 +2,7 @@
 
 ## Description
 
-It is a _wodle based_ module that test the capabilities of the Wazuh AWS integration, pulling logs from different
+It is a _wodle based_ module that tests the capabilities of the Wazuh AWS integration, pulling logs from different
 buckets and services.
 
 ## Tests directory structure
@@ -49,15 +49,16 @@ wazuh/tests/integration/test_aws
 
 ## Requirements
 
-- [Proper testing environment](#Setting up a test environment)
+- [Proper testing environment](#setting-up-a-test-environment)
 
 - [Wazuh](https://github.com/wazuh/qa-integration-framework) repository.
 
 - [Testing framework](https://github.com/wazuh/qa-integration-framework) installed.
 
-- Configured buckets, log groups and an inspector assessment with test data in AWS.
+- An Inspector assessment with test data in AWS. The rest of the necessary resources are created in test execution time.
 
 For a step-by-step example guide using linux go to the [test setup section](#linux)
+
 
 ## Configuration settings
 
@@ -66,10 +67,15 @@ For a step-by-step example guide using linux go to the [test setup section](#lin
  more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles) with the content:
 
 ```ini
-[qa]
+[default]
 aws_access_key_id = <access-key-value>
 aws_secret_access_key = <secret-key-value>
 ```
+
+The tests do not expect a particular profile given these can be executed for any AWS environment in which the 
+profile has the corresponding permissions to create, delete and list S3, VPC (like Flow Logs) and
+CloudWatch Logs resources. If a particular profile is required, it can be defined by declaring the `AWS_PROFILE` 
+environment variable.
 
 ## Setting up a test environment
 
@@ -96,17 +102,20 @@ _We are using **Ubuntu 22.04** for this example:_
 
 - Install Python tests dependencies:
 
-```shell script
-# Install pip
-apt install python3-pip git -y
+    ```shell script
+    # Install pip
+    apt install python3-pip git -y
+  
+    # Clone `wazuh` repository within your testing environment
+    git clone https://github.com/wazuh/wazuh.git
 
-# Clone the `qa-integration-framework` repository withing your testing environment
-git clone https://github.com/wazuh/qa-integration-framework.git
-
-# Install tests dependencies
-python3 -m pip install qa-integration-framework/
-```
-
+    # Clone the `qa-integration-framework` repository withing your testing environment
+    git clone https://github.com/wazuh/qa-integration-framework.git
+  
+    # Install tests dependencies
+    python3 -m pip install qa-integration-framework/
+    ```
+  
 
 ## Integration tests
 

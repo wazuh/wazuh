@@ -20,6 +20,18 @@ from wazuh_testing.logger import logger
 # Local imports
 from .utils import TEST_DATA_PATH, TEMPLATE_DIR, TEST_CASES_DIR
 
+# Constants
+METADATA_SQS = 'sqs_name'
+METADATA_RESOURCE_TYPE = 'resource_type'
+METADATA_BUCKET = 'bucket_name'
+METADATA_VPC = 'vpc_name'
+METADATA_LOG_GROUP = 'log_group_name'
+METADATA_LOG_STREAM = 'log_stream_name'
+
+CONFIG_SQS = 'SQS_NAME'
+CONFIG_BUCKET = 'BUCKET_NAME'
+CONFIG_LOG_GROUP = 'LOG_GROUP_NAME'
+
 
 # Classes
 class TestConfigurator:
@@ -67,15 +79,11 @@ class TestConfigurator:
         logger.info(f"This test session id is: {self._session_id}")
 
     def configure_test(self, configuration_file="", cases_file="") -> None:
-        """
-        Configure and manage the resources for the test.
+        """Configure and manage the resources for the test.
 
-        Parameters
-        ----------
-        configuration_file : str
-            The name of the configuration file.
-        cases_file : str
-            The name of the test cases file.
+        Args:
+            configuration_file (str): The name of the configuration file.
+            cases_file (str): The name of the test cases file.
         """
         # Set test cases yaml path
         cases_yaml_path = join(TEST_DATA_PATH, TEST_CASES_DIR, self.module, cases_file)
@@ -91,14 +99,11 @@ class TestConfigurator:
                                           parameters=parameters)
 
     def _load_configuration_template(self, configuration_file: str, parameters: str) -> None:
-        """Set the configuration template of the test
+        """Set the configuration template of the test.
 
-        Parameters
-        ----------
-        configuration_file : str
-            The name of the configuration file.
-        parameters : str
-            The test parameters.
+        Args:
+            configuration_file (str): The name of the configuration file.
+            parameters (str): The test parameters.
         """
         if configuration_file != "":
             # Set config path
@@ -112,36 +117,45 @@ class TestConfigurator:
             )
 
     def _modify_metadata(self, parameters: list) -> None:
-        """Modify raw data to add test session information
+        """Modify raw data to add test session information.
 
-        Parameters
-        ----------
-        parameters : list
-            The parameters of the test.
-        metadata : list
-            The metadata of the test.
+        Args:
+            parameters (list): The parameters of the test.
         """
         # Add Suffix (_todelete) to alert a safe deletion of resource in case of errors.
         suffix = f"-{self._session_id}-todelete"
 
         # Add suffix to metadata
         for param, data in zip(parameters, self._metadata):
-            try:
-                if "sqs_name" in data:
-                    data["sqs_name"] += suffix
-                    param["SQS_NAME"] += suffix
+            # Determine whether resource creation is required or not
+            resource_creation_required = METADATA_RESOURCE_TYPE in data
 
-                if data["resource_type"] == "bucket":
-                    data["bucket_name"] += suffix
-                    if "BUCKET_NAME" in param:
-                        param["BUCKET_NAME"] += suffix
+            if resource_creation_required:
+                try:
+                    if METADATA_SQS in data:
+                        data[METADATA_SQS] += suffix
+                        param[CONFIG_SQS] += suffix
 
-                elif data["resource_type"] == "log_group":
-                    param["LOG_GROUP_NAME"] += suffix
-                    data["log_group_name"] += suffix
+                    if data[METADATA_RESOURCE_TYPE] == "bucket":
+                        data[METADATA_BUCKET] += suffix
+                        if METADATA_VPC in data:
+                            data[METADATA_VPC] += suffix
+                        if CONFIG_BUCKET in param:
+                            param[CONFIG_BUCKET] += suffix
 
-            except KeyError:
-                raise
+                    elif data[METADATA_RESOURCE_TYPE] == "log_group":
+                        if CONFIG_LOG_GROUP in param:
+                            suffixed_log_groups = []
+                            for log_group in data[METADATA_LOG_GROUP].split(','):
+                                log_group += suffix
+                                suffixed_log_groups.append(log_group)
+                            data[METADATA_LOG_GROUP] = ','.join(suffixed_log_groups)
+                            param[CONFIG_LOG_GROUP] = data[METADATA_LOG_GROUP]
+                            if METADATA_LOG_STREAM in data:  # It is not present for basic or parser tests
+                                data[METADATA_LOG_STREAM] += suffix
+
+                except KeyError:
+                    raise
 
 
 # Instantiate configurator

@@ -35,18 +35,22 @@ ERROR_MESSAGE = {
     "incorrect_service_calls_amount": "The AWS module was not called for bucket or service the right amount of times",
     "unexpected_number_of_events_found": "Some logs may have been processed, "
                                          "or the results found are more than expected",
+    "event_not_found": "The expected log pattern was not found",
     "incorrect_marker": "The AWS module did not use the correct marker",
     "incorrect_no_region_found_message": "The AWS module did not show correct message about non-existent region",
     "incorrect_discard_regex_message": "The AWS module did not show the correct message about discard regex or, "
                                        "did not process the expected amount of logs",
     "failed_sqs_message_retrieval": "The AWS module did not retrieve the expected message from the SQS Queue",
-    "failed_message_handling": "The AWS module did not handle the expected message"
+    "failed_message_handling": "The AWS module did not handle the expected message",
+    "file_not_removed": "The AWS did not show the expected removed file from S3 message"
 }
 
 TIMEOUT = {
-
     10: 10,
-    20: 20
+    20: 20,
+    30: 30,
+    40: 40,
+    50: 50
 }
 
 # Paths

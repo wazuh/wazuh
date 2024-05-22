@@ -6,4 +6,4 @@
   metadata:
     service_type: inspector
     only_logs_after: 2023-JAN-30
-    expected_results: 4
+    expected_results: 11
