@@ -101,4 +101,6 @@ int __wrap_wdb_get_db_free_pages_percentage(__attribute__((unused))wdb_t * wdb);
 
 int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer);
 
+int __wrap_wdb_sca_find(wdb_t *socket, int pm_id, char *result_found);
+
 #endif
