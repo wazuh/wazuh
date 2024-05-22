@@ -2081,8 +2081,6 @@ checks:
     rules:
       - "c:dpkg -s iptables -> r:Status: install ok installed"
       - "c:dpkg -s iptables-persistent -> r:Status: install ok installed"
-      - "c:dpkg -s nftables -> r:package 'nftables' is not installed"
-      - "c:dpkg -s ufw -> r:package 'ufw' is not installed"
 
   # 3.5.3.1.2 Ensure nftables is not installed with iptables. (Automated)
   - id: 28584
