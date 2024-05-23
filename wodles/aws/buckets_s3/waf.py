@@ -34,6 +34,7 @@ class AWSWAFBucket(AWSCustomBucket):
         if self.check_waf_type():
             self.service = 'WAFLogs'
             self.type = WAF_NATIVE
+            self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
             self.type = WAF_KINESIS
 
@@ -93,7 +94,7 @@ class AWSWAFBucket(AWSCustomBucket):
             if 'Contents' in path:
                 for obj in path['Contents']:
                     log_key = obj['Key']
-                parts = log_key.split("/")
+                    parts = log_key.split("/")
                 acl_name = parts[parts.index("WAFLogs") + 2]
             return AWSLogsBucket.get_full_prefix(self, account_id, account_region, acl_name)
         else:
@@ -106,7 +107,9 @@ class AWSWAFBucket(AWSCustomBucket):
             return self.prefix
 
     def iter_regions_and_accounts(self, account_id, regions):
-        if self.type is not WAF_NATIVE:
-            print(WAF_DEPRECATED_MESSAGE.format(release="5.0", url=WAF_URL))
-            self.check_prefix = True
-        AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)      
+            if self.type == WAF_NATIVE:
+                AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+            else:
+                print(WAF_DEPRECATED_MESSAGE.format(release="5.0", url=WAF_URL))
+                self.check_prefix = True
+                AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)        
