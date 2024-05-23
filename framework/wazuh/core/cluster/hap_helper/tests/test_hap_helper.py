@@ -590,7 +590,7 @@ class TestHAPHelper:
         proxy_api = mock.MagicMock()
         proxy_api_mock.return_value = proxy_api
 
-        proxy = mock.MagicMock(hard_stop_after=hard_stop_after)
+        proxy = mock.MagicMock(hard_stop_after=hard_stop_after, wazuh_backend=HAPROXY_BACKEND_VALUE)
         proxy.check_multiple_frontends = mock.AsyncMock(return_value=multiple_frontends)
         proxy_mock.return_value = proxy
 
@@ -632,7 +632,9 @@ class TestHAPHelper:
 
                                 HAPHelper.initialize_proxy.assert_called_once()
 
-                                proxy.check_multiple_frontends.assert_called_once_with(port=WAZUH_PORT)
+                                proxy.check_multiple_frontends.assert_called_once_with(
+                                    port=WAZUH_PORT, frontend_to_skip=f'{HAPROXY_BACKEND_VALUE}_front'
+                                )
                                 if multiple_frontends:
                                     logger_mock.warning.assert_called_once()
                                 else:

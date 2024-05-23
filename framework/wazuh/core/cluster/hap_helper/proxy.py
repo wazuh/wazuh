@@ -670,13 +670,16 @@ class Proxy:
         """
         return frontend_name in await self.get_current_frontends()
 
-    async def check_multiple_frontends(self, port: int) -> bool:
+    async def check_multiple_frontends(self, port: int, frontend_to_skip: str) -> bool:
         """Check if there are multiple frontends binding the given port.
 
         Parameters
         ----------
         port : int
             Port number to check.
+        frontend_to_skip: str
+            Skip the comprobation for the given frontend name.
+
 
         Returns
         -------
@@ -685,16 +688,15 @@ class Proxy:
         """
         self.logger.debug(f'Checking multiple frontends for port {port}')
         frontends = await self.get_current_frontends()
-        port_bind_exists = False
 
         for frontend in frontends.keys():
+            if frontend == frontend_to_skip:
+                continue
+
             data = (await self.api.get_binds(frontend=frontend))['data']
             binds = [bind for bind in data if bind.get('port') == port]
-
-            if binds and port_bind_exists:
+            if binds:
                 return True
-            elif binds:
-                port_bind_exists = True
 
         return False
 

@@ -513,7 +513,9 @@ class HAPHelper:
 
             await helper.initialize_proxy()
 
-            if await helper.proxy.check_multiple_frontends(port=connection_port):
+            if await helper.proxy.check_multiple_frontends(
+                port=connection_port, frontend_to_skip=f'{helper.proxy.wazuh_backend}_front'
+            ):
                 logger.warning(
                     f'Several frontends exist binding the port "{connection_port}". '
                     'To ensure the proper function of the helper, '
