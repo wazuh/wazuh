@@ -631,7 +631,7 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh) %{_localstatedir}/api/configuration/security
 %dir %attr(770, root, wazuh) %{_localstatedir}/api/configuration/ssl
 %dir %attr(750, root, wazuh) %{_localstatedir}/api/scripts
-%attr(640, root, wazuh) %{_localstatedir}/api/scripts/wazuh-apid.py
+%attr(640, root, wazuh) %{_localstatedir}/api/scripts/*.py
 %dir %attr(750, root, wazuh) %{_localstatedir}/backup
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/backup/db
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/backup/agents
@@ -725,7 +725,7 @@ rm -fr %{buildroot}
 %attr(640, wazuh, wazuh) %ghost %{_localstatedir}/logs/integrations.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.log
 %attr(660, wazuh, wazuh) %ghost %{_localstatedir}/logs/ossec.json
-%dir %attr(750, wazuh, wazuh) %{_localstatedir}/templates
+%dir %attr(440, root, wazuh) %{_localstatedir}/templates
 %attr(0440, root, wazuh) %{_localstatedir}/templates/vd_states_template.json
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/api
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/logs/archives
@@ -767,8 +767,8 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/rids
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/tasks
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/sockets
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/vd
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/indexer
+%dir %attr(660, root, wazuh) %{_localstatedir}/queue/vd
+%dir %attr(660, root, wazuh) %{_localstatedir}/queue/indexer
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/queue/router
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/logcollector
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/keystore
@@ -895,6 +895,8 @@ rm -fr %{buildroot}
 %changelog
 * Tue May 14 2024 support <info@wazuh.com> - 4.9.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-0.html
+* Thu Apr 25 2024 support <info@wazuh.com> - 4.7.4
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-7-4.html
 * Wed Apr 17 2024 support <info@wazuh.com> - 4.8.2
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-2.html
 * Wed Apr 03 2024 support <info@wazuh.com> - 4.8.1
