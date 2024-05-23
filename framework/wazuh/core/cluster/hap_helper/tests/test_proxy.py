@@ -678,19 +678,34 @@ class TestProxy:
     @pytest.mark.parametrize(
         'binds,expected',
         (
-            [({'data': [{'port': '1514'}]}, {'data': [{'port': '1514'}]}), True],
-            [({'data': [{'port': '1514'}]}, {'data': [{'port': '2000'}]}), False],
+            [
+                ({'data': [{'name': 'bar_bind', 'port': '1514'}]}, {'data': [{'name': 'baz_bind'}]}),
+                True,
+            ],
+            [
+                ({'data': [{'name': 'bar_bind', 'port': '2000'}]}, {'data': [{'name': 'baz_bind'}]}),
+                False,
+            ],
+            [
+                ({'data': [{'name': 'bar_bind', 'port': '2000'}]}, {'data': [{'name': 'baz_bind', 'port': '1516'}]}),
+                False,
+            ],
+            [
+                ({'data': [{'name': 'bar_bind'}]}, {'data': [{'name': 'baz_bind', 'port': '1514'}]}),
+                True,
+            ],
         ),
     )
     async def test_check_multiple_frontends(
         self, proxy_api_mock: mock.MagicMock, proxy: Proxy, binds: tuple, expected: bool
     ):
         """Check the correct output of `check_multiple_frontends` method."""
-        current_frontends = {'frontend1': {}, 'frontend2': {}}
+        FRONTEND1 = 'foo'
+        current_frontends = {FRONTEND1: {}, 'bar': {}, 'baz': {}}
         proxy_api_mock.get_binds.side_effect = binds
 
         with mock.patch.object(proxy, 'get_current_frontends', return_value=current_frontends):
-            assert await proxy.check_multiple_frontends('1514') == expected
+            assert await proxy.check_multiple_frontends('1514', frontend_to_skip=FRONTEND1) == expected
 
     async def test_add_new_backend(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check that `add_new_backend` method makes the correct callback."""
