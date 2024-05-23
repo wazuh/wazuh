@@ -973,6 +973,7 @@ stages:
           total_failed_items: 0
           failed_items: [ ]
         message: !anystr
+    delay_after: !float "{upgrade_delay}"
 
   - name: Try to upgrade an agent that is updated to the latest version
     request:
