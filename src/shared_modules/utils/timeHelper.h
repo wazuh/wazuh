@@ -141,6 +141,17 @@ namespace Utils
         return output.str();
     }
 
+    /**
+     * @brief Get seconds from epoch.
+     * This method is used to get the seconds from epoch.
+     * @return seconds from epoch.
+     */
+    static int64_t getSecondsFromEpoch()
+    {
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    };
+
 #pragma GCC diagnostic pop
 } // namespace Utils
 

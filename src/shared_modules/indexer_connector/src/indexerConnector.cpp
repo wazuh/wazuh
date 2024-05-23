@@ -383,32 +383,44 @@ IndexerConnector::IndexerConnector(
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data);
                 const auto& id = parsedData.at("id").get_ref<const std::string&>();
+                // If the element should not be indexed, only delete it from the sync database.
+                const bool shouldIndex = !parsedData.contains("no-index") || !parsedData.at("no-index").get<bool>();
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    builderBulkDelete(bulkData, id, m_indexName);
+                    if (shouldIndex)
+                    {
+                        builderBulkDelete(bulkData, id, m_indexName);
+                    }
                     m_db->delete_(id);
                 }
                 else
                 {
                     const auto dataString = parsedData.at("data").dump();
-                    builderBulkIndex(bulkData, id, m_indexName, dataString);
+                    if (shouldIndex)
+                    {
+                        builderBulkIndex(bulkData, id, m_indexName, dataString);
+                    }
                     m_db->put(id, dataString);
                 }
             }
-            // Process data.
-            HTTPRequest::instance().post(
-                HttpURL(url),
-                bulkData,
-                [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                [](const std::string& error, const long statusCode)
-                {
-                    logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
-                    throw std::runtime_error(error);
-                },
-                "",
-                DEFAULT_HEADERS,
-                secureCommunication);
+
+            if (!bulkData.empty())
+            {
+                // Process data.
+                HTTPRequest::instance().post(
+                    HttpURL(url),
+                    bulkData,
+                    [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
+                    [](const std::string& error, const long statusCode)
+                    {
+                        logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
+                        throw std::runtime_error(error);
+                    },
+                    "",
+                    DEFAULT_HEADERS,
+                    secureCommunication);
+            }
         },
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK);
