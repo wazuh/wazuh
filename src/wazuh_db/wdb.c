@@ -195,6 +195,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_CSV_GET] = "SELECT `group` from agent where id = ?;",
     [WDB_STMT_GLOBAL_GROUP_CTX_SET] = "UPDATE agent SET 'group' = ?, group_hash = ?, group_sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_HASH_GET] = "SELECT group_hash FROM agent WHERE id > 0 AND group_hash IS NOT NULL ORDER BY id;",
+    [WDB_STMT_GLOBAL_GROUP_HASH_SET] = "UPDATE agent SET 'group' = ?, group_hash = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, status_code= :status_code, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_GROUPS] = "SELECT DISTINCT `group`, group_hash from agent WHERE id > 0 AND group_hash > ? ORDER BY group_hash;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
@@ -477,23 +478,28 @@ int wdb_create_agent_db2(const char * agent_id) {
     FILE *dest;
     size_t nbytes;
     int result = 0;
+    static pthread_mutex_t profile_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    snprintf(path, OS_FLSIZE, "%s/%s", WDB2_DIR, WDB_PROF_NAME);
+    w_mutex_lock(&profile_mutex);
 
-    if (!(source = wfopen(path, "r"))) {
+    if (!(source = wfopen(WDB_PROF_PATH, "r"))) {
         mdebug1("Profile database not found, creating.");
 
-        if (wdb_create_profile(path) < 0)
+        if (wdb_create_profile() < 0) {
+            w_mutex_unlock(&profile_mutex);
             return -1;
+        }
 
         // Retry to open
 
-        if (!(source = wfopen(path, "r"))) {
-            merror("Couldn't open profile '%s'.", path);
+        if (!(source = wfopen(WDB_PROF_PATH, "r"))) {
+            w_mutex_unlock(&profile_mutex);
+            merror("Couldn't open profile '%s'.", WDB_PROF_PATH);
             return -1;
         }
     }
 
+    w_mutex_unlock(&profile_mutex);
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
     snprintf(path_temp, OS_FLSIZE, "%s.new", path);
 
@@ -605,8 +611,8 @@ int wdb_create_global(const char *path) {
 }
 
 /* Create profile database */
-int wdb_create_profile(const char *path) {
-    return wdb_create_file(path, schema_agents_sql);
+int wdb_create_profile() {
+    return wdb_create_file(WDB_PROF_PATH, schema_agents_sql);
 }
 
 /* Create new database file from SQL script */

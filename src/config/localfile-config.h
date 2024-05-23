@@ -19,7 +19,7 @@
 #define MULTI_LINE_REGEX_MAX_TIMEOUT  120
 #define DATE_MODIFIED   1
 #define DEFAULT_EVENTCHANNEL_REC_TIME 5
-#define DIFF_DEFAULT_SIZE 10 * 1024 * 1024
+#define DIFF_DEFAULT_SIZE (10 * 1024 * 1024)
 #define DEFAULT_FREQUENCY_SECS  360
 #define DIFF_MAX_SIZE (2 * 1024 * 1024 * 1024LL)
 
@@ -72,7 +72,7 @@ typedef struct _logtarget {
     logsocket * log_socket;
 } logtarget;
 
-/* Logreader config */
+/* -- Multiline regex log format specific configuration -- */
 /**
  * @brief Specifies end-of-line replacement type in multiline log (multi-line-regex log format)
  */
@@ -118,6 +118,7 @@ typedef struct {
     int64_t offset_last_read;  ///< absolut file offset of last complete multiline log processed
 } w_multiline_config_t;
 
+/* -- macos log format specific configuration -- */
 typedef enum _w_macos_log_state_t {
     LOG_NOT_RUNNING,
     LOG_RUNNING_STREAM,
@@ -186,8 +187,8 @@ typedef struct _logreader {
     char *ffile;
     char *file;
     char *logformat;
-    w_multiline_config_t * multiline; ///< Multiline regex config & state
-    w_macos_log_config_t * macos_log;   ///< macOS log config & state
+    w_multiline_config_t* multiline;     ///< Multiline regex config & state
+    w_macos_log_config_t* macos_log;     ///< macOS log config & state
     long linecount;
     char *djb_program_name;
     char * channel_str;
@@ -239,10 +240,25 @@ typedef struct _logreader_config {
 void Free_Localfile(logreader_config * config);
 
 /* Frees a localfile  */
-void Free_Logreader(logreader * config);
+void Free_Logreader(logreader * logf);
 
 /* Removes a specific localfile of an array */
 int Remove_Localfile(logreader **logf, int i, int gl, int fr, logreader_glob *globf);
+
+/**
+ * @brief Free the multiline log config and all its resources
+ *
+ * @param multiline Multiline log config
+ */
+void w_multiline_log_config_free(w_multiline_config_t ** config);
+
+/**
+ * @brief Clone a multiline log config
+ *
+ * @param config Multiline log config to clone
+ * @return w_multiline_config_t* Cloned multiline log config
+ */
+w_multiline_config_t* w_multiline_log_config_clone(w_multiline_config_t * config);
 
 /**
  * @brief Get match attribute for multiline regex

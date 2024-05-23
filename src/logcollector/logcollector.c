@@ -1340,6 +1340,8 @@ int check_pattern_expand(int do_seek) {
 
                         /* Copy the current item to the end mark as it should be a pattern */
                         memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                        // Clone the multiline configuration if it exists
+                        globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1367,6 +1369,8 @@ int check_pattern_expand(int do_seek) {
 
                         /* Copy the current item to the end mark as it should be a pattern */
                         memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                        // Clone the multiline configuration if it exists
+                        globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1526,6 +1530,8 @@ int check_pattern_expand(int do_seek) {
                             os_realloc(globs[j].gfiles, (i + 2) * sizeof(logreader), globs[j].gfiles);
                             /* Copy the current item to the end mark as it should be a pattern */
                             memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                            // Clone the multiline configuration if it exists
+                            globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -1554,6 +1560,8 @@ int check_pattern_expand(int do_seek) {
 
                             /* Copy the current item to the end mark as it should be a pattern */
                             memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                            // Clone the multiline configuration if it exists
+                            globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);

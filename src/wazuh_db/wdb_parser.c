@@ -1206,6 +1206,13 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_get_groups_integrity_time(diff);
             }
+        } else if (strcmp(query, "recalculate-agent-group-hashes") == 0) {
+            w_inc_global_agent_recalculate_agent_group_hashes();
+            gettimeofday(&begin, 0);
+            result = wdb_parse_global_recalculate_agent_group_hashes(wdb, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_agent_recalculate_agent_group_hashes_time(diff);
         } else if (strcmp(query, "disconnect-agents") == 0) {
             w_inc_global_agent_disconnect_agents();
             if (!next) {
@@ -6022,6 +6029,19 @@ int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
     cJSON_Delete(j_result);
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output) {
+
+    if (OS_SUCCESS != wdb_global_recalculate_all_agent_groups_hash(wdb)) {
+        mwarn("Error recalculating group hash of agents in global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error recalculating group hash of agents in global.db");
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+
     return OS_SUCCESS;
 }
 

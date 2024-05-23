@@ -419,6 +419,82 @@ void test_w_logcollector_get_macos_log_type_content_log_multiword_invalid(void *
     assert_int_equal(ret, MACOS_LOG_TYPE_LOG);
 }
 
+/* w_multiline_log_config_free */
+void test_w_multiline_log_config_free_null(void **state)
+{
+    w_multiline_log_config_free(NULL);
+
+    w_multiline_config_t *config = NULL;
+    w_multiline_log_config_free(&config);
+}
+
+void test_w_multiline_log_config_free_success(void ** state) {
+    w_multiline_config_t * config = NULL;
+    os_calloc(1, sizeof(w_multiline_config_t), config);
+
+    // Set a valid config
+
+    // Regex config
+    w_calloc_expression_t(&config->regex, EXP_TYPE_PCRE2);
+    assert_true(w_expression_compile(config->regex, "valid regex .*", 0));
+    
+    // collector config
+    config->match_type = ML_MATCH_START;
+    config->replace_type = ML_REPLACE_NO_REPLACE;
+    config->timeout = 10;
+
+    // Simulate non-empty ctxt
+    os_calloc(1, sizeof(w_multiline_ctxt_t), config->ctxt);
+    os_calloc(100, sizeof(char), config->ctxt->buffer);
+
+    w_multiline_log_config_free(&config);
+    assert_null(config);
+}
+
+// Test w_multiline_log_config_clone
+void test_w_multiline_log_config_clone_null(void ** state) {
+    assert_null(w_multiline_log_config_clone(NULL));
+}
+
+void test_w_multiline_log_config_clone_success(void ** state) {
+
+
+    w_multiline_config_t * config = NULL;
+    os_calloc(1, sizeof(w_multiline_config_t), config);
+
+    // Set a valid config
+    w_calloc_expression_t(&config->regex, EXP_TYPE_PCRE2);
+    assert_true(w_expression_compile(config->regex, "valid regex .*", 0));
+    
+    // collector config
+    config->match_type = ML_MATCH_END;
+    config->replace_type = ML_REPLACE_NONE;
+    config->timeout = 10;
+
+    // Simulate non-empty ctxt
+    os_calloc(1, sizeof(w_multiline_ctxt_t), config->ctxt);
+    os_calloc(100, sizeof(char), config->ctxt->buffer);
+
+
+    // Test clone
+    w_multiline_config_t * cloned_config = w_multiline_log_config_clone(config);
+    w_multiline_log_config_free(&config);
+
+    // Checks
+    assert_non_null(cloned_config);
+    assert_non_null(cloned_config->regex);
+    assert_string_equal(w_expression_get_regex_pattern(cloned_config->regex), "valid regex .*");
+
+    assert_int_equal(cloned_config->match_type, ML_MATCH_END);
+    assert_int_equal(cloned_config->replace_type, ML_REPLACE_NONE);
+    assert_int_equal(cloned_config->timeout, 10);
+
+    assert_null(cloned_config->ctxt); // Should be a empty context
+
+    w_multiline_log_config_free(&cloned_config);
+
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         // Tests replace_char
@@ -461,6 +537,12 @@ int main(void) {
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_activity),
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_trace_log_activity),
         cmocka_unit_test(test_w_logcollector_get_macos_log_type_content_log_multiword_invalid),
+        // Test w_multiline_log_config_free
+        cmocka_unit_test(test_w_multiline_log_config_free_null),
+        cmocka_unit_test(test_w_multiline_log_config_free_success),
+        // Test w_multiline_log_config_clone
+        cmocka_unit_test(test_w_multiline_log_config_clone_null),
+        cmocka_unit_test(test_w_multiline_log_config_clone_success),
 
     };
 

@@ -166,7 +166,14 @@ FIMDBErrorCode fim_db_init(int storage,
                         FIMDB::instance().setTimeLastSyncMsg();
                     }
 
-                    sync_callback(FIM_COMPONENT_FILE, json.dump().c_str());
+                    try
+                    {
+                        sync_callback(FIM_COMPONENT_FILE, json.dump().c_str());
+                    }
+                    catch (std::exception& err)
+                    {
+                        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+                    }
                 }
             }
         };
@@ -218,7 +225,14 @@ FIMDBErrorCode fim_db_init(int storage,
                         FIMDB::instance().setTimeLastSyncMsg();
                     }
 
-                    sync_callback(component.c_str(), json.dump().c_str());
+                    try
+                    {
+                        sync_callback(component.c_str(), json.dump().c_str());
+                    }
+                    catch (std::exception& err)
+                    {
+                        FIMDB::instance().logFunction(LOG_ERROR, err.what());
+                    }
                 }
             }
         };
@@ -347,14 +361,22 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
             }
         }
 
-        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
+        try
         {
-            cJSON_Parse((*syncItem->toJSON()).dump().c_str())
-        };
 
-        if (dbsync_sync_txn_row(txn_handler, jsInput.get()) == 0)
+            const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput
+            {
+                cJSON_Parse((*syncItem->toJSON()).dump().c_str())
+            };
+
+            if (dbsync_sync_txn_row(txn_handler, jsInput.get()) == 0)
+            {
+                retval = FIMDB_OK;
+            }
+        }
+        catch (std::exception& err)
         {
-            retval = FIMDB_OK;
+            FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
     }
 
