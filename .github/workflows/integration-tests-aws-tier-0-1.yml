@@ -7,6 +7,9 @@ on:
         description: 'Base branch'
         required: true
         default: 'main'
+  pull_request:
+    paths:
+      - "wodles/aws/**"
 
 jobs:
   build:
@@ -92,7 +95,8 @@ jobs:
           cd tests/integration
           sudo python3 -m pytest --tier 0 --tier 1 -k kms test_aws/test_parser.py
       - name: Run every test due to base WazuhIntegration class change
-        if: contains(steps.get_modified_files.outputs.files, 'wodles/aws/wazuh_integration.py')
+        if: contains(steps.get_modified_files.outputs.files, 'wodles/aws/wazuh_integration.py') ||
+            ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           cd tests/integration
           sudo python3 -m pytest --tier 0 --tier 1 -k kms test_aws/
