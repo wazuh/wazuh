@@ -5,6 +5,7 @@
 <!-- Exim 4 decoders
   Examples:
     2017-01-23 03:44:14 dovecot_login authenticator failed for (hydra) [10.101.1.18]:35686: 535 Incorrect authentication data (set_id=user)
+    2017-01-23 03:44:14 dovecot_login authenticator failed for (hydra) [10.101.1.18]:35686: 535 Incorrect authentication data (set_id=user@domain)
     2017-01-24 05:22:29 dovecot_plain authenticator failed for (test) [::1]:39454: 535 Incorrect authentication data (set_id=test)
     2017-01-24 03:09:46 SMTP connection from [10.101.1.10]:55010 (TCP/IP connection count = 1)
     2017-01-24 02:53:13 SMTP connection from (hydra) [10.101.1.10]:53682 lost
@@ -16,7 +17,7 @@
 <decoder name="exim-authfailed">
   <parent>windows-date-format</parent>
   <prematch offset="after_parent">authenticator failed</prematch>
-  <regex offset="after_prematch">[(\S+)]:\d+: \d+ Incorrect authentication data \(set_id=(\w+)\)</regex>
+  <regex offset="after_prematch">[(\S+)]:\d+: \d+ Incorrect authentication data \(set_id=(\S+)\)</regex>
   <order>srcip,user</order>
 </decoder>
 
