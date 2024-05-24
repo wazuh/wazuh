@@ -72,10 +72,56 @@ aws_access_key_id = <access-key-value>
 aws_secret_access_key = <secret-key-value>
 ```
 
-The tests do not expect a particular profile given these can be executed for any AWS environment in which the 
-profile has the corresponding permissions to create, delete and list S3, VPC (like Flow Logs) and
-CloudWatch Logs resources. If a particular profile is required, it can be defined by declaring the `AWS_PROFILE` 
-environment variable.
+The provided credentials must have the following set of minimum permissions defined in AWS:
+```
+    "s3:PutObject",
+    "s3:PutObjectAcl",
+    "s3:GetObject",
+    "s3:GetObjectAcl",
+    "s3:ListBucket",
+    "s3:CreateBucket",
+    "s3:DeleteObject",
+    "s3:DeleteBucket",
+    "s3:PutBucketNotification",
+    "s3:GetBucketAcl"
+
+    "ec2:CreateVpc",
+    "ec2:CreateSubnet",
+    "ec2:DescribeAvailabilityZones",
+    "ec2:CreateRouteTable",
+    "ec2:CreateRoute",
+    "ec2:AssociateRouteTable",
+    "ec2:ModifyVpcAttribute",
+    "ec2:DeleteFlowLogs",
+    "ec2:DeleteVpc",
+    "ec2:DeleteRouteTable",
+    "ec2:DeleteRoute",
+    "ec2:CreateFlowLogs",
+    "ec2:DescribeFlowLogs",
+    "ec2:CreateTags"
+
+   "logs:CreateLogStream",
+    "logs:DeleteLogGroup",
+    "logs:DescribeLogStreams",
+    "logs:CreateLogGroup",
+    "logs:GetLogEvents",
+    "logs:DeleteLogStream",
+    "logs:PutLogEvents",
+    "logs:CreateLogDelivery",
+    "logs:DeleteLogDelivery",
+    "logs:PutResourcePolicy"
+
+    "sqs:ReceiveMessage",
+    "sqs:CreateQueue",
+    "sqs:DeleteMessage",
+    "sqs:DeleteQueue",
+    "sqs:SetQueueAttributes",
+    "sqs:GetQueueAttributes",
+    "sqs:GetQueueUrl"
+
+    "inspector:ListFindings",
+    "inspector:DescribeFindings"
+```
 
 ## Setting up a test environment
 
