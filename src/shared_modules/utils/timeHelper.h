@@ -141,6 +141,16 @@ namespace Utils
         return output.str();
     }
 
+    /**
+     * @brief Get seconds from epoch, since 1970-01-01 00:00:00 UTC.
+     * @return seconds from epoch.
+     */
+    static int64_t getSecondsFromEpoch()
+    {
+        return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    };
+
 #pragma GCC diagnostic pop
 } // namespace Utils
 
