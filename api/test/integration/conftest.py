@@ -200,12 +200,11 @@ def general_procedure(module: str):
     module : str
         Name of the tested module.
     """
-    base_content = os.path.join(env_path, 'configurations', 'base', '*')
-    module_content = os.path.join(env_path, 'configurations', module, '*')
+    base_content = os.path.join(env_path, 'configurations', 'base')
+    module_content = os.path.join(env_path, 'configurations', module)
     tmp_content = os.path.join(env_path, 'configurations', 'tmp')
-    os.makedirs(tmp_content, exist_ok=True)
-    os.popen(f'cp -rf {base_content} {tmp_content}').close()
-    os.popen(f'cp -rf {module_content} {tmp_content}').close()
+    shutil.copytree(base_content, tmp_content, dirs_exist_ok=True)
+    shutil.copytree(module_content, tmp_content, dirs_exist_ok=True)
 
 
 def change_rbac_mode(rbac_mode: str = 'white'):
