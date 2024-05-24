@@ -7,7 +7,6 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added new query "rollback" to wazuh-db. ([#16058](https://github.com/wazuh/wazuh/pull/16058))
 - Transition to Wazuh Keystore for Indexer Configuration. ([#21670](https://github.com/wazuh/wazuh/pull/21670))
 
 #### Changed
@@ -24,6 +23,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 - Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
+- Added a mechanism to avoid cluster errors to raise from expected wazuh-db exceptions. ([#23371](https://github.com/wazuh/wazuh/pull/23371))
 
 ### Agent
 
@@ -52,6 +52,7 @@ All notable changes to this project will be documented in this file.
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
 - Fixed macOS Ventura compilation from sources. ([#21932](https://github.com/wazuh/wazuh/pull/21932))
+- Fixed PyPI package gathering on macOS Sonoma. ([#23532](https://github.com/wazuh/wazuh/pull/23532))
 
 ### RESTful API
 
@@ -59,10 +60,13 @@ All notable changes to this project will be documented in this file.
 
 - Added new `GET /manager/version/check` endpoint to obtain information about new releases of Wazuh. ([#19952](https://github.com/wazuh/wazuh/pull/19952))
 - Introduced an `auto` option for the ssl_protocol setting in the API configuration. This enables automatic negotiation of the TLS certificate to be used. ([#20420](https://github.com/wazuh/wazuh/pull/20420))
+- Added API indexer protection to allow uploading new configuration files if the `<indexer>` section is not modified. ([#22727](https://github.com/wazuh/wazuh/pull/22727))
+
 
 #### Fixed
 
 - Fixed a warning from SQLAlchemy involving detached Roles instances in RBAC. ([#20527](https://github.com/wazuh/wazuh/pull/20527))
+- Fixed an issue where only the last `<ignore>` item was displayed in `GET /manager/configuration`. ([#23095](https://github.com/wazuh/wazuh/issues/23095))
 
 #### Removed
 
@@ -106,7 +110,8 @@ All notable changes to this project will be documented in this file.
 
 #### Changed
 
-- Upgraded external aiohttp library dependency version to 3.9.3. ([#21856](https://github.com/wazuh/wazuh/pull/21856))
+- Upgraded external aiohttp library dependency version to 3.9.5. ([#23112](https://github.com/wazuh/wazuh/pull/23112))
+- Upgraded external idna library dependency version to 3.7. ([#23112](https://github.com/wazuh/wazuh/pull/23112))
 - Upgraded external cryptography library dependency version to 42.0.4. ([#22221](https://github.com/wazuh/wazuh/pull/22221))
 - Upgraded external numpy library dependency version to 1.26.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
 - Upgraded external grpcio library dependency version to 1.58.0. ([#20003](https://github.com/wazuh/wazuh/pull/20003))
