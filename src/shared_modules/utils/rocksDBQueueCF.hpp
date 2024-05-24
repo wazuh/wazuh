@@ -42,6 +42,7 @@ private:
         constexpr auto QUEUE_NUMBER = 1;
 
         auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
+        it->SeekToFirst();
         while (it->Valid())
         {
             // Split key to get the ID and queue number.
@@ -51,7 +52,8 @@ private:
 
             if (m_queueMetadata.find(id.data()) == m_queueMetadata.end())
             {
-                m_queueMetadata.emplace(id, QueueMetadata {1, 0, 0, std::chrono::system_clock::now()});
+                m_queueMetadata.emplace(id,
+                                        QueueMetadata {queueNumber, queueNumber, 0, std::chrono::system_clock::now()});
             }
 
             auto& element = m_queueMetadata[id];

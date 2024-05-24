@@ -142,8 +142,7 @@ namespace Utils
     }
 
     /**
-     * @brief Get seconds from epoch.
-     * This method is used to get the seconds from epoch.
+     * @brief Get seconds from epoch, since 1970-01-01 00:00:00 UTC.
      * @return seconds from epoch.
      */
     static int64_t getSecondsFromEpoch()
