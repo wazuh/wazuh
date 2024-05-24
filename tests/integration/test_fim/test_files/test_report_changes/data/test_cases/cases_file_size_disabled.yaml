@@ -1,0 +1,73 @@
+- name: Test 'disk_quota' information, fim_mode = scheduled
+  description: Check if the 'wazuh-syscheckd' daemon skips disk_quota check.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    ATTRIBUTES:
+      - report_changes: 'yes'
+    FILE_SIZE_ENABLED: 'no'
+    FILE_SIZE_LIMIT: '1KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '2KB'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
+    fim_mode: 'scheduled'
+    report_changes: 'yes'
+    file_size_enabled: 'no'
+    file_size_limit: '1KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '2KB'
+    string_size: 10000000
+
+- name: Test 'disk_quota' information, fim_mode = realtime
+  description: Check if the 'wazuh-syscheckd' daemon skips disk_quota check.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    ATTRIBUTES:
+      - report_changes: 'yes'
+      - realtime: 'yes'
+    FILE_SIZE_ENABLED: 'no'
+    FILE_SIZE_LIMIT: '1KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '2KB'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
+    fim_mode: 'realtime'
+    report_changes: 'yes'
+    file_size_enabled: 'no'
+    file_size_limit: '1KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '2KB'
+    string_size: 10000000
+
+- name: Test 'disk_quota' information, fim_mode = whodata
+  description: Check if the 'wazuh-syscheckd' daemon skips disk_quota check.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    ATTRIBUTES:
+      - report_changes: 'yes'
+      - whodata: 'yes'
+    FILE_SIZE_ENABLED: 'no'
+    FILE_SIZE_LIMIT: '1KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '2KB'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
+    fim_mode: 'whodata'
+    report_changes: 'yes'
+    file_size_enabled: 'no'
+    file_size_limit: '1KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '2KB'
+    string_size: 10000000
