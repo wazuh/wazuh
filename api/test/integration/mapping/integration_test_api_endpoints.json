@@ -329,15 +329,6 @@
                     "test_rbac_white_task_endpoints.tavern.yaml",
                     "test_task_endpoints.tavern.yaml"
                 ]
-            },
-            {
-                "name": "event_controller.py",
-                "tag": "webhook",
-                "tests": [
-                    "test_rbac_black_webhook_endpoints.tavern.yaml",
-                    "test_rbac_white_webhook_endpoints.tavern.yaml",
-                    "test_webhook_endpoints.tavern.yaml"
-                ]
             }
         ]
     },
@@ -672,15 +663,6 @@
                     "test_rbac_white_task_endpoints.tavern.yaml",
                     "test_task_endpoints.tavern.yaml"
                 ]
-            },
-            {
-                "name": "event.py",
-                "tag": "webhook",
-                "tests": [
-                    "test_rbac_black_webhook_endpoints.tavern.yaml",
-                    "test_rbac_white_webhook_endpoints.tavern.yaml",
-                    "test_webhook_endpoints.tavern.yaml"
-                ]
             }
         ]
     },
@@ -742,17 +724,6 @@
             {
                 "name": "configuration.py",
                 "tag": "configuration",
-                "tests": [
-                    "test_agent_DELETE_endpoints.tavern.yaml",
-                    "test_agent_GET_endpoints.tavern.yaml",
-                    "test_agent_POST_endpoints.tavern.yaml",
-                    "test_agent_PUT_endpoints.tavern.yaml",
-                    "test_cluster_endpoints.tavern.yaml"
-                ]
-            },
-            {
-                "name": "database.py",
-                "tag": "database",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",
@@ -1085,6 +1056,44 @@
             {
                 "name": "dapi.py",
                 "tag": "dapi",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
+        "path": "framework/wazuh/core/cluster/hap_helper",
+        "files": [
+            {
+                "name": "hap_helper.py",
+                "tag": "hap",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "proxy.py",
+                "tag": "proxy",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml"
+                ]
+            },
+            {
+                "name": "wazuh.py",
+                "tag": "wazuh",
                 "tests": [
                     "test_agent_DELETE_endpoints.tavern.yaml",
                     "test_agent_GET_endpoints.tavern.yaml",
@@ -2123,7 +2132,23 @@
         ]
     },
     {
-        "path": "api/test/integration/env/base/manager",
+        "path": "api/test/integration/env/base/cti",
+        "files": [
+            {
+                "name": "http_server.py",
+                "tag": "http",
+                "tests": [
+                    "test_agent_DELETE_endpoints.tavern.yaml",
+                    "test_agent_GET_endpoints.tavern.yaml",
+                    "test_agent_POST_endpoints.tavern.yaml",
+                    "test_agent_PUT_endpoints.tavern.yaml",
+                    "test_cluster_endpoints.tavern.yaml"
+                ]
+            }
+        ]
+    },
+    {
+        "path": "api/test/integration/env/base/haproxy-lb",
         "files": [
             {
                 "name": "entrypoint.sh",
@@ -2139,7 +2164,7 @@
         ]
     },
     {
-        "path": "api/test/integration/env/base/haproxy-lb",
+        "path": "api/test/integration/env/base/manager",
         "files": [
             {
                 "name": "entrypoint.sh",
