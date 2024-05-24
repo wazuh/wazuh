@@ -7,7 +7,6 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added new query "rollback" to wazuh-db. ([#16058](https://github.com/wazuh/wazuh/pull/16058))
 - Transition to Wazuh Keystore for Indexer Configuration. ([#21670](https://github.com/wazuh/wazuh/pull/21670))
 
 #### Changed
@@ -52,6 +51,7 @@ All notable changes to this project will be documented in this file.
 - Fixed detection of the OS version on Alpine Linux. ([#16056](https://github.com/wazuh/wazuh/pull/16056))
 - Fixed Solaris 10 name not showing in the Dashboard. ([#18642](https://github.com/wazuh/wazuh/pull/18642))
 - Fixed macOS Ventura compilation from sources. ([#21932](https://github.com/wazuh/wazuh/pull/21932))
+- Fixed PyPI package gathering on macOS Sonoma. ([#23532](https://github.com/wazuh/wazuh/pull/23532))
 
 ### RESTful API
 
