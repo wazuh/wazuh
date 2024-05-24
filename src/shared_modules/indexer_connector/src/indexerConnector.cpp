@@ -126,7 +126,7 @@ bool IndexerConnector::abuseControl(const std::string& agentId)
         // If the last sync was less than MINIMAL_SYNC_TIME minutes ago, return true.
         if (diff.count() < MINIMAL_SYNC_TIME)
         {
-            logDebug2(IC_NAME, "Agent '%s' sync ommited due to abuse control.", agentId.c_str());
+            logDebug2(IC_NAME, "Agent '%s' sync omitted due to abuse control.", agentId.c_str());
             return true;
         }
     }
