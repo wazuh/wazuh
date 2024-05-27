@@ -39,8 +39,15 @@ class AWSWAFBucket(AWSCustomBucket):
             self.type = WAF_KINESIS
 
     def check_waf_type(self):
+        """
+        Checks if it contains the 'AWSLogs' prefix to determine the type of WAF.
+
+        Returns:
+            bool: True if WAF type is native, False if is Kinesis.
+        """
         try:
-            return 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs', Delimiter='/', MaxKeys=1)
+            return 'CommonPrefixes' in self.client.list_objects_v2(Bucket=self.bucket, Prefix=f'{self.prefix}AWSLogs',
+                                                                   Delimiter='/', MaxKeys=1)
         except Exception as err:
             if hasattr(err, 'message'):
                 aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
@@ -90,13 +97,18 @@ class AWSWAFBucket(AWSCustomBucket):
         
     def get_full_prefix(self, account_id, account_region, acl_name=None):
         if self.type == WAF_NATIVE:
-            path = self.client.list_objects_v2(Bucket=self.bucket)
-            if 'Contents' in path:
-                for obj in path['Contents']:
-                    log_key = obj['Key']
-                    parts = log_key.split("/")
-                acl_name = parts[parts.index("WAFLogs") + 2]
-            return AWSLogsBucket.get_full_prefix(self, account_id, account_region, acl_name)
+            bucket_path = self.client.list_objects_v2(Bucket=self.bucket)
+            if 'Contents' in bucket_path:
+                contents = bucket_path.get('Contents')
+                # Retrieves the last key of the contents
+                log_key = contents[-1]['Key']
+                parts = log_key.split("/")
+                try:
+                    acl_name = parts[parts.index("WAFLogs") + 2]
+                except (ValueError, IndexError):
+                    raise ValueError("Could not find ACL name in the object.")
+                
+                return AWSLogsBucket.get_full_prefix(self, account_id, account_region, acl_name)
         else:
             return self.prefix
 
@@ -107,9 +119,9 @@ class AWSWAFBucket(AWSCustomBucket):
             return self.prefix
 
     def iter_regions_and_accounts(self, account_id, regions):
-            if self.type == WAF_NATIVE:
-                AWSBucket.iter_regions_and_accounts(self, account_id, regions)
-            else:
-                print(WAF_DEPRECATED_MESSAGE.format(release="5.0", url=WAF_URL))
-                self.check_prefix = True
-                AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)        
+        if self.type == WAF_NATIVE:
+            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+        else:
+            print(WAF_DEPRECATED_MESSAGE.format(release="5.0", url=WAF_URL))
+            self.check_prefix = True
+            AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
