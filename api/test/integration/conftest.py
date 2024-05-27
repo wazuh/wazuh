@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 
+import contextlib
 import json
 import os
 import re
@@ -203,8 +204,10 @@ def general_procedure(module: str):
     base_content = os.path.join(env_path, 'configurations', 'base')
     module_content = os.path.join(env_path, 'configurations', module)
     tmp_content = os.path.join(env_path, 'configurations', 'tmp')
-    shutil.copytree(base_content, tmp_content, dirs_exist_ok=True)
-    shutil.copytree(module_content, tmp_content, dirs_exist_ok=True)
+    with contextlib.suppress(FileNotFoundError):
+        shutil.copytree(base_content, tmp_content, dirs_exist_ok=True)
+    with contextlib.suppress(FileNotFoundError):
+        shutil.copytree(module_content, tmp_content, dirs_exist_ok=True)
 
 
 def change_rbac_mode(rbac_mode: str = 'white'):
