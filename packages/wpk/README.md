@@ -7,8 +7,8 @@ In this repository, you can find the necessary tools to build a WPK package.
 Usage: ./generate_wpk_package.sh [OPTIONS]
 It is required to use -k or --aws-wpk-key, --aws-wpk-cert parameters
 
-    -t,   --target-system <target> [Required] Select target wpk to build [linux/windows/macos]
-    -b,   --branch <branch>        [Required] Select Git branch or tag e.g.
+    -t,   --target-system <target> [Required] Select target wpk to build [linux/windows/macos].
+    -b,   --branch <branch>        [Required] Select Git branch.
     -d,   --destination <path>     [Required] Set the destination path of package.
     -pn,  --package-name <name>    [Required] Path to package file (rpm, deb, apk, msi, pkg) to pack in wpk.
     -o,   --output <name>          [Required] Name to the output package.
@@ -16,8 +16,8 @@ It is required to use -k or --aws-wpk-key, --aws-wpk-cert parameters
     --aws-wpk-key                  [Optional] AWS Secrets manager Name/ARN to get WPK private key.
     --aws-wpk-cert                 [Optional] AWS secrets manager Name/ARN to get WPK certificate.
     --aws-wpk-key-region           [Optional] AWS Region where secrets are stored.
-    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no
-    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes
+    -c,   --checksum               [Optional] Generate checksum on destination folder. By default: no.
+    --dont-build-docker            [Optional] Locally built docker image will be used instead of generating a new one. By default: yes.
     --tag <name>                   [Optional] Tag to use with the docker image.
     -h,   --help                   Show this help.
 
@@ -29,36 +29,34 @@ There are workflows to generate both the necessary Docker images and to generate
 
 - packages-upload-wpk-images.yml
 It is responsible for building and uploading the images necessary for the WPK script to our ghcr bucket. The image name for all systems it is 'common_wpk_builder'. The parameters it accepts are:
-
-  - tag:
+  - docker_image_tag:
           Tag name of the Docker image to be uploaded.
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
           Default is 'auto'.
+  - source_reference:
+          Branch from wazuh/wazuh repository to use.
 
 - packages-build-wpk.yml
 It is responsible for generating the WPKs for each system using the generate_wpk_package script. The parameters it accepts are:
-  - tag:
-          Tag name of the Docker image to be downloaded.
+  - source_reference:
+          Branch/tag of wazuh/wazuh to generate WPKs.
+  - docker_image_tag:
+          Specify the docker tag used to build the package.
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
           Default is 'auto'.
-  - linux_branch:
-          Branch name for compiling the Linux WPK.
-          If empty, it will not be generated.
-  - windows_package:
-          Windows WPK name in S3 or link to download.
-          If empty, it will not be generated.
-  - macos_package:
-          MacOS WPK name in S3 or link to download.
-          If empty, it will not be generated.
-  - revision:
-          Revision used to naming WPK package.
-          Default is '0'.
-  - naming_format:
-          Use 'release' if WPK name should have release format.
-          Use 'developer' if WPK name should have developer format.
-          Default is 'developer'.
+  - wpk_reference:
+          Package URL with the package to be packed in the WPK.
+  - is_stage:
+          Should set development/production nomenclature
+          True if WPK name should have production format.
+          False if WPK name should have developer format.
+          Default is 'false'.
+  - checksum:
+          Generate package checksum
+          Default is 'false'.
 
 ## Contribute
 
