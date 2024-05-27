@@ -461,8 +461,6 @@ Public Function SetPermissions()
     SetPermissions = 0 
 End Function
 
-Public Function VerifyOrCreateRegistryKey()
-
 Public Function CreateDumpRegistryKey()
     On Error Resume Next
     Dim strKeyPath, oReg
