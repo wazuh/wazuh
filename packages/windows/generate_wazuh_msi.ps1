@@ -108,13 +108,19 @@ function ExtractDebugSymbols(){
 		$args += $file.BaseName
 		$args += ".pdb"
 
-		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -Wait -WindowStyle Hidden
+		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
 	}
 
-    #compress every pdb file in current folder
+  Write-Host "Waiting for processes to finish"
+  Wait-Process -Name cv2pdb -Timeout 10
+    
+  #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
-	Write-Host "Compressing debug symbols to debug-symbols.zip"
-	Compress-Archive -Path $pdbFiles -Force -DestinationPath ".\debug-symbols.zip"
+
+  $ZIP_NAME = "$($MSI_NAME.Replace('.msi', '-debug-symbols.zip'))"
+
+	Write-Host "Compressing debug symbols to $ZIP_NAME"
+	Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME"
 
 	Remove-Item -Path "*.pdb"
 }
