@@ -16,3 +16,19 @@ arguments:
 target_field:
   type: string
   is_array: false
+
+test:
+  - arguments:
+      1: hello
+      2: hi
+      target_filed: hello world!
+    should_pass: true
+    expected: hi world!
+    description: The value to replace was found
+  - arguments:
+      1: non exist
+      2: hi
+      target_filed: hello world!
+    should_pass: true
+    expected: hello world!
+    description: The value to replace was not found

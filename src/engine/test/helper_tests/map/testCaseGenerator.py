@@ -4,6 +4,7 @@ import argparse
 import itertools
 import random
 import shutil
+import sys
 from pathlib import Path
 
 import yaml
@@ -203,8 +204,12 @@ def generate_specific_argument(source, type_):
         return generate_reference(type_, [])
 
 
-def generate_raw_template(yaml_data):
-    sources = get_sources(yaml_data)
+def generate_raw_template(yaml_data, my_sources=[]):
+    sources = []
+    if not my_sources:
+        sources = get_sources(yaml_data)
+    else:
+        sources = my_sources
     sources_expanded = []
     for source in sources:
         if source == "both":
@@ -762,6 +767,112 @@ def generate_test_cases_success(yaml_data):
             tests["build_test"].append(test_data)
 
 
+def format_argument(v):
+    if isinstance(v, str) and v.strip() == "":
+        return f'"{v}"'
+    return str(v)
+
+
+def generate_unit_test(yaml_data):
+    if "test" not in yaml_data:
+        return
+
+    global reference_counter
+    template = None
+    index_allowes_value = None
+
+    for i in range(get_minimum_arguments(yaml_data)):
+        allowed_values = get_allowed_values(yaml_data, i)
+        if allowed_values:
+            index_allowes_value = i
+            break
+
+    sources = get_sources(yaml_data)
+    template = generate_raw_template(yaml_data)
+
+    for number_test, test in enumerate(yaml_data["test"]):
+        arguments_list = list(test["arguments"].items())
+
+        # Check variadic
+        if not is_variadic(yaml_data):
+            if get_minimum_arguments(yaml_data) < len(arguments_list):
+                print(
+                    f"Helper {get_name(yaml_data)} has an error in test number '{number_test + 1}': it is not a variadic function"
+                )
+                sys.exit(1)
+
+        if get_minimum_arguments(yaml_data) < len(arguments_list):
+            diff = len(arguments_list) - get_minimum_arguments(yaml_data)
+            for _ in range(diff):
+                sources.append(sources[-1])
+            template = generate_raw_template(yaml_data, sources)
+
+        for case in template:
+            all_arguments = []
+            input = {}
+            new_test = {}
+            test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
+            for (id, value), source in zip(arguments_list, case):
+
+                # Check allowed values
+                if allowed_values:
+                    if id == index_allowes_value + 1:
+                        if value not in allowed_values:
+                            print(
+                                f"Value {value} not allowed in the parameter number {index_allowes_value + 1}"
+                            )
+                            sys.exit(1)
+
+                if source == "value":
+                    all_arguments.append(value)
+                else:
+                    reference_counter = reference_counter + 1
+                    reference = {"name": f"ref{reference_counter}", "value": value}
+                    input[reference["name"]] = reference["value"]
+                    all_arguments.append(f"$eventJson.{reference['name']}")
+
+            helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
+
+            if not input:
+                normalize_list = [{"map": [{"helper": helper}]}]
+            else:
+                normalize_list = [
+                    {
+                        "map": [
+                            {"eventJson": "parse_json($event.original)"},
+                            {"helper": helper},
+                        ]
+                    }
+                ]
+                new_test = {
+                    "should_pass": test["should_pass"],
+                    "expected": test.get("expected", None),
+                    "input": input,
+                    "id": increase_id(),
+                }
+
+            asset_definition = {
+                "name": "decoder/test/0",
+                "normalize": normalize_list,
+            }
+            test_data["assets_definition"] = asset_definition
+
+            if new_test:
+                test_data["test_cases"].append(new_test)
+            else:
+                test_data["should_pass"] = test["should_pass"]
+                test_data["id"] = increase_id()
+                test_data["expected"] = test.get("expected", None)
+
+            test_data["description"] = test["description"]
+
+            if len(test_data["test_cases"]) != 0:
+                tests["run_test"].append(test_data)
+            else:
+                del test_data["test_cases"]
+                tests["build_test"].append(test_data)
+
+
 def main():
     parse_arguments()
     global input_file
@@ -804,6 +915,7 @@ def main():
                     generate_test_cases_fail_at_buildtime(yaml_data)
                     generate_test_cases_fail_at_runtime(yaml_data)
                     generate_test_cases_success(yaml_data)
+                    generate_unit_test(yaml_data)
 
                     # Define the output file path
                     output_file_path = output_dir / f"{get_name(yaml_data)}.yml"
@@ -822,6 +934,7 @@ def main():
         generate_test_cases_fail_at_buildtime(yaml_data)
         generate_test_cases_fail_at_runtime(yaml_data)
         generate_test_cases_success(yaml_data)
+        generate_unit_test(yaml_data)
 
         # Define the output file path
         output_file_path = output_dir / f"{get_name(yaml_data)}.yml"

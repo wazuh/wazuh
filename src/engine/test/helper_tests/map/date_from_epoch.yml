@@ -9,3 +9,15 @@ arguments:
 
 # Indicates whether the helper function supports a variable number of arguments
 variadic: False
+
+test:
+  - arguments:
+      1: 0
+    should_pass: true
+    expected: '1970-01-01T00:00:00Z'
+    description: Get date using initial epoch
+  - arguments:
+      1: 1715958658
+    should_pass: true
+    expected: '2024-05-17T15:10:58Z'
+    description: Get date using any epoch

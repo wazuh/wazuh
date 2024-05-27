@@ -5,6 +5,7 @@ import itertools
 import json
 import random
 import shutil
+import sys
 from pathlib import Path
 
 import yaml
@@ -152,7 +153,7 @@ def generate_random_value(type_, allowed_values):
                 for _ in range(random.randint(1, 10))
             )
         elif type_ == list:
-            return [7]
+            return [1, 2, 3, 4]
     else:
         return random.choice(allowed_values)
 
@@ -462,6 +463,9 @@ def different_types_references(yaml_data):
 
 
 def different_target_field_type(yaml_data):
+    if get_target_field_type(yaml_data) == "all":
+        return
+
     test_data = {
         "assets_definition": {},
         "test_cases": [],
@@ -734,6 +738,118 @@ def generate_test_cases_success(yaml_data):
             tests["build_test"].append(test_data)
 
 
+def format_argument(v):
+    if isinstance(v, str):
+        if v.strip() == "":
+            return f'"{v}"'
+        if v.startswith("$"):
+            return str(v)
+        if len(v.split(" ")) > 1:
+            return f'"{v}"'
+    return json.dumps(v)
+
+
+def generate_unit_test(yaml_data):
+    if "test" not in yaml_data:
+        return
+
+    global reference_counter
+    template = None
+
+    sources = get_sources(yaml_data)
+    template = generate_raw_template(yaml_data)
+
+    for number_test, test in enumerate(yaml_data["test"]):
+        arguments_list = list(test["arguments"].items())
+
+        # Check variadic
+        if not is_variadic(yaml_data):
+            if get_minimum_arguments(yaml_data) + 1 < len(arguments_list):
+                print(
+                    f"Helper {get_name(yaml_data)} has an error in test number '{number_test + 1}': it is not a variadic function"
+                )
+                sys.exit(1)
+
+        if get_minimum_arguments(yaml_data) + 1 < len(arguments_list):
+            diff = len(arguments_list) - get_minimum_arguments(yaml_data)
+            for _ in range(diff):
+                sources.append(sources[-1])
+            template = generate_raw_template(yaml_data, sources)
+
+        for case in template:
+            all_arguments = []
+            target_field_value = None
+            input = {}
+            new_test = {}
+            test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
+            combined = list(itertools.zip_longest(arguments_list, case, fillvalue=None))
+            for (id, value), source in combined:
+                if source == "value":
+                    all_arguments.append(value)
+                elif source == "reference":
+                    reference_counter = reference_counter + 1
+                    reference = {"name": f"ref{reference_counter}", "value": value}
+                    input[reference["name"]] = reference["value"]
+                    all_arguments.append(f"$eventJson.{reference['name']}")
+                else:
+                    target_field_value = value
+
+            helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
+
+            if not input:
+                normalize_list = [
+                    {
+                        "map": [
+                            {"target_field": target_field_value},
+                        ]
+                    }
+                ]
+            else:
+                normalize_list = [
+                    {
+                        "map": [
+                            {"eventJson": "parse_json($event.original)"},
+                            {"target_field": target_field_value},
+                        ]
+                    }
+                ]
+                new_test = {
+                    "input": input,
+                    "id": increase_id(),
+                    "should_pass": test["should_pass"],
+                }
+
+            normalize_list.append(
+                {
+                    "check": [{"target_field": helper}],
+                    "map": [
+                        {
+                            "verification_field": "It is used to verify if the check passed correctly"
+                        }
+                    ],
+                }
+            )
+
+            asset_definition = {
+                "name": "decoder/test/0",
+                "normalize": normalize_list,
+            }
+            test_data["assets_definition"] = asset_definition
+
+            if new_test:
+                test_data["test_cases"].append(new_test)
+            else:
+                test_data["should_pass"] = test["should_pass"]
+                test_data["id"] = increase_id()
+
+            test_data["description"] = test["description"]
+
+            if len(test_data["test_cases"]) == 0:
+                del test_data["test_cases"]
+
+            tests["run_test"].append(test_data)
+
+
 def main():
     parse_arguments()
     global input_file
@@ -799,6 +915,7 @@ def main():
         generate_test_cases_fail_at_buildtime(yaml_data)
         generate_test_cases_fail_at_runtime(yaml_data)
         generate_test_cases_success(yaml_data)
+        generate_unit_test(yaml_data)
 
         # Define the output file path
         output_file_path = output_dir / f"{get_name(yaml_data)}.yml"

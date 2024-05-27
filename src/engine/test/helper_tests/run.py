@@ -144,11 +144,14 @@ def run_test_cases_generator():
                     print(f"Running {file}")
                     # Execute the Python script
                     if input_file:
-                        subprocess.run(
+                        result = subprocess.run(
                             ["python3", str(file), "--input_file", input_file]
                         )
                     else:
-                        subprocess.run(["python3", str(file)])
+                        result = subprocess.run(["python3", str(file)])
+
+                    if result.returncode == 1:
+                        sys.exit(1)
 
 
 def run_command(command):
@@ -192,16 +195,16 @@ def create_policy(api_client):
     )
 
 
-def add_asset_to_policy(api_client, asset_name):
+def add_asset_to_policy(api_client, asset):
     request = api_policy.AssetPost_Request()
     request.policy = POLICY_NAME
-    request.asset = asset_name
+    request.asset = asset["name"]
     request.namespace = NAMESPACE
     error, response = send_recv(
         api_client, request, api_engine.GenericStatus_Response()
     )
 
-    assert response.status == api_engine.OK, f"{error}"
+    assert response.status == api_engine.OK, f"{error}, Asset: {asset}"
 
 
 def create_session(api_client):
@@ -295,7 +298,6 @@ def handle_response(
     successful_tests,
     failure_tests,
 ):
-    # print({"asset": asset, "response": response})
     if (expected and response.status == api_engine.OK) or (
         not expected and response.status == api_engine.ERROR
     ):
@@ -324,12 +326,16 @@ def extract_transformation_result_from_response(response):
     response = json.loads(MessageToJson(response))
     regex = r"->\s*(Success|Failure)"
     match = re.search(regex, response["result"]["assetTraces"][0]["traces"][-1])
-    return match.group(1)
+    if match:
+        return match.group(1)
+    return response["result"]["assetTraces"][0]["traces"][-1]
 
 
 def handle_test_result(
     id,
+    should_pass,
     expected,
+    event,
     result,
     helper_name,
     description,
@@ -340,12 +346,31 @@ def handle_test_result(
     field_mapping=None,
     helper_type=None,
 ):
-    if expected != None:
+    if should_pass != None:
         if helper_type == "map_filter":
-            if (expected and field_mapping in result) or (
-                not expected and field_mapping not in result
+            if (should_pass and field_mapping in event) or (
+                not should_pass and field_mapping not in event
             ):
-                successful_tests.append({"helper": helper_name, "id": id})
+                if field_mapping in event:
+                    if expected:
+                        if event[field_mapping] == expected:
+                            successful_tests.append({"helper": helper_name, "id": id})
+                        else:
+                            failure_tests.append(
+                                {
+                                    "helper": helper_name,
+                                    "id": id,
+                                    "description": {
+                                        "message": description,
+                                        "asset": asset,
+                                        "response": event,
+                                        "should_pass": should_pass,
+                                        "expected": expected,
+                                    },
+                                }
+                            )
+                else:
+                    successful_tests.append({"helper": helper_name, "id": id})
             else:
                 failure_tests.append(
                     {
@@ -354,25 +379,46 @@ def handle_test_result(
                         "description": {
                             "message": description,
                             "asset": asset,
-                            "response": result,
+                            "response": event,
+                            "should_pass": should_pass,
                             "expected": expected,
                         },
                     }
                 )
         elif helper_type == "transformation":
-            if (expected and result == "Success") or (
-                not expected and result != "Success"
+            if (should_pass and result == "Success") or (
+                not should_pass and result != "Success"
             ):
-                successful_tests.append({"helper": helper_name, "id": id})
+                if field_mapping in event:
+                    if expected:
+                        if event[field_mapping] == expected:
+                            successful_tests.append({"helper": helper_name, "id": id})
+                        else:
+                            failure_tests.append(
+                                {
+                                    "helper": helper_name,
+                                    "id": id,
+                                    "description": {
+                                        "message": f"{description}: {result}",
+                                        "asset": asset,
+                                        "response": event,
+                                        "should_pass": should_pass,
+                                        "expected": expected,
+                                    },
+                                }
+                            )
+                else:
+                    successful_tests.append({"helper": helper_name, "id": id})
             else:
                 failure_tests.append(
                     {
                         "helper": helper_name,
                         "id": id,
                         "description": {
-                            "message": description,
+                            "message": f"{description}: {result}",
                             "asset": asset,
-                            "response": result,
+                            "response": event,
+                            "should_pass": should_pass,
                             "expected": expected,
                         },
                     }
@@ -393,21 +439,23 @@ def create_asset_for_buildtime(
     expected,
     successful_tests,
     failure_test,
+    ignore=False,
 ):
     request = build_asset_request(asset)
     error, response = send_recv(
         api_client, request, api_engine.GenericStatus_Response()
     )
-    handle_response(
-        id,
-        expected,
-        response,
-        helper_name,
-        description,
-        asset,
-        successful_tests,
-        failure_test,
-    )
+    if not ignore:
+        handle_response(
+            id,
+            expected,
+            response,
+            helper_name,
+            description,
+            asset,
+            successful_tests,
+            failure_test,
+        )
 
 
 def update_asset(
@@ -442,6 +490,7 @@ def tester_run_map_filter(
     input_data,
     level,
     field_mapping,
+    should_pass,
     expected,
     helper_name,
     description,
@@ -455,8 +504,10 @@ def tester_run_map_filter(
 
     handle_test_result(
         id,
+        should_pass,
         expected,
         event,
+        None,
         helper_name,
         description,
         asset,
@@ -473,20 +524,25 @@ def tester_run_transformation(
     id,
     input_data,
     level,
+    should_pass,
     expected,
     helper_name,
     description,
     asset,
+    field_mapping,
     successful_tests,
     failure_test,
 ):
     request = build_run_post_request(input_data, level)
     error, response = send_recv(api_client, request, api_tester.RunPost_Response())
+    event = extract_event_from_response(response)
     result = extract_transformation_result_from_response(response)
 
     handle_test_result(
         id,
+        should_pass,
         expected,
+        event,
         result,
         helper_name,
         description,
@@ -494,6 +550,7 @@ def tester_run_transformation(
         response,
         successful_tests,
         failure_test,
+        field_mapping=field_mapping,
         helper_type="transformation",
     )
 
@@ -533,31 +590,33 @@ def run_test_cases_executor(api_client, socket_path):
                             delete_session(api_client)
                             helper_type = load_yaml(file)["helper_type"]
 
-                            for j, test_case in enumerate(run_tests["test_cases"]):
-                                if j == 0:
-                                    if not create_asset_for_runtime(
-                                        api_client,
-                                        run_tests["assets_definition"],
-                                        test_case.get("id"),
-                                        helper_name,
-                                        run_tests["description"],
-                                        failure_tests,
-                                    ):
-                                        break
-                                    create_policy(api_client)
-                                    add_asset_to_policy(
-                                        api_client,
-                                        run_tests["assets_definition"]["name"],
-                                    )
-                                    create_session(api_client)
-                                if helper_type == "map" or helper_type == "filter":
+                            if "test_cases" not in run_tests:
+                                create_asset_for_buildtime(
+                                    api_client,
+                                    run_tests["id"],
+                                    run_tests["assets_definition"],
+                                    helper_name,
+                                    run_tests["description"],
+                                    run_tests["should_pass"],
+                                    successful_tests,
+                                    failure_tests,
+                                    True,
+                                )
+                                create_policy(api_client)
+                                add_asset_to_policy(
+                                    api_client,
+                                    run_tests["assets_definition"],
+                                )
+                                create_session(api_client)
+                                if helper_type == "map":
                                     tester_run_map_filter(
                                         api_client,
-                                        test_case.get("id"),
-                                        test_case.get("input", []),
+                                        run_tests["id"],
+                                        [],
                                         "NONE",
                                         "helper",
-                                        test_case.get("should_pass", None),
+                                        run_tests["should_pass"],
+                                        run_tests["expected"],
                                         helper_name,
                                         run_tests["description"],
                                         run_tests["assets_definition"],
@@ -565,19 +624,102 @@ def run_test_cases_executor(api_client, socket_path):
                                         failure_tests,
                                     )
 
-                                elif helper_type == "transformation":
-                                    tester_run_transformation(
+                                elif helper_type == "filter":
+                                    tester_run_map_filter(
                                         api_client,
-                                        test_case.get("id"),
-                                        test_case.get("input", []),
-                                        "ALL",
-                                        test_case.get("should_pass", None),
+                                        run_tests["id"],
+                                        [],
+                                        "NONE",
+                                        "verification_field",
+                                        run_tests["should_pass"],
+                                        run_tests.get("expected", None),
                                         helper_name,
                                         run_tests["description"],
                                         run_tests["assets_definition"],
                                         successful_tests,
                                         failure_tests,
                                     )
+
+                                else:
+                                    tester_run_transformation(
+                                        api_client,
+                                        run_tests["id"],
+                                        [],
+                                        "ALL",
+                                        run_tests["should_pass"],
+                                        run_tests.get("expected", None),
+                                        helper_name,
+                                        run_tests["description"],
+                                        run_tests["assets_definition"],
+                                        "target_field",
+                                        successful_tests,
+                                        failure_tests,
+                                    )
+                            else:
+                                for j, test_case in enumerate(run_tests["test_cases"]):
+                                    if j == 0:
+                                        if not create_asset_for_runtime(
+                                            api_client,
+                                            run_tests["assets_definition"],
+                                            test_case.get("id"),
+                                            helper_name,
+                                            run_tests["description"],
+                                            failure_tests,
+                                        ):
+                                            break
+                                        create_policy(api_client)
+                                        add_asset_to_policy(
+                                            api_client,
+                                            run_tests["assets_definition"],
+                                        )
+                                        create_session(api_client)
+                                    if helper_type == "map":
+                                        tester_run_map_filter(
+                                            api_client,
+                                            test_case.get("id"),
+                                            test_case.get("input", []),
+                                            "NONE",
+                                            "helper",
+                                            test_case.get("should_pass", None),
+                                            test_case.get("expected", None),
+                                            helper_name,
+                                            run_tests["description"],
+                                            run_tests["assets_definition"],
+                                            successful_tests,
+                                            failure_tests,
+                                        )
+
+                                    elif helper_type == "filter":
+                                        tester_run_map_filter(
+                                            api_client,
+                                            test_case.get("id"),
+                                            test_case.get("input", []),
+                                            "NONE",
+                                            "verification_field",
+                                            test_case.get("should_pass", None),
+                                            test_case.get("expected", None),
+                                            helper_name,
+                                            run_tests["description"],
+                                            run_tests["assets_definition"],
+                                            successful_tests,
+                                            failure_tests,
+                                        )
+
+                                    else:
+                                        tester_run_transformation(
+                                            api_client,
+                                            test_case.get("id"),
+                                            test_case.get("input", []),
+                                            "ALL",
+                                            test_case.get("should_pass", None),
+                                            test_case.get("expected", None),
+                                            helper_name,
+                                            run_tests["description"],
+                                            run_tests["assets_definition"],
+                                            "target_field",
+                                            successful_tests,
+                                            failure_tests,
+                                        )
     generate_report(successful_tests, failure_tests)
 
     if len(failure_tests) != 0:
