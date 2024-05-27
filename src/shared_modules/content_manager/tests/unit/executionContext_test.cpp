@@ -11,6 +11,7 @@
 
 #include "executionContext_test.hpp"
 #include "componentsHelper.hpp"
+#include "defs.h"
 #include "executionContext.hpp"
 #include "updaterContext.hpp"
 #include <filesystem>
@@ -285,4 +286,34 @@ TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
     m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
 
     EXPECT_EQ(m_spUpdaterBaseContext->downloadedFileHash, FILE_HASH);
+}
+
+/**
+ * @brief Tests the correct set of the HTTP user agent context member.
+ *
+ */
+TEST_F(ExecutionContextTest, HttpUserAgentSet)
+{
+    m_spExecutionContext->handleRequest(m_spUpdaterBaseContext);
+    EXPECT_EQ(m_spUpdaterBaseContext->httpUserAgent, m_consumerName + "/" + __ossec_version);
+}
+
+/**
+ * @brief Test the correct exception generation when the consumerName config is empty.
+ *
+ */
+TEST_F(ExecutionContextTest, HttpUserAgentSetEmptyInputThrow)
+{
+    m_spUpdaterBaseContext->configData["consumerName"] = "";
+    EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
+}
+
+/**
+ * @brief Test the correct exception generation when the consumerName config is not present.
+ *
+ */
+TEST_F(ExecutionContextTest, DefaultHttpUserAgentSet)
+{
+    m_spUpdaterBaseContext->configData.erase("consumerName");
+    EXPECT_THROW(m_spExecutionContext->handleRequest(m_spUpdaterBaseContext), std::invalid_argument);
 }

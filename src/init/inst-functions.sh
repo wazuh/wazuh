@@ -240,6 +240,25 @@ GenerateAuthCert()
 WriteLogs()
 {
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
+  HAS_JOURNALD=`command -v journalctl`
+  
+  # If has journald, add journald to the configuration file
+  if [ "X$HAS_JOURNALD" != "X" ]; then
+    if [ "$1" = "echo" ]; then
+      echo "    -- journald"
+    elif [ "$1" = "add" ]; then
+      echo "  <localfile>" >> $NEWCONFIG
+      echo "    <log_format>journald</log_format>" >> $NEWCONFIG
+      echo "    <location>journald</location>" >> $NEWCONFIG
+      echo "  </localfile>" >> $NEWCONFIG
+      echo "" >> $NEWCONFIG
+    fi
+  fi
+
+  OLD_IFS="$IFS"  # Save the current IFS
+  IFS='
+'
+
   for i in ${LOCALFILES_TMP}; do
       field1=$(echo $i | cut -d\: -f1)
       field2=$(echo $i | cut -d\: -f2)
@@ -259,11 +278,26 @@ WriteLogs()
         FILE=$(echo $FILE | sed -e "s|INSTALL_DIR|${INSTALLDIR}|g")
       fi
 
+      # If journald is not available, change the log_format from '[!journald] ${log_type}' to '${log_type}'
+      NEGATE_JOURNALD=$(echo "$LOG_FORMAT" | grep "\[!journald\] ")
+      if [ "X$HAS_JOURNALD" = "X" ]; then
+        if [ -n "$NEGATE_JOURNALD" ]; then
+          LOG_FORMAT=$(echo "$LOG_FORMAT" | sed -e "s|\[!journald\] ||g")
+        fi
+      # If journald is available, skip if LOG_FORMAT start with '[!journald]'
+      else
+        if [ -n "$NEGATE_JOURNALD" ]; then
+          continue
+        fi
+      fi
+  
       # If log file present or skip file
       if [ -f "$FILE" ] || [ "X$SKIP_CHECK_FILE" = "Xyes" ]; then
+        # Print
         if [ "$1" = "echo" ]; then
-          echo "    -- $FILE"
-        elif [ "$1" = "add" ]; then
+            echo "    -- $FILE"
+        # Add to the configuration file
+        elif [ "$1" = "add" ]; then         
           echo "  <localfile>" >> $NEWCONFIG
           if [ "$FILE" = "snort" ]; then
             head -n 1 $FILE|grep "\[**\] "|grep -v "Classification:" > /dev/null
@@ -281,6 +315,7 @@ WriteLogs()
         fi
       fi
   done
+  IFS="$OLD_IFS"  # Restore the IFS
 }
 
 ##########
@@ -449,13 +484,19 @@ WriteManager()
     echo "<ossec_config>" >> $NEWCONFIG
 
     if [ "$EMAILNOTIFY" = "yes"   ]; then
-        sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
+        GLOBAL_CONTENT=$(sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
         s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
         s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
+        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}")
     else
-        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
+        GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
     fi
+
+    if [ "$UPDATE_CHECK" = "no" ]; then
+        GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
+    fi
+
+    echo "$GLOBAL_CONTENT" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Alerts level
@@ -1086,7 +1127,7 @@ InstallLocal()
 
     # Install templates files
     ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/templates
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/legacy-template.json ${INSTALLDIR}/templates/vd_states_template.json
+    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/index-template.json ${INSTALLDIR}/templates/vd_states_template.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks

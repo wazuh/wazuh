@@ -1855,8 +1855,9 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 @patch('wazuh.core.utils.check_wazuh_limits_unchanged')
 @patch('wazuh.core.utils.check_remote_commands')
 @patch('wazuh.core.utils.check_agents_allow_higher_versions')
+@patch('wazuh.core.utils.check_indexer')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_remote_commands, mock_agents_versions, mock_unchanged_limits):
+def test_validate_wazuh_xml(mock_check_indexer, mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
@@ -1868,11 +1869,13 @@ def test_validate_wazuh_xml(mock_remote_commands, mock_agents_versions, mock_unc
         utils.validate_wazuh_xml(xml_file)
     mock_remote_commands.assert_not_called()
     mock_agents_versions.assert_not_called()
+    mock_check_indexer.assert_not_called()
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file, config_file=True)
     mock_remote_commands.assert_called_once()
     mock_agents_versions.assert_called_once()
+    mock_check_indexer.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
@@ -2091,6 +2094,69 @@ def test_agents_allow_higher_versions(new_conf, agents_conf):
         else:
             with pytest.raises(exception.WazuhError, match=".* 1129 .*"):
                 utils.check_agents_allow_higher_versions(new_conf)
+
+
+@pytest.mark.parametrize("new_conf, original_conf, indexer_changed", [
+    (
+        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        True,
+     ),
+    (
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>no</enabled></indexer></ossec_config>",
+        False,
+    ),
+    (
+        "<ossec_config><indexer><hosts><host>https://0.0.0.0:9200/</host></hosts></indexer></ossec_config>",
+        "<ossec_config><indexer><hosts><host>https://127.0.0.1:9200/</host></hosts></indexer></ossec_config>",
+        True,
+    ),
+    (
+        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
+        "</indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>yes</enabled></indexer></ossec_config>",
+        True,
+    ),
+    (
+        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>/etc/filebeat/certs/filebeat-key.pem</key></ssl>" \
+        "</indexer></ossec_config>",
+        "<ossec_config><indexer><enabled>yes</enabled><ssl><key>filebeat-key.pem</key></ssl></indexer></ossec_config>",
+        True,
+    ),
+    (
+        "<ossec_config><auth><disabled>no</disabled></auth></ossec_config>",
+        "<ossec_config><auth><disabled>yes</disabled></auth></ossec_config>",
+        False,
+    ),
+])
+@pytest.mark.parametrize("indexer_allowed", [
+    True,
+    False,
+])
+def test_check_indexer(new_conf, original_conf, indexer_changed, indexer_allowed):
+    """Check if the ossec.conf indexer section is protected by the API.
+
+    Parameters
+    ----------
+    new_conf : str
+        New ossec.conf to be uploaded.
+    original_conf : str
+        Original ossec.conf.
+    indexer_changed : bool
+        Whether the indexer section of the original and new configurations is equal or not.
+    indexer_allowed : bool
+        Whether it is allowed to modify the indexer API configuration section.
+    """
+    api_conf = utils.configuration.api_conf
+    api_conf['upload_configuration']['indexer']['allow'] = indexer_allowed
+
+    with patch('wazuh.core.utils.configuration.api_conf', new=api_conf):
+        if indexer_allowed:
+            utils.check_indexer(new_conf, original_conf)
+        elif indexer_changed:
+            with pytest.raises(exception.WazuhError, match=".* 1127 .*"):
+                utils.check_indexer(new_conf, original_conf)
 
 
 @pytest.mark.parametrize(

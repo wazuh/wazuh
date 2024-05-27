@@ -60,7 +60,7 @@ static const auto INDEXER_TIMEOUT {0u};
 static const std::string INDEXER_HOSTNAME {"localhost"};
 static const auto INDEXER_NAME {"indexer_connector_test"}; // Should be in lowercase for a real indexer.
 static const auto MAX_INDEXER_INIT_TIME_MS {2000};
-static const auto MAX_INDEXER_PUBLISH_TIME_MS {5500};
+static const auto MAX_INDEXER_PUBLISH_TIME_MS {7500};
 static const auto INDEX_ID_A {"A"};
 static const auto INDEX_ID_B {"B"};
 

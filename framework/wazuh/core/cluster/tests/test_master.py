@@ -39,7 +39,7 @@ cluster_items = {'node': 'master-node',
                                "communication": {"timeout_receiving_file": 1, "timeout_dapi_request": 1,
                                                  "max_zip_size": 1073741824, "min_zip_size": 31457280,
                                                  "zip_limit_tolerance": 0.2},
-                               'master': {'max_locked_integrity_time': 0, 'timeout_agent_info': 0,
+                               'master': {'max_locked_integrity_time': 0,
                                           'timeout_extra_valid': 0, 'process_pool_size': 10,
                                           'recalculate_integrity': 0, 'sync_agent_groups': 1,
                                           'agent_group_start_delay': 1}},
@@ -914,7 +914,7 @@ async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_
 
     assert await master_handler.sync_wazuh_db_info(task_id=b'17', info_type='agent-groups') == 'some_data'
     get_chunks_mock.assert_called_once_with(b'17', b'syn_m_a_err')
-    update_chunks_mock.assert_called_once_with('chunks', 'agent-info', logger, b'syn_m_a_err', 0)
+    update_chunks_mock.assert_called_once_with('chunks', 'agent-info', logger, b'syn_m_a_err')
     send_request_mock.assert_called_once_with(command=b'syn_m_a_e', data=b'{"updated_chunks": 1}')
     assert logger._info == ['Starting.', 'Finished in 0.000s. Updated 1 chunks.']
     assert master_handler.sync_agent_info_status == {'n_synced_chunks': 1,

@@ -272,6 +272,7 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
+    WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
@@ -423,6 +424,7 @@ extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
+extern char *schema_global_upgrade_v6_sql;
 
 extern wdb_config wconfig;
 extern _Config gconfig;
@@ -2504,5 +2506,18 @@ cJSON* wdb_get_config();
  * @param output the response to send
  */
 void wdbcom_dispatch(char* request, char* output);
+
+
+/**
+ * @brief Set the synchronous mode of the SQLite database session.
+ *
+ * This function sets the synchronous mode of the SQLite database session to control how
+ * and when changes made to the database are written to disk. It executes the necessary
+ * SQL statements to set the synchronous mode.
+ *
+ * @param[in] wdb The database structure.
+ * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
+ */
+int wdb_set_synchronous_normal(wdb_t * wdb);
 
 #endif

@@ -333,8 +333,8 @@ void test_rem_get_node_existing_node(void ** state) {
 }
 
 void test_w_remoted_clean_agents_state_empty_table(void ** state) {
-    expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, NULL);
+    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
+    will_return(__wrap_OSHash_Begin_ex, NULL);
 
     int sock = 1;
 
@@ -344,8 +344,8 @@ void test_w_remoted_clean_agents_state_empty_table(void ** state) {
 void test_w_remoted_clean_agents_state_completed(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
 
-    expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, test_data->hash_node);
+    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
+    will_return(__wrap_OSHash_Begin_ex, test_data->hash_node);
 
     int *connected_agents = NULL;
     os_calloc(1, sizeof(int), connected_agents);
@@ -371,8 +371,8 @@ void test_w_remoted_clean_agents_state_completed(void ** state) {
 void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
 
-    expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, test_data->hash_node);
+    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
+    will_return(__wrap_OSHash_Begin_ex, test_data->hash_node);
 
     int *connected_agents = NULL;
     os_calloc(1, sizeof(int), connected_agents);
@@ -396,8 +396,8 @@ void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
 void test_w_remoted_clean_agents_state_query_fail(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
 
-    expect_value(__wrap_OSHash_Begin, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin, test_data->hash_node);
+    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
+    will_return(__wrap_OSHash_Begin_ex, test_data->hash_node);
 
     int *connected_agents = NULL;
 

@@ -218,7 +218,13 @@ protected:
         {
             try
             {
-                m_urlRequest.get(HttpURL(URL + queryParameters), onSuccess, onError, outputFilepath);
+                m_urlRequest.get(HttpURL(URL + queryParameters),
+                                 onSuccess,
+                                 onError,
+                                 outputFilepath,
+                                 DEFAULT_HEADERS,
+                                 {},
+                                 m_spUpdaterContext->spUpdaterBaseContext->httpUserAgent);
                 return;
             }
             catch (const cti_server_error& e)

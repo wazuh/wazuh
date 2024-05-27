@@ -92,6 +92,9 @@ default_api_configuration = {
             "allow_higher_versions": {
                 "allow": True
             }
+        },
+        "indexer": {
+            "allow": True
         }
     }
 }

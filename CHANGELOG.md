@@ -26,6 +26,12 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
+- Fixed loading of whodata through timeouts and retries. ([#21455](https://github.com/wazuh/wazuh/pull/21455))
+- Avoided backup failures during WPK update by adding dependency checking for the tar package. ([#21729](https://github.com/wazuh/wazuh/pull/21729))
+- Fixed using memmove instead of memcpy to avoid unwanted behavior. ([#21595](https://github.com/wazuh/wazuh/pull/21595))
+- Fixed a crash in the agent due to a library incompatibility. ([#22210](https://github.com/wazuh/wazuh/pull/22210))
+- Fixed an error in the osquery integration on Windows that avoided loading osquery.conf. ([#21728](https://github.com/wazuh/wazuh/pull/21728))
+- Fixed a crash in the agent's Rootcheck component when using `<ignore>`. ([#22588](https://github.com/wazuh/wazuh/pull/22588))
 - Fixed command wodle to support UTF-8 characters on windows agent. ([#19146](https://github.com/wazuh/wazuh/pull/19146))
 - Fixed Windows agent to delete wazuh-agent.state file when stopped. ([#20425](https://github.com/wazuh/wazuh/pull/20425))
 
@@ -39,6 +45,10 @@ All notable changes to this project will be documented in this file.
 
 - The solved vulnerability rule has been clarified. ([#19754](https://github.com/wazuh/wazuh/pull/19754))
 
+#### Fixed
+
+- Fixed audit decoders to parse the new heading field "node=". ([#22178](https://github.com/wazuh/wazuh/pull/22178))
+
 ### Other
 
 #### Changed
@@ -49,32 +59,6 @@ All notable changes to this project will be documented in this file.
 
 - Fixed a buffer overflow hazard in HMAC internal library. ([#19794](https://github.com/wazuh/wazuh/pull/19794))
 
-## [v4.8.2]
-
-### Agent
-
-#### Fixed
-
-- Fixed using memmove instead of memcpy to avoid unwanted behavior. ([#21595](https://github.com/wazuh/wazuh/pull/21595))
-- Fixed a crash in the agent due to a library incompatibility. ([#22210](https://github.com/wazuh/wazuh/pull/22210))
-- Fixed an error in the osquery integration on Windows that avoided loading osquery.conf. ([#21728](https://github.com/wazuh/wazuh/pull/21728))
-- Fixed a crash in the agent's Rootcheck component when using `<ignore>`. ([#22588](https://github.com/wazuh/wazuh/pull/22588))
-
-### Ruleset
-
-#### Fixed
-
-- Fixed audit decoders to parse the new heading field "node=". ([#22178](https://github.com/wazuh/wazuh/pull/22178))
-
-
-## [v4.8.1]
-
-### Agent
-
-#### Fixed
-
-- Fixed loading of whodata through timeouts and retries. ([#21455](https://github.com/wazuh/wazuh/pull/21455))
-- Avoided backup failures during WPK update by adding dependency checking for the tar package. ([#21729](https://github.com/wazuh/wazuh/pull/21729))
 
 ## [v4.8.0]
 
@@ -95,6 +79,7 @@ All notable changes to this project will be documented in this file.
 - Upgraded docker-compose V1 to V2 in API Integration test scripts. ([#17750](https://github.com/wazuh/wazuh/pull/17750))
 - Refactored how cluster status dates are treated in the cluster. ([#17015](https://github.com/wazuh/wazuh/pull/17015))
 - The log message about file rotation and signature from wazuh-monitord has been updated. ([#21602](https://github.com/wazuh/wazuh/pull/21602))
+- Improved Wazuh-DB performance by adjusting SQLite synchronization policy. ([#22774](https://github.com/wazuh/wazuh/pull/22774))
 
 #### Fixed
 - Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
@@ -199,6 +184,16 @@ All notable changes to this project will be documented in this file.
 #### Deleted
 
 - Removed external `python-jose` and `ecdsa` library dependencies. ([#21749](https://github.com/wazuh/wazuh/pull/21749))
+
+
+## [v4.7.4]
+
+### Manager
+
+#### Fixed
+
+- Fixed an issue where wazuh-db was retaining labels of deleted agents. ([#22933](https://github.com/wazuh/wazuh/pull/22933))
+- Improved stability by ensuring workers resume normal operations even during master node downtime. ([#22994](https://github.com/wazuh/wazuh/pull/22994))
 
 
 ## [v4.7.3]

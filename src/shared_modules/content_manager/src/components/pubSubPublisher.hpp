@@ -42,7 +42,7 @@ private:
             logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", stringifyJson.c_str());
 
             context.spUpdaterBaseContext->spChannel->send({stringifyJson.begin(), stringifyJson.end()});
-            logInfo(WM_CONTENTUPDATER, "Data published");
+            logDebug2(WM_CONTENTUPDATER, "Data published");
             return;
         }
 

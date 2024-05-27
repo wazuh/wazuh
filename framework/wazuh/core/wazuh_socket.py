@@ -287,11 +287,18 @@ async def wazuh_sendasync(daemon_name: str, message: str = None) -> dict:
     dict
         Data received.
     """
-    sock = WazuhAsyncSocketJSON()
-    await sock.connect(daemons[daemon_name]['path'])
-    await sock.send(message, daemons[daemon_name]['header_format'])
-    data = await sock.receive(daemons[daemon_name]['size'])
-    await sock.close()
+    try:
+        sock = WazuhAsyncSocket()
+        await sock.connect(daemons[daemon_name]['path'])
+        if isinstance(message, dict):
+            message = dumps(message)
+        await sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
+        data = await sock.receive(header_size=daemons[daemon_name]['size'])
+        await sock.close()
+    except WazuhException as e:
+        raise e
+    except Exception as e:
+        raise WazuhInternalError(1014, extra_message=e)
 
     return data
 

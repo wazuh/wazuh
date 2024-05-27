@@ -214,6 +214,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE TASKS SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
+    [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_processes WHERE checksum != 'legacy' AND checksum != '' ORDER BY pid;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY pid;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ? OR checksum = 'legacy' OR checksum = '';",
@@ -361,6 +362,8 @@ wdb_t * wdb_open_global() {
         }
 
         wdb_enable_foreign_keys(wdb->db);
+
+        wdb_set_synchronous_normal(wdb);
     }
 
     return wdb;
@@ -1673,4 +1676,19 @@ STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_t
         }
     }
     return 0;
+}
+
+int wdb_set_synchronous_normal(wdb_t * wdb) {
+    int returnState = 0;
+    char * sqlError = NULL;
+
+    sqlite3_exec(wdb->db, SQL_STMT[WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL], NULL, NULL, &sqlError);
+
+    if (sqlError != NULL) {
+        merror("Cannot set synchronous mode: '%s'", sqlError);
+        sqlite3_free(sqlError);
+        returnState = -1;
+    }
+
+    return returnState;
 }

@@ -55,6 +55,7 @@ protected:
                 "interval": 1,
                 "ondemand": true,
                 "configData": {
+                    "consumerName": "ActionOrchestratorTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",

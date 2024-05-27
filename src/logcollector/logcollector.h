@@ -128,6 +128,51 @@ void *read_multiline_regex(logreader *lf, int *rc, int drop_it);
  * @return NULL
  */
 void *read_macos(logreader *lf, int *rc, int drop_it);
+#endif
+
+#ifdef __linux__
+/**
+ * @brief Read journald logs
+ *
+ * @param lf status and configuration of the log file
+ * @param rc output parameter, returns zero
+ * @param drop_it if drop_it is different from 0, the logs will be read and discarded
+ * @return NULL
+ */
+void *read_journald(logreader *lf, int *rc, int drop_it);
+
+/**
+ * @brief Check if journald can be read for a specific id
+ * 
+ * If the journal is not opened, the the function try to open it, returning false if it fails and true if it succeeds.
+ * The function sets the id as the owner of the journal.
+ * If the journal is opened, the function checks if the id is the owner of the journal,
+ * returning true if it is, and false if it is not.
+ * @param id the id to be checked
+ * @return true if the id is the owner of the journal, false otherwise
+ * @note This function is not thread-safe.
+ */
+bool w_journald_can_read(unsigned long id); 
+
+/**
+ * @brief Set the only future events flag to the journal log context
+ * @param ofe True if only future events should be read, false otherwise
+ */
+void w_journald_set_ofe(bool ofe);
+
+/**
+ * @brief Set the status of the journal log from a JSON object (timestamp to start reading)
+ * 
+ * @param global_json JSON object containing the journal log status
+ */
+void w_journald_set_status_from_JSON(cJSON * global_json);
+
+/**
+ * @brief Get the status of the journal log as a JSON object
+ * 
+ * @return JSON object containing the journal log status
+ */
+cJSON * w_journald_get_status_as_JSON();
 
 #endif
 
@@ -216,7 +261,7 @@ typedef struct w_input_range_t{
 ///< Struct to save the position of last line read and the SHA1 hash content
 typedef struct file_status {
     int64_t offset;  ///< Position to read
-    SHA_CTX context;    ///< It stores the hashed data calculated so far
+    EVP_MD_CTX *context;    ///< It stores the hashed data calculated so far
     os_sha1 hash;       ///< Content file SHA1 hash
 } os_file_status_t;
 
@@ -267,19 +312,19 @@ int can_read();
  * @brief Update the read position in file status hash table
  * @param path the path is the hash key
  * @param pos new read position
- * @param context SHA1 context.
+ * @param context EVP_MD_CTX context.
  * @return 0 on succes, otherwise -1
  */
-int w_update_file_status(const char * path, int64_t pos, SHA_CTX *context);
+int w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX *context);
 
 /**
- * @brief Get SHA1 context or initialize it
+ * @brief Get EVP_MD_CTX context or initialize it
  * @param lf Structure that contains file information, with `fd` and `file` non-null.
- * @param context SHA1 context.
+ * @param context EVP_MD_CTX context.
  * @param position end file position.
  * @return true if returns a valid context, false in otherwise.
  */
-bool w_get_hash_context(logreader *lf, SHA_CTX *context, int64_t position);
+bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 
 extern int sample_log_length;
 extern int lc_debug_level;

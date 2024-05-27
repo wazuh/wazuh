@@ -60,6 +60,9 @@ custom_api_configuration = {
             "allow_higher_versions": {
                 "allow": True
             }
+        },
+        "indexer": {
+            "allow": True
         }
     }
 }
@@ -141,7 +144,8 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'remote_commands': {'wodle_command': {'enabled': 'invalid_type'}}},
     {'remote_commands': {'wodle_command': {'exceptions': [0, 1, 2]}}},
     {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
-    {'agents': {'allowed_higher_versions': {'allow': []}}},
+    {'agents': {'allow_higher_versions': {'allow': True}}},
+    {'indexer': {'allow': True}},
 ])
 @patch('os.path.exists', return_value=True)
 def test_read_wrong_configuration(mock_exists, config):

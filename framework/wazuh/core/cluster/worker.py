@@ -498,7 +498,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         logger.info('Starting.')
         start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
         data = await super().get_chunks_in_task_id(task_id, error_command)
-        result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
+        result = await super().update_chunks_wdb(data, info_type, logger, error_command)
         response = await self.send_request(command=command, data=json.dumps(result).encode())
         await self.check_agent_groups_checksums(data, logger)
 

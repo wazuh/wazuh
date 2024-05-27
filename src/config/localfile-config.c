@@ -65,6 +65,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     const char *xml_localfile_ignore = "ignore";
     const char *xml_localfile_restrict = "restrict";
     const char *xml_localfile_multiline_regex =  "multiline_regex";
+    const char *xml_localfile_filter = "filter";
 
     logreader *logf;
     logreader_config *log_config;
@@ -377,7 +378,7 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                     return (OS_INVALID);
                 }
 #endif
-
+            } else if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -518,7 +519,16 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 return (OS_INVALID);
             }
             OSList_InsertData(logf[pl].regex_restrict, NULL, expression_restrict);
-
+        } else if (strcasecmp(node[i]->element, xml_localfile_filter) == 0) {
+            if (init_w_journal_log_config_t(&(logf[pl].journal_log))) {
+                os_calloc(2, sizeof(w_journal_filter_t *), logf[pl].journal_log->filters);
+            }
+            // Use always the same filter for all the conditions (First filter)
+            if (!journald_add_condition_to_filter(node[i], &(logf[pl].journal_log->filters[0]))) {
+                mwarn(LOGCOLLECTOR_JOURNAL_CONFG_FAIL_FILTER);
+                w_clean_logreader(&logf[pl]);
+                return (0);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -544,11 +554,64 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             mwarn(LOGCOLLECTOR_MISSING_LOCATION_MACOS);
             // Neceesary to check duplicated blocks
             os_strdup(MACOS, logf[pl].file);
+        } else if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
+            mwarn(LOGCOLLECTOR_JOURNAL_CONFG_MISSING_LOC, JOURNALD_LOG);
+            os_strdup(JOURNALD_LOG, logf[pl].file);
         } else {
             merror(MISS_FILE);
             os_strdup("", logf[pl].file);
             return (OS_INVALID);
         }
+    }
+
+    /* Verify journald log config*/
+    if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
+
+        init_w_journal_log_config_t(&(logf[pl].journal_log));
+
+        /* Verify journald log config*/
+        if (strcmp(logf[pl].file, JOURNALD_LOG) != 0) {
+            /* Invalid macos log configuration */
+            mwarn(LOGCOLLECTOR_JOURNAL_CONFG_INVALID_LOC, logf[pl].file, JOURNALD_LOG);
+            os_free(logf[pl].file);
+            w_strdup(JOURNALD_LOG, logf[pl].file);
+        }
+
+        if (logf[pl].reconnect_time != DEFAULT_EVENTCHANNEL_REC_TIME) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_reconnect_time);
+        }
+        if (logf[pl].age != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_age);
+        }
+        if (logf[pl].filter_binary != 0) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_binaries);
+        }
+        if (logf[pl].exclude != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_exclude);
+        }
+        if (logf[pl].multiline != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_multiline_regex);
+        }
+        if (logf[pl].labels != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_label);
+        }
+        if (logf[pl].ign != DEFAULT_FREQUENCY_SECS) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_frequency);
+        }
+        if (logf[pl].alias != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_alias);
+        }
+        if (logf[pl].regex_ignore != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_ignore);
+        }
+        if (logf[pl].regex_restrict != NULL) {
+            mwarn(LOGCOLLECTOR_OPTION_IGNORED, JOURNALD_LOG, xml_localfile_restrict);
+        }
+
+    } else if (logf[pl].journal_log != NULL) {
+        /* Only log format journald support journald log config */
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_NOT_JOURNAL_FILTER, logf[pl].logformat);
+        w_journal_log_config_free(&(logf[pl].journal_log));
     }
 
     /* Verify macos log config*/
@@ -734,6 +797,15 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
         }
     }
 
+    /* post processing stage */
+    // Merge multi configurations of journald log
+    if (logf[pl].journal_log != NULL) {
+        bool res = w_logreader_journald_merge(&(log_config->config), pl);
+        if (res) {
+            minfo("Merge journald log configurations");
+        }
+    }
+
     return (0);
 }
 
@@ -793,6 +865,14 @@ void Free_Localfile(logreader_config * config){
     }
 }
 
+void w_clean_logreader(logreader * logf) {
+
+    if (logf != NULL) {
+        Free_Logreader(logf);
+        memset(logf, 0, sizeof(logreader));
+    }
+}
+
 void Free_Logreader(logreader * logf) {
     int i;
 
@@ -800,7 +880,11 @@ void Free_Logreader(logreader * logf) {
         os_free(logf->ffile);
         os_free(logf->file);
         os_free(logf->logformat);
+        w_multiline_log_config_free(&(logf->multiline));
+        w_macos_log_config_free(&(logf->macos_log));
+        w_journal_log_config_free(&(logf->journal_log));
         os_free(logf->djb_program_name);
+        os_free(logf->channel_str);
         os_free(logf->alias);
         os_free(logf->query);
         os_free(logf->exclude);
@@ -840,6 +924,7 @@ void Free_Logreader(logreader * logf) {
 
             free(logf->out_format);
         }
+
     }
 }
 
@@ -969,6 +1054,36 @@ const char * multiline_attr_match_str(w_multiline_match_type_t match_type) {
     return match_str[match_type];
 }
 
+void w_multiline_log_config_free(w_multiline_config_t ** config) {
+    if (config == NULL || *config == NULL) {
+        return;
+    }
+
+    if ((*config)->ctxt) {
+        os_free((*config)->ctxt->buffer);
+        os_free((*config)->ctxt);
+    }
+    w_free_expression_t(&((*config)->regex));
+    os_free((*config));
+}
+
+void w_macos_log_config_free(w_macos_log_config_t ** macos_log) {
+
+    if (macos_log == NULL || *macos_log == NULL) {
+        return;
+    }
+
+    w_free_expression_t(&((*macos_log)->log_start_regex));
+    if ((*macos_log)->processes.stream.wfd != NULL) {
+        wpclose((*macos_log)->processes.stream.wfd);
+    }
+    if ((*macos_log)->processes.show.wfd != NULL) {
+        wpclose((*macos_log)->processes.show.wfd);
+    }
+    os_free((*macos_log)->current_settings);
+    os_free(*macos_log);
+}
+
 STATIC int w_logcollector_get_macos_log_type(const char * content) {
 
     const size_t MAX_ARRAY_SIZE = 64;
@@ -1003,7 +1118,6 @@ STATIC int w_logcollector_get_macos_log_type(const char * content) {
         }
 
         os_free(type_arr);
-
     }
 
     return retval;
@@ -1023,4 +1137,334 @@ w_exp_type_t w_check_regex_type(xml_node * node, const char * element) {
     mwarn(LOGCOLLECTOR_DEFAULT_REGEX_TYPE, element, node->content);
 
     return EXP_TYPE_PCRE2;
+}
+
+bool init_w_journal_log_config_t(w_journal_log_config_t ** config) {
+    if (config == NULL || *config != NULL) {
+        return false;
+    }
+
+    os_calloc(1, sizeof(w_journal_log_config_t), *config);
+    return true;
+}
+
+void w_journal_log_config_free(w_journal_log_config_t ** config) {
+    if (config == NULL || *config == NULL) {
+        return;
+    }
+
+    w_journal_filters_list_free((*config)->filters);
+    os_free(*config);
+}
+
+bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** filter) {
+    if (node == NULL || filter == NULL) {
+        return false;
+    }
+
+    const char * field = w_get_attr_val_by_name(node, "field");
+    char * expression = node->content;
+    bool ignore_if_missing = false;
+
+    if (field == NULL || *field == '\0') {
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_FIELD);
+        return false;
+    }
+    if (expression == NULL || *expression == '\0') {
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_EXPR);
+        return false;
+    }
+
+    const char * ignore_if_missing_str = w_get_attr_val_by_name(node, "ignore_if_missing");
+    if (ignore_if_missing_str != NULL) {
+        if (strcasecmp(ignore_if_missing_str, "yes") == 0) {
+            ignore_if_missing = true;
+        } else if (strcasecmp(ignore_if_missing_str, "no") != 0) {
+            mwarn(LOGCOLLECTOR_INV_VALUE_DEFAULT, ignore_if_missing_str, "ignore_if_missing", "journal");
+        }
+    }
+
+    if (w_journal_filter_add_condition(filter, field, expression, ignore_if_missing) != 0) {
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_FILTER_EXP_FAIL, expression, field);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @brief Free the unit filter and all its resources
+ *
+ * The unit pointer is invalid after the call.
+ * @param unit Journal filter unit
+ */
+STATIC void free_unit_filter(_w_journal_filter_unit_t * unit) {
+    if (unit == NULL) {
+        return;
+    }
+
+    os_free(unit->field);
+    w_free_expression_t(&(unit->exp));
+    os_free(unit);
+}
+
+/**
+ * @brief Create the filter unit
+ * The caller is responsible for freeing the returned unit.
+ *
+ * @param field The field to filter
+ * @param expression The expression to match
+ * @param ignore_if_missing Ignore if the field is missing
+ * @return The filter unit or NULL if an error occurred (compiling the expression)
+ */
+STATIC _w_journal_filter_unit_t * create_unit_filter(const char * field, char * expression, bool ignore_if_missing) {
+    if (field == NULL || expression == NULL) {
+        return NULL;
+    }
+
+    _w_journal_filter_unit_t * unit;
+    os_calloc(1, sizeof(_w_journal_filter_unit_t), unit);
+
+    w_calloc_expression_t(&(unit->exp), EXP_TYPE_PCRE2);
+
+    if (!w_expression_compile(unit->exp, expression, 0)) {
+        free_unit_filter(unit);
+        return NULL;
+    }
+
+    unit->field = strdup(field);
+    unit->ignore_if_missing = ignore_if_missing;
+
+    return unit;
+}
+
+void w_journal_filter_free(w_journal_filter_t * ptr_filter) {
+    if (ptr_filter == NULL) {
+        return;
+    }
+
+    if (ptr_filter->units != NULL) {
+        for (size_t i = 0; ptr_filter->units[i] != NULL; i++) {
+            free_unit_filter(ptr_filter->units[i]);
+        }
+
+        os_free(ptr_filter->units);
+    }
+
+    os_free(ptr_filter);
+}
+
+int w_journal_filter_add_condition(w_journal_filter_t ** ptr_filter, const char * field, char * expression,
+                                   bool ignore_if_missing) {
+    if (field == NULL || expression == NULL || ptr_filter == NULL) {
+        return -1;
+    }
+
+    // Crete the unit filter
+    _w_journal_filter_unit_t * unit = create_unit_filter(field, expression, ignore_if_missing);
+    if (unit == NULL) {
+        return -1;
+    }
+
+    // If the filter does not exist, create it
+    if (*ptr_filter == NULL) {
+        os_calloc(1, sizeof(w_journal_filter_t), *ptr_filter);
+    }
+    w_journal_filter_t * filter = *ptr_filter;
+
+    // Allocate memory for the new unit
+    os_realloc(filter->units, (filter->units_size + 2) * sizeof(_w_journal_filter_unit_t *), filter->units);
+
+    // Add the new unit
+    filter->units[filter->units_size] = unit;
+    filter->units_size++;
+    filter->units[filter->units_size] = NULL;
+
+    return 0;
+}
+
+bool w_journal_add_filter_to_list(w_journal_filters_list_t * list, w_journal_filter_t * filter) {
+    if (list == NULL || filter == NULL) {
+        return false;
+    }
+
+    // Allocate memory for the new filter
+    if (*list == NULL) {
+        os_calloc(1, sizeof(w_journal_filter_t *), *list);
+    }
+
+    // Determine the size of the list
+    size_t size = 0;
+    while ((*list)[size] != NULL) {
+        size++;
+    }
+
+    // Allocate memory for the new filter
+    os_realloc(*list, (size + 2) * sizeof(w_journal_filter_t *), *list);
+
+    // Add the new filter
+    (*list)[size] = filter;
+    (*list)[size + 1] = NULL;
+
+    return true;
+}
+
+/**
+ * @brief Get the unit filter as JSON object
+ *
+ * @param unit Unit filter
+ * @return STATIC*
+ */
+STATIC cJSON * unit_filter_as_json(_w_journal_filter_unit_t * unit) {
+
+    if (unit == NULL || unit->field == NULL || unit->exp == NULL || unit->exp->exp_type != EXP_TYPE_PCRE2) {
+        return NULL;
+    }
+
+    cJSON * json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "field", unit->field);
+    cJSON_AddStringToObject(json, "expression", unit->exp->pcre2->raw_pattern);
+    cJSON_AddBoolToObject(json, "ignore_if_missing", unit->ignore_if_missing);
+
+    return json;
+}
+
+/**
+ * @brief Get the filter as a JSON Object
+ *
+ * @param filter Filter
+ * @return cJSON* JSON Object with the filter
+ */
+STATIC cJSON * filter_as_json(w_journal_filter_t * filter) {
+    if (filter == NULL || filter->units == NULL) {
+        return NULL;
+    }
+
+    cJSON * json = cJSON_CreateArray();
+    if (json == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0; filter->units[i] != NULL; i++) {
+        cJSON * unit = unit_filter_as_json(filter->units[i]);
+        if (unit == NULL) {
+            cJSON_Delete(json);
+            return NULL;
+        }
+
+        cJSON_AddItemToArray(json, unit);
+    }
+
+    return json;
+}
+
+/**
+ * @brief Get the filter as a JSON Array
+ * 
+ * @param filter_lst Filters list
+ * @return cJSON* JSON Array with the filters
+ */
+cJSON * w_journal_filter_list_as_json(w_journal_filters_list_t filter_lst) {
+    if (filter_lst == NULL) {
+        return NULL;
+    }
+
+    cJSON * json = cJSON_CreateArray();
+    if (json == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0; filter_lst[i] != NULL; i++) {
+        cJSON * filter = filter_as_json(filter_lst[i]);
+        if (filter == NULL) {
+            cJSON_Delete(json);
+            return NULL;
+        }
+
+        cJSON_AddItemToArray(json, filter);
+    }
+
+    return json;
+
+}
+
+void w_journal_filters_list_free(w_journal_filters_list_t list) {
+    if (list == NULL) {
+        return;
+    }
+
+    for (size_t i = 0; list[i] != NULL; i++) {
+        w_journal_filter_free(list[i]);
+    }
+
+    os_free(list);
+}
+
+bool w_logreader_journald_merge(logreader ** logf_ptr, size_t src_index) {
+    if (logf_ptr == NULL || *logf_ptr == NULL || src_index == 0) {
+        return false;
+    }
+
+    logreader * logr = *logf_ptr;
+
+    /* Check if src_index is in range and if it is a journald log reader */
+    size_t i = 0;
+    for (; logr[i].file != NULL; i++) {
+        if (i == src_index) {
+            break;
+        }
+    }
+    if (logr[i].journal_log == NULL) {
+        return false;
+    }
+
+    /* Search the first journald log reader, destination */
+    bool dst_found = false;
+    size_t dst_index = 0;
+    for (dst_index = 0; logr[dst_index].file != NULL && dst_index < src_index; dst_index++) {
+        if (logr[dst_index].journal_log != NULL) {
+            dst_found = true;
+            break;
+        }
+    }
+
+    if (!dst_found) {
+        return false;
+    }
+
+    /* Merge the filters */
+    bool src_has_filters = logr[src_index].journal_log->filters != NULL
+                           && logr[src_index].journal_log->filters[0] != NULL;
+    bool dst_has_filters = logr[dst_index].journal_log->filters != NULL
+                           && logr[dst_index].journal_log->filters[0] != NULL;
+
+    // Disable filter is already disabled or if any don't have filters
+    if (!src_has_filters || !dst_has_filters) {
+        logr[dst_index].journal_log->disable_filters = true;
+        mwarn(LOGCOLLECTOR_JOURNAL_CONFG_DISABLE_FILTER);
+    }
+
+    // Move the filters from the src_index to the dst_index
+    if (src_has_filters) {
+        w_journal_add_filter_to_list(&(logr[dst_index].journal_log->filters), logr[src_index].journal_log->filters[0]);
+        logr[src_index].journal_log->filters[0] = NULL; // Prevent the filter from being freed
+    }
+
+    // Replace the only future event with last configuration
+    logr[dst_index].future = logr[src_index].future;
+
+    // Move the target with the last configuration
+    if (logr[dst_index].target) {
+        for (i = 0; logr[dst_index].target[i]; i++) {
+            os_free(logr[dst_index].target[i]);
+        }
+        os_free(logr[dst_index].target);
+    }
+    logr[dst_index].target = logr[src_index].target;
+    logr[src_index].target = NULL;
+
+    /* Remove the src_index log reader */
+    Remove_Localfile(logf_ptr, (int) src_index, 0, true, NULL);
+
+    return true;
 }

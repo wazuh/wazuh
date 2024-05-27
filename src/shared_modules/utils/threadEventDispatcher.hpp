@@ -15,28 +15,42 @@
 #include "commonDefs.h"
 #include "promiseFactory.h"
 #include "rocksDBQueue.hpp"
+#include "rocksDBQueueCF.hpp"
+#include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.h"
 #include <atomic>
-#include <functional>
 #include <iostream>
 #include <thread>
 
-template<typename T, typename U, typename Functor>
+template<typename T,
+         typename U,
+         typename Functor,
+         typename TQueueType = RocksDBQueue<T, U>,
+         typename TSafeQueueType = Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>>
 class TThreadEventDispatcher
 {
 public:
     explicit TThreadEventDispatcher(Functor functor,
                                     const std::string& dbPath,
-                                    const uint64_t bulkSize,
+                                    const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
         : m_functor {std::move(functor)}
-        , m_running {true}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
-        m_queue = std::make_unique<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>>(RocksDBQueue<T, U>(dbPath));
-        m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor>::dispatch, this};
+        m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
     }
+
+    explicit TThreadEventDispatcher(const std::string& dbPath,
+                                    const uint64_t bulkSize = 1,
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+        : m_maxQueueSize {maxQueueSize}
+        , m_bulkSize {bulkSize}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
+    {
+    }
+
     TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
     TThreadEventDispatcher(TThreadEventDispatcher& other) = delete;
     ~TThreadEventDispatcher()
@@ -44,14 +58,43 @@ public:
         cancel();
     }
 
+    void startWorker(Functor functor)
+    {
+        m_functor = std::move(functor);
+        m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
+    }
+
     void push(const T& value)
     {
-        if (m_running)
+        if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize)
+            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
             {
                 m_queue->push(value);
             }
+        }
+        else
+        {
+            // static assert to avoid compilation
+            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
+                          "This method is not supported for this queue type");
+        }
+    }
+
+    void push(std::string_view columnName, const T& value)
+    {
+        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        {
+            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(columnName) < m_maxQueueSize))
+            {
+                m_queue->push(columnName, value);
+            }
+        }
+        else
+        {
+            // static assert to avoid compilation
+            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
+                          "This method is not supported for this queue type");
         }
     }
 
@@ -69,7 +112,43 @@ public:
 
     size_t size() const
     {
-        return m_queue->size();
+        if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        {
+            return m_queue->size();
+        }
+        else
+        {
+            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
+                          "This method is not supported for this queue type");
+        }
+    }
+
+    size_t size(std::string_view columnName) const
+    {
+        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        {
+            return m_queue->size(columnName);
+        }
+        else
+        {
+            // static assert to avoid compilation
+            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
+                          "This method is not supported for this queue type");
+        }
+    }
+
+    void postpone(std::string_view columnName, const std::chrono::seconds& time) noexcept
+    {
+        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        {
+            m_queue->postpone(columnName, time);
+        }
+        else
+        {
+            // static assert to avoid compilation
+            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
+                          "This method is not supported for this queue type");
+        }
     }
 
 private:
@@ -79,18 +158,38 @@ private:
         {
             try
             {
-                std::queue<U> data = m_queue->getBulk(m_bulkSize);
-                const auto size = data.size();
-
-                if (!data.empty())
+                if constexpr (std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>)
                 {
-                    m_functor(data);
-                    m_queue->popBulk(size);
+                    std::queue<U> data = m_queue->getBulk(m_bulkSize);
+                    const auto size = data.size();
+
+                    if (!data.empty())
+                    {
+                        m_functor(data);
+                        m_queue->popBulk(size);
+                    }
+                }
+                else if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+                {
+                    std::pair<U, std::string> data = m_queue->front();
+                    if (!data.second.empty())
+                    {
+                        m_functor(data.first);
+                        m_queue->pop(data.second);
+                    }
+                }
+                else
+                {
+                    // static assert to avoid compilation
+                    static_assert(
+                        std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType> ||
+                            std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
+                        "This method is not supported for this queue type");
                 }
             }
             catch (const std::exception& ex)
             {
-                std::cerr << "Dispatch handler error, " << ex.what() << std::endl;
+                std::cerr << "Dispatch handler error, " << ex.what() << "\n";
             }
         }
     }
@@ -104,9 +203,9 @@ private:
     }
 
     Functor m_functor;
-    std::unique_ptr<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>> m_queue;
+    std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
-    std::atomic_bool m_running;
+    std::atomic_bool m_running = true;
 
     const size_t m_maxQueueSize;
     const uint64_t m_bulkSize;

@@ -27,6 +27,9 @@ int __wrap_OSHash_Add_ex(__attribute__((unused)) OSHash *self, const char *key, 
 void *__real_OSHash_Begin(const OSHash *self, unsigned int *i);
 void *__wrap_OSHash_Begin(const OSHash *self, unsigned int *i);
 
+void *__real_OSHash_Begin_ex(const OSHash *self, unsigned int *i);
+void *__wrap_OSHash_Begin_ex(const OSHash *self, __attribute__((unused)) unsigned int *i);
+
 void *__real_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 void *__wrap_OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 
