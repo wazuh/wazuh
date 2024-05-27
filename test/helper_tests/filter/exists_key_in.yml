@@ -13,3 +13,17 @@ target_field:
 
 # Indicates whether the helper function supports a variable number of arguments
 variadic: false
+
+test:
+  - arguments:
+      1:
+        key: value
+      target_filed: key-not-exist
+    should_pass: false
+    description: Compare two different integers
+  - arguments:
+      1:
+        key: value
+      target_filed: key
+    should_pass: true
+    description: Compare two equals integers

@@ -13,3 +13,12 @@ arguments:
 
 # Indicates whether the helper function supports a variable number of arguments
 variadic: true
+
+test:
+  - arguments:
+      1: "hello"
+      2: " "
+      3: "yes"
+    should_pass: true
+    expected: hello yes
+    description: Concatenate a string with another empty one

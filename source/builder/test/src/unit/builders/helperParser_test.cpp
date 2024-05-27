@@ -338,6 +338,7 @@ INSTANTIATE_TEST_SUITE_P(
                     JsonArgT(R"(false)", makeSuccess<OpArg>(val(R"(false)"), 5)),
                     JsonArgT(R"({})", makeSuccess<OpArg>(val(R"({})"), 2)),
                     JsonArgT(R"([])", makeSuccess<OpArg>(val(R"([])"), 2)),
+                    JsonArgT(R"([1,2,3,4])", makeSuccess<OpArg>(val(R"([1,2,3,4])"), 9)),
                     JsonArgT(R"("string")", makeSuccess<OpArg>(val(R"("string")"), 8)),
                     JsonArgT(R"("")", makeSuccess<OpArg>(val(R"("")"), 2)),
                     JsonArgT(R"("string with spaces")", makeSuccess<OpArg>(val(R"("string with spaces")"), 20)),
@@ -382,6 +383,8 @@ INSTANTIATE_TEST_SUITE_P(Builder,
                          testing::Values(ArgT(R"('quoted')", makeSuccess<OpArg>(val(R"("quoted")"), 8)),
                                          ArgT(R"($ref)", makeSuccess<OpArg>(ref("ref"), 4)),
                                          ArgT(R"(123)", makeSuccess<OpArg>(val(R"(123)"), 3)),
+                                         ArgT(R"([])", makeSuccess<OpArg>(val("[]"), 2)),
+                                         ArgT(R"([1,2,3,4])", makeSuccess<OpArg>(val(R"([1,2,3,4])"), 9)),
                                          ArgT(R"(\$ref)", makeSuccess<OpArg>(val(R"("$ref")"), 5)),
                                          ArgT(R"(invalid\scape)", makeError<OpArg>("", 0)),
                                          ArgT(R"("")", makeSuccess<OpArg>(val(R"("")"), 2)),
@@ -433,6 +436,7 @@ INSTANTIATE_TEST_SUITE_P(
         HelperT("test arg1)", makeError<HelperToken>("", 4)), // Missing opening parenthesis
         HelperT("", makeError<HelperToken>("", 0)),           // Empty string
         HelperT("()", makeError<HelperToken>("", 0)),         // No function name
+        HelperT("test()", makeSuccess<HelperToken>({.name = "test"}, 6)),
         HelperT("test(,)", makeSuccess<HelperToken>({.name = "test", .args {val(), val()}}, 7)),
         HelperT("test(,,)", makeSuccess<HelperToken>({.name = "test", .args {val(), val(), val()}}, 8)),
         HelperT("test(, ,)", makeSuccess<HelperToken>({.name = "test", .args {val(), val(), val()}}, 9)),
@@ -442,6 +446,8 @@ INSTANTIATE_TEST_SUITE_P(
                 makeSuccess<HelperToken>({.name = "test", .args {val(R"("arg1")"), val(R"(" ")")}}, 13)),
         HelperT("test(arg1,' ')",
                 makeSuccess<HelperToken>({.name = "test", .args {val(R"("arg1")"), val(R"(" ")")}}, 14)),
+        HelperT("test('arg1')", makeSuccess<HelperToken>({.name = "test", .args {val(R"("arg1")")}}, 12)),
+        HelperT("test($arg1)", makeSuccess<HelperToken>({.name = "test", .args {ref("arg1")}}, 11)),
         HelperT("test(arg1,  )", makeSuccess<HelperToken>({.name = "test", .args {val(R"("arg1")"), val()}}, 13)),
         HelperT("test(arg1, ())", makeError<HelperToken>("", 13)),
         HelperT(R"(test(arg1, (\)))",
@@ -469,9 +475,42 @@ INSTANTIATE_TEST_SUITE_P(
                                          72)),
         HelperT(R"(regex_extract($event.original, '(?:f|F)ile \'(.*?)\''))",
                 makeSuccess<HelperToken>(
-                    {.name = "regex_extract", .args = {ref("event.original"), val(R"z("(?:f|F)ile '(.*?)'")z")}}, 54))
-
-            ));
+                    {.name = "regex_extract", .args = {ref("event.original"), val(R"z("(?:f|F)ile '(.*?)'")z")}}, 54)),
+        HelperT(R"(test([1]))", makeSuccess<HelperToken>({.name = "test", .args = {val(R"([1])")}}, 9)),
+        HelperT(R"(test(["hello"]))", makeSuccess<HelperToken>({.name = "test", .args = {val(R"(["hello"])")}}, 15)),
+        HelperT(R"(test(["hello, yes"]))",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"(["hello, yes"])")}}, 20)),
+        HelperT(R"(test(arg1, arg2, {"hello":"yes, no?"}))",
+                makeSuccess<HelperToken>({.name = "test",
+                                          .args = {val(R"("arg1")"), val(R"("arg2")"), val(R"({"hello":"yes, no?"})")}},
+                                         38)),
+        HelperT(R"(test(arg1, arg2, 'other, test'))",
+                makeSuccess<HelperToken>(
+                    {.name = "test", .args = {val(R"("arg1")"), val(R"("arg2")"), val(R"("other, test")")}}, 31)),
+        HelperT(R"(test([1,2,3,4]))", makeSuccess<HelperToken>({.name = "test", .args = {val(R"([1,2,3,4])")}}, 15)),
+        HelperT(R"(test([1,2,3,4], 1))",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"([1,2,3,4])"), val(R"(1)")}}, 18)),
+        HelperT(R"(test(1, [1,2,3,4]))",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"(1)"), val(R"([1,2,3,4])")}}, 18)),
+        HelperT(R"(test(1, [1,2,3,4], 2))",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"(1)"), val(R"([1,2,3,4])"), val(R"(2)")}},
+                                         21)),
+        HelperT(R"(test([1,2,3,4],))",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"([1,2,3,4])"), val()}}, 16)),
+        HelperT(R"(test({"key": "value"}))",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"({"key": "value"})")}}, 22)),
+        HelperT(R"(test({"key": "value"}, {"key2": "value2"}))",
+                makeSuccess<HelperToken>(
+                    {.name = "test", .args = {val(R"({"key": "value"})"), val(R"({"key2": "value2"})")}}, 42)),
+        HelperT(R"(test({"key": "value", "key2": "value2"}))",
+                makeSuccess<HelperToken>({.name = "test", .args = {val(R"({"key": "value", "key2": "value2"})")}}, 40)),
+        HelperT(R"(test(1, {"key": "value", "key2": "value2"}))",
+                makeSuccess<HelperToken>(
+                    {.name = "test", .args = {val(R"(1)"), val(R"({"key": "value", "key2": "value2"})")}}, 43)),
+        HelperT(R"(test([1]123))",
+                makeSuccess<HelperToken>(
+                    {.name = "test", .args = {val(R"("[1]123")")}}, 12))
+        ));
 
 INSTANTIATE_TEST_SUITE_P(Builder,
                          IsDefaultHelperTest,
