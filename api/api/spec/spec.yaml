@@ -6934,6 +6934,15 @@ components:
       schema:
         type: boolean
         default: false
+    package_type:
+      in: query
+      name: package_type
+      description: "Select package type to use. By default, the manager infers this."
+      schema:
+        type: string
+        enum:
+        - 'rpm'
+        - 'deb'
     force_query:
       in: query
       name: force_query
@@ -7953,6 +7962,7 @@ paths:
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
         - $ref: '#/components/parameters/force'
+        - $ref: '#/components/parameters/package_type'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
