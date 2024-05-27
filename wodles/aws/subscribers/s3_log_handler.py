@@ -178,7 +178,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                 f.seek(0)
                 if self.is_csv(f):
                     aws_tools.debug("+++ Log file is CSV formatted.", 2)
-                    dialect = csv.Sniffer().sniff(f.read(1024))
+                    dialect = csv.Sniffer().sniff(f.readline())
                     f.seek(0)
                     reader = csv.DictReader(f, dialect=dialect)
                     return [dict({k: v for k, v in row.items() if v is not None},
