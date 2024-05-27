@@ -13,3 +13,15 @@ target_field:
 
 # Indicates whether the helper function supports a variable number of arguments
 variadic: false
+
+test:
+  - arguments:
+      1: hello world!
+      target_filed: hello
+    should_pass: false
+    description: Compare two different strings
+  - arguments:
+      1: hello world!
+      target_filed: hello world!
+    should_pass: true
+    description: Compare two equals strings

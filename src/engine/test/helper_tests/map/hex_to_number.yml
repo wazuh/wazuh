@@ -11,3 +11,10 @@ arguments:
 
 # Indicates whether the helper function supports a variable number of arguments
 variadic: False
+
+test:
+  - arguments:
+      1: 2A
+    should_pass: true
+    expected: 42
+    description: Convert hexadecimal to decimal
