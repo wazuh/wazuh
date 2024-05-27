@@ -358,7 +358,8 @@ inline parsec::Parser<HelperToken> getHelperParser(bool eof = false)
     };
 
     auto nameParser = helperNameParser << parenthOpenParser;
-    auto argParserMiddle = getHelperArgParser(argSeparatorParser);
+    auto middleSeparator = parsec::positiveLook(argSeparatorParser | parenthCloseParser);
+    auto argParserMiddle = getHelperArgParser(middleSeparator) << argSeparatorParser;
     auto argParseEnd = getHelperArgParser(parenthCloseParser);
     auto argsParser = parsec::fmap<parsec::Values<OpArg>, std::tuple<parsec::Values<OpArg>, OpArg>>(
         [](auto&& tuple) -> parsec::Values<OpArg>
