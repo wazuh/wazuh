@@ -16,8 +16,8 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.ITS_AWS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.ITS_AWS_SECRET_ACCESS_KEY }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: 'us-east-1'
     runs-on: ubuntu-latest
     steps:
