@@ -2,7 +2,7 @@
 name: Rules/Decoders Issue
 about: Report a bug or make a feature request.
 title: ''
-labels: 'threatintel'
+labels: ''
 assignees: ''
 
 ---

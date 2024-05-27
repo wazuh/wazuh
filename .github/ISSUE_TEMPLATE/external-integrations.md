@@ -1,8 +1,9 @@
 ---
-name: External integrations issue 
-about: Report a bug or make a feature request for the AWS, Azure, GCloud or docker-listener external integrations.
+name: External integrations issue
+about: Report a bug or make a feature request for the AWS, Azure, GCloud or docker-listener
+  external integrations.
 title: ''
-labels: 'external_integrations'
+labels: ''
 assignees: ''
 
 ---

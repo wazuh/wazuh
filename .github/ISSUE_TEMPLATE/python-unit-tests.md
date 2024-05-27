@@ -1,8 +1,8 @@
 ---
-name: Release Candidate - Python unit tests 
+name: Release Candidate - Python unit tests
 about: Report the results after running Python unit tests.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - Python unit tests'
-labels: 'API, framework, qa'
+title: Release [WAZUH VERSION] - Release Candidate [RC VERSION] - Python unit tests
+labels: ''
 assignees: ''
 
 ---
@@ -74,4 +74,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ]
