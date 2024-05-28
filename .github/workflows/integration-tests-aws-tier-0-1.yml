@@ -28,6 +28,16 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
+      - name: Set AWS credentials file
+        run: |
+          sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
+          sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
+          sudo aws configure set default.region us-east-1 --profile default
+      # Build wazuh server for linux.
+      - name: Build wazuh server for linux
+        run: |
+          make deps -C src TARGET=server -j2
+          make -C src TARGET=server -j2
       # Install wazuh server for linux.
       - name: Install wazuh server for linux
         run: |
@@ -61,11 +71,6 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
-      # Build wazuh server for linux.
-      - name: Build wazuh server for linux
-        run: |
-          make deps -C src TARGET=server -j2
-          make -C src TARGET=server -j2
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
@@ -77,16 +82,9 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
+          sudo pip install -r qa-integration-framework/requirements.txt
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
-      - name: Set AWS credentials file
-        run: |
-          cat >> /root/.aws/credentials << EOF
-          [default]
-          aws_access_key_id=$AWS_ACCESS_KEY_ID
-          aws_secret_access_key=$AWS_SECRET_ACCESS_KEY
-          region=us-east-1
-          EOF
       # Run AWS integration tests.
       - name: Run Parser related tests
         if: contains(steps.get_modified_files.outputs.files, 'wodles/aws/aws_s3.py') ||
@@ -180,5 +178,6 @@ jobs:
       # Custom Logs Buckets tests
       - name: Run Inspector tests
         if: contains(steps.get_modified_files.outputs.files, 'wodles/aws/subscribers/**')
+        run: |
           cd tests/integration
           sudo python3 -m pytest --tier 0 --tier 1 test_aws/test_custom_bucket.py
