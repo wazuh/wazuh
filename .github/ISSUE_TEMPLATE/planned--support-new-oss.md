@@ -18,7 +18,7 @@ This issue aims to add support for Support name & version.
 # Plan
 
 - **DevOps**
-If the new OS's version is a major/new family, we need to add support for it in the allocator.
+If the new OS's version is a major/new family, we need to add support for it in the allocator. This is the first step for everything else, regardless of the team as we need to be able to allocate OS VMs to generate a testing environment.
 If the new OS's version is a minor, we need to update the allocator images for it.
 If the new OS's version relates to the base OS used in the AMI, OVA, or Docker images, we need to update it.
 If we need to add support for the central components, we need to review/test the installation assistant using the new OS.
