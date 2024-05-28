@@ -150,6 +150,9 @@ jobs:
       - name: Upload package to S3
         working-directory: packages
         run: |
-          for file in /tmp/*manager*; do
-            aws s3 cp $file s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
-          done
+          aws s3 cp /tmp/*manager*.${{ inputs.system }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+
+      - name: Upload checksum to S3
+        if: ${{ inputs.checksum == true }}
+        run: |
+          aws s3 cp /tmp/*manager*.${{ inputs.system }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
