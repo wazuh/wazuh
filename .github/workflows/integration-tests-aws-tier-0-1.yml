@@ -13,6 +13,7 @@ on:
         default: 'main'
   pull_request:
     paths:
+      - ".github/workflows/integration-tests-aws-tier-0-1.yml"
       - "wodles/aws/**"
 
 jobs:
@@ -20,7 +21,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-      QA_IT_FW_BRANCH: ${{ inputs.base_qa_it_fw_branch }}
+      QA_IT_FW_BRANCH: ${{ github.base_ref || inputs.base_qa_it_fw_branch }}
       AWS_ACCESS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: 'us-east-1'
@@ -33,15 +34,12 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Set AWS credentials file
-        run: |
-          sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
-          sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
-          sudo aws configure set default.region us-east-1 --profile default
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${QA_IT_FW_BRANCH}`" != "X" ]; then
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_BASE}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${QA_IT_FW_BRANCH}`" != "X" ]; then
               QA_BRANCH=${QA_IT_FW_BRANCH}
           else
               QA_BRANCH="main"
@@ -49,6 +47,11 @@ jobs:
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
           sudo pip install qa-integration-framework/
           sudo rm -rf qa-integration-framework/
+      - name: Set AWS credentials file
+        run: |
+          sudo aws configure set aws_access_key_id ${{ secrets.IT_AWS_KEY_ID }} --profile default
+          sudo aws configure set aws_secret_access_key ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }} --profile default
+          sudo aws configure set default.region ${AWS_DEFAULT_REGION} --profile default
       # Build wazuh server for linux.
       - name: Build wazuh server for linux
         run: |
@@ -125,7 +128,7 @@ jobs:
           contains(steps.get_modified_files.outputs.files, 'wodles/aws/buckets_s3/aws_bucket.py')
         run: |
           cd tests/integration
-          sudo python3 -m pytest --tier 0 --tier 1 -k config test_aws/
+          sudo python3 -m pytest --tier 0 --tier 1 -k cloudtrail test_aws/
       - name: Run Load Balancers tests
         if: contains(steps.get_modified_files.outputs.files, 'wodles/aws/buckets_s3/load_balancers.py') ||
           contains(steps.get_modified_files.outputs.files, 'wodles/aws/buckets_s3/aws_bucket.py')
