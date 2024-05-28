@@ -679,7 +679,7 @@
             "type": "long"
           },
           "diff": {
-            "type": "keyword"
+            "type": "text"
           },
           "event": {
             "type": "keyword"
