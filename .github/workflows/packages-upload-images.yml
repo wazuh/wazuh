@@ -197,3 +197,20 @@ jobs:
           gh workflow run packages-upload-wpk-images.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=common -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Copy build.sh and utils to Dockerfile path
+        run: |
+          cp $GITHUB_WORKSPACE/packages/build.sh $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
+          cp $GITHUB_WORKSPACE/packages/${{ matrix.DISTRO }}s/utils/* $GITHUB_WORKSPACE/${{ matrix.DOCKERFILE_PATH }}
+
+      - name: Set tag
+        run: |
+          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          if [ "${{ inputs.tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          else echo "TAG=${{ inputs.tag }}" >> $GITHUB_ENV; fi
+
+      - name: Build and push image ${{ matrix.CONTAINER_NAME }} with tag ${{ env.TAG }} to Github Container Registry
+        if: ( steps.changes.outputs.deb_manager_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_deb_manager_builder_amd64') || ( steps.changes.outputs.rpm_manager_amd64 == 'true' && matrix.CONTAINER_NAME == 'pkg_rpm_manager_builder_amd64' )
+        run:
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{matrix.CONTAINER_NAME}} ${{ matrix.DOCKERFILE_PATH }} ${{ env.TAG }}
