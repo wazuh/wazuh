@@ -13,7 +13,7 @@ CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
 WAZUH_PATH="$(cd $CURRENT_PATH/..; pwd -P)"
 ARCHITECTURE="amd64"
 SYSTEM="deb"
-OUTDIR="${CURRENT_PATH}/output/"
+OUTDIR="${CURRENT_PATH}/output"
 BRANCH=""
 REVISION="0"
 TARGET="agent"
@@ -125,7 +125,7 @@ build_pkg() {
     zip -q -r "$archive_name" "$files_to_zip"
 
     # Print confirmation message
-    echo "Compressed debug symbols into '${OUTDIR}$(ls *.zip | tail -n 1)'"
+    echo "Compressed debug symbols into '${OUTDIR}/$(ls *.zip | tail -n 1)'"
 
     delete_file=$(find . -name "*-dbg*.deb"  -type f)
     rm ${delete_file}
@@ -249,7 +249,7 @@ main() {
             ;;
         "-s"|"--store")
             if [ -n "$2" ]; then
-                OUTDIR="$2"
+                OUTDIR=$(echo "$2" | sed 's:/*$::')
                 shift 2
             else
                 help 1
