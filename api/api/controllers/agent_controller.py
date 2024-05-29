@@ -606,8 +606,8 @@ async def restart_agent(request, agent_id: str, pretty: bool = False, wait_for_c
 
 async def put_upgrade_agents(request, agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
                              wpk_repo: str = None, upgrade_version: str = None, use_http: bool = False,
-                             force: bool = False, q: str = None, manager: str = None, version: str = None,
-                             group: str = None, node_name: str = None, name: str = None,
+                             force: bool = False, package_type: str = None, q: str = None, manager: str = None,
+                             version: str = None, group: str = None, node_name: str = None, name: str = None,
                              ip: str = None) -> web.Response:
     """Upgrade agents using a WPK file from an online repository.
 
@@ -628,6 +628,8 @@ async def put_upgrade_agents(request, agents_list: str = None, pretty: bool = Fa
         Use protocol http. If it's false use https. By default the value is set to false.
     force : bool
         Force upgrade.
+    package_type : str
+        Default package type (rpm, deb).
     q : str
         Query to filter agents by.
     manager : str
@@ -657,6 +659,7 @@ async def put_upgrade_agents(request, agents_list: str = None, pretty: bool = Fa
                 'version': upgrade_version,
                 'use_http': use_http,
                 'force': force,
+                'package_type': package_type,
                 'filters': {
                     'manager': manager,
                     'version': version,

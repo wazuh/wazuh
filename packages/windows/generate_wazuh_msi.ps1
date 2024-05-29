@@ -122,6 +122,8 @@ function ExtractDebugSymbols(){
 	Write-Host "Compressing debug symbols to $ZIP_NAME"
 	Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME"
 
+  dir "*debug-symbols.zip"
+
 	Remove-Item -Path "*.pdb"
 }
 

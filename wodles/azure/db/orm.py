@@ -1,27 +1,32 @@
+#!/usr/bin/env python3
+#
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute
+# it and/or modify it under the terms of GPLv2
 
 import json
 import logging
-import os
-from typing import Dict, Union, Optional
-from dateutil.parser import parse, ParserError
 from datetime import datetime, timezone
+from os import remove
+from os.path import abspath, dirname, exists, getsize, join
+from typing import Dict, Optional, Union
 
-from sqlalchemy import create_engine, Column, Text, String, UniqueConstraint, update
+from dateutil.parser import ParserError, parse
+from sqlalchemy import Column, String, Text, UniqueConstraint, create_engine, update
 from sqlalchemy.exc import IntegrityError, OperationalError, StatementError
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.sql.expression import select
 
-DATABASE_NAME = "azure.db"
-database_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), DATABASE_NAME)
-LAST_DATES_NAME = "last_dates.json"
-last_dates_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), LAST_DATES_NAME)
+MODULE_ROOT_DIR = dirname(dirname(abspath(__file__)))
+DATABASE_NAME = 'azure.db'
+database_path = join(MODULE_ROOT_DIR, DATABASE_NAME)
+LAST_DATES_NAME = 'last_dates.json'
+last_dates_path = join(MODULE_ROOT_DIR, LAST_DATES_NAME)
 last_dates_default_contents = {'log_analytics': {}, 'graph': {}, 'storage': {}}
 
-LAST_DATES_MAX_FIELD_NAME = "max"
-LAST_DATES_MIN_FIELD_NAME = "min"
+LAST_DATES_MAX_FIELD_NAME = 'max'
+LAST_DATES_MIN_FIELD_NAME = 'min'
 
 engine = create_engine('sqlite:///' + database_path, echo=False)
 session = sessionmaker(bind=engine)()
@@ -88,21 +93,21 @@ def check_database_integrity() -> bool:
     bool
         True if the check finished successfully, False otherwise.
     """
-    logging.info("Checking database integrity")
+    logging.info('Checking database integrity')
     create_db()
 
     # Check if a migration from an old last_dates_file is required
-    if os.path.exists(last_dates_path) and os.path.getsize(last_dates_path) > 0:
+    if exists(last_dates_path) and getsize(last_dates_path) > 0:
         try:
             migrate_from_last_dates_file()
         except Exception as e:
-            logging.error(f"Error during last_dates file migration process: {e}")
+            logging.error(f'Error during last_dates file migration process: {e}')
             return False
         try:
-            os.remove(last_dates_path)
+            remove(last_dates_path)
         except OSError:
-            logging.warning(f"It was not possible to remove the old last_dates file at {last_dates_path}")
-    logging.info("Database integrity check finished")
+            logging.warning(f'It was not possible to remove the old last_dates file at {last_dates_path}')
+    logging.info('Database integrity check finished')
     return True
 
 
@@ -149,7 +154,7 @@ def get_all_rows(table: Base) -> list:
 
 def migrate_from_last_dates_file():
     """Load a 'last_dates.json' file and insert its contents into the database."""
-    logging.info("Migration from an old last_dates file is necessary. ")
+    logging.info('Migration from an old last_dates file is necessary. ')
     last_dates_content = load_dates_json()
     keys = last_dates_content.keys()
     for service in [Graph, LogAnalytics, Storage]:
@@ -157,9 +162,14 @@ def migrate_from_last_dates_file():
             for md5_hash in last_dates_content[service.__tablename__].keys():
                 min_value = last_dates_content[service.__tablename__][md5_hash][LAST_DATES_MIN_FIELD_NAME]
                 max_value = last_dates_content[service.__tablename__][md5_hash][LAST_DATES_MAX_FIELD_NAME]
-                row = service(md5=md5_hash, query="", min_processed_date=min_value, max_processed_date=max_value)
+                row = service(
+                    md5=md5_hash,
+                    query='',
+                    min_processed_date=min_value,
+                    max_processed_date=max_value,
+                )
                 add_row(row=row)
-    logging.info("The database migration process finished successfully.")
+    logging.info('The database migration process finished successfully.')
 
 
 def update_row(table: Base, md5: str, min_date: str, max_date: str, query: str = None):
@@ -207,9 +217,9 @@ def load_dates_json() -> dict:
     json.JSONDecodeError
     OSError
     """
-    logging.info(f"Getting the data from {last_dates_path}.")
+    logging.info(f'Getting the data from {last_dates_path}.')
     try:
-        if os.path.exists(last_dates_path):
+        if exists(last_dates_path):
             with open(last_dates_path) as file:
                 contents = json.load(file)
                 # This adds compatibility with "last_dates_files" from previous releases as the format was different
@@ -220,7 +230,7 @@ def load_dates_json() -> dict:
             contents = last_dates_default_contents
         return contents
     except (json.JSONDecodeError, OSError) as e:
-        logging.error(f"Error: The file of the last dates could not be read: '{e}.")
+        logging.error(f'Error: The file of the last dates could not be read: {e}.')
         raise e
 
 
@@ -243,10 +253,16 @@ def get_min_max_values(content: Union[Dict[str, str], str]) -> Dict[str, str]:
     if not isinstance(content, dict):
         try:
             parse(content, fuzzy=True)
-            return {LAST_DATES_MIN_FIELD_NAME: content, LAST_DATES_MAX_FIELD_NAME: content}
+            return {
+                LAST_DATES_MIN_FIELD_NAME: content,
+                LAST_DATES_MAX_FIELD_NAME: content,
+            }
         except ParserError:
             new_value = get_default_min_max_values()
-            return {LAST_DATES_MIN_FIELD_NAME: new_value, LAST_DATES_MAX_FIELD_NAME: new_value}
+            return {
+                LAST_DATES_MIN_FIELD_NAME: new_value,
+                LAST_DATES_MAX_FIELD_NAME: new_value,
+            }
 
     final_dict = {}
     min_value = content[LAST_DATES_MIN_FIELD_NAME]
@@ -264,15 +280,24 @@ def get_min_max_values(content: Union[Dict[str, str], str]) -> Dict[str, str]:
     # If min is an invalid value and max is a valid value
     elif min_value is None and max_value is not None:
         # Change min to be the same as max and update json
-        final_dict = {LAST_DATES_MIN_FIELD_NAME: max_value, LAST_DATES_MAX_FIELD_NAME: max_value}
+        final_dict = {
+            LAST_DATES_MIN_FIELD_NAME: max_value,
+            LAST_DATES_MAX_FIELD_NAME: max_value,
+        }
     # If min is a valid value and max is an invalid value
     elif min_value is not None and max_value is None:
         # Change max to be the same as min and update json
-        final_dict = {LAST_DATES_MIN_FIELD_NAME: min_value, LAST_DATES_MAX_FIELD_NAME: min_value}
+        final_dict = {
+            LAST_DATES_MIN_FIELD_NAME: min_value,
+            LAST_DATES_MAX_FIELD_NAME: min_value,
+        }
     # min and max are invalid values
     else:
         new_value = get_default_min_max_values()
-        final_dict = {LAST_DATES_MIN_FIELD_NAME: new_value, LAST_DATES_MAX_FIELD_NAME: new_value}
+        final_dict = {
+            LAST_DATES_MIN_FIELD_NAME: new_value,
+            LAST_DATES_MAX_FIELD_NAME: new_value,
+        }
 
     return final_dict
 
@@ -288,7 +313,7 @@ def validate_date_string(value: str, fuzzy: bool = True) -> Optional[str]:
         Date that the functions tries to parse.
     fuzzy : bool
         Allow fuzzy parsing.
-        
+
 
     Returns
     -------
@@ -313,5 +338,4 @@ def get_default_min_max_values() -> str:
     str
         Execution date as a string with format %Y-%m-%dT%H:%M:%S.%fZ
     """
-    return datetime.utcnow().replace(tzinfo=timezone.utc)\
-                .strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    return datetime.utcnow().replace(tzinfo=timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')

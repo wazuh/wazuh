@@ -1,4 +1,5 @@
-name: Build Wazuh Manager Packages - DEB|RPM - amd64|x86_64
+run-name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,6 +8,7 @@ on:
           Tag name of the Docker image to be downloaded.
           Use 'developer' to set branch name as tag.
           Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
           Default is 'auto'.
         default: 'auto'
         type: string
@@ -50,6 +52,11 @@ on:
         description: Generate package checksum.
         type: boolean
         required: false
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
 
   workflow_call:
     inputs:
@@ -76,6 +83,9 @@ on:
       checksum:
         type: boolean
         required: false
+      id:
+        type: string
+        required: false
 
 jobs:
   Build-manager-packages:
@@ -96,7 +106,7 @@ jobs:
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=${{ github.ref_name }}" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
           echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_amd64" >> $GITHUB_ENV
 
@@ -135,7 +145,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload package to S3
         working-directory: packages

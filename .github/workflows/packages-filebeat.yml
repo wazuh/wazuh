@@ -1,10 +1,30 @@
-name: Packages - Build filebeat package
+run-name: Build Filebeat module ${{ inputs.revision }} ${{ inputs.id }}
+
 on:
   workflow_dispatch:
     inputs:
       revision:
-        description: 'Revision used to naming Filebeat package wazuh-filebeat-X.X.tar.gz'
-        required: true
+        description: |
+          Revision used to naming Filebeat package wazuh-filebeat-X.X.tar.gz.
+          Default 0.0.
+        required: false
+        default: "0.0"
+        type: string
+      id:
+        type: string
+        description: |
+          ID used to identify the workflow uniquely.
+        required: false
+
+  workflow_call:
+    inputs:
+      revision:
+        required: false
+        default: "0.0"
+        type: string
+      id:
+        type: string
+        required: false
 
 jobs:
   Filebeat-module-generation:
@@ -22,20 +42,20 @@ jobs:
 
       - name: Set package name
         run: |
-          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ github.event.inputs.revision }}.tar.gz" >> $GITHUB_ENV
+          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ inputs.revision }}.tar.gz" >> $GITHUB_ENV
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
-          aws-region: us-east-1
+          aws-region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Package files, change permissions, create tar and upload to S3
         working-directory: extensions/filebeat/7.x/wazuh-module
         run: |
           mkdir wazuh
-          cp -r _meta wazuh/; cp -r alerts wazuh/; cp -r archives wazuh/; cp -r module.yml wazuh/
+          cp -r _meta alerts archives module.yml wazuh/
           sudo chown -R root:root wazuh
           sudo chmod 755 wazuh
           sudo chmod 755 wazuh/_meta

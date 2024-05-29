@@ -12,14 +12,18 @@
 DIR="/Library/Ossec"
 
 if [ -d "${DIR}" ]; then
+    echo "A Wazuh agent installation was found in ${DIR}. Will perform an upgrade."
+
     if [ -f "${DIR}/WAZUH_PKG_UPGRADE" ]; then
         rm -f "${DIR}/WAZUH_PKG_UPGRADE"
     fi
     if [ -f "${DIR}/WAZUH_RESTART" ]; then
         rm -f "${DIR}/WAZUH_RESTART"
     fi
+
     touch "${DIR}/WAZUH_PKG_UPGRADE"
     upgrade="true"
+
     if ${DIR}/bin/wazuh-control status | grep "is running" > /dev/null 2>&1; then
         touch "${DIR}/WAZUH_RESTART"
         restart="true"
@@ -30,6 +34,8 @@ if [ -d "${DIR}" ]; then
 fi
 
 # Stops the agent before upgrading it
+echo "Stopping the agent before upgrading it."
+
 if [ -f ${DIR}/bin/wazuh-control ]; then
     ${DIR}/bin/wazuh-control stop
 elif [ -f ${DIR}/bin/ossec-control ]; then
@@ -37,20 +43,24 @@ elif [ -f ${DIR}/bin/ossec-control ]; then
 fi
 
 if [ -n "${upgrade}" ]; then
+    echo "Backing up configuration files to ${DIR}/config_files/"
     mkdir -p ${DIR}/config_files/
     cp -r ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/config_files/
 
     if [ -d ${DIR}/logs/ossec ]; then
+        echo "Renaming ${DIR}/logs/ossec to ${DIR}/logs/wazuh"
         mv ${DIR}/logs/ossec ${DIR}/logs/wazuh
     fi
 
     if [ -d ${DIR}/queue/ossec ]; then
+        echo "Renaming ${DIR}/queue/ossec to ${DIR}/queue/sockets"
         mv ${DIR}/queue/ossec ${DIR}/queue/sockets
     fi
 fi
 
 if [ -n "${upgrade}" ]; then
     if pkgutil --pkgs | grep -i wazuh-agent-etc > /dev/null 2>&1 ; then
+        echo "Removing previous package receipt for wazuh-agent-etc"
         pkgutil --forget com.wazuh.pkg.wazuh-agent-etc
     fi
 fi
@@ -73,12 +83,14 @@ function check_errm
 }
 
 # get unique id numbers (uid, gid) that are greater than 100
+echo "Getting unique id numbers (uid, gid)"
 unset -v i new_uid new_gid idvar;
 declare -i new_uid=0 new_gid=0 i=100 idvar=0;
 while [[ $idvar -eq 0 ]]; do
     i=$[i+1]
     if [[ -z "$(/usr/bin/dscl . -search /Users uid ${i})" ]] && [[ -z "$(/usr/bin/dscl . -search /Groups gid ${i})" ]];
         then
+        echo "Found available UID and GID: $i"
         new_uid=$i
         new_gid=$i
         idvar=1
@@ -109,6 +121,7 @@ elif [ -f ${DIR}/bin/ossec-control ]; then
 fi
 
 # Creating the group
+echo "Checking group..."
 if [[ $(dscl . -read /Groups/wazuh) ]]
     then
     echo "wazuh group already exists.";
@@ -123,6 +136,7 @@ else
 fi
 
 # Creating the user
+echo "Checking user..."
 if [[ $(dscl . -read /Users/wazuh) ]]
     then
     echo "wazuh user already exists.";
@@ -140,4 +154,5 @@ else
 fi
 
 #Hide the fixed users
+echo "Hiding the fixed wazuh user"
 dscl . create /Users/wazuh IsHidden 1

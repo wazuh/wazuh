@@ -5157,10 +5157,10 @@ components:
                     format: alphanumeric_symbols
                   platform:
                     type: string
-                    format: alphanumeric
+                    format: alphanumeric_symbols
                   version:
                     type: string
-                    format: alphanumeric
+                    format: alphanumeric_symbols
         agent_status:
           $ref: '#/components/schemas/AgentsSummaryStatus'
         agent_version:
@@ -5174,7 +5174,7 @@ components:
                 format: int32
               version:
                 type: string
-                format: alphanumeric
+                format: alphanumeric_symbols
         last_registered_agent:
           type: array
           items:
@@ -6934,6 +6934,15 @@ components:
       schema:
         type: boolean
         default: false
+    package_type:
+      in: query
+      name: package_type
+      description: "Select package type to use. By default, the manager infers this."
+      schema:
+        type: string
+        enum:
+        - 'rpm'
+        - 'deb'
     force_query:
       in: query
       name: force_query
@@ -7953,6 +7962,7 @@ paths:
         - $ref: '#/components/parameters/upgrade_version'
         - $ref: '#/components/parameters/use_http'
         - $ref: '#/components/parameters/force'
+        - $ref: '#/components/parameters/package_type'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'

@@ -92,7 +92,7 @@ else
       short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short HEAD)"
     else
       # Git package is not available in the CentOS 5 repositories.
-      hash_commit=$(cat /wazuh-local-src/.git/refs/heads/$(cat /wazuh-local-src/.git/HEAD|cut -d"/" -f3))
+      hash_commit=$(cat /wazuh-local-src/.git/$(cat /wazuh-local-src/.git/HEAD|cut -d" " -f2))
       short_commit_hash="$(cut -c 1-11 <<< $hash_commit)"
     fi
 fi
@@ -117,4 +117,4 @@ build_deps $legacy
 build_package $package_name $debug "$short_commit_hash" "$wazuh_version"
 
 # Post-processing
-get_checksum $wazuh_version $short_commit_hash $src
+get_package_and_checksum $wazuh_version $short_commit_hash $src

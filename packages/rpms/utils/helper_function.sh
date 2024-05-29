@@ -83,18 +83,21 @@ build_package(){
     return 0
 }
 
-get_checksum(){
+get_package_and_checksum(){
     src="$3"
+    export RPM_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "\.rpm$")
+    export SRC_NAME=$(ls -R ${rpm_build_dir}/SRPMS | grep "\.src\.rpm$")
+
     if [[ "${checksum}" == "yes" ]]; then
-        cd "${rpm_build_dir}/RPMS" && sha512sum *.rpm > /var/local/wazuh/*.rpm.sha512
+        cd "${rpm_build_dir}/RPMS" && sha512sum $RPM_NAME > /var/local/wazuh/$RPM_NAME.sha512
         if [[ "${src}" == "yes" ]]; then
-            cd "${rpm_build_dir}/SRPMS" && sha512sum *.src.rpm > /var/local/wazuh/*.src.rpm.sha512
+            cd "${rpm_build_dir}/SRPMS" && sha512sum $SRC_NAME > /var/local/wazuh/$SRC_NAME.sha512
         fi
     fi
 
     if [[ "${src}" == "yes" ]]; then
-        mv ${rpm_build_dir}/SRPMS/*.src.rpm /var/local/wazuh
+        mv ${rpm_build_dir}/SRPMS/$SRC_NAME /var/local/wazuh
     else
-        mv ${rpm_build_dir}/RPMS/*.rpm /var/local/wazuh
+        mv ${rpm_build_dir}/RPMS/$RPM_NAME /var/local/wazuh
     fi
 }

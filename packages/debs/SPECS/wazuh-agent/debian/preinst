@@ -19,6 +19,12 @@ case "$1" in
     install|upgrade)
 
         if [ "$1" = "upgrade" ]; then
+
+            if [ ! -d "$DIR" ]; then
+                echo "Error: Directory $DIR does not exist. Cannot perform upgrade" >&2
+                exit 1
+            fi
+
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
                 systemctl stop wazuh-agent.service > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart

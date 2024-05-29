@@ -443,6 +443,7 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'version': None,
                 'use_http': False,
                 'force': False,
+                'package_type': None,
                 'filters': {
                     'manager': None,
                     'version': None,

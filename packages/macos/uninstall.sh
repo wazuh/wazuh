@@ -4,9 +4,6 @@
 sudo /Library/Ossec/bin/wazuh-control stop
 sudo /bin/rm -r /Library/Ossec*
 
-## stop and unload dispatcher
-/bin/launchctl unload /Library/LaunchDaemons/com.wazuh.agent.plist
-
 # remove launchdaemons
 /bin/rm -f /Library/LaunchDaemons/com.wazuh.agent.plist
 

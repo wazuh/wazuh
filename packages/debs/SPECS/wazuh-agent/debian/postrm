@@ -51,6 +51,48 @@ case "$1" in
     ;;
 
     upgrade)
+        # If the upgrade downgrades to earlier versions, restore ownership
+        if command -v ${DIR}/bin/ossec-control > /dev/null 2>&1; then
+
+            OSMYSHELL="/sbin/nologin"
+
+            if [ -d ${DIR}/logs/wazuh ]; then
+                mv ${DIR}/logs/wazuh ${DIR}/logs/ossec
+            fi
+
+            if [ -d ${DIR}/queue/sockets ]; then
+                mv ${DIR}/queue/sockets ${DIR}/queue/ossec
+            fi
+
+            if [ -f ${DIR}/queue/sockets/.agent_info ]; then
+                mv ${DIR}/queue/sockets/.agent_info ${DIR}/queue/ossec/
+            fi
+
+            rm -rf ${DIR}/queue/sockets > /dev/null 2>&1
+
+            if ! getent group ossec > /dev/null 2>&1; then
+                addgroup --system ossec > /dev/null 2>&1
+            fi
+
+            if ! getent passwd ossec > /dev/null 2>&1; then
+                adduser --system --home /var/ossec --shell ${OSMYSHELL} --ingroup ossec ossec > /dev/null 2>&1
+            fi
+
+            # Set the correct permissions to orphaned files (not owned by root)
+            find ${DIR} ! -group root -exec chgrp ossec {} \; > /dev/null 2>&1
+            find ${DIR} ! -user root -exec chown ossec {} \; > /dev/null 2>&1
+
+            # delete wazuh user and group
+            if getent passwd wazuh > /dev/null 2>&1; then
+                deluser wazuh
+            fi
+
+            if getent group wazuh > /dev/null 2>&1; then
+                delgroup wazuh
+            fi
+        fi
+
+        exit 0
 
     ;;
 

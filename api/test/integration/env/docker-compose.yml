@@ -209,3 +209,16 @@ services:
       - ${ENV_MODE}
     depends_on:
       - wazuh-master
+      - wazuh-worker1
+      - wazuh-worker2
+
+  cti:
+    profiles:
+      - standalone
+      - cluster
+    build:
+      context: ./base/cti
+    image: integration_test_cti
+    restart: always
+    environment:
+      - PORT=4041

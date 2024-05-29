@@ -9,6 +9,7 @@ set -x
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
+export PATH=/usr/local/bin:/Applications/CMake.app/Contents/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH
 CURRENT_PATH="$( cd $(dirname ${0}) ; pwd -P )"
 ARCH="intel64"
 WAZUH_SOURCE_REPOSITORY="https://github.com/wazuh/wazuh"
@@ -20,9 +21,9 @@ DESTINATION="${CURRENT_PATH}/output"  # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
 VERBOSE="no"                          # Enables the full log by using `set -exf`.
 DEBUG="no"                            # Enables debug symbols while compiling.
-CHECKSUMDIR=""                        # Directory to store the checksum of the package.
 CHECKSUM="no"                         # Enables the checksum generation.
 IS_STAGE="no"                         # Enables release package naming.
+MAKE_COMPILATION="yes"                # Set whether or not to compile the code
 CERT_APPLICATION_ID=""                # Apple Developer ID certificate to sign Apps and binaries.
 CERT_INSTALLER_ID=""                  # Apple Developer ID certificate to sign pkg.
 KEYCHAIN=""                           # Keychain where the Apple Developer ID certificate is.
@@ -64,7 +65,7 @@ function notarize_pkg() {
             echo "Adding the ticket to the package."
             if xcrun stapler staple -v "${1}" ; then
                 echo "Ticket added. Ready to release the package."
-                mkdir -p "${DESTINATION}" && cp "${1}" "${DESTINATION}/"
+                mkdir -p "${DESTINATION}/" && cp "${1}" "${DESTINATION}/"
                 return 0
             else
                 echo "Something went wrong while adding the package."
@@ -151,7 +152,6 @@ function build_package() {
 
     get_pkgproj_specs $VERSION $pkg_name
 
-
     if [ -d "${INSTALLATION_PATH}" ]; then
 
         echo "\nThe wazuh agent is already installed on this machine."
@@ -160,13 +160,13 @@ function build_package() {
         ${CURRENT_PATH}/uninstall.sh
     fi
 
-    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS} ${DEBUG}
+    ${WAZUH_PACKAGES_PATH}/package_files/build.sh "${INSTALLATION_PATH}" "${WAZUH_PATH}" ${JOBS} ${DEBUG} ${MAKE_COMPILATION}
 
     # sign the binaries and the libraries
     sign_binaries
 
     # create package
-    if packagesbuild ${AGENT_PKG_FILE} --build-folder ${DESTINATION} ; then
+    if packagesbuild ${AGENT_PKG_FILE} --build-folder "${DESTINATION}/" ; then
         echo "The wazuh agent package for macOS has been successfully built."
         symbols_pkg_name=$(echo "${pkg_name}" | tr '\n' ' ' | cut -d ' ' -f 1)
         symbols_pkg_name="${symbols_pkg_name}_debug_symbols"
@@ -175,8 +175,7 @@ function build_package() {
         rm -rf "${DESTINATION}/symbols"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
-            mkdir -p ${CHECKSUMDIR}
-            cd ${DESTINATION} && shasum -a512 "${pkg_name}" > "${CHECKSUMDIR}/${pkg_name}.sha512"
+            shasum -a512 "${DESTINATION}/${pkg_name}" > "${DESTINATION}/${pkg_name}.sha512"
         fi
         clean_and_exit 0
     else
@@ -186,7 +185,7 @@ function build_package() {
 }
 
 function help() {
-
+    set +x
     echo "Usage: $0 [OPTIONS]"
     echo
     echo "  Build options:"
@@ -198,6 +197,7 @@ function help() {
     echo "    -d, --debug                   [Optional] Build the binaries with debug symbols. By default: no."
     echo "    -c, --checksum <path>         [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
     echo "    --is_stage                    [Optional] Use release name in package"
+    echo "    -nc, --not-compile            [Optional] Set whether or not to compile the code."
     echo "    -h, --help                    [  Util  ] Show this help."
     echo "    -i, --install-deps            [  Util  ] Install build dependencies (Packages)."
     echo "    -x, --install-xcode           [  Util  ] Install X-Code and brew. Can't be executed as root."
@@ -334,17 +334,15 @@ function main() {
             shift 1
             ;;
         "-c"|"--checksum")
-            if [ -n "$2" ]; then
-                CHECKSUMDIR="$2"
-                CHECKSUM="yes"
-                shift 2
-            else
-                CHECKSUM="yes"
-                shift 1
-            fi
+            CHECKSUM="yes"
+            shift 1
             ;;
         "--is_stage")
             IS_STAGE="yes"
+            shift 1
+            ;;
+        "-nc"|"--not-compile")
+            MAKE_COMPILATION="no"
             shift 1
             ;;
         "--keychain")
@@ -432,15 +430,12 @@ function main() {
         exit 1
     fi
 
-    if [ -z "${CHECKSUMDIR}" ]; then
-        CHECKSUMDIR="${DESTINATION}"
-    fi
-
     if [[ "${BUILD}" != "no" ]]; then
         check_root
         build_package
         "${CURRENT_PATH}/uninstall.sh"
     fi
+
     if [ "${NOTARIZE}" = "yes" ]; then
         if [ "${BUILD}" = "yes" ]; then
             notarization_path="${DESTINATION}/${pkg_name}"
@@ -451,6 +446,7 @@ function main() {
         fi
         notarize_pkg "${notarization_path}"
     fi
+
     if [ "${BUILD}" = "no" ] && [ "${NOTARIZE}" = "no" ]; then
         echo "The branch has not been specified and notarization has not been selected."
         help 1

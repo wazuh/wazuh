@@ -205,7 +205,7 @@ def test_is_safe_path():
     assert is_safe_path('etc/ossec.conf', relative=True)
     assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
-    assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
+    assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh_apid.py', relative=True)
     assert not is_safe_path('../etc/rules/rule.xml', relative=False)
     assert not is_safe_path('../etc/rules/rule.xml')
     assert not is_safe_path('/..')
