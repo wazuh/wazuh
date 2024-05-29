@@ -99,7 +99,38 @@ build_pkg() {
         ${REVISION} ${JOBS} ${DEBUG} \
         ${CHECKSUM} ${FUTURE} ${LEGACY} ${SRC}|| return 1
 
-    echo "Package $(ls -Art ${OUTDIR} | tail -n 1) added to ${OUTDIR}."
+    echo "Packages $(ls -Art ${OUTDIR} | tail -n 2) added to ${OUTDIR}."
+
+
+
+    # compress debug symbols into a zip file
+    cd ${OUTDIR}
+
+    # Find all files containing "-dbg"
+    files_to_zip=$(find . -name "*-dbg*"  -type f)
+
+    # Check if any files were found
+    if [[ -z "$files_to_zip" ]]; then
+    echo "No debug symbols found in current directory."
+    exit 0
+    fi
+
+    # Extract filename without extension
+    base_filename="${files_to_zip%.*}"
+
+    # Create the archive name with .zip extension
+    archive_name="$base_filename.zip"
+
+    # Compress files into a zip archive named after the first (and only) file
+    zip -q -r "$archive_name" "$files_to_zip"
+
+    # Print confirmation message
+    echo "Compressed debug symbols into '${OUTDIR}$(ls *.zip | tail -n 1)'"
+
+    delete_file=$(find . -name "*-dbg*.deb"  -type f)
+    rm ${delete_file}
+
+    cd ..
 
     return 0
 }
