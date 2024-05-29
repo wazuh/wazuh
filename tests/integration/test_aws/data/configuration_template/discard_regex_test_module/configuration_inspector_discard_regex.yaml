@@ -1,0 +1,19 @@
+- sections:
+    - section: wodle
+      attributes:
+        - name: aws-s3
+      elements:
+        - disabled:
+            value: 'no'
+        - service:
+            attributes:
+              - type: SERVICE_TYPE
+            elements:
+              - only_logs_after:
+                  value: ONLY_LOGS_AFTER
+              - regions:
+                  value: REGIONS
+              - discard_regex:
+                  attributes:
+                    - field: DISCARD_FIELD
+                  value: DISCARD_REGEX
