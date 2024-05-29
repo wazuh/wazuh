@@ -1,0 +1,28 @@
+# Name of the helper function
+name: downcase
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string # Expected type is string
+    source: both # Includes values or references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+test:
+  - arguments:
+      1: ABCD
+    should_pass: true
+    expected: abcd
+    description: Change string to downcase
+  - arguments:
+      1: AbcD
+    should_pass: true
+    expected: abcd
+    description: Change string to downcase
+  - arguments:
+      1: aBcDECF
+    should_pass: false
+    expected: aBcDECF
+    description: Change string to downcase

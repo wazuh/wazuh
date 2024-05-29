@@ -371,20 +371,55 @@ def handle_test_result(
                             )
                 else:
                     successful_tests.append({"helper": helper_name, "id": id})
+            elif not should_pass and field_mapping in event:
+                if expected:
+                    if event[field_mapping] != expected:
+                        successful_tests.append({"helper": helper_name, "id": id})
+                    else:
+                        failure_tests.append(
+                            {
+                                "helper": helper_name,
+                                "id": id,
+                                "description": {
+                                    "message": description,
+                                    "asset": asset,
+                                    "response": event,
+                                    "should_pass": should_pass,
+                                    "expected": expected,
+                                },
+                            }
+                        )
+                else:
+                    failure_tests.append(
+                        {
+                            "helper": helper_name,
+                            "id": id,
+                            "description": {
+                                "message": description,
+                                "asset": asset,
+                                "response": event,
+                                "should_pass": should_pass,
+                                "expected": "expected is required",
+                            },
+                        }
+                    )
             else:
-                failure_tests.append(
-                    {
-                        "helper": helper_name,
-                        "id": id,
-                        "description": {
-                            "message": description,
-                            "asset": asset,
-                            "response": event,
-                            "should_pass": should_pass,
-                            "expected": expected,
-                        },
-                    }
-                )
+                if expected == None:
+                    successful_tests.append({"helper": helper_name, "id": id})
+                else:
+                    failure_tests.append(
+                        {
+                            "helper": helper_name,
+                            "id": id,
+                            "description": {
+                                "message": description,
+                                "asset": asset,
+                                "response": event,
+                                "should_pass": should_pass,
+                                "expected": expected,
+                            },
+                        }
+                    )
         elif helper_type == "transformation":
             if (should_pass and result == "Success") or (
                 not should_pass and result != "Success"
