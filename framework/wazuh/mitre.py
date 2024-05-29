@@ -17,7 +17,7 @@ def mitre_metadata() -> AffectedItemsWazuhResult:
         Metadata of MITRE's db.
     """
     result = AffectedItemsWazuhResult(none_msg='No MITRE metadata information was returned',
-                                      all_msg='MITRE Metadata information was returned')
+                                      all_msg='MITRE metadata information was returned')
 
     with mitre.WazuhDBQueryMitreMetadata() as db_query:
         data = db_query.run()

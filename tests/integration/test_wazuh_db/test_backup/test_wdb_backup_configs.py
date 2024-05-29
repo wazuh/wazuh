@@ -56,12 +56,13 @@ import subprocess
 import pytest
 import time
 import numbers
+import glob
 
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.tools.monitors import file_monitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.constants.paths.logs import WAZUH_PATH, WAZUH_LOG_PATH
-from wazuh_testing.utils.time import validate_interval_format
+from wazuh_testing.utils.time import validate_interval_format, time_to_seconds
 from wazuh_testing.modules.wazuh_db import patterns
 from wazuh_testing.utils import configuration
 
@@ -154,6 +155,7 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
         else:
             pytest.fail(f"Got unexpected Error: {err}")
 
+    interval = time_to_seconds(test_interval)
     # Wait for backup files to be generated
     time.sleep(interval*(int(test_max_files)+1))
 
@@ -172,7 +174,7 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
 
 
         assert len(result) == int(test_max_files)+1, f'Expected {test_max_files} backup creation messages, but got {result}.'
-        files = os.listdir(backups_path)
+        files = glob.glob(str(backups_path) + '/*.gz')
         total_files = len(files)
         assert total_files == int(test_max_files), f'Wrong backup file ammount, expected {test_max_files}' \
                                                 f' but {total_files} are present in folder: {files}'

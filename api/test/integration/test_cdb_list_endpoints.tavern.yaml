@@ -579,7 +579,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404
 
   # GET /lists/files/{filename}
   - name: Try to get CDB list (invalid file 2)
@@ -732,7 +732,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404
 
 ---
 test_name: DELETE /lists/files/{filename}
@@ -789,4 +789,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404

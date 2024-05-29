@@ -58,8 +58,8 @@ wazuh# cd packages
 2. Build a debug agent package for i386 architecture with checksum generation:
 ./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --system rpm
 
-3. Build a legacy RPM package for CentOS 5 (manager):
-./wazuh_package_builder.sh -t manager -l -s /tmp --system rpm
+3. Build a legacy RPM package for CentOS 5 (agent):
+./wazuh_package_builder.sh -t agent -l -s /tmp --system rpm
 
 4. Build a package using local Wazuh source code:
 ./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm

@@ -4,7 +4,7 @@
     MAX_REQUEST_PER_MINUTE: 15
   metadata:
     security_headers:
-      Cache-control: no-store
-      Content-Security-Policy: none
-      X-Content-Type-Options: nosniff
-      X-Frame-Options: DENY
+      cache-control: no-store
+      content-security-policy: none
+      x-content-type-options: nosniff
+      x-frame-options: deny
