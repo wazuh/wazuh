@@ -38,10 +38,12 @@ def start_storage(args):
     # Read credentials
     logging.info('Storage: Authenticating.')
     if args.storage_auth_path:
+        logging.info(f"Storage: Using path {args.storage_auth_path} for authentication")
         name, key = read_auth_file(
             auth_path=args.storage_auth_path, fields=('account_name', 'account_key')
         )
     elif args.account_name and args.account_key:
+        logging.info(f"Storage: Using path account name and account key for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='account_name and account_key', release='4.4', url=CREDENTIALS_URL
@@ -67,6 +69,7 @@ def start_storage(args):
                     f'Storage: The "{args.container}" container does not exists.'
                 )
                 sys.exit(1)
+            logging.info(f"Storage: Getting the specified containers: {args.container}")
             containers = [args.container]
         except AzureException:
             logging.error(
@@ -75,7 +78,7 @@ def start_storage(args):
             sys.exit(1)
     else:
         try:
-            logging.info('Storage: Getting containers.')
+            logging.info("Storage: Getting all containers.")
             containers = [
                 container.name for container in block_blob_service.list_containers()
             ]
@@ -171,7 +174,7 @@ def get_blobs(
     """
     try:
         # Get the blob list
-        logging.info('Storage: Getting blobs.')
+        logging.info(f"Storage: Getting blobs from container {container_name}.")
         blobs = blob_service.list_blobs(
             container_name, prefix=prefix, marker=next_marker
         )
@@ -208,10 +211,12 @@ def get_blobs(
                 last_modified < desired_datetime
                 or (min_datetime <= last_modified <= max_datetime)
             ):
+                logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
                 continue
 
             # Get the blob data
             try:
+                logging.info(f"Getting data from blob {blob.name}")
                 data = blob_service.get_blob_to_text(container_name, blob.name)
             except (ValueError, AzureException, AzureHttpError) as e:
                 logging.error(f'Storage: Error reading the blob data: "{e}".')
@@ -265,6 +270,7 @@ def get_blobs(
 
         # Continue until no marker is returned
         if blobs.next_marker:
+            logging.debug(f"Iteration to next marker: {blobs.next_marker}")
             get_blobs(
                 container_name=container_name,
                 blob_service=blob_service,
