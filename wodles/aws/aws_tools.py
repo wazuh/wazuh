@@ -305,13 +305,13 @@ def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Opt
     """
 
     if iam_role_arn is None:
-        print('ERROR: Used a subscriber but no --iam_role_arn provided.')
+        error('Used a subscriber but no --iam_role_arn provided.')
         sys.exit(21)
     if name is None:
-        print('ERROR: Used a subscriber but no --queue provided.')
+        error('Used a subscriber but no --queue provided.')
         sys.exit(21)
     if external_id is None:
-        print('ERROR: Used a subscriber but no --external_id provided.')
+        error('Used a subscriber but no --external_id provided.')
         sys.exit(21)
 
 

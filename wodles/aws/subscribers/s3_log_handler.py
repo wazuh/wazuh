@@ -360,7 +360,7 @@ class AWSSecurityHubSubscriberBucket(AWSSubscriberBucket):
                 return extracted_events
 
             except (json.JSONDecodeError, AttributeError):
-                print(f"ERROR: Data in the file does not contain JSON objects.")
+                aws_tools.error(f"Data in the file does not contain JSON objects.")
                 sys.exit(9)
 
     def process_file(self, message_body: dict) -> None:
