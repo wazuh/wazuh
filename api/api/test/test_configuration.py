@@ -63,6 +63,14 @@ custom_api_configuration = {
         },
         "indexer": {
             "allow": True
+        },
+        "integrations": {
+            "virustotal": {
+                "public_key": {
+                    "allow": True,
+                    "minimum_quota": 240
+                }
+            }
         }
     }
 }
@@ -146,6 +154,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
     {'agents': {'allow_higher_versions': {'allow': True}}},
     {'indexer': {'allow': True}},
+    {'integrations': {'virustotal': {'public_key': {'allow': True}}}},
 ])
 @patch('os.path.exists', return_value=True)
 def test_read_wrong_configuration(mock_exists, config):
