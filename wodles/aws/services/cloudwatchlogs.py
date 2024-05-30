@@ -228,10 +228,10 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             aws_tools.debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
             self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
         except botocore.exceptions.ClientError as err:
-            aws_tools.debug(f'ERROR: The "remove_aws_log_stream" request failed: {err}', 1)
+            aws_tools.debug(f'The "remove_aws_log_stream" request failed: {err}', 1)
             sys.exit(16)
         except Exception:
-            aws_tools.debug('Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group),
+            aws_tools.debug('ERROR: Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group),
                             0)
 
     def get_alerts_within_range(self, log_group, log_stream, token, start_time, end_time):
@@ -493,9 +493,9 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                 aws_tools.debug('No log streams were found for log group "{}"'.format(log_group), 1)
 
         except botocore.exceptions.EndpointConnectionError as e:
-            print(f'ERROR: {str(e)}')
+            aws_tools.error(f'{str(e)}')
         except botocore.exceptions.ClientError as err:
-            aws_tools.debug(f'ERROR: The "get_log_streams" request failed: {err}', 1)
+            aws_tools.debug(f'The "get_log_streams" request failed: {err}', 1)
             sys.exit(16)
         except Exception:
             aws_tools.debug(

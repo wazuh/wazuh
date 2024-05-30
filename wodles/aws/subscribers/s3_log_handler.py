@@ -188,7 +188,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                     try:
                         return [dict(full_log=event, source="custom") for event in f.read().splitlines()]
                     except OSError:
-                        print(f"ERROR: Data in the file does not seem to be plain text either.")
+                        aws_tools.error(f"Data in the file does not seem to be plain text either.")
                         sys.exit(9)
 
     def process_file(self, message_body: dict) -> None:

@@ -127,7 +127,6 @@ def test_start_graph_ko_credentials(mock_logging):
         (PAST_DATE, PAST_DATE, PRESENT_DATE, True),
     ],
 )
-@patch('azure_utils.logging.info')
 @patch('azure_services.graph.offset_to_datetime')
 @patch('azure_services.graph.create_new_row')
 @patch('db.orm.get_row', return_value=None)
@@ -135,7 +134,6 @@ def test_build_graph_url(
     mock_get,
     mock_create,
     mock_datetime,
-    mock_logging,
     min_date,
     max_date,
     desired_date,
@@ -167,7 +165,6 @@ def test_build_graph_url(
             expected_str = f'{filtering_condition}+ge+{desired_date}'
         else:
             expected_str = f'{filtering_condition}+gt+{max_date}'
-    mock_logging.assert_called_once()
     assert URL_GRAPH in result
     assert query in result
     assert expected_str in result

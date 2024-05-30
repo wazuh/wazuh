@@ -122,6 +122,14 @@ def debug(msg, msg_level):
         print('DEBUG: {debug_msg}'.format(debug_msg=msg))
 
 
+def error(msg):
+    print('ERROR: {error_msg}'.format(error_msg=msg))
+
+
+def info(msg):
+    print('INFO: {msg}'.format(msg=msg))
+
+
 def arg_valid_date(arg_string):
     try:
         parsed_date = datetime.strptime(arg_string, "%Y-%b-%d")

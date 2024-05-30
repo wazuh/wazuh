@@ -39,7 +39,7 @@ class AWSGuardDutyBucket(AWSCustomBucket):
                 aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
             else:
                 aws_tools.debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            aws_tools.error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def get_service_prefix(self, account_id):
