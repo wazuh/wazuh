@@ -111,32 +111,6 @@ def get_wazuh_version() -> str:
     return get_wazuh_info("WAZUH_VERSION")
 
 
-@lru_cache(maxsize=None)
-def get_wazuh_revision() -> str:
-    """
-    Return the revision of the Wazuh instance installed.
-
-    Returns
-    -------
-    str
-        The revision of the Wazuh instance installed.
-    """
-    return get_wazuh_info("WAZUH_REVISION")
-
-
-@lru_cache(maxsize=None)
-def get_wazuh_type() -> str:
-    """
-    Return the type of Wazuh instance installed.
-
-    Returns
-    -------
-    str
-        The type of Wazuh instance installed.
-    """
-    return get_wazuh_info("WAZUH_TYPE")
-
-
 ANALYSISD = os.path.join(find_wazuh_path(), 'queue', 'sockets', 'queue')
 # Max size of the event that ANALYSISID can handle
 MAX_EVENT_SIZE = 65535
