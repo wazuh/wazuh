@@ -79,7 +79,7 @@ from . import TEST_CASES_PATH, CONFIGS_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.darwin, pytest.mark.tier(level=1)]
 
 
 # Test metadata, configuration and ids.
