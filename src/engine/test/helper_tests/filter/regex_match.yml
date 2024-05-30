@@ -1,0 +1,26 @@
+name: regex_match
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: re2  # Expected type is re2
+    source: value # includes values
+
+target_field:
+  type: string
+  is_array: false
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+test:
+  - arguments:
+      1: "^(bye pcre\\d)$"
+      target_field: bye pcre2
+    should_pass: true
+    description: Match regular expression
+  - arguments:
+      1: "^(bye pcre\\d)$"
+      target_field: ye pcre2
+    should_pass: false
+    description: Don't match regular expression
