@@ -4,6 +4,7 @@ import argparse
 import itertools
 import json
 import random
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -15,6 +16,87 @@ reference_counter = 0
 maximum_number_of_arguments = 40
 id_counter = 0
 input_file = ""
+
+
+class RE2:
+    def __init__(self, pattern):
+        if not self._validate_pattern(pattern):
+            raise ValueError("Invalid regular expression pattern")
+        self.pattern = pattern
+        self.regex = re.compile(pattern)
+
+    def _validate_pattern(self, pattern):
+        try:
+            re.compile(pattern)
+            return True
+        except re.error:
+            return False
+
+    def __str__(self):
+        return self.pattern
+
+
+class Hexadecimal:
+    def __init__(self, hex_value):
+        if not self._validate_hex(hex_value):
+            raise ValueError(f"{hex_value} is not a valid hexadecimal number")
+        self.hex_value = hex_value.lower()
+
+    def __str__(self):
+        return self.hex_value
+
+    @staticmethod
+    def _validate_hex(hex_value):
+        # Check if the hex_value is a valid hexadecimal string
+        if isinstance(hex_value, str) and hex_value.startswith("0x"):
+            hex_digits = hex_value[2:]
+            return all(c in "0123456789abcdefABCDEF" for c in hex_digits)
+        return False
+
+    @staticmethod
+    def random_hex(length=8):
+        # Generate a random hexadecimal string of the given length
+        random_hex_value = "0x" + "".join(
+            random.choice("0123456789abcdef") for _ in range(length)
+        )
+        return Hexadecimal(random_hex_value)
+
+
+class SubnetMask:
+    def __init__(self, mask):
+        if not self._validate_mask(mask):
+            raise ValueError(f"{mask} is not a valid subnet mask")
+        self.mask = mask
+
+    def __str__(self):
+        return str(self.mask)
+
+    @staticmethod
+    def _validate_mask(mask):
+        return isinstance(mask, int) and 0 <= mask <= 32
+
+
+class IPAddress:
+    def __init__(self, address):
+        if not self._validate_ip(address):
+            raise ValueError(f"{address} is not a valid IP address")
+        self.address = address
+
+    def __str__(self):
+        return self.address
+
+    @staticmethod
+    def _validate_ip(address):
+        # Regex pattern to validate an IP address
+        pattern = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
+        if pattern.match(address):
+            # Check if each octet is between 0 and 255
+            octets = address.split(".")
+            for octet in octets:
+                if not 0 <= int(octet) <= 255:
+                    return False
+            return True
+        return False
 
 
 def parse_arguments():
@@ -65,6 +147,49 @@ def convert_string_to_type(str_type: str):
         return float
     elif str_type == "boolean":
         return bool
+    elif str_type == "ipv4":
+        return IPAddress
+    elif str_type == "mask":
+        return SubnetMask
+    elif str_type == "hexadecimal":
+        return Hexadecimal
+    elif str_type == "re2":
+        return RE2
+    elif str_type == "all":
+        return random.choice([int, str, float, list, bool])
+
+
+def reinterpret_type(str_type: str):
+    """
+    Convert a string representation of a type to the actual type.
+
+    Args:
+        str_type (str): The string representation of the type ('integer' or 'string').
+
+    Returns:
+        type: The corresponding type.
+
+    """
+    if str_type == "integer":
+        return int
+    if str_type == "object":
+        return json
+    if str_type == "array":
+        return list
+    elif str_type == "string":
+        return str
+    elif str_type == "float":
+        return float
+    elif str_type == "boolean":
+        return bool
+    elif str_type == "ipv4":
+        return str
+    elif str_type == "mask":
+        return str
+    elif str_type == "hexadecimal":
+        return str
+    elif str_type == "re2":
+        return str
     elif str_type == "all":
         return random.choice([int, str, float, list, bool])
 
@@ -88,7 +213,9 @@ def load_yaml(file_path):
 
 
 def get_minimum_arguments(yaml_data):
-    return len(yaml_data["arguments"])
+    if "arguments" in yaml_data:
+        return len(yaml_data["arguments"])
+    return 0
 
 
 def is_variadic(yaml_data):
@@ -108,16 +235,18 @@ def get_allowed_values(yaml_data, argument_id):
 
 def get_sources(yaml_data):
     sources = []
-    for argument in yaml_data["arguments"].values():
-        if argument["source"]:
-            sources.append(argument["source"])
+    if "arguments" in yaml_data:
+        for argument in yaml_data["arguments"].values():
+            if argument["source"]:
+                sources.append(argument["source"])
     return sources
 
 
 def get_types(yaml_data):
     types = []
-    for argument in yaml_data["arguments"].values():
-        types.append(argument["type"])
+    if "arguments" in yaml_data:
+        for argument in yaml_data["arguments"].values():
+            types.append(argument["type"])
     return types
 
 
@@ -131,7 +260,7 @@ def change_source(source):
 
 
 def change_type(type_):
-    data_types = [int, float, str, list, bool]
+    data_types = [int, float, str, list, bool, Hexadecimal, IPAddress, SubnetMask, RE2]
     data_types.remove(type_)
     selected_type = random.choice(data_types)
     return selected_type
@@ -152,6 +281,14 @@ def generate_random_value(type_, allowed_values):
                 random.choice("abcdefghijklmnopqrstuvwxyz")
                 for _ in range(random.randint(1, 10))
             )
+        elif type_ == IPAddress:
+            return IPAddress(random.choice(["111.111.1.11", "222.222.2.22"])).__str__()
+        elif type_ == SubnetMask:
+            return SubnetMask(random.randint(0, 32)).__str__()
+        elif type_ == Hexadecimal:
+            return Hexadecimal.random_hex().__str__()
+        elif type_ == RE2:
+            return json.dumps(RE2("^(bye pcre\\d)$").__str__())
         elif type_ == list:
             return [1, 2, 3, 4]
     else:
@@ -258,6 +395,9 @@ def fewer_arguments_than_the_minimum_required(yaml_data):
 
 
 def different_sources(yaml_data):
+    if get_minimum_arguments(yaml_data) == 0:
+        return
+
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
     for i in range(len(types)):  # Iterating over the number of arguments
@@ -312,23 +452,44 @@ def different_sources(yaml_data):
             tests["build_test"].append(test_data)
 
 
-def filter_invalid_arguments(values):
-    type_counts = {}
+def is_integer(s):
+    try:
+        int(s)
+        return True
+    except:
+        return False
+
+
+def filter_invalid_arguments(values, valid_type):
+    result = []
+
     for value in values:
-        value_type = type(value)
-        if value_type in type_counts:
-            type_counts[value_type] += 1
-        else:
-            type_counts[value_type] = 1
-    for count in type_counts.values():
-        if count > 1:
-            return False
-    return True
+        if valid_type == int:
+            if is_integer(value):
+                continue
+            result.append(value)
+
+    return result
 
 
 def different_types_values(yaml_data):
+    if get_minimum_arguments(yaml_data) == 0:
+        return
+
     types = get_types(yaml_data)
-    all_types = [str, int, float, list, bool, json]
+    all_types = [
+        str,
+        int,
+        float,
+        list,
+        bool,
+        json,
+        IPAddress,
+        SubnetMask,
+        Hexadecimal,
+        RE2,
+    ]
+    allowed_values = None
 
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
@@ -350,36 +511,41 @@ def different_types_values(yaml_data):
                         "description": "",
                     }
                     all_arguments = []
+                    value = None
                     for index, (argument, type_) in enumerate(zip(case, types)):
                         if argument == "value":
                             valid_type = convert_string_to_type(type_)
                             if k == index:
                                 valid_type = all_type
-                            all_arguments.append(
-                                generate_specific_argument("value", valid_type)
-                            )
+                            value = generate_specific_argument("value", valid_type)
+                            all_arguments.append(value)
                         else:
-                            all_arguments.append(argument)
+                            value = argument
+                            all_arguments.append(value)
 
-                    if filter_invalid_arguments(all_arguments):
+                    all_arguments = filter_invalid_arguments(
+                        all_arguments, reinterpret_type(types[k])
+                    )
+
+                    if all_arguments:
                         helper = f"{get_name(yaml_data)}({', '.join(str(v) if v is not True else 'true' for v in all_arguments)})"
 
-                    normalize_list = [{"check": [{"target_field": helper}]}]
+                        normalize_list = [{"check": [{"target_field": helper}]}]
 
-                    asset_definition = {
-                        "name": "decoder/test/0",
-                        "normalize": normalize_list,
-                    }
+                        asset_definition = {
+                            "name": "decoder/test/0",
+                            "normalize": normalize_list,
+                        }
 
-                    test_data["assets_definition"] = asset_definition
-                    test_data["should_pass"] = False
-                    test_data["description"] = (
-                        f"Generate types other than those allowed for the source 'value'"
-                    )
-                    test_data["id"] = increase_id()
+                        test_data["assets_definition"] = asset_definition
+                        test_data["should_pass"] = False
+                        test_data["description"] = (
+                            f"Generate types other than those allowed for the source 'value'"
+                        )
+                        test_data["id"] = increase_id()
 
-                    if len(test_data["assets_definition"]):
-                        tests["build_test"].append(test_data)
+                        if len(test_data["assets_definition"]):
+                            tests["build_test"].append(test_data)
 
                 all_types.append(convert_string_to_type(types[k]))
 
@@ -392,8 +558,28 @@ def same_value_types(dictionary):
 
 
 def different_types_references(yaml_data):
+    if get_minimum_arguments(yaml_data) == 0:
+        return
+
+    if "references" not in get_sources(yaml_data) or "both" not in get_sources(
+        yaml_data
+    ):
+        return
+
     types = get_types(yaml_data)
-    all_types = [str, int, float, list, bool, json]
+    all_types = [
+        str,
+        int,
+        float,
+        list,
+        bool,
+        json,
+        IPAddress,
+        SubnetMask,
+        Hexadecimal,
+        RE2,
+    ]
+    allowed_values = None
 
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
@@ -499,6 +685,10 @@ def different_target_field_type(yaml_data):
     target_field_value = generate_specific_argument(
         "value", change_type(convert_string_to_type(get_target_field_type(yaml_data)))
     )
+    while type(target_field_value) == convert_string_to_type(get_target_field_type(yaml_data)):
+        target_field_value = generate_specific_argument(
+            "value", change_type(convert_string_to_type(get_target_field_type(yaml_data)))
+        )
 
     stage_map["map"].append({"target_field": target_field_value})
 
@@ -529,6 +719,9 @@ def different_target_field_type(yaml_data):
 
 
 def variadic(yaml_data):
+    if get_minimum_arguments(yaml_data) == 0:
+        return
+
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
     all_arguments = []
@@ -562,6 +755,14 @@ def variadic(yaml_data):
 
 
 def reference_not_exist(yaml_data):
+    if get_minimum_arguments(yaml_data) == 0:
+        return
+
+    if "reference" not in get_sources(yaml_data) or "both" not in get_sources(
+        yaml_data
+    ):
+        return
+
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
     test_data = {
@@ -660,9 +861,12 @@ def generate_test_cases_fail_at_runtime(yaml_data):
 
 
 def generate_test_cases_success(yaml_data):
+    if get_minimum_arguments(yaml_data) == 0:
+        return
+
     types = get_types(yaml_data)
 
-    for i, type in enumerate(types):
+    for i, type_ in enumerate(types):
         allowed_values = get_allowed_values(yaml_data, i)
         break
 
@@ -679,9 +883,10 @@ def generate_test_cases_success(yaml_data):
         test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
         for argument, type_ in zip(case, types):
             if argument == "value":
-                all_arguments.append(
-                    generate_specific_argument("value", convert_string_to_type(type_))
+                value = generate_specific_argument(
+                    "value", convert_string_to_type(type_)
                 )
+                all_arguments.append(value)
             elif argument == "reference":
                 reference = generate_specific_argument(
                     "reference", convert_string_to_type(type_)
@@ -739,14 +944,9 @@ def generate_test_cases_success(yaml_data):
 
 
 def format_argument(v):
-    if isinstance(v, str):
-        if v.strip() == "":
-            return f'"{v}"'
-        if v.startswith("$"):
-            return str(v)
-        if len(v.split(" ")) > 1:
-            return f'"{v}"'
-    return json.dumps(v)
+    if isinstance(v, str) and v.strip() == "":
+        return f'"{v}"'
+    return str(v)
 
 
 def generate_unit_test(yaml_data):
@@ -776,78 +976,150 @@ def generate_unit_test(yaml_data):
                 sources.append(sources[-1])
             template = generate_raw_template(yaml_data, sources)
 
-        for case in template:
-            all_arguments = []
-            target_field_value = None
-            input = {}
-            new_test = {}
-            test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
-            combined = list(itertools.zip_longest(arguments_list, case, fillvalue=None))
-            for (id, value), source in combined:
-                if source == "value":
-                    all_arguments.append(value)
-                elif source == "reference":
-                    reference_counter = reference_counter + 1
-                    reference = {"name": f"ref{reference_counter}", "value": value}
-                    input[reference["name"]] = reference["value"]
-                    all_arguments.append(f"$eventJson.{reference['name']}")
-                else:
-                    target_field_value = value
-
-            helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
-
-            if not input:
-                normalize_list = [
-                    {
-                        "map": [
-                            {"target_field": target_field_value},
-                        ]
+        if len(template) != 0:
+            if len(template[0]) != 0:
+                for case in template:
+                    all_arguments = []
+                    target_field_value = None
+                    input = {}
+                    new_test = {}
+                    test_data = {
+                        "assets_definition": {},
+                        "test_cases": [],
+                        "description": "",
                     }
-                ]
-            else:
-                normalize_list = [
-                    {
-                        "map": [
-                            {"eventJson": "parse_json($event.original)"},
-                            {"target_field": target_field_value},
-                        ]
-                    }
-                ]
-                new_test = {
-                    "input": input,
-                    "id": increase_id(),
-                    "should_pass": test["should_pass"],
-                }
+                    combined = list(
+                        itertools.zip_longest(arguments_list, case, fillvalue=None)
+                    )
+                    for (id, value), source in combined:
+                        if source == "value":
+                            all_arguments.append(json.dumps(value))
+                        elif source == "reference":
+                            reference_counter = reference_counter + 1
+                            reference = {
+                                "name": f"ref{reference_counter}",
+                                "value": value,
+                            }
+                            input[reference["name"]] = reference["value"]
+                            all_arguments.append(f"$eventJson.{reference['name']}")
+                        else:
+                            target_field_value = value
 
-            normalize_list.append(
-                {
-                    "check": [{"target_field": helper}],
-                    "map": [
-                        {
-                            "verification_field": "It is used to verify if the check passed correctly"
+                    helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
+
+                    if not input:
+                        normalize_list = [
+                            {
+                                "map": [
+                                    {"target_field": target_field_value},
+                                ]
+                            }
+                        ]
+                    else:
+                        normalize_list = [
+                            {
+                                "map": [
+                                    {"eventJson": "parse_json($event.original)"},
+                                    {"target_field": target_field_value},
+                                ]
+                            }
+                        ]
+                        new_test = {
+                            "input": input,
+                            "id": increase_id(),
+                            "should_pass": test["should_pass"],
                         }
-                    ],
-                }
-            )
 
-            asset_definition = {
-                "name": "decoder/test/0",
-                "normalize": normalize_list,
-            }
-            test_data["assets_definition"] = asset_definition
+                    normalize_list.append(
+                        {
+                            "check": [{"target_field": helper}],
+                            "map": [
+                                {
+                                    "verification_field": "It is used to verify if the check passed correctly"
+                                }
+                            ],
+                        }
+                    )
 
-            if new_test:
-                test_data["test_cases"].append(new_test)
+                    asset_definition = {
+                        "name": "decoder/test/0",
+                        "normalize": normalize_list,
+                    }
+                    test_data["assets_definition"] = asset_definition
+
+                    if new_test:
+                        test_data["test_cases"].append(new_test)
+                    else:
+                        test_data["should_pass"] = test["should_pass"]
+                        test_data["id"] = increase_id()
+
+                    test_data["description"] = test["description"]
+
+                    if len(test_data["test_cases"]) == 0:
+                        del test_data["test_cases"]
+
+                    tests["run_test"].append(test_data)
+
             else:
+                target_field_value = None
+                test_data = {
+                    "assets_definition": {},
+                    "test_cases": [],
+                    "description": "",
+                }
+                combined = list(
+                    itertools.zip_longest(arguments_list, (), fillvalue=None)
+                )
+                for (id, value), source in combined:
+                    if source == "value":
+                        all_arguments.append(json.dumps(value))
+                    elif source == "reference":
+                        reference_counter = reference_counter + 1
+                        reference = {
+                            "name": f"ref{reference_counter}",
+                            "value": value,
+                        }
+                        input[reference["name"]] = reference["value"]
+                        all_arguments.append(f"$eventJson.{reference['name']}")
+                    else:
+                        target_field_value = value
+
+                helper = f"{get_name(yaml_data)}()"
+
+                normalize_list = [
+                    {
+                        "map": [
+                            {"target_field": target_field_value},
+                        ]
+                    }
+                ]
+
+                normalize_list.append(
+                    {
+                        "check": [{"target_field": helper}],
+                        "map": [
+                            {
+                                "verification_field": "It is used to verify if the check passed correctly"
+                            }
+                        ],
+                    }
+                )
+
+                asset_definition = {
+                    "name": "decoder/test/0",
+                    "normalize": normalize_list,
+                }
+                test_data["assets_definition"] = asset_definition
+
                 test_data["should_pass"] = test["should_pass"]
                 test_data["id"] = increase_id()
 
-            test_data["description"] = test["description"]
+                test_data["description"] = test["description"]
 
-            if len(test_data["test_cases"]) == 0:
-                del test_data["test_cases"]
+                if len(test_data["test_cases"]) == 0:
+                    del test_data["test_cases"]
 
-            tests["run_test"].append(test_data)
+                tests["run_test"].append(test_data)
 
 
 def main():

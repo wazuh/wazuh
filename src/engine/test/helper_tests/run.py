@@ -347,7 +347,7 @@ def handle_test_result(
     helper_type=None,
 ):
     if should_pass != None:
-        if helper_type == "map_filter":
+        if helper_type == "map":
             if (should_pass and field_mapping in event) or (
                 not should_pass and field_mapping not in event
             ):
@@ -420,6 +420,24 @@ def handle_test_result(
                             },
                         }
                     )
+        elif helper_type == "filter":
+            if (should_pass and field_mapping in event) or (
+                not should_pass and field_mapping not in event
+            ):
+                successful_tests.append({"helper": helper_name, "id": id})
+            else:
+                failure_tests.append(
+                    {
+                        "helper": helper_name,
+                        "id": id,
+                        "description": {
+                            "message": description,
+                            "asset": asset,
+                            "response": event,
+                            "should_pass": should_pass,
+                        },
+                    }
+                )
         elif helper_type == "transformation":
             if (should_pass and result == "Success") or (
                 not should_pass and result != "Success"
@@ -519,7 +537,7 @@ def update_asset(
     )
 
 
-def tester_run_map_filter(
+def tester_run_map(
     api_client,
     id,
     input_data,
@@ -550,7 +568,42 @@ def tester_run_map_filter(
         successful_tests,
         failure_tests,
         field_mapping,
-        helper_type="map_filter",
+        helper_type="map",
+    )
+
+
+def tester_run_filter(
+    api_client,
+    id,
+    input_data,
+    level,
+    field_mapping,
+    should_pass,
+    expected,
+    helper_name,
+    description,
+    asset,
+    successful_tests,
+    failure_tests,
+):
+    request = build_run_post_request(input_data, level)
+    error, response = send_recv(api_client, request, api_tester.RunPost_Response())
+    event = extract_event_from_response(response)
+
+    handle_test_result(
+        id,
+        should_pass,
+        expected,
+        event,
+        None,
+        helper_name,
+        description,
+        asset,
+        response,
+        successful_tests,
+        failure_tests,
+        field_mapping,
+        helper_type="filter",
     )
 
 
@@ -644,7 +697,7 @@ def run_test_cases_executor(api_client, socket_path):
                                 )
                                 create_session(api_client)
                                 if helper_type == "map":
-                                    tester_run_map_filter(
+                                    tester_run_map(
                                         api_client,
                                         run_tests["id"],
                                         [],
@@ -660,7 +713,7 @@ def run_test_cases_executor(api_client, socket_path):
                                     )
 
                                 elif helper_type == "filter":
-                                    tester_run_map_filter(
+                                    tester_run_filter(
                                         api_client,
                                         run_tests["id"],
                                         [],
@@ -709,7 +762,7 @@ def run_test_cases_executor(api_client, socket_path):
                                         )
                                         create_session(api_client)
                                     if helper_type == "map":
-                                        tester_run_map_filter(
+                                        tester_run_map(
                                             api_client,
                                             test_case.get("id"),
                                             test_case.get("input", []),
@@ -725,7 +778,7 @@ def run_test_cases_executor(api_client, socket_path):
                                         )
 
                                     elif helper_type == "filter":
-                                        tester_run_map_filter(
+                                        tester_run_filter(
                                             api_client,
                                             test_case.get("id"),
                                             test_case.get("input", []),
