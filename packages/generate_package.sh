@@ -125,8 +125,8 @@ build_pkg() {
     # Print confirmation message
     echo "Compressed debug symbols into '${archive_name}'"
 
-    delete_file=${files_to_zip}
-    rm ${delete_file}
+    #delete_file=${files_to_zip}
+    #rm ${delete_file}
 
     return 0
 }
