@@ -353,7 +353,7 @@ int wm_azure_request_read(XML_NODE nodes, wm_azure_request_t * request, unsigned
 
     /* Validation process */
     if (!request->tag) {
-        minfo("At module '%s': No request tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        mdebug2("At module '%s': No request tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
         int random_id = os_random();
         char * rtag;
 
@@ -475,7 +475,7 @@ int wm_azure_storage_read(const OS_XML *xml, XML_NODE nodes, wm_azure_storage_t 
     }
 
     if (!storage->tag) {
-        minfo("At module '%s': No storage tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
+        mdebug2("At module '%s': No storage tag defined. Setting it randomly...", WM_AZURE_CONTEXT.name);
         int random_id = os_random();
         char * rtag;
 

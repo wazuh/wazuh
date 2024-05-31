@@ -115,7 +115,7 @@ class WazuhAsyncSocket:
         self.writer = None
 
     async def connect(self, path_to_socket: str):
-        """Establish connection with the socket and creates both Transport 
+        """Establish connection with the socket and creates both Transport
         and Protocol objects to operate with it.
 
         Parameters
@@ -194,11 +194,11 @@ class WazuhAsyncSocket:
 
 
 class WazuhAsyncSocketJSON(WazuhAsyncSocket):
-    """Handler class to connect and operate asynchronously with a socket using 
+    """Handler class to connect and operate asynchronously with a socket using
     messages in JSON format."""
 
     async def send(self, msg_bytes: str, header_format: str = "<I") -> bytes:
-        """Convert the message from JSON format to bytes and send it to the socket. 
+        """Convert the message from JSON format to bytes and send it to the socket.
         Returns that message.
 
         Parameters
@@ -271,7 +271,7 @@ async def wazuh_sendasync(daemon_name: str, message: str = None) -> dict:
             message = dumps(message)
         await sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
         data = await sock.receive(header_size=daemons[daemon_name]['size'])
-        await sock.close()
+        sock.close()
     except WazuhException as e:
         raise e
     except Exception as e:

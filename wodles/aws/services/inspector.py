@@ -144,7 +144,7 @@ class AWSInspector(aws_service.AWSService):
     def check_region(region: str) -> None:
         """
         Check if the region is supported.
-        
+
         Parameters
         ----------
         region : str

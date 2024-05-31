@@ -136,7 +136,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
     def check_region(region: str) -> None:
         """
         Check if the region is valid.
-        
+
         Parameters
         ----------
         region : str

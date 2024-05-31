@@ -1,8 +1,8 @@
 ---
 name: Release Candidate - System tests
 about: Report the results after running system tests.
-title: 'Release [WAZUH VERSION] - [STAGE] - System tests'
-labels: 'type/test, level/task'
+title: Release [WAZUH VERSION] - [STAGE] - System tests
+labels: level/task, type/test
 assignees: ''
 
 ---
