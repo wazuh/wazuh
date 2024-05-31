@@ -77,7 +77,8 @@ from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import EVENT_TYPE_MODIFIED, EVENT_TYPE_ADDED, ERROR_MSG_FIM_EVENT_NOT_DETECTED, EVENT_TYPE_DELETED
 from wazuh_testing.modules.fim.utils import make_diff_file_path, get_fim_event_data
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils.file import write_file_write, generate_string, delete_files_in_folder, truncate_file
+from wazuh_testing.utils.file import write_file_write, delete_files_in_folder, truncate_file
+from wazuh_testing.utils.string import generate_string
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 

@@ -71,7 +71,8 @@ from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import FILE_SIZE_LIMIT_REACHED, EVENT_TYPE_ADDED, ERROR_MSG_FIM_EVENT_NOT_DETECTED, ERROR_MSG_FILE_LIMIT_REACHED, DIFF_FOLDER_DELETED, ERROR_MSG_FOLDER_DELETED
 from wazuh_testing.modules.fim.utils import make_diff_file_path
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils.file import write_file, generate_string, translate_size
+from wazuh_testing.utils.file import write_file, translate_size
+from wazuh_testing.utils.string import generate_string
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
