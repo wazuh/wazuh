@@ -1131,15 +1131,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                if (wdb_commit2(wdb) < 0) {
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
-                    result = OS_INVALID;
-                } else {
-                    result = wdb_parse_global_delete_group(wdb, next, output);
-                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
-                        mdebug1("Global DB Cannot rollback transaction.");
-                    }
-                }
+                result = wdb_parse_global_delete_group(wdb, next, output);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_group_delete_group_time(diff);
@@ -1174,15 +1166,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                if (wdb_commit2(wdb) < 0) {
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
-                    result = OS_INVALID;
-                } else {
-                    result = wdb_parse_global_set_agent_groups(wdb, next, output);
-                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
-                        mdebug1("Global DB Cannot rollback transaction.");
-                    }
-                }
+                result = wdb_parse_global_set_agent_groups(wdb, next, output);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_set_agent_groups_time(diff);
@@ -1222,6 +1206,13 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_get_groups_integrity_time(diff);
             }
+        } else if (strcmp(query, "recalculate-agent-group-hashes") == 0) {
+            w_inc_global_agent_recalculate_agent_group_hashes();
+            gettimeofday(&begin, 0);
+            result = wdb_parse_global_recalculate_agent_group_hashes(wdb, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_agent_recalculate_agent_group_hashes_time(diff);
         } else if (strcmp(query, "disconnect-agents") == 0) {
             w_inc_global_agent_disconnect_agents();
             if (!next) {
@@ -5548,7 +5539,6 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         j_agent_info = cJSON_CreateObject();
 
         cJSON_AddStringToObject(j_agent_info, "agent_id", input);
-        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
         cJSON_AddStringToObject(j_msg_to_send, "action", "deleteAgent");
@@ -6066,6 +6056,19 @@ int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
     cJSON_Delete(j_result);
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output) {
+
+    if (OS_SUCCESS != wdb_global_recalculate_all_agent_groups_hash(wdb)) {
+        mwarn("Error recalculating group hash of agents in global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error recalculating group hash of agents in global.db");
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+
     return OS_SUCCESS;
 }
 

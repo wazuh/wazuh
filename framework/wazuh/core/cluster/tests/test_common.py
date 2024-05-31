@@ -608,7 +608,7 @@ async def test_handler_send_request_ok(msg_build_mock, next_counter_mock, push_m
 
     msg_build_mock.assert_called_with(b'some bytes', 30, b'some data')
     next_counter_mock.assert_called_with()
-    
+
     push_mock.assert_called_with("messages")
 
 
@@ -672,7 +672,7 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                         logger=logger, error_command=b'ERROR') == {'error_messages': [0, 1],
                                                                    'errors_per_folder': {'key': 'value'},
                                                                    'generic_errors': ['ERR'],
-                                                                   'time_spent': 6, 'total_updated': 0, 
+                                                                   'time_spent': 6, 'total_updated': 0,
                                                                    'updated_chunks': 2}
                     logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
 
@@ -1285,6 +1285,55 @@ def test_wazuh_common_init():
     assert wazuh_common_test.sync_tasks == {}
 
 
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection", return_value=AsyncMock())
+async def test_wazuh_common_recalculate_group_hash(asyncwazuhdbconnection_mock):
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._debug = []
+
+        def debug(self, data):
+            """Auxiliary method."""
+            self._debug.append(data)
+
+    logger = LoggerMock()
+    await wazuh_common.recalculate_group_hash(logger)
+    assert logger._debug == ['Recalculating agent-group hash.']
+
+
+@pytest.mark.asyncio
+@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection")
+async def test_wazuh_common_recalculate_group_hash_ko(asyncwazuhdbconnection_mock):
+    class LoggerMock:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self._warning = []
+            self._debug = []
+
+        def debug(self, data):
+            """Auxiliary method."""
+            self._debug.append(data)
+
+        def warning(self, data):
+            """Auxiliary method."""
+            self._warning.append(data)
+
+    logger = LoggerMock()
+    asyncwazuhdbconnection_mock.side_effect = [exception.WazuhInternalError(2007), exception.WazuhError(2003)]
+
+    await wazuh_common.recalculate_group_hash(logger)
+    assert logger._debug == ['Recalculating agent-group hash.']
+    assert logger._warning == ['Error 2007 executing recalculate agent-group hash command: '
+                               'Error retrieving data from Wazuh DB']
+
+    logger = LoggerMock()
+    await wazuh_common.recalculate_group_hash(logger)
+    assert logger._debug == ['Recalculating agent-group hash.']
+    assert logger._warning == ['Error 2003 executing recalculate agent-group hash command: Error in wazuhdb request']
+
 def test_wazuh_common_get_logger():
     """Check if a Logger object is properly returned."""
 
@@ -1549,14 +1598,46 @@ def test_error_receiving_agent_information():
 @patch("wazuh.core.cluster.common.AsyncWazuhDBConnection")
 async def test_send_data_to_wdb(AsyncWazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
+
+    class MockAsyncWazuhDBConnection:
+        """Auxiliary class."""
+
+        def __init__(self):
+            self.exceptions = 0
+
+        async def run_wdb_command(self, command):
+            """Auxiliary method."""
+            if self.exceptions == 0:
+                return ''
+            elif self.exceptions == 1:
+                raise Exception('Cannot execute Global database query; FOREIGN KEY constraint failed')
+            else:
+                raise Exception
+
+        def close(self):
+            """Auxiliary method."""
+            pass
+
     logger = LoggerMock()
     AsyncWazuhDBConnection_mock.return_value = MockAsyncWazuhDBConnection()
-    data = {'chunks': ['1chunk', '2chunk'], 'set_data_command': ''}
 
-    result = await cluster_common.send_data_to_wdb(logger=logger, data=data)
+    result = await cluster_common.send_data_to_wdb(logger=logger,
+                                                   data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''})
     assert result['updated_chunks'] == 2
+
+    AsyncWazuhDBConnection_mock.return_value.exceptions += 1
+    result = await cluster_common.send_data_to_wdb(logger=logger,
+                                                   data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''})
+    assert result['updated_chunks'] == 0
     assert result['error_messages'] == []
-    assert result['time_spent'] >= 0
+    assert logger._error == []
+
+    AsyncWazuhDBConnection_mock.return_value.exceptions += 1
+    result = await cluster_common.send_data_to_wdb(logger=logger,
+                                                   data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''})
+    assert logger._error == ['Wazuh-db response for chunk 1/2 was not "ok": ',
+                             'Wazuh-db response for chunk 2/2 was not "ok": ']
+    assert result['updated_chunks'] == 0
 
 
 @pytest.mark.asyncio

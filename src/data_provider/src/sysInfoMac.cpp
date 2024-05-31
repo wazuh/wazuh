@@ -431,9 +431,23 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         }
     }
 
+    // Add all the unix default paths
+    std::set<std::string> pypyMacOSPaths =
+    {
+        UNIX_PYPI_DEFAULT_BASE_DIRS.begin(),
+        UNIX_PYPI_DEFAULT_BASE_DIRS.end()
+    };
+
+    // Add macOS specific paths
+    pypyMacOSPaths.emplace("/Library/Python/*/*-packages");
+    pypyMacOSPaths.emplace("/Library/Frameworks/Python.framework/Versions/*/lib/python*/*-packages");
+    pypyMacOSPaths.emplace(
+        "/Library/Developer/CommandLineTools/Library/Frameworks/Python3.framework/Versions/*/lib/python*/*-packages");
+    pypyMacOSPaths.emplace("/System/Library/Frameworks/Python.framework/*-packages");
+
     static const std::map<std::string, std::set<std::string>> searchPaths =
     {
-        {"PYPI", UNIX_PYPI_DEFAULT_BASE_DIRS},
+        {"PYPI", pypyMacOSPaths},
         {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
     };
     ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);

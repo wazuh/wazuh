@@ -2730,7 +2730,7 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_CPYTHON) external/$(WPYTHON_TAR) $(EXTERNAL_ROCKSDB)
+	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??*
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)

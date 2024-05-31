@@ -1092,6 +1092,25 @@ wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, ch
     }
 }
 
+wdbc_result wdb_global_set_agent_group_hash(wdb_t *wdb, int id, char* csv, char* hash) {
+    sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_HASH_SET);
+    if (stmt == NULL) {
+        return WDBC_ERROR;
+    }
+
+    sqlite3_bind_text(stmt, 1, csv, -1, NULL);
+    sqlite3_bind_text(stmt, 2, hash, -1, NULL);
+    sqlite3_bind_int(stmt, 3, id);
+
+    if (OS_SUCCESS == wdb_exec_stmt_silent(stmt)) {
+        return WDBC_OK;
+    }
+    else {
+        mdebug1("Error executing setting the agent group hash: %s", sqlite3_errmsg(wdb->db));
+        return WDBC_ERROR;
+    }
+}
+
 cJSON* wdb_global_get_groups_integrity(wdb_t* wdb, os_sha1 hash) {
     sqlite3_stmt* stmt = wdb_init_stmt_in_cache(wdb, WDB_STMT_GLOBAL_GROUP_SYNCREQ_FIND);
     if (stmt == NULL) {
@@ -1386,6 +1405,70 @@ int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* syn
     wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
 
     return result;
+}
+
+int wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb_t* wdb, int agent_id) {
+    int result = WDBC_OK;
+    char* agent_groups_csv = wdb_global_calculate_agent_group_csv(wdb, agent_id);
+    char groups_hash[WDB_GROUP_HASH_SIZE+1] = {0};
+
+    if (agent_groups_csv) {
+        OS_SHA256_String_sized(agent_groups_csv, groups_hash, WDB_GROUP_HASH_SIZE);
+    } else {
+        mdebug1("No groups in belongs table for agent '%03d'", agent_id);
+    }
+
+    if (WDBC_ERROR == wdb_global_set_agent_group_hash(wdb, agent_id, agent_groups_csv, agent_groups_csv ? groups_hash : NULL)) {
+        result = WDBC_ERROR;
+        merror("There was an error assigning the groups hash to agent '%03d'", agent_id);
+    }
+
+    os_free(agent_groups_csv);
+    wdb_global_group_hash_cache(WDB_GLOBAL_GROUP_HASH_CLEAR, NULL);
+
+    return result;
+}
+
+int wdb_global_recalculate_all_agent_groups_hash(wdb_t* wdb) {
+
+    //Prepare SQL query
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS];
+
+    if (sqlite3_bind_int(stmt, 1, 0) != SQLITE_OK) {
+        merror("DB(%s) sqlite3_bind_int(): %s", wdb->id, sqlite3_errmsg(wdb->db));
+        return OS_INVALID;
+    }
+
+    //Get agents to recalculate hash
+    cJSON* j_stmt_result = wdb_exec_stmt(stmt);
+    cJSON* agent = NULL;
+    cJSON_ArrayForEach(agent, j_stmt_result) {
+        cJSON* id = cJSON_GetObjectItem(agent, "id");
+        if (cJSON_IsNumber(id)) {
+            if (WDBC_ERROR == wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb, id->valueint)) {
+                merror("Couldn't recalculate hash group for agent: '%03d'", id->valueint);
+                cJSON_Delete(j_stmt_result);
+                return OS_INVALID;
+            }
+        }
+        else {
+            merror("Invalid element returned by get all agents query");
+            cJSON_Delete(j_stmt_result);
+            return OS_INVALID;
+        }
+    }
+    cJSON_Delete(j_stmt_result);
+
+    return OS_SUCCESS;
 }
 
 int wdb_global_set_agent_groups_sync_status(wdb_t *wdb, int id, const char* sync_status) {

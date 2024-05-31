@@ -1319,8 +1319,8 @@ def write_ossec_conf(new_conf: str):
     try:
         with open(common.OSSEC_CONF, 'w') as f:
             f.writelines(new_conf)
-    except Exception:
-        raise WazuhError(1126)
+    except Exception as e:
+        raise WazuhError(1126, extra_message=str(e))
 
 
 def update_check_is_enabled() -> bool:

@@ -927,6 +927,82 @@ void test_journald_add_condition_to_filter_fail_regex(void ** state) {
     assert_false(journald_add_condition_to_filter(&node, &filter));
 }
 
+/* w_multiline_log_config_free */
+void test_w_multiline_log_config_free_null(void **state)
+{
+    w_multiline_log_config_free(NULL);
+
+    w_multiline_config_t *config = NULL;
+    w_multiline_log_config_free(&config);
+}
+
+void test_w_multiline_log_config_free_success(void ** state) {
+    w_multiline_config_t * config = NULL;
+    os_calloc(1, sizeof(w_multiline_config_t), config);
+
+    // Set a valid config
+
+    // Regex config
+    w_calloc_expression_t(&config->regex, EXP_TYPE_PCRE2);
+    assert_true(w_expression_compile(config->regex, "valid regex .*", 0));
+
+    // collector config
+    config->match_type = ML_MATCH_START;
+    config->replace_type = ML_REPLACE_NO_REPLACE;
+    config->timeout = 10;
+
+    // Simulate non-empty ctxt
+    os_calloc(1, sizeof(w_multiline_ctxt_t), config->ctxt);
+    os_calloc(100, sizeof(char), config->ctxt->buffer);
+
+    w_multiline_log_config_free(&config);
+    assert_null(config);
+}
+
+// Test w_multiline_log_config_clone
+void test_w_multiline_log_config_clone_null(void ** state) {
+    assert_null(w_multiline_log_config_clone(NULL));
+}
+
+void test_w_multiline_log_config_clone_success(void ** state) {
+
+
+    w_multiline_config_t * config = NULL;
+    os_calloc(1, sizeof(w_multiline_config_t), config);
+
+    // Set a valid config
+    w_calloc_expression_t(&config->regex, EXP_TYPE_PCRE2);
+    assert_true(w_expression_compile(config->regex, "valid regex .*", 0));
+
+    // collector config
+    config->match_type = ML_MATCH_END;
+    config->replace_type = ML_REPLACE_NONE;
+    config->timeout = 10;
+
+    // Simulate non-empty ctxt
+    os_calloc(1, sizeof(w_multiline_ctxt_t), config->ctxt);
+    os_calloc(100, sizeof(char), config->ctxt->buffer);
+
+
+    // Test clone
+    w_multiline_config_t * cloned_config = w_multiline_log_config_clone(config);
+    w_multiline_log_config_free(&config);
+
+    // Checks
+    assert_non_null(cloned_config);
+    assert_non_null(cloned_config->regex);
+    assert_string_equal(w_expression_get_regex_pattern(cloned_config->regex), "valid regex .*");
+
+    assert_int_equal(cloned_config->match_type, ML_MATCH_END);
+    assert_int_equal(cloned_config->replace_type, ML_REPLACE_NONE);
+    assert_int_equal(cloned_config->timeout, 10);
+
+    assert_null(cloned_config->ctxt); // Should be a empty context
+
+    w_multiline_log_config_free(&cloned_config);
+
+}
+
 /* main */
 
 int main(void) {
@@ -1005,7 +1081,7 @@ int main(void) {
         // Test w_journal_filter_list_as_json
         cmocka_unit_test(test_w_journal_filter_list_as_json_null_params),
         cmocka_unit_test(test_w_journal_filter_list_as_json_fail_array),
-        cmocka_unit_test(test_w_journal_filter_list_as_json_success),       
+        cmocka_unit_test(test_w_journal_filter_list_as_json_success),
         // Test journald_add_condition_to_filter
         cmocka_unit_test(test_journald_add_condition_to_filter_invalid_params),
         cmocka_unit_test(test_journald_add_condition_to_filter_non_field),
@@ -1017,6 +1093,13 @@ int main(void) {
         cmocka_unit_test(test_journald_add_condition_to_filter_ingore_wrong),
         cmocka_unit_test(test_journald_add_condition_to_filter_ingore_yes),
         cmocka_unit_test(test_journald_add_condition_to_filter_fail_regex),
+        // Test w_multiline_log_config_free
+        cmocka_unit_test(test_w_multiline_log_config_free_null),
+        cmocka_unit_test(test_w_multiline_log_config_free_success),
+        // Test w_multiline_log_config_clone
+        cmocka_unit_test(test_w_multiline_log_config_clone_null),
+        cmocka_unit_test(test_w_multiline_log_config_clone_success),
+
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
     //return cmocka_run_group_tests(tests, NULL, NULL);
