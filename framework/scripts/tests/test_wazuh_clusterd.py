@@ -8,6 +8,7 @@ from unittest.mock import call, patch
 
 import pytest
 import scripts.wazuh_clusterd as wazuh_clusterd
+from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
 
 
 def test_set_logging():
@@ -89,11 +90,12 @@ def test_exit_handler(os_getpid_mock, os_kill_mock):
                         delete_pid_mock.assert_called_once_with('wazuh-clusterd', 1001)
                         original_sig_handler_mock.assert_not_called()
 
-
+@pytest.mark.parametrize('helper_disabled', (True, False))
 @pytest.mark.asyncio
-async def test_master_main():
+async def test_master_main(helper_disabled: bool):
     """Check and set the behavior of master_main function."""
     import wazuh.core.cluster.utils as cluster_utils
+    cluster_config = {'test': 'config', HAPROXY_HELPER: {HAPROXY_DISABLED: helper_disabled}}
 
     class Arguments:
         def __init__(self, performance_test, concurrency_test, ssl):
@@ -113,7 +115,7 @@ async def test_master_main():
         def __init__(self, performance_test, concurrency_test, configuration, enable_ssl, logger, cluster_items):
             assert performance_test == 'test_performance'
             assert concurrency_test == 'concurrency_test'
-            assert configuration == {'test': 'config'}
+            assert configuration == cluster_config
             assert enable_ssl is True
             assert logger == 'test_logger'
             assert cluster_items == {'node': 'item'}
@@ -127,24 +129,38 @@ async def test_master_main():
             assert performance_test == 'test_performance'
             assert logger == 'test_logger'
             assert concurrency_test == 'concurrency_test'
-            assert configuration == {'test': 'config'}
+            assert configuration == cluster_config
             assert enable_ssl is True
             assert cluster_items == {'node': 'item'}
 
         def start(self):
             return 'LOCALSERVER_START'
 
-    async def gather(first, second):
+    class HAPHElperMock:
+        @classmethod
+        def start(cls):
+            return 'HAPHELPER_START'
+
+
+    async def gather(first, second, third=None):
         assert first == 'MASTER_START'
         assert second == 'LOCALSERVER_START'
+        if third is not None:
+            assert third == 'HAPHELPER_START'
+
 
     wazuh_clusterd.cluster_utils = cluster_utils
     args = Arguments(performance_test='test_performance', concurrency_test='concurrency_test', ssl=True)
     with patch('scripts.wazuh_clusterd.asyncio.gather', gather):
         with patch('wazuh.core.cluster.master.Master', MasterMock):
             with patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock):
-                await wazuh_clusterd.master_main(args=args, cluster_config={'test': 'config'},
-                                                 cluster_items={'node': 'item'}, logger='test_logger')
+                with patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock):
+                    await wazuh_clusterd.master_main(
+                        args=args,
+                        cluster_config=cluster_config,
+                        cluster_items={'node': 'item'},
+                        logger='test_logger'
+                    )
 
 
 @pytest.mark.asyncio

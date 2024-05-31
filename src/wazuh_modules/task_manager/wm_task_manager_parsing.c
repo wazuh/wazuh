@@ -106,7 +106,7 @@ static const char *upgrade_statuses[] = {
     [WM_TASK_UPGRADE_UPDATED] = "Updated",
     [WM_TASK_UPGRADE_ERROR] = "Error",
     [WM_TASK_UPGRADE_CANCELLED] = "Task cancelled since the manager was restarted",
-    [WM_TASK_UPGRADE_TIMEOUT] = "Timeout reached while waiting for the response from the agent",
+    [WM_TASK_UPGRADE_TIMEOUT] = "Timeout reached while waiting for the response from the agent, check the result manually on the agent for more information",
     [WM_TASK_UPGRADE_LEGACY] = "Legacy upgrade: check the result manually since the agent cannot report the result of the task"
 };
 

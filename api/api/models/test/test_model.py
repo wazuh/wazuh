@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from connexion import ProblemException
 
+from api.controllers.util import JSON_CONTENT_TYPE
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
@@ -51,7 +52,7 @@ class RequestMock:
         self._content_type = content_type
 
     @property
-    def content_type(self):
+    def mimetype(self):
         return self._content_type
 
 
@@ -248,7 +249,7 @@ def test_body_decode_body_ko():
 
 def test_body_validate_content_type():
     """Test class Body `validate_content_type` method."""
-    content_type = 'application/json'
+    content_type = JSON_CONTENT_TYPE
     request = RequestMock(content_type)
 
     TestModel.validate_content_type(request, content_type)
@@ -256,7 +257,7 @@ def test_body_validate_content_type():
 
 def test_body_validate_content_type_ko():
     """Test class Body `validate_content_type` method exceptions."""
-    request = RequestMock('application/json')
+    request = RequestMock(JSON_CONTENT_TYPE)
 
     with pytest.raises(ProblemException) as exc:
         TestModel.validate_content_type(request, 'application/xml')

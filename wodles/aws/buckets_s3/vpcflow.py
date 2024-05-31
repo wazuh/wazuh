@@ -158,7 +158,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         try:
             ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
         except Exception as e:
-            print("Error getting EC2 client: {}".format(e))
+            aws_tools.error("Error getting EC2 client: {}".format(e))
             sys.exit(3)
 
         return ec2_client
@@ -237,7 +237,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     'flow_log_id': flow_log_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
+            aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def _filter_bucket_files(self, bucket_files: list, **kwargs) -> Iterator[dict]:
         """Filter bucket files that contain the flow_log_id in the filename.

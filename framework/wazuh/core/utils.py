@@ -18,6 +18,7 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
+import psutil
 from pyexpat import ExpatError
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
@@ -40,7 +41,7 @@ if sys.version_info[0] == 3:
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
-def clean_pid_files(daemon: str):
+def clean_pid_files(daemon: str) -> None:
     """Check the existence of '.pid' files for a specified daemon.
 
     Parameters
@@ -52,10 +53,18 @@ def clean_pid_files(daemon: str):
     for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
-                os.kill(int(match.group(1)), SIGKILL)
-                print(f"{daemon}: Orphan child process {match.group(1)} was terminated.")
-            except OSError:
-                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.WAZUH_PATH}/var/run...')
+                pid = int(match.group(1))
+                process = psutil.Process(pid)
+                command = process.cmdline()[-1]
+
+                if daemon.replace('-', '_') in command:
+                    os.kill(pid, SIGKILL)
+                    print(f"{daemon}: Orphan child process {pid} was terminated.")
+                else:
+                    print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+
+            except (OSError, psutil.NoSuchProcess):
+                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
 

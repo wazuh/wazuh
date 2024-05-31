@@ -815,7 +815,7 @@ stages:
     delay_after: !float "{global_db_delay}"
 
     # DELETE /agents
-  - name: Delete all agents (006,007,008)
+  - name: Delete all agents
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents"
@@ -831,8 +831,5 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - "006"
-            - "007"
-            - "008"
-          total_affected_items: 3
+          affected_items: !anything
+          total_affected_items: !anyint

@@ -857,9 +857,9 @@ void router_message_forward(char* msg, const char* agent_id, const char* agent_i
     size_t msg_size = strnlen(msg_start, OS_MAXSTR - message_header_size);
     if ((msg_size + message_header_size) < OS_MAXSTR) {
         if (schema_type == MT_SYS_DELTAS) {
-            msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, node_name, agent_data_hash);
+            msg_to_send = adapt_delta_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
         } else if (schema_type == MT_SYS_SYNC) {
-            msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, node_name, agent_data_hash);
+            msg_to_send = adapt_sync_message(msg_start, agent_name, agent_id, agent_ip, agent_data_hash);
         }
 
         if (msg_to_send) {

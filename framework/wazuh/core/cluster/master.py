@@ -659,6 +659,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         start_time = get_utc_now()
         logger.info('Starting.')
 
+        await self.recalculate_group_hash(logger)
+
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
                                            data_retriever=AsyncWazuhDBConnection().run_wdb_command,
                                            get_data_command='global sync-agent-groups-get ',

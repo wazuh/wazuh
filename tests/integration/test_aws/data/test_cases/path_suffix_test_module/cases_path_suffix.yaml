@@ -1,0 +1,128 @@
+- name: cloudtrail_path_suffix_with_data
+  description: CloudTrail path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    PATH_SUFFIX: test_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: test_suffix
+    expected_results: 1
+
+- name: cloudtrail_path_suffix_without_data
+  description: CloudTrail path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    PATH_SUFFIX: empty_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: empty_suffix
+    expected_results: 0
+
+- name: cloudtrail_inexistent_path_suffix
+  description: CloudTrail path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    PATH_SUFFIX: inexistent_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: inexistent_suffix
+    expected_results: 0
+
+- name: vpc_path_suffix_with_data
+  description: VPC path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    PATH_SUFFIX: test_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    vpc_name: wazuh-vpc-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: test_suffix
+    expected_results: 1
+
+- name: config_path_suffix_with_data
+  description: Config path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    PATH_SUFFIX: test_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: test_suffix
+    expected_results: 1
+
+- name: vpc_path_suffix_without_data
+  description: VPC path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    PATH_SUFFIX: empty_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    vpc_name: wazuh-vpc-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: empty_suffix
+    expected_results: 0
+
+- name: config_path_suffix_without_data
+  description: Config path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    PATH_SUFFIX: empty_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: empty_suffix
+    expected_results: 0
+
+- name: vpc_inexistent_path_suffix
+  description: VPC path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    PATH_SUFFIX: inexistent_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    vpc_name: wazuh-vpc-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: inexistent_suffix
+    expected_results: 0
+
+- name: config_inexistent_path_suffix
+  description: Config path_suffix configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    PATH_SUFFIX: inexistent_suffix
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    path_suffix: inexistent_suffix
+    expected_results: 0

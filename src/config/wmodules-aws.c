@@ -58,6 +58,7 @@ static const char *CLOUDWATCHLOGS_SERVICE_TYPE = "cloudwatchlogs";
 static const char *CISCO_UMBRELLA_BUCKET_TYPE = "cisco_umbrella";
 static const char *SECURITY_LAKE_SUBSCRIBER_TYPE = "security_lake";
 static const char *BUCKETS_SUBSCRIBER_TYPE = "buckets";
+static const char *SECURITY_HUB_SUBSCRIBER_TYPE = "security_hub";
 
 // Parse XML
 
@@ -183,7 +184,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                     return OS_INVALID;
                 }
 
-                mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+                mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
                 for (j = 0; children[j]; j++) {
 
                     mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
@@ -359,7 +360,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
             for (j = 0; children[j]; j++) {
 
                 mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);
@@ -501,12 +502,12 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
             // type is an attribute of the subscriber tag
             if (!strcmp(*nodes[i]->attributes, XML_SUBSCRIBER_TYPE)) {
                 if (!nodes[i]->values) {
-                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid ones are '%s' or '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Empty subscriber type. Valid ones are '%s' or '%s'", SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE, SECURITY_HUB_SUBSCRIBER_TYPE);
                     return OS_INVALID;
-                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, BUCKETS_SUBSCRIBER_TYPE)) {
+                } else if (!strcmp(*nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, BUCKETS_SUBSCRIBER_TYPE) || !strcmp(*nodes[i]->values, SECURITY_HUB_SUBSCRIBER_TYPE)) {
                     os_strdup(*nodes[i]->values, cur_subscriber->type);
                 } else {
-                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE);
+                    mterror(WM_AWS_LOGTAG, "Invalid subscriber type '%s'. Valid ones are '%s' or '%s'", *nodes[i]->values, SECURITY_LAKE_SUBSCRIBER_TYPE, BUCKETS_SUBSCRIBER_TYPE, SECURITY_HUB_SUBSCRIBER_TYPE);
                     return OS_INVALID;
                 }
             } else {
@@ -520,7 +521,7 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                 continue;
             }
 
-            mtdebug2(WM_AWS_LOGTAG, "Loop thru child nodes");
+            mtdebug2(WM_AWS_LOGTAG, "Loop through child nodes");
             for (j = 0; children[j]; j++) {
 
                 mtdebug2(WM_AWS_LOGTAG, "Parse child node: %s", children[j]->element);

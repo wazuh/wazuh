@@ -112,6 +112,50 @@ def test_read_option():
             assert configuration._read_option('indexer', section) == (section.tag,
                                                                     EXPECTED_VALUES[section.tag])
 
+
+@pytest.mark.parametrize("configuration_file, expected_values", [
+    ('journald.conf', MappingProxyType({
+            "location": "journald",
+            "log_format": "journald",
+            "filter": [{
+                "field": "MESSAGE_ID",
+                "item": "^8d45620c1a4348dbb17410da57c60c66$"
+            }],
+            "only-future-events": "no"
+        })
+     ),
+    ('journald1.conf', MappingProxyType({
+            "location": "journald",
+            "log_format": "journald",
+            "filter": [
+                {
+                    "field": "_SYSTEMD_UNIT",
+                    "item": "^cron.service$"
+                },
+                {
+
+                    "field": "PRIORITY",
+                    "ignore_if_missing": "yes",
+                    "item": "[0-3]"
+                }
+            ]
+        })
+     )
+])
+def test_read_option_journald(configuration_file, expected_values):
+    with open(os.path.join(parent_directory, tmp_path, f'configuration/default/{configuration_file}')) as f:
+        data = fromstring(f.read())
+        list_of_filters = []
+
+        for section in data:
+            if section.tag == 'filter':
+                list_of_filters.append(configuration._read_option('localfile', section)[1])
+            else:
+                assert configuration._read_option('localfile', section) == (section.tag,
+                                                                            expected_values[section.tag])
+
+        assert list_of_filters == expected_values["filter"]
+
 def test_agentconf2json():
     xml_conf = configuration.load_wazuh_xml(
         os.path.join(parent_directory, tmp_path, 'configuration/default/agent1.conf'))

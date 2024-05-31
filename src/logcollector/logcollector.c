@@ -405,7 +405,27 @@ void LogCollectorStart()
             minfo(LOGCOLLECTOR_ONLY_MACOS);
 #endif
             os_free(current->file);
-            os_free(current->command);
+            current->command = NULL;
+            os_free(current->fp);
+        }
+
+        else if (strcmp(current->logformat, JOURNALD_LOG) == 0) {
+#ifdef __linux__
+            current->read = read_journald;
+            w_journald_set_ofe(current->future);
+
+            if (current->target != NULL) {
+                for (int tg_idx = 0; current->target[tg_idx]; tg_idx++) {
+                    mdebug1(LOGCOLLECTOR_SOCKET_TARGET, JOURNALD_LOG, current->target[tg_idx]);
+                    w_logcollector_state_add_target(JOURNALD_LOG, current->target[tg_idx]);
+                }
+            }
+#else
+            minfo(LOGCOLLECTOR_JOURNALD_ONLY_LINUX);
+            w_journal_log_config_free(&(current->journal_log));
+#endif
+            os_free(current->file);
+            current->command = NULL;
             os_free(current->fp);
         }
 
@@ -1353,6 +1373,8 @@ int check_pattern_expand(int do_seek) {
 
                         /* Copy the current item to the end mark as it should be a pattern */
                         memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                        // Clone the multiline configuration if it exists
+                        globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1380,6 +1402,8 @@ int check_pattern_expand(int do_seek) {
 
                         /* Copy the current item to the end mark as it should be a pattern */
                         memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                        // Clone the multiline configuration if it exists
+                        globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                         os_strdup(g.gl_pathv[glob_offset], globs[j].gfiles[i].file);
                         w_mutex_init(&globs[j].gfiles[i].mutex, &attr);
@@ -1539,6 +1563,8 @@ int check_pattern_expand(int do_seek) {
                             os_realloc(globs[j].gfiles, (i + 2) * sizeof(logreader), globs[j].gfiles);
                             /* Copy the current item to the end mark as it should be a pattern */
                             memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                            // Clone the multiline configuration if it exists
+                            globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -1567,6 +1593,8 @@ int check_pattern_expand(int do_seek) {
 
                             /* Copy the current item to the end mark as it should be a pattern */
                             memcpy(globs[j].gfiles + i + 1, globs[j].gfiles + i, sizeof(logreader));
+                            // Clone the multiline configuration if it exists
+                            globs[j].gfiles[i + 1].multiline = w_multiline_log_config_clone(globs[j].gfiles[i].multiline);
 
                             os_strdup(full_path, globs[j].gfiles[i].file);
                             w_mutex_init(&globs[j].gfiles[i].mutex, &win_el_mutex_attr);
@@ -2020,6 +2048,9 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
     int i = 0, r = 0, j = -1;
     IT_control f_control = 0;
     time_t curr_time = 0;
+#ifdef __linux__
+    unsigned long thread_id = (unsigned long) pthread_self();
+#endif
 #ifndef WIN32
     int int_error = 0;
     struct timeval fp_timeout;
@@ -2087,6 +2118,16 @@ void * w_input_thread(__attribute__((unused)) void * t_id){
                     /* Read the macOS `log` process output */
                     else if (current->macos_log != NULL && current->macos_log->state != LOG_NOT_RUNNING) {
                         current->read(current, &r, 0);
+                    }
+#endif
+#ifdef __linux__
+                    /* Read the journald logs */
+                    else if (current->journal_log != NULL) {
+                        if (w_journald_can_read(thread_id)) {
+                            current->read(current, &r, 0);
+                        } else {
+                            mdebug2(LOGCOLLECTOR_JOURNAL_LOG_NOT_OWNER);
+                        }
                     }
 #endif
                     w_mutex_unlock(&current->mutex);
@@ -2713,6 +2754,10 @@ STATIC void w_load_files_status(cJSON * global_json) {
 
 #endif
 
+#ifdef __linux__
+    w_journald_set_status_from_JSON(global_json);
+#endif
+
 }
 
 STATIC char * w_save_files_status_to_cJSON() {
@@ -2762,6 +2807,16 @@ STATIC char * w_save_files_status_to_cJSON() {
         cJSON_AddItemToObject(global_json, OS_LOGCOLLECTOR_JSON_MACOS, macos_status);
     }
 
+#endif
+
+#ifdef __linux__
+    cJSON * journald_status = w_journald_get_status_as_JSON();
+    if (journald_status != NULL) {
+        if (global_json == NULL) {
+            global_json = cJSON_CreateObject();
+        }
+        cJSON_AddItemToObject(global_json, JOURNALD_LOG, journald_status);
+    }
 #endif
 
     if (global_json != NULL) {

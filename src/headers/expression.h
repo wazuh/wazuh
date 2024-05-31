@@ -14,6 +14,7 @@
 
 #include "../external/libpcre2/include/pcre2.h"
 #include "../os_regex/os_regex.h"
+#include "os_ip.h"
 
 #define OSMATCH_STR  "osmatch"
 #define OSREGEX_STR  "osregex"
@@ -95,7 +96,7 @@ bool w_expression_add_osip(w_expression_t ** var, char * ip);
  * @param flags Compilation flags (dependent on expression type)
  * @return false on error. True otherwise
  */
-bool w_expression_compile(w_expression_t * expression, char * pattern, int flags);
+bool w_expression_compile(w_expression_t * expression, const char * pattern, int flags);
 
 /**
  * @brief Test match a compiled pattern to string

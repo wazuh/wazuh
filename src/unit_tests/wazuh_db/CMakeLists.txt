@@ -24,7 +24,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_scan_info_get -Wl,--wrap,wdb_fim_upd
                         -Wl,--wrap,sqlite3_changes -Wl,--wrap,sqlite3_bind_int -Wl,--wrap,sqlite3_bind_text -Wl,--wrap,sqlite3_last_insert_rowid \
                         -Wl,--wrap,sqlite3_step -Wl,--wrap,wdb_step -Wl,--wrap,wdb_open_agent2 -Wl,--wrap,wdb_leave \
                         -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_open_global \
-                        -Wl,--wrap,wdb_global_agent_exists \
+                        -Wl,--wrap,wdb_global_agent_exists -Wl,--wrap,wdb_sca_find \
                         -Wl,--wrap,cJSON_PrintUnformatted \
                         -Wl,--wrap,wdb_agents_get_sys_osinfo -Wl,--wrap,wdb_osinfo_save \
                         -Wl,--wrap,wdb_agents_get_packages -Wl,--wrap,wdb_agents_get_hotfixes -Wl,--wrap,close -Wl,--wrap,getpid \
@@ -83,7 +83,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,wdb_commit2 -Wl,--wrap,wdb_vacuum -Wl,--wrap,wdb_get_db_state -Wl,--wrap,wdb_finalize_all_statements \
                              -Wl,--wrap,wdb_update_last_vacuum_data -Wl,--wrap,wdb_get_db_free_pages_percentage -Wl,--wrap,wdb_global_get_distinct_agent_groups \
                              -Wl,--wrap,w_inc_global_agent_get_distinct_groups -Wl,--wrap,w_inc_global_agent_get_distinct_groups_time \
-                             -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time -Wl,--wrap,wdb_pool_leave ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time -Wl,--wrap,wdb_pool_leave \
+                             -Wl,--wrap,w_inc_global_agent_recalculate_agent_group_hashes \ -Wl,--wrap,w_inc_global_agent_recalculate_agent_group_hashes_time \
+                             -Wl,--wrap,wdb_global_recalculate_all_agent_groups_hash ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int \
@@ -193,6 +195,9 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_create_state_json -Wl,--wrap,wdb_get
 
 list(APPEND wdb_tests_names "test_wdb_pool")
 list(APPEND wdb_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
+
+list(APPEND wdb_tests_names "test_create_agent_db")
+list(APPEND wdb_tests_flags "-Wl,--wrap,wfopen,--wrap,fopen,--wrap,fclose,--wrap,fflush,--wrap,fgets,--wrap,fgetpos,--wrap,fopen,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,chmod,--wrap,stat,--wrap,OS_MoveFile,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 
 # Add extra compiling flags
 add_compile_options(-Wall)

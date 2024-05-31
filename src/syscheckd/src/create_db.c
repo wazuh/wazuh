@@ -316,11 +316,6 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
 
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
-        return; // LCOV_EXCL_LINE
-    }
-
     // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
     if (resultType == DELETED) {
         cJSON *path_cjson = cJSON_GetObjectItem(result_json, "path");
@@ -340,6 +335,11 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
     if (configuration->options & CHECK_SEECHANGES && resultType != DELETED) {
         diff = fim_file_diff(path, configuration);
+    }
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        goto end; // LCOV_EXCL_LINE
     }
 
     switch (resultType) {
@@ -415,7 +415,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         }
     }
 
-    if (diff != NULL) {
+    if (diff != NULL && resultType == MODIFIED) {
         cJSON_AddStringToObject(data, "content_changes", diff);
     }
 
@@ -629,6 +629,11 @@ void fim_checker(const char *path,
     directory_t *configuration;
     int depth;
 
+    if (!w_utf8_valid(path)) {
+        mwarn(FIM_INVALID_FILE_NAME, path);
+        return;
+    }
+
 #ifdef WIN32
     // Ignore the recycle bin.
     if (check_removed_file(path)){
@@ -836,7 +841,7 @@ void fim_event_callback(void* data, void * ctx)
             char* diff;
 
             diff = fim_file_diff(path, ctx_data->config);
-            if (diff != NULL) {
+            if (diff != NULL && ctx_data->event->type == FIM_MODIFICATION) {
                 cJSON_AddStringToObject(data_json, "content_changes", diff);
             }
             os_free(diff);

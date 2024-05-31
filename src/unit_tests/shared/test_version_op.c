@@ -659,6 +659,16 @@ void test_get_unix_version_fail_os_release_ubuntu(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
+    // Open /etc/gentoo-release
+    expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Open /etc/SuSE-release
+    expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
     // Open /etc/lsb-release
     expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -717,11 +727,6 @@ void test_get_unix_version_fail_os_release_gentoo(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -777,11 +782,6 @@ void test_get_unix_version_fail_os_release_suse(void **state)
 
     // Fail to open /etc/arch-release
     expect_string(__wrap_wfopen, path, "/etc/arch-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -900,11 +900,6 @@ void test_get_unix_version_fail_os_release_debian(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -912,6 +907,11 @@ void test_get_unix_version_fail_os_release_debian(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -973,11 +973,6 @@ void test_get_unix_version_fail_os_release_slackware(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -985,6 +980,11 @@ void test_get_unix_version_fail_os_release_slackware(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1051,11 +1051,6 @@ void test_get_unix_version_fail_os_release_alpine(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1063,6 +1058,11 @@ void test_get_unix_version_fail_os_release_alpine(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1135,11 +1135,6 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1147,6 +1142,11 @@ void test_get_unix_version_fail_os_release_uname_darwin(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1298,11 +1298,6 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1310,6 +1305,11 @@ void test_get_unix_version_fail_os_release_uname_darwin_no_key(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1455,11 +1455,6 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1467,6 +1462,11 @@ void test_get_unix_version_fail_os_release_uname_sunos(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1562,11 +1562,6 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one(void **st
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1574,6 +1569,11 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_one(void **st
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1669,11 +1669,6 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_two(void **st
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1681,6 +1676,11 @@ void test_get_unix_version_fail_os_release_uname_sunos_10_scenario_two(void **st
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1774,11 +1774,6 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1786,6 +1781,11 @@ void test_get_unix_version_fail_os_release_uname_hp_ux(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1880,11 +1880,6 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1892,6 +1887,11 @@ void test_get_unix_version_fail_os_release_uname_bsd(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -1986,11 +1986,6 @@ void test_get_unix_version_zscaler(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -1998,6 +1993,11 @@ void test_get_unix_version_zscaler(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
@@ -2089,11 +2089,6 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 
-    // Fail to open /etc/lsb-release
-    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
-    expect_string(__wrap_wfopen, mode, "r");
-    will_return(__wrap_wfopen, 0);
-
     // Fail to open /etc/gentoo-release
     expect_string(__wrap_wfopen, path, "/etc/gentoo-release");
     expect_string(__wrap_wfopen, mode, "r");
@@ -2101,6 +2096,11 @@ void test_get_unix_version_fail_os_release_uname_aix(void **state)
 
     // Fail to open /etc/SuSE-release
     expect_string(__wrap_wfopen, path, "/etc/SuSE-release");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, 0);
+
+    // Fail to open /etc/lsb-release
+    expect_string(__wrap_wfopen, path, "/etc/lsb-release");
     expect_string(__wrap_wfopen, mode, "r");
     will_return(__wrap_wfopen, 0);
 

@@ -28,6 +28,8 @@ from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
+IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
+
 class Response:
     """
     Define and store a response from a request.
@@ -1187,6 +1189,22 @@ class WazuhCommon:
         """Class constructor."""
         self.sync_tasks = {}
 
+    @staticmethod
+    async def recalculate_group_hash(logger) -> None:
+        """Recalculate agent-group hash in the DB.
+
+        Parameters
+        ----------
+        logger : Logger object
+            Logger to use during the recalculation process.
+        """
+        try:
+            # Recalculate group hashes before retrieving agent groups info
+            logger.debug('Recalculating agent-group hash.')
+            await AsyncWazuhDBConnection().run_wdb_command(command='global recalculate-agent-group-hashes')
+        except (exception.WazuhInternalError, exception.WazuhError) as e:
+            logger.warning(f'Error {e.code} executing recalculate agent-group hash command: {e.message}')
+
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
         """Get a logger object.
 
@@ -1690,16 +1708,19 @@ async def send_data_to_wdb(logger: logging.Logger, data: dict, info_type: str = 
                     )
                 result['updated_chunks'] += 1
             except Exception as e:
-                result['error_messages'].append(str(e))
+                error = str(e)
+                if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
+                    continue
+
+                result['error_messages'].append(error)
                 logger.debug2(f'Chunk {i + 1}/{len(data["chunks"])}: {data["chunks"][i]}')
-                logger.error(f'Wazuh-db response for chunk {i + 1}/{len(data["chunks"])} was not "ok": {str(e)}')
+                logger.error(f'Wazuh-db response for chunk {i + 1}/{len(data["chunks"])} was not "ok": {error}')
     except Exception as e:
         logger.error(f'Error while processing {info_type} chunks: {str(e)}')
 
     result['time_spent'] = time.perf_counter() - before
     wdb_conn.close()
     return result
-
 
 def asyncio_exception_handler(loop, context: Dict):
     """Exception handler used in the protocol.

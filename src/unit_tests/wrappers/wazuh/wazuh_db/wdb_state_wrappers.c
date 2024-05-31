@@ -236,6 +236,14 @@ void __wrap_w_inc_global_agent_get_distinct_groups_time(__attribute__((unused))s
     function_called();
 }
 
+void __wrap_w_inc_global_agent_recalculate_agent_group_hashes() {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_recalculate_agent_group_hashes_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
 // Global group counters
 
 void __wrap_w_inc_global_group_insert_agent_group() {

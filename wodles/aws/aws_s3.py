@@ -149,46 +149,43 @@ def main(argv):
         elif options.subscriber:
             if options.subscriber.lower() == "security_lake":
                 if options.aws_profile:
-                    print(
-                        "+++ ERROR: The AWS Security Lake integration does not make use of the Profile authentication "
+                    aws_tools.error(
+                        "The AWS Security Lake integration does not make use of the Profile authentication "
                         f"method. Check the available ones for it in "
                         f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
                     sys.exit(3)
-                aws_tools.arg_validate_security_lake_auth_params(options.external_id,options.queue,options.iam_role_arn)
+                aws_tools.arg_validate_security_lake_auth_params(options.external_id,
+                                                                 options.queue,
+                                                                 options.iam_role_arn)
                 bucket_handler = subscribers.s3_log_handler.AWSSLSubscriberBucket
-                asl_queue = subscribers.sqs_queue.AWSSQSQueue(
-                    external_id=options.external_id,
-                    iam_role_arn=options.iam_role_arn,
-                    iam_role_duration=options.iam_role_duration,
-                    profile=None,
-                    sts_endpoint=options.sts_endpoint,
-                    service_endpoint=options.service_endpoint,
-                    name=options.queue,
-                    bucket_handler=bucket_handler,
-                    message_processor=subscribers.sqs_message_processor.AWSSSecLakeMessageProcessor
-                )
+                message_processor = subscribers.sqs_message_processor.AWSSSecLakeMessageProcessor
             elif options.subscriber.lower() == "buckets":
                 bucket_handler = subscribers.s3_log_handler.AWSSubscriberBucket
-                asl_queue = subscribers.sqs_queue.AWSSQSQueue(
-                    iam_role_arn=options.iam_role_arn,
-                    iam_role_duration=options.iam_role_duration,
-                    profile=options.aws_profile,
-                    sts_endpoint=options.sts_endpoint,
-                    service_endpoint=options.service_endpoint,
-                    name=options.queue,
-                    skip_on_error=options.skip_on_error,
-                    discard_field=options.discard_field,
-                    discard_regex=options.discard_regex,
-                    bucket_handler=bucket_handler,
-                    message_processor=subscribers.sqs_message_processor.AWSS3MessageProcessor)
+                message_processor = subscribers.sqs_message_processor.AWSS3MessageProcessor
+            elif options.subscriber.lower() == "security_hub":
+                bucket_handler = subscribers.s3_log_handler.AWSSecurityHubSubscriberBucket
+                message_processor = subscribers.sqs_message_processor.AWSS3MessageProcessor
             else:
                 raise Exception("Invalid type of subscriber")
-            asl_queue.sync_events()
+            subscriber_queue = subscribers.sqs_queue.AWSSQSQueue(
+                external_id=options.external_id,
+                iam_role_arn=options.iam_role_arn,
+                iam_role_duration=options.iam_role_duration,
+                profile=options.aws_profile,
+                sts_endpoint=options.sts_endpoint,
+                service_endpoint=options.service_endpoint,
+                name=options.queue,
+                skip_on_error=options.skip_on_error,
+                discard_field=options.discard_field,
+                discard_regex=options.discard_regex,
+                bucket_handler=bucket_handler,
+                message_processor=message_processor)
+            subscriber_queue.sync_events()
     except Exception as err:
         aws_tools.debug("+++ Error: {}".format(err), 2)
         if aws_tools.debug_level > 0:
             raise
-        print("ERROR: {}".format(err))
+        aws_tools.error(str(err))
         sys.exit(12)
 
 
@@ -199,7 +196,7 @@ if __name__ == '__main__':
         main(sys.argv[1:])
         sys.exit(0)
     except Exception as e:
-        print("Unknown error: {}".format(e))
+        aws_tools.error("Unknown error: {}".format(e))
         if aws_tools.debug_level > 0:
             raise
         sys.exit(1)

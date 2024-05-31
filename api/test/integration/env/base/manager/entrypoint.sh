@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# Enable debug mode for the modulesd daemon
-echo 'wazuh_modules.debug=2' >> /var/ossec/etc/local_internal_options.conf
-
 # Apply API configuration
 cp -rf /tmp_volume/config/* /var/ossec/ && chown -R wazuh:wazuh /var/ossec/api
 
@@ -17,7 +14,7 @@ else
   sed -i "s:<key>key</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
   sed -i "s:<node>NODE_IP</node>:<node>$1</node>:g" /var/ossec/etc/ossec.conf
   sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/ossec/etc/ossec.conf
-  sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scripts/wazuh-apid.py
+  sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scripts/wazuh_apid.py
 fi
 
 if [ "$3" != "master" ]; then

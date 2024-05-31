@@ -298,9 +298,9 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
     dict
         A dict containing the configuration parameters with their default values.
     """
-    return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse,
-            'profile': profile, 'iam_role_arn': iam_role_arn, 'only_logs_after': only_logs_after,
-            'account_alias': account_alias, 'region': region, 'aws_log_groups': aws_log_groups,
+    return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse, 'access_key': access_key,
+            'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
+            'only_logs_after': only_logs_after, 'account_alias': account_alias, 'region': region, 'aws_log_groups': aws_log_groups,
             'remove_log_streams': remove_log_streams, 'discard_field': discard_field,
             'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}

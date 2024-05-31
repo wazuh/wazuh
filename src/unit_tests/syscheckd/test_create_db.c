@@ -2747,6 +2747,13 @@ static void test_fim_scan_no_limit(void **state) {
 
 #endif
 
+static void test_fim_checker_unsupported_path(void **state) {
+    const char * PATH = "Unsupported\xFF\x02";
+    expect_string(__wrap__mwarn, formatted_msg, "(6955): Ignoring file 'Unsupported\xFF\x02' due to unsupported name (non-UTF8).");
+
+    fim_checker(PATH, NULL, NULL, NULL, NULL);
+}
+
 /* fim_check_db_state */
 static void test_fim_check_db_state_normal_to_empty(void **state) {
 
@@ -4020,9 +4027,9 @@ static void test_fim_event_callback(void **state) {
 
     fim_event_callback(json_event, &callback_ctx);
 #ifndef TEST_WINAGENT
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0,\"ppid\":0},\"tags\":\"tag_name\"}}";
 #else
-    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"content_changes\":\"diff\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
+    char* test_event = "{\"data\":{\"path\":\"/path/to/file\",\"audit\":{\"user_name\":\"audit_user_name\",\"process_id\":0},\"tags\":\"tag_name\"}}";
 #endif
     char* string_event = cJSON_PrintUnformatted(json_event);
     assert_string_equal(string_event, test_event);
@@ -4388,6 +4395,7 @@ int main(void) {
 #ifndef TEST_WINAGENT
         cmocka_unit_test_setup_teardown(test_fim_checker_fim_directory_on_max_recursion_level, setup_struct_dirent, teardown_struct_dirent),
 #endif
+        cmocka_unit_test(test_fim_checker_unsupported_path),
 
         /* fim_directory */
         cmocka_unit_test_setup_teardown(test_fim_directory, setup_struct_dirent, teardown_struct_dirent),

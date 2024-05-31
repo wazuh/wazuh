@@ -16,6 +16,11 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 
+constexpr std::chrono::seconds MAX_DELAY_TIME
+{
+    300
+};
+
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
 {                                                                       \
@@ -1053,6 +1058,8 @@ void Syscollector::registerWithRsync()
             auto jsonData(nlohmann::json::parse(dataString));
             auto it{jsonData.find("data")};
 
+            m_lastSyncMsg = Utils::secondsSinceEpoch();
+
             if (!m_stopping)
             {
                 if (it != jsonData.end())
@@ -1173,7 +1180,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_reportDiffFunction = reportDiffFunction;
     m_reportSyncFunction = reportSyncFunction;
     m_logFunction = logFunction;
-    m_intervalValue = interval;
+    m_intervalValue = std::chrono::seconds{interval};
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
     m_os = os;
@@ -1184,6 +1191,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_processes = processes;
     m_hotfixes = hotfixes;
     m_notify = notifyOnFirstScan;
+    m_currentIntervalValue = m_intervalValue;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -1626,6 +1634,22 @@ void Syscollector::sync()
     m_logFunction(LOG_DEBUG, "Ending syscollector sync");
 }
 
+void Syscollector::syncAlgorithm()
+{
+    m_currentIntervalValue = m_intervalValue / 2 >= MAX_DELAY_TIME ? MAX_DELAY_TIME : m_intervalValue / 2;
+
+    if (Utils::secondsSinceEpoch() - m_lastSyncMsg > m_currentIntervalValue)
+    {
+        scan();
+        sync();
+        m_currentIntervalValue = m_intervalValue;
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Syscollector synchronization process concluded recently, delaying scan for " + std::to_string(m_currentIntervalValue.count()) + " second/s");
+    }
+}
+
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
     m_logFunction(LOG_INFO, "Module started.");
@@ -1636,13 +1660,12 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         sync();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(lock, std::chrono::seconds{m_currentIntervalValue}, [&]()
 {
     return m_stopping;
 }))
     {
-        scan();
-        sync();
+        syncAlgorithm();
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);

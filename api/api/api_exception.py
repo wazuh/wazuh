@@ -2,8 +2,9 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from connexion.exceptions import ProblemException
 from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH
-from wazuh.core.exception import DOCU_VERSION
+from wazuh.core.exception import DOCU_VERSION, WazuhTooManyRequests
 
 
 class APIException(Exception):
@@ -62,3 +63,27 @@ class APIException(Exception):
 
 class APIError(APIException):
     pass
+
+
+class BlockedIPException(ProblemException):
+    """Bocked IP Exception Class."""
+    def __init__(self, *, status=500, title=None, detail=None):
+        ext = {"code": 6000}
+        super().__init__(status=status, title=title, detail=detail, ext=ext)
+
+
+class MaxRequestsException(ProblemException):
+    """Bocked IP Exception Class."""
+    def __init__(self, code):
+        exc = WazuhTooManyRequests(code=code)
+        ext = {"code": exc.code}
+        ext.update({"remediation": exc.remediation} if hasattr(exc, 'remediation') else {})
+        super().__init__(status=429, title=exc.title, detail=exc.message, type=exc.type, ext=ext)
+
+
+class ExpectFailedException(ProblemException):
+    """Exception for failed expectation (status code 417)."""
+
+    def __init__(self, *, status=417, title=None, detail=None):
+        ext = {"code": 417}
+        super().__init__(status=status, title=title, detail=detail, ext=ext)

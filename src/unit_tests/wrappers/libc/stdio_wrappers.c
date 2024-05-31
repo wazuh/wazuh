@@ -251,3 +251,9 @@ FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc) {
     *__sizeloc = mock_type(size_t);
     return mock_ptr_type(FILE*);
 }
+
+ssize_t __wrap_getline(char ** lineptr, size_t * n, FILE * stream) {
+    *lineptr = mock_ptr_type(char *);
+    *n = strlen(*lineptr);
+    return *n;
+}

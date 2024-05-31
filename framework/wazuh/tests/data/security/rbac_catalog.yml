@@ -98,12 +98,12 @@ get_rbac_actions:
           - GET /agents/{agent_id}/key
           - GET /agents/{agent_id}/daemons/stats
           - GET /agents/{agent_id}/stats/{component}
-          - GET /groups/{group_id}/agents
           - GET /agents/no_group
           - GET /agents/outdated
           - GET /agents/stats/distinct
           - GET /agents/summary/os
           - GET /agents/summary/status
+          - GET /groups/{group_id}/agents
           - GET /overview/agents
       agent:create:
         description: Create new agents
@@ -267,10 +267,10 @@ get_rbac_actions:
         related_endpoints:
           - PUT /agents/node/{node_id}/restart
           - GET /cluster/local/info
+          - GET /cluster/local/config
           - GET /cluster/nodes
           - GET /cluster/healthcheck
           - GET /cluster/ruleset/synchronization
-          - GET /cluster/local/config
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
@@ -351,7 +351,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /cluster/restart
       lists:read:
-        description: Read cdb lists files
+        description: Read CDB lists files
         resources:
           - list:file
         example:
@@ -365,7 +365,7 @@ get_rbac_actions:
           - GET /lists/files/{filename}
           - GET /lists/files
       lists:update:
-        description: Update or upload cdb lists files
+        description: Update or upload CDB lists files
         resources:
           - "*:*"
         example:
@@ -377,7 +377,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /lists/files/{filename}
       lists:delete:
-        description: Delete cdb lists files
+        description: Delete CDB lists files
         resources:
           - list:file
         example:

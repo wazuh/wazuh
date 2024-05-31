@@ -9,19 +9,17 @@ import re
 import subprocess
 import sys
 import tempfile
-from configparser import RawConfigParser, NoOptionError
+from configparser import NoOptionError, RawConfigParser
 from io import StringIO
-from os import remove, path as os_path
+from os import path as os_path
+from os import remove
 from types import MappingProxyType
-from typing import Union, List
+from typing import List, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
-
-from wazuh.core import common
-from wazuh.core import wazuh_socket
-from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core import common, wazuh_socket
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
 logger = logging.getLogger('wazuh')
@@ -38,7 +36,7 @@ CONF_SECTIONS = MappingProxyType({
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
     'agentless': {'type': 'duplicate', 'list_options': []},
-    'localfile': {'type': 'duplicate', 'list_options': ["ignore"]},
+    'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
     'remote': {'type': 'duplicate', 'list_options': []},
     'syslog_output': {'type': 'duplicate', 'list_options': []},
     'integration': {'type': 'duplicate', 'list_options': []},
@@ -231,12 +229,14 @@ def _read_option(section_name: str, opt: str) -> tuple:
                 json_path = json_attribs.copy()
                 json_path['path'] = path.strip()
                 opt_value.append(json_path)
-    elif section_name == 'syscheck' and opt_name in ('synchronization', 'whodata'):
+    elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')) or \
+        (section_name == 'cluster' and opt_name == 'haproxy_helper'):
         opt_value = {}
         for child in opt:
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
+            (section_name == 'haproxy_helper' and opt_name == 'excluded_nodes') or \
             (section_name == 'sca' and opt_name == 'policies') or \
             (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
@@ -856,7 +856,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
-    
+
     if raw:
         with open(file_path, 'r') as raw_data:
             data = raw_data.read()
@@ -1319,8 +1319,8 @@ def write_ossec_conf(new_conf: str):
     try:
         with open(common.OSSEC_CONF, 'w') as f:
             f.writelines(new_conf)
-    except Exception:
-        raise WazuhError(1126)
+    except Exception as e:
+        raise WazuhError(1126, extra_message=str(e))
 
 
 def update_check_is_enabled() -> bool:
@@ -1342,7 +1342,7 @@ def update_check_is_enabled() -> bool:
 
 def get_cti_url() -> str:
     """Get the CTI service URL from the configuration.
-    
+
     Returns
     -------
     str

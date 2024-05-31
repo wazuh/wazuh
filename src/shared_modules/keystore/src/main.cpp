@@ -23,16 +23,16 @@ namespace Log
 
 int main(int argc, char* argv[])
 {
-    // Define current working directory
-    std::filesystem::path home_path = Utils::findHomeDirectory();
-    std::filesystem::current_path(home_path);
-
     std::string family;
     std::string key;
     std::string value;
 
     try
     {
+        // Define current working directory
+        std::filesystem::path home_path = Utils::findHomeDirectory();
+        std::filesystem::current_path(home_path);
+
         CmdLineArgs args(argc, argv);
 
         family = args.getColumnFamily();
@@ -43,13 +43,13 @@ int main(int argc, char* argv[])
     }
     catch (const CmdLineArgsException& e)
     {
-        std::cerr << e.what() << std::endl;
+        std::cerr << e.what() << "\n";
         CmdLineArgs::showHelp();
         return 1;
     }
     catch (const std::exception& e)
     {
-        std::cerr << e.what() << std::endl;
+        std::cerr << e.what() << "\n";
         return 1;
     }
 

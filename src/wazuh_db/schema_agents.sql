@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')),
     value_name TEXT,
     value_type TEXT,
-    size INTEGER,
+    size BIGINT,
     perm TEXT,
     uid TEXT,
     gid TEXT,
