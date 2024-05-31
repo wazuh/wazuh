@@ -39,10 +39,12 @@ def start_log_analytics(args):
 
     # Read credentials
     if args.la_auth_path and args.la_tenant_domain:
+        logging.debug(f"Log Analytics: Using the auth file {args.la_auth_path} for authentication")
         client, secret = read_auth_file(
             auth_path=args.la_auth_path, fields=('application_id', 'application_key')
         )
     elif args.la_id and args.la_key and args.la_tenant_domain:
+        logging.debug(f"Log Analytics: Using id and key from configuration for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='la_id and la_key', release='4.4', url=CREDENTIALS_URL
@@ -92,7 +94,7 @@ def start_log_analytics(args):
 
 
 def build_log_analytics_query(
-    query: str, offset: str, reparse: bool, md5_hash: str
+        query: str, offset: str, reparse: bool, md5_hash: str
 ) -> dict:
     """Prepare and make the request, building the query based on the time of event generation.
 
@@ -140,22 +142,26 @@ def build_log_analytics_query(
     else:
         # Build the filter taking into account the min and max values
         if desired_datetime < min_datetime:
+            logging.debug(f"Log Analytics: Making request query for the following intervals: "
+                          f"from {desired_str} to {min_str} and from {max_str}")
             filter_value = (
                 f'( TimeGenerated < {min_str} and TimeGenerated >= {desired_str}) or '
                 f'( TimeGenerated > {max_str})'
             )
         elif desired_datetime > max_datetime:
+            logging.debug(f"Log Analytics: Making request for the following interval: from {desired_str}")
             filter_value = f'TimeGenerated >= {desired_str}'
         else:
+            logging.debug(f"Log Analytics: Making request for the following interval: from {max_str}")
             filter_value = f'TimeGenerated > {max_str}'
 
     query = f'{query} | order by TimeGenerated asc | where {filter_value} '
-    logging.info(f'Log Analytics: The search starts for query: "{query}"')
+    logging.debug(f'Log Analytics: The search starts for query: "{query}"')
     return {'query': query}
 
 
 def get_log_analytics_events(
-    url: str, body: dict, headers: dict, md5_hash: str, query: str, tag: str
+        url: str, body: dict, headers: dict, md5_hash: str, query: str, tag: str
 ):
     """Get the logs, process the response and iterate the events.
 
@@ -176,6 +182,7 @@ def get_log_analytics_events(
         If the response for the request is not 200 OK.
     """
     logging.info('Log Analytics: Sending a request to the Log Analytics API.')
+    logging.debug(f"Log Analytics request - URL: {url} - Params: {body} - Headers: {headers}")
     response = get(url, params=body, headers=headers)
     if response.status_code == 200:
         try:
@@ -202,6 +209,7 @@ def get_log_analytics_events(
                 f'Error: It was not possible to obtain the columns and rows from the event: "{e}".'
             )
     else:
+        logging.error(f"Error with Log Analytics request: {response.json()}")
         response.raise_for_status()
 
 
@@ -249,4 +257,5 @@ def iter_log_analytics_events(columns: list, rows: list, tag: str):
         for c in range(0, len(columns)):
             event[columns[c]['name']] = row[c]
         logging.info('Log Analytics: Sending event by socket.')
+        logging.debug(f"Event send to socket: {event}")
         send_message(dumps(event))
