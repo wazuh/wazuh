@@ -22,8 +22,10 @@ All notable changes to this project will be documented in this file.
 - Improved Wazuh-DB performance by adjusting SQLite synchronization policy. ([#22774](https://github.com/wazuh/wazuh/pull/22774))
 
 #### Fixed
+
 - Updated cluster connection cleanup to remove temporary files when the connection between a worker and a master is broken. ([#17886](https://github.com/wazuh/wazuh/pull/17886))
 - Added a mechanism to avoid cluster errors to raise from expected wazuh-db exceptions. ([#23371](https://github.com/wazuh/wazuh/pull/23371))
+- Fixed race condition when creating agent database files from a template. ([#23216](https://github.com/wazuh/wazuh/pull/23216))
 
 ### Agent
 
@@ -143,7 +145,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed an issue in a cluster task where full group synchronization was constantly triggered. ([#23447](https://github.com/wazuh/wazuh/pull/23447))
-- Fixed race condition when creating agent database files from a template. ([#23216](https://github.com/wazuh/wazuh/pull/23216))
+- Fixed a race condition in wazuh-db that might create corrupted database files. ([#23467](https://github.com/wazuh/wazuh/pull/23467))
 
 ### Agent
 
