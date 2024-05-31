@@ -8,7 +8,7 @@ if [ -n "$(command -v yum)" ]; then
     install="yum install -y --nogpgcheck"
     installed_log="/var/log/yum.log"
 elif [ -n "$(command -v dpkg)" ]; then
-    install="dpkg --install --force-depends"
+    install="dpkg --install"
     installed_log="/var/log/dpkg.log"
 else
     common_logger -e "Couldn't find type of system"

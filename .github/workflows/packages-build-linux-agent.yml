@@ -150,6 +150,8 @@ jobs:
       - name: Test install built package
         run: |
           package_name=$(find /tmp -maxdepth 1 -type f -name "*agent*.${{ inputs.system }}" -exec basename {} 2>/dev/null \; | grep -v -E "^(wazuh-agent-dbg|wazuh-agent-debuginfo)")
+          echo "package name: " ${package_name}
+          
           if [ -z "$package_name" ]; then echo "No package found matching the pattern!"; exit 1; fi
           sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $package_name agent
           # Check if wazuh-agent was installed. The /tmp/status.log file was generated in the previous step.
