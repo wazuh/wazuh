@@ -127,8 +127,9 @@ build_pkg() {
 
     echo "Output listing:"
     ls -l ${OUTDIR}
-    #delete_file=${files_to_zip}
-    #rm ${delete_file}
+    
+    delete_file=${files_to_zip}
+    rm ${delete_file}
 
     return 0
 }
