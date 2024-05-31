@@ -28,6 +28,7 @@ daemons:
 os_platform:
     - linux
     - windows
+    - macos
 
 os_version:
     - Arch Linux
@@ -37,6 +38,8 @@ os_version:
     - CentOS 7
     - Debian Buster
     - Red Hat 8
+    - macOS Catalina
+    - macOS Server
     - Ubuntu Focal
     - Ubuntu Bionic
     - Windows 10
