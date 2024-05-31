@@ -135,6 +135,7 @@ def test_build_graph_url(
     mock_get,
     mock_create,
     mock_datetime,
+    mock_logging,
     min_date,
     max_date,
     desired_date,

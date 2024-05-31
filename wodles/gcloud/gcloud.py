@@ -43,7 +43,7 @@ def main():
 
         # Raise error if subscription or project is none
         if arguments.integration_type == "pubsub":
-            logger.info("Working with Google Cloud Pub/Sub")
+            gcp_logger.info("Working with Google Cloud Pub/Sub")
             if arguments.subscription_id is None:
                 raise exceptions.GCloudError(1200)
             if arguments.project is None:
@@ -97,7 +97,7 @@ def main():
             num_processed_messages = sum([future.result() for future in futures])
 
         elif arguments.integration_type == "access_logs":
-            logger.info("Working with Google Cloud Access Logs")
+            gcp_logger.info("Working with Google Cloud Access Logs")
             if not arguments.bucket_name:
                 raise exceptions.GCloudError(1103)
 

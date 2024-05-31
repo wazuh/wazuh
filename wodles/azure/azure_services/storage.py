@@ -43,7 +43,7 @@ def start_storage(args):
     # Read credentials
     azure_logger.info('Storage: Authenticating.')
     if args.storage_auth_path:
-        logging.debug(f"Storage: Using path {args.storage_auth_path} for authentication")
+        azure_logger.debug(f"Storage: Using path {args.storage_auth_path} for authentication")
         name, key = read_auth_file(
             auth_path=args.storage_auth_path, fields=('account_name', 'account_key')
         )
@@ -73,7 +73,7 @@ def start_storage(args):
                     f'Storage: The "{args.container}" container does not exists.'
                 )
                 sys.exit(1)
-            logging.info(f"Storage: Getting the specified containers: {args.container}")
+            azure_logger.info(f"Storage: Getting the specified containers: {args.container}")
             containers = [args.container]
         except AzureException:
             azure_logger.error(
@@ -215,12 +215,12 @@ def get_blobs(
                 last_modified < desired_datetime
                 or (min_datetime <= last_modified <= max_datetime)
             ):
-                logging.info(f"Storage: Skipping blob {blob.name} due to being already processed")
+                azure_logger.info(f"Storage: Skipping blob {blob.name} due to being already processed")
                 continue
 
             # Get the blob data
             try:
-                logging.info(f"Getting data from blob {blob.name}")
+                azure_logger.info(f"Getting data from blob {blob.name}")
                 data = blob_service.get_blob_to_text(container_name, blob.name)
             except (ValueError, AzureException, AzureHttpError) as e:
                 azure_logger.error(f'Storage: Error reading the blob data: "{e}".')
@@ -274,7 +274,7 @@ def get_blobs(
 
         # Continue until no marker is returned
         if blobs.next_marker:
-            logging.debug(f"Iteration to next marker: {blobs.next_marker}")
+            azure_logger.debug(f"Iteration to next marker: {blobs.next_marker}")
             get_blobs(
                 container_name=container_name,
                 blob_service=blob_service,

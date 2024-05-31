@@ -44,7 +44,7 @@ def start_log_analytics(args):
 
     # Read credentials
     if args.la_auth_path and args.la_tenant_domain:
-        logging.debug(f"Log Analytics: Using the auth file {args.la_auth_path} for authentication")
+        azure_logger.debug(f"Log Analytics: Using the auth file {args.la_auth_path} for authentication")
         client, secret = read_auth_file(
             auth_path=args.la_auth_path, fields=('application_id', 'application_key')
         )
@@ -146,17 +146,17 @@ def build_log_analytics_query(
     else:
         # Build the filter taking into account the min and max values
         if desired_datetime < min_datetime:
-            logging.debug(f"Log Analytics: Making request query for the following intervals: "
+            azure_logger.debug(f"Log Analytics: Making request query for the following intervals: "
                           f"from {desired_str} to {min_str} and from {max_str}")
             filter_value = (
                 f'( TimeGenerated < {min_str} and TimeGenerated >= {desired_str}) or '
                 f'( TimeGenerated > {max_str})'
             )
         elif desired_datetime > max_datetime:
-            logging.debug(f"Log Analytics: Making request for the following interval: from {desired_str}")
+            azure_logger.debug(f"Log Analytics: Making request for the following interval: from {desired_str}")
             filter_value = f'TimeGenerated >= {desired_str}'
         else:
-            logging.debug(f"Log Analytics: Making request for the following interval: from {max_str}")
+            azure_logger.debug(f"Log Analytics: Making request for the following interval: from {max_str}")
             filter_value = f'TimeGenerated > {max_str}'
 
     query = f'{query} | order by TimeGenerated asc | where {filter_value} '
@@ -212,7 +212,7 @@ def get_log_analytics_events(
                 f'Error: It was not possible to obtain the columns and rows from the event: "{e}".'
             )
     else:
-        logging.error(f"Error with Log Analytics request: {response.json()}")
+        azure_logger.error(f"Error with Log Analytics request: {response.json()}")
         response.raise_for_status()
 
 
