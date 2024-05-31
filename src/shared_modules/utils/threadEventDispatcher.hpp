@@ -81,14 +81,28 @@ public:
         }
     }
 
-    void push(std::string_view columnName, const T& value)
+    void push(std::string_view prefix, const T& value)
     {
         if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(columnName) < m_maxQueueSize))
+            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
             {
-                m_queue->push(columnName, value);
+                m_queue->push(prefix, value);
             }
+        }
+        else
+        {
+            // static assert to avoid compilation
+            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
+                          "This method is not supported for this queue type");
+        }
+    }
+
+    void clear(std::string_view prefix = "")
+    {
+        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        {
+            m_queue->clear(prefix);
         }
         else
         {
@@ -123,11 +137,11 @@ public:
         }
     }
 
-    size_t size(std::string_view columnName) const
+    size_t size(std::string_view prefix) const
     {
         if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            return m_queue->size(columnName);
+            return m_queue->size(prefix);
         }
         else
         {
@@ -137,11 +151,11 @@ public:
         }
     }
 
-    void postpone(std::string_view columnName, const std::chrono::seconds& time) noexcept
+    void postpone(std::string_view prefix, const std::chrono::seconds& time) noexcept
     {
         if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
         {
-            m_queue->postpone(columnName, time);
+            m_queue->postpone(prefix, time);
         }
         else
         {

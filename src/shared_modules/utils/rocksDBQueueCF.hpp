@@ -12,11 +12,11 @@
 #ifndef _ROCKSDB_QUEUE_CF_HPP
 #define _ROCKSDB_QUEUE_CF_HPP
 
-#include "rocksDBColumnFamily.hpp"
 #include "rocksDBOptions.hpp"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
+#include "stringHelper.h"
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -26,7 +26,7 @@ template<typename T, typename U = T>
 class RocksDBQueueCF final
 {
 private:
-    struct ColumnFamilyQueue : public Utils::ColumnFamilyRAII
+    struct QueueMetadata final
     {
         uint64_t head = 0;
         uint64_t tail = 0;
@@ -34,89 +34,38 @@ private:
 
         // Time from epoch + postpone time.
         std::chrono::time_point<std::chrono::system_clock> postponeTime;
-
-        ColumnFamilyQueue(const std::shared_ptr<rocksdb::DB>& db, rocksdb::ColumnFamilyHandle* rawHandle)
-            : Utils::ColumnFamilyRAII(db, rawHandle)
-        {
-        }
     };
 
-    void dropColumn(std::string_view columnFamily)
+    void initializeQueueData()
     {
-        if (const auto it = std::find_if(m_columnsInstances.begin(),
-                                         m_columnsInstances.end(),
-                                         [&columnFamily](const ColumnFamilyQueue& handle)
-                                         { return columnFamily == handle->GetName(); });
-            it != m_columnsInstances.end())
-        {
-            it->drop();
-            m_columnsInstances.erase(it);
-        }
-    }
+        constexpr auto ID_QUEUE = 0;
+        constexpr auto QUEUE_NUMBER = 1;
 
-    void createColumn(std::string_view columnName)
-    {
-        if (columnName.empty())
-        {
-            throw std::invalid_argument {"Column name is empty"};
-        }
-
-        rocksdb::ColumnFamilyHandle* pColumnFamily;
-
-        if (const auto status {m_db->CreateColumnFamily(
-                Utils::RocksDBOptions::buildColumnFamilyOptions(m_readCache), columnName.data(), &pColumnFamily)};
-            !status.ok())
-        {
-            throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
-        }
-        auto& element = m_columnsInstances.emplace_back(m_db, pColumnFamily);
-        element.head = 1;
-        element.tail = 0;
-    }
-
-    bool columnExists(std::string_view columnName) const
-    {
-        if (columnName.empty())
-        {
-            throw std::invalid_argument {"Column name is empty"};
-        }
-
-        return std::find_if(m_columnsInstances.begin(),
-                            m_columnsInstances.end(),
-                            [&columnName](const ColumnFamilyQueue& handle)
-                            { return columnName == handle->GetName(); }) != m_columnsInstances.end();
-    }
-
-    void initializeQueueData(ColumnFamilyQueue& element)
-    {
-        // RocksDB counter initialization.
-        element.size = 0;
-
-        auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions(), element.handle()));
+        auto it = std::unique_ptr<rocksdb::Iterator>(m_db->NewIterator(rocksdb::ReadOptions()));
         it->SeekToFirst();
-        if (it->Valid())
-        {
-            const auto key = std::stoull(it->key().ToString());
-            element.head = key;
-            element.tail = key;
-        }
-        else
-        {
-            element.head = 1;
-            element.tail = 0;
-        }
-
         while (it->Valid())
         {
-            const auto key = std::stoull(it->key().ToString());
-            if (key > element.tail)
+            // Split key to get the ID and queue number.
+            const auto data = Utils::split(it->key().ToString(), '_');
+            const auto& id = data.at(ID_QUEUE);
+            const auto queueNumber = std::stoull(data.at(QUEUE_NUMBER));
+
+            if (m_queueMetadata.find(id.data()) == m_queueMetadata.end())
             {
-                element.tail = key;
+                m_queueMetadata.emplace(id,
+                                        QueueMetadata {queueNumber, queueNumber, 0, std::chrono::system_clock::now()});
             }
 
-            if (key < element.head)
+            auto& element = m_queueMetadata[id];
+
+            if (queueNumber > element.tail)
             {
-                element.head = key;
+                element.tail = queueNumber;
+            }
+
+            if (queueNumber < element.head)
+            {
+                element.head = queueNumber;
             }
             ++element.size;
 
@@ -145,37 +94,7 @@ public:
         // Create directories recursively if they do not exist
         std::filesystem::create_directories(databasePath);
 
-        // Get a list of the existing columns descriptors.
-        if (const auto databaseFile {databasePath / "CURRENT"}; std::filesystem::exists(databaseFile))
-        {
-            // Read columns names.
-            std::vector<std::string> columnsNames;
-            if (const auto listStatus {rocksdb::DB::ListColumnFamilies(options, path, &columnsNames)}; !listStatus.ok())
-            {
-                throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
-            }
-
-            // Create a set of column descriptors. This includes the default column.
-            for (auto& columnName : columnsNames)
-            {
-                columnsDescriptors.emplace_back(columnName, columnFamilyOptions);
-            }
-        }
-        else
-        {
-            // Database doesn't exist: Set just the default column descriptor.
-            columnsDescriptors.emplace_back(rocksdb::kDefaultColumnFamilyName, columnFamilyOptions);
-        }
-
-        // Create a vector of column handles.
-        // This vector will be used to store the column handles created by the Open method and based on the
-        // columnsDescriptors.
-        std::vector<rocksdb::ColumnFamilyHandle*> columnHandles;
-        columnHandles.reserve(columnsDescriptors.size());
-
-        // Open database with a list of columns descriptors.
-        if (const auto status {rocksdb::DB::Open(options, path, columnsDescriptors, &columnHandles, &dbRawPtr)};
-            !status.ok())
+        if (const auto status = rocksdb::DB::Open(options, path, &dbRawPtr); !status.ok())
         {
             throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
         }
@@ -184,88 +103,59 @@ public:
         // allocated RocksDB instance.
         m_db.reset(dbRawPtr);
 
-        // Create a RAII wrapper for each column handle.
-        for (const auto& handle : columnHandles)
-        {
-            if (handle->GetName() != rocksdb::kDefaultColumnFamilyName)
-            {
-                auto& element = m_columnsInstances.emplace_back(m_db, handle);
-                initializeQueueData(element);
-            }
-            else
-            {
-                // Close the default column handle.
-                // The default column handle is not used in this class.
-                if (const auto status {m_db->DestroyColumnFamilyHandle(handle)}; !status.ok())
-                {
-                    throw std::runtime_error("Failed to free RocksDB column family: " +
-                                             std::string {status.getState()});
-                }
-            }
-        }
+        // Initialize queue data.
+        initializeQueueData();
     }
 
-    void push(std::string_view columnFamily, const T& data)
+    void push(std::string_view id, const T& data)
     {
-        if (!columnExists(columnFamily))
+        if (m_queueMetadata.find(id.data()) == m_queueMetadata.end())
         {
-            createColumn(columnFamily);
+            m_queueMetadata.emplace(id, QueueMetadata {1, 0, 0, std::chrono::system_clock::now()});
         }
 
-        const auto it {std::find_if(m_columnsInstances.begin(),
-                                    m_columnsInstances.end(),
-                                    [&columnFamily](const ColumnFamilyQueue& handle)
-                                    { return columnFamily == handle.handle()->GetName(); })};
-
-        if (it != m_columnsInstances.end())
+        if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            ++it->tail;
-            if (const auto status = m_db->Put(rocksdb::WriteOptions(), it->handle(), std::to_string(it->tail), data);
+            ++it->second.tail;
+            if (const auto status =
+                    m_db->Put(rocksdb::WriteOptions(), std::string(id) + "_" + std::to_string(it->second.tail), data);
                 !status.ok())
             {
                 throw std::runtime_error("Failed to enqueue element");
             }
-            ++it->size;
+            ++it->second.size;
         }
     }
 
-    void pop(std::string_view columnFamily)
+    void pop(std::string_view id)
     {
-        if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                        m_columnsInstances.end(),
-                                        [&columnFamily](const ColumnFamilyQueue& handle)
-                                        { return columnFamily == handle.handle()->GetName(); })};
-            it != m_columnsInstances.end())
+        if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
             // RocksDB dequeue element.
-            if (!m_db->Delete(rocksdb::WriteOptions(), it->handle(), std::to_string(it->head)).ok())
+            if (!m_db->Delete(rocksdb::WriteOptions(), std::string(id) + "_" + std::to_string(it->second.head)).ok())
             {
                 throw std::runtime_error("Failed to dequeue element, can't delete it");
             }
 
-            ++it->head;
-            --it->size;
+            ++it->second.head;
+            --it->second.size;
 
-            if (it->size == 0)
+            if (it->second.size == 0)
             {
-                dropColumn(columnFamily);
+                m_queueMetadata.erase(it);
             }
         }
         else
         {
-            throw std::runtime_error("Couldn't find column family: " + std::string {columnFamily});
+            throw std::runtime_error("Couldn't find ID: " + std::string {id});
         }
     }
 
-    uint64_t size(std::string_view columnName) const
+    uint64_t size(std::string_view id) const
     {
-        if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                        m_columnsInstances.end(),
-                                        [&columnName](const ColumnFamilyQueue& handle)
-                                        { return columnName == handle.handle()->GetName(); })};
-            it != m_columnsInstances.end())
+        if (const auto it = m_queueMetadata.find(id.data()); it != m_queueMetadata.end())
         {
-            return it->size;
+            return it->second.size;
         }
 
         return 0;
@@ -277,74 +167,107 @@ public:
         // Count if there is any column with elements.
         const auto currentSystemTime = std::chrono::system_clock::now();
         auto count =
-            std::count_if(m_columnsInstances.begin(),
-                          m_columnsInstances.end(),
-                          [&](const ColumnFamilyQueue& handle) { return handle.postponeTime < currentSystemTime; });
+            std::count_if(m_queueMetadata.begin(),
+                          m_queueMetadata.end(),
+                          [&](const auto& metadata) { return metadata.second.postponeTime < currentSystemTime; });
         return count == 0;
     }
 
     const std::string& getAvailableColumn()
     {
-        if (m_columnsInstances.empty())
+        if (m_queueMetadata.empty())
         {
-            throw std::runtime_error("No column family available");
+            throw std::runtime_error("No queue ids available");
         }
 
         // Only consider the columns that are not postponed.
         const auto currentSystemTime = std::chrono::system_clock::now();
-        auto it =
-            std::find_if(m_columnsInstances.begin(),
-                         m_columnsInstances.end(),
-                         [&](const ColumnFamilyQueue& handle) { return handle.postponeTime < currentSystemTime; });
+        auto it = std::find_if(m_queueMetadata.begin(),
+                               m_queueMetadata.end(),
+                               [&](const auto& metadata) { return metadata.second.postponeTime < currentSystemTime; });
 
-        if (it == m_columnsInstances.end())
+        if (it == m_queueMetadata.end())
         {
-            throw std::runtime_error("Probably race condition, no column family available");
+            throw std::runtime_error("Probably race condition, no queue id available");
         }
 
-        return it->handle()->GetName();
+        return it->first;
     }
 
-    void postpone(std::string_view columnName, const std::chrono::seconds& time) noexcept
+    void postpone(std::string_view id, const std::chrono::seconds& time) noexcept
     {
-        if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                        m_columnsInstances.end(),
-                                        [&columnName](const ColumnFamilyQueue& handle)
-                                        { return columnName == handle.handle()->GetName(); })};
-            it != m_columnsInstances.end())
+        if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            it->postponeTime = std::chrono::system_clock::now() + time;
+            it->second.postponeTime = std::chrono::system_clock::now() + time;
         }
     }
 
-    U front(std::string_view columnFamily) const
+    U front(std::string_view id) const
     {
         U value;
-        if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                        m_columnsInstances.end(),
-                                        [&columnFamily](const ColumnFamilyQueue& handle)
-                                        { return columnFamily == handle.handle()->GetName(); })};
-            it != m_columnsInstances.end())
+        if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
         {
-            if (!m_db->Get(rocksdb::ReadOptions(), it->handle(), std::to_string(it->head), &value).ok())
+            if (!m_db->Get(rocksdb::ReadOptions(),
+                           m_db->DefaultColumnFamily(),
+                           std::string(id) + "_" + std::to_string(it->second.head),
+                           &value)
+                     .ok())
             {
-                throw std::runtime_error("Failed to get front element, column family: " + std::string {columnFamily} +
-                                         " key: " + std::to_string(it->head));
+                throw std::runtime_error("Failed to get front element, id: " + std::string {id} +
+                                         " key: " + std::to_string(it->second.head));
             }
         }
         else
         {
-            throw std::runtime_error("Couldn't find column family: " + std::string {columnFamily});
+            throw std::runtime_error("Couldn't find id: " + std::string {id});
         }
 
         return value;
+    }
+
+    void clear(std::string_view id)
+    {
+        auto deleteElement = [this](const std::string& key)
+        {
+            if (!m_db->Delete(rocksdb::WriteOptions(), key).ok())
+            {
+                throw std::runtime_error("Failed to clear element, can't delete it");
+            }
+        };
+
+        if (id.empty())
+        {
+            // Clear all elements from the queue.
+            for (const auto& metadata : m_queueMetadata)
+            {
+                for (auto i = metadata.second.head; i <= metadata.second.tail; ++i)
+                {
+                    deleteElement(std::string(metadata.first) + "_" + std::to_string(i));
+                }
+            }
+            m_queueMetadata.clear();
+        }
+        else
+        {
+            if (const auto it {m_queueMetadata.find(id.data())}; it != m_queueMetadata.end())
+            {
+                // Clear all elements from the queue.
+                for (auto i = it->second.head; i <= it->second.tail; ++i)
+                {
+                    deleteElement(std::string(id) + "_" + std::to_string(i));
+                    ++it->second.head;
+                    --it->second.size;
+                }
+                m_queueMetadata.erase(it);
+            }
+        }
     }
 
 private:
     std::shared_ptr<rocksdb::DB> m_db;
     std::shared_ptr<rocksdb::Cache> m_readCache;
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
-    std::vector<ColumnFamilyQueue> m_columnsInstances; ///< List of column family.
+    std::map<std::string, QueueMetadata> m_queueMetadata; ///< Map queue.
 };
 
 #endif // _ROCKSDB_QUEUE_CF_HPP

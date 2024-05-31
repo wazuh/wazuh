@@ -629,6 +629,11 @@ void fim_checker(const char *path,
     directory_t *configuration;
     int depth;
 
+    if (!w_utf8_valid(path)) {
+        mwarn(FIM_INVALID_FILE_NAME, path);
+        return;
+    }
+
 #ifdef WIN32
     // Ignore the recycle bin.
     if (check_removed_file(path)){

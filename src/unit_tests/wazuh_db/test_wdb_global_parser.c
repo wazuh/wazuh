@@ -2319,7 +2319,6 @@ void test_wdb_parse_global_delete_group_query_error(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-group test_group");
-    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_string(__wrap_wdb_global_delete_group, group_name, "test_group");
     will_return(__wrap_wdb_global_delete_group, OS_INVALID);
     expect_string(__wrap__mdebug1, formatted_msg, "Error deleting group in global.db.");
@@ -2352,7 +2351,6 @@ void test_wdb_parse_global_delete_group_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: delete-group test_group");
-    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_string(__wrap_wdb_global_delete_group, group_name, "test_group");
     will_return(__wrap_wdb_global_delete_group, OS_SUCCESS);
 
@@ -2845,7 +2843,6 @@ void test_wdb_parse_global_set_agent_groups_invalid_json(void **state)
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
     expect_function_call(__wrap_w_inc_global_open_time);
-    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
@@ -2876,7 +2873,6 @@ void test_wdb_parse_global_set_agent_groups_missing_field(void **state)
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
     expect_function_call(__wrap_w_inc_global_open_time);
-    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
@@ -2907,7 +2903,6 @@ void test_wdb_parse_global_set_agent_groups_invalid_mode(void **state)
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
     expect_function_call(__wrap_w_inc_global_open_time);
-    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
@@ -2941,7 +2936,6 @@ void test_wdb_parse_global_set_agent_groups_fail(void **state)
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
     expect_function_call(__wrap_w_inc_global_open_time);
-    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_function_call(__wrap_w_inc_global_agent_set_agent_groups);
     will_return(__wrap_gettimeofday, NULL);
     will_return(__wrap_gettimeofday, NULL);
@@ -2965,7 +2959,6 @@ void test_wdb_parse_global_set_agent_groups_success(void **state)
 
     will_return(__wrap_wdb_open_global, data->wdb);
     expect_string(__wrap__mdebug2, formatted_msg, "Global query: set-agent-groups {\"mode\":\"append\",\"sync_status\":\"synced\",\"data\":[{\"id\":1,\"groups\":[\"default\"]}]}");
-    will_return(__wrap_wdb_commit2, OS_SUCCESS);
     expect_value(__wrap_wdb_global_set_agent_groups, mode, WDB_GROUP_APPEND);
     expect_string(__wrap_wdb_global_set_agent_groups, sync_status, "synced");
     expect_string(__wrap_wdb_global_set_agent_groups, agents_group_info, "[{\"id\":1,\"groups\":[\"default\"]}]");
@@ -5047,6 +5040,67 @@ void test_wdb_parse_delete_db_file (void **state) {
     os_free(query);
 }
 
+/* Tests wdb_parse_global_recalculate_agent_group_hashes */
+
+void test_wdb_parse_global_recalculate_agent_group_hashes_error(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global recalculate-agent-group-hashes";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: recalculate-agent-group-hashes");
+    will_return(__wrap_wdb_global_recalculate_all_agent_groups_hash, OS_INVALID);
+    expect_string(__wrap__mwarn, formatted_msg, "Error recalculating group hash of agents in global.db.");
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes_time);
+
+    expect_string(__wrap_w_is_file, file, "queue/db/global.db");
+    will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "err Error recalculating group hash of agents in global.db");
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_wdb_parse_global_recalculate_agent_group_hashes_success(void **state)
+{
+    int ret = 0;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query[OS_BUFFER_SIZE] = "global recalculate-agent-group-hashes";
+
+    will_return(__wrap_wdb_open_global, data->wdb);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: recalculate-agent-group-hashes");
+    will_return(__wrap_wdb_global_recalculate_all_agent_groups_hash, OS_SUCCESS);
+
+    expect_function_call(__wrap_w_inc_queries_total);
+    expect_function_call(__wrap_w_inc_global);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_open_time);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes);
+    will_return(__wrap_gettimeofday, NULL);
+    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_w_inc_global_agent_recalculate_agent_group_hashes_time);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
+    ret = wdb_parse(query, data->output, 0);
+
+    assert_string_equal(data->output, "ok");
+    assert_int_equal(ret, OS_SUCCESS);
+}
+
 int main()
 {
     const struct CMUnitTest tests[] = {
@@ -5232,7 +5286,10 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_result_null, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_success_with_last_hash, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_global_get_distinct_agent_groups_result_null_with_last_hash, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_delete_db_file, test_setup, test_teardown)
+        cmocka_unit_test_setup_teardown(test_wdb_parse_delete_db_file, test_setup, test_teardown),
+        /* Tests wdb_parse_global_recalculate_agent_group_hashes */
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_recalculate_agent_group_hashes_error, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_recalculate_agent_group_hashes_success, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

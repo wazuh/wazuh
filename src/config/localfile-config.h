@@ -181,12 +181,12 @@ typedef w_journal_filter_t ** w_journal_filters_list_t;
 
 /**
  * @brief Represents the configuration of the journal log
- * 
+ *
  * Whens a configuration doesn't have a filter, all log entries are read.
- * Whens merging the configuration of two journal log readers, the filters of the second 
+ * Whens merging the configuration of two journal log readers, the filters of the second
  * log reader are added to the first one.
  * If any of the log readers don't have a filter, then the filter are disabled,
- * all log entries are read. 
+ * all log entries are read.
  */
 typedef struct w_journal_log_config_t
 {
@@ -296,6 +296,14 @@ void w_macos_log_config_free(w_macos_log_config_t ** config);
 void w_multiline_log_config_free(w_multiline_config_t ** config);
 
 /**
+ * @brief Clone a multiline log config
+ *
+ * @param config Multiline log config to clone
+ * @return w_multiline_config_t* Cloned multiline log config
+ */
+w_multiline_config_t* w_multiline_log_config_clone(w_multiline_config_t * config);
+
+/**
  * @brief Get match attribute for multiline regex
  * @param node node to find match value
  * @retval ML_MATCH_START if match is "start" or if the attribute is not present
@@ -368,7 +376,7 @@ bool journald_add_condition_to_filter(xml_node * node, w_journal_filter_t ** fil
  * The filter pointer is invalid after the call.
  */
 void w_journal_filter_free(w_journal_filter_t * filter);
- 
+
 /**
  * @brief Add a condition to the filter, creating the filter if it does not exist
  *
@@ -398,7 +406,7 @@ bool w_journal_add_filter_to_list(w_journal_filters_list_t * list, w_journal_fil
 
 /**
  * @brief Get the filter as a JSON Array
- * 
+ *
  * @param filter_lst Filters list
  * @return cJSON* JSON Array with the filters
  */

@@ -1451,7 +1451,7 @@ components:
         group_config_status:
           type: string
           description: "Agent groups configuration sync status"
-    
+
     AgentAddBody:
       type: object
       properties:
@@ -1505,7 +1505,7 @@ components:
         key:
           type: string
           format: base64
-    
+
     AgentInsertBody:
       type: object
       properties:
@@ -2143,7 +2143,7 @@ components:
             type:
               description: "Node type"
               type: string
-    
+
     ClusterLocalConfig:
       type: object
       properties:
@@ -2182,7 +2182,7 @@ components:
             disabled:
               description: "Whether the cluster is enabled or not"
               type: boolean
-    
+
     ClusterStatus:
       type: object
       properties:
@@ -9504,7 +9504,7 @@ paths:
                         file, rootkit trojans or rcl"
               example:
                 data:
-                  vars: 
+                  vars:
                     web_dirs: "/var/www,/var/htdocs,/home/httpd,/usr/local/apache,/usr/local/apache2,/usr/local/www;"
                   controls:
                     - name: "CIS - Testing against the CIS Debian Linux Benchmark v1."
@@ -10272,7 +10272,7 @@ paths:
       tags:
         - Cluster
       summary: "Get node config"
-      description: "Return wazuh configuration used in node {node_id}. The 'section' and 'field' parameters will be 
+      description: "Return wazuh configuration used in node {node_id}. The 'section' and 'field' parameters will be
       ignored if 'raw' parameter is provided."
       operationId: api.controllers.cluster_controller.get_configuration_node
       x-rbac-actions:
@@ -10604,7 +10604,7 @@ paths:
                       metrics:
                         bytes:
                           received: 0
-                          sent: 0 
+                          sent: 0
                         keys_reload_count: 0
                         messages:
                           received_breakdown:
@@ -12144,7 +12144,7 @@ paths:
                       metrics:
                         bytes:
                           received: 0
-                          sent: 0 
+                          sent: 0
                         keys_reload_count: 0
                         messages:
                           received_breakdown:

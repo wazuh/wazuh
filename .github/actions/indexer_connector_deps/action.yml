@@ -1,0 +1,53 @@
+name: "Indexer connector dependencies"
+description: "Download and compiles the dependencies for the indexer connector"
+
+runs:
+  using: "composite"
+  steps:
+      - name: Dependencies for local execution
+        if: env.ACT # Only run for local execution
+        shell: bash
+        run: |
+
+          # Obtain a copy of the signing key
+          wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+
+          # Add the repository to your sources list
+          echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ jammy main' | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+
+          # Update packages
+          sudo apt-get update
+          sudo apt-get install -y cmake
+
+      - name: General dependencies
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libc6-dbg
+
+      - name: Build external deps
+        run: |
+          cd src
+          make deps TARGET=server -j2
+          make libwazuhext.so TARGET=server -j2
+        shell: bash
+
+      - name: Build http-request
+        run: |
+          cd src
+          SRC_FOLDER=$(pwd)
+
+          cd shared_modules/http-request
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_PROJECT_NAME=http-request -DSRC_FOLDER=${SRC_FOLDER} && make -j2
+        shell: bash
+
+      - name: Build keystore
+        run: |
+          cd src
+          SRC_FOLDER=$(pwd)
+
+          cd shared_modules/keystore
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_PROJECT_NAME=keystore -DSRC_FOLDER=${SRC_FOLDER} && make -j2
+        shell: bash

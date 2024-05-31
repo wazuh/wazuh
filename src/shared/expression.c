@@ -149,7 +149,7 @@ bool w_expression_add_osip(w_expression_t ** var, char * ip) {
     return true;
 }
 
-bool w_expression_compile(w_expression_t * expression, char * pattern, int flags) {
+bool w_expression_compile(w_expression_t * expression, const char * pattern, int flags) {
 
     bool retval = true;
 
