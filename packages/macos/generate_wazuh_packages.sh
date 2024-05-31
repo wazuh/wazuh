@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -ex
 # Program to build and package OSX wazuh-agent
 # Wazuh package generator
 # Copyright (C) 2015, Wazuh Inc.

@@ -80,7 +80,7 @@ build_package(){
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
         --define "_version ${wazuh_version}" --define "_hashcommit ${short_commit_hash}" \
         --target $ARCH -ba ${rpm_build_dir}/SPECS/${package_name}.spec
-    return 0
+    return $?
 }
 
 get_package_and_checksum(){

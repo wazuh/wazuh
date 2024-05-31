@@ -8,7 +8,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-set -x
+set -ex
 CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
 WAZUH_PATH="$(cd $CURRENT_PATH/..; pwd -P)"
 ARCHITECTURE="amd64"
