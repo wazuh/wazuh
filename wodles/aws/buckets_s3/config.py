@@ -14,7 +14,6 @@ sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
 
-
 class AWSConfigBucket(aws_bucket.AWSLogsBucket):
     """
     Represents a bucket with AWS Config logs

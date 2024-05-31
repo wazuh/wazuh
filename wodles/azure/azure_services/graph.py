@@ -38,12 +38,12 @@ def start_graph(args):
 
     # Read credentials
     if args.graph_auth_path and args.graph_tenant_domain:
-        logging.info(f"Graph: Using the auth file {args.graph_auth_path} for authentication")
+        logging.debug(f"Graph: Using the auth file {args.graph_auth_path} for authentication")
         client, secret = read_auth_file(
             auth_path=args.graph_auth_path, fields=('application_id', 'application_key')
         )
     elif args.graph_id and args.graph_key and args.graph_tenant_domain:
-        logging.info(f"Graph: Using id and key from configuration for authentication")
+        logging.debug(f"Graph: Using id and key from configuration for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='graph_id and graph_key', release='4.4', url=CREDENTIALS_URL
@@ -137,17 +137,17 @@ def build_graph_url(query: str, offset: str, reparse: bool, md5_hash: str):
     # Build the filter taking into account the min and max values from the file
     else:
         if desired_datetime < min_datetime:
-            logging.info(f"Graph: Making request query for the following intervals: "
-                         f"from {desired_str} to {min_str} and from {max_str}")
+            logging.debug(f"Graph: Making request query for the following intervals: "
+                          f"from {desired_str} to {min_str} and from {max_str}")
             filter_value = (
                 f'({filtering_condition}+lt+{min_str}+and+{filtering_condition}+ge+{desired_str})'
                 f'+or+({filtering_condition}+gt+{max_str})'
             )
         elif desired_datetime > max_datetime:
-            logging.info(f"Graph: Making request for the following interval: from {desired_str}")
+            logging.debug(f"Graph: Making request for the following interval: from {desired_str}")
             filter_value = f'{filtering_condition}+ge+{desired_str}'
         else:
-            logging.info(f"Graph: Making request for the following interval: from {max_str}")
+            logging.debug(f"Graph: Making request for the following interval: from {max_str}")
             filter_value = f'{filtering_condition}+gt+{max_str}'
 
     logging.debug(f'Graph: The search starts for query: "{query}" using {filter_value}')

@@ -39,12 +39,12 @@ def start_log_analytics(args):
 
     # Read credentials
     if args.la_auth_path and args.la_tenant_domain:
-        logging.info(f"Log Analytics: Using the auth file {args.la_auth_path} for authentication")
+        logging.debug(f"Log Analytics: Using the auth file {args.la_auth_path} for authentication")
         client, secret = read_auth_file(
             auth_path=args.la_auth_path, fields=('application_id', 'application_key')
         )
     elif args.la_id and args.la_key and args.la_tenant_domain:
-        logging.info(f"Log Analytics: Using id and key from configuration for authentication")
+        logging.debug(f"Log Analytics: Using id and key from configuration for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='la_id and la_key', release='4.4', url=CREDENTIALS_URL
@@ -94,7 +94,7 @@ def start_log_analytics(args):
 
 
 def build_log_analytics_query(
-    query: str, offset: str, reparse: bool, md5_hash: str
+        query: str, offset: str, reparse: bool, md5_hash: str
 ) -> dict:
     """Prepare and make the request, building the query based on the time of event generation.
 
@@ -142,17 +142,17 @@ def build_log_analytics_query(
     else:
         # Build the filter taking into account the min and max values
         if desired_datetime < min_datetime:
-            logging.info(f"Log Analytics: Making request query for the following intervals: "
-                         f"from {desired_str} to {min_str} and from {max_str}")
+            logging.debug(f"Log Analytics: Making request query for the following intervals: "
+                          f"from {desired_str} to {min_str} and from {max_str}")
             filter_value = (
                 f'( TimeGenerated < {min_str} and TimeGenerated >= {desired_str}) or '
                 f'( TimeGenerated > {max_str})'
             )
         elif desired_datetime > max_datetime:
-            logging.info(f"Log Analytics: Making request for the following interval: from {desired_str}")
+            logging.debug(f"Log Analytics: Making request for the following interval: from {desired_str}")
             filter_value = f'TimeGenerated >= {desired_str}'
         else:
-            logging.info(f"Log Analytics: Making request for the following interval: from {max_str}")
+            logging.debug(f"Log Analytics: Making request for the following interval: from {max_str}")
             filter_value = f'TimeGenerated > {max_str}'
 
     query = f'{query} | order by TimeGenerated asc | where {filter_value} '
@@ -161,7 +161,7 @@ def build_log_analytics_query(
 
 
 def get_log_analytics_events(
-    url: str, body: dict, headers: dict, md5_hash: str, query: str, tag: str
+        url: str, body: dict, headers: dict, md5_hash: str, query: str, tag: str
 ):
     """Get the logs, process the response and iterate the events.
 

@@ -38,12 +38,12 @@ def start_storage(args):
     # Read credentials
     logging.info('Storage: Authenticating.')
     if args.storage_auth_path:
-        logging.info(f"Storage: Using path {args.storage_auth_path} for authentication")
+        logging.debug(f"Storage: Using path {args.storage_auth_path} for authentication")
         name, key = read_auth_file(
             auth_path=args.storage_auth_path, fields=('account_name', 'account_key')
         )
     elif args.account_name and args.account_key:
-        logging.info(f"Storage: Using path account name and account key for authentication")
+        logging.debug(f"Storage: Using path account name and account key for authentication")
         logging.warning(
             DEPRECATED_MESSAGE.format(
                 name='account_name and account_key', release='4.4', url=CREDENTIALS_URL

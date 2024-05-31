@@ -62,7 +62,7 @@ def main():
 
                 # check permissions
                 subscriber_client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
-                logger.info("Checking credentials")
+                logger.debug("Checking credentials")
                 subscriber_client.check_permissions()
                 messages_per_thread = max_messages // n_threads
                 remaining_messages = max_messages % n_threads
@@ -86,7 +86,7 @@ def main():
                         "only_logs_after": arguments.only_logs_after,
                         "reparse": arguments.reparse}
             integration = GCSAccessLogs(arguments.credentials_file, logger, **f_kwargs)
-            logger.info("Checking credentials")
+            logger.debug("Checking credentials")
             integration.check_permissions()
             num_processed_messages = integration.process_data()
 

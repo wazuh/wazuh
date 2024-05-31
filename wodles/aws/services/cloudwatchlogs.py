@@ -228,7 +228,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
             aws_tools.debug('Removing log stream "{}" from log group "{}"'.format(log_group, log_stream), 1)
             self.client.delete_log_stream(logGroupName=log_group, logStreamName=log_stream)
         except botocore.exceptions.ClientError as err:
-            aws_tools.debug(f'The "remove_aws_log_stream" request failed: {err}', 1)
+            aws_tools.error(f'The "remove_aws_log_stream" request failed: {err}')
             sys.exit(16)
         except Exception:
             aws_tools.debug('ERROR: Error trying to remove "{}" log stream from "{}" log group.'.format(log_stream, log_group),
@@ -289,7 +289,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
                                 f'available. Attempting again.', 1)
                 continue  # Needed to make the get_log_events request again
             except botocore.exceptions.ClientError as err:
-                aws_tools.debug(f'ERROR: The "get_log_events" request failed: {err}', 1)
+                aws_tools.error(f'The "get_log_events" request failed: {err}')
                 sys.exit(16)
 
             # Update token
@@ -495,7 +495,7 @@ class AWSCloudWatchLogs(aws_service.AWSService):
         except botocore.exceptions.EndpointConnectionError as e:
             aws_tools.error(f'{str(e)}')
         except botocore.exceptions.ClientError as err:
-            aws_tools.debug(f'The "get_log_streams" request failed: {err}', 1)
+            aws_tools.error(f'The "get_log_streams" request failed: {err}')
             sys.exit(16)
         except Exception:
             aws_tools.debug(
