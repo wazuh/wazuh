@@ -68,7 +68,8 @@ from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import FILE_EXCEEDS_DISK_QUOTA
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils.file import write_file, generate_string
+from wazuh_testing.utils.file import write_file
+from wazuh_testing.utils.string import generate_string
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
