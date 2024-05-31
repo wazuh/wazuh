@@ -103,16 +103,14 @@ build_pkg() {
 
 
 
-    # compress debug symbols into a zip file
-    cd ${OUTDIR}
-
+ 
     # Find all files containing "-dbg"
-    files_to_zip=$(find . -name "*-dbg*"  -type f)
+    files_to_zip=$(ls ${OUTDIR}/*.deb | grep -- -dbg)
 
     # Check if any files were found
     if [[ -z "$files_to_zip" ]]; then
-    echo "No debug symbols found in current directory."
-    exit 0
+        echo "No debug symbols found in current directory."
+        exit 0
     fi
 
     # Extract filename without extension
@@ -125,12 +123,10 @@ build_pkg() {
     zip -q -r "$archive_name" "$files_to_zip"
 
     # Print confirmation message
-    echo "Compressed debug symbols into '${OUTDIR}/$(ls *.zip | tail -n 1)'"
+    echo "Compressed debug symbols into '${archive_name}'"
 
-    delete_file=$(find . -name "*-dbg*.deb"  -type f)
+    delete_file=${files_to_zip}
     rm ${delete_file}
-
-    cd ..
 
     return 0
 }
