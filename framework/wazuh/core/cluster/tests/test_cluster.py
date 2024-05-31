@@ -11,6 +11,7 @@ from time import time
 from unittest.mock import ANY, MagicMock, call, mock_open, patch
 
 import pytest
+from jsonschema import validators
 from wazuh.core import common
 
 with patch('wazuh.common.wazuh_uid'):
@@ -611,7 +612,9 @@ def test_validate_haproxy_helper_config():
     with patch.object(cluster, 'validate') as validate_mock:
         cluster.validate_haproxy_helper_config(config)
 
-        validate_mock.assert_called_once_with(config, cluster.HAPROXY_HELPER_SCHEMA)
+        validate_mock.assert_called_once_with(
+            config, cluster.HAPROXY_HELPER_SCHEMA, cls=validators.Draft202012Validator
+        )
 
 
 def test_validate_haproxy_helper_config_ko():

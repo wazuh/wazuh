@@ -16,7 +16,7 @@ from operator import eq
 from os import listdir, path, remove, stat, walk
 from uuid import uuid4
 
-from jsonschema import ValidationError, validate
+from jsonschema import ValidationError, validate, validators
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import (
@@ -52,7 +52,7 @@ HAPROXY_HELPER_SCHEMA = {
         AGENT_RECONNECTION_STABILITY_TIME: {'type': 'integer', 'minimum': 10},
         AGENT_CHUNK_SIZE: {'type': 'integer', 'minimum': 100},
         AGENT_RECONNECTION_TIME: {'type': 'integer', 'minimum': 0},
-        IMBALANCE_TOLERANCE: {'type': 'number', 'minimum': 0, 'exclusiveMinimum': True, 'maximum': 1},
+        IMBALANCE_TOLERANCE: {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1},
         REMOVE_DISCONNECTED_NODE_AFTER: {'type': 'integer', 'minimum': 0},
     },
 }
@@ -75,7 +75,7 @@ def validate_haproxy_helper_config(config: dict):
         If there any invalid value.
     """
     try:
-        validate(config, HAPROXY_HELPER_SCHEMA)
+        validate(config, HAPROXY_HELPER_SCHEMA, cls=validators.Draft202012Validator)
     except ValidationError as error:
         raise WazuhError(
             3004,
