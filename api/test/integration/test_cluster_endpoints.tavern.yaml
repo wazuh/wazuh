@@ -822,20 +822,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
 
-  #### Upload corrupted rules file
-  - name: Upload corrupted configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: PUT
-      data: "{corrupted_rules_file}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-    delay_after: !float "{cluster_sync_delay}"
-
   - name: Request validation
     request:
       verify: False
@@ -857,18 +843,6 @@ stages:
                 - 'worker2'
           total_affected_items: 0
           total_failed_items: 3
-
-    #### Delete corrupted rules file
-  - name: Delete rules file
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-    delay_after: !float "{cluster_sync_delay}"
 
   - name: Request cluster validation
     request:

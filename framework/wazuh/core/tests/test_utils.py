@@ -149,7 +149,7 @@ mock_nested_dict = {
 }
 
 test_xml = '''
-<!-- Local rules -->
+<!-- Local decoders -->
 
 <!-- Modify it at your will. -->
 
@@ -1750,7 +1750,7 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 def test_validate_wazuh_xml(mock_remote_commands, mock_disabled_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
-    with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
+    with open(os.path.join(test_files_path, 'test_decoders.xml')) as f:
         xml_file = f.read()
 
     m = mock_open(read_data=xml_file)
@@ -1776,7 +1776,7 @@ def test_validate_wazuh_xml_ko(effect, expected_exception):
     expected_exception
         Expected code when triggering the exception.
     """
-    input_file = os.path.join(test_files_path, 'test_rules.xml')
+    input_file = os.path.join(test_files_path, 'test_decoders.xml')
 
     with patch('wazuh.core.utils.load_wazuh_xml', side_effect=effect):
         with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
@@ -1809,15 +1809,6 @@ def test_to_relative_path():
     assert utils.to_relative_path(os.path.join(WAZUH_PATH, path)) == path
 
     assert utils.to_relative_path(path, prefix='etc') == os.path.basename(path)
-
-
-@patch('wazuh.core.utils.common.RULES_PATH', new=test_files_path)
-@patch('wazuh.core.utils.common.USER_RULES_PATH', new=test_files_path)
-def test_expand_rules():
-    rules = utils.expand_rules()
-    assert rules == set(map(os.path.basename, glob.glob(os.path.join(test_files_path,
-                                                                     f'*{utils.common.RULES_EXTENSION}'))))
-
 
 @patch('wazuh.core.utils.common.DECODERS_PATH', new=test_files_path)
 @patch('wazuh.core.utils.common.USER_DECODERS_PATH', new=test_files_path)
