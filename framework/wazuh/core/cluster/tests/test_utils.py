@@ -5,7 +5,7 @@
 import logging
 import os
 import sys
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,8 +15,8 @@ with patch('wazuh.core.common.getgrnam'):
             with patch('wazuh.core.common.wazuh_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
-                from wazuh.core.cluster import utils
                 from wazuh import WazuhError, WazuhException, WazuhInternalError
+                from wazuh.core.cluster import utils
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
@@ -75,6 +75,76 @@ def test_read_cluster_config():
         default_cluster_config['port'] = 'None'
         with pytest.raises(WazuhError, match='.* 3004 .*'):
             utils.read_cluster_config()
+
+
+@pytest.mark.parametrize(
+        'config',
+        (
+            {
+                utils.HAPROXY_DISABLED: 'no',
+                utils.HAPROXY_ADDRESS: 'test',
+                utils.HAPROXY_PASSWORD: 'test',
+                utils.HAPROXY_USER: 'test'
+            },
+            {
+                utils.HAPROXY_DISABLED: 'no',
+                utils.HAPROXY_ADDRESS: 'test',
+                utils.HAPROXY_PASSWORD: 'test',
+                utils.HAPROXY_USER: 'test',
+                utils.FREQUENCY: '60',
+                utils.AGENT_CHUNK_SIZE: '120',
+                utils.IMBALANCE_TOLERANCE: '0.1'
+            }
+        )
+)
+def test_parse_haproxy_helper_config(config: dict):
+    """Verify that parse_haproxy_helper_config function returns the default configuration."""
+
+    ret_val = utils.parse_haproxy_helper_config(config)
+
+    for key in ((config.keys()) | utils.HELPER_DEFAULTS.keys()):
+        assert key in ret_val
+
+        assert isinstance(ret_val[utils.HAPROXY_DISABLED], bool)
+
+        if key in [
+            utils.FREQUENCY,
+            utils.AGENT_CHUNK_SIZE,
+            utils.AGENT_RECONNECTION_STABILITY_TIME,
+            utils.AGENT_RECONNECTION_TIME,
+            utils.REMOVE_DISCONNECTED_NODE_AFTER,
+            utils.HAPROXY_PORT
+        ]:
+            assert isinstance(ret_val[key], int)
+
+        if key in [utils.IMBALANCE_TOLERANCE]:
+            assert isinstance(ret_val[key], float)
+
+
+@pytest.mark.parametrize(
+        'config',
+        (
+            {
+                utils.HAPROXY_DISABLED: 'no',
+                utils.HAPROXY_ADDRESS: 'test',
+                utils.HAPROXY_PASSWORD: 'test',
+                utils.HAPROXY_USER: 'test',
+                utils.FREQUENCY: 'bad',
+            },
+            {
+                utils.HAPROXY_DISABLED: 'no',
+                utils.HAPROXY_ADDRESS: 'test',
+                utils.HAPROXY_PASSWORD: 'test',
+                utils.HAPROXY_USER: 'test',
+                utils.IMBALANCE_TOLERANCE: 'bad'
+            }
+        )
+)
+def test_parse_haproxy_helper_config_ko(config: dict):
+    """Verify that parse_haproxy_helper_config function raises when config has an invalid type."""
+
+    with pytest.raises(WazuhError, match='.* 3004 .*'):
+        utils.parse_haproxy_helper_config(config)
 
 
 def test_get_manager_status():

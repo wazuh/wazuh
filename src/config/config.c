@@ -240,7 +240,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
-            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
+            if ((modules & CCLUSTER) && (Read_Cluster(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {

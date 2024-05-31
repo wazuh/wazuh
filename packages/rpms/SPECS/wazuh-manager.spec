@@ -698,6 +698,8 @@ rm -fr %{buildroot}
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster
 %attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/*.py
 %attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/*.json
+%dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/hap_helper
+%attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/hap_helper/*.py
 %dir %attr(750, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi
 %attr(640, root, wazuh) %{_localstatedir}/framework/wazuh/core/cluster/dapi/*.py
 %dir %attr(750, root, wazuh) %{_localstatedir}/integrations

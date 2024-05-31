@@ -130,7 +130,7 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
 
             if up_process.returncode == 0:
                 break
-            
+
             time.sleep(interval)
             retries += 1
 
@@ -154,7 +154,7 @@ def check_health(node_type: str = 'manager', agents: list = None,
     Parameters
     ----------
     node_type : str
-        Can be agent, manager or nginx-lb.
+        Can be agent, manager or haproxy-lb.
     agents : list
         List of active agents for the current test
         (only needed if the agents need a custom healthcheck).
@@ -181,9 +181,9 @@ def check_health(node_type: str = 'manager', agents: list = None,
                 shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
-    elif node_type == 'nginx-lb':
+    elif node_type == 'haproxy-lb':
         health = subprocess.check_output(
-            f"docker inspect env-nginx-lb-1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+            "docker inspect env-haproxy-lb-1 -f '{{json .State.Health.Status}}'", shell=True)
         if not health.startswith(b'"healthy"'):
             return False
     else:
@@ -232,7 +232,7 @@ def enable_white_mode():
                            'security.yaml'), '+r') as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
-        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: white', content))
+        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', 'rbac_mode: white', content))
 
 
 def clean_tmp_folder():
@@ -303,7 +303,7 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
 
 def save_logs(test_name: str):
     """Save API, cluster and Wazuh logs from every cluster node and Wazuh logs from every agent if tests fail.
-    Save nginx-lb log.
+    Save haproxy-lb log.
 
     Examples:
     "test_{test_name}-{node/agent}-{log}" -> "test_decoder-worker1-api.log"
@@ -338,10 +338,10 @@ def save_logs(test_name: str):
         except subprocess.CalledProcessError:
             continue
 
-    # Save nginx-lb log
-    with open(os.path.join(test_logs_path, f'test_{test_name}-nginx-lb.log'), mode='w') as f_log:
+    # Save haproxy-lb log
+    with open(os.path.join(test_logs_path, f'test_{test_name}-haproxy-lb.log'), mode='w') as f_log:
         current_process = subprocess.Popen(
-                ["docker", "logs", "env-nginx-lb-1"],
+                ["docker", "logs", "env-haproxy-lb-1"],
                 stdout=f_log, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
 
@@ -403,6 +403,11 @@ def api_test(request: _pytest.fixtures.SubRequest):
         agents_health = check_health(node_type='agent', agents=list(range(1, 9)))
         nginx_health = check_health(node_type='nginx-lb')
 
+    while values['retries'] < values['max_retries']:
+        managers_health = check_health(interval=values['interval'],
+                                       only_check_master_health=env_mode == standalone_env_mode)
+        agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
+        haproxy_health = check_health(interval=values['interval'], node_type='haproxy-lb')
         # Check if entrypoint was successful
         try:
             error_message = subprocess.check_output(["docker", "exec", "-t", "env-wazuh-master-1", "sh", "-c",
@@ -411,7 +416,8 @@ def api_test(request: _pytest.fixtures.SubRequest):
         except subprocess.CalledProcessError:
             pass
 
-        if managers_health and agents_health and nginx_health:
+        if managers_health and agents_health and haproxy_health:
+            time.sleep(values['interval'])
             return
 
         retries += 1
