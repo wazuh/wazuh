@@ -195,10 +195,10 @@ def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_lo
 
     # Validate content_changes value is truncated if the file is set to no_diff
     if is_truncated:
-        assert 'Diff truncated because nodiff option' in event.get('content_changes'), \
+        assert "Diff truncated due to 'nodiff' configuration detected for this file." in event.get('content_changes'), \
             'content_changes is not truncated'
     else:
-        assert 'Diff truncated because nodiff option' not in event.get('content_changes'), \
+        assert "Diff truncated due to 'nodiff' configuration detected for this file." not in event.get('content_changes'), \
             'content_changes is truncated'
 
     truncate_file(WAZUH_LOG_PATH)
