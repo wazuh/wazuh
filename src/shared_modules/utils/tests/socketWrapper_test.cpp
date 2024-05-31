@@ -47,6 +47,13 @@ TEST_F(SocketWrapperTest, SocketWrapperTestInstance)
     Socket<OSWrapper> socketWrapper;
 }
 
+TEST_F(SocketWrapperTest, UnixAddressPathToLong)
+{
+    constexpr auto MAX_SUN_PATH = 108;
+    std::string path(MAX_SUN_PATH + 10, 'a');
+    EXPECT_THROW(UnixAddress::builder().address(path).build(), std::runtime_error);
+}
+
 TEST_F(SocketWrapperTest, ConnectSuccess)
 {
     Socket<OSWrapper> socketWrapper;
@@ -248,7 +255,8 @@ TEST_F(SocketWrapperTest, DISABLED_ReadPartialBody)
                             [&data, &header](int, void* buffer, size_t, int)
                             {
                                 std::copy(header.begin(), header.end(), (char*)buffer);
-                                std::copy(data.begin(), data.begin() + data.size() / 2, (char*)buffer + HEADER_FIELD_SIZE);
+                                std::copy(
+                                    data.begin(), data.begin() + data.size() / 2, (char*)buffer + HEADER_FIELD_SIZE);
                             }),
                         Return(packetSize)))
         .WillOnce(DoAll(Invoke(

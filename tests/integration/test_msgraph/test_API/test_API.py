@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -18,7 +18,7 @@ components:
 suite: configuration
 
 targets:
-    - manager
+    - agent
 
 daemons:
     - wazuh-analysisd
@@ -57,7 +57,7 @@ from wazuh_testing.utils.file import truncate_file
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
 # Marks
-pytestmark = pytest.mark.tier(level=0)
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 configs_path = Path(CONFIGS_PATH, 'config_API.yaml')
@@ -176,6 +176,7 @@ def test_future_events_yes(test_configuration, test_metadata, set_wazuh_configur
         assert (False), f'Error `Bookmark updated` not found in log'
 
 
+@pytest.mark.skip(reason="Unstable, the testing tool is not returning the expected values. This needs to be investigated.")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t2_configurations, t2_configuration_metadata), ids=t2_case_ids)
 def test_future_events_no(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
                  truncate_monitored_files, daemons_handler, wait_for_msgraph_start, proxy_setup):

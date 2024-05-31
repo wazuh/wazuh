@@ -9,12 +9,13 @@ on:
         default: 'main'
   pull_request:
     paths:
-      - ".github/workflows/integration-tests-syscollector-tier-0-1.yml"
-      - "src/wazuh_modules/syscollector/**"
-      - "src/config/wmodules-syscollector.c"
-      - "src/Makefile"
-      - "tests/integration/conftest.py"
-      - "tests/integration/test_syscollector/**"
+        - ".github/workflows/integration-tests-syscollector-tier-0-1-win.yml"
+        - "src/config/wmodules-syscollector.c"
+        - "src/wazuh_modules/syscollector/**"
+        - "src/win32/**"
+        - "src/Makefile"
+        - "tests/integration/conftest.py"
+        - "tests/integration/test_syscollector/**"
 
 jobs:
   # Build the winagent on linux.
@@ -59,6 +60,9 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
+      - name: Add WiX toolkit to PATH
+        shell: bash
+        run: echo "${WIX}bin" >> $GITHUB_PATH
       # Download the compressed winagent build.
       - name: Download Artifact winagent
         uses: actions/download-artifact@v3

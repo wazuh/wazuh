@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2023, Wazuh Inc.
+# Copyright (C) 2015-2024, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 import json
@@ -10,8 +10,6 @@ from collections import defaultdict
 
 import pytest
 
-from wazuh_testing.constants.keys.events import *
-from wazuh_testing.constants.keys.alerts import *
 from wazuh_testing.constants.paths.configurations import CUSTOM_RULES_PATH, CUSTOM_RULES_FILE, WAZUH_CONF_PATH
 from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.users import WAZUH_UNIX_GROUP, WAZUH_UNIX_USER
@@ -84,11 +82,11 @@ def generate_events_syscheck(request):
         event = (json.loads(re.match(key, test_case['input']).group(2)))
 
         try:
-            value_name = '\\' + event[SYSCHECK_DATA][SYSCHECK_VALUE_NAME]
+            value_name = '\\' + event[patterns.SYSCHECK_DATA][patterns.SYSCHECK_VALUE_NAME]
         except KeyError:
             value_name = ''
 
-        events[event[SYSCHECK_DATA][SYSCHECK_PATH] + value_name].update({test_case['stage']: event})
+        events[event[patterns.SYSCHECK_DATA][patterns.SYSCHECK_PATH] + value_name].update({test_case['stage']: event})
         socket_controller.send(test_case['input'])
         time.sleep(1 / ips)
 
@@ -122,7 +120,7 @@ def read_alerts_syscheck(request):
     for alert in alert_list:
         try:
             alert_json = json.loads(alert)
-            if (alert_json[ALERTS_RULE][ALERTS_ID] in patterns.ANALYSISD_ALERTS_SYSCHECK_IDS):
+            if (alert_json[patterns.ALERTS_RULE][patterns.ALERTS_ID] in patterns.ANALYSISD_ALERTS_SYSCHECK_IDS):
                 alerts.append(alert_json)
         except json.decoder.JSONDecodeError:
             continue

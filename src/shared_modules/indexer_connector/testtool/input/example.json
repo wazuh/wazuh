@@ -1,51 +1,15 @@
 {
-    "id": "worker1_000_pkghash_CVE-2022-1234",
+    "id": "000_pkghash_CVE-2022-1234",
     "operation": "INSERT",
     "data":{
-      "@timestamp": "2023-09-18T12:00:00Z",
       "agent": {
         "build": {
           "original": "sample_build_1"
         },
-        "ephemeral_id": "eph_id_1",
-        "id": "agent_id_1",
+        "id": "000",
         "name": "agent_name_1",
         "type": "agent_type_1",
         "version": "1.0.0"
-      },
-      "ecs": {
-        "version": "1.8.0"
-      },
-      "event": {
-        "action": "sample_action",
-        "agent_id_status": "sample_status",
-        "category": "sample_category",
-        "code": "sample_code",
-        "created": "2023-09-18T12:00:00Z",
-        "dataset": "sample_dataset",
-        "duration": 12345,
-        "end": "2023-09-18T13:00:00Z",
-        "hash": "sample_hash",
-        "id": "event_id_1",
-        "ingested": "2023-09-18T12:05:00Z",
-        "kind": "sample_kind",
-        "module": "sample_module",
-        "original": "sample_original_content",
-        "outcome": "sample_outcome",
-        "provider": "sample_provider",
-        "reason": "sample_reason",
-        "reference": "sample_reference",
-        "risk_score": 5.5,
-        "risk_score_norm": 5.0,
-        "sequence": 1,
-        "severity": 3,
-        "start": "2023-09-18T11:00:00Z",
-        "timezone": "UTC",
-        "type": "sample_type",
-        "url": "http://example.com"
-      },
-      "labels": {
-        "label1": "value1"
       },
       "message": "Sample message",
       "package": {
@@ -65,6 +29,8 @@
       },
       "tags": ["sample", "tag1"],
       "vulnerability": {
+        "detected_at": "2023-09-18T12:00:00Z",
+        "published_at": "2023-01-18T12:00:00Z",
         "category": "sample_category",
         "classification": "sample_classification",
         "description": "Sample vulnerability description",

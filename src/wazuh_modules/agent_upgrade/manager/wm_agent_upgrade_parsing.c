@@ -248,6 +248,19 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
                     sprintf(output, "Parameter \"%s\" should be true or false", item->string);
                     error_flag = 1;
                 }
+            } else if(strcmp(item->string, "package_type") == 0) {
+                /* package_type */
+                if (item->type == cJSON_String) {
+                    if (!strcmp(item->valuestring, "rpm") || !strcmp(item->valuestring, "deb")) {
+                        os_strdup(item->valuestring, task->package_type);
+                    } else {
+                        sprintf(output, "Invalid parameter \"%s\", value should be \"rpm\" or \"deb\"", item->string);
+                        error_flag = 1;
+                    }
+                } else {
+                    sprintf(output, "Parameter \"%s\" should be a string", item->string);
+                    error_flag = 1;
+                }
             }
         } else {
             sprintf(output, "Invalid JSON type");

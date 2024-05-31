@@ -557,7 +557,6 @@ void test_integrity_clear_ok(void **state) {
     os_free(query);
 }
 
-
 void test_invalid_command(void **state) {
     int ret;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -572,6 +571,98 @@ void test_invalid_command(void **state) {
     assert_int_equal(ret, -1);
 
     os_free(query);
+}
+
+void test_wdb_parse_sca_no_space(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid Security Configuration Assessment query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Security Configuration Assessment query: badquery_nospace");
+
+    ret = wdb_parse_sca(data->wdb, "badquery_nospace", data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near \'badquery_nospace\'");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_query_not_found(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [7] = "query ";
+
+    will_return(__wrap_wdb_sca_find, 0);
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok not found");
+    assert_int_equal(ret, 0);
+}
+
+void test_wdb_parse_sca_query_found(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [7] = "query ";
+
+    will_return(__wrap_wdb_sca_find, 1);
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok found ");
+    assert_int_equal(ret, 1);
+}
+
+void test_wdb_parse_sca_cannot_query(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [7] = "query ";
+
+    will_return(__wrap_wdb_sca_find, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot query Security Configuration Assessment.");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot query Security Configuration Assessment");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_invalid_insert(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [8] = "insert ";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near ''");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_invalid_insert_not_number_id(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [25] = "insert {\"id\":\"wazuh\"}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON: field 'id' must be a number");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near '{\"id\":\"wazuh\"}'");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_invalid_insert_negative_number_id(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [25] = "insert {\"id\":-1}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON: field 'id' cannot be negative");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near '{\"id\":-1}'");
+    assert_int_equal(ret, -1);
 }
 
 
@@ -2547,6 +2638,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_integrity_clear_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_integrity_clear_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_invalid_command, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_no_space, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_query_not_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_query_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_cannot_query, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_invalid_insert, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_invalid_insert_not_number_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_invalid_insert_negative_number_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_badquery, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_delete_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_delete_ok, test_setup, test_teardown),

@@ -967,7 +967,7 @@ int checkBinaryFile(const char *f_name) {
         rbytes = w_ftell(fp) - offset;
 
         /* Flow control */
-        if (rbytes <= 0) {
+        if (rbytes <= 0 || (rbytes > OS_MAXSTR + 1)) {
             fclose(fp);
             return 1;
         }

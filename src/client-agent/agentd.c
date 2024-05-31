@@ -53,7 +53,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-    /* Read private keys  */
+
+    /* Read private keys */
     minfo(ENC_READ);
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 

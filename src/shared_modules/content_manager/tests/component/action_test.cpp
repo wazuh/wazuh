@@ -10,8 +10,14 @@
  */
 
 #include "action_test.hpp"
+#include "IURLRequest.hpp"
+#include "UNIXSocketRequest.hpp"
 #include "action.hpp"
 #include "actionOrchestrator.hpp"
+#include "contentManager.hpp"
+#include "fakes/fakeServer.hpp"
+#include "hashHelper.h"
+#include "mocks/mockRouterProvider.hpp"
 #include "stringHelper.h"
 #include "gtest/gtest.h"
 #include <chrono>
@@ -19,6 +25,9 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
+
+static const std::string SAMPLE_TXT_FILENAME {"sample.txt"};
 
 /*
  * @brief Tests the instantiation of the Action class
@@ -220,7 +229,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
 
     EXPECT_NO_THROW(action->registerActionOnDemand());
 
-    EXPECT_NO_THROW(action->runActionOnDemand());
+    EXPECT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -287,7 +296,7 @@ TEST_F(ActionTest, OnDemandActionCatchException)
     auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
 
     // Trigger action. No exceptions are expected despite the error.
-    ASSERT_NO_THROW(action->runActionOnDemand());
+    ASSERT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
 
     // Check that no output files have been created.
     const std::filesystem::path outputFolder {
@@ -338,7 +347,48 @@ TEST_F(ActionTest, RunActionOnDemandOffsetUpdate)
     action.registerActionOnDemand();
 
     constexpr auto OFFSET {1000};
-    ASSERT_NO_THROW(action.runActionOnDemand(OFFSET, ActionOrchestrator::UpdateType::OFFSET));
+    ASSERT_NO_THROW(action.runActionOnDemand(ActionOrchestrator::UpdateData::createOffsetUpdateData(OFFSET)));
+
+    action.unregisterActionOnDemand();
+    action.clearEndpoints();
+}
+
+/**
+ * @brief Test the correct functionality of the ondemand hashfile update.
+ *
+ */
+TEST_F(ActionTest, HashOnDemandUpdate)
+{
+    const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
+    auto spMockRouterProvider {std::make_shared<MockRouterProvider>()};
+
+    m_parameters["ondemand"] = true;
+    m_parameters.at("configData").at("contentSource") = "offline";
+    m_parameters.at("configData").at("url") = "file://" + (INPUT_FILES_DIR / SAMPLE_TXT_FILENAME).string();
+
+    auto action {Action(spMockRouterProvider, topicName, m_parameters)};
+    action.registerActionOnDemand();
+
+    // Download file twice without hash update: Two publications are expected.
+    constexpr auto EXPECTED_PUBLICATIONS {2};
+    EXPECT_CALL(*spMockRouterProvider, send(::testing::_)).Times(EXPECTED_PUBLICATIONS);
+    auto updateData {ActionOrchestrator::UpdateData::createContentUpdateData(-1)};
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
+
+    // Update hash.
+    std::string putUrl {"http://localhost/hash"};
+    auto fileHash {Utils::asciiToHex(Utils::hashFile(INPUT_FILES_DIR / SAMPLE_TXT_FILENAME))};
+    nlohmann::json putData;
+    putData["hash"] = std::move(fileHash);
+    putData["topicName"] = topicName;
+    UNIXSocketRequest::instance().put(
+        HttpUnixSocketURL(ONDEMAND_SOCK, std::move(putUrl)), std::move(putData), [](auto) {});
+
+    // Trigger two more downloads that will be skipped.
+    EXPECT_CALL(*spMockRouterProvider, send(::testing::_)).Times(0);
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
+    ASSERT_NO_THROW(action.runActionOnDemand(updateData));
 
     action.unregisterActionOnDemand();
     action.clearEndpoints();

@@ -31,7 +31,7 @@ wnotify_t * notify_queue;
 //static w_queue_t * sock_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 //static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
-static volatile int running = 1;
+static volatile _Atomic(int) running = 1;
 rlim_t nofile;
 
 int main(int argc, char ** argv)
@@ -217,6 +217,10 @@ int main(int argc, char ** argv)
 
     wdb_state.uptime = time(NULL);
 
+    // Create template
+
+    wdb_create_profile();
+
     // Start threads
 
     if (status = pthread_create(&thread_dealer, NULL, run_dealer, NULL), status != 0) {
@@ -273,6 +277,7 @@ int main(int argc, char ** argv)
     snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
+    minfo("Graceful process shutdown.");
 
     return EXIT_SUCCESS;
 

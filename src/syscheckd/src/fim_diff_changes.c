@@ -204,7 +204,7 @@ char *fim_registry_value_diff(const char *key_name,
                               const registry_t *configuration) {
 
     char *diff_changes = NULL;
-    int limits_reached;
+    int ret;
 
     // Invalid types for report_changes
     if (!(data_type == REG_SZ ||
@@ -232,19 +232,24 @@ char *fim_registry_value_diff(const char *key_name,
     snprintf(full_value_name, PATH_MAX, "%s\\%s", key_name, value_name);
 
     // Check for file limit and disk quota
-    if (limits_reached = fim_diff_check_limits(diff), limits_reached == 1) {
+    if (ret = fim_diff_check_limits(diff), ret == 1) {
         mdebug2(FIM_BIG_FILE_REPORT_CHANGES, full_value_name);
+        os_strdup("Unable to calculate diff due to 'file_size' limit has been reached.", diff_changes);
         goto cleanup;
-    } else if (limits_reached == 2){
+    } else if (ret == 2){
         mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", full_value_name);
+        os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         goto cleanup;
     }
 
     // If the file is not there, create compressed file and return.
     if (w_uncompress_gzfile(diff->compress_file, diff->uncompress_file) != 0) {
-        if (fim_diff_create_compress_file(diff) == 0){
+        if (ret = fim_diff_create_compress_file(diff), ret == 0){
             mkdir_ex(diff->compress_folder);
             save_compress_file(diff);
+            os_strdup("Unable to calculate diff due to no previous data stored for this registry value.", diff_changes);
+        } else if (ret == -2){
+            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         }
         goto cleanup;
     }
@@ -252,19 +257,23 @@ char *fim_registry_value_diff(const char *key_name,
     // If it exists, estimate the new compressed file
     float backup_file_size = (FileSize(diff->compress_file) / 1024.0f);
     syscheck.diff_folder_size -= backup_file_size;
-    if (fim_diff_create_compress_file(diff) == -1) {
+    if (ret = fim_diff_create_compress_file(diff), ret != 0) {
         syscheck.diff_folder_size += backup_file_size;
+        if (ret == -2){
+            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
+        }
         goto cleanup;
     }
 
     if (fim_diff_compare(diff) == -1) {
         mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
         syscheck.diff_folder_size += backup_file_size;
+        os_strdup("No content changes were found for this registry value.", diff_changes);
         goto cleanup;
     }
 
     if (is_registry_nodiff(key_name, value_name, configuration->arch)) {
-        os_strdup("<Diff truncated because nodiff option>", diff_changes);
+        os_strdup("Diff truncated due to 'nodiff' configuration detected for this registry value.", diff_changes);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -396,7 +405,7 @@ int fim_diff_registry_tmp(const char *value_data,
 char *fim_file_diff(const char *filename, const directory_t *configuration) {
 
     char *diff_changes = NULL;
-    int limits_reached;
+    int ret;
 
     // Generate diff structure
     diff_data *diff = initialize_file_diff_data(filename, configuration);
@@ -407,19 +416,24 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
     mkdir_ex(diff->tmp_folder);
 
     // Check for file limit and disk quota
-    if (limits_reached = fim_diff_check_limits(diff), limits_reached == 1) {
+    if (ret = fim_diff_check_limits(diff), ret == 1) {
         mdebug2(FIM_BIG_FILE_REPORT_CHANGES, filename);
+        os_strdup("Unable to calculate diff due to 'file_size' limit has been reached.", diff_changes);
         goto cleanup;
-    } else if (limits_reached == 2){
+    } else if (ret == 2){
         mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "estimation", filename);
+        os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         goto cleanup;
     }
 
     // If the file is not there, create compressed file and return.
     if (w_uncompress_gzfile(diff->compress_file, diff->uncompress_file) != 0) {
-        if (fim_diff_create_compress_file(diff) == 0){
+        if (ret = fim_diff_create_compress_file(diff), ret == 0){
             mkdir_ex(diff->compress_folder);
             save_compress_file(diff);
+            os_strdup("Unable to calculate diff due to no previous data stored for this file.", diff_changes);
+        } else if (ret == -2){
+            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
         }
         goto cleanup;
     }
@@ -427,19 +441,23 @@ char *fim_file_diff(const char *filename, const directory_t *configuration) {
     // If it exists, estimate the new compressed file
     float backup_file_size = (FileSize(diff->compress_file) / 1024.0f);
     syscheck.diff_folder_size -= backup_file_size;
-    if (fim_diff_create_compress_file(diff) == -1) {
+    if (ret = fim_diff_create_compress_file(diff), ret != 0) {
         syscheck.diff_folder_size += backup_file_size;
+        if (ret == -2){
+            os_strdup("Unable to calculate diff due to 'disk_quota' limit has been reached.", diff_changes);
+        }
         goto cleanup;
     }
 
     if (fim_diff_compare(diff) == -1) {
         mdebug2(FIM_DIFF_IDENTICAL_MD5_FILES);
         syscheck.diff_folder_size += backup_file_size;
+        os_strdup("No content changes were found for this file.", diff_changes);
         goto cleanup;
     }
 
     if (is_file_nodiff(diff->file_origin)) {
-        os_strdup("<Diff truncated because nodiff option>", diff_changes);
+        os_strdup("Diff truncated due to 'nodiff' configuration detected for this file.", diff_changes);
         syscheck.diff_folder_size += backup_file_size;
         goto cleanup;
     }
@@ -604,7 +622,7 @@ int fim_diff_create_compress_file(const diff_data *diff) {
                 mdebug2(FIM_DISK_QUOTA_LIMIT_REACHED, "calculate", diff->file_origin);
             }
             fim_diff_modify_compress_estimation(zip_size, diff->file_size);
-            return -1;
+            return -2;
         }
     }
 

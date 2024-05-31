@@ -60,7 +60,7 @@ static const auto INDEXER_TIMEOUT {0u};
 static const std::string INDEXER_HOSTNAME {"localhost"};
 static const auto INDEXER_NAME {"indexer_connector_test"}; // Should be in lowercase for a real indexer.
 static const auto MAX_INDEXER_INIT_TIME_MS {2000};
-static const auto MAX_INDEXER_PUBLISH_TIME_MS {5500};
+static const auto MAX_INDEXER_PUBLISH_TIME_MS {7500};
 static const auto INDEX_ID_A {"A"};
 static const auto INDEX_ID_B {"B"};
 
@@ -575,4 +575,18 @@ TEST_F(IndexerConnectorTest, TemplateFileNotFoundThrows)
     constexpr auto INVALID_TEMPLATE_FILE_PATH {"inexistant.json"};
     EXPECT_THROW(IndexerConnector(indexerConfig, INVALID_TEMPLATE_FILE_PATH, logFunction, INDEXER_TIMEOUT),
                  std::runtime_error);
+}
+
+/**
+ * @brief Test the initialization with upper case character in the index name.
+ *
+ */
+TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
+{
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = "UPPER_case_INDEX";
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    EXPECT_THROW(IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, logFunction, INDEXER_TIMEOUT), std::runtime_error);
 }

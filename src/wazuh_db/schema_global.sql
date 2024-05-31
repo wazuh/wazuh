@@ -49,7 +49,7 @@ CREATE INDEX IF NOT EXISTS agent_group_hash ON agent (group_hash);
 INSERT INTO agent (id, ip, register_ip, name, date_add, last_keepalive, `group`, connection_status) VALUES (0, '127.0.0.1', '127.0.0.1', 'localhost', strftime('%s','now'), 253402300799, NULL, 'active');
 
 CREATE TABLE IF NOT EXISTS labels (
-    id INTEGER,
+    id INTEGER REFERENCES agent (id) ON DELETE CASCADE,
     key TEXT NOT NULL,
     value TEXT NOT NULL,
     PRIMARY KEY (id,key)
@@ -84,4 +84,4 @@ CREATE TABLE IF NOT EXISTS metadata (
     value TEXT
 );
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '5');
+INSERT INTO metadata (key, value) VALUES ('db_version', '6');

@@ -221,7 +221,6 @@ list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS} \
                                     -Wl,--wrap=Read_Syscheck_Config \
-                                    -Wl,--wrap=os_wait \
                                     -Wl,--wrap=rootcheck_init \
                                     -Wl,--wrap=start_daemon \
                                     -Wl,--wrap=File_DateofChange \

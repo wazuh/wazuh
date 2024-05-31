@@ -113,7 +113,7 @@ def test_create_command():
     agent_upgrade.args.file = ''
     agent_upgrade.args.execute = ''
     result = agent_upgrade.create_command()
-    assert result == {'agent_list': ANY, 'wpk_repo': ANY, 'version': ANY, 'use_http': ANY, 'force': ANY}
+    assert result == {'agent_list': ANY, 'wpk_repo': ANY, 'version': ANY, 'use_http': ANY, 'force': ANY, 'package_type': ANY}
 
 
 @pytest.mark.parametrize('agents_versions, failed_agents, expected_output', [

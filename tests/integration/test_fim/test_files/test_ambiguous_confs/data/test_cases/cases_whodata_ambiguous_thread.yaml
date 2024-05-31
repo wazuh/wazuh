@@ -1,0 +1,39 @@
+- name: whodata_thread_disabled
+  description: Check Whodata thread is disabled when last directory has it set to 'no'
+  configuration_parameters:
+    WHODATA1: 'yes'
+    WHODATA2: 'no'
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_1]
+  metadata:
+    whodata: false
+
+- name: whodata_thread_enabled
+  description: Check Whodata thread is enabled when last directory has it set to 'yes'
+  configuration_parameters:
+    WHODATA1: 'no'
+    WHODATA2: 'yes'
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_1]
+  metadata:
+    whodata: true
+
+- name: whodata_thread_enabled_different_dirs
+  description: Check Whodata thread is enabled when last directory has it set to 'yes'
+  configuration_parameters:
+    WHODATA1: 'no'
+    WHODATA2: 'yes'
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_2]
+  metadata:
+    whodata: true
+
+- name: whodata_thread_enabled_different_dirs_inverted
+  description: Check Whodata thread is enabled when last directory has it set to 'yes'
+  configuration_parameters:
+    WHODATA1: 'yes'
+    WHODATA2: 'no'
+    TEST_DIR1: !!python/object/apply:os.path.join [/, test_dir_1]
+    TEST_DIR2: !!python/object/apply:os.path.join [/, test_dir_2]
+  metadata:
+    whodata: true

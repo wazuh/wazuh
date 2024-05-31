@@ -29,7 +29,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Obtain context to calculate hash */
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
@@ -47,7 +47,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(&context, NULL, str);
+                OS_SHA1_Stream(context, NULL, str);
             }
             str[rbytes - 1] = '\0';
         }
@@ -57,7 +57,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
         else if (rbytes == OS_MAXSTR_BE - OS_LOG_HEADER - 1) {
             /* Message size > maximum allowed */
             if (is_valid_context_file) {
-                OS_SHA1_Stream(&context, NULL, str);
+                OS_SHA1_Stream(context, NULL, str);
             }
             __ms = 1;
             str[rbytes - 1] = '\0';
@@ -147,7 +147,7 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
                 }
 
                 if (is_valid_context_file) {
-                    OS_SHA1_Stream(&context, NULL, str);
+                    OS_SHA1_Stream(context, NULL, str);
                 }
 
                 /* Get the last occurrence of \n */
@@ -161,7 +161,9 @@ void *read_ucs2_be(logreader *lf, int *rc, int drop_it) {
     }
 
     if (is_valid_context_file) {
-        w_update_file_status(lf->file, current_position, &context);
+        w_update_file_status(lf->file, current_position, context);
+    } else {
+        EVP_MD_CTX_free(context);
     }
 
     mdebug2("Read %d lines from %s", lines, lf->file);

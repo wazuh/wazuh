@@ -10,6 +10,7 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-github-tier-0-1-lin.yml"
+        - "src/config/wmodules-github.c"
         - "src/wazuh_modules/wm_github.h"
         - "src/wazuh_modules/wm_github.c"
         - "src/Makefile"
@@ -40,7 +41,7 @@ jobs:
         run: |
           echo 'USER_LANGUAGE="en"' > ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
-          echo 'USER_AGENT_SERVER_IP="1.1.1.1"' >> ./etc/preloaded-vars.conf
+          echo 'USER_AGENT_SERVER_IP="127.0.0.1"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
           echo 'USER_NO_STOP="y"' >> ./etc/preloaded-vars.conf
           echo "" >> ./etc/preloaded-vars.conf
@@ -69,9 +70,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
               QA_BRANCH="main"

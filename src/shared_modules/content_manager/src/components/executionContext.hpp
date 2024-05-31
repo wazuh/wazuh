@@ -15,6 +15,7 @@
 #include "../sharedDefs.hpp"
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
+#include "defs.h"
 #include "json.hpp"
 #include "stringHelper.h"
 #include "updaterContext.hpp"
@@ -190,6 +191,21 @@ private:
         context.contentsFolder = outputFolderPath / CONTENTS_FOLDER;
     }
 
+    /**
+     * @brief Sets the user agent context member used in HTTP requests.
+     *
+     * @param context Updater context.
+     */
+    void setHttpUserAgent(UpdaterBaseContext& context) const
+    {
+        if (!context.configData.contains("consumerName") ||
+            context.configData.at("consumerName").get_ref<const std::string&>().empty())
+        {
+            throw std::invalid_argument {"Missing or empty consumerName"};
+        }
+        context.httpUserAgent = context.configData.at("consumerName").get<std::string>() + "/" + __ossec_version;
+    }
+
 public:
     /**
      * @brief Prepare the execution context necessary to execute the orchestration.
@@ -209,6 +225,7 @@ public:
         }
 
         createOutputFolder(*context);
+        setHttpUserAgent(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterBaseContext>>::handleRequest(std::move(context));
     }

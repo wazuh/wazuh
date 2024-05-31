@@ -86,6 +86,8 @@ OSHash *OSHash_Duplicate(const OSHash *hash) __attribute__((nonnull));
 OSHash *OSHash_Duplicate_ex(const OSHash *hash) __attribute__((nonnull));
 
 OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i);
+OSHashNode *OSHash_Begin_ex(const OSHash *self, unsigned int *i);
+
 OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 

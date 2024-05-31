@@ -644,12 +644,12 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
 
         node = NodeMock()
         with patch.object(node, "send_request", Exception("break while true")):
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect=Exception("break while true")):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect=Exception("break while true")):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
                 with pytest.raises(Exception):
                     await sendsync.run()
 
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect="noerror"):
                 with pytest.raises(Exception):
                     await sendsync.run()

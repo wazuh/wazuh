@@ -26,7 +26,9 @@ constexpr auto FILE_PREFIX {"file://"};
 constexpr auto HTTP_PREFIX {"http://"};
 
 const auto CONTENT_FILENAME_RAW = "raw";
+const auto FILEHASH_RAW = "228458095a9502070fc113d99504226a6ff90a9a";
 const auto CONTENT_FILENAME_XZ = "xz";
+const auto FILEHASH_XZ = "89fe2d7ad5369373c4b96f8eeedd11d27ed3bc79";
 const std::string BASE_URL = "localhost:4444/";
 
 constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
@@ -57,6 +59,7 @@ TEST_F(OfflineDownloaderTest, RawFileDownload)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = m_inputFileHashRaw;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -79,6 +82,7 @@ TEST_F(OfflineDownloaderTest, CompressedFileDownload)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = m_inputFileHashCompressed;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -107,11 +111,10 @@ TEST_F(OfflineDownloaderTest, InexistantFileDownload)
 }
 
 /**
- * @brief Tests two downloads in a row of the same file. The second download should not add the filepath to the data
- * paths.
+ * @brief Tests two downloads in a row of the same file.
  *
  */
-TEST_F(OfflineDownloaderTest, SkipFileProcessing)
+TEST_F(OfflineDownloaderTest, DownloadSameFileTwice)
 {
     m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + m_inputFilePathRaw.string();
     m_spUpdaterBaseContext->configData["compressionType"] = "raw";
@@ -123,6 +126,7 @@ TEST_F(OfflineDownloaderTest, SkipFileProcessing)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = m_inputFileHashRaw;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -132,16 +136,12 @@ TEST_F(OfflineDownloaderTest, SkipFileProcessing)
     m_spUpdaterContext.reset(new UpdaterContext());
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
-    // No paths are expected.
-    expectedData.at("paths").clear();
-
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
 
 /**
- * @brief Tests two downloads one after the other. The file from the second download is different from the prior so the
- * output file gets overrided.
+ * @brief Tests two downloads one after the other. The file from the second download should override the first one.
  *
  */
 TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
@@ -157,6 +157,7 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = m_inputFileHashRaw;
 
     // Trigger first download.
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
@@ -174,6 +175,12 @@ TEST_F(OfflineDownloaderTest, TwoFileDownloadsOverrideOutput)
 
     // Trigger second download.
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
+
+    // The new hash should be different from the first one.
+    auto newHash {m_spUpdaterContext->data.at("fileMetadata").at("hash").get<std::string>()};
+    EXPECT_NE(newHash, m_inputFileHashRaw);
+    expectedData["fileMetadata"]["hash"] = std::move(newHash);
+
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
     EXPECT_TRUE(std::filesystem::exists(m_spUpdaterBaseContext->contentsFolder / m_inputFilePathRaw.filename()));
 }
@@ -216,6 +223,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadRawFile)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_RAW;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -239,6 +247,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadCompressedFile)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_XZ;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -302,6 +311,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadRawFileOverride)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_RAW;
 
     // Create dummy file in the expected output path.
     std::ofstream testFileStream {expectedOutputFile};
@@ -350,6 +360,7 @@ TEST_F(OfflineDownloaderTest, HttpDownloadFileTwice)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_RAW;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -358,9 +369,6 @@ TEST_F(OfflineDownloaderTest, HttpDownloadFileTwice)
     // Clear first execution data.
     m_spUpdaterContext->data.at("stageStatus").clear();
     m_spUpdaterContext->data.at("paths").clear();
-
-    // No paths should be published.
-    expectedData["paths"].clear();
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -384,6 +392,7 @@ TEST_F(OfflineDownloaderTest, HttpAndLocalDownloadFileTwice)
     expectedData["stageStatus"].push_back(OK_STATUS);
     expectedData["type"] = DEFAULT_TYPE;
     expectedData["offset"] = 0;
+    expectedData["fileMetadata"]["hash"] = FILEHASH_RAW;
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
@@ -397,9 +406,6 @@ TEST_F(OfflineDownloaderTest, HttpAndLocalDownloadFileTwice)
     const auto inputLocalFile {m_outputFolder / CONTENT_FILENAME_RAW};
     std::filesystem::copy(expectedOutputFile, inputLocalFile);
     m_spUpdaterBaseContext->configData["url"] = FILE_PREFIX + inputLocalFile.string();
-
-    // No paths should be published.
-    expectedData["paths"].clear();
 
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);

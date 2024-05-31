@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2023, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -52,9 +52,9 @@ from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import ACTIVE_RESPONSE_LOG_PATH, WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.modules.active_response.patterns import ACTIVE_RESPONSE_RESTART_WAZUH
+from wazuh_testing.modules.execd.active_response.patterns import ACTIVE_RESPONSE_RESTART_WAZUH
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.execd.configuration import EXECD_DEBUG_CONFIG
+from wazuh_testing.modules.execd.configuration import EXECD_DEBUG
 from wazuh_testing.modules.execd.patterns import EXECD_SHUTDOWN_RECEIVED
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.callbacks import generate_callback
@@ -64,7 +64,7 @@ from . import CONFIGS_PATH, TEST_CASES_PATH
 
 
 # Set pytest marks.
-pytestmark = [pytest.mark.agent, pytest.mark.win32, pytest.mark.tier(level=1)]
+pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.mark.tier(level=1)]
 
 # Cases metadata and its ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_execd_restart.yaml')
@@ -73,7 +73,7 @@ test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
 # Test internal options and configurations.
-local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else EXECD_DEBUG_CONFIG: '2'}
+local_internal_options = {AGENTD_WINDOWS_DEBUG if sys.platform == WINDOWS else EXECD_DEBUG: '2'}
 daemons_handler_configuration = {'all_daemons': True}
 ar_conf = 'restart-wazuh0 - restart-wazuh - 0\nrestart-wazuh0 - restart-wazuh.exe - 0'
 

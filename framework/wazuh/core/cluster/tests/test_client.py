@@ -185,8 +185,8 @@ def test_ac_init():
     assert abstract_client.name == "name"
     assert abstract_client.loop is None
 
-@pytest.mark.asyncio
-async def test_ac_connection_result():
+
+def test_ac_connection_result():
     """Check that once an asyncio.Future object is received, a
        first - connection is established if no problems were found, or
        second - closed if and Exception was received."""
@@ -200,6 +200,17 @@ async def test_ac_connection_result():
         abstract_client.transport = CloseMock()
 
         with patch.object(abstract_client.transport, "close") as close_mock:
+            # Test when the future is set as a result
+            future = asyncio.Future()
+            future.set_result([WazuhClusterError(3020)])
+            abstract_client.connection_result(future)
+            logger_mock.assert_called_once_with(f"Could not connect to master: {str(WazuhClusterError(3020))}.")
+            close_mock.assert_called_once()
+
+            logger_mock.reset_mock()
+            close_mock.reset_mock()
+
+            # Test when the future is set as an exception
             future = asyncio.Future()
             future.set_exception(WazuhClusterError(3020))
             abstract_client.connection_result(future)
@@ -215,17 +226,19 @@ async def test_ac_connection_result():
         logger_mock.assert_called_once_with("Successfully connected to master.")
         assert abstract_client.connected is True
 
+
 @pytest.mark.asyncio
 async def test_ac_connection_made():
     """Check that the process of connection to the manager is correctly performed.
 
         1. asyncio.gather must call send_request(b'hello', self.client_data) coroutine
-        2. The done_callback of the future returned by asyncio.gatheris set to 
+        2. The done_callback of the future returned by asyncio.gatheris set to
            connection_made inside connection_made
         3. In connection_result function, a message to the log is written
            and abstract_client.connected is set to True
 
     """
+
     async def check_connected(abs_cli):
         # coroutine to wait for connected set to True
         while not abs_cli.connected:
@@ -236,11 +249,11 @@ async def test_ac_connection_made():
     with patch.object(abstract_client, 'send_request', return_value=msg) as g_mock:
         with patch.object(abstract_client.logger, 'info') as log_mock:
             abstract_client.connection_made(asyncio.Transport())
-            
+
             # wait that abstract_client.connected is set to True for 10 seconds
             await asyncio.wait_for(check_connected(abstract_client), 10)
             g_mock.assert_awaited_once_with(command=b'hello', data=abstract_client.client_data)
- 
+
             # check assertions
             log_mock.assert_called_with("Successfully connected to master.")
             assert abstract_client.connected is True

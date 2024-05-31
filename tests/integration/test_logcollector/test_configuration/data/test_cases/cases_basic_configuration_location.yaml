@@ -1,0 +1,79 @@
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: 'test.txt'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: 'test.txt'
+    log_format: 'syslog'
+    validate_config: True
+
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: '*'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: '*'
+    log_format: 'syslog'
+    validate_config: False
+
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: 'Testing white spaces'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: 'Testing white spaces'
+    log_format: 'syslog'
+    validate_config: True
+
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: '%F%H%K%L'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: '%F%H%K%L'
+    log_format: 'syslog'
+    validate_config: False
+
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: 'test.*'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: 'test.*'
+    log_format: 'syslog'
+    validate_config: False
+
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: 'c*test.txt'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: 'c*test.txt'
+    log_format: 'syslog'
+    validate_config: False
+
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: '?^*We.- Nmae'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: '?^*We.- Nmae'
+    log_format: 'syslog'
+    validate_config: False
+
+- name: Basic configuration location
+  description: Basic configuration location
+  configuration_parameters:
+    LOCATION: 'file.log-%Y-%m-%d'
+    LOG_FORMAT: 'syslog'
+  metadata:
+    location: 'file.log-%Y-%m-%d'
+    log_format: 'syslog'
+    validate_config: False

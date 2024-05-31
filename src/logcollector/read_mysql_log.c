@@ -30,7 +30,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Obtain context to calculate hash */
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
@@ -42,7 +42,7 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
         str_len = strlen(str);
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(&context, NULL, str);
+            OS_SHA1_Stream(context, NULL, str);
         }
 
         /* Get the last occurrence of \n */
@@ -251,7 +251,9 @@ void *read_mysql_log(logreader *lf, int *rc, int drop_it) {
     current_position = w_ftell(lf->fp);
 
     if (is_valid_context_file) {
-        w_update_file_status(lf->file, current_position, &context);
+        w_update_file_status(lf->file, current_position, context);
+    } else {
+        EVP_MD_CTX_free(context);
     }
 
     mdebug2("Read %d lines from %s", lines, lf->file);

@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS fim_entry (
     arch TEXT CHECK (arch IN (NULL, '[x64]', '[x32]')),
     value_name TEXT,
     value_type TEXT,
-    size INTEGER,
+    size BIGINT,
     perm TEXT,
     uid TEXT,
     gid TEXT,
@@ -339,7 +339,7 @@ CREATE TABLE IF NOT EXISTS sync_info (
 
 BEGIN;
 
-INSERT INTO metadata (key, value) VALUES ('db_version', '13');
+INSERT INTO metadata (key, value) VALUES ('db_version', '14');
 INSERT INTO scan_info (module) VALUES ('fim');
 INSERT INTO scan_info (module) VALUES ('syscollector');
 INSERT INTO sync_info (component) VALUES ('fim');

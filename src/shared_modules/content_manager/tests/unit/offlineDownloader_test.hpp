@@ -31,11 +31,13 @@ protected:
     OfflineDownloaderTest() = default;
     ~OfflineDownloaderTest() override = default;
 
-    const std::filesystem::path m_tempPath {std::filesystem::temp_directory_path()}; ///< Temporary path.
-    const std::filesystem::path m_inputFilePathRaw {m_tempPath / "testFile.txt"};    ///< Raw input test path.
+    const std::filesystem::path m_tempPath {std::filesystem::temp_directory_path()};   ///< Temporary path.
+    const std::filesystem::path m_inputFilePathRaw {m_tempPath / "testFile.txt"};      ///< Raw input test path.
+    const std::string m_inputFileHashRaw {"da21ecfc2146bfeb7c2d4020eda94afc6878266d"}; ///< Raw file hash.
     const std::filesystem::path m_inputFilePathCompressed {m_tempPath /
                                                            "testFile.txt.gz"}; ///< Compressed input test path.
-    const std::filesystem::path m_outputFolder {m_tempPath / "offline-downloader-tests"}; ///< Output test folder.
+    const std::string m_inputFileHashCompressed {"b2e0c197e5bc308fb868b31292c5e75145d8735b"}; ///< Compressed file hash.
+    const std::filesystem::path m_outputFolder {m_tempPath / "offline-downloader-tests"};     ///< Output test folder.
     std::shared_ptr<UpdaterContext> m_spUpdaterContext;         ///< UpdaterContext used on tests.
     std::shared_ptr<UpdaterBaseContext> m_spUpdaterBaseContext; ///< UpdaterBaseContext used on tests.
 

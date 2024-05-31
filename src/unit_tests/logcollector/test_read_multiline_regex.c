@@ -60,15 +60,19 @@ int __wrap_w_msg_hash_queues_push(const char * str, char * file, unsigned long s
     return mock_type(int);
 }
 
-bool __wrap_w_get_hash_context(const char * path, SHA_CTX * context, int64_t position) {
+bool __wrap_w_get_hash_context(const char * path, EVP_MD_CTX * context, int64_t position) {
     return mock_type(bool);
 }
 
-int __wrap_w_update_file_status(const char * path, int64_t pos, SHA_CTX * context) {
+int __wrap_w_update_file_status(const char * path, int64_t pos, EVP_MD_CTX * context) {
+    bool free_context = mock_type(bool);
+    if (free_context) {
+        EVP_MD_CTX_free(context);
+    }
     return mock_type(int);
 }
 
-void __wrap_OS_SHA1_Stream(SHA_CTX *c, os_sha1 output, char * buf) {
+void __wrap_OS_SHA1_Stream(EVP_MD_CTX *c, os_sha1 output, char * buf) {
     function_called();
     return;
 }
@@ -1579,6 +1583,7 @@ void test_read_multiline_regex_log_process(void ** state) {
     will_return(__wrap_fgets, NULL);
 
     expect_function_call(__wrap_OS_SHA1_Stream);
+    will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
     void * retval = read_multiline_regex(&lf, &rc, drop_it);
@@ -1608,6 +1613,7 @@ void test_read_multiline_regex_no_aviable_log(void ** state) {
     expect_any(__wrap_fgets, __stream);
     will_return(__wrap_fgets, NULL);
 
+    will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
     void * retval = read_multiline_regex(&lf, &rc, drop_it);
@@ -1731,6 +1737,7 @@ void test_read_multiline_regex_log_ignored(void ** state) {
     will_return(__wrap_fgets, NULL);
 
     expect_function_call(__wrap_OS_SHA1_Stream);
+    will_return(__wrap_w_update_file_status, true);
     will_return(__wrap_w_update_file_status, 0);
 
     void * retval = read_multiline_regex(&lf, &rc, drop_it);

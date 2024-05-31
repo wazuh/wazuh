@@ -241,6 +241,16 @@ UseSSLCert()
     fi
 }
 
+UseUpdateCheck()
+{
+    # Update_check config predefined (is overwritten by the preload-vars file)
+    if [ "X${USER_ENABLE_UPDATE_CHECK}" = "Xn" ]; then
+        UPDATE_CHECK="no"
+     else
+        UPDATE_CHECK="yes"
+     fi
+}
+
 ##########
 # EnableAuthd()
 ##########
@@ -543,6 +553,7 @@ ConfigureServer()
         EnableAuthd "3.7"
         ConfigureBoot "3.8"
         SetupLogs "3.9"
+        UseUpdateCheck
         WriteManager
     else
         ConfigureBoot "3.6"

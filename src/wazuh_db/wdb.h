@@ -253,6 +253,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_GROUP_CSV_GET,
     WDB_STMT_GLOBAL_GROUP_CTX_SET,
     WDB_STMT_GLOBAL_GROUP_HASH_GET,
+    WDB_STMT_GLOBAL_GROUP_HASH_SET,
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_GROUPS,
     WDB_STMT_GLOBAL_GET_AGENTS,
@@ -272,6 +273,7 @@ typedef enum wdb_stmt {
     WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS,
     WDB_STMT_PRAGMA_JOURNAL_WAL,
     WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS,
+    WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE,
     WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND,
@@ -346,9 +348,9 @@ typedef struct wdb_t {
     sqlite3_stmt * stmt[WDB_STMT_SIZE];
     char * id;
     int peer;
-    unsigned int refcount;
+    _Atomic(unsigned int) refcount;
     unsigned int transaction:1;
-    time_t last;
+    _Atomic(time_t) last;
     time_t transaction_begin_time;
     pthread_mutex_t mutex;
     struct stmt_cache_list *cache_list;
@@ -417,11 +419,13 @@ extern char *schema_upgrade_v10_sql;
 extern char *schema_upgrade_v11_sql;
 extern char *schema_upgrade_v12_sql;
 extern char *schema_upgrade_v13_sql;
+extern char *schema_upgrade_v14_sql;
 extern char *schema_global_upgrade_v1_sql;
 extern char *schema_global_upgrade_v2_sql;
 extern char *schema_global_upgrade_v3_sql;
 extern char *schema_global_upgrade_v4_sql;
 extern char *schema_global_upgrade_v5_sql;
+extern char *schema_global_upgrade_v6_sql;
 
 extern wdb_config wconfig;
 extern _Config gconfig;
@@ -730,7 +734,7 @@ int wdb_rollback2(wdb_t * wdb);
 int wdb_create_global(const char *path);
 
 /* Create profile database */
-int wdb_create_profile(const char *path);
+int wdb_create_profile();
 
 /* Create new database file from SQL script */
 int wdb_create_file(const char *path, const char *source);
@@ -1148,6 +1152,16 @@ int wdb_parse_global_get_agent_labels(wdb_t * wdb, char * input, char * output);
 int wdb_parse_get_groups_integrity(wdb_t * wdb, char * input, char* output);
 
 /**
+ * @brief Function to recalculate the agent group hash in global.db.
+ *
+ * @param wdb The global struct database.
+ * @param output Response of the query.
+ * @return 0 Success: response contains "ok".
+ *        -1 On error: response contains "err" and an error description.
+ */
+int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output);
+
+/**
  * @brief Function to get all the agent information.
  *
  * @param wdb The global struct database.
@@ -1328,6 +1342,25 @@ int wdb_parse_global_set_agent_groups(wdb_t* wdb, char* input, char* output);
  *         WDBC_ERROR On error.
  */
 int wdb_global_recalculate_agent_groups_hash(wdb_t* wdb, int agent_id, char* sync_status);
+
+/**
+ * @brief Function to recalculate the agent group hash whitout update sync_status field.
+ *
+ * @param [in] wdb The global struct database.
+ * @param [in] agent_id Int with the agent id.
+ * @return WDBC_OK Success.
+ *         WDBC_ERROR On error.
+ */
+int wdb_global_recalculate_agent_groups_hash_without_sync_status(wdb_t* wdb, int agent_id);
+
+/**
+ * @brief Function to recalculate the agent group hash for all agents.
+ *
+ * @param [in] wdb The global struct database.
+ * @return OS_SUCCESS Success.
+ *         OS_INVALID On error.
+ */
+int wdb_global_recalculate_all_agent_groups_hash(wdb_t* wdb);
 
 /**
  * @brief Function to parse sync-agent-info-get params and set next ID to iterate on further calls.
@@ -2091,6 +2124,16 @@ char* wdb_global_calculate_agent_group_csv(wdb_t *wdb, int id);
 wdbc_result wdb_global_set_agent_group_context(wdb_t *wdb, int id, char* csv, char* hash, char* sync_status);
 
 /**
+ * @brief Sets the group information in the agent table.
+ * @param [in] wdb The Global struct database.
+ * @param [in] id ID of the agent to set the information.
+ * @param [in] csv String with all the groups sepparated by comma to be inserted in the group column.
+ * @param [in] hash Hash calculus from the csv string to be inserted in the group_hash column.
+ * @return wdbc_result representing the status of the command.
+ */
+wdbc_result wdb_global_set_agent_group_hash(wdb_t *wdb, int id, char* csv, char* hash);
+
+/**
  * @brief Verifies if at least one entry in the Global DB has the group_sync_status as "syncreq".
  *        If not, it compares a received hash that represents the group column against a calculated hash.
  *
@@ -2503,5 +2546,18 @@ cJSON* wdb_get_config();
  * @param output the response to send
  */
 void wdbcom_dispatch(char* request, char* output);
+
+
+/**
+ * @brief Set the synchronous mode of the SQLite database session.
+ *
+ * This function sets the synchronous mode of the SQLite database session to control how
+ * and when changes made to the database are written to disk. It executes the necessary
+ * SQL statements to set the synchronous mode.
+ *
+ * @param[in] wdb The database structure.
+ * @return Returns 0 on success or -1 if an error occurs while setting the synchronous mode.
+ */
+int wdb_set_synchronous_normal(wdb_t * wdb);
 
 #endif

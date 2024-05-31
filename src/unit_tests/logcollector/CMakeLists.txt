@@ -56,7 +56,10 @@ else()
     list(APPEND logcollector_names "test_localfile-config")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,wfopen \
                                     -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
-                                    -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,fgetpos -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap,w_get_attr_val_by_name -Wl,--wrap,fgetpos -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} \
+                                    -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddStringToObject \
+                                    -Wl,--wrap,cJSON_AddBoolToObject -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_CreateArray \
+                                    -Wl,--wrap,cJSON_AddItemToArray")
 
     list(APPEND logcollector_names "test_state")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
@@ -102,11 +105,37 @@ else()
 
     list(APPEND logcollector_names "test_read_multiline")
     list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
-                                    -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc\
+                                    -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
                                     -Wl,--wrap,time -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,w_expression_match \
                                     -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream \
                                     -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
+
+    list(APPEND logcollector_names "test_read_journal")
+    list(APPEND logcollector_flags "-Wl,--wrap,_mwarn -Wl,--wrap,fgets -Wl,--wrap,remove -Wl,--wrap,fgetc \
+                                    -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,_mdebug2\
+                                    -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,popen \
+                                    -Wl,--wrap,w_journal_context_create -Wl,--wrap,w_journal_context_seek_most_recent \
+                                    -Wl,--wrap,w_journal_context_seek_timestamp -Wl,--wrap,w_journal_entry_dump \
+                                    -Wl,--wrap,w_journal_entry_to_string -Wl,--wrap,w_journal_entry_free \
+                                    -Wl,--wrap,w_journal_context_next_newest_filtered -Wl,--wrap,_merror -Wl,--wrap,_minfo \
+                                    -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,isDebug -Wl,--wrap,w_msg_hash_queues_push \
+                                    -Wl,--wrap,can_read")
+
+    list(APPEND logcollector_names "test_journal_log")
+    list(APPEND logcollector_flags "-Wl,--wrap,stat -Wl,--wrap,_mwarn -Wl,--wrap,dlsym -Wl,--wrap,dlerror -Wl,--wrap,gettimeofday \
+                                    -Wl,--wrap,_mdebug1 -Wl,--wrap,_mdebug2 -Wl,--wrap,isDebug \
+                                    -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                    -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
+                                    -Wl,--wrap,fgetpos -Wl,--wrap,gmtime_r -Wl,--wrap,getline -Wl,--wrap,dlopen -Wl,--wrap,dlclose \
+                                    -Wl,--wrap,sd_journal_open -Wl,--wrap,sd_journal_close -Wl,--wrap,sd_journal_previous \
+                                    -Wl,--wrap,sd_journal_next -Wl,--wrap,sd_journal_seek_tail \
+                                    -Wl,--wrap,sd_journal_seek_realtime_usec -Wl,--wrap,sd_journal_get_realtime_usec \
+                                    -Wl,--wrap,sd_journal_get_data -Wl,--wrap,sd_journal_restart_data \
+                                    -Wl,--wrap,sd_journal_enumerate_data -Wl,--wrap,sd_journal_get_cutoff_realtime_usec \
+                                    -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,cJSON_AddStringToObject \
+                                    -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,pthread_rwlock_wrlock \
+                                    -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_Delete")
 endif()
 
 list(LENGTH logcollector_names count)

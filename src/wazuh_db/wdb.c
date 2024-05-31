@@ -195,6 +195,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_GROUP_CSV_GET] = "SELECT `group` from agent where id = ?;",
     [WDB_STMT_GLOBAL_GROUP_CTX_SET] = "UPDATE agent SET 'group' = ?, group_hash = ?, group_sync_status = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_GROUP_HASH_GET] = "SELECT group_hash FROM agent WHERE id > 0 AND group_hash IS NOT NULL ORDER BY id;",
+    [WDB_STMT_GLOBAL_GROUP_HASH_SET] = "UPDATE agent SET 'group' = ?, group_hash = ? WHERE id = ?;",
     [WDB_STMT_GLOBAL_UPDATE_AGENT_INFO] = "UPDATE agent SET config_sum = :config_sum, ip = :ip, manager_host = :manager_host, merged_sum = :merged_sum, name = :name, node_name = :node_name, os_arch = :os_arch, os_build = :os_build, os_codename = :os_codename, os_major = :os_major, os_minor = :os_minor, os_name = :os_name, os_platform = :os_platform, os_uname = :os_uname, os_version = :os_version, version = :version, last_keepalive = :last_keepalive, connection_status = :connection_status, disconnection_time = :disconnection_time, group_config_status = :group_config_status, status_code= :status_code, sync_status = :sync_status WHERE id = :id;",
     [WDB_STMT_GLOBAL_GET_GROUPS] = "SELECT DISTINCT `group`, group_hash from agent WHERE id > 0 AND group_hash > ? ORDER BY group_hash;",
     [WDB_STMT_GLOBAL_GET_AGENTS] = "SELECT id FROM agent WHERE id > ?;",
@@ -214,6 +215,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE TASKS SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
+    [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM] = "SELECT checksum FROM sys_processes WHERE checksum != 'legacy' AND checksum != '' ORDER BY pid;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_SELECT_CHECKSUM_RANGE] = "SELECT checksum FROM sys_processes WHERE pid BETWEEN ? and ? AND checksum != 'legacy' AND checksum != '' ORDER BY pid;",
     [WDB_STMT_SYSCOLLECTOR_PROCESSES_DELETE_AROUND] = "DELETE FROM sys_processes WHERE pid < ? OR pid > ? OR checksum = 'legacy' OR checksum = '';",
@@ -269,7 +271,7 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_SYSCOLLECTOR_OSINFO_DELETE_BY_PK] = "DELETE FROM sys_osinfo WHERE os_name = ?;",
     [WDB_STMT_SYSCOLLECTOR_OSINFO_CLEAR] = "DELETE FROM sys_osinfo;",
     [WDB_STMT_SYS_HOTFIXES_GET] = "SELECT HOTFIX FROM SYS_HOTFIXES;",
-    [WDB_STMT_SYS_PROGRAMS_GET] = "SELECT DISTINCT NAME, VERSION, ARCHITECTURE, VENDOR, SOURCE, CPE, MSU_NAME, ITEM_ID FROM SYS_PROGRAMS;",
+    [WDB_STMT_SYS_PROGRAMS_GET] = "SELECT DISTINCT NAME, VERSION, ARCHITECTURE, VENDOR, FORMAT, SOURCE, CPE, MSU_NAME, ITEM_ID, DESCRIPTION, LOCATION, SIZE, INSTALL_TIME FROM SYS_PROGRAMS;",
 };
 
 /**
@@ -361,6 +363,8 @@ wdb_t * wdb_open_global() {
         }
 
         wdb_enable_foreign_keys(wdb->db);
+
+        wdb_set_synchronous_normal(wdb);
     }
 
     return wdb;
@@ -468,31 +472,38 @@ wdb_t * wdb_open_tasks() {
 /* Create database for agent from profile. Returns 0 on success or -1 on error. */
 int wdb_create_agent_db2(const char * agent_id) {
     char path[OS_FLSIZE + 1];
+    char path_temp[OS_FLSIZE + 1];
     char buffer[4096];
     FILE *source;
     FILE *dest;
     size_t nbytes;
     int result = 0;
+    static pthread_mutex_t profile_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    snprintf(path, OS_FLSIZE, "%s/%s", WDB2_DIR, WDB_PROF_NAME);
+    w_mutex_lock(&profile_mutex);
 
-    if (!(source = wfopen(path, "r"))) {
+    if (!(source = wfopen(WDB_PROF_PATH, "r"))) {
         mdebug1("Profile database not found, creating.");
 
-        if (wdb_create_profile(path) < 0)
+        if (wdb_create_profile() < 0) {
+            w_mutex_unlock(&profile_mutex);
             return -1;
+        }
 
         // Retry to open
 
-        if (!(source = wfopen(path, "r"))) {
-            merror("Couldn't open profile '%s'.", path);
+        if (!(source = wfopen(WDB_PROF_PATH, "r"))) {
+            w_mutex_unlock(&profile_mutex);
+            merror("Couldn't open profile '%s'.", WDB_PROF_PATH);
             return -1;
         }
     }
 
+    w_mutex_unlock(&profile_mutex);
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
+    snprintf(path_temp, OS_FLSIZE, "%s.new", path);
 
-    if (!(dest = wfopen(path, "w"))) {
+    if (!(dest = wfopen(path_temp, "w"))) {
         merror("Couldn't create database '%s': %s (%d)", path, strerror(errno), errno);
         fclose(source);
         return -1;
@@ -500,7 +511,7 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
         if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            unlink(path);
+            unlink(path_temp);
             result = -1;
             break;
         }
@@ -508,18 +519,24 @@ int wdb_create_agent_db2(const char * agent_id) {
 
     fclose(source);
     if (fclose(dest) == -1) {
-        merror("Couldn't create file %s completely ", path);
+        merror("Couldn't create file %s completely", path_temp);
         return -1;
     }
 
     if (result < 0) {
-        unlink(path);
+        unlink(path_temp);
         return -1;
     }
 
-    if (chmod(path, 0640) < 0) {
-        merror(CHMOD_ERROR, path, errno, strerror(errno));
-        unlink(path);
+    if (chmod(path_temp, 0640) < 0) {
+        merror(CHMOD_ERROR, path_temp, errno, strerror(errno));
+        unlink(path_temp);
+        return -1;
+    }
+
+    if (OS_MoveFile(path_temp, path) < 0) {
+        merror(RENAME_ERROR, path_temp, path, errno, strerror(errno));
+        unlink(path_temp);
         return -1;
     }
 
@@ -594,8 +611,8 @@ int wdb_create_global(const char *path) {
 }
 
 /* Create profile database */
-int wdb_create_profile(const char *path) {
-    return wdb_create_file(path, schema_agents_sql);
+int wdb_create_profile() {
+    return wdb_create_file(WDB_PROF_PATH, schema_agents_sql);
 }
 
 /* Create new database file from SQL script */
@@ -1673,4 +1690,19 @@ STATIC int wdb_write_state_transaction(wdb_t * wdb, uint8_t state, wdb_ptr_any_t
         }
     }
     return 0;
+}
+
+int wdb_set_synchronous_normal(wdb_t * wdb) {
+    int returnState = 0;
+    char * sqlError = NULL;
+
+    sqlite3_exec(wdb->db, SQL_STMT[WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL], NULL, NULL, &sqlError);
+
+    if (sqlError != NULL) {
+        merror("Cannot set synchronous mode: '%s'", sqlError);
+        sqlite3_free(sqlError);
+        returnState = -1;
+    }
+
+    return returnState;
 }

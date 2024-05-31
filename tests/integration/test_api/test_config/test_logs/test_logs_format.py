@@ -1,5 +1,5 @@
 """
-copyright: Copyright (C) 2015-2023, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
            Created by Wazuh, Inc. <info@wazuh.com>.
            This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -87,8 +87,7 @@ daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
 # Tests
 @pytest.mark.tier(level=1)
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
-def test_logs_formats(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler,
-                      wait_for_api_start):
+def test_logs_formats(test_configuration, test_metadata, add_configuration, truncate_monitored_files, daemons_handler):
     """
     description: Check if the logs of the API are stored in the specified formats and the content of the log
                  files are the expected.
@@ -127,9 +126,6 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.
-        - wait_for_api_start:
-            type: fixture
-            brief: Monitor the API log file to detect whether it has been started or not.
 
     assertions:
         - Verify that the response status code is the expected one.
@@ -152,10 +148,10 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
 
     if current_level == 'error':
         with pytest.raises(RuntimeError) as exception:
-            login()
+            login(timeout=10, login_attempts=5)
         response = exception.value.args[1]
     else:
-        _, response = login()
+        _, response = login(timeout=10, login_attempts=5)
 
     assert response.status_code == expected_code, f"The status code was {response.status_code}." \
                                                   f"\nExpected: {expected_code}."

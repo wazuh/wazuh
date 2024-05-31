@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -60,7 +60,7 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
 
 # Marks
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configuration
 t_config_path = Path(CONFIGURATIONS_FOLDER_PATH, 'configuration_wazuh_conf.yaml')
@@ -87,15 +87,18 @@ def test_configuration_file(test_configuration, test_metadata, set_wazuh_configu
     tier: 0
 
     parameters:
-        - get_configuration:
+        - test_configuration:
+            type: data
+            brief: Configuration used in the test.
+        - test_metadata:
+            type: data
+            brief: Configuration cases.
+        - set_wazuh_configuration:
             type: fixture
-            brief: Get configuration from the module.
-        - configure_environment:
+            brief: Configure a custom environment for testing.
+        - daemons_handler:
             type: fixture
-            brief: Configure a custom environment for testing
-        - restart_wazuh:
-            type: fixture
-            brief: Restart wazuh, ossec.log and start a new monitor.
+            brief: Handler of Wazuh daemons.
 
     assertions:
         - Verify that a valid configuration is loaded.

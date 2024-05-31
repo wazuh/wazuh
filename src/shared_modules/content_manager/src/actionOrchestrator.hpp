@@ -36,7 +36,73 @@ public:
     enum UpdateType
     {
         CONTENT,
-        OFFSET
+        OFFSET,
+        FILE_HASH
+    };
+
+    /**
+     * @brief Struct containing the necessary members to execute the orchestrations.
+     *
+     */
+    struct UpdateData
+    {
+        UpdateType type;      ///< Orchestration update type.
+        int offset;           ///< Offset value used in the update.
+        std::string fileHash; ///< Hash value used in the update.
+
+        /**
+         * @brief Creates an UpdateData struct for content update.
+         *
+         * @param offset Offset used in the update. If zero, the offset value will be reset. Otherwise, its value will
+         * be read from the RocksDB database.
+         * @return UpdateData Struct ready to be used by the orchestrator.
+         */
+        static UpdateData createContentUpdateData(const int offset)
+        {
+            return UpdateData(UpdateType::CONTENT, offset, "");
+        }
+
+        /**
+         * @brief Creates an UpdateData struct for offset update.
+         *
+         * @param offset Offset used in the update that will be written in the RocksDB database to be used in posterior
+         * content updates. Should be nonnegative.
+         * @return UpdateData Struct ready to be used by the orchestrator.
+         */
+        static UpdateData createOffsetUpdateData(const int offset)
+        {
+            if (0 > offset)
+            {
+                throw std::invalid_argument {"Offset value (" + std::to_string(offset) + ") shouldn't be negative"};
+            }
+            return UpdateData(UpdateType::OFFSET, offset, "");
+        }
+
+        /**
+         * @brief Creates an UpdateData struct for file hash update.
+         *
+         * @param fileHash Hash used in the update that will be written in the RocksDB database to be used in posterior
+         * content updates. Should be nonnegative.
+         * @return UpdateData Struct ready to be used by the orchestrator.
+         */
+        static UpdateData createHashUpdateData(const std::string& fileHash)
+        {
+            if (fileHash.empty())
+            {
+                throw std::invalid_argument {"Invalid hash value: The hash is empty"};
+            }
+            return UpdateData(UpdateType::FILE_HASH, -1, fileHash);
+        }
+
+    private:
+        /**
+         * @brief Private struct constructor called from the static methods of this struct.
+         *
+         */
+        UpdateData(const UpdateType type, const int offset, const std::string& fileHash)
+            : type(type)
+            , offset(offset)
+            , fileHash(fileHash) {};
     };
 
     /**
@@ -79,11 +145,9 @@ public:
     /**
      * @brief Run the content updater orchestration.
      *
-     * @param offset Offset value from the on-demand request. If equals zero and \p type is CONTENT, the current
-     * offset will be reset to zero. If \p type is OFFSET, this value will be used to perform the offset update.
-     * @param type Type of update the orchestrator should perform.
+     * @param updateData Update orchestration data.
      */
-    void run(const int offset = -1, const UpdateType type = UpdateType::CONTENT) const
+    void run(const UpdateData& updateData) const
     {
         // Create a updater context
         auto spUpdaterContext {std::make_shared<UpdaterContext>()};
@@ -91,13 +155,19 @@ public:
 
         try
         {
-            if (type == UpdateType::OFFSET)
+            switch (updateData.type)
             {
-                return runOffsetUpdate(std::move(spUpdaterContext), offset);
-            }
-            else
-            {
-                return runContentUpdate(std::move(spUpdaterContext), offset == 0);
+                case UpdateType::OFFSET: runOffsetUpdate(std::move(spUpdaterContext), updateData.offset); break;
+
+                case UpdateType::FILE_HASH: runFileHashUpdate(std::move(spUpdaterContext), updateData.fileHash); break;
+
+                case UpdateType::CONTENT: runContentUpdate(std::move(spUpdaterContext), updateData.offset == 0); break;
+
+                // LCOV_EXCL_START
+                default:
+                    logDebug1(WM_CONTENTUPDATER, "Invalid update type, the orchestration will be skipped");
+                    break;
+                    // LCOV_EXCL_STOP
             }
         }
         catch (const std::exception& e)
@@ -137,14 +207,28 @@ private:
     {
         logDebug2(WM_CONTENTUPDATER, "Running '%s' offset update", m_spBaseContext->topicName.c_str());
 
-        if (0 > offset)
-        {
-            throw std::invalid_argument {"Offset value (" + std::to_string(offset) + ") shouldn't be negative"};
-        }
-
         spUpdaterContext->currentOffset = offset;
 
         FactoryOffsetUpdater::create(m_spBaseContext->configData)->handleRequest(std::move(spUpdaterContext));
+    }
+
+    /**
+     * @brief Performs a file hash update in the database with the specified hash.
+     *
+     * @param spUpdaterContext Updater context.
+     * @param fileHash Hash value to be used in the update.
+     */
+    void runFileHashUpdate(std::shared_ptr<UpdaterContext> spUpdaterContext, const std::string& fileHash) const
+    {
+        logDebug2(WM_CONTENTUPDATER, "Running '%s' file hash update", m_spBaseContext->topicName.c_str());
+
+        if (spUpdaterContext->spUpdaterBaseContext->spRocksDB)
+        {
+            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
+                Utils::getCompactTimestamp(std::time(nullptr)), fileHash, Components::Columns::DOWNLOADED_FILE_HASH);
+        }
+
+        spUpdaterContext->spUpdaterBaseContext->downloadedFileHash = fileHash;
     }
 
     /**
@@ -194,21 +278,8 @@ private:
             spUpdaterContext->data = std::move(originalData);
         }
 
-        // Store last file hash.
-        const std::string lastDownloadedFileHash {spUpdaterContext->spUpdaterBaseContext->downloadedFileHash};
-
         // Run the updater chain
         m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
-
-        // Update filehash if it has changed.
-        if (spUpdaterContext->spUpdaterBaseContext->spRocksDB &&
-            lastDownloadedFileHash != spUpdaterContext->spUpdaterBaseContext->downloadedFileHash)
-        {
-            spUpdaterContext->spUpdaterBaseContext->spRocksDB->put(
-                Utils::getCompactTimestamp(std::time(nullptr)),
-                spUpdaterContext->spUpdaterBaseContext->downloadedFileHash,
-                Components::Columns::DOWNLOADED_FILE_HASH);
-        }
     }
 
     /**
@@ -226,7 +297,7 @@ private:
         fullContentConfig.at("compressionType") = "zip";
 
         // Trigger orchestration.
-        FactoryContentUpdater::create(fullContentConfig)->handleRequest(spUpdaterContext);
+        FactoryContentUpdater::create(fullContentConfig)->handleRequest(std::move(spUpdaterContext));
     }
 };
 

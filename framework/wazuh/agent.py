@@ -607,7 +607,7 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
         rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
 
-        with WazuhDBQueryGroup(**rbac_filters, limit=limit, offset=offset) as group_query:
+        with WazuhDBQueryGroup(**rbac_filters, limit=None) as group_query:
             query_data = group_query.run()
 
             for group in query_data['items']:
@@ -627,15 +627,12 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
                 affected_groups.append(group)
 
-        data = process_array(affected_groups, allowed_sort_fields=GROUP_FIELDS,
+        data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
                             sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
                             complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
                             select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
         result.affected_items = data['items']
-        total_items = query_data['totalItems']
-        if q is not None or search_text is not None:
-            total_items = data['totalItems']
-        result.total_affected_items = total_items
+        result.total_affected_items = data['totalItems']
 
     return result
 
@@ -1045,7 +1042,7 @@ def remove_agents_from_group(agent_list: list = None, group_list: list = None) -
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
-                        search: dict = None, select: dict = None, q: str = None) -> AffectedItemsWazuhResult:
+                        search: dict = None, select: str = None, q: str = None) -> AffectedItemsWazuhResult:
     """Gets the outdated agents.
 
     Parameters
@@ -1060,8 +1057,8 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
     search : dict
         Looks for items with the specified string. Format: {"fields": ["field1","field2"]}.
-    select : dict
-        Select fields to return. Format: {"fields":["field1","field2"]}.
+    select : str
+        Select which fields to return (separated by comma).
     q : str
         Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
 
@@ -1080,7 +1077,6 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         manager = Agent(id='000')
         manager.load_info_from_db()
 
-        select = ['version', 'id', 'name'] if select is None else select
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
@@ -1097,8 +1093,8 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
 def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,
-                   use_http: bool = False, file_path: str = None, installer: str = None, filters: dict = None,
-                   q: str = None) -> AffectedItemsWazuhResult:
+                   use_http: bool = False, package_type: str = None, file_path: str = None, installer: str = None,
+                   filters: dict = None, q: str = None) -> AffectedItemsWazuhResult:
     """Start the agent upgrade process.
 
     Parameters
@@ -1113,6 +1109,8 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         Forces the agents to upgrade, ignoring version validations.
     use_http : bool
         False for HTTPS protocol, True for HTTP protocol.
+    package_type : str
+        Default package type (rpm, deb).
     file_path : str
         Path to the installation file.
     installer : str
@@ -1183,7 +1181,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         tasks_results = create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=UPGRADE_CHUNK_SIZE,
                                              command='upgrade' if not (installer or file_path) else 'upgrade_custom',
                                              wpk_repo=wpk_repo, version=version, force=force, use_http=use_http,
-                                             file_path=file_path, installer=installer)
+                                             package_type=package_type, file_path=file_path, installer=installer)
 
         for agent_result_chunk in tasks_results:
             for agent_result in agent_result_chunk['data']:

@@ -1131,15 +1131,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                if (wdb_commit2(wdb) < 0) {
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
-                    result = OS_INVALID;
-                } else {
-                    result = wdb_parse_global_delete_group(wdb, next, output);
-                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
-                        mdebug1("Global DB Cannot rollback transaction.");
-                    }
-                }
+                result = wdb_parse_global_delete_group(wdb, next, output);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_group_delete_group_time(diff);
@@ -1174,15 +1166,7 @@ int wdb_parse(char * input, char * output, int peer) {
                 result = OS_INVALID;
             } else {
                 gettimeofday(&begin, 0);
-                if (wdb_commit2(wdb) < 0) {
-                    snprintf(output, OS_MAXSTR + 1, "err Cannot commit current transaction to continue");
-                    result = OS_INVALID;
-                } else {
-                    result = wdb_parse_global_set_agent_groups(wdb, next, output);
-                    if (result == OS_INVALID && wdb_rollback2(wdb) < 0) {
-                        mdebug1("Global DB Cannot rollback transaction.");
-                    }
-                }
+                result = wdb_parse_global_set_agent_groups(wdb, next, output);
                 gettimeofday(&end, 0);
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_set_agent_groups_time(diff);
@@ -1222,6 +1206,13 @@ int wdb_parse(char * input, char * output, int peer) {
                 timersub(&end, &begin, &diff);
                 w_inc_global_agent_get_groups_integrity_time(diff);
             }
+        } else if (strcmp(query, "recalculate-agent-group-hashes") == 0) {
+            w_inc_global_agent_recalculate_agent_group_hashes();
+            gettimeofday(&begin, 0);
+            result = wdb_parse_global_recalculate_agent_group_hashes(wdb, output);
+            gettimeofday(&end, 0);
+            timersub(&end, &begin, &diff);
+            w_inc_global_agent_recalculate_agent_group_hashes_time(diff);
         } else if (strcmp(query, "disconnect-agents") == 0) {
             w_inc_global_agent_disconnect_agents();
             if (!next) {
@@ -2139,49 +2130,65 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (scan_id = cJSON_GetObjectItem(event, "id"), !scan_id) {
             mdebug1("Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            cJSON_Delete(event);
             return OS_INVALID;
         }
 
-        if (!scan_id->valueint) {
+        if (!cJSON_IsNumber(scan_id)) {
             mdebug1("Malformed JSON: field 'id' must be a number");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            cJSON_Delete(event);
+            return OS_INVALID;
+        }
+
+        if (scan_id->valueint < 0) {
+            mdebug1("Malformed JSON: field 'id' cannot be negative");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            cJSON_Delete(event);            
             return OS_INVALID;
         }
 
         if (policy_id = cJSON_GetObjectItem(event, "policy_id"), !policy_id) {
             mdebug1("Malformed JSON: field 'policy_id' not found");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            cJSON_Delete(event);
             return OS_INVALID;
         }
 
         if (!policy_id->valuestring) {
             mdebug1("Malformed JSON: field 'policy_id' must be a string");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
+            cJSON_Delete(event);
             return OS_INVALID;
         }
 
         if (check = cJSON_GetObjectItem(event, "check"), !check) {
             mdebug1("Malformed JSON: field 'check' not found");
+            cJSON_Delete(event);
             return OS_INVALID;
 
         } else {
             if (id = cJSON_GetObjectItem(check, "id"), !id) {
                 mdebug1("Malformed JSON: field 'id' not found");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             if (!id->valueint) {
                 mdebug1("Malformed JSON: field 'id' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             if (title = cJSON_GetObjectItem(check, "title"), !title) {
                 mdebug1("Malformed JSON: field 'title' not found");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             if (!title->valuestring) {
                 mdebug1("Malformed JSON: field 'title' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
@@ -2189,6 +2196,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
             if (description && !description->valuestring) {
                 mdebug1("Malformed JSON: field 'description' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
@@ -2196,12 +2204,14 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
             if (rationale && !rationale->valuestring) {
                 mdebug1("Malformed JSON: field 'rationale' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             remediation = cJSON_GetObjectItem(check, "remediation");
             if (remediation && !remediation->valuestring) {
                 mdebug1("Malformed JSON: field 'remediation' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
@@ -2209,24 +2219,28 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
 
             if (reference && !reference->valuestring) {
                 mdebug1("Malformed JSON: field 'reference' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             file = cJSON_GetObjectItem(check, "file");
             if (file && !file->valuestring) {
                 mdebug1("Malformed JSON: field 'file' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             condition = cJSON_GetObjectItem(check, "condition");
             if (condition && !condition->valuestring) {
                 mdebug1("Malformed JSON: field 'condition' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             directory = cJSON_GetObjectItem(check, "directory");
             if (directory && !directory->valuestring) {
                 mdebug1("Malformed JSON: field 'directory' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
@@ -2239,24 +2253,28 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
             registry = cJSON_GetObjectItem(check, "registry");
             if (registry && !registry->valuestring) {
                 mdebug1("Malformed JSON: field 'registry' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             command = cJSON_GetObjectItem(check, "command");
             if (command && !command->valuestring) {
                 mdebug1("Malformed JSON: field 'command' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             result_check = cJSON_GetObjectItem(check, "result");
             if (result_check && !result_check->valuestring) {
                 mdebug1("Malformed JSON: field 'result' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
 
             reason = cJSON_GetObjectItem(check, "reason");
             if (reason && !reason->valuestring) {
                 mdebug1("Malformed JSON: field 'reason' must be a string");
+                cJSON_Delete(event);
                 return OS_INVALID;
             }
         }
@@ -5521,7 +5539,6 @@ int wdb_parse_global_delete_agent(wdb_t * wdb, char * input, char * output) {
         j_agent_info = cJSON_CreateObject();
 
         cJSON_AddStringToObject(j_agent_info, "agent_id", input);
-        cJSON_AddStringToObject(j_agent_info, "node_name", gconfig.node_name ? gconfig.node_name : "");
         cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
         cJSON_AddStringToObject(j_msg_to_send, "action", "deleteAgent");
@@ -6039,6 +6056,19 @@ int wdb_parse_get_groups_integrity(wdb_t* wdb, char* input, char* output) {
     snprintf(output, OS_MAXSTR + 1, "ok %s", out);
     os_free(out);
     cJSON_Delete(j_result);
+    return OS_SUCCESS;
+}
+
+int wdb_parse_global_recalculate_agent_group_hashes(wdb_t* wdb, char* output) {
+
+    if (OS_SUCCESS != wdb_global_recalculate_all_agent_groups_hash(wdb)) {
+        mwarn("Error recalculating group hash of agents in global.db.");
+        snprintf(output, OS_MAXSTR + 1, "err Error recalculating group hash of agents in global.db");
+        return OS_INVALID;
+    }
+
+    snprintf(output, OS_MAXSTR + 1, "ok");
+
     return OS_SUCCESS;
 }
 

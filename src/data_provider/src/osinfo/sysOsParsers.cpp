@@ -26,7 +26,7 @@ static bool parseUnixFile(const std::vector<std::pair<std::string, std::string>>
 
     Utils::splitMapKeyValue(fileContent, separator, fileKeyValueMap);
 
-    for (auto keyMappingEntry : keyMapping)
+    for (const auto& keyMappingEntry : keyMapping)
     {
         if (info.find(keyMappingEntry.second) == info.end())
         {

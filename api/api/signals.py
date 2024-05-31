@@ -2,24 +2,31 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 import asyncio
+import contextlib
 import logging
 import os
 import uuid
 from functools import wraps
-from typing import AsyncGenerator, Callable
+from typing import Callable
 
-from aiohttp import web
-
-from api.constants import INSTALLATION_UID_KEY, INSTALLATION_UID_PATH, UPDATE_INFORMATION_KEY
+from connexion import ConnexionMiddleware
 from wazuh.core import common
 from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.manager import query_update_check_service
 
+from api import configuration
+from api.constants import (
+    INSTALLATION_UID_KEY,
+    INSTALLATION_UID_PATH,
+    UPDATE_INFORMATION_KEY,
+)
 
 ONE_DAY_SLEEP = 60*60*24
 
 logger = logging.getLogger('wazuh-api')
+
+cti_context = {}
 
 
 def cancel_signal_handler(func: Callable) -> Callable:
@@ -45,20 +52,11 @@ def cancel_signal_handler(func: Callable) -> Callable:
     return wrapper
 
 
-async def modify_response_headers(request, response):
-    # Delete 'Server' entry
-    response.headers.pop('Server', None)
-
-
 @cancel_signal_handler
-async def check_installation_uid(app: web.Application) -> None:
-    """Check if the installation UID exists, populate it if not and inject it into the application context.
+async def check_installation_uid() -> None:
+    """Check if the installation UID exists, populate it if not and inject it into the global cti context."""
 
-    Parameters
-    ----------
-    app : web.Application
-        Application context to inject the installation UID
-    """
+    global cti_context
     if os.path.exists(INSTALLATION_UID_PATH):
         logger.info("Getting installation UID...")
         with open(INSTALLATION_UID_PATH, 'r') as file:
@@ -70,42 +68,37 @@ async def check_installation_uid(app: web.Application) -> None:
             file.write(installation_uid)
             os.chown(file.name, common.wazuh_uid(), common.wazuh_gid())
             os.chmod(file.name, 0o660)
-    app[INSTALLATION_UID_KEY] = installation_uid
+    cti_context[INSTALLATION_UID_KEY] = installation_uid
 
 
 @cancel_signal_handler
-async def get_update_information(app: web.Application) -> None:
-    """Get updates information from Update Check Service and inject into the application context.
+async def get_update_information() -> None:
+    """Get updates information from Update Check Service and inject into the global cti context."""
 
-    Parameters
-    ----------
-    app : web.Application
-        Application context to inject the update information.
-    """
-
+    global cti_context
     while True:
         logger.info('Getting updates information...')
-        app[UPDATE_INFORMATION_KEY] = await query_update_check_service(app[INSTALLATION_UID_KEY])
-
+        cti_context[UPDATE_INFORMATION_KEY] = await query_update_check_service(cti_context[INSTALLATION_UID_KEY])
         await asyncio.sleep(ONE_DAY_SLEEP)
 
 
-async def register_background_tasks(app: web.Application) -> AsyncGenerator:
-    """Cleanup context to handle background tasks.
+@contextlib.asynccontextmanager
+async def lifespan_handler(_: ConnexionMiddleware):
+    """Logs the API startup/shutdown messages and register background tasks."""
 
-    Parameters
-    ----------
-    app : web.Application
-        Application context to pass to tasks.
-    """
     tasks: list[asyncio.Task] = []
 
     if running_in_master_node() and update_check_is_enabled():
-        tasks.append(asyncio.create_task(check_installation_uid(app)))
-        tasks.append(asyncio.create_task(get_update_information(app)))
+        tasks.append(asyncio.create_task(check_installation_uid()))
+        tasks.append(asyncio.create_task(get_update_information()))
+
+    # Log the initial server startup message.
+    logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')
 
     yield
 
     for task in tasks:
         task.cancel()
         await task
+
+    logger.info('Shutdown wazuh-apid server.')

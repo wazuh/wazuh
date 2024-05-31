@@ -12,18 +12,22 @@
 #ifndef _SOCKET_DB_WRAPPER_TEST_HPP
 #define _SOCKET_DB_WRAPPER_TEST_HPP
 
+#include "socketDBWrapper.hpp"
 #include "socketServer.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <thread>
 
-auto constexpr TEST_SOCKET {"tmp/temp_sock"};
+auto constexpr TEST_SOCKET {"queue/db/wdb"};
 
 class SocketDBWrapperTest : public ::testing::Test
 {
 protected:
     SocketDBWrapperTest()
-        : m_sleepTime {0} {};
+        : m_sleepTime {0}
+    {
+        SocketDBWrapper::instance().init();
+    };
     ~SocketDBWrapperTest() override = default;
 
     void SetUp() override
@@ -50,6 +54,7 @@ protected:
     };
     void TearDown() override
     {
+        SocketDBWrapper::instance().teardown();
         m_socketServer->stop();
         m_socketServer.reset();
         m_query.clear();

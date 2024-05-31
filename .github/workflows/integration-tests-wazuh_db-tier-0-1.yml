@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
         - ".github/workflows/integration-tests-wazuh_db-tier-0-1.yml"
+        - "src/config/wazuh_db-config.c"
+        - "src/config/wazuh_db-config.h"
         - "src/wazuh_db/**"
         - "src/Makefile"
         - "tests/integration/conftest.py"

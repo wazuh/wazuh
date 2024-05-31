@@ -40,8 +40,10 @@ EXAMPLE_MESSAGE_EVENT = '1:/root/test.log:Feb 23 17:18:20 35-u20-manager4 sshd[4
 
 # Test variables.
 receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]
+
 mitm_analysisd = ManInTheMiddle(address=ANALYSISD_QUEUE_SOCKET_PATH, family='AF_UNIX', connection_protocol='UDP')
 monitored_sockets_params = [(ANALYSISD_DAEMON, mitm_analysisd, True)]
+
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 

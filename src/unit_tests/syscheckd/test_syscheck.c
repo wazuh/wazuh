@@ -157,11 +157,6 @@ int __wrap_rootcheck_init(int value, char * home_path)
     return mock();
 }
 
-void __wrap_os_wait()
-{
-    function_called();
-}
-
 void __wrap_start_daemon()
 {
     function_called();
@@ -207,7 +202,6 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
     will_return(__wrap_rootcheck_init, 1);
 
     expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
-    expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -239,7 +233,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-    expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -269,7 +262,6 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-    expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -336,7 +328,6 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
 
-    expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 
@@ -387,7 +378,6 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
-    expect_function_call(__wrap_os_wait);
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 

@@ -40,14 +40,15 @@ class AWSInspector(aws_service.AWSService):
         The number of events collected and sent to analysisd.
     """
 
-    def __init__(self, reparse, profile,
-                 iam_role_arn, only_logs_after, region, aws_log_groups=None,
+    def __init__(self, reparse, access_key, secret_key, profile,
+                 iam_role_arn, only_logs_after, account_alias, region, aws_log_groups=None,
                  remove_log_streams=None, discard_field=None, discard_regex=None,
                  sts_endpoint=None, service_endpoint=None, iam_role_duration=None, **kwargs):
 
         aws_service.AWSService.__init__(self, db_table_name=aws_service.DEFAULT_TABLENAME, service_name='inspector',
-                                        reparse=reparse, profile=profile, iam_role_arn=iam_role_arn,
-                                        only_logs_after=only_logs_after, region=region, aws_log_groups=aws_log_groups,
+                                        reparse=reparse, access_key=access_key, secret_key=secret_key,
+                                        profile=profile, iam_role_arn=iam_role_arn, only_logs_after=only_logs_after,
+                                        account_alias=account_alias, region=region, aws_log_groups=aws_log_groups,
                                         remove_log_streams=remove_log_streams, discard_field=discard_field,
                                         discard_regex=discard_regex, sts_endpoint=sts_endpoint,
                                         service_endpoint=service_endpoint, iam_role_duration=iam_role_duration)

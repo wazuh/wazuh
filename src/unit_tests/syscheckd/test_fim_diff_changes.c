@@ -579,6 +579,7 @@ void test_initialize_file_diff_data_abspath_fail(void **state) {
     diff_data *diff = *state;
 
     expect_abspath(GENERIC_PATH, 0);
+    errno = 0;
 #ifdef TEST_WINAGENT
     expect_string(__wrap__merror, formatted_msg, "(6711): Cannot get absolute path of 'c:\\file\\path': Success (0)");
 #else
@@ -796,7 +797,7 @@ void test_fim_diff_create_compress_file_quota_reached(void **state) {
 
     int ret = fim_diff_create_compress_file(diff);
 
-    assert_int_equal(ret, -1);
+    assert_int_equal(ret, -2);
 }
 
 void test_fim_diff_modify_compress_estimation_small_compresion_rate(void **state) {
@@ -1275,7 +1276,9 @@ void test_fim_registry_value_diff_wrong_too_big_file(void **state) {
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "Unable to calculate diff due to 'file_size' limit has been reached.");
+    
+    free(diff_str);
 }
 
 void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
@@ -1298,7 +1301,9 @@ void test_fim_registry_value_diff_wrong_quota_reached(void **state) {
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "Unable to calculate diff due to 'disk_quota' limit has been reached.");
+    
+    free(diff_str);
 }
 
 void test_fim_registry_value_diff_uncompress_fail(void **state) {
@@ -1325,7 +1330,9 @@ void test_fim_registry_value_diff_uncompress_fail(void **state) {
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "Unable to calculate diff due to no previous data stored for this registry value.");
+    
+    free(diff_str);
 }
 
 void test_fim_registry_value_diff_create_compress_fail(void **state) {
@@ -1383,7 +1390,9 @@ void test_fim_registry_value_diff_compare_fail(void **state) {
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "No content changes were found for this registry value.");
+    
+    free(diff_str);
 }
 
 void test_fim_registry_value_diff_nodiff(void **state) {
@@ -1412,7 +1421,9 @@ void test_fim_registry_value_diff_nodiff(void **state) {
 
     char *diff_str = fim_registry_value_diff(key_name, value_name, value_data, data_type, configuration);
 
-    assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+    assert_string_equal(diff_str, "Diff truncated due to 'nodiff' configuration detected for this registry value.");
+
+    free(diff_str);
 }
 
 void test_fim_registry_value_diff_generate_fail(void **state) {
@@ -1524,7 +1535,9 @@ void test_fim_file_diff_wrong_too_big_file(void **state) {
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "Unable to calculate diff due to 'file_size' limit has been reached.");
+    
+    free(diff_str);
 }
 
 void test_fim_file_diff_wrong_quota_reached(void **state) {
@@ -1549,7 +1562,9 @@ void test_fim_file_diff_wrong_quota_reached(void **state) {
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "Unable to calculate diff due to 'disk_quota' limit has been reached.");
+    
+    free(diff_str);
 }
 
 void test_fim_file_diff_uncompress_fail(void **state) {
@@ -1577,7 +1592,9 @@ void test_fim_file_diff_uncompress_fail(void **state) {
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "Unable to calculate diff due to no previous data stored for this file.");
+    
+    free(diff_str);
 }
 
 void test_fim_file_diff_create_compress_fail(void **state) {
@@ -1642,7 +1659,9 @@ void test_fim_file_diff_compare_fail(void **state) {
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
-    assert_ptr_equal(diff_str, NULL);
+    assert_string_equal(diff_str, "No content changes were found for this file.");
+    
+    free(diff_str);
 }
 
 #ifdef TEST_WINAGENT
@@ -1674,7 +1693,9 @@ void test_fim_file_diff_nodiff(void **state) {
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
-    assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+    assert_string_equal(diff_str, "Diff truncated due to 'nodiff' configuration detected for this file.");
+    
+    free(diff_str);
 }
 #else
 void test_fim_file_diff_nodiff(void **state) {
@@ -1705,7 +1726,7 @@ void test_fim_file_diff_nodiff(void **state) {
 
     char *diff_str = fim_file_diff(filename, &configuration);
 
-    assert_string_equal(diff_str, "<Diff truncated because nodiff option>");
+    assert_string_equal(diff_str, "Diff truncated due to 'nodiff' configuration detected for this file.");
 
     free(diff_str);
 }

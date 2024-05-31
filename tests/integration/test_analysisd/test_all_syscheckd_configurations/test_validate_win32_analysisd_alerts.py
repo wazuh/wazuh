@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -49,8 +49,6 @@ import pytest
 from pathlib import Path
 
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON, ANALYSISD_DAEMON
-from wazuh_testing.constants.keys.alerts import *
-from wazuh_testing.constants.keys.events import *
 from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.analysisd import patterns, utils, configuration as analysisd_config
@@ -60,7 +58,7 @@ from wazuh_testing.utils import configuration
 
 from . import TEST_CASES_PATH
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=2), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=2)]
 
 # Configuration and cases data.
 test_cases_path = Path(TEST_CASES_PATH, 'cases_syscheck_events_win32.yaml')
@@ -144,6 +142,6 @@ def test_validate_all_win32_alerts(test_metadata, configure_local_internal_optio
         - wdb_socket
     '''
     alert = next(read_alerts_syscheck)
-    path = alert[ALERTS_SYSCHECK][SYSCHECK_PATH]
-    mode = alert[ALERTS_SYSCHECK][ALERTS_SYSCHECK_EVENT].title()
+    path = alert[patterns.ALERTS_SYSCHECK][patterns.SYSCHECK_PATH]
+    mode = alert[patterns.ALERTS_SYSCHECK][patterns.ALERTS_SYSCHECK_EVENT].title()
     utils.validate_analysis_alert_syscheck(alert, events_dict[path][mode], schema=WINDOWS)

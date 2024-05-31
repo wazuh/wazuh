@@ -14,8 +14,8 @@
 
 #include "actionOrchestrator.hpp"
 #include "conditionSync.hpp"
+#include "iRouterProvider.hpp"
 #include "onDemandManager.hpp"
-#include "routerProvider.hpp"
 #include "updaterContext.hpp"
 #include <atomic>
 #include <chrono>
@@ -23,12 +23,6 @@
 #include <filesystem>
 #include <thread>
 #include <utility>
-
-enum ActionID
-{
-    SCHEDULED,
-    ON_DEMAND
-};
 
 /**
  * @brief Action class.
@@ -44,7 +38,7 @@ public:
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
      */
-    explicit Action(const std::shared_ptr<RouterProvider> channel, std::string topicName, nlohmann::json parameters)
+    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters)
         : m_channel {channel}
         , m_actionInProgress {false}
         , m_cv {}
@@ -72,20 +66,16 @@ public:
     /**
      * @brief Action execution with exclusivity: The action is only executed if there isn't another action in progress.
      *
-     * @param id Action ID.
-     * @param offset Manually set current offset to process.
-     * @param type Type of update to perform.
+     * @param updateData Update orchestration data.
      *
      * @return True if the execution was made, false otherwise.
      */
-    bool runActionExclusively(const ActionID id,
-                              const int offset = -1,
-                              const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
+    bool runActionExclusively(const ActionOrchestrator::UpdateData& updateData)
     {
         auto expectedValue {false};
         if (m_actionInProgress.compare_exchange_strong(expectedValue, true))
         {
-            runAction(id, offset, type);
+            runAction(updateData);
         }
         return !expectedValue;
     }
@@ -125,10 +115,10 @@ public:
      */
     void runActionScheduled()
     {
-        logInfo(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::SCHEDULED))
+        logDebug2(WM_CONTENTUPDATER, "Starting scheduled action for '%s'", m_topicName.c_str());
+        if (!runActionExclusively(ActionOrchestrator::UpdateData::createContentUpdateData(-1)))
         {
-            logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', scheduled request ignored", m_topicName.c_str());
+            logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', scheduled request ignored", m_topicName.c_str());
         }
     }
 
@@ -145,7 +135,7 @@ public:
         {
             m_schedulerThread.join();
         }
-        logInfo(WM_CONTENTUPDATER, "Scheduler stopped for '%s'", m_topicName.c_str());
+        logDebug2(WM_CONTENTUPDATER, "Scheduler stopped for '%s'", m_topicName.c_str());
     }
 
     /**
@@ -155,8 +145,8 @@ public:
     void registerActionOnDemand()
     {
         OnDemandManager::instance().addEndpoint(m_topicName,
-                                                [this](int offset, const ActionOrchestrator::UpdateType type)
-                                                { this->runActionOnDemand(offset, type); });
+                                                [this](const ActionOrchestrator::UpdateData& updateData)
+                                                { this->runActionOnDemand(updateData); });
     }
 
     /**
@@ -180,16 +170,14 @@ public:
     /**
      * @brief Runs ondemand action. Wrapper of runActionExclusively().
      *
-     * @param offset Manually set current offset to process. Default -1
-     * @param type Type of update to perform.
+     * @param updateData Update orchestration data.
      */
-    void runActionOnDemand(const int offset = -1,
-                           const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
+    void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData)
     {
-        logInfo(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(ActionID::ON_DEMAND, offset, type))
+        logDebug2(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
+        if (!runActionExclusively(updateData))
         {
-            logInfo(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
+            logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
         }
     }
 
@@ -205,7 +193,7 @@ public:
     }
 
 private:
-    std::shared_ptr<RouterProvider> m_channel;
+    std::shared_ptr<IRouterProvider> m_channel;
     std::thread m_schedulerThread;
     std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;
@@ -217,22 +205,20 @@ private:
     std::shared_ptr<ConditionSync> m_stopActionCondition;
     std::unique_ptr<ActionOrchestrator> m_orchestration;
 
-    void runAction(const ActionID id,
-                   const int offset = -1,
-                   const ActionOrchestrator::UpdateType type = ActionOrchestrator::UpdateType::CONTENT)
+    void runAction(const ActionOrchestrator::UpdateData& updateData)
     {
-        logInfo(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
+        logDebug2(WM_CONTENTUPDATER, "Action for '%s' started", m_topicName.c_str());
 
         try
         {
-            m_orchestration->run(offset, type);
+            m_orchestration->run(updateData);
         }
         catch (const std::exception& e)
         {
             logError(WM_CONTENTUPDATER, "Action for '%s' failed: %s", m_topicName.c_str(), e.what());
         }
 
-        logInfo(WM_CONTENTUPDATER, "Action for '%s' finished", m_topicName.c_str());
+        logDebug2(WM_CONTENTUPDATER, "Action for '%s' finished", m_topicName.c_str());
         m_actionInProgress = false;
     }
 };

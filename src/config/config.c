@@ -195,7 +195,11 @@ static int read_main_elements(const OS_XML *xml, int modules,
         } else if (strcmp(node[i]->element, osvulndetector) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
             if ((modules & CWMODULE)) {
-                mwarn("%s configuration is deprecated. Use %s instead.", osvulndetector, osvulndetection);
+                mwarn(
+                    "The '%s' configuration is now obsolete and will not function. Please update your settings to use "
+                    "the new '%s' block for continued vulnerability management. See https://documentation.wazuh.com",
+                    osvulndetector,
+                    osvulndetection);
                 if (Read_Vulnerability_Detection(xml, chld_node, d1, true) < 0) {
                     goto fail;
                 }
@@ -236,7 +240,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
-            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
+            if ((modules & CCLUSTER) && (Read_Cluster(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {

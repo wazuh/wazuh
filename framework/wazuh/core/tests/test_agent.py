@@ -346,17 +346,17 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
                          {'count': 1, 'name': 'wazuh-agent1'}]
 
     result = query_group._format_data_into_dictionary()
-    assert all(x['os']['name'] == 'unknown' for x in result['items'])
+    assert all(x['os']['name'] == 'N/A' for x in result['items'])
 
 
 @pytest.mark.parametrize('filter_fields, expected_response', [
     (['os.codename'], [{'os': {'codename': 'Bionic Beaver'}, 'count': 3}, {'os': {'codename': 'Xenial'}, 'count': 1},
-                       {'os': {'codename': 'unknown'}, 'count': 2}, {'os': {'codename': 'XP'}, 'count': 3}]),
+                       {'os': {'codename': 'N/A'}, 'count': 2}, {'os': {'codename': 'XP'}, 'count': 3}]),
     (['node_name'], [{'count': 7, 'node_name': 'node01'}, {'count': 2, 'node_name': 'unknown'}]),
     (['status', 'os.version'], [{'os': {'version': '18.04.1 LTS'}, 'count': 2, 'status': 'active'},
                                 {'os': {'version': '16.04.1 LTS'}, 'count': 1, 'status': 'active'},
-                                {'os': {'version': 'unknown'}, 'count': 1, 'status': 'never_connected'},
-                                {'os': {'version': 'unknown'}, 'count': 1, 'status': 'pending'},
+                                {'os': {'version': 'N/A'}, 'count': 1, 'status': 'never_connected'},
+                                {'os': {'version': 'N/A'}, 'count': 1, 'status': 'pending'},
                                 {'os': {'version': '18.04.1 LTS'}, 'count': 1, 'status': 'disconnected'},
                                 {'os': {'version': '5.2'}, 'count': 2, 'status': 'active'},
                                 {'os': {'version': '7.2'}, 'count': 1, 'status': 'active'}])
@@ -1355,25 +1355,25 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     ([1, 2, 3, 4],
      [
          call(command='test', agents_chunk=[1, 2, 3, 4], wpk_repo=None, version=None, force=None, use_http=None,
-              file_path=None, installer=None, get_result=None)
+              package_type=None, file_path=None, installer=None, get_result=None)
      ],
      False),
     ([i for i in range(16)],
      [
          call(command='test', agents_chunk=[i for i in range(10)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
          call(command='test', agents_chunk=[i for i in range(10, 16)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
      ],
      False),
     ([i for i in range(13)],
      [
          call(command='test', agents_chunk=[i for i in range(5)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
          call(command='test', agents_chunk=[i for i in range(5, 10)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
          call(command='test', agents_chunk=[i for i in range(10, 13)], wpk_repo=None, version=None, force=None,
-              use_http=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
      ],
      True)
 ])

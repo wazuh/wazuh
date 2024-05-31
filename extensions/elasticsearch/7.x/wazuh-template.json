@@ -1041,6 +1041,19 @@
           "id": {
             "type": "keyword"
           },
+          "azureSignInStatus": {
+            "properties": {
+              "additionalDetails": {
+                "type": "keyword"
+              },
+              "errorCode": {
+                "type": "integer"
+              },
+              "failureReason": {
+                "type": "keyword"
+              }
+            }
+          },
           "status": {
             "type": "keyword"
           },

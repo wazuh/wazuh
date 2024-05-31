@@ -4231,6 +4231,54 @@ stages:
             reverse: true
       status_code: 200
 
+  - name: Get the outdated agents fields
+    request:
+      verify: False
+      <<: *agents_outdated_request
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '005'
+              status: active
+              name: wazuh-agent5
+              version: 'Wazuh v3.13.2'
+              status_code: 0
+              group:
+                - default
+                - group1
+                - group2
+              registerIP: any
+              configSum: 6ca315e21ec25eab4bcb2a29218c6ae8
+              mergedSum: 0b4cbf98821ce6e4059269ac8969a8e6
+              dateAdd: '1970-01-01T00:00:00+00:00'
+              group_config_status: synced
+          failed_items: []
+          total_affected_items: 6
+          total_failed_items: 0
+
+  - name: Select
+    request:
+      verify: False
+      <<: *agents_outdated_request
+      params:
+        limit: 1
+        select: name
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-agent5
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Pagination
     request:
       verify: False
@@ -4246,7 +4294,7 @@ stages:
         data:
           affected_items:
             - id: '009'
-          failed_items: [ ]
+          failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
 
@@ -4418,7 +4466,7 @@ stages:
                 platform: !anystr
             - count: !anyint
               os:
-                platform: unknown
+                platform: N/A
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -4448,7 +4496,7 @@ stages:
             - count: !anyint
               status: never_connected
               os:
-                name: unknown
+                name: N/A
 
           failed_items: []
           total_affected_items: !anyint
