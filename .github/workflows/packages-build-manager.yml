@@ -90,6 +90,7 @@ on:
 jobs:
   Build-manager-packages:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
