@@ -64,18 +64,20 @@ tags:
     - fim_report_changes
 '''
 import os
+import sys
 
 from pathlib import Path
 
 import pytest
 
+from wazuh_testing.constants.platforms import MACOS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import EVENT_TYPE_MODIFIED, EVENT_TYPE_ADDED, ERROR_MSG_FIM_EVENT_NOT_DETECTED, EVENT_TYPE_DELETED
 from wazuh_testing.modules.fim.utils import make_diff_file_path, get_fim_event_data
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils.file import write_file, generate_string, delete_files_in_folder
+from wazuh_testing.utils.file import write_file_write, generate_string, delete_files_in_folder, truncate_file
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -87,7 +89,11 @@ pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.ma
 
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_report_changes_and_diff.yaml')
+cases_path = ''
+if sys.platform == MACOS:
+    cases_path = Path(TEST_CASES_PATH, 'cases_report_changes_and_diff_macos.yaml')
+else:
+    cases_path = Path(TEST_CASES_PATH, 'cases_report_changes_and_diff.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_report_changes_and_diff.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -166,15 +172,17 @@ def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_lo
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
     # Create the file and and capture the event.
+    truncate_file(WAZUH_LOG_PATH)
     original_string = generate_string(1, '0')
-    write_file(test_file_path, data=original_string)
+    write_file_write(test_file_path, content=original_string)
 
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=30)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
 
     # Modify the file with new content.
+    truncate_file(WAZUH_LOG_PATH)
     modified_string = generate_string(10, '1')
-    write_file(test_file_path, data=modified_string)
+    write_file_write(test_file_path, content=modified_string)
 
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED), timeout=20)
     assert wazuh_log_monitor.callback_result
@@ -187,12 +195,13 @@ def test_reports_file_and_nodiff(test_configuration, test_metadata, configure_lo
 
     # Validate content_changes value is truncated if the file is set to no_diff
     if is_truncated:
-        assert '<Diff truncated because nodiff option>' in event.get('content_changes'), \
+        assert 'Diff truncated because nodiff option' in event.get('content_changes'), \
             'content_changes is not truncated'
     else:
-        assert '<Diff truncated because nodiff option>' not in event.get('content_changes'), \
+        assert 'Diff truncated because nodiff option' not in event.get('content_changes'), \
             'content_changes is truncated'
 
+    truncate_file(WAZUH_LOG_PATH)
     delete_files_in_folder(folder)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == test_metadata.get('fim_mode')

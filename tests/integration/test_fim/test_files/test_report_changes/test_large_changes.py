@@ -70,14 +70,14 @@ from pathlib import Path
 
 import pytest
 
-from wazuh_testing.constants.platforms import WINDOWS
+from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
 from wazuh_testing.modules.fim.patterns import EVENT_TYPE_MODIFIED, EVENT_TYPE_ADDED, ERROR_MSG_FIM_EVENT_NOT_DETECTED
 from wazuh_testing.modules.fim.utils import get_fim_event_data
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
-from wazuh_testing.utils.file import write_file, generate_string
+from wazuh_testing.utils.file import generate_string, truncate_file, write_file_write
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -89,7 +89,11 @@ pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.ma
 
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_large_changes.yaml')
+cases_path = ''
+if sys.platform == MACOS:
+    cases_path = Path(TEST_CASES_PATH, 'cases_large_changes_macos.yaml')
+else:
+    cases_path = Path(TEST_CASES_PATH, 'cases_large_changes.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_large_changes.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -164,15 +168,17 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     test_file_path = os.path.join(test_metadata.get('folder_to_monitor'), test_metadata.get('filename'))
 
     # Create the file and and capture the event.
+    truncate_file(WAZUH_LOG_PATH)
     original_string = generate_string(test_metadata.get('original_size'), '0')
-    write_file(test_file_path, data=original_string)
+    write_file_write(test_file_path, content=original_string)
 
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=30)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
 
     # Modify the file with new content
+    truncate_file(WAZUH_LOG_PATH)
     modified_string = generate_string(test_metadata.get('modified_size'), '1')
-    write_file(test_file_path, data=modified_string)
+    write_file_write(test_file_path, content=modified_string)
 
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_MODIFIED), timeout=20)
     assert wazuh_log_monitor.callback_result
@@ -182,7 +188,6 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     # Assert 'More changes' is shown when the command returns more than 'limit' characters
     if test_metadata.get('has_more_changes'):
         assert 'More changes' in event['content_changes'], 'Did not find event with "More changes" within content_changes.'
-
     else:
         assert 'More changes' not in event['content_changes'], '"More changes" found within content_changes.'
 
