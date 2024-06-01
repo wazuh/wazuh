@@ -81,7 +81,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
             aws_tools.debug(f'The SQS queue is: {url}', 2)
             return url
         except botocore.exceptions.ClientError:
-            print('ERROR: Queue does not exist, verify the given name')
+            aws_tools.error('Queue does not exist, verify the given name')
             sys.exit(20)
 
     def delete_message(self, message: dict) -> None:

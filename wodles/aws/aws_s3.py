@@ -152,8 +152,8 @@ def main(argv):
         elif options.subscriber:
             if options.subscriber.lower() == "security_lake":
                 if options.aws_profile:
-                    print(
-                        "+++ ERROR: The AWS Security Lake integration does not make use of the Profile authentication "
+                    aws_tools.error(
+                        "The AWS Security Lake integration does not make use of the Profile authentication "
                         f"method. Check the available ones for it in "
                         f"{aws_tools.SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL}")
                     sys.exit(3)
@@ -188,7 +188,7 @@ def main(argv):
         aws_tools.debug("+++ Error: {}".format(err), 2)
         if aws_tools.debug_level > 0:
             raise
-        print("ERROR: {}".format(err))
+        aws_tools.error(str(err))
         sys.exit(12)
 
 
@@ -199,7 +199,7 @@ if __name__ == '__main__':
         main(sys.argv[1:])
         sys.exit(0)
     except Exception as e:
-        print("Unknown error: {}".format(e))
+        aws_tools.error("Unknown error: {}".format(e))
         if aws_tools.debug_level > 0:
             raise
         sys.exit(1)

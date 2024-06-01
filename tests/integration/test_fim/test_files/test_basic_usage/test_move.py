@@ -96,7 +96,7 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_move(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options,
-              truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring, path_to_edit):
+              truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring, path_to_edit, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon detects 'added' and 'deleted' events when moving a
                  subdirectory or a file from a monitored folder to another one. For this purpose, the test
@@ -126,15 +126,18 @@ def test_move(test_configuration, test_metadata, set_wazuh_configuration, config
         - folder_to_monitor:
             type: str
             brief: Folder created for monitoring.
-        - path_to_edit:
-            type: str
-            brief: Create the required directory or file to edit.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
         - start_monitoring:
             type: fixture
             brief: Wait FIM to start.
+        - path_to_edit:
+            type: str
+            brief: Create the required directory or file to edit.
+        - detect_end_scan
+            type: fixture
+            brief: Check first scan end.
 
     assertions:
         - Verify that FIM events of type 'added' and 'deleted' are generated

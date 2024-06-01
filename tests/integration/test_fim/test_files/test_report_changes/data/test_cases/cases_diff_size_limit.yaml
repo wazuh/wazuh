@@ -1,0 +1,109 @@
+- name: Test 'diff' information, fim_mode = scheduled
+  description: Check if the 'wazuh-syscheckd' daemon limits
+                the size of 'diff' information.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    ATTRIBUTES:
+      - report_changes: 'yes'
+      - diff_size_limit: '2kb'
+    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_LIMIT: '1GB'
+    DISK_QUOTA_ENABLED: 'no'
+    DISK_QUOTA_LIMIT: '2KB'
+  metadata:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    fim_mode: scheduled
+    report_changes: 'yes'
+    diff_size_limit_kb: '2'
+    file_size_enabled: 'yes'
+    file_size_limit: '1GB'
+    disk_quota_enabled: 'no'
+    disk_quota_limit: '2KB'
+
+- name: Test 'diff' information, fim_mode = realtime
+  description: Check if the 'wazuh-syscheckd' daemon limits
+                the size of 'diff' information.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    ATTRIBUTES:
+      - realtime: 'yes'
+      - report_changes: 'yes'
+      - diff_size_limit: '2kb'
+    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_LIMIT: '1GB'
+    DISK_QUOTA_ENABLED: 'no'
+    DISK_QUOTA_LIMIT: '2KB'
+  metadata:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    fim_mode: realtime
+    report_changes: 'yes'
+    diff_size_limit_kb: '2'
+    file_size_enabled: 'yes'
+    file_size_limit: '1GB'
+    disk_quota_enabled: 'no'
+    disk_quota_limit: '2KB'
+
+- name: Test 'diff' information, fim_mode = whodata
+  description: Check if the 'wazuh-syscheckd' daemon limits
+                the size of 'diff' information.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - report_changes: 'yes'
+      - diff_size_limit: '2kb'
+    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_LIMIT: '1GB'
+    DISK_QUOTA_ENABLED: 'no'
+    DISK_QUOTA_LIMIT: '2KB'
+  metadata:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    fim_mode: whodata
+    report_changes: 'yes'
+    diff_size_limit_kb: '2'
+    file_size_enabled: 'yes'
+    file_size_limit: '1GB'
+    disk_quota_enabled: 'no'
+    disk_quota_limit: '2KB'
+
+- name: Test 'diff' information, fim_mode = scheduled
+  description: Check if the default 'wazuh-syscheckd' daemon limits
+                the size of 'diff' information.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - report_changes: 'yes'
+  metadata:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    fim_mode: scheduled
+    report_changes: 'yes'
+    diff_size_limit_kb: '51200'
+
+- name: Test 'diff' information, fim_mode = realtime
+  description: Check if the default 'wazuh-syscheckd' daemon limits
+                the size of 'diff' information.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    ATTRIBUTES:
+      - realtime: 'yes'
+      - report_changes: 'yes'
+  metadata:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    fim_mode: realtime
+    report_changes: 'yes'
+    diff_size_limit_kb: '51200'
+
+- name: Test 'diff' information, fim_mode = whodata
+  description: Check if the default 'wazuh-syscheckd' daemon limits
+                the size of 'diff' information.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - report_changes: 'yes'
+  metadata:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join [/test_dir]
+    fim_mode: whodata
+    report_changes: 'yes'
+    diff_size_limit_kb: '51200'

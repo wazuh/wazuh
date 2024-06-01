@@ -134,7 +134,7 @@ class WazuhIntegration:
                 profile_config = {option: aws_config.get(profile, option) for option in aws_config.options(profile)}
 
             except configparser.NoSectionError:
-                print(f"No profile named: '{profile}' was found in the user config file")
+                aws_tools.error(f"No profile named: '{profile}' was found in the user config file")
                 sys.exit(23)
 
             # Map Primary Botocore Config parameters with profile config file
@@ -170,7 +170,7 @@ class WazuhIntegration:
                                                   profile_config=profile_config)
 
             except (KeyError, ValueError) as e:
-                print('Invalid key or value found in config '.format(e))
+                aws_tools.error('Invalid key or value found in config '.format(e))
                 sys.exit(17)
 
             aws_tools.debug(f"Created Config object using profile: '{profile}' configuration", 2)
@@ -235,7 +235,7 @@ class WazuhIntegration:
                                              **self.connection_config)
 
         except (botocore.exceptions.ClientError, botocore.exceptions.NoCredentialsError) as e:
-            print("ERROR: Access error: {}".format(e))
+            aws_tools.error("Access error: {}".format(e))
             sys.exit(3)
         return client
 
@@ -252,7 +252,7 @@ class WazuhIntegration:
         try:
             sts_client = boto_session.client(service_name='sts', **self.connection_config)
         except Exception as e:
-            print("Error getting STS client: {}".format(e))
+            aws_tools.error("Error getting STS client: {}".format(e))
             sys.exit(3)
 
         return sts_client
@@ -301,17 +301,17 @@ class WazuhIntegration:
             s.close()
         except socket.error as e:
             if e.errno == 111:
-                print("ERROR: Wazuh must be running.")
+                aws_tools.error("Wazuh must be running.")
                 sys.exit(11)
             elif e.errno == 90:
-                print("ERROR: Message too long to send to Wazuh.  Skipping message...")
+                aws_tools.error("Message too long to send to Wazuh.  Skipping message...")
                 aws_tools.debug('+++ ERROR: Message longer than buffer socket for Wazuh. Consider increasing rmem_max. '
                                 'Skipping message...', 1)
             else:
-                print("ERROR: Error sending message to wazuh: {}".format(e))
+                aws_tools.error("Error sending message to wazuh: {}".format(e))
                 sys.exit(13)
         except Exception as e:
-            print("ERROR: Error sending message to wazuh: {}".format(e))
+            aws_tools.error("Error sending message to wazuh: {}".format(e))
             sys.exit(13)
 
     def _decompress_gzip(self, raw_object: io.BytesIO):
@@ -334,7 +334,7 @@ class WazuhIntegration:
             gzip_file.seek(0)
             return gzip_file
         except (gzip.BadGzipFile, zlib.error, TypeError):
-            print(f'ERROR: invalid gzip file received.')
+            aws_tools.error(f'Invalid gzip file received.')
             if not self.skip_on_error:
                 sys.exit(8)
 
@@ -355,7 +355,7 @@ class WazuhIntegration:
             zipfile_object = zipfile.ZipFile(raw_object, compression=zipfile.ZIP_DEFLATED)
             return io.TextIOWrapper(zipfile_object.open(zipfile_object.namelist()[0]))
         except zipfile.BadZipFile:
-            print('ERROR: invalid zip file received.')
+            aws_tools.error('Invalid zip file received.')
         if not self.skip_on_error:
             sys.exit(8)
 
@@ -375,7 +375,7 @@ class WazuhIntegration:
         elif log_key[-4:] == '.zip':
             return self._decompress_zip(raw_object)
         elif log_key[-7:] == '.snappy':
-            print(f"ERROR: couldn't decompress the {log_key} file, snappy compression is not supported.")
+            aws_tools.error(f"Couldn't decompress the {log_key} file, snappy compression is not supported.")
             if not self.skip_on_error:
                 sys.exit(8)
         else:
@@ -479,7 +479,7 @@ class WazuhAWSDatabase(WazuhIntegration):
             aws_tools.debug('+++ Table does not exist; create', 1)
             self.db_cursor.execute(sql_create_table)
         except Exception as e:
-            print("ERROR: Unable to create SQLite DB: {}".format(e))
+            aws_tools.error("Unable to create SQLite DB: {}".format(e))
             sys.exit(6)
 
     def init_db(self, sql_create_table):
@@ -489,7 +489,7 @@ class WazuhAWSDatabase(WazuhIntegration):
         try:
             tables = set(map(operator.itemgetter(0), self.db_cursor.execute(self.sql_find_table_names)))
         except Exception as e:
-            print("ERROR: Unexpected error accessing SQLite DB: {}".format(e))
+            aws_tools.error("Unexpected error accessing SQLite DB: {}".format(e))
             sys.exit(5)
         # if table does not exist, create a new table
         if self.db_table_name not in tables:
@@ -509,7 +509,7 @@ class WazuhAWSDatabase(WazuhIntegration):
                     if metadata_version != self.wazuh_version:
                         self.db_cursor.execute(self.sql_update_version_metadata, {'wazuh_version': self.wazuh_version})
                 except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-                    print(f'ERROR: Error attempting to update the metadata table: {err}')
+                    aws_tools.error(f'Error attempting to update the metadata table: {err}')
                     sys.exit(5)
             else:
                 # The table does not exist; create it and insert the metadata value
@@ -518,11 +518,11 @@ class WazuhAWSDatabase(WazuhIntegration):
                     self.db_cursor.execute(self.sql_insert_version_metadata, {'wazuh_version': self.wazuh_version})
                     self.delete_deprecated_tables()
                 except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-                    print(f'ERROR: Error attempting to create the metadata table: {err}')
+                    aws_tools.error(f'Error attempting to create the metadata table: {err}')
                     sys.exit(5)
             self.db_connector.commit()
         except (sqlite3.IntegrityError, sqlite3.OperationalError, sqlite3.Error) as err:
-            print(f'ERROR: Error attempting to operate with the {self.db_path} database: {err}')
+            aws_tools.error(f'Error attempting to operate with the {self.db_path} database: {err}')
             sys.exit(5)
 
     def delete_deprecated_tables(self):

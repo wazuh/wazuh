@@ -63,7 +63,7 @@ def clean_pid_files(daemon: str) -> None:
                 else:
                     print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
 
-            except OSError:
+            except (OSError, psutil.NoSuchProcess):
                 print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))

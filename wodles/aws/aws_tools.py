@@ -122,6 +122,14 @@ def debug(msg, msg_level):
         print('DEBUG: {debug_msg}'.format(debug_msg=msg))
 
 
+def error(msg):
+    print('ERROR: {error_msg}'.format(error_msg=msg))
+
+
+def info(msg):
+    print('INFO: {msg}'.format(msg=msg))
+
+
 def arg_valid_date(arg_string):
     try:
         parsed_date = datetime.strptime(arg_string, "%Y-%b-%d")
@@ -297,13 +305,13 @@ def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Opt
     """
 
     if iam_role_arn is None:
-        print('ERROR: Used a subscriber but no --iam_role_arn provided.')
+        error('Used a subscriber but no --iam_role_arn provided.')
         sys.exit(21)
     if name is None:
-        print('ERROR: Used a subscriber but no --queue provided.')
+        error('Used a subscriber but no --queue provided.')
         sys.exit(21)
     if external_id is None:
-        print('ERROR: Used a subscriber but no --external_id provided.')
+        error('Used a subscriber but no --external_id provided.')
         sys.exit(21)
 
 

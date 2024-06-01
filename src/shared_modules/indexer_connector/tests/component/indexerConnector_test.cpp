@@ -576,3 +576,17 @@ TEST_F(IndexerConnectorTest, TemplateFileNotFoundThrows)
     EXPECT_THROW(IndexerConnector(indexerConfig, INVALID_TEMPLATE_FILE_PATH, logFunction, INDEXER_TIMEOUT),
                  std::runtime_error);
 }
+
+/**
+ * @brief Test the initialization with upper case character in the index name.
+ *
+ */
+TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
+{
+
+    // Create connector and wait until the connection is established.
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = "UPPER_case_INDEX";
+    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
+    EXPECT_THROW(IndexerConnector(indexerConfig, TEMPLATE_FILE_PATH, logFunction, INDEXER_TIMEOUT), std::runtime_error);
+}

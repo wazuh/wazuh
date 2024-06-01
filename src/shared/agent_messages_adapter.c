@@ -18,7 +18,7 @@ void *agent_data_hash_duplicator(void* data) {
     return cJSON_Duplicate((cJSON*)data, true);
 }
 
-char* adapt_delta_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name, const OSHash *agent_data_hash) {
+char* adapt_delta_message(const char* data, const char* name, const char* id, const char* ip, const OSHash *agent_data_hash) {
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_msg = NULL;
@@ -56,7 +56,6 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
         cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_CreateString(__ossec_version));
     }
 
-    cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
     cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
     cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));
@@ -72,7 +71,7 @@ char* adapt_delta_message(const char* data, const char* name, const char* id, co
     return msg_to_send;
 }
 
-char* adapt_sync_message(const char* data, const char* name, const char* id, const char* ip, const char* node_name, const OSHash *agent_data_hash) {
+char* adapt_sync_message(const char* data, const char* name, const char* id, const char* ip, const OSHash *agent_data_hash) {
     cJSON* j_msg_to_send = NULL;
     cJSON* j_agent_info = NULL;
     cJSON* j_msg = NULL;
@@ -111,7 +110,6 @@ char* adapt_sync_message(const char* data, const char* name, const char* id, con
         cJSON_AddItemToObject(j_agent_info, "agent_version", cJSON_CreateString(__ossec_version));
     }
 
-    cJSON_AddStringToObject(j_agent_info, "node_name", node_name);
     cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
 
     cJSON_AddItemToObject(j_msg_to_send, "data_type", cJSON_DetachItemFromObject(j_msg, "type"));

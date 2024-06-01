@@ -261,6 +261,12 @@ namespace Utils
         return temp;
     }
 
+    static bool haveUpperCaseCharacters(const std::string& str)
+    {
+        return std::any_of(
+            std::begin(str), std::end(str), [](std::string::value_type character) { return std::isupper(character); });
+    }
+
     static std::string toSentenceCase(const std::string& str)
     {
         std::string temp;
