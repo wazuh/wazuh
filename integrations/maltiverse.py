@@ -234,12 +234,12 @@ def main(args: list):
         if len(args) >= 4:
             debug_enabled = len(args) > 4 and args[4] == 'debug'
         else:
-            msg = '# ERROR: Wrong arguments'
+            msg = '# ERROR: Wrong arguments\n'
             bad_arguments = True
 
         # Logging the call
         with open(LOG_FILE, 'a') as f:
-            f.write(msg + '\n')
+            f.write(msg)
 
         if bad_arguments:
             debug('# ERROR: Exiting, bad arguments. Inputted: %s' % args)

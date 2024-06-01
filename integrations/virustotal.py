@@ -69,12 +69,12 @@ def main(args):
             if len(args) > RETRIES_INDEX:
                 retries = int(args[RETRIES_INDEX])
         else:
-            msg = '# Error: Wrong arguments'
+            msg = '# Error: Wrong arguments\n'
             bad_arguments = True
 
         # Logging the call
         with open(LOG_FILE, 'a') as f:
-            f.write(msg + '\n')
+            f.write(msg)
 
         if bad_arguments:
             debug('# Error: Exiting, bad arguments. Inputted: %s' % args)
