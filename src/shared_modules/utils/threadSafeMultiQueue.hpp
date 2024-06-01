@@ -46,12 +46,12 @@ namespace Utils
             cancel();
         }
 
-        void push(std::string_view columnName, const T& value)
+        void push(std::string_view prefix, const T& value)
         {
             std::scoped_lock lock {m_mutex};
             if (!m_canceled)
             {
-                m_queue.push(columnName, value);
+                m_queue.push(prefix, value);
                 m_cv.notify_one();
             }
         }
@@ -84,10 +84,13 @@ namespace Utils
             return std::pair<U, std::string> {};
         }
 
-        void pop(std::string_view columnName)
+        void pop(std::string_view prefix)
         {
             std::scoped_lock lock {m_mutex};
-            m_queue.pop(columnName);
+            if (!m_canceled)
+            {
+                m_queue.pop(prefix);
+            }
         }
 
         bool empty() const
@@ -96,10 +99,16 @@ namespace Utils
             return m_queue.empty();
         }
 
-        size_t size(std::string_view columnName) const
+        void clear(std::string_view prefix)
         {
             std::scoped_lock lock {m_mutex};
-            return m_queue.size(columnName);
+            m_queue.clear(prefix);
+        }
+
+        size_t size(std::string_view prefix) const
+        {
+            std::scoped_lock lock {m_mutex};
+            return m_queue.size(prefix);
         }
 
         void cancel()
@@ -116,10 +125,10 @@ namespace Utils
             return m_canceled;
         }
 
-        void postpone(std::string_view columnName, const std::chrono::seconds& time) noexcept
+        void postpone(std::string_view prefix, const std::chrono::seconds& time) noexcept
         {
             std::scoped_lock lock {m_mutex};
-            m_queue.postpone(columnName, time);
+            m_queue.postpone(prefix, time);
         }
 
     private:

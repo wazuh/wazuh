@@ -2205,7 +2205,7 @@ void test_wdb_get_all_agents_wdbc_parse_error(void **state) {
 void test_wdb_get_all_agents_success(void **state) {
     const char *query_str = "global get-all-agents last_id 0";
 
-    // Setting the payload
+// Setting the payload
     set_payload = 1;
     strcpy(test_payload, "ok [{\"id\":1},{\"id\":2},{\"id\":3}]");
     cJSON* test_json = __real_cJSON_Parse(test_payload+3);

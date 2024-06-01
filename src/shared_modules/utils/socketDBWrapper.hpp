@@ -13,6 +13,7 @@
 #define _SOCKET_DB_WRAPPER_HPP
 
 #include "json.hpp"
+#include "singleton.hpp"
 #include "socketClient.hpp"
 #include "socketDBWrapperException.hpp"
 #include <condition_variable>
@@ -20,7 +21,7 @@
 #include <string>
 #include <utility>
 
-auto constexpr DB_WRAPPER_QUERY_WAIT_TIME {5000};
+auto constexpr WDB_SOCKET {"queue/db/wdb"};
 
 char constexpr DB_WRAPPER_OK[] = {"ok"};
 char constexpr DB_WRAPPER_ERROR[] = {"err"};
@@ -30,6 +31,7 @@ char constexpr DB_WRAPPER_DUE[] {"due"};
 
 enum class DbQueryStatus : uint8_t
 {
+    UNKNOWN,
     JSON_PARSING,
     EMPTY_RESPONSE,
     QUERY_ERROR,
@@ -39,23 +41,25 @@ enum class DbQueryStatus : uint8_t
     INVALID_RESPONSE
 };
 
-class SocketDBWrapper final
+class SocketDBWrapper final : public Singleton<SocketDBWrapper>
 {
 private:
     std::unique_ptr<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_dbSocket;
     nlohmann::json m_response;
     nlohmann::json m_responsePartial;
     std::string m_exceptionStr;
-    DbQueryStatus m_queryStatus;
+    DbQueryStatus m_queryStatus {DbQueryStatus::UNKNOWN};
     std::mutex m_mutexMessage;
     std::mutex m_mutexResponse;
     std::condition_variable m_conditionVariable;
-    std::string m_socketPath;
+    bool m_teardown {false};
+    bool m_dataReady {false};
 
-    void initializeSocket()
+public:
+    void init(const std::string& socketPath = WDB_SOCKET)
     {
-        m_dbSocket =
-            std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(m_socketPath);
+        m_teardown = false;
+        m_dbSocket = std::make_unique<SocketClient<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(socketPath);
         m_dbSocket->connect(
             [&](const char* body, uint32_t bodySize, const char*, uint32_t)
             {
@@ -142,16 +146,10 @@ private:
                         m_queryStatus = DbQueryStatus::INVALID_RESPONSE;
                         m_exceptionStr = "DB query invalid response: " + responsePacket;
                     }
+                    m_dataReady = true;
                     m_conditionVariable.notify_one();
                 }
             });
-    }
-
-public:
-    explicit SocketDBWrapper(std::string socketPath)
-        : m_socketPath(std::move(socketPath))
-    {
-        initializeSocket();
     }
 
     void query(const std::string& query, nlohmann::json& response)
@@ -159,46 +157,57 @@ public:
         // Acquire lock to avoid multiple threads sending queries at the same time
         std::scoped_lock lockMessage {m_mutexMessage};
 
+        if (m_teardown)
+        {
+            return;
+        }
+
         // Acquire lock before clearing the response
         std::unique_lock lockResponse {m_mutexResponse};
 
-        if (!m_dbSocket)
-        {
-            initializeSocket();
-        }
-
+        m_dataReady = false;
         m_response.clear();
         m_responsePartial.clear();
         // coverity[missing_lock]
         m_exceptionStr.clear();
 
-        m_dbSocket->send(query.c_str(), query.size());
-        if (const auto res =
-                m_conditionVariable.wait_for(lockResponse, std::chrono::milliseconds(DB_WRAPPER_QUERY_WAIT_TIME));
-            res == std::cv_status::timeout)
+        if (!m_dbSocket)
         {
-            // Restart the socket connection to avoid the reception of old messages
-            m_dbSocket->stop();
-            initializeSocket();
-            throw std::runtime_error("Timeout waiting for DB response");
+            throw std::runtime_error("Socket DB Wrapper not initialized");
         }
+
+        m_dbSocket->send(query.c_str(), query.size());
+        m_conditionVariable.wait(lockResponse, [this] { return m_dataReady || m_teardown; });
 
         if (!m_exceptionStr.empty())
         {
+            // coverity[missing_lock]
             switch (m_queryStatus)
             {
+                case DbQueryStatus::QUERY_NOT_SYNCED: throw SocketDbWrapperException(m_exceptionStr); break;
                 case DbQueryStatus::EMPTY_RESPONSE:
+                case DbQueryStatus::UNKNOWN:
                 case DbQueryStatus::QUERY_ERROR:
-                case DbQueryStatus::QUERY_IGNORE:
                 case DbQueryStatus::QUERY_UNKNOWN:
-                case DbQueryStatus::QUERY_NOT_SYNCED: throw SocketDbWrapperException(m_exceptionStr);
+                case DbQueryStatus::QUERY_IGNORE:
                 case DbQueryStatus::JSON_PARSING:
                 case DbQueryStatus::INVALID_RESPONSE:
-                default: throw std::runtime_error(m_exceptionStr);
+                default: throw std::runtime_error(m_exceptionStr); break;
             }
         }
 
         response = m_response;
+    }
+
+    /**
+     * @brief Teardown the Socket DB Wrapper object
+     *
+     */
+    void teardown()
+    {
+        m_teardown = true;
+        m_conditionVariable.notify_all();
+        m_dbSocket->stop();
     }
 };
 

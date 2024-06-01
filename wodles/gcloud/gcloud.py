@@ -29,6 +29,7 @@ def main():
         num_processed_messages = 0
 
         if arguments.integration_type == "pubsub":
+            logger.info("Working with Google Cloud Pub/Sub")
             if arguments.subscription_id is None:
                 raise exceptions.GCloudError(1200)
             if arguments.project is None:
@@ -61,6 +62,7 @@ def main():
 
                 # check permissions
                 subscriber_client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
+                logger.debug("Checking credentials")
                 subscriber_client.check_permissions()
                 messages_per_thread = max_messages // n_threads
                 remaining_messages = max_messages % n_threads
@@ -74,6 +76,7 @@ def main():
             num_processed_messages = sum([future.result() for future in futures])
 
         elif arguments.integration_type == "access_logs":
+            logger.info("Working with Google Cloud Access Logs")
             if not arguments.bucket_name:
                 raise exceptions.GCloudError(1103)
 
@@ -83,6 +86,7 @@ def main():
                         "only_logs_after": arguments.only_logs_after,
                         "reparse": arguments.reparse}
             integration = GCSAccessLogs(arguments.credentials_file, logger, **f_kwargs)
+            logger.debug("Checking credentials")
             integration.check_permissions()
             num_processed_messages = integration.process_data()
 

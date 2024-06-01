@@ -582,3 +582,10 @@ TEST_F(StringUtilsTest, padString)
     EXPECT_EQ(Utils::padString("", '0', 4), "0000");
 }
 
+TEST_F(StringUtilsTest, haveUpperCaseCharacters)
+{
+    EXPECT_TRUE(Utils::haveUpperCaseCharacters("Test"));
+    EXPECT_FALSE(Utils::haveUpperCaseCharacters("test"));
+    EXPECT_FALSE(Utils::haveUpperCaseCharacters(""));
+}
+

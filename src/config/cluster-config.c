@@ -14,7 +14,7 @@
 #include "global-config.h"
 
 
-int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
+int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
 
     static const char *disabled = "disabled";
     static const char *cluster_name = "name";
@@ -30,9 +30,29 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
     static const char *bind_addr = "bind_addr";
     static const char *C_VALID = "!\"#$%&'-.0123456789:<=>?ABCDEFGHIJKLMNOPQRESTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";
 
+    xml_node **child = NULL;
+    static const char *haproxy_helper = "haproxy_helper";
+    static const char *haproxy_disabled = "haproxy_disabled";
+    static const char *haproxy_address = "haproxy_address";
+    static const char *haproxy_port = "haproxy_port";
+    static const char *haproxy_protocol = "haproxy_protocol";
+    static const char *haproxy_user = "haproxy_user";
+    static const char *haproxy_password = "haproxy_password";
+    static const char *haproxy_resolver = "haproxy_resolver";
+    static const char *haproxy_backend = "haproxy_backend";
+    static const char *api_port = "api_port";
+    static const char *excluded_nodes = "excluded_nodes";
+    static const char *frequency = "frequency";
+    static const char *agent_chunk_size = "agent_chunk_size";
+    static const char *agent_reconnection_time = "agent_reconnection_time";
+    static const char *agent_reconnection_stability_time = "agent_reconnection_stability_time";
+    static const char *imbalance_tolerance = "imbalance_tolerance";
+    static const char *remove_disconnected_node_after = "remove_disconnected_node_after";
+
     _Config *Config;
     Config = (_Config *)d1;
     int i;
+    int j;
     int disable_cluster_info = 0;
 
     Config->hide_cluster_info = 0;
@@ -96,14 +116,63 @@ int Read_Cluster(XML_NODE node, void *d1, __attribute__((unused)) void *d2) {
         } else if (!strcmp(node[i]->element, nodes)) {
         } else if (!strcmp(node[i]->element, port)) {
         } else if (!strcmp(node[i]->element, bind_addr)) {
-        } else {
-            merror(XML_INVELEM, node[i]->element);
-            return OS_INVALID;
-        }
+        } else if (!strcmp(node[i]->element, haproxy_helper)) {
+
+            if (!(child = OS_GetElementsbyNode(xml, node[i]))) {
+                continue;
+            }
+
+            for (j = 0; child[j]; j++) {
+                if (!strcmp(child[j]->element, haproxy_disabled)) {
+                    if (strcmp(child[j]->content, "yes") && strcmp(child[j]->content, "no")) {
+                        merror("Detected an invalid value for the disabled tag '%s'. Valid values are 'yes' and 'no'.", child[j]->element);
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(child[j]->element, frequency)) {
+                } else if (!strcmp(child[j]->element, haproxy_address)) {
+                    if (!strlen(node[i]->content)) {
+                        merror("HAProxy address is missing in the configuration");
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(child[j]->element, haproxy_port)) {
+                } else if (!strcmp(child[j]->element, haproxy_protocol)) {
+                    if (strcmp(child[j]->content, "http") && strcmp(child[j]->content, "https")) {
+                        merror("Detected an invalid value for the haproxy_protocol tag '%s'. Valid values are 'http' and 'https'.", child[j]->element);
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(child[j]->element, haproxy_user)) {
+                    if (!strlen(node[i]->content)) {
+                        merror("HAProxy user is missing in the configuration");
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(child[j]->element, haproxy_password)) {
+                    if (!strlen(node[i]->content)) {
+                        merror("HAProxy password is missing in the configuration");
+                        return OS_INVALID;
+                    }
+                } else if (!strcmp(child[j]->element, haproxy_backend)) {
+                } else if (!strcmp(child[j]->element, haproxy_resolver)) {
+                } else if (!strcmp(child[j]->element, excluded_nodes)) {
+                } else if (!strcmp(child[j]->element, agent_chunk_size)) {
+                } else if (!strcmp(child[j]->element, agent_reconnection_time)) {
+                } else if (!strcmp(child[j]->element, agent_reconnection_stability_time)) {
+                } else if (!strcmp(child[j]->element, imbalance_tolerance)) {
+                } else if (!strcmp(child[j]->element, remove_disconnected_node_after)) {
+                } else {
+                    merror(XML_INVELEM, child[i]->element);
+                    return OS_INVALID;
+                }
+
+            }
+    } else {
+        merror(XML_INVELEM, node[i]->element);
+        return OS_INVALID;
     }
+
 
     if (disable_cluster_info)
         Config->hide_cluster_info = 1;
 
+    }
     return 0;
- }
+}

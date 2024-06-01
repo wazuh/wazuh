@@ -121,6 +121,10 @@ main() {
         esac
     done
 
+    if [ -z "${ZIP_NAME}" ]; then
+        help |grep -B5 --color "^.*--output.*$" & exit 1
+    fi
+
     if [ ! -d "${OUTDIR}" ]; then
         echo "Creating building directory at ${OUTDIR}"
         mkdir -p ${OUTDIR}

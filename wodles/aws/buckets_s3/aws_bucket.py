@@ -284,7 +284,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     'aws_region': aws_region,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
+            aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
         """
@@ -362,7 +362,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 sys.exit(1)
 
         except KeyError:
-            print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of "
+            aws_tools.error(f"No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of "
                   f"the logs for the bucket type '{aws_tools.get_script_arguments().type.lower()}'")
             sys.exit(18)
 
@@ -480,7 +480,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 except:
                     aws_tools.debug("++ Failed to send message to Wazuh", 1)
             else:
-                print("ERROR: {}".format(error_txt))
+                aws_tools.error(error_txt)
                 sys.exit(error_code)
 
         try:
@@ -635,7 +635,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             else:
                 error_message = f'ERROR: The "iter_files_in_bucket" request failed: {error}'
                 exit_number = 1
-            print(f"ERROR: {error_message}")
+            aws_tools.error(f"{error_message}")
             exit(exit_number)
 
         except Exception as err:
@@ -643,7 +643,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
             else:
                 aws_tools.debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            aws_tools.error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def check_bucket(self):
@@ -655,7 +655,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 if 'CommonPrefixes' in page:
                     break
             else:
-                print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+                aws_tools.error("No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
 
         except botocore.exceptions.ClientError as error:
@@ -674,10 +674,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 error_message = UNKNOWN_ERROR_MESSAGE.format(error=error)
                 exit_number = 1
 
-            print(f"ERROR: {error_message}")
+            aws_tools.error(f"{error_message}")
             exit(exit_number)
         except botocore.exceptions.EndpointConnectionError as e:
-            print(f"ERROR: {str(e)}")
+            aws_tools.error(f"{str(e)}")
             exit(15)
 
 
@@ -947,4 +947,4 @@ class AWSCustomBucket(AWSBucket):
                     'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
+            aws_tools.error(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")

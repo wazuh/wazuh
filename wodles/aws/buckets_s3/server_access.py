@@ -56,7 +56,7 @@ class AWSServerAccess(AWSCustomBucket):
                                 "skipping it.", 1)
                             continue
                         else:
-                            print(f"ERROR: The filename of {bucket_file['Key']} doesn't have the valid format.")
+                            aws_tools.error(f"The filename of {bucket_file['Key']} doesn't have the valid format.")
                             sys.exit(17)
 
                     if not self._same_prefix(match_start, aws_account_id, aws_region):
@@ -97,7 +97,7 @@ class AWSServerAccess(AWSCustomBucket):
                 aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
             else:
                 aws_tools.debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            aws_tools.error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:
@@ -124,7 +124,7 @@ class AWSServerAccess(AWSCustomBucket):
         try:
             bucket_objects = self.client.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix, Delimiter='/')
             if not 'CommonPrefixes' in bucket_objects and not 'Contents' in bucket_objects:
-                print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+                aws_tools.error("No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
         except botocore.exceptions.ClientError as error:
             error_code = error.response.get("Error", {}).get("Code")
@@ -142,7 +142,7 @@ class AWSServerAccess(AWSCustomBucket):
                 error_message = UNKNOWN_ERROR_MESSAGE.format(error=error)
                 exit_number = 1
 
-            print(f"ERROR: {error_message}")
+            aws_tools.error(error_message)
             exit(exit_number)
 
     def load_information_from_file(self, log_key):

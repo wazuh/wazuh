@@ -133,3 +133,87 @@ TEST_F(ThreadSafeMultiQueueTest, Postpone)
     EXPECT_TRUE(count == EXPECTED_COUNT_MSGS);
 }
 
+TEST_F(ThreadSafeMultiQueueTest, Clear)
+{
+    Utils::
+        TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+
+    rocksdb::Slice slice("DATA");
+    queue.push("000", slice);
+    queue.push("001", slice);
+    queue.push("002", slice);
+    EXPECT_FALSE(queue.empty());
+    EXPECT_EQ(1, queue.size("000"));
+    EXPECT_EQ(1, queue.size("001"));
+    EXPECT_EQ(1, queue.size("002"));
+    queue.clear("000");
+    EXPECT_EQ(0, queue.size("000"));
+    EXPECT_EQ(1, queue.size("001"));
+    EXPECT_EQ(1, queue.size("002"));
+    EXPECT_FALSE(queue.empty());
+    queue.clear("001");
+    EXPECT_EQ(0, queue.size("000"));
+    EXPECT_EQ(0, queue.size("001"));
+    EXPECT_EQ(1, queue.size("002"));
+    EXPECT_FALSE(queue.empty());
+    queue.clear("002");
+    EXPECT_EQ(0, queue.size("000"));
+    EXPECT_EQ(0, queue.size("001"));
+    EXPECT_EQ(0, queue.size("002"));
+    EXPECT_TRUE(queue.empty());
+}
+
+TEST_F(ThreadSafeMultiQueueTest, ClearAll)
+{
+    Utils::
+        TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+
+    rocksdb::Slice slice("DATA");
+    queue.push("000", slice);
+    queue.push("001", slice);
+    queue.push("002", slice);
+    EXPECT_FALSE(queue.empty());
+    EXPECT_EQ(1, queue.size("000"));
+    EXPECT_EQ(1, queue.size("001"));
+    EXPECT_EQ(1, queue.size("002"));
+    queue.clear("");
+    EXPECT_EQ(0, queue.size("000"));
+    EXPECT_EQ(0, queue.size("001"));
+    EXPECT_EQ(0, queue.size("002"));
+    EXPECT_TRUE(queue.empty());
+}
+
+TEST_F(ThreadSafeMultiQueueTest, LoadAfterStop)
+{
+    {
+        Utils::TSafeMultiQueue<rocksdb::Slice,
+                               rocksdb::PinnableSlice,
+                               RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+
+        rocksdb::Slice slice("DATA");
+        queue.push("000", slice);
+        queue.push("001", slice);
+        queue.push("002", slice);
+        EXPECT_FALSE(queue.empty());
+        EXPECT_EQ(1, queue.size("000"));
+        EXPECT_EQ(1, queue.size("001"));
+        EXPECT_EQ(1, queue.size("002"));
+    }
+
+    Utils::
+        TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+
+    EXPECT_FALSE(queue.empty());
+    EXPECT_EQ(1, queue.size("000"));
+    EXPECT_EQ(1, queue.size("001"));
+    EXPECT_EQ(1, queue.size("002"));
+    queue.clear("");
+    EXPECT_EQ(0, queue.size("000"));
+    EXPECT_EQ(0, queue.size("001"));
+    EXPECT_EQ(0, queue.size("002"));
+    EXPECT_TRUE(queue.empty());
+}

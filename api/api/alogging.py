@@ -2,163 +2,42 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import binascii
 import collections
-import hashlib
-import json
 import logging
+import json
 import re
-from base64 import b64decode
-
-from aiohttp import web_request
-from aiohttp.abc import AbstractAccessLogger
 from pythonjsonlogger import jsonlogger
 
-from wazuh.core.wlogging import WazuhLogger
+from api.configuration import api_conf
+from api.api_exception import APIError
 
 # Compile regex when the module is imported so it's not necessary to compile it everytime log.info is called
 request_pattern = re.compile(r'\[.+]|\s+\*\s+')
 
+logger = logging.getLogger('wazuh-api')
+
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
 
-# Run_as login endpoint path
-RUN_AS_LOGIN_ENDPOINT = "/security/user/authenticate/run_as"
 
+class APILoggerSize:
+    size_regex = re.compile(r"(\d+)([KM])")
+    unit_conversion = {
+        'K': 1024,
+        'M': 1024 ** 2
+    }
 
-class AccessLogger(AbstractAccessLogger):
-    """
-    Define the log writer used by aiohttp.
-    """
-    def custom_logging(self, user, remote, method, path, query, body, time, status, hash_auth_context=''):
-        """Provide the log entry structure depending on the logging format.
+    def __init__(self, size_string: str):
+        size_string = size_string.upper()
+        try:
+            size, unit = self.size_regex.match(size_string).groups()
+        except AttributeError:
+            raise APIError(2011, details="Size value does not match the expected format: <number><unit> (Available"
+                                         " units: K (kilobytes), M (megabytes). For instance: 45M") from None
 
-        Parameters
-        ----------
-        user : str
-            User who perform the request.
-        remote : str
-            IP address of the request.
-        method : str
-            HTTP method used in the request.
-        path : str
-            Endpoint used in the request.
-        query : dict
-            Dictionary with the request parameters.
-        body : dict
-            Dictionary with the request body.
-        time : float
-            Required time to compute the request.
-        status : int
-            Status code of the request.
-        hash_auth_context : str, optional
-            Hash representing the authorization context. Default: ''
-        """
-        json_info = {
-            'user': user,
-            'ip': remote,
-            'http_method': method,
-            'uri': f'{method} {path}',
-            'parameters': query,
-            'body': body,
-            'time': f'{time:.3f}s',
-            'status_code': status
-        }
-
-        if not hash_auth_context:
-            log_info = f'{user} {remote} "{method} {path}" '
-        else:
-            log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
-            json_info['hash_auth_context'] = hash_auth_context
-
-        if path == '/events' and self.logger.level >= 20:
-            # If log level is info simplify the messages for the /events requests.
-            events = body.get('events', [])
-            body = {'events': len(events)}
-            json_info['body'] = body
-
-        log_info += f'with parameters {json.dumps(query)} and body {json.dumps(body)} done in {time:.3f}s: {status}'
-
-        self.logger.info(log_info, extra={'log_type': 'log'})
-        self.logger.info(json_info, extra={'log_type': 'json'})
-
-    def log(self, request: web_request.BaseRequest, response: web_request.StreamResponse, time: float):
-        """Override the log method to log messages.
-
-        Parameters
-        ----------
-        request : web_request.BaseRequest
-            API request onject.
-        response : web_request.StreamResponse
-            API response object.
-        time : float
-            Time taken by the API to respond to the request.
-        """
-        query = dict(request.query)
-        body = request.get("body", dict())
-        if 'password' in query:
-            query['password'] = '****'
-        if 'password' in body:
-            body['password'] = '****'
-        if 'key' in body and '/agents' in request.path:
-            body['key'] = '****'
-
-        # With permanent redirect, not found responses or any response with no token information,
-        # decode the JWT token to get the username
-        user = request.get('user', '')
-        if not user:
-            try:
-                user = b64decode(request.headers["authorization"].split()[1]).decode().split(':')[0]
-            except (KeyError, IndexError, binascii.Error):
-                user = UNKNOWN_USER_STRING
-
-        # Get or create authorization context hash
-        hash_auth_context = ''
-        # Get hash from token information
-        if 'token_info' in request:
-            hash_auth_context = request['token_info'].get('hash_auth_context', '')
-        # Create hash if run_as login
-        if not hash_auth_context and request.path == RUN_AS_LOGIN_ENDPOINT:
-            hash_auth_context = hashlib.blake2b(json.dumps(body).encode(), digest_size=16).hexdigest()
-
-        self.custom_logging(user, request.remote, request.method, request.path, query, body, time, response.status,
-                            hash_auth_context=hash_auth_context)
-
-
-class APILogger(WazuhLogger):
-    """
-    Define the logger used by wazuh-apid.
-    """
-
-    def __init__(self, *args: dict, **kwargs: dict):
-        """APIlogger class constructor."""
-        log_path = kwargs.get('log_path', '')
-        super().__init__(*args, **kwargs,
-                         custom_formatter=WazuhJsonFormatter if log_path.endswith('json') else None)
-
-    def setup_logger(self, custom_handler: logging.Handler = None):
-        """
-        Set ups API logger. In addition to super().setup_logger() this method adds:
-            * Sets up log level based on the log level defined in API configuration file.
-
-        :param custom_handler: custom handler that can be set instead of the default one from the WazuhLogger class.
-        """
-        super().setup_logger(handler=custom_handler)
-
-        if self.debug_level == 'debug2':
-            debug_level = logging.DEBUG2
-        elif self.debug_level == 'debug':
-            debug_level = logging.DEBUG
-        elif self.debug_level == 'critical':
-            debug_level = logging.CRITICAL
-        elif self.debug_level == 'error':
-            debug_level = logging.ERROR
-        elif self.debug_level == 'warning':
-            debug_level = logging.WARNING
-        else:  # self.debug_level == 'info'
-            debug_level = logging.INFO
-
-        self.logger.setLevel(debug_level)
+        self.size = int(size) * self.unit_conversion[unit]
+        if self.size < self.unit_conversion['M']:
+            raise APIError(2011, details=f"Minimum value for size is 1M. Current: {size_string}")
 
 
 class WazuhJsonFormatter(jsonlogger.JsonFormatter):
@@ -201,3 +80,192 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         log_record['timestamp'] = self.formatTime(record, self.datefmt)
         log_record['levelname'] = record.levelname
         log_record['data'] = record.message
+
+
+def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
+    """Set up logging for API.
+    
+    This function creates a logging configuration dictionary, configure the wazuh-api logger
+    and returns the logging configuration dictionary that will be used in uvicorn logging
+    configuration.
+    
+    Parameters
+    ----------
+    log_path : str
+        Log file path.
+    log_level :  str
+        Logger Log level.
+    foreground_mode : bool
+        Log output to console streams when true
+        else Log output to file.
+
+    Raise
+    -----
+    ApiError
+
+    Returns
+    -------
+    log_config_dict : dict
+        Logging configuration dictionary.
+    """
+    handlers = {
+        'plainfile': None, 
+        'jsonfile': None,
+    }
+    if foreground_mode:
+        handlers.update({'console': {}})
+
+    if 'json' in api_conf['logs']['format']:
+        handlers["jsonfile"] = {
+            'filename': f"{log_filepath}.json",
+            'formatter': 'json',
+            'filters': ['json-filter'],
+        }
+    if 'plain' in api_conf['logs']['format']:
+        handlers["plainfile"] = {
+            'filename': f"{log_filepath}.log",
+            'formatter': 'log',
+            'filters': ['plain-filter'],
+        }
+
+    hdls = [k for k, v in handlers.items() if isinstance(v, dict)]
+    if not hdls:
+        raise APIError(2011)
+
+    log_config_dict = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "()": "uvicorn.logging.DefaultFormatter",
+                "fmt": "%(levelprefix)s %(message)s",
+                "use_colors": None,
+            },
+            "access": {
+                "()": "uvicorn.logging.AccessFormatter",
+                "fmt": '%(levelprefix)s %(client_addr)s - "%(request_line)s" %(status_code)s',
+            },
+            "log": {
+                "()": "uvicorn.logging.DefaultFormatter",
+                "fmt": "%(asctime)s %(levelname)s: %(message)s",
+                "datefmt": "%Y/%m/%d %H:%M:%S",
+                "use_colors": None,
+            },
+            "json" : {
+                '()': 'api.alogging.WazuhJsonFormatter',
+                'style': '%',
+                'datefmt': "%Y/%m/%d %H:%M:%S"
+            }
+        },
+        "filters": {
+            'plain-filter': {'()': 'wazuh.core.wlogging.CustomFilter',
+                             'log_type': 'log' },
+            'json-filter': {'()': 'wazuh.core.wlogging.CustomFilter',
+                             'log_type': 'json' }
+        },
+        "handlers": {
+            "default": {
+                "formatter": "default",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stderr",
+            },
+            "access": {
+                "formatter": "access",
+                "class": "logging.StreamHandler",
+                "stream": "ext://sys.stdout"
+            },
+            "console": {
+                'formatter': 'log',
+                'class': 'logging.StreamHandler',
+                'stream': 'ext://sys.stdout',
+                'filters': ['plain-filter']
+            },
+        },
+        "loggers": {
+            "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
+            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False}
+        }
+    }
+
+    # configure file handlers
+    for handler, d in handlers.items():
+        if d and 'filename' in d:
+            if api_conf['logs']['max_size']['enabled']:
+                max_size = APILoggerSize(api_conf['logs']['max_size']['size']).size
+                d.update({
+                    'class':'wazuh.core.wlogging.SizeBasedFileRotatingHandler',
+                    'maxBytes': max_size,
+                    'backupCount': 1
+                })
+            else:
+                d.update({
+                    'class': 'wazuh.core.wlogging.TimeBasedFileRotatingHandler',
+                    'when': 'midnight'
+                })
+            log_config_dict['handlers'][handler] = d
+
+    # Configure the uvicorn loggers. They will be created by the uvicorn server.
+    log_config_dict['loggers']['uvicorn'] = {"handlers": hdls, "level": 'WARNING', "propagate": False}
+    log_config_dict['loggers']['uvicorn.error'] = {"handlers": hdls, "level": 'WARNING', "propagate": False}
+    log_config_dict['loggers']['uvicorn.access'] = {'level': 'WARNING'}
+
+    return log_config_dict
+
+
+def custom_logging(user, remote, method, path, query,
+                    body, elapsed_time, status, hash_auth_context='',
+                    headers: dict = None):
+    """Provide the log entry structure depending on the logging format.
+
+    Parameters
+    ----------
+    user : str
+        User who perform the request.
+    remote : str
+        IP address of the request.
+    method : str
+        HTTP method used in the request.
+    path : str
+        Endpoint used in the request.
+    query : dict
+        Dictionary with the request parameters.
+    body : dict
+        Dictionary with the request body.
+    elapsed_time : float
+        Required time to compute the request.
+    status : int
+        Status code of the request.
+    hash_auth_context : str, optional
+        Hash representing the authorization context. Default: ''
+    headers: dict
+        Optional dictionary of request headers.
+    """
+    json_info = {
+        'user': user,
+        'ip': remote,
+        'http_method': method,
+        'uri': f'{method} {path}',
+        'parameters': query,
+        'body': body,
+        'time': f'{elapsed_time:.3f}s',
+        'status_code': status
+    }
+
+    if not hash_auth_context:
+        log_info = f'{user} {remote} "{method} {path}" '
+    else:
+        log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
+        json_info['hash_auth_context'] = hash_auth_context
+
+    if path == '/events' and logger.level >= 20:
+        # If log level is info simplify the messages for the /events requests.
+        events = body.get('events', [])
+        body = {'events': len(events)}
+        json_info['body'] = body
+
+    log_info += f'with parameters {json.dumps(query)} and body '\
+                f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
+
+    logger.info(log_info, extra={'log_type': 'log'})
+    logger.info(json_info, extra={'log_type': 'json'})
+    logger.debug2(f'Receiving headers {headers}')
