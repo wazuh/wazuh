@@ -1,8 +1,8 @@
 ---
 name: Agent OS check
 about: Test agent compatibility with new OS.
-title: ''
-labels: ''
+title: 'Check wazuh-agent support for OS: <new OS>'
+labels: level/task, request/operational, type/maintenance
 assignees: ''
 
 ---
@@ -36,7 +36,6 @@ Result code:
 | **FIM - Whodata** | :white_circle: | :black_circle: | :black_circle: | |
 | **SCA** | :white_circle: | :white_circle: | :black_circle: | |
 | **Inventory** | :white_circle: | :white_circle: | :white_circle: | |
-| **Vulnerability Detector** | :white_circle: | :black_circle: | :black_circle: | |
 | **Active response** | :white_circle: | :white_circle: | :black_circle: | |
 | **Remote upgrade** | :white_circle: | :black_circle: | :black_circle: | |
 | **Command monitoring** | :white_circle: | :white_circle: | :black_circle: | |
