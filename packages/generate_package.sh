@@ -104,9 +104,9 @@ build_pkg() {
 
     # Find all files containing "-dbg"
     if [ "${SYSTEM}" == "deb" ]; then 
-        EXT="*manager-dbg*.deb"
+        EXT="*-dbg*.deb"
     else
-        EXT="*manager-debuginfo*.rpm"
+        EXT="*-debuginfo*.rpm"
     fi
 
     files_to_zip=$(ls ${OUTDIR}/${EXT} | grep -- -dbg)
