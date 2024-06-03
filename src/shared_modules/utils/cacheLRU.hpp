@@ -118,11 +118,14 @@ public:
      *
      * @param handler The function to be applied to each key-value pair.
      */
-    void forEach(std::function<void(const KeyType&, const ValueType&)> handler) const
+    void forEach(std::function<bool(const KeyType&, const ValueType&)> handler) const
     {
         for (const auto& [key, value] : m_map)
         {
-            handler(key, value);
+            if(!handler(key, value))
+            {
+                break;
+            }
         }
     }
 
