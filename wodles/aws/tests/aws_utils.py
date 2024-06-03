@@ -251,7 +251,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
 
 
 def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
-                               reparse: bool = False,
+                               reparse: bool = False, access_key: str = None, secret_key: str = None,
                                profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
                                only_logs_after: str = None, account_alias: str = None, region: str = None, aws_log_groups: str = None,
                                remove_log_streams: bool = None, discard_field: str = None,
@@ -264,6 +264,10 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
     ----------
     reparse : bool
         Whether to parse already parsed logs or not.
+    access_key : str
+        AWS access key id.
+    secret_key : str
+        AWS secret access key.
     profile : str
         AWS profile.
     iam_role_arn : str
