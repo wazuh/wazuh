@@ -18,11 +18,13 @@ try:
     import wazuh.agent as agent
     from wazuh.core.exception import WazuhError
     from wazuh.core.cluster import utils as cluster_utils
+    from wazuh.core.wlogging import CLIFilter
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
 logger = logging.getLogger('wazuh')
+logger.addFilter(CLIFilter())
 
 
 # Functions

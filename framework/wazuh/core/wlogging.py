@@ -237,3 +237,29 @@ class WazuhLogger:
             return getattr(self, item, None)
         else:
             raise AttributeError(f"{self.__class__.__name__} object has no attribute {item}")
+
+
+class CLIFilter(logging.Filter):
+    """
+    Define a custom filter to filter WazuhInternalErrors
+    """
+
+    messages_to_avoid = ['Wazuh Internal Error', 'WazuhInternalError']
+
+    def filter(self, record):
+        """Filter the log entry depending on its message contents
+
+        Parameters
+        ----------
+        record : logging.LogRecord
+            Contains all the information to the event being logged.
+
+        Returns
+        -------
+        bool
+            Boolean used to determine if the log entry should be logged.
+        """
+        for msg_to_avoid in self.messages_to_avoid:
+            if msg_to_avoid in record.getMessage():
+                return False
+        return True
