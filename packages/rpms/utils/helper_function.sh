@@ -85,7 +85,22 @@ build_package(){
 
 get_package_and_checksum(){
     src="$3"
-    export RPM_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "\.rpm$")
+    
+    rpm_files=(*.rpm)
+    RPM_NAME=""
+    SYMBOLS_NAME=""
+    for file in "${rpm_files[@]}"; do
+        # Find "debuginfo" in the filenames
+        if [[ $file == *"debuginfo"* ]]; then
+            SYMBOLS_NAME=$file
+        else
+            RPM_NAME=$file
+        fi
+    done
+
+    echo "RPM_NAME: ${RPM_NAME}"
+    echo "SYMBOLS_NAME:${SYMBOLS_NAME}"
+
     export SRC_NAME=$(ls -R ${rpm_build_dir}/SRPMS | grep "\.src\.rpm$")
 
     if [[ "${checksum}" == "yes" ]]; then
@@ -99,5 +114,6 @@ get_package_and_checksum(){
         mv ${rpm_build_dir}/SRPMS/$SRC_NAME /var/local/wazuh
     else
         mv ${rpm_build_dir}/RPMS/$RPM_NAME /var/local/wazuh
+        mv ${rpm_build_dir}/SRPMS/$SYMBOLS_NAME /var/local/wazuh
     fi
 }

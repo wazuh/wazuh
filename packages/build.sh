@@ -65,69 +65,6 @@ post_process() {
   fi
 }
 
-setup_build_manager(){
-    echo "setup_build(sources_dir: $1, specs: $2, build: $3, package: $4, debug: $5)"
-    sources_dir="$1"
-    specs_path="$2"
-    build_dir="$3"
-    package_name="$4"
-    debug="$5"
-
-    cp -pr ${specs_path}/wazuh-${BUILD_TARGET}/debian ${sources_dir}/debian
-    cp -p /tmp/gen_permissions.sh ${sources_dir}
-
-    # Generating directory structure to build the .deb package
-    cd ${build_dir}/${BUILD_TARGET} && tar -czf ${package_name}.orig.tar.gz "${package_name}"
-
-    # Configure the package with the different parameters
-    sed -i "s:RELEASE:${REVISION}:g" ${sources_dir}/debian/changelog
-    sed -i "s:export JOBS=.*:export JOBS=${JOBS}:g" ${sources_dir}/debian/rules
-    sed -i "s:export DEBUG_ENABLED=.*:export DEBUG_ENABLED=${debug}:g" ${sources_dir}/debian/rules
-    sed -i "s#export PATH=.*#export PATH=/usr/local/gcc-5.5.0/bin:${PATH}#g" ${sources_dir}/debian/rules
-    sed -i "s#export LD_LIBRARY_PATH=.*#export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}#g" ${sources_dir}/debian/rules
-    sed -i "s:export INSTALLATION_DIR=.*:export INSTALLATION_DIR=${INSTALLATION_PATH}:g" ${sources_dir}/debian/rules
-    sed -i "s:DIR=\"/var/ossec\":DIR=\"${INSTALLATION_PATH}\":g" ${sources_dir}/debian/{preinst,postinst,prerm,postrm}
-
-    echo "Listing of ${sources_dir}/debian/rules"
-    cat ${sources_dir}/debian/rules
-}
-
-get_package_and_checksum_manager(){
-    echo "get_package_and_checksum()"
-
-    wazuh_version="$1"
-    short_commit_hash="$2"
-    base_name="wazuh-${BUILD_TARGET}_${wazuh_version}-${REVISION}"
-    symbols_base_name="wazuh-${BUILD_TARGET}-dbg_${wazuh_version}-${REVISION}"
-
-    if [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
-        deb_file="${base_name}_ppc64el.deb"
-        symbols_deb_file="${symbols_base_name}_ppc64el.deb"
-    else
-        deb_file="${base_name}_${ARCHITECTURE_TARGET}.deb"
-        symbols_deb_file="${symbols_base_name}_${ARCHITECTURE_TARGET}.deb"
-    fi
-
-    if [[ "${IS_STAGE}" == "no" ]]; then
-        deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$deb_file")"
-        symbols_deb_file="$(sed "s/\.deb/_${short_commit_hash}&/" <<< "$symbols_deb_file")"
-    fi
-
-    pkg_path="${build_dir}/${BUILD_TARGET}"
-    if [[ "${checksum}" == "yes" ]]; then
-        cd ${pkg_path} && sha512sum wazuh-${BUILD_TARGET}*deb > /var/local/wazuh/${deb_file}.sha512
-        cd ${pkg_path} && sha512sum ${symbols_deb_file} > /var/local/checksum/${symbols_deb_file}.sha512
-    fi
-
-    echo "deb_file: ${deb_file}"
-    echo "symbols_deb_file: ${symbols_deb_file}"
-
-    echo "Listing of ${pkg_path}"
-    ls ${pkg_path}
-
-    find ${pkg_path} -type f -name "wazuh-${BUILD_TARGET}*deb" -exec mv {} /var/local/wazuh/ \;
-}
-
 # Main script body
 
 # Script parameters
@@ -170,7 +107,7 @@ wazuh_version="$(cat $source_dir/src/VERSION| cut -d 'v' -f 2)"
 package_name="wazuh-${BUILD_TARGET}-${wazuh_version}"
 specs_path="$(find $source_dir -name SPECS|grep $SYSTEM)"
 
-setup_build_manager "$source_dir" "$specs_path" "$build_dir" "$package_name" "$debug"
+setup_build "$source_dir" "$specs_path" "$build_dir" "$package_name" "$debug"
 
 set_debug $debug $sources_dir
 
@@ -180,4 +117,4 @@ build_deps $legacy
 build_package $package_name $debug "$short_commit_hash" "$wazuh_version"
 
 # Post-processing
-get_package_and_checksum_manager $wazuh_version $short_commit_hash $src
+get_package_and_checksum $wazuh_version $short_commit_hash $src
