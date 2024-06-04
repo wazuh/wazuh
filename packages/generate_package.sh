@@ -101,45 +101,6 @@ build_pkg() {
 
     echo "Packages $(ls -Art ${OUTDIR} | tail -n 2) added to ${OUTDIR}."
 
-
-    # Find all files containing "-dbg"
-    if [ "${SYSTEM}" == "deb" ]; then 
-        EXT="*-dbg*.deb"
-        files_to_zip=$(ls ${OUTDIR}/${EXT} | grep -- -dbg)
-    else
-        EXT="*-debuginfo*.rpm"
-        files_to_zip=$(ls ${OUTDIR}/${EXT} | grep -- -debuginfo)
-    fi
-
- 
-
-    # Check if any files were found
-    if [[ -z "$files_to_zip" ]]; then
-        echo "No debug symbols found in current directory."
-        echo "Output path listing:"
-        ls -l ${OUTDIR}
-        exit 0
-    fi
-
-    # Extract filename without extension
-    base_filename="${files_to_zip%.*}"
-
-    # Create the archive name with .zip extension
-    archive_name="$base_filename.zip"
-
-    # Compress files into a zip archive named after the first (and only) file
-    zip -q -r "$archive_name" "$files_to_zip"
-
-    # Print confirmation message
-    echo "Compressed debug symbols into '${archive_name}'"
-
-    echo "Output path listing:"
-    ls -l ${OUTDIR}
-    
-    echo "Deleting uncompressed symbols file"
-    delete_file=${files_to_zip}
-    rm ${delete_file}
-
     return 0
 }
 
