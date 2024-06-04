@@ -221,12 +221,13 @@ def test_customfilter():
     assert not cf.filter(MockedRecord('testB'))
 
 
-@pytest.mark.parametrize('value, expected',
-                         [
-                             ('Example log', True),
-                             ('Wazuh Internal Error', False),
-                             ('WazuhInternalError', False)
-                         ])
+@pytest.mark.parametrize('value, expected', [
+    ('Example log', True),
+    ('Wazuh Internal Error', False),
+    ('WazuhInternalError', False),
+    ('WazuhError', True),
+    ('InternalError', True)
+])
 def test_cli_custom_filter(value, expected):
     """
     Test if CLIFilter class works properly.

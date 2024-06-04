@@ -246,18 +246,18 @@ class CLIFilter(logging.Filter):
 
     messages_to_avoid = ['Wazuh Internal Error', 'WazuhInternalError']
 
-    def filter(self, record):
-        """Filter the log entry depending on its message contents
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Filter the log entry depending on its message contents.
 
         Parameters
         ----------
         record : logging.LogRecord
-            Contains all the information to the event being logged.
+            Contains the information of the event being logged.
 
         Returns
         -------
         bool
-            Boolean used to determine if the log entry should be logged.
+            Whether the log entry should be logged or not.
         """
         for msg_to_avoid in self.messages_to_avoid:
             if msg_to_avoid in record.getMessage():
