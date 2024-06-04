@@ -284,7 +284,7 @@ int receive_msg()
                                     send_msg(msg_output, -1);
                                 }
                                 else {
-                                    if (cldir_ex_ignore(SHAREDCFG_DIR, ignore_list)) {
+                                    if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
                                         mwarn("Could not clean up shared directory.");
                                     }
                                     clear_merged_hash_cache();
