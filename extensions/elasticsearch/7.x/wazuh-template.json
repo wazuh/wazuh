@@ -572,7 +572,7 @@
             "type": "text"
           },
           "country_iso_code": {
-            "type": "text"
+            "type": "keyword"
           },
           "country_name": {
             "type": "keyword"
