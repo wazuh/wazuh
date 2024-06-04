@@ -66,12 +66,12 @@ static struct column_list const TABLE_NETIFACE[NETIFACE_FIELD_COUNT+1] = {
     { .value = { FIELD_TEXT, 4, false, false, NULL, "adapter", {.text = ""}, true}, .next = &TABLE_NETIFACE[4] },
     { .value = { FIELD_TEXT, 5, false, false, NULL, "type", {.text = ""}, true}, .next = &TABLE_NETIFACE[5] },
     { .value = { FIELD_TEXT, 6, false, false, NULL, "state", {.text = ""}, true}, .next = &TABLE_NETIFACE[6] },
-    { .value = { FIELD_INTEGER, 7, false, false, NULL, "mtu", {.integer = 0}, true}, .next = &TABLE_NETIFACE[7] },
+    { .value = { FIELD_INTEGER_LONG, 7, false, false, NULL, "mtu", {.integer_long = 0}, true}, .next = &TABLE_NETIFACE[7] },
     { .value = { FIELD_TEXT, 8, false, false, NULL, "mac", {.text = ""}, true}, .next = &TABLE_NETIFACE[8] },
     { .value = { FIELD_INTEGER, 9, false, false, NULL, "tx_packets", {.integer = 0}, true}, .next = &TABLE_NETIFACE[9] },
     { .value = { FIELD_INTEGER, 10, false, false, NULL, "rx_packets", {.integer = 0}, true}, .next = &TABLE_NETIFACE[10] },
-    { .value = { FIELD_INTEGER, 11, false, false, NULL, "tx_bytes", {.integer = 0}, true}, .next = &TABLE_NETIFACE[11] },
-    { .value = { FIELD_INTEGER, 12, false, false, NULL, "rx_bytes", {.integer = 0}, true}, .next = &TABLE_NETIFACE[12] },
+    { .value = { FIELD_INTEGER_LONG, 11, false, false, NULL, "tx_bytes", {.integer_long = 0}, true}, .next = &TABLE_NETIFACE[11] },
+    { .value = { FIELD_INTEGER_LONG, 12, false, false, NULL, "rx_bytes", {.integer_long = 0}, true}, .next = &TABLE_NETIFACE[12] },
     { .value = { FIELD_INTEGER, 13, false, false, NULL, "tx_errors", {.integer = 0}, true}, .next = &TABLE_NETIFACE[13] },
     { .value = { FIELD_INTEGER, 14, false, false, NULL, "rx_errors", {.integer = 0}, true}, .next = &TABLE_NETIFACE[14] },
     { .value = { FIELD_INTEGER, 15, false, false, NULL, "tx_dropped", {.integer = 0}, true}, .next = &TABLE_NETIFACE[15] },
@@ -2982,12 +2982,12 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
     char * adapter;
     char * type;
     char * state;
-    int mtu;
+    int64_t mtu;
     char * mac;
     long tx_packets;
     long rx_packets;
-    long tx_bytes;
-    long rx_bytes;
+    int64_t tx_bytes;
+    int64_t rx_bytes;
     long tx_errors;
     long rx_errors;
     long tx_dropped;
@@ -3108,7 +3108,7 @@ int wdb_parse_netinfo(wdb_t * wdb, char * input, char * output) {
 
         if (next = strchr(curr, '|'), !next) {
             mdebug1("Invalid Network query syntax.");
-            mdebug2("Network query: %d", mtu);
+            mdebug2("Network query: %ld", mtu);
             snprintf(output, OS_MAXSTR + 1, "err Invalid Network query syntax, near '%.32s'", curr);
             return OS_INVALID;
         }

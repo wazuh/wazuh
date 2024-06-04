@@ -28,8 +28,8 @@ struct LinkStats
 {
     unsigned int rxPackets;    /* total packets received */
     unsigned int txPackets;    /* total packets transmitted */
-    unsigned int rxBytes;      /* total bytes received */
-    unsigned int txBytes;      /* total bytes transmitted */
+    int64_t rxBytes;                /* total bytes received */
+    int64_t txBytes;                /* total bytes transmitted */
     unsigned int rxErrors;     /* bad packets received */
     unsigned int txErrors;     /* packet transmit problems */
     unsigned int rxDropped;    /* no space in linux buffers */
