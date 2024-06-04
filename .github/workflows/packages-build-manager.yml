@@ -151,8 +151,12 @@ jobs:
         working-directory: packages
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
+          echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
-        if: ${{ inputs.checksum == true }}
+        if: ${{ inputs.checksum }}
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+          echo "S3 sha512 URI: ${s3uri}"
