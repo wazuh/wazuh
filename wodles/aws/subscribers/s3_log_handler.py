@@ -17,7 +17,7 @@ from aws_tools import aws_logger
 try:
     import pyarrow.parquet as pq
 except ImportError:
-    aws_logger('Pyarrow module is required.')
+    aws_logger.error('Pyarrow module is required.')
     sys.exit(10)
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
