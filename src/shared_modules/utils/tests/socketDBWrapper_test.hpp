@@ -34,7 +34,7 @@ protected:
     {
         m_socketServer =
             std::make_shared<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>>(TEST_SOCKET);
-        auto idx = 0;
+
         m_socketServer->listen(
             [&](const int fd, const char* data, uint32_t size, const char* dataHeader, uint32_t sizeHeader)
             {
@@ -42,12 +42,14 @@ protected:
                 std::ignore = sizeHeader;
 
                 std::string receivedMsg(data, size);
-                ASSERT_EQ(receivedMsg, m_query.at(idx));
+                ASSERT_EQ(receivedMsg, m_query);
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(m_sleepTime));
-                m_socketServer->send(fd, m_responses.at(idx).c_str(), m_responses.at(idx).size());
-                ++idx;
-                ;
+
+                for (const auto& response : m_responses)
+                {
+                    m_socketServer->send(fd, response.c_str(), response.size());
+                }
             });
     };
     void TearDown() override
@@ -61,7 +63,7 @@ protected:
     };
 
     std::shared_ptr<SocketServer<Socket<OSPrimitives, SizeHeaderProtocol>, EpollWrapper>> m_socketServer;
-    std::vector<std::string> m_query;
+    std::string m_query;
     std::vector<std::string> m_responses;
     int m_sleepTime;
 };

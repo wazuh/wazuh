@@ -36,9 +36,9 @@ class SocketClient final
 private:
     const std::string m_socketPath;
     std::thread m_mainLoopThread;
-    std::shared_ptr<TEpoll> m_epoll = std::make_shared<TEpoll>();
-    std::shared_ptr<TSocket> m_socket = std::make_shared<TSocket>();
-    std::atomic<bool> m_shouldStop = false;
+    std::shared_ptr<TEpoll> m_epoll;
+    std::shared_ptr<TSocket> m_socket;
+    std::atomic<bool> m_shouldStop;
     std::condition_variable_any m_cv;
     std::mutex m_mutex;
     int m_stopFD[2] = {-1, -1};
@@ -48,21 +48,25 @@ private:
     {
         try
         {
-            std::scoped_lock lock(m_socketMutex);
+            std::lock_guard<std::shared_mutex> lock(m_socketMutex);
             m_socket->sendUnsentMessages();
             m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN);
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Sending pending messages error: " << e.what() << "\n";
+            // Error sending pending messages
         }
     }
 
 public:
     explicit SocketClient(std::string socketPath)
         : m_socketPath {std::move(socketPath)}
+        , m_epoll {std::make_shared<TEpoll>()}
+        , m_socket {std::make_shared<TSocket>()}
+        , m_shouldStop {false}
     {
-        if (int result = ::pipe(m_stopFD); result == -1)
+        int result = ::pipe(m_stopFD);
+        if (result == -1)
         {
             throw std::runtime_error("Failed to create stop pipe");
         }
@@ -104,9 +108,7 @@ public:
 
     void connect(
         const std::function<void(const char*, uint32_t, const char*, uint32_t)>& onRead,
-        const std::function<void()>& onConnect =
-            []() { // Do nothing by default
-            },
+        const std::function<void()>& onConnect = []() {},
         int type = (SOCK_STREAM | SOCK_NONBLOCK))
     {
         // If the thread is already running, then return, this case happens when the client is restarted/reconnected.
@@ -161,16 +163,16 @@ public:
 
                                     if (event & EPOLLIN)
                                     {
-                                        std::shared_lock lock(m_socketMutex);
-                                        m_socket->read([&onRead](const int,
-                                                                 const char* body,
-                                                                 uint32_t bodySize,
-                                                                 const char* header,
-                                                                 uint32_t headerSize)
+                                        std::lock_guard<std::shared_mutex> lock(m_socketMutex);
+                                        m_socket->read([&](const int,
+                                                           const char* body,
+                                                           uint32_t bodySize,
+                                                           const char* header,
+                                                           uint32_t headerSize)
                                                        { onRead(body, bodySize, header, headerSize); });
                                     }
                                 }
-                                catch (const std::exception&)
+                                catch (const std::exception& e)
                                 {
                                     m_shouldStop = true;
                                     break;
@@ -180,7 +182,7 @@ public:
                     }
                     catch (const std::exception& e)
                     {
-                        std::cerr << "Error in epoll: " << e.what() << "\n";
+                        std::cerr << "Error in epoll: " << e.what() << std::endl;
                         m_shouldStop = true;
                     }
                 }
@@ -194,7 +196,7 @@ public:
         constexpr auto MAX_DELAY = 30;
         auto delay = 1;
 
-        std::unique_lock lock(m_socketMutex);
+        std::unique_lock<std::shared_mutex> lock(m_socketMutex);
         do
         {
             try
@@ -203,22 +205,22 @@ public:
                 m_epoll->addDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);
                 break;
             }
-            catch (const std::exception&)
+            catch (const std::exception& e)
             {
                 // Failure to connect to socket
                 delay = std::min(delay * 2, MAX_DELAY);
             }
-        } while (!m_cv.wait_for(lock, std::chrono::seconds(delay), [this]() { return m_shouldStop.load(); }));
+        } while (!m_cv.wait_for(lock, std::chrono::seconds(delay), [&]() { return m_shouldStop.load(); }));
     }
 
     void send(const char* dataBody, size_t sizeBody, const char* dataHeader = nullptr, size_t sizeHeader = 0)
     {
-        std::shared_lock lock(m_socketMutex);
+        std::shared_lock<std::shared_mutex> lock(m_socketMutex);
         try
         {
             m_socket->send(dataBody, sizeBody, dataHeader, sizeHeader);
         }
-        catch (const std::exception&)
+        catch (const std::exception& e)
         {
             // Error sending message
             m_epoll->modifyDescriptor(m_socket->fileDescriptor(), EPOLLIN | EPOLLOUT);

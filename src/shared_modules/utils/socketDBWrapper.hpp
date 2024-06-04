@@ -51,8 +51,6 @@ private:
     DbQueryStatus m_queryStatus {DbQueryStatus::UNKNOWN};
     std::mutex m_mutexMessage;
     std::mutex m_mutexResponse;
-    std::string m_query;
-    std::pair<std::string, std::string> m_paginationData;
     std::condition_variable m_conditionVariable;
     bool m_teardown {false};
     bool m_dataReady {false};
@@ -72,54 +70,13 @@ public:
                 {
                     try
                     {
-                        const auto responseParsed =
-                            nlohmann::json::parse(responsePacket.substr(sizeof(DB_WRAPPER_DUE)));
-
-                        if (m_paginationData.first.empty())
-                        {
-                            throw std::runtime_error("Pagination data not set");
-                        }
-                        // Get last element from the response and the value of the pagination field.
-                        const auto paginationValue = responseParsed.back().at(m_paginationData.second);
-                        auto query = m_query;
-                        query.append(m_paginationData.first).append(" ");
-
-                        // Check pagination value type.
-                        if (paginationValue.is_number_integer())
-                        {
-                            query.append(std::to_string(paginationValue.get<int>()));
-                        }
-                        else if (paginationValue.is_string())
-                        {
-                            query.append(paginationValue.get_ref<const std::string&>());
-                        }
-                        else if (paginationValue.is_number_float())
-                        {
-                            query.append(std::to_string(paginationValue.get<float>()));
-                        }
-                        else
-                        {
-                            throw std::runtime_error("Invalid pagination value type");
-                        }
-
-                        m_dbSocket->send(query.c_str(), query.size());
-
-                        for (const auto& response : responseParsed)
-                        {
-                            m_responsePartial.push_back(response);
-                        }
+                        m_responsePartial.push_back(nlohmann::json::parse(responsePacket.substr(4)));
                     }
                     catch (const nlohmann::detail::exception& ex)
                     {
                         m_queryStatus = DbQueryStatus::JSON_PARSING;
-                        m_exceptionStr =
-                            "Error parsing JSON response: " + responsePacket.substr(sizeof(DB_WRAPPER_DUE)) +
-                            ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
-                    }
-                    catch (const std::exception& ex)
-                    {
-                        m_queryStatus = DbQueryStatus::UNKNOWN;
-                        m_exceptionStr = ex.what();
+                        m_exceptionStr = "Error parsing JSON response: " + responsePacket.substr(4) +
+                                         ". Exception id: " + std::to_string(ex.id) + ". " + ex.what();
                     }
                 }
                 else
@@ -149,14 +106,6 @@ public:
                     {
                         if (!m_responsePartial.empty())
                         {
-                            const auto responseParsed =
-                                nlohmann::json::parse(responsePacket.substr(sizeof(DB_WRAPPER_OK)));
-
-                            for (const auto& response : responseParsed)
-                            {
-                                m_responsePartial.push_back(response);
-                            }
-
                             m_response = m_responsePartial;
                         }
                         else
@@ -203,9 +152,7 @@ public:
             });
     }
 
-    void query(const std::string& query,
-               nlohmann::json& response,
-               const std::pair<std::string, std::string>& paginationData = {})
+    void query(const std::string& query, nlohmann::json& response)
     {
         // Acquire lock to avoid multiple threads sending queries at the same time
         std::scoped_lock lockMessage {m_mutexMessage};
@@ -227,15 +174,6 @@ public:
         if (!m_dbSocket)
         {
             throw std::runtime_error("Socket DB Wrapper not initialized");
-        }
-
-        m_query = query;
-        m_paginationData = paginationData;
-
-        if (!paginationData.first.empty() && m_query.find(m_paginationData.first) != std::string::npos)
-        {
-            // Clean from the query the pagination data.
-            m_query.erase(m_query.find(m_paginationData.first));
         }
 
         m_dbSocket->send(query.c_str(), query.size());

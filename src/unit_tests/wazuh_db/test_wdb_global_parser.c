@@ -3903,29 +3903,30 @@ void test_wdb_parse_global_get_all_agents_context_argument2_error(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-all-agents context last_id";
+    char query[OS_BUFFER_SIZE] = "global get-all-agents context";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents context last_id");
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid arguments 'last_id' not found.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents context");
+    will_return(__wrap_wdb_global_get_all_agents_context, OS_INVALID);
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents_time);
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
     will_return(__wrap_w_is_file, 1);
+
     expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "err Invalid arguments 'last_id' not found");
+    assert_string_equal(data->output, "err Error getting agents from global.db.");
     assert_int_equal(ret, OS_INVALID);
 }
 
@@ -3933,33 +3934,27 @@ void test_wdb_parse_global_get_all_agents_context_success(void **state)
 {
     int ret = 0;
     test_struct_t *data  = (test_struct_t *)*state;
-    char query[OS_BUFFER_SIZE] = "global get-all-agents context last_id 1";
-    cJSON* root = cJSON_CreateArray();
-    cJSON* json_agent = cJSON_CreateObject();
-    cJSON_AddItemToObject(json_agent, "id", cJSON_CreateNumber(10));
-    cJSON_AddItemToArray(root, json_agent);
+    char query[OS_BUFFER_SIZE] = "global get-all-agents context";
 
     will_return(__wrap_wdb_open_global, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents context last_id 1");
-    expect_value(__wrap_wdb_global_get_all_agents_context, last_agent_id, 1);
-    will_return(__wrap_wdb_global_get_all_agents_context, WDBC_OK);
-    will_return(__wrap_wdb_global_get_all_agents_context, root);
+    expect_string(__wrap__mdebug2, formatted_msg, "Global query: get-all-agents context");
+    will_return(__wrap_wdb_global_get_all_agents_context, OS_SUCCESS);
 
     expect_function_call(__wrap_w_inc_queries_total);
     expect_function_call(__wrap_w_inc_global);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_open_time);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents);
-    will_return(__wrap_gettimeofday, NULL);
-    will_return(__wrap_gettimeofday, NULL);
+    expect_function_call(__wrap_gettimeofday);
+    expect_function_call(__wrap_gettimeofday);
     expect_function_call(__wrap_w_inc_global_agent_get_all_agents_time);
 
     expect_function_call(__wrap_wdb_pool_leave);
 
     ret = wdb_parse(query, data->output, 0);
 
-    assert_string_equal(data->output, "ok [{\"id\":10}]");
+    assert_string_equal(data->output, "ok []");
     assert_int_equal(ret, OS_SUCCESS);
 }
 
