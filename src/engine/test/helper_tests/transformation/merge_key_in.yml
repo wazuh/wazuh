@@ -1,0 +1,46 @@
+# Name of the helper function
+name: merge_key_in
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: object  # Accept only object
+    source: both # Includes values or references (their names start with $)
+  2:
+    type: string  # Accept only string
+    source: reference # includes only references (their names start with $)
+
+target_field:
+  type: object
+  is_array: false
+
+test:
+  - arguments:
+      1:
+        key: name
+        key2:
+          age: 27
+          address: new york
+      2: key
+      target_filed:
+        name: some_name
+    should_pass: false
+    description: JSON objects of different types cannot be merged
+  - arguments:
+      1:
+        key: name
+        key2:
+          age: 27
+          address: new york
+      2: key2
+      target_filed:
+        name: some_name
+    expected:
+      address: new york
+      age: 27
+      name: some_name
+    should_pass: true
+    description: JSON objects merged
