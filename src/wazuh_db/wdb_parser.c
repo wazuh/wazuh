@@ -6131,14 +6131,26 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     char *next = NULL;
     const char delim[2] = " ";
     char *savedptr = NULL;
+    bool context = false;
 
-    /* Get last_id*/
+    /* Check if is last_id or context */
     next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(next, "last_id") != 0) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
+    if (next == NULL || (strcmp(next, "last_id") != 0 && strcmp(next, "context") != 0)) {
+        mdebug1("Invalid arguments 'last_id' or 'context' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' or 'context' not found");
         return OS_INVALID;
     }
+
+    if (strcmp(next, "context") == 0) {
+        context = true;
+        next = strtok_r(NULL, delim, &savedptr);
+        if (next == NULL || strcmp(next, "last_id") != 0) {
+            mdebug1("Invalid arguments 'last_id' not found.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
+            return OS_INVALID;
+        }
+    }
+
     next = strtok_r(NULL, delim, &savedptr);
     if (next == NULL) {
         mdebug1("Invalid arguments 'last_id' not found.");
@@ -6149,7 +6161,9 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
 
     // Execute command
     wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_all_agents(wdb, last_id, &status);
+    cJSON* result = context ? wdb_global_get_all_agents_context(wdb, last_id, &status) :
+        wdb_global_get_all_agents(wdb, last_id, &status);
+
     if (!result) {
         mdebug1("Error getting agents from global.db.");
         snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
