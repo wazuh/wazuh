@@ -72,7 +72,7 @@
 
   <rule id="19009" level="3">
     <if_sid>19006</if_sid>
-    <field name="sca.check.status">^Not applicable</field>
+    <field name="sca.check.result">^not applicable</field>
     <options>no_full_log</options>
     <description>$(sca.policy): $(sca.check.title)</description>
   </rule>
@@ -107,14 +107,14 @@
 
   <rule id="19014" level="9">
     <if_sid>19007</if_sid>
-    <field name="sca.check.previous_result">^Not applicable</field>
+    <field name="sca.check.previous_result">^not applicable</field>
     <options>no_full_log</options>
     <description>$(sca.policy): $(sca.check.title): Status changed from 'not applicable' to failed</description>
   </rule>
 
   <rule id="19015" level="3">
     <if_sid>19008</if_sid>
-    <field name="sca.check.previous_result">^Not applicable</field>
+    <field name="sca.check.previous_result">^not applicable</field>
     <options>no_full_log</options>
     <description>$(sca.policy): $(sca.check.title): Status changed from 'not applicable' to passed</description>
   </rule>

@@ -18,7 +18,10 @@
 /* Send MS SQL message and check the return code */
 static void __send_mssql_msg(logreader *lf, int drop_it, char *buffer) {
     mdebug2("Reading MSSQL message: '%s'", buffer);
-    if (drop_it == 0) {
+
+    /* Check ignore and restrict log regex, if configured. */
+    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, buffer)) {
+        /* Send message to queue */
         w_msg_hash_queues_push(buffer, lf->file, strlen(buffer) + 1, lf->log_target, LOCALFILE_MQ);
     }
 }
@@ -38,7 +41,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Obtain context to calculate hash */
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
@@ -50,7 +53,7 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
         str_len = strlen(str);
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(&context, NULL, str);
+            OS_SHA1_Stream(context, NULL, str);
         }
 
         /* Check str_len size. Very useless, but just to make sure */
@@ -148,7 +151,9 @@ void *read_mssql_log(logreader *lf, int *rc, int drop_it) {
     current_position = w_ftell(lf->fp);
 
     if (is_valid_context_file) {
-        w_update_file_status(lf->file, current_position, &context);
+        w_update_file_status(lf->file, current_position, context);
+    } else {
+        EVP_MD_CTX_free(context);
     }
 
     /* Send whatever is stored */

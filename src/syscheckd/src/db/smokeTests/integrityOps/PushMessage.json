@@ -1,0 +1,7 @@
+{
+    "action": "PushMessage",
+    "body":
+    {
+        "message": "fim_file dbsync no_data {\"begin\":\"/tmp/test.txt\",\"end\":\"/tmp/test.txt\",\"id\":1650301768}"
+    }
+}

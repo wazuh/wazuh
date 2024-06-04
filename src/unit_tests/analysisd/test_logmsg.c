@@ -19,7 +19,7 @@
 void _os_analysisd_add_logmsg(OSList * list, int level, int line, const char * func,
                                 const char * file, char * msg, ...) __attribute__((nonnull));
 char * os_analysisd_string_log_msg(os_analysisd_log_msg_t * log_msg);
-void os_analysisd_free_log_msg(os_analysisd_log_msg_t ** log_msg);
+void os_analysisd_free_log_msg(os_analysisd_log_msg_t * log_msg);
 
 /* setup/teardown */
 
@@ -71,7 +71,7 @@ void test_os_analysisd_free_log_msg_NULL(void **state)
 
     os_analysisd_log_msg_t * message = NULL;
 
-    os_analysisd_free_log_msg(&message);
+    os_analysisd_free_log_msg(message);
 
 }
 
@@ -88,7 +88,7 @@ void test_os_analysisd_free_log_msg_OK(void **state)
     message->func = strdup("TestFunction");
 
 
-    os_analysisd_free_log_msg(&message);
+    os_analysisd_free_log_msg(message);
 
 }
 

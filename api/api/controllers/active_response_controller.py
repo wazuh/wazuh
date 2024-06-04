@@ -4,28 +4,38 @@
 
 import logging
 
-from aiohttp import web
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 
-import wazuh.active_response as active_response
-from api.encoder import dumps, prettify
+from api.controllers.util import json_response, JSON_CONTENT_TYPE
 from api.models.active_response_model import ActiveResponseModel
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+import wazuh.active_response as active_response
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def run_command(request, agents_list='*', pretty=False, wait_for_complete=False):
-    """Runs an Active Response command on a specified agent
+async def run_command(agents_list: str = '*', pretty: bool = False,
+                      wait_for_complete: bool = False) -> ConnexionResponse:
+    """Runs an Active Response command on a specified list of agents.
 
-    :param agents_list: List of Agents IDs. All possible values from 000 onwards
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :return: message
+    Parameters
+    ----------
+    agents_list : str
+        List of agents IDs. All possible values from 000 onwards. Default: '*'
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
     """
     # Get body parameters
-    Body.validate_content_type(request, expected_content_type='application/json')
+    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
     f_kwargs = await ActiveResponseModel.get_kwargs(request, additional_kwargs={'agent_list': agents_list})
 
     dapi = DistributedAPI(f=active_response.run_command,
@@ -35,8 +45,8 @@ async def run_command(request, agents_list='*', pretty=False, wait_for_complete=
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

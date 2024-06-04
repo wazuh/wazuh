@@ -1,0 +1,132 @@
+- name: Test Journal only future events
+  description: This test check if logcollector is able to read old logs from journald before the agent starts
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - only-future-events:
+          value: 'no'
+      - filter:
+           value: test-journald-ofe
+           attributes:
+             - field: SYSLOG_IDENTIFIER
+             - ignore_if_missing: 'no'
+
+  metadata:
+    expected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 1'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 2'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 3'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 4'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 5'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 6'
+    # Logs before the start the agent
+    pre_input_logs:
+      - message: "Message from journald 1"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 2"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 3"
+        tag: "test-journald-ofe"
+    # Logs after the start the agent
+    post_input_logs:
+      - message: "Message from journald 4"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 5"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 6"
+        tag: "test-journald-ofe"
+
+
+# Basic configuration for journald without filters or merge
+- name: Test Journal only future events, with timestamp set in the future 
+  description: | 
+          This test set the timestamp in the future, so it shuold be detected and 
+          the logs should be read in realtime before logcollector starts
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - only-future-events:
+          value: 'no'
+      - filter:
+           value: test-journald-ofe
+           attributes:
+             - field: SYSLOG_IDENTIFIER
+             - ignore_if_missing: 'no'
+
+  metadata:
+    force_timestamp: "2051233199000000" # 2034-12-31 23:59:59
+    unexpected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 1'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 2'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 3'
+    expected_logs:
+      - The timestamp '2051233199000000' is in the future or invalid. Using the most recent entry.
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 4'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 5'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 6'
+    # Logs before the start the agent
+    pre_input_logs:
+      - message: "Message from journald 1"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 2"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 3"
+        tag: "test-journald-ofe"
+    # Logs after the start the agent
+    post_input_logs:
+      - message: "Message from journald 4"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 5"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 6"
+        tag: "test-journald-ofe"
+
+# Basic configuration for journald without filters or merge
+- name: Test Journal only future events, with timestamp set in the future 
+  description: |
+        This test set the timestamp in the future, so it shuold be detected and the logs 
+        should be read in realtime before logcollector starts
+  configuration_parameters:
+    - - location:
+          value: journald
+      - log_format:
+          value: journald
+      - only-future-events:
+          value: 'no'
+      - filter:
+           value: test-journald-ofe
+           attributes:
+             - field: SYSLOG_IDENTIFIER
+             - ignore_if_missing: 'no'
+
+  metadata:
+    force_timestamp: "0" # 2034-12-31 23:59:59
+    unexpected_logs:
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 1'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 2'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 3'
+    expected_logs:
+      - The timestamp '0' is in the future or invalid. Using the most recent entry.
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 4'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 5'
+      - '\w+ \d+ \d+:\d+:\d+ \S+ test-journald-ofe\[\d+]: Message from journald 6'
+    # Logs before the start the agent
+    pre_input_logs:
+      - message: "Message from journald 1"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 2"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 3"
+        tag: "test-journald-ofe"
+    # Logs after the start the agent
+    post_input_logs:
+      - message: "Message from journald 4"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 5"
+        tag: "test-journald-ofe"
+      - message: "Message from journald 6"
+        tag: "test-journald-ofe"

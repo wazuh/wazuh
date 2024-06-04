@@ -17,7 +17,7 @@
 #ifdef WIN32
 #include "../os_execd/execd.h"
 #include "../client-agent/agentd.h"
-#include "../syscheckd/syscheck.h"
+#include "../syscheckd/include/syscheck.h"
 #include "../wazuh_modules/wmodules.h"
 #include "../logcollector/logcollector.h"
 #include "../wazuh_modules/agent_upgrade/agent/wm_agent_upgrade_agent.h"
@@ -61,7 +61,7 @@ void req_init() {
     // Create hash table and request pool
 
     if (req_table = OSHash_Create(), !req_table) {
-        merror_exit("At req_main(): OSHash_Create()");
+        merror_exit("At req_init(): OSHash_Create()");
     }
     OSHash_SetFreeDataPointer(req_table, (void (*)(void *))req_free);
 
@@ -70,7 +70,7 @@ void req_init() {
     // Create hash table allowed sockets
 
     if (allowed_sockets = OSHash_Create(), !allowed_sockets) {
-        merror("At req_main(): OSHash_Create()");
+        merror("At req_init(): OSHash_Create()");
         goto ret;
     }
 
@@ -80,13 +80,13 @@ void req_init() {
     socket_agent = strdup(SOCKET_AGENT);
 
     if (!socket_log || !socket_sys || !socket_wodle || !socket_agent) {
-        merror("At req_main(): failed to allocate socket strings");
+        merror("At req_init(): failed to allocate socket strings");
         goto ret;
     }
 
     if (OSHash_Add(allowed_sockets, SOCKET_LOGCOLLECTOR, socket_log) != 2 || OSHash_Add(allowed_sockets, SOCKET_SYSCHECK, socket_sys) != 2 || \
     OSHash_Add(allowed_sockets, SOCKET_WMODULES, socket_wodle) != 2 || OSHash_Add(allowed_sockets, SOCKET_AGENT, socket_agent) != 2) {
-        merror("At req_main(): failed to add socket strings to hash list");
+        merror("At req_init(): failed to add socket strings to hash list");
         goto ret;
     }
 

@@ -13,253 +13,81 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
-                                     __attribute__ ((__unused__)) fim_type type,
-                                     const char *start,
-                                     const char *top,
-                                     int n,
-                                     __attribute__ ((__unused__)) EVP_MD_CTX *ctx_left,
-                                     __attribute__ ((__unused__)) EVP_MD_CTX *ctx_right,
-                                     char **str_pathlh,
-                                     char **str_pathuh){
-    check_expected_ptr(fim_sql);
-    check_expected(start);
-    check_expected(top);
-    check_expected(n);
-    *str_pathlh = mock_type(char *);
-    *str_pathuh = mock_type(char *);
+int __wrap_fim_db_get_count_file_entry(){
     return mock();
 }
 
-int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql,
-                                     __attribute__ ((__unused__)) fim_tmp_file *file,
-                                     __attribute__ ((__unused__)) pthread_mutex_t *mutex,
-                                     __attribute__ ((__unused__)) int storage) {
-    check_expected_ptr(fim_sql);
-
+int __wrap_fim_db_get_count_registry_data(){
     return mock();
 }
 
-int __wrap_fim_db_delete_range(fdb_t * fim_sql,
-                               fim_tmp_file *file,
-                               __attribute__((unused)) pthread_mutex_t *mutex,
-                               int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-    check_expected_ptr(file);
-
+int __wrap_fim_db_get_count_registry_key(){
     return mock();
 }
 
-int __wrap_fim_db_get_count_file_entry(__attribute__((unused)) fdb_t * fim_sql){
-    return mock();
-}
-
-int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
-                                  fim_type type,
-                                  char *start,
-                                  char *top,
-                                  int *count) {
-    check_expected_ptr(fim_sql);
-    check_expected(type);
-    check_expected(start);
-    check_expected(top);
-
-    *count = mock();
-    return mock();
-}
-
-int __wrap_fim_db_get_data_checksum(fdb_t *fim_sql,
-                                    __attribute__((unused)) void * arg) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
-
-int __wrap_fim_db_get_not_scanned(fdb_t * fim_sql,
-                                  fim_tmp_file **file,
-                                  int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
-                                  const char *file_path) {
-    check_expected_ptr(fim_sql);
+FIMDBErrorCode __wrap_fim_db_get_path(const char* file_path,
+                                     __attribute__((unused))callback_context_t callback) {
     check_expected(file_path);
 
-    return mock_type(fim_entry*);
-}
-int __wrap_fim_db_get_last_path(fdb_t * fim_sql, int type, char **path) {
-    check_expected_ptr(fim_sql);
-    check_expected(type);
-
-    *path = mock_type(char *);
-
-    return mock_type(int);
+    return mock();
 }
 
-int __wrap_fim_db_get_first_path(fdb_t * fim_sql, int type, char **path) {
-    check_expected_ptr(fim_sql);
-    check_expected(type);
-
-    *path = mock_type(char *);
-
-    return mock_type(int);
+void expect_fim_db_get_path(const char* path, int ret_val) {
+    expect_value(__wrap_fim_db_get_path, file_path, path);
+    will_return(__wrap_fim_db_get_path, ret_val);
 }
 
-int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
-                                 fim_type type,
-                                 char *start,
-                                 char *top,
-                                 fim_tmp_file **file,
-                                 int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected(type);
-    check_expected(start);
-    check_expected(top);
+FIMDBErrorCode __wrap_fim_db_init(int storage,
+                                  int sync_interval,
+                                  uint32_t sync_max_interval,
+                                  uint32_t sync_response_timeout,
+                                  __attribute__((unused)) fim_sync_callback_t sync_callback,
+                                  __attribute__((unused)) logging_callback_t log_callback,
+                                  int file_limit,
+                                  int value_limit,
+                                  int sync_registry_enable,
+                                  int sync_thread_pool,
+                                  int sync_queue_size) {
     check_expected(storage);
+    check_expected(sync_interval);
+    check_expected(sync_max_interval);
+    check_expected(sync_response_timeout);
+    check_expected(file_limit);
+    check_expected(value_limit);
+    check_expected(sync_registry_enable);
+    check_expected(sync_thread_pool);
+    check_expected(sync_queue_size);
 
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-int __wrap_fim_db_get_path_from_pattern(fdb_t *fim_sql,
-                                        const char *pattern,
-                                        fim_tmp_file **file,
-                                        int storage) {
-    check_expected_ptr(fim_sql);
-    check_expected(pattern);
-    check_expected(storage);
-
-    *file = mock_type(fim_tmp_file *);
-
-    return mock();
-}
-
-char **__wrap_fim_db_get_paths_from_inode(fdb_t *fim_sql,
-                                          const unsigned long int inode,
-                                          const unsigned long int dev) {
-    check_expected_ptr(fim_sql);
-    check_expected(inode);
-    check_expected(dev);
-
-    return mock_type(char **);
-}
-
-int __wrap_fim_db_get_row_path(fdb_t * fim_sql,
-                               int mode,
-                               char **path) {
-    check_expected_ptr(fim_sql);
-    check_expected(mode);
-
-    *path = mock_type(char*);
-
-    return mock();
-}
-
-fdb_t *__wrap_fim_db_init(int memory) {
-    check_expected(memory);
-    return mock_type(fdb_t*);
-}
-
-int __wrap_fim_db_insert(fdb_t *fim_sql,
-                         const char *file_path,
-                         __attribute__((unused)) fim_file_data *entry,
-                         __attribute__((unused)) int alert_type) {
-    check_expected_ptr(fim_sql);
-    check_expected(file_path);
-
-    if (activate_full_db) {
-        syscheck.database->full = true;
-    }
-
-    return mock();
-}
-
-int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
-                                        fim_tmp_file *file,
-                                        __attribute__((unused)) pthread_mutex_t *mutex,
-                                        int storage,
-                                        __attribute__((unused)) event_data_t *evt_data) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(file);
-    check_expected_ptr(storage);
-
-    return mock();
-}
-
-int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
-                                 fim_tmp_file *file,
-                                 __attribute__((unused)) pthread_mutex_t *mutex,
-                                 int storage,
-                                 __attribute__((unused)) event_data_t *evt_data,
-                                 __attribute__((unused)) directory_t *configuration) {
-    check_expected_ptr(fim_sql);
-    check_expected_ptr(file);
-    check_expected_ptr(storage);
-
-    return mock();
-}
-
-int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path) {
-    check_expected_ptr(fim_sql);
-    check_expected(path);
     return mock_type(int);
 }
 
-int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
+void expect_wrapper_fim_db_init(int storage,
+                                int sync_interval,
+                                uint32_t sync_max_interval,
+                                uint32_t sync_response_timeout,
+                                int file_limit,
+                                int value_limit,
+                                int sync_registry_enable,
+                                int sync_thread_pool,
+                                int sync_queue_size) {
+    expect_value(__wrap_fim_db_init, storage, storage);
+    expect_value(__wrap_fim_db_init, sync_interval, sync_interval);
+    expect_value(__wrap_fim_db_init, file_limit, file_limit);
+    expect_value(__wrap_fim_db_init, sync_response_timeout, sync_response_timeout);
+    expect_value(__wrap_fim_db_init, sync_max_interval, sync_max_interval);
+    expect_value(__wrap_fim_db_init, value_limit, value_limit);
+    expect_value(__wrap_fim_db_init, sync_registry_enable, sync_registry_enable);
+    expect_value(__wrap_fim_db_init, sync_thread_pool, sync_thread_pool);
+    expect_value(__wrap_fim_db_init, sync_queue_size, sync_queue_size);
 
-    return mock();
+    will_return(__wrap_fim_db_init, FIMDB_OK);
 }
 
-int __wrap_fim_db_set_scanned(fdb_t *fim_sql,
-                              char *path) {
-    check_expected_ptr(fim_sql);
+FIMDBErrorCode __wrap_fim_db_remove_path(const char *path) {
     check_expected(path);
 
-    return mock();
+    return mock_type(int);
 }
-
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
-                                  __attribute__((unused)) pthread_mutex_t *mutex,
-                                  __attribute__((unused)) fim_tmp_file *file,
-                                  __attribute__((unused)) int storage) {
-    check_expected_ptr(fim_sql);
-
-    return mock();
-}
-
-int __wrap_fim_db_get_count_entries(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
-    return mock();
-}
-
-#ifndef WIN32
-fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
-                                                 __attribute__((unused)) fim_type type,
-                                                 const char *path) {
-    check_expected_ptr(fim_sql);
-    check_expected(path);
-
-    return mock_type(fim_entry *);
-}
-
-#else
-fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path) {
-    check_expected_ptr(fim_sql);
-    check_expected(type);
-    check_expected(path);
-
-    return mock_type(fim_entry *);
-}
-#endif
 
 int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer) {
     check_expected_ptr(file);
@@ -276,101 +104,69 @@ void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage) {
     check_expected(storage);
 }
 
-void expect_wrapper_fim_db_get_path_range_call(const fdb_t *db,
-                                       const char *start_str,
-                                       const char *top_str,
-                                       int storage,
-                                       fim_tmp_file *tmp_file,
-                                       int ret) {
-
-    expect_value(__wrap_fim_db_get_path_range, fim_sql, db);
-    expect_value(__wrap_fim_db_get_path_range, type, FIM_TYPE_FILE);
-    expect_string(__wrap_fim_db_get_path_range, start, start_str);
-    expect_string(__wrap_fim_db_get_path_range, top, top_str);
-    expect_value(__wrap_fim_db_get_path_range, storage, storage);
-    will_return(__wrap_fim_db_get_path_range, tmp_file);
-    will_return(__wrap_fim_db_get_path_range, ret);
+void expect_wrapper_fim_db_get_count_file_entry(int ret) {
+    will_return(__wrap_fim_db_get_count_file_entry, ret);
 }
 
-void expect_wrapper_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret){
-    expect_value(__wrap_fim_db_delete_range, fim_sql, db);
-    expect_value(__wrap_fim_db_delete_range, storage, storage);
-    expect_memory(__wrap_fim_db_delete_range, file, file, sizeof(file));
-    will_return(__wrap_fim_db_delete_range, ret);
-}
-
-void expect_wrapper_fim_db_get_count_entries(const fdb_t *db, int ret) {
-    expect_value(__wrap_fim_db_get_count_entries, fim_sql, db);
-    will_return(__wrap_fim_db_get_count_entries, ret);
-}
-
-void expect_wrapper_fim_db_get_paths_from_inode(fdb_t *db, int inode, int dev, char **ret) {
-    expect_value(__wrap_fim_db_get_paths_from_inode, fim_sql, db);
-    expect_value(__wrap_fim_db_get_paths_from_inode, inode, inode);
-    expect_value(__wrap_fim_db_get_paths_from_inode, dev, dev);
-    will_return(__wrap_fim_db_get_paths_from_inode, ret);
-}
-
-int __wrap_fim_db_process_read_file(__attribute__((unused)) fdb_t *fim_sql,
-                                    __attribute__((unused)) fim_tmp_file *file,
-                                    __attribute__((unused)) int type,
-                                    __attribute__((unused)) pthread_mutex_t *mutex,
-                                    __attribute__((unused)) void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                    __attribute__((unused)) int storage,
-                                    __attribute__((unused)) void *alert,
-                                    __attribute__((unused)) void *mode,
-                                    __attribute__((unused)) void *w_evt) {
-    return mock();
-}
-
-void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
-                                         const char *pattern,
-                                         fim_tmp_file *file,
-                                         int storage,
-                                         int ret) {
-
-    expect_value(__wrap_fim_db_get_path_from_pattern, fim_sql, fim_sql);
-    expect_string(__wrap_fim_db_get_path_from_pattern, pattern, pattern);
-    expect_value(__wrap_fim_db_get_path_from_pattern, storage, storage);
-
-    will_return(__wrap_fim_db_get_path_from_pattern, file);
-    will_return(__wrap_fim_db_get_path_from_pattern, ret);
-}
-
-void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val) {
-    expect_value(__wrap_fim_db_remove_path, fim_sql, fim_sql);
+void expect_fim_db_remove_path(const char *path, int ret_val) {
     expect_string(__wrap_fim_db_remove_path, path, path);
     will_return(__wrap_fim_db_remove_path, ret_val);
 }
 
-void expect_fim_db_insert(fdb_t *db, const char *file_path, int ret) {
-    expect_value(__wrap_fim_db_insert, fim_sql, db);
-    expect_string(__wrap_fim_db_insert, file_path, file_path);
-    will_return(__wrap_fim_db_insert, ret);
+FIMDBErrorCode __wrap_fim_db_file_update(__attribute__((unused)) fim_entry* new,
+                              __attribute__((unused)) callback_context_t callback)
+{
+    return mock_type(int);
 }
 
-void expect_fim_db_set_scanned(fdb_t *db, const char *file_path, int ret) {
-    expect_value(__wrap_fim_db_set_scanned, fim_sql, db);
-    expect_string(__wrap_fim_db_set_scanned, path, file_path);
-    will_return(__wrap_fim_db_set_scanned, ret);
-}
-
-int __wrap_fim_db_file_update(fdb_t *fim_sql,
-                              const char *path,
-                              const __attribute__((unused)) fim_file_data *data,
-                              fim_entry **saved) {
-    check_expected_ptr(fim_sql);
-    check_expected(path);
-
-    if (saved != NULL) {
-        *saved = mock_type(fim_entry *);
-    }
+FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
+                                      __attribute__((unused)) callback_context_t callback) {
+    check_expected(pattern);
 
     return mock();
 }
 
-int __wrap_fim_db_is_full(fdb_t *fim_sql) {
-    check_expected_ptr(fim_sql);
+void expect_fim_db_file_pattern_search(const char* pattern, int ret_val) {
+    expect_string(__wrap_fim_db_file_pattern_search, pattern, pattern);
+    will_return(__wrap_fim_db_file_pattern_search, ret_val);
+}
 
+FIMDBErrorCode __wrap_fim_db_file_inode_search(const unsigned long inode,
+                                    const unsigned long dev,
+                                    __attribute__((unused)) callback_context_t callback) {
+    check_expected(inode);
+    check_expected(dev);
+    return mock_type(int);
+}
+
+void expect_fim_db_file_inode_search(const unsigned long inode,
+                                     const unsigned long dev,
+                                     int retval) {
+    expect_value(__wrap_fim_db_file_inode_search, inode, inode);
+    expect_value(__wrap_fim_db_file_inode_search, dev, dev);
+    will_return(__wrap_fim_db_file_inode_search, retval);
+}
+
+int __wrap_fim_db_get_count_file_inode() {
     return mock();
+}
+
+void __wrap_fim_run_integrity() {
+    function_called();
+}
+
+void __wrap_is_fim_shutdown() {
+    function_called();
+}
+
+void __wrap_fim_db_teardown() {
+    function_called();
+}
+
+void __wrap__imp__dbsync_initialize() {
+    function_called();
+}
+
+void __wrap__imp__rsync_initialize() {
+    function_called();
 }

@@ -1,0 +1,52 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml analysisd-written
+
+    collections others_modules
+    box "Analysisd Module - Written"
+    participant analysisd
+    database state
+    end box
+    skinparam sequenceMessageAlign right
+
+    others_modules -> analysisd : Enqueue event
+    rnote over analysisd
+            DEFAULTQUEUE
+        queue/sockets/queue
+    endrnote
+    analysisd -> analysisd: Dequeue event
+    analysisd -> state: received++
+
+    analysisd -> analysisd: Decode event
+    analysisd -> analysisd: Process event
+    analysisd -> state: processed++
+    alt Is Firewall event
+        analysisd -> analysisd: Enque event in log firewall queue
+        analysisd -> analysisd: Dequeue event from log firewall queue
+        analysisd -> analysisd: Write firewall log
+        analysisd -> state: written->firewall++
+    else Stats configured AND Is right time
+        analysisd -> analysisd: Enque event in log stats queue
+        analysisd -> analysisd: Dequeue event from log stats queue
+        analysisd -> analysisd: Write stats log
+        analysisd -> state: written->stats++
+    else FTS configured
+        analysisd -> analysisd: Enque event in log fts queue
+        analysisd -> analysisd: Dequeue event from log fts queue
+        analysisd -> analysisd: Write fts log
+        analysisd -> state: written->fts++
+    else Log alerts is configured
+        analysisd -> analysisd: Enque event in log alerts queue
+        analysisd -> analysisd: Dequeue event from log alerts queue
+        analysisd -> analysisd: Write alerts log
+        analysisd -> state: written->alerts++
+    else Log all is configured
+        analysisd -> analysisd: Enque event in log queue
+        analysisd -> analysisd: Dequeue event from log queue
+        analysisd -> analysisd: Write log
+        analysisd -> state: written->archives++
+    end
+
+@enduml

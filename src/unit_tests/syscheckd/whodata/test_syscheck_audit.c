@@ -14,8 +14,8 @@
 #include <stdio.h>
 
 #include "wrappers/common.h"
-#include "syscheckd/syscheck.h"
-#include "syscheckd/whodata/syscheck_audit.h"
+#include "../../../syscheckd/include/syscheck.h"
+#include "../../../syscheckd/src/whodata/syscheck_audit.h"
 
 #include "wrappers/externals/procpc/readproc_wrappers.h"
 #include "wrappers/libc/stdio_wrappers.h"
@@ -29,11 +29,13 @@
 #include "wrappers/wazuh/syscheckd/audit_parse_wrappers.h"
 #include "wrappers/wazuh/syscheckd/audit_rule_handling_wrappers.h"
 
-#include "external/procps/readproc.h"
+#include "../../../external/procps/readproc.h"
 
 extern atomic_int_t audit_health_check_creation;
 extern atomic_int_t hc_thread_active;
 extern atomic_int_t audit_thread_active;
+extern atomic_int_t audit_parse_thread_active;
+extern w_queue_t * audit_queue;
 
 #define AUDIT_RULES_FILE            "etc/audit_rules_wazuh.rules"
 #define AUDIT_RULES_LINK            "/etc/audit/rules.d/audit_rules_wazuh.rules"
@@ -63,6 +65,9 @@ static int setup_group(void **state) {
     w_mutex_init(&(audit_health_check_creation.mutex), NULL);
     w_mutex_init(&(hc_thread_active.mutex), NULL);
     w_mutex_init(&(audit_thread_active.mutex), NULL);
+    w_mutex_init(&(audit_parse_thread_active.mutex), NULL);
+    audit_queue = queue_init(2);
+
     return 0;
 }
 
@@ -421,9 +426,9 @@ void test_set_auditd_config_audit_plugin_tampered_configuration(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -480,9 +485,9 @@ void test_set_auditd_config_audit_plugin_not_created(void **state) {
     expect_abspath(AUDIT_SOCKET, 1);
     expect_abspath(AUDIT_CONF_FILE, 1);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -529,9 +534,9 @@ void test_set_auditd_config_audit_plugin_not_created_fopen_error(void **state) {
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 0);
 
     expect_string(__wrap__merror, formatted_msg, "(1103): Could not open file 'etc/af_wazuh.conf' due to [(0)-(Success)].");
 
@@ -564,9 +569,9 @@ void test_set_auditd_config_audit_plugin_not_created_fclose_error(void **state) 
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -604,9 +609,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink(void **sta
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -661,9 +666,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_restart(vo
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -719,9 +724,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_error(void
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -773,9 +778,9 @@ void test_set_auditd_config_audit_plugin_not_created_recreate_symlink_unlink_err
     will_return(__wrap_OS_SHA1_File, "0123456789abcdef0123456789abcdef01234567");
     will_return(__wrap_OS_SHA1_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/af_wazuh.conf");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, "etc/af_wazuh.conf");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     will_return(__wrap_fwrite, 1);
 
@@ -887,6 +892,9 @@ void test_audit_read_events_select_case_0(void **state) {
     expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_get, 1);
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
     expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_get, 0);
 
@@ -899,7 +907,6 @@ void test_audit_read_events_select_case_0(void **state) {
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
 
-    expect_function_call(__wrap_audit_parse);
     audit_read_events(audit_sock, &audit_thread_active);
 }
 
@@ -1022,6 +1029,11 @@ void test_audit_read_events_select_success_recv_success(void **state) {
     expect_value_count(__wrap_atomic_int_get, atomic, &audit_thread_active, 2);
     will_return_count(__wrap_atomic_int_get, 1, 2);
 
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, FIM_FULL_AUDIT_QUEUE);
+
     expect_value(__wrap_atomic_int_get, atomic, &audit_thread_active);
     will_return(__wrap_atomic_int_get, 0);
     // Switch
@@ -1031,8 +1043,6 @@ void test_audit_read_events_select_success_recv_success(void **state) {
     expect_value(__wrap_recv, __fd, *audit_sock);
     will_return(__wrap_recv, strlen(buffer));
     will_return(__wrap_recv, buffer);
-
-    expect_function_calls(__wrap_audit_parse, 2);
 
     audit_read_events(audit_sock, &audit_thread_active);
 }
@@ -1139,6 +1149,23 @@ void test_audit_read_events_select_success_recv_success_too_long(void **state) {
     os_free(buffer);
 }
 
+void test_audit_parse_thread(void **state) {
+    audit_parse_thread_active.data = 1;
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_parse_thread_active);
+    will_return(__wrap_atomic_int_get, 1);
+
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+
+    expect_function_call(__wrap_audit_parse);
+
+    expect_value(__wrap_atomic_int_get, atomic, &audit_parse_thread_active);
+    will_return(__wrap_atomic_int_get, 0);
+
+    audit_parse_thread();
+}
+
 void test_audit_rules_to_realtime(void **state) {
     char error_msg[OS_SIZE_128];
     char error_msg2[OS_SIZE_128];
@@ -1238,9 +1265,9 @@ void test_audit_rules_to_realtime_second_search_audit_rule_fail(void **state) {
 }
 
 void test_audit_create_rules_file(void **state) {
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1278,9 +1305,9 @@ void test_audit_create_rules_file(void **state) {
 void test_audit_create_rules_file_fopen_fail(void **state) {
     char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 0);
+    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 0);
 
     snprintf(error_msg, OS_SIZE_128, FOPEN_ERROR, AUDIT_RULES_FILE, errno, strerror(errno));
     expect_string(__wrap__merror, formatted_msg, error_msg);
@@ -1291,9 +1318,9 @@ void test_audit_create_rules_file_fopen_fail(void **state) {
 void test_audit_create_rules_file_fclose_fail(void **state) {
     char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1324,9 +1351,9 @@ void test_audit_create_rules_file_fclose_fail(void **state) {
 }
 
 void test_audit_create_rules_file_symlink_exist(void **state) {
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1373,9 +1400,9 @@ void test_audit_create_rules_file_symlink_exist(void **state) {
 void test_audit_create_rules_file_unlink_fail(void **state) {
     char error_msg[OS_SIZE_128];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1419,9 +1446,9 @@ void test_audit_create_rules_file_unlink_fail(void **state) {
 void test_audit_create_rules_file_symlink_fail(void **state) {
     char error_msg[OS_SIZE_256];
 
-    expect_string(__wrap_fopen, path, AUDIT_RULES_FILE);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1);
+    expect_string(__wrap_wfopen, path, AUDIT_RULES_FILE);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1);
 
     // Mutex inside get_real_path
     expect_function_call_any(__wrap_pthread_rwlock_rdlock);
@@ -1491,6 +1518,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_endline, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_no_id, test_audit_read_events_setup, test_audit_read_events_teardown),
         cmocka_unit_test_setup_teardown(test_audit_read_events_select_success_recv_success_too_long, test_audit_read_events_setup, test_audit_read_events_teardown),
+        cmocka_unit_test(test_audit_parse_thread),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime, setup_syscheck_dir_links, teardown_rules_to_realtime),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_first_search_audit_rule_fail, setup_syscheck_dir_links, teardown_rules_to_realtime),
         cmocka_unit_test_setup_teardown(test_audit_rules_to_realtime_second_search_audit_rule_fail, setup_syscheck_dir_links, teardown_rules_to_realtime),

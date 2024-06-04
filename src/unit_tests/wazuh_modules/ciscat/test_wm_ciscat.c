@@ -17,8 +17,8 @@
 #include <cmocka.h>
 #include <time.h>
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_ciscat.h"
+#include "../../../wazuh_modules/wmodules.h"
+#include "../../../wazuh_modules/wm_ciscat.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
 #include "../../wrappers/libc/stdlib_wrappers.h"
@@ -115,12 +115,14 @@ static int teardown_test_read(void **state) {
 void test_interval_execution(void **state) {
     wm_ciscat* module_data = (wm_ciscat *)ciscat_module->data;
     *state = module_data;
+    FILE *fp = NULL;
     module_data->scan_config.next_scheduled_scan_time = 0;
     module_data->scan_config.scan_day = 0;
     module_data->scan_config.scan_wday = -1;
     module_data->scan_config.interval = 120; // 2min
     module_data->scan_config.month_interval = false;
 
+    expect_wfopen("var/wodles/cis-cat", "rb", fp);
     expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
     expect_value(__wrap_StartMQ, type, WRITE);
     will_return(__wrap_StartMQ, 0);

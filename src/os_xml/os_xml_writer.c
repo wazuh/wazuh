@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "file_op.h"
 #include "os_xml.h"
 #include "os_xml_internal.h"
 
@@ -44,7 +45,7 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
     FILE *fp_out;
 
     /* Open infile */
-    fp_in = fopen(infile, "r");
+    fp_in = wfopen(infile, "r");
     if (!fp_in) {
         return (XMLW_NOIN);
     }
@@ -52,7 +53,7 @@ int OS_WriteXML(const char *infile, const char *outfile, const char **nodes,
     setvbuf(fp_in, NULL,_IOFBF , XML_MAXSIZE + 1);
 
     /* Open outfile */
-    fp_out = fopen(outfile, "w");
+    fp_out = wfopen(outfile, "w");
     if (!fp_out) {
         fclose(fp_in);
         return (XMLW_NOOUT);
@@ -314,4 +315,3 @@ static int _WReadElem(FILE *fp_in, FILE *fp_out, unsigned int position,
 
     return (-1);
 }
-

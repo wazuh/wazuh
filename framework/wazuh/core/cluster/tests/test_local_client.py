@@ -4,8 +4,8 @@
 
 from asyncio import Event, Transport
 from asyncio.transports import BaseTransport
-from collections import Callable
-from unittest.mock import patch
+from collections.abc import Callable
+from unittest.mock import patch, AsyncMock, call
 
 import pytest
 from uvloop import EventLoopPolicy, new_event_loop
@@ -108,7 +108,7 @@ def test_localclienthandler_process_error_from_peer(mock_set):
 
 def test_localclienthandler_connection_lost():
     """Check that the set_result method of the on_con_lost object is called once with the defined parameters."""
-    lc = LocalClientHandler(loop=None, on_con_lost=asyncio.Future(), name="Unittest",
+    lc = LocalClientHandler(loop=None, on_con_lost=asyncio.Future(loop=loop), name="Unittest",
                             logger=None, fernet_key=None, manager=None, cluster_items=None)
     with patch.object(lc.on_con_lost, "set_result") as mock_set_result:
         lc.connection_lost(Exception())
@@ -163,6 +163,26 @@ async def test_localclient_start_ko(mock_get_running_loop):
         with pytest.raises(WazuhInternalError, match=r'.* 3012 .*'):
             await LocalClient().start()
 
+@pytest.mark.asyncio
+async def test_wait_for_response():
+    """Verify whether keepalive messages are sent while waiting for response."""
+
+    class Protocol:
+        response = b"Async"
+
+        def __init__(self):
+            self.response_available = asyncio.Event()
+
+    lc = LocalClient()
+    lc.protocol = Protocol()
+    lc.protocol.send_request = AsyncMock()
+    lc.protocol.send_request.side_effect = [b"None", exception.WazuhClusterError(3018)]
+
+    with patch("asyncio.Event.wait", side_effect=asyncio.TimeoutError):
+        with pytest.raises(WazuhInternalError, match=rf".* 3020 .*"):
+            await lc.wait_for_response(timeout=200)
+    lc.protocol.send_request.assert_has_calls([call(b'echo-c', b'keepalive'), call(b'echo-c', b'keepalive')])
+
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
@@ -171,32 +191,28 @@ async def test_localclient_send_api_request(mock_get_running_loop):
     Exceptions are not tested."""
 
     class Protocol:
-        response = b"Async"
-
         def __init__(self):
             self.response_available = asyncio.Event()
+            self.response = b"Async"
 
-        @staticmethod
         async def send_request(command, data):
             return data
 
     lc = LocalClient()
     lc.protocol = Protocol()
 
-    with patch("wazuh.core.cluster.common.Handler.send_request", side_effect=Protocol.send_request):
+    with patch.object(lc.protocol, "send_request", side_effect=Protocol.send_request):
         result = b"There are no connected worker nodes"
-        assert await lc.send_api_request(command=b"dapi", data=result, wait_for_complete=True) == {}
+        assert await lc.send_api_request(command=b"dapi", data=result) == {}
 
         result = b"Testing"
-        assert await lc.send_api_request(command=b"testing", data=result, wait_for_complete=True) == result.decode()
+        assert await lc.send_api_request(command=b"testing", data=result) == result.decode()
 
-    with patch("wazuh.core.cluster.common.Handler.send_request", side_effect=Protocol.send_request):
-        with patch("asyncio.wait_for"):
-            with patch("asyncio.Event.wait"):
-                result = b"Testing"
-                assert await lc.send_api_request(
-                    command=b"dapi", data=result, wait_for_complete=True) == Protocol.response.decode()
+        lc.protocol.response_available.set()
+        assert await lc.send_api_request(command=b"dapi", data=result) == lc.protocol.response.decode()
 
+        result = b'Sent request to master node'
+        assert await lc.send_api_request(command=b"dapi", data=result) == lc.protocol.response.decode()
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.client.asyncio.get_running_loop")
@@ -207,16 +223,14 @@ async def test_localclient_send_api_request_ko(mock_get_running_loop):
         def __init__(self):
             self.response_available = asyncio.Event()
 
-        @staticmethod
-        async def send_request(command, data):
-            return data
-
     lc = LocalClient()
     lc.protocol = Protocol()
-    with patch("wazuh.core.cluster.common.Handler.send_request", side_effect=Protocol.send_request):
-        with patch("asyncio.Event.wait", side_effect=asyncio.TimeoutError):
-            with pytest.raises(WazuhInternalError, match=rf".* 3020 .*"):
-                await lc.send_api_request(command=b"dapi", data=b"None", wait_for_complete=False)
+    lc.protocol.send_request = AsyncMock()
+    lc.protocol.send_request.side_effect = [b"None", exception.WazuhClusterError(3018)]
+    with patch("asyncio.Event.wait", side_effect=asyncio.TimeoutError):
+        with pytest.raises(WazuhInternalError, match=rf".* 3020 .*"):
+            await lc.send_api_request(command=b"dapi", data=b"None")
+    lc.protocol.send_request.assert_has_calls([call(b'dapi', b'None'), call(b'echo-c', b'keepalive')])
 
 
 @pytest.mark.asyncio
@@ -237,7 +251,7 @@ async def test_localclient_execute():
                 lc = LocalClient()
                 lc.transport = BaseTransport()
                 lc.protocol = Protocol()
-                assert await lc.execute(command=b"0", data=b"1", wait_for_complete=False) == "Test"
+                assert await lc.execute(command=b"0", data=b"1") == "Test"
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,64 @@
+name: "Coding style check"
+description: "Validates the Coding style of a given module"
+
+inputs:
+  path:
+    required: true
+    description: "Path to validate"
+    default: src/
+  id:
+    required: true
+    description: "Module identifier, used to name the artifact"
+
+runs:
+  using: "composite"
+  steps:    
+      - name: Dependencies for local execution
+        if: env.ACT # Only run for local execution
+        shell: bash
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+          echo "deb http://deb.debian.org/debian/ testing main" >>  /etc/apt/sources.conf
+          sudo apt update
+
+      # Dependencies for testing:
+      # - clang-format 
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: clang-format 
+          version: 1.0
+
+      - name: Check Coding style
+        shell: bash
+        run: |
+
+          # Don't apply changes, just check
+          arguments="--dry-run "
+
+          # Retrieve all the source files for the desired module
+          sourceFiles=$(find ${{ inputs.path }} -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
+          arguments+="-i $sourceFiles "
+
+          ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
+          clang-format $arguments 2> ${ERRORS_FILE}
+
+          # Check if there are errors
+          if [ -s "${ERRORS_FILE}" ]; then
+            echo "---------------------------------"
+            echo "FAILED: Clang-format check failed"
+            echo "---------------------------------"
+            exit 1
+          else
+            echo "---------------------------------"
+            echo "PASSED: Clang-format check passed"
+            echo "---------------------------------"
+          fi
+
+      # Upload errors as an artifact, when failed
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: Clang-format errors - ${{ inputs.id }}
+          path: ${{ inputs.path }}/clang_format_errors.txt
+          retention-days: 1

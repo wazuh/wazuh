@@ -1,0 +1,133 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml analysisd-localfile
+
+    collections others_modules
+    box "Analysisd Module - Localfile events"
+    participant analysisd
+    database state
+    end box
+    skinparam sequenceMessageAlign right
+
+    others_modules -> analysisd : Enqueue event
+    rnote over analysisd
+            DEFAULTQUEUE
+        queue/sockets/queue
+    endrnote
+    analysisd -> analysisd: Dequeue event
+    analysisd -> state: received++
+
+    alt Is localfile event
+        analysisd -> analysisd: Enqueue event in event queue
+        alt Queue full
+            alt Is wazuh-agent module
+                analysisd -> state: dropped->agent++
+            else Is wazuh-agentlessd module
+                analysisd -> state: dropped->agentless++
+            else Is wazuh-monitord module
+                analysisd -> state: dropped->monitor++
+            else Is wazuh-remoted module
+                analysisd -> state: dropped->remote++
+            else Is virustotal module
+                analysisd -> state: dropped->integrations->virustotal++
+            else Is aws-s3 OR Wazuh-AWS module
+                analysisd -> state: dropped->modules->aws++
+            else Is azure-logs OR Azure module
+                analysisd -> state: dropped->modules->azure++
+            else Is cis-cat OR wodle_cis-cat module
+                analysisd -> state: dropped->modules->ciscat++
+            else Is command module
+                analysisd -> state: dropped->modules->command++
+            else Is docker-listener OR Wazuh-docker module
+                analysisd -> state: dropped->modules->docker++
+            else Is gcp-pubsub OR gcp-bucket module
+                analysisd -> state: dropped->modules->gcp++
+            else Is github module
+                analysisd -> state: dropped->modules->github++
+            else Is office365 module
+                analysisd -> state: dropped->modules->office365++
+            else Is ms-graph module
+                analysisd -> state: dropped->modules->ms_graph++
+            else Is open-scap OR wodle_open-scap module
+                analysisd -> state: dropped->modules->oscap++
+            else Is osquery module
+                analysisd -> state: dropped->modules->osquery++
+            else Is rootcheck module
+                analysisd -> state: dropped->modules->rootcheck++
+            else Is SCA module
+                analysisd -> state: dropped->modules->sca++
+            else Is syscheck module
+                analysisd -> state: dropped->modules->syscheck++
+            else Is syscollector module
+                analysisd -> state: dropped->modules->syscollector++
+            else Is agent-upgrade module
+                analysisd -> state: dropped->modules->upgrade++
+            else Is vulnerability-detector module
+                analysisd -> state: dropped->modules->vulnerability++
+            else Is macos module
+                analysisd -> state: dropped->modules->logcollector->macos++
+            else Is WinEvtLog module
+                analysisd -> state: dropped->modules->logcollector->eventlog++
+            else Others
+                analysisd -> state: dropped->modules->logcollector->others++
+            end
+        else
+            alt Is decoded
+                alt Is wazuh-agent module
+                    analysisd -> state: decoded->agent++
+                else Is wazuh-agentlessd module
+                    analysisd -> state: decoded->agentless++
+                else Is wazuh-monitord module
+                    analysisd -> state: decoded->monitor++
+                else Is wazuh-remoted module
+                    analysisd -> state: decoded->remote++
+                else Is virustotal module
+                    analysisd -> state: decoded->integrations->virustotal++
+                else Is aws-s3 OR Wazuh-AWS module
+                    analysisd -> state: decoded->modules->aws++
+                else Is azure-logs OR Azure module
+                    analysisd -> state: decoded->modules->azure++
+                else Is cis-cat OR wodle_cis-cat module
+                    analysisd -> state: decoded->modules->ciscat++
+                else Is command module
+                    analysisd -> state: decoded->modules->command++
+                else Is docker-listener OR Wazuh-docker module
+                    analysisd -> state: decoded->modules->docker++
+                else Is gcp-pubsub OR gcp-bucket module
+                    analysisd -> state: decoded->modules->gcp++
+                else Is github module
+                    analysisd -> state: decoded->modules->github++
+                else Is office365 module
+                    analysisd -> state: decoded->modules->office365++
+                else Is ms-graph module
+                    analysisd -> state: decoded->modules->ms_graph++
+                else Is open-scap OR wodle_open-scap module
+                    analysisd -> state: decoded->modules->oscap++
+                else Is osquery module
+                    analysisd -> state: decoded->modules->osquery++
+                else Is rootcheck module
+                    analysisd -> state: decoded->modules->rootcheck++
+                else Is sca module
+                    analysisd -> state: decoded->modules->sca++
+                else Is syscheck module
+                    analysisd -> state: decoded->modules->syscheck++
+                else Is syscollector module
+                    analysisd -> state: decoded->modules->syscollector++
+                else Is agent-upgrade module
+                    analysisd -> state: decoded->modules->upgrade++
+                else Is vulnerability-detector module
+                    analysisd -> state: decoded->modules->vulnerability++
+                else Is macos module
+                    analysisd -> state: decoded->modules->logcollector->macos++
+                else Is WinEvtLog module
+                    analysisd -> state: decoded->modules->logcollector->eventlog++
+                else Others
+                    analysisd -> state: decoded->modules->logcollector->others++
+                end
+            end
+        end
+    end
+
+@enduml

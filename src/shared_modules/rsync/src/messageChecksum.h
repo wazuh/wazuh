@@ -61,7 +61,7 @@ namespace RSync
 
                     outputMessage["data"] = outputData;
 
-                    if (!data.checksum.empty())
+                    if (!data.checksum.empty() || INTEGRITY_CLEAR == data.type)
                     {
                         callback(outputMessage.dump());
                     }

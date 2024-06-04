@@ -43,7 +43,7 @@ int AR_ReadConfig(const char *cfgfile)
     modules |= CAR;
 
     /* Clean ar file */
-    fp = fopen(DEFAULTAR, "w");
+    fp = wfopen(DEFAULTAR, "w");
     if (!fp) {
         merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (OS_INVALID);

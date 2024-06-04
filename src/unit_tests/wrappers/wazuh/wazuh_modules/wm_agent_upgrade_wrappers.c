@@ -138,13 +138,6 @@ cJSON* __wrap_wm_agent_upgrade_get_agent_ids() {
     return mock_type(cJSON*);
 }
 
-int __wrap_wm_agent_upgrade_compare_versions(const char *version1, const char *version2) {
-    check_expected(version1);
-    check_expected(version2);
-
-    return mock();
-}
-
 bool __wrap_wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
     check_expected(input_json);
     if (status) os_strdup(mock_type(char *), *status);
@@ -165,11 +158,13 @@ int __wrap_wm_agent_upgrade_validate_status(const char* connection_status) {
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch) {
+int __wrap_wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch, char **package_type) {
     check_expected(platform);
     check_expected(os_major);
     check_expected(os_minor);
     check_expected(arch);
+
+    os_strdup(mock_type(char*), *package_type);
 
     return mock();
 }
@@ -244,21 +239,6 @@ cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
     }
 
     return ret;
-}
-
-cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, __attribute__ ((__unused__)) cJSON *message) {
-    check_expected(daemon_name);
-
-    return mock_type(cJSON*);
-}
-
-int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response) {
-    check_expected(command);
-    check_expected(payload);
-
-    strcpy(response, mock_type(char*));
-
-    return mock();
 }
 
 bool __wrap_wm_agent_upgrade_validate_task_ids_message(__attribute__ ((__unused__)) const cJSON *input_json, int *agent_id, int *task_id, char** data) {

@@ -33,7 +33,7 @@ unsigned int hourly_alerts;
 static pthread_mutex_t do_diff_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /* Hourly alerts mutex */
-static pthread_mutex_t hourly_alert_mutex = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t hourly_alert_mutex;
 
 w_queue_t * writer_queue_log_fts;
 
@@ -758,6 +758,13 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                                                           config_ruleinfo->sigid, log_msg);
 
                     } else if (strcasecmp(rule_tmp_params.rule_arr_opt[k]->element, xml_field) == 0) {
+
+                        if (Config.decoder_order_size <= ifield) {
+                            smerror(log_msg, "Rule %d has exceeded the maximum number of allowed fields",
+                                   config_ruleinfo->sigid);
+
+                            goto cleanup;
+                        }
 
                         if (!w_check_attr_field_name(rule_tmp_params.rule_arr_opt[k],
                                                      &config_ruleinfo->fields[ifield],
@@ -1609,6 +1616,20 @@ int Rules_OP_ReadRules(const char *rulefile, RuleNode **r_node, ListNode **l_nod
                     }
                 }
 
+                /* Check syntax if_sid */
+                if (config_ruleinfo->if_sid) {
+                    w_expression_t * validation_regex = NULL;
+                    w_calloc_expression_t(&validation_regex, EXP_TYPE_PCRE2);
+                    // matches if all characters are valid
+                    w_expression_compile(validation_regex, "^[\\d, ]+$", 0);
+
+                    if (!w_expression_match(validation_regex, config_ruleinfo->if_sid, NULL, NULL)) {
+                        do_skip_rule = true;
+                        smwarn(log_msg, ANALYSISD_INVALID_IF_SID, config_ruleinfo->if_sid, config_ruleinfo->sigid);
+                    }
+                    w_free_expression_t(&validation_regex);
+                }
+
                 // Skip rule, without having to abort analysisd execution
                 if (do_skip_rule) {
                     w_free_rules_tmp_params(&rule_tmp_params);
@@ -2145,7 +2166,7 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
     ruleinfo_pt->program_name = NULL;
     ruleinfo_pt->action = NULL;
     ruleinfo_pt->location = NULL;
-    os_calloc(Config.decoder_order_size, sizeof(FieldInfo*), ruleinfo_pt->fields);
+    os_calloc(Config.decoder_order_size + 1, sizeof(FieldInfo*), ruleinfo_pt->fields);
 
     ruleinfo_pt->same_fields = NULL;
     ruleinfo_pt->not_same_fields = NULL;
@@ -2160,8 +2181,6 @@ RuleInfo *zerorulemember(int id, int level, int maxsize, int frequency,
     ruleinfo_pt->event_search = NULL;
     ruleinfo_pt->compiled_rule = NULL;
     ruleinfo_pt->lists = NULL;
-
-    ruleinfo_pt->prev_rule = NULL;
 
     ruleinfo_pt->internal_saving = false;
 
@@ -3098,8 +3117,8 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
                                              fts_store, save_fts_value,
                                              rules_debug_list);
             if (child_rule != NULL) {
-                if (!child_rule->prev_rule) {
-                    child_rule->prev_rule = rule;
+                if (!lf->prev_rule) {
+                    lf->prev_rule = rule;
                 }
                 return (child_rule);
             }
@@ -3113,9 +3132,7 @@ RuleInfo * OS_CheckIfRuleMatch(struct _Eventinfo *lf, EventList *last_events,
         return (NULL);
     }
 
-    w_mutex_lock(&hourly_alert_mutex);
-    hourly_alerts++;
-    w_mutex_unlock(&hourly_alert_mutex);
+    w_guard_mutex_variable(hourly_alert_mutex, (hourly_alerts++));
     w_mutex_lock(&rule->mutex);
     rule->firedtimes++;
     lf->r_firedtimes = rule->firedtimes;

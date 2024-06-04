@@ -121,7 +121,7 @@
     <options>no_full_log</options>
   </rule>
 
-    <rule id="24033" level="4">
+  <rule id="24033" level="4">
     <if_sid>24030</if_sid>
     <field name="osquery.name">crontab</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): Command launched $(osquery.columns.command) at $(osquery.columns.hour):$(osquery.columns.minute) $(osquery.columns.day_of_month) $(osquery.columns.month) </description>
@@ -185,7 +185,7 @@
     <options>no_full_log</options>
   </rule>
 
-    <rule id="24041" level="4">
+  <rule id="24041" level="4">
     <if_sid>24030</if_sid>
     <field name="osquery.name">alf_services</field>
     <description>osquery: $(osquery.pack) $(osquery.subquery): Application Layer Firewall for OSX service $(osquery.columns.service) state $(osquery.columns.state)</description>
@@ -1176,7 +1176,7 @@
   <rule id="24500" level="4">
     <if_sid>24010</if_sid>
     <field name="osquery.pack">^ossec-rootkit$</field>
-    <description>osquery: $(osquery.pack) $(osquery.subquery): Ossec rootkit file $(osquery.columns.path) detected</description>
+    <description>osquery: $(osquery.pack) $(osquery.subquery): Wazuh rootkit file $(osquery.columns.path) detected</description>
     <group>ossec_rootkit,</group>
     <options>no_full_log</options>
   </rule>
@@ -1472,4 +1472,3 @@
   </rule>
 
 </group>
-

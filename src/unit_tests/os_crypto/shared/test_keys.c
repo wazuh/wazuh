@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "headers/shared.h"
-#include "headers/sec.h"
+#include "../headers/shared.h"
+#include "../headers/sec.h"
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/rbtree_op_wrappers.h"
@@ -88,12 +88,6 @@ int __wrap_TempFile(File *file, const char *source, int copy) {
     file->fp = mock_type(FILE *);
     check_expected(source);
     check_expected(copy);
-    return mock_type(int);
-}
-
-int __wrap_OS_MoveFile(const char *src, const char *dst) {
-    check_expected(src);
-    check_expected(dst);
     return mock_type(int);
 }
 
@@ -229,7 +223,7 @@ void test_OS_ReadTimestamps_file_missing(void **state)
 {
     keystore *keys = *(keystore **)state;
 
-    expect_fopen(TIMESTAMP_FILE, "r", NULL);
+    expect_wfopen(TIMESTAMP_FILE, "r", NULL);
     errno = ENOENT;
 
     int r = OS_ReadTimestamps(keys);
@@ -240,7 +234,7 @@ void test_OS_ReadTimestamps_file_error(void **state)
 {
     keystore *keys = *(keystore **)state;
 
-    expect_fopen(TIMESTAMP_FILE, "r", NULL);
+    expect_wfopen(TIMESTAMP_FILE, "r", NULL);
     errno = EACCES;
 
     int r = OS_ReadTimestamps(keys);
@@ -250,7 +244,7 @@ void test_OS_ReadTimestamps_file_error(void **state)
 void test_OS_ReadTimestamps_wrong_line(void **state)
 {
     keystore *keys = *(keystore **)state;
-    expect_fopen(TIMESTAMP_FILE, "r", (FILE *)1);
+    expect_wfopen(TIMESTAMP_FILE, "r", (FILE *)1);
 
     expect_fclose((FILE *)1, 0);
     expect_value(__wrap_fgets, __stream, 1);
@@ -276,7 +270,7 @@ void test_OS_ReadTimestamps_valid_line(void **state)
         .tm_isdst = -1
     };
 
-    expect_fopen(TIMESTAMP_FILE, "r", (FILE *)1);
+    expect_wfopen(TIMESTAMP_FILE, "r", (FILE *)1);
     expect_fclose((FILE *)1, 0);
     expect_value(__wrap_fgets, __stream, 1);
     will_return(__wrap_fgets, "001 agent1 1.1.1.1 2021-08-11 14:36:11\n");

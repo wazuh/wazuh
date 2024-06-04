@@ -37,12 +37,13 @@ int wm_agent_upgrade_validate_status(const char* connection_status);
  * @param os_major OS major version of agent to validate
  * @param os_minor OS minor version of agent to validate
  * @param arch architecture of agent to validate
+ * @param package_type variable used to store package type
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * @retval WM_UPGRADE_GLOBAL_DB_FAILURE
  * */
-int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch);
+int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch, char **package_type);
 
 /**
  * Check if agent is valid to upgrade
@@ -60,6 +61,15 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
 int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task)  __attribute__((nonnull(4)));
 
 /**
+ * Translate architecture based on platform and package type if necessary
+ * @param platform Agent platform
+ * @param package_type Package type
+ * @param arch Agent architecture
+ * @return Translated architecture
+*/
+char *wm_agent_upgrade_translate_arch(const char *platform, const char *package_type, char *arch);
+
+/**
  * Check if a WPK exist for the upgrade version
  * @param agent_info structure with the agent information
  * @param task structure with the task information
@@ -68,8 +78,9 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_URL_NOT_FOUND
  * @retval WM_UPGRADE_WPK_VERSION_DOES_NOT_EXIST
+ * @retval WM_UPGRADE_SYSTEM_NOT_SUPPORTED
  * */
-int wm_agent_upgrade_validate_wpk_version(const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) __attribute__((nonnull(1, 2)));
+int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) __attribute__((nonnull(1, 2)));
 
 /**
  * Check if WPK file exist or download it
@@ -89,17 +100,6 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) __attribute__((no
  * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
  * */
 int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) __attribute__((nonnull));
-
-/**
- * Compare two versions with format v4.0.0
- * @param version1 char * with the string version
- * @param version2 char * with the string version
- * @return return_code
- * @retval 0 equals
- * @retval 1 version1 > version2
- * @retval -1 version1 < version2
- * */
-int wm_agent_upgrade_compare_versions(const char *version1, const char *version2);
 
 /**
  * Validate a status response from the task manager module

@@ -16,6 +16,11 @@
 #include "hashHelper.h"
 #include "timeHelper.h"
 
+constexpr std::chrono::seconds MAX_DELAY_TIME
+{
+    300
+};
+
 #define TRY_CATCH_TASK(task)                                            \
 do                                                                      \
 {                                                                       \
@@ -30,7 +35,7 @@ do                                                                      \
     {                                                                   \
         if(m_logFunction)                                               \
         {                                                               \
-            m_logFunction(SYS_LOG_ERROR, std::string{ex.what()});       \
+            m_logFunction(LOG_ERROR, std::string{ex.what()});           \
         }                                                               \
     }                                                                   \
 }while(0)
@@ -331,9 +336,9 @@ constexpr auto PACKAGES_SQL_STATEMENT
     format TEXT,
     checksum TEXT,
     item_id TEXT,
-    PRIMARY KEY (name,version,architecture)) WITHOUT ROWID;)"
+    PRIMARY KEY (name,version,architecture,format,location)) WITHOUT ROWID;)"
 };
-static const std::vector<std::string> PACKAGES_ITEM_ID_FIELDS{"name", "version", "architecture"};
+static const std::vector<std::string> PACKAGES_ITEM_ID_FIELDS{"name", "version", "architecture", "format", "location"};
 
 constexpr auto PACKAGES_SYNC_CONFIG_STATEMENT
 {
@@ -951,7 +956,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
 {
     if (DB_ERROR == result)
     {
-        m_logFunction(SYS_LOG_ERROR, data.dump());
+        m_logFunction(LOG_ERROR, data.dump());
     }
     else if (m_notify && !m_stopping)
     {
@@ -967,7 +972,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
                 removeKeysWithEmptyValue(msg["data"]);
                 const auto msgToSend{msg.dump()};
                 m_reportDiffFunction(msgToSend);
-                m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
+                m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
             }
         }
         else
@@ -981,7 +986,7 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
             removeKeysWithEmptyValue(msg["data"]);
             const auto msgToSend{msg.dump()};
             m_reportDiffFunction(msgToSend);
-            m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
+            m_logFunction(LOG_DEBUG_VERBOSE, "Delta sent: " + msgToSend);
             // LCOV_EXCL_STOP
         }
     }
@@ -1053,6 +1058,8 @@ void Syscollector::registerWithRsync()
             auto jsonData(nlohmann::json::parse(dataString));
             auto it{jsonData.find("data")};
 
+            m_lastSyncMsg = Utils::secondsSinceEpoch();
+
             if (!m_stopping)
             {
                 if (it != jsonData.end())
@@ -1067,19 +1074,19 @@ void Syscollector::registerWithRsync()
                         fieldData["scan_time"] = Utils::getCurrentTimestamp();
                         const auto msgToSend{jsonData.dump()};
                         m_reportSyncFunction(msgToSend);
-                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
+                        m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + msgToSend);
                     }
                     else
                     {
                         m_reportSyncFunction(dataString);
-                        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
+                        m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
                     }
                 }
                 else
                 {
                     //LCOV_EXCL_START
                     m_reportSyncFunction(dataString);
-                    m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
+                    m_logFunction(LOG_DEBUG_VERBOSE, "Sync sent: " + dataString);
                     //LCOV_EXCL_STOP
                 }
             }
@@ -1153,7 +1160,7 @@ void Syscollector::registerWithRsync()
 void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
                         const std::function<void(const std::string&)> reportDiffFunction,
                         const std::function<void(const std::string&)> reportSyncFunction,
-                        const std::function<void(const syscollector_log_level_t, const std::string&)> logFunction,
+                        const std::function<void(const modules_log_level_t, const std::string&)> logFunction,
                         const std::string& dbPath,
                         const std::string& normalizerConfigPath,
                         const std::string& normalizerType,
@@ -1173,7 +1180,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_reportDiffFunction = reportDiffFunction;
     m_reportSyncFunction = reportSyncFunction;
     m_logFunction = logFunction;
-    m_intervalValue = interval;
+    m_intervalValue = std::chrono::seconds{interval};
     m_scanOnStart = scanOnStart;
     m_hardware = hardware;
     m_os = os;
@@ -1184,6 +1191,7 @@ void Syscollector::init(const std::shared_ptr<ISysInfo>& spInfo,
     m_processes = processes;
     m_hotfixes = hotfixes;
     m_notify = notifyOnFirstScan;
+    m_currentIntervalValue = m_intervalValue;
 
     std::unique_lock<std::mutex> lock{m_mutex};
     m_stopping = false;
@@ -1214,10 +1222,10 @@ void Syscollector::scanHardware()
 {
     if (m_hardware)
     {
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting hardware scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting hardware scan");
         const auto& hwData{getHardwareData()};
         updateChanges(HW_TABLE, hwData);
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending hardware scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending hardware scan");
     }
 }
 
@@ -1238,10 +1246,10 @@ void Syscollector::scanOs()
 {
     if (m_os)
     {
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting os scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting os scan");
         const auto& osData{getOSData()};
         updateChanges(OS_TABLE, osData);
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending os scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending os scan");
     }
 }
 
@@ -1294,10 +1302,8 @@ nlohmann::json Syscollector::getNetworkData()
                 ifaceTableData["item_id"]    = getItemId(ifaceTableData, NETIFACE_ITEM_ID_FIELDS);
                 ifaceTableDataList.push_back(std::move(ifaceTableData));
 
-
                 if (item.find("IPv4") != item.end())
                 {
-
                     // "dbsync_network_protocol" table data to update and notify
                     nlohmann::json protoTableData {};
                     protoTableData["iface"]   = item.at("name");
@@ -1316,6 +1322,10 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = IPV4;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        // Remove unwanted fields for dbsync_network_address table
+                        addressTableData.erase("dhcp");
+                        addressTableData.erase("metric");
+
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }
@@ -1340,6 +1350,10 @@ nlohmann::json Syscollector::getNetworkData()
                         addressTableData["proto"]     = IPV6;
                         addressTableData["checksum"]  = getItemChecksum(addressTableData);
                         addressTableData["item_id"]   = getItemId(addressTableData, NETADDRESS_ITEM_ID_FIELDS);
+                        // Remove unwanted fields for dbsync_network_address table
+                        addressTableData.erase("dhcp");
+                        addressTableData.erase("metric");
+
                         addressTableDataList.push_back(std::move(addressTableData));
                     }
                 }
@@ -1358,7 +1372,7 @@ void Syscollector::scanNetwork()
 {
     if (m_network)
     {
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting network scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting network scan");
         const auto networkData(getNetworkData());
 
         if (!networkData.is_null())
@@ -1385,7 +1399,7 @@ void Syscollector::scanNetwork()
             }
         }
 
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending network scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending network scan");
     }
 }
 
@@ -1400,7 +1414,7 @@ void Syscollector::scanPackages()
 {
     if (m_packages)
     {
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting packages scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting packages scan");
         const auto callback
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
@@ -1435,7 +1449,7 @@ void Syscollector::scanPackages()
         });
         txn.getDeletedRows(callback);
 
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending packages scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending packages scan");
     }
 }
 
@@ -1443,7 +1457,7 @@ void Syscollector::scanHotfixes()
 {
     if (m_hotfixes)
     {
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting hotfixes scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting hotfixes scan");
         auto hotfixes = m_spInfo->hotfixes();
 
         if (!hotfixes.is_null())
@@ -1456,7 +1470,7 @@ void Syscollector::scanHotfixes()
             updateChanges(HOTFIXES_TABLE, hotfixes);
         }
 
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending hotfixes scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending hotfixes scan");
     }
 }
 
@@ -1476,11 +1490,11 @@ nlohmann::json Syscollector::getPortsData()
     constexpr auto PORT_LISTENING_STATE { "listening" };
     constexpr auto TCP_PROTOCOL { "tcp" };
     constexpr auto UDP_PROTOCOL { "udp" };
-    const auto& data { m_spInfo->ports() };
+    auto data(m_spInfo->ports());
 
     if (!data.is_null())
     {
-        for (auto item : data)
+        for (auto& item : data)
         {
             const auto protocol { item.at("protocol").get_ref<const std::string&>() };
 
@@ -1537,10 +1551,10 @@ void Syscollector::scanPorts()
 {
     if (m_ports)
     {
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting ports scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting ports scan");
         const auto& portsData { getPortsData() };
         updateChanges(PORTS_TABLE, portsData);
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending ports scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending ports scan");
     }
 }
 
@@ -1553,7 +1567,7 @@ void Syscollector::scanProcesses()
 {
     if (m_processes)
     {
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Starting processes scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Starting processes scan");
         const auto callback
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
@@ -1582,7 +1596,7 @@ void Syscollector::scanProcesses()
         });
         txn.getDeletedRows(callback);
 
-        m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Ending processes scan");
+        m_logFunction(LOG_DEBUG_VERBOSE, "Ending processes scan");
     }
 }
 
@@ -1593,7 +1607,7 @@ void Syscollector::syncProcesses()
 
 void Syscollector::scan()
 {
-    m_logFunction(SYS_LOG_INFO, "Starting evaluation.");
+    m_logFunction(LOG_INFO, "Starting evaluation.");
     m_scanTime = Utils::getCurrentTimestamp();
 
     TRY_CATCH_TASK(scanHardware);
@@ -1604,12 +1618,12 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanPorts);
     TRY_CATCH_TASK(scanProcesses);
     m_notify = true;
-    m_logFunction(SYS_LOG_INFO, "Evaluation finished.");
+    m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
 void Syscollector::sync()
 {
-    m_logFunction(SYS_LOG_DEBUG, "Starting syscollector sync");
+    m_logFunction(LOG_DEBUG, "Starting syscollector sync");
     TRY_CATCH_TASK(syncHardware);
     TRY_CATCH_TASK(syncOs);
     TRY_CATCH_TASK(syncNetwork);
@@ -1617,12 +1631,28 @@ void Syscollector::sync()
     TRY_CATCH_TASK(syncHotfixes);
     TRY_CATCH_TASK(syncPorts);
     TRY_CATCH_TASK(syncProcesses);
-    m_logFunction(SYS_LOG_DEBUG, "Ending syscollector sync");
+    m_logFunction(LOG_DEBUG, "Ending syscollector sync");
+}
+
+void Syscollector::syncAlgorithm()
+{
+    m_currentIntervalValue = m_intervalValue / 2 >= MAX_DELAY_TIME ? MAX_DELAY_TIME : m_intervalValue / 2;
+
+    if (Utils::secondsSinceEpoch() - m_lastSyncMsg > m_currentIntervalValue)
+    {
+        scan();
+        sync();
+        m_currentIntervalValue = m_intervalValue;
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE, "Syscollector synchronization process concluded recently, delaying scan for " + std::to_string(m_currentIntervalValue.count()) + " second/s");
+    }
 }
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
 {
-    m_logFunction(SYS_LOG_INFO, "Module started.");
+    m_logFunction(LOG_INFO, "Module started.");
 
     if (m_scanOnStart)
     {
@@ -1630,13 +1660,12 @@ void Syscollector::syncLoop(std::unique_lock<std::mutex>& lock)
         sync();
     }
 
-    while (!m_cv.wait_for(lock, std::chrono::seconds{m_intervalValue}, [&]()
+    while (!m_cv.wait_for(lock, std::chrono::seconds{m_currentIntervalValue}, [&]()
 {
     return m_stopping;
 }))
     {
-        scan();
-        sync();
+        syncAlgorithm();
     }
     m_spRsync.reset(nullptr);
     m_spDBSync.reset(nullptr);
@@ -1655,12 +1684,11 @@ void Syscollector::push(const std::string& data)
         try
         {
             m_spRsync->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-            m_logFunction(SYS_LOG_DEBUG_VERBOSE, "Message pushed: " + data);
         }
         // LCOV_EXCL_START
         catch (const std::exception& ex)
         {
-            m_logFunction(SYS_LOG_ERROR, ex.what());
+            m_logFunction(LOG_ERROR, ex.what());
         }
     }
 

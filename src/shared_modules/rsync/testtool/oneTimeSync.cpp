@@ -11,14 +11,8 @@
 #include "oneTimeSync.h"
 #include <fstream>
 #include <sstream>
-
-struct SmartDeleterJson final
-{
-    void operator()(cJSON* data)
-    {
-        cJSON_Delete(data);
-    }
-};
+#include "cjsonSmartDeleter.hpp"
+#include <thread>
 
 DBSYNC_HANDLE getDbsyncHandle(const nlohmann::json& config)
 {
@@ -47,8 +41,9 @@ DBSYNC_HANDLE getDbsyncHandle(const nlohmann::json& config)
 
 OneTimeSync::OneTimeSync(const nlohmann::json& config,
                          const nlohmann::json& inputData,
-                         const std::string& outputFolder)
-    : m_rsyncHandle{ rsync_create() }
+                         const std::string& outputFolder,
+                         const size_t maxQueueSize)
+    : m_rsyncHandle{ rsync_create(std::thread::hardware_concurrency(), maxQueueSize) }
     , m_dbSyncHandle{ getDbsyncHandle(config.at("dbsync")) }
     , m_inputData{ inputData }
     , m_outputFolder{ outputFolder }
@@ -62,7 +57,7 @@ OneTimeSync::OneTimeSync(const nlohmann::json& config,
     }
 
     const auto& rsyncRegConfig{ config.at("rsync_register_config") };
-    const std::unique_ptr<cJSON, SmartDeleterJson> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig.dump().c_str()) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsRsyncRegConfig{ cJSON_Parse(rsyncRegConfig.dump().c_str()) };
 
     sync_callback_data_t callback{ rsyncCallback, this };
 
@@ -86,7 +81,7 @@ void OneTimeSync::syncData()
 
     if (it != m_inputData.end())
     {
-        const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync{ cJSON_Parse(it->dump().c_str()) };
         callback_data_t callback { syncCallback, nullptr };
 
         if (dbsync_sync_row(m_dbSyncHandle, jsSync.get(), callback))
@@ -129,7 +124,7 @@ void OneTimeSync::startSync()
     if (it != m_inputData.end())
     {
         sync_callback_data_t callback{ rsyncCallback, this };
-        const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(it->dump().c_str()) };
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync{ cJSON_Parse(it->dump().c_str()) };
 
         if (rsync_start_sync(m_rsyncHandle,
                              m_dbSyncHandle,

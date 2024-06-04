@@ -162,8 +162,10 @@ int __wrap_sqlite3_open_v2(const char *filename,                           /* Da
 int __wrap_sqlite3_prepare_v2(__attribute__((unused)) sqlite3 *db,            /* Database handle */
                               __attribute__((unused)) const char *zSql,       /* SQL statement, UTF-8 encoded */
                               __attribute__((unused)) int nByte,              /* Maximum length of zSql in bytes. */
-                              __attribute__((unused)) sqlite3_stmt **ppStmt,  /* OUT: Statement handle */
-                              const char **pzTail){                          /* OUT: Pointer to unused portion of zSql */
+                              sqlite3_stmt **ppStmt,                          /* OUT: Statement handle */
+                              const char **pzTail){                           /* OUT: Pointer to unused portion of zSql */
+
+    *ppStmt = mock_type(sqlite3_stmt *);
     if(pzTail){
         *pzTail = 0;
     }

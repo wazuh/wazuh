@@ -42,3 +42,31 @@ char* __wrap_get_agent_id_from_name(__attribute__((unused)) char *agent_name) {
 int __wrap_control_check_connection() {
     return mock();
 }
+
+cJSON* __wrap_w_create_sendsync_payload(const char *daemon_name, cJSON *message) {
+    check_expected(daemon_name);
+
+    if (mock()) {
+        cJSON_Delete(message);
+    }
+
+    return mock_type(cJSON*);
+}
+
+int __wrap_w_send_clustered_message(const char* command, const char* payload, char* response) {
+    check_expected(command);
+    check_expected(payload);
+
+    strcpy(response, mock_type(char*));
+
+    return mock();
+}
+
+int __wrap_getsockname(int fd, struct sockaddr* addr, __attribute__((unused)) socklen_t* len) {
+    int ret = -1;
+    if(fd) {
+        ret = mock();
+        addr->sa_family = mock();
+    }
+    return ret;
+}

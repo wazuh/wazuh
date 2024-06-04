@@ -1,8 +1,12 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import sys
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
-from aiohttp import web_response
+from connexion.lifecycle import ConnexionResponse
 from api.controllers.test.utils import CustomAffectedItems
 
 with patch('wazuh.common.wazuh_uid'):
@@ -19,13 +23,14 @@ with patch('wazuh.common.wazuh_uid'):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["sca_controller"], indirect=True)
 @patch('api.controllers.sca_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.sca_controller.remove_nones_to_dict')
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_sca_agent' endpoint is working as expected."""
-    result = await get_sca_agent(request=mock_request)
+    result = await get_sca_agent()
     filters = {'name': None,
                'description': None,
                'references': None
@@ -35,7 +40,9 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
+                'select': None,
                 'q': None,
+                'distinct': False,
                 'filters': filters
                 }
     mock_dapi.assert_called_once_with(f=sca.get_sca_list,
@@ -44,27 +51,27 @@ async def test_get_sca_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, web_response.Response)
+    assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("mock_request", ["sca_controller"], indirect=True)
 @patch('api.controllers.sca_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.sca_controller.remove_nones_to_dict')
 @patch('api.controllers.sca_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.sca_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request=MagicMock()):
+async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_sca_checks' endpoint is working as expected."""
-    result = await get_sca_checks(request=mock_request)
+    result = await get_sca_checks()
     filters = {'title': None,
                'description': None,
                'rationale': None,
                'remediation': None,
                'command': None,
-               'status': None,
                'reason': None,
                'file': None,
                'process': None,
@@ -80,7 +87,9 @@ async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                 'limit': DATABASE_LIMIT,
                 'sort': None,
                 'search': None,
+                'select': None,
                 'q': None,
+                'distinct': False,
                 'filters': filters
                 }
     mock_dapi.assert_called_once_with(f=sca.get_sca_checks,
@@ -89,8 +98,8 @@ async def test_get_sca_checks(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
                                       is_async=False,
                                       wait_for_complete=False,
                                       logger=ANY,
-                                      rbac_permissions=mock_request['token_info']['rbac_policies']
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, web_response.Response)
+    assert isinstance(result, ConnexionResponse)

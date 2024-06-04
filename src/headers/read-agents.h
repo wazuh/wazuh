@@ -11,7 +11,7 @@
 #ifndef CRAGENT_H
 #define CRAGENT_H
 
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 
 /* Status */
 typedef enum agent_status_t {
@@ -33,19 +33,6 @@ typedef struct _agent_info {
     char *merged_sum;
     agent_status_t connection_status;
 } agent_info;
-
-/* Print syscheck db (of modified files) */
-int print_syscheck(const char *sk_name, const char *sk_ip, const char *fname, int print_registry,
-                   int all_files, int csv_output, cJSON *json_output, int update_counter);
-
-/* Delete syscheck db */
-int delete_syscheck(const char *sk_name, const char *sk_ip, int full_delete) __attribute__((nonnull));
-
-/* Delete agent information */
-int delete_agentinfo(const char *id, const char *name) __attribute__((nonnull));
-
-/* Delete agent SQLite db */
-void delete_sqlite(const char *id, const char *name);
 
 /* Delete diff folders */
 void delete_diff(const char *name);
@@ -87,8 +74,6 @@ int send_msg_to_agent(int msocket, const char *msg, const char *agt_id, const ch
  * Returns -1 on error
  */
 time_t scantime_fim (const char *agent_id, const char *scan);
-
-
 
 #define GA_NOTACTIVE        2
 #define GA_ACTIVE           3

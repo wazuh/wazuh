@@ -1,5 +1,9 @@
 # coding: utf-8
 
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
@@ -10,7 +14,7 @@ from api.models.base_model_ import Body
 
 class ActiveResponseModel(Body):
 
-    def __init__(self, command: str = None, custom: bool = None, arguments: list = None, alert: dict = None):
+    def __init__(self, command: str = None, arguments: list = None, alert: dict = None):
         """ActiveResponseModel body model.
 
         Parameters
@@ -18,8 +22,6 @@ class ActiveResponseModel(Body):
         command : str
             Command running in the agent. If this value starts by !, then it refers to a script name instead of a
             command name.
-        custom : bool
-            Whether the specified command is a custom command or not.
         arguments : list
             Command arguments.
         alert : dict
@@ -27,20 +29,17 @@ class ActiveResponseModel(Body):
         """
         self.swagger_types = {
             'command': str,
-            'custom': bool,
             'arguments': List[str],
             'alert': dict
         }
 
         self.attribute_map = {
             'command': 'command',
-            'custom': 'custom',
             'arguments': 'arguments',
             'alert': 'alert'
         }
 
         self._command = command
-        self._custom = custom
         self._arguments = arguments
         self._alert = alert
 
@@ -63,26 +62,6 @@ class ActiveResponseModel(Body):
             Command to run in the agent.
         """
         self._command = command
-
-    @property
-    def custom(self) -> bool:
-        """
-        Returns
-        -------
-        bool
-            Whether the specified command is a custom command or not.
-        """
-        return self._custom
-
-    @custom.setter
-    def custom(self, custom: bool):
-        """
-        Parameters
-        ----------
-        custom : bool
-            Whether the specified command is a custom command or not.
-        """
-        self._custom = custom
 
     @property
     def arguments(self) -> list:

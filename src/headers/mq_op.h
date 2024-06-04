@@ -11,7 +11,7 @@
 #ifndef MQ_H
 #define MQ_H
 
-#include "config/localfile-config.h"
+#include "../config/localfile-config.h"
 #include <sys/types.h>
 
 /* Default queues */
@@ -22,16 +22,11 @@
 #define DBSYNC_MQ       '5'
 #define SYSCHECK_MQ     '8'
 #define ROOTCHECK_MQ    '9'
+#define SYSCOLLECTOR_MQ 'd'
+#define CISCAT_MQ       'e'
+#define WIN_EVT_MQ      'f'
 #define SCA_MQ          'p'
 #define UPGRADE_MQ      'u'
-
-/* Queues for additional log types */
-#define MYSQL_MQ         'a'
-#define POSTGRESQL_MQ    'b'
-#define AUTH_MQ          'c'
-#define SYSCOLLECTOR_MQ  'd'
-#define CISCAT_MQ        'e'
-#define WIN_EVT_MQ       'f'
 
 #define INFINITE_OPENQ_ATTEMPTS 0
 
@@ -114,6 +109,21 @@ int SendMSG(int queue, const char *message, const char *locmsg, char loc) __attr
  * Notes: (UNIX) If the message is not sent because the socket is busy, the return code will be 0
  */
 int SendMSGtoSCK(int queue, const char *message, const char *locmsg, char loc, logtarget * target) __attribute__((nonnull (2, 3, 5)));
+
+/**
+ * Sends a message to a socket. If the socket has not been created yet it will be created based on
+ * the target information. If a message fails to be sent the method will not try to send it again until *sock_fail_time* has passed
+ * @param message JSON string containing the message that will be sent
+ * @param Config socket_forwarder ptr with the socket information
+ * @return
+ * UNIX ->  1 message was discarded
+ * UNIX -> -1 invalid protocol or cannot create socket
+ * UNIX ->  0 message was sent
+ * WIN32 -> -1 invalid target
+ * WIN32 -> 0 valid target
+ * Notes: (UNIX) If the message is not sent because the socket is busy, the return code will be 0
+ */
+int SendJSONtoSCK(char* message, socket_forwarder* Config);
 
 void mq_log_builder_init();
 

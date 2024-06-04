@@ -14,7 +14,8 @@
 
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT "v3.0.0"
 #define WM_UPGRADE_MINIMAL_VERSION_SUPPORT_MACOS "v4.3.0"
-#define WM_UPGRADE_NEW_VERSION_REPOSITORY "v3.4.0"
+#define WM_UPGRADE_NEW_LINUX_VERSION_REPOSITORY "v3.4.0"
+#define WM_UPGRADE_NEW_VERSION_STRUCTURE_REPOSITORY "v4.9.0"
 #define WM_UPGRADE_NEW_UPGRADE_MECHANISM "v4.1.0"
 #define WM_UPGRADE_WPK_DEFAULT_PATH "var/upgrade/"
 #define WM_UPGRADE_WPK_DOWNLOAD_TIMEOUT 60000
@@ -23,6 +24,7 @@
 #define WM_UPGRADE_MAX_RESPONSE_SIZE 1048576L
 #define MANAGER_ID 0
 #define WM_AGENT_UPGRADE_START_WAIT_TIME 30
+#define WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT 20L
 
 typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_SUCCESS = 0,
@@ -50,6 +52,7 @@ typedef enum _wm_upgrade_error_code {
     WM_UPGRADE_SEND_SHA1_ERROR,
     WM_UPGRADE_SEND_UPGRADE_ERROR,
     WM_UPGRADE_UPGRADE_ERROR,
+    WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE,
     WM_UPGRADE_UNKNOWN_ERROR
 } wm_upgrade_error_code;
 
@@ -73,6 +76,7 @@ typedef struct _wm_upgrade_task {
     char *wpk_version;           ///> WPK version to install
     char *wpk_file;              ///> WPK file name
     char *wpk_sha1;              ///> WPK sha1 to validate
+    char *package_type;          ///> package type to send (for Linux systems)
 } wm_upgrade_task;
 
 /**
@@ -111,6 +115,7 @@ typedef struct _wm_agent_info {
     char *architecture;          ///> architecture of the agent
     char *wazuh_version;         ///> wazuh version of the agent
     char *connection_status;     ///> connection_status of the agent
+    char *package_type;          ///> package type of the agent (DEB, RPM, etc.)
 } wm_agent_info;
 
 /**

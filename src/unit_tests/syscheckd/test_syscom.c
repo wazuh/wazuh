@@ -17,8 +17,8 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/config_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_sync_wrappers.h"
-#include "../syscheckd/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "../../syscheckd/include/syscheck.h"
+#include "../../config/syscheck-config.h"
 
 
 /* redefinitons/wrapping */
@@ -34,7 +34,24 @@ static int delete_string(void **state)
 /* tests */
 
 
-void test_syscom_dispatch_getconfig(void **state)
+void test_syscom_dispatch_getconfig_agent(void **state)
+{
+    (void) state;
+    size_t ret;
+
+    char command[] = "syscheck getconfig args";
+    char * output;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "(6283): At SYSCOM getconfig: Could not get 'args' section.");
+
+    ret = syscom_dispatch(command, &output);
+    *state = output;
+
+    assert_string_equal(output, "err Could not get requested section");
+    assert_int_equal(ret, 35);
+}
+
+void test_syscom_dispatch_getconfig_manager(void **state)
 {
     (void) state;
     size_t ret;
@@ -57,7 +74,7 @@ void test_syscom_dispatch_getconfig_noargs(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "getconfig";
+    char command[] = "syscheck getconfig";
     char * output;
 
     expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM getconfig needs arguments.");
@@ -75,10 +92,10 @@ void test_syscom_dispatch_dbsync(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "dbsync args";
+    char command[] = "fim_file dbsync args";
     char *output;
 
-    expect_string(__wrap_fim_sync_push_msg, msg, "args");
+    expect_string(__wrap_fim_sync_push_msg, msg, "fim_file dbsync args");
 
     ret = syscom_dispatch(command, &output);
 
@@ -91,10 +108,10 @@ void test_syscom_dispatch_dbsync_noargs(void **state)
     (void) state;
     size_t ret;
 
-    char command[] = "dbsync";
+    char command[] = "fim_file dbsync";
     char *output;
 
-    expect_string(__wrap__mdebug1, formatted_msg, "(6281): SYSCOM dbsync needs arguments.");
+    expect_string(__wrap_fim_sync_push_msg, msg, "fim_file dbsync");
 
     ret = syscom_dispatch(command, &output);
 
@@ -102,7 +119,20 @@ void test_syscom_dispatch_dbsync_noargs(void **state)
 }
 
 
-void test_syscom_dispatch_restart(void **state)
+void test_syscom_dispatch_restart_agent(void **state)
+{
+    (void) state;
+    size_t ret;
+
+    char command[] = "syscheck restart";
+    char *output;
+
+    ret = syscom_dispatch(command, &output);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_syscom_dispatch_restart_manager(void **state)
 {
     (void) state;
     size_t ret;
@@ -280,11 +310,13 @@ void test_syscom_getconfig_null_output(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_teardown(test_syscom_dispatch_getconfig, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_agent, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_manager, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_noargs, delete_string),
         cmocka_unit_test(test_syscom_dispatch_dbsync),
         cmocka_unit_test(test_syscom_dispatch_dbsync_noargs),
-        cmocka_unit_test(test_syscom_dispatch_restart),
+        cmocka_unit_test(test_syscom_dispatch_restart_agent),
+        cmocka_unit_test(test_syscom_dispatch_restart_manager),
         cmocka_unit_test_teardown(test_syscom_dispatch_getconfig_unrecognized, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_null_command, delete_string),
         cmocka_unit_test(test_syscom_dispatch_null_output),

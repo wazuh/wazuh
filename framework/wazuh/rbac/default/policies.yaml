@@ -344,12 +344,12 @@ default_policies:
           - '*:*:*'
         effect: allow
 
-  vulnerability_read:
-    description: Allow reading agents' vulnerabilities information.
+  events_ingest:
+    description: Allow ingesting events.
     policies:
-      vulnerability:
+      resourceless:
         actions:
-          - vulnerability:read
+          - event:ingest
         resources:
-          - agent:id:*
+          - '*:*:*'
         effect: allow

@@ -9,18 +9,18 @@ import re
 import subprocess
 import sys
 import tempfile
-from configparser import RawConfigParser, NoOptionError
+from configparser import NoOptionError, RawConfigParser
 from io import StringIO
-from os import remove, path as os_path
+from os import path as os_path
+from os import remove
+from types import MappingProxyType
+from typing import List, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
-
-from wazuh.core import common
-from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core import common, wazuh_socket
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
-from wazuh.core.wazuh_socket import WazuhSocket
 
 logger = logging.getLogger('wazuh')
 
@@ -32,11 +32,11 @@ logger = logging.getLogger('wazuh')
 #   entry.
 #   * Last -> there can be multiple sections in the configuration but only the last one will be returned.
 #   The rest are ignored.
-conf_sections = {
+CONF_SECTIONS = MappingProxyType({
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
     'agentless': {'type': 'duplicate', 'list_options': []},
-    'localfile': {'type': 'duplicate', 'list_options': []},
+    'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
     'remote': {'type': 'duplicate', 'list_options': []},
     'syslog_output': {'type': 'duplicate', 'list_options': []},
     'integration': {'type': 'duplicate', 'list_options': []},
@@ -91,10 +91,6 @@ conf_sections = {
         'type': 'last',
         'list_options': ['nodes']
     },
-    'vulnerability-detector': {
-        'type': 'merge',
-        'list_options': ['feed']
-    },
     'osquery': {
         'type': 'merge',
         'list_options': ['pack']
@@ -106,13 +102,38 @@ conf_sections = {
     'sca': {
         'type': 'merge',
         'list_options': ['policies']
+    },
+    'vulnerability-detection': {
+        'type': 'last',
+        'list_options': []
+    },
+    'indexer': {
+        'type': 'last',
+        'list_options': ['hosts']
     }
-}
+})
+
+GETCONFIG_COMMAND = "getconfig"
+UPDATE_CHECK_OSSEC_FIELD = 'update_check'
+GLOBAL_KEY = 'global'
+YES_VALUE = 'yes'
+CTI_URL_FIELD = 'cti-url'
+DEFAULT_CTI_URL = 'https://cti.wazuh.com'
 
 
-def _insert(json_dst, section_name, option, value):
-    """
-    Inserts element (option:value) in a section (json_dst) called section_name
+def _insert(json_dst: dict, section_name: str, option: str, value: str):
+    """Insert element (option:value) in a section (json_dst) called section_name.
+
+    Parameters
+    ----------
+    json_dst : dict
+        Destination.
+    section_name : str
+        Name of the section.
+    option : str
+        Option to be updated or added.
+    value : str
+        Value of the option to be updated / added.
     """
 
     if not value:
@@ -124,41 +145,60 @@ def _insert(json_dst, section_name, option, value):
         else:
             json_dst[option] = value  # Update values
     else:
-        if section_name in conf_sections and option in conf_sections[section_name]['list_options']:
+        if option in CONF_SECTIONS.get(section_name, {}).get('list_options', []):
             json_dst[option] = [value]  # Create as list
         else:
             json_dst[option] = value  # Update values
 
 
-def _insert_section(json_dst, section_name, section_data):
-    """
-    Inserts a new section (section_data) called section_name in json_dst.
+def _insert_section(json_dst: dict, section_name: str, section_data: dict):
+    """Insert a new section (section_data) called section_name in json_dst.
+
+    Parameters
+    ----------
+    json_dst : dict
+        Destination.
+    section_name : str
+        Name of the section.
+    section_data : dict
+        Section be added.
     """
 
-    if section_name in conf_sections and conf_sections[section_name]['type'] == 'duplicate':
+    if CONF_SECTIONS.get(section_name, {}).get('type') == 'duplicate':
         if section_name in json_dst:
             json_dst[section_name].append(section_data)  # Append new values
         else:
             json_dst[section_name] = [section_data]  # Create as list
-    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'merge':
+    elif CONF_SECTIONS.get(section_name, {}).get('type') == 'merge':
         if section_name in json_dst:
             for option in section_data:
-                if option in json_dst[section_name] and option in conf_sections[section_name]['list_options']:
+                if option in json_dst[section_name] and option in CONF_SECTIONS[section_name].get('list_options', []):
                     json_dst[section_name][option].extend(section_data[option])  # Append new values
                 else:
                     json_dst[section_name][option] = section_data[option]  # Update values
         else:
             json_dst[section_name] = section_data  # Create
-    elif section_name in conf_sections and conf_sections[section_name]['type'] == 'last':
+    elif CONF_SECTIONS.get(section_name, {}).get('type') == 'last':
         if section_name in json_dst:
             # if the option already exists it is overwritten. But a warning is shown.
             logger.warning(f'There are multiple {section_name} sections in configuration. Using only last section.')
         json_dst[section_name] = section_data  # Create
 
 
-def _read_option(section_name, opt):
-    """
-    Reads an option (inside a section) and returns the name and the value.
+def _read_option(section_name: str, opt: str) -> tuple:
+    """Read an option (inside a section) and returns the name and the value.
+
+    Parameters
+    ----------
+    section_name : str
+        Name of the section to be read.
+    opt : str
+        Option to be read.
+
+    Returns
+    -------
+    tuple
+        Name and value of the option.
     """
 
     opt_name = opt.tag.lower()
@@ -189,13 +229,16 @@ def _read_option(section_name, opt):
                 json_path = json_attribs.copy()
                 json_path['path'] = path.strip()
                 opt_value.append(json_path)
-    elif section_name == 'syscheck' and opt_name in ('synchronization', 'whodata'):
+    elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')) or \
+        (section_name == 'cluster' and opt_name == 'haproxy_helper'):
         opt_value = {}
         for child in opt:
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
-            (section_name == 'sca' and opt_name == 'policies'):
+            (section_name == 'haproxy_helper' and opt_name == 'excluded_nodes') or \
+            (section_name == 'sca' and opt_name == 'policies') or \
+            (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
     elif section_name == 'labels' and opt_name == 'label':
         opt_value = {'value': opt.text}
@@ -218,7 +261,11 @@ def _read_option(section_name, opt):
             if list(opt):
                 for child in opt:
                     child_section, child_config = _read_option(child.tag.lower(), child)
-                    opt_value[child_section] = child_config
+                    try:
+                        opt_value[child_section].append(child_config)
+                    except KeyError:
+                        opt_value[child_section] = [child_config]
+
             else:
                 opt_value['item'] = opt.text
         else:
@@ -227,8 +274,14 @@ def _read_option(section_name, opt):
     return opt_name, _replace_custom_values(opt_value)
 
 
-def _replace_custom_values(opt_value):
-    """Replaces custom values introduced by 'load_wazuh_xml' with their real values."""
+def _replace_custom_values(opt_value: Union[list, dict, str]) -> Union[list, dict, str]:
+    """Replace custom values introduced by 'load_wazuh_xml' with their real values.
+
+    Parameters
+    ----------
+    opt_value : list or dict or str
+        Value to be replaced.
+    """
     if type(opt_value) is list:
         for i in range(0, len(opt_value)):
             opt_value[i] = _replace_custom_values(opt_value[i])
@@ -240,9 +293,15 @@ def _replace_custom_values(opt_value):
     return opt_value
 
 
-def _conf2json(src_xml, dst_json):
-    """
-    Parses src_xml to json. It is inserted in dst_json.
+def _conf2json(src_xml: str, dst_json: dict):
+    """Parse src_xml to JSON. It is inserted in dst_json.
+
+    Parameters
+    ----------
+    src_xml : str
+        Configuration to be parsed to JSON.
+    dst_json : dict
+        Destination.
     """
 
     for section in list(src_xml):
@@ -260,9 +319,18 @@ def _conf2json(src_xml, dst_json):
         _insert_section(dst_json, section_name, section_json)
 
 
-def _ossecconf2json(xml_conf):
-    """
-    Returns ossec.conf in JSON from xml
+def _ossecconf2json(xml_conf: str) -> dict:
+    """Return ossec.conf in JSON from XML.
+
+    Parameters
+    ----------
+    xml_conf : str
+        Configuration to be parsed to JSON.
+
+    Returns
+    -------
+    dict
+        Final JSON with the ossec.conf content.
     """
     final_json = {}
 
@@ -273,9 +341,18 @@ def _ossecconf2json(xml_conf):
     return final_json
 
 
-def _agentconf2json(xml_conf):
-    """
-    Returns agent.conf in JSON from xml
+def _agentconf2json(xml_conf: str) -> dict:
+    """Return agent.conf in JSON from XML.
+
+    Parameters
+    ----------
+    xml_conf : str
+        Configuration to be parsed to JSON.
+
+    Returns
+    -------
+    dict
+        Final JSON with the agent.conf content.
     """
 
     final_json = []
@@ -304,11 +381,24 @@ def _agentconf2json(xml_conf):
     return final_json
 
 
-def _rcl2json(filepath):
+def _rcl2json(filepath: str) -> dict:
     """
     Returns the RCL file as dictionary.
 
-    :return: rcl file (system_audit, windows_audit) as dictionary.
+    Parameters
+    ----------
+    filepath : str
+        Path to the RCL file.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        RCL file (system_audit, windows_audit) as dictionary.
     """
 
     data = {'vars': {}, 'controls': []}
@@ -389,11 +479,23 @@ def _rcl2json(filepath):
     return data
 
 
-def _rootkit_files2json(filepath):
-    """
-    Returns the rootkit file as dictionary.
+def _rootkit_files2json(filepath: str) -> dict:
+    """Return the rootkit file as dictionary.
 
-    :return: rootkit file as dictionary.
+    Parameters
+    ----------
+    filepath : str
+        Path to the rootkit file.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        Rootkit file as dictionary.
     """
 
     data = []
@@ -419,11 +521,24 @@ def _rootkit_files2json(filepath):
     return data
 
 
-def _rootkit_trojans2json(filepath):
-    """
-    Returns the rootkit trojans file as dictionary.
+def _rootkit_trojans2json(filepath: str) -> dict:
+    """Return the rootkit trojans file as dictionary.
 
-    :return: rootkit trojans file as dictionary.
+
+    Parameters
+    ----------
+    filepath : str
+        Path to the rootkit trojans file.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        Rootkit trojans file as dictionary.
     """
 
     data = []
@@ -456,18 +571,77 @@ def _rootkit_trojans2json(filepath):
     return data
 
 
-def _ar_conf2json(file_path):
-    """
-    Returns the lines of the ar.conf file
+def _ar_conf2json(file_path: str) -> dict:
+    """Return the lines of the ar.conf file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the ar.conf file.
+
+    Returns
+    -------
+    dict
+        ar.conf file as dictionary.
     """
     with open(file_path) as f:
         data = [line.strip('\n') for line in f.readlines()]
     return data
 
 
+def _merged_mg2json(file_path: str) -> List[dict]:
+    """Parse the merged.mg file.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the merged.mg file.
+
+    Returns
+    -------
+    dict
+        merged.mg file as a list of dictionaries.
+    """
+    data = []
+
+    # ![file_size] [file_name]
+    regex_header = re.compile(r"^!(\d+)\s*(.*)")
+
+    try:
+        item = {}
+        file_content = []
+
+        with open(file_path) as f:
+            # Skip first line
+            next(f)
+
+            for line in f:
+                if match_header := re.search(regex_header, line):
+                    if item:
+                        # Append previous item
+                        item['file_content'] = ''.join(file_content)
+                        data.append(item)
+
+                    file_size = match_header.group(1)
+                    file_name = match_header.group(2)
+                    file_content = []
+                    item = {'file_name': file_name, 'file_size': int(file_size)}
+                    continue
+
+                file_content.append(line)
+
+        # Append last item
+        data.append(item)
+    except Exception as e:
+        raise WazuhError(1101, str(e))
+
+    return data
+
+
 # Main functions
-def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_import=False):
-    """Returns ossec.conf (manager) as dictionary.
+def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
+                   from_import: bool = False, distinct: bool = False) -> dict:
+    """Return ossec.conf (manager) as dictionary.
 
     Parameters
     ----------
@@ -476,9 +650,22 @@ def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_i
     field : str
         Filters by field in section (i.e. included).
     conf_file : str
-        Path of the configuration file to read.
+        Path of the configuration file to read. Default: common.OSSEC_CONF
     from_import : bool
         This flag indicates whether this function has been called from a module load (True) or from a function (False).
+    distinct : bool
+        Look for distinct values.
+
+    Raises
+    ------
+    WazuhError(1101)
+        Requested component does not exist.
+    WazuhError(1102)
+        Invalid section.
+    WazuhError(1103)
+        Invalid field in section.
+    WazuhError(1106)
+        Requested section not present in configuration.
 
     Returns
     -------
@@ -502,7 +689,7 @@ def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_i
         try:
             data = {section: data[section]}
         except KeyError as e:
-            if section not in conf_sections.keys():
+            if section not in CONF_SECTIONS.keys():
                 raise WazuhError(1102, extra_message=e.args[0])
             else:
                 raise WazuhError(1106, extra_message=e.args[0])
@@ -512,18 +699,51 @@ def get_ossec_conf(section=None, field=None, conf_file=common.OSSEC_CONF, from_i
             if isinstance(data[section], list):
                 data = {section: [{field: item[field]} for item in data[section]]}
             else:
-                data = {section: {field: data[section][field]}}
+                field_data = data[section][field]
+                if distinct and section == 'ruleset':
+                    if field in ('decoder_dir', 'rule_dir'):
+                        # Remove duplicates
+                        values = []
+                        [values.append(x) for x in field_data if x not in values]
+                        field_data = values
+
+                data = {section: {field: field_data}}
         except KeyError:
             raise WazuhError(1103)
 
     return data
 
 
-def get_agent_conf(group_id=None, offset=0, limit=common.DATABASE_LIMIT, filename='agent.conf', return_format=None):
-    """
-    Returns agent.conf as dictionary.
+def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
+                   filename: str = 'agent.conf', raw: bool = False) -> Union[dict, str]:
+    """Return agent.conf as dictionary.
 
-    :return: agent.conf as dictionary.
+    Parameters
+    ----------
+    group_id : str
+        ID of the group with the agent.conf we want to get.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    filename : str
+        Name of the file to get. Default: 'agent.conf'
+    raw : bool
+        Respond in raw format.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1006)
+        agent.conf does not exist or there is a problem with the permissions.
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict or str
+        agent.conf as dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -534,9 +754,9 @@ def get_agent_conf(group_id=None, offset=0, limit=common.DATABASE_LIMIT, filenam
 
     try:
         # Read RAW file
-        if filename == 'agent.conf' and return_format and 'xml' == return_format.lower():
-            with open(agent_conf, 'r') as xml_data:
-                data = xml_data.read()
+        if filename == 'agent.conf' and raw:
+            with open(agent_conf, 'r') as raw_data:
+                data = raw_data.read()
                 return data
         # Parse XML to JSON
         else:
@@ -550,11 +770,34 @@ def get_agent_conf(group_id=None, offset=0, limit=common.DATABASE_LIMIT, filenam
     return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.DATABASE_LIMIT, filename=None):
-    """
-    Returns agent.conf as dictionary.
+def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
+                              filename: str = None) -> dict:
+    """Return agent.conf as dictionary.
 
-    :return: agent.conf as dictionary.
+    Parameters
+    ----------
+    multigroup_id : str
+        ID of the group with the agent.conf we want to get.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    filename : str
+        Name of the file to get. Default: 'agent.conf'
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1006)
+        agent.conf does not exist or there is a problem with the permissions.
+    WazuhError(1101)
+        Requested component does not exist.
+
+    Returns
+    -------
+    dict
+        agent.conf as dictionary.
     """
     # Check if a multigroup_id is provided and it exists
     if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
@@ -578,11 +821,33 @@ def get_agent_conf_multigroup(multigroup_id=None, offset=0, limit=common.DATABAS
     return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
-def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
-    """
-    Returns the configuration file as dictionary.
+def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict | str:
+    """Return the configuration file content.
 
-    :return: configuration file as dictionary.
+    Parameters
+    ----------
+    group_id : str
+        ID of the group with the file we want to get.
+    filename : str
+        Name of the file to get.
+    type_conf : str
+        Type of the configuration we want to get.
+    raw : bool
+        Respond in raw format.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1006)
+        The file does not exist or there is a problem with the permissions.
+    WazuhError(1104)
+        Invalid file type.
+
+    Returns
+    -------
+    dict or str
+        File content as plain text or dictionary.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -591,6 +856,11 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
+
+    if raw:
+        with open(file_path, 'r') as raw_data:
+            data = raw_data.read()
+            return data
 
     types = {
         'conf': get_agent_conf,
@@ -602,28 +872,64 @@ def get_file_conf(filename, group_id=None, type_conf=None, return_format=None):
     if type_conf:
         if type_conf in types:
             if type_conf == 'conf':
-                data = types[type_conf](group_id, limit=None, filename=filename, return_format=return_format)
+                data = types[type_conf](group_id, limit=None, filename=filename, raw=raw)
             else:
                 data = types[type_conf](file_path)
         else:
             raise WazuhError(1104, f'{type_conf}. Valid types: {types.keys()}')
     else:
-        if filename == "agent.conf":
-            data = get_agent_conf(group_id, limit=None, filename=filename, return_format=return_format)
-        elif filename == "rootkit_files.txt":
+        if filename == 'agent.conf':
+            data = get_agent_conf(group_id, limit=None, filename=filename, raw=raw)
+        elif filename == 'rootkit_files.txt':
             data = _rootkit_files2json(file_path)
-        elif filename == "rootkit_trojans.txt":
+        elif filename == 'rootkit_trojans.txt':
             data = _rootkit_trojans2json(file_path)
-        elif filename == "ar.conf":
+        elif filename == 'ar.conf':
             data = _ar_conf2json(file_path)
+        elif filename == 'merged.mg':
+            data = _merged_mg2json(file_path)
         else:
             data = _rcl2json(file_path)
 
     return data
 
 
-def parse_internal_options(high_name, low_name):
-    def get_config(config_path):
+def parse_internal_options(high_name: str, low_name: str) -> str:
+    """Parse internal_options.conf file.
+
+    Parameters
+    ----------
+    high_name : str
+        Name of the daemon with the option we want to parse.
+    low_name : str
+        Option we want to parse.
+
+    Raises
+    ------
+    WazuhInternalError(1107)
+        Internal options file not found.
+    WazuhInternalError(1108)
+        Value not found in internal_options.conf.
+
+    Returns
+    -------
+    str
+        Value of the internal_options.conf option.
+    """
+
+    def get_config(config_path: str) -> dict:
+        """Read configuration given by its path.
+
+        Parameters
+        ----------
+        config_path : str
+            Configuration path.
+
+        Returns
+        -------
+        dict
+            Configuration as a dictionary.
+        """
         with open(config_path) as f:
             str_config = StringIO('[root]\n' + f.read())
 
@@ -648,7 +954,32 @@ def parse_internal_options(high_name, low_name):
         raise WazuhInternalError(1108, e.args[0])
 
 
-def get_internal_options_value(high_name, low_name, max_, min_):
+def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: int) -> int:
+    """Get value of a specific internal option from internal_options.conf.
+
+    Parameters
+    ----------
+    high_name : str
+        Name of the daemon with the option we want to get.
+    low_name : str
+        Option we want to get.
+    max_ : int
+        Maximum value of the option.
+    min_ : int
+        Minimum value of the option.
+
+    Raises
+    ------
+    WazuhError(1109)
+        Option must be a digit.
+    WazuhError(1110)
+        Option value is out of the limits.
+
+    Returns
+    -------
+    int
+        Value of the internal_options.conf option.
+    """
     option = parse_internal_options(high_name, low_name)
     if not option.isdigit():
         raise WazuhError(1109, f'Option: {high_name}.{low_name}. Value: {option}')
@@ -660,12 +991,35 @@ def get_internal_options_value(high_name, low_name, max_, min_):
     return option
 
 
-def upload_group_configuration(group_id, file_content):
-    """
-    Updates group configuration
-    :param group_id: Group to update
-    :param file_content: File content of the new configuration in a string.
-    :return: Confirmation message.
+def upload_group_configuration(group_id: str, file_content: str) -> str:
+    """Update group configuration.
+
+    Parameters
+    ----------
+    group_id : str
+        Group to update.
+    file_content : str
+        File content of the new configuration in a string.
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1113)
+        XML syntax error.
+    WazuhError(1114)
+        Wazuh syntax error.
+    WazuhError(1115)
+        Error executing verify-agent-conf.
+    WazuhInternalError(1743)
+        Error running Wazuh syntax validator.
+    WazuhInternalError(1016)
+        Error moving file.
+
+    Returns
+    -------
+    str
+        Confirmation message.
     """
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
         raise WazuhResourceNotFound(1710, group_id)
@@ -744,13 +1098,31 @@ def upload_group_configuration(group_id, file_content):
         raise e
 
 
-def upload_group_file(group_id, file_data, file_name='agent.conf'):
-    """
-    Updates a group file
-    :param group_id: Group to update
-    :param file_data: Upload data
-    :param file_name: File name to update
-    :return: Confirmation message in string
+def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.conf') -> str:
+    """Update a group file.
+
+    Parameters
+    ----------
+    group_id : str
+        Group to update.
+    file_data : str
+        Upload data.
+    file_name : str
+        File name to update. Default: 'agent.conf'
+
+    Raises
+    ------
+    WazuhResourceNotFound(1710)
+        Group was not found.
+    WazuhError(1112)
+        Empty files are not supported.
+    WazuhError(1111)
+        Remote group file updates are only available in 'agent.conf' file.
+
+    Returns
+    -------
+    str
+        Confirmation message in string.
     """
     # Check if the group exists
     if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
@@ -765,7 +1137,7 @@ def upload_group_file(group_id, file_data, file_name='agent.conf'):
         raise WazuhError(1111)
 
 
-def get_active_configuration(agent_id, component, configuration):
+def get_active_configuration(agent_id: str, component: str, configuration: str) -> dict:
     """Get an agent's component active configuration.
 
     Parameters
@@ -776,11 +1148,6 @@ def get_active_configuration(agent_id, component, configuration):
         Selected agent's component.
     configuration : str
         Configuration to get, written on disk.
-
-    Returns
-    -------
-    str
-        The active configuration the agent is currently using.
 
     Raises
     ------
@@ -798,76 +1165,192 @@ def get_active_configuration(agent_id, component, configuration):
         If there's no such file or directory in agent node, or the socket cannot send the request.
     WazuhError(1116)
         If the reply from the node contains an error.
+
+    Returns
+    -------
+    dict
+        The active configuration the agent is currently using.
     """
+    sockets_json_protocol = {'remote', 'analysis', 'wdb'}
+    component_socket_mapping = {'agent': 'analysis', 'agentless': 'agentless', 'analysis': 'analysis', 'auth': 'auth',
+                                'com': 'com', 'csyslog': 'csyslog', 'integrator': 'integrator',
+                                'logcollector': 'logcollector', 'mail': 'mail', 'monitor': 'monitor',
+                                'request': 'remote', 'syscheck': 'syscheck', 'wazuh-db': 'wdb', 'wmodules': 'wmodules'}
+    component_socket_dir_mapping = {'agent': 'sockets', 'agentless': 'sockets', 'analysis': 'sockets',
+                                    'auth': 'sockets', 'com': 'sockets', 'csyslog': 'sockets', 'integrator': 'sockets',
+                                    'logcollector': 'sockets', 'mail': 'sockets', 'monitor': 'sockets',
+                                    'request': 'sockets', 'syscheck': 'sockets', 'wazuh-db': 'db',
+                                    'wmodules': 'sockets'}
+
     if not component or not configuration:
         raise WazuhError(1307)
 
-    components = {"agent", "agentless", "analysis", "auth", "com", "csyslog", "integrator", "logcollector", "mail",
-                  "monitor", "request", "syscheck", "wmodules"}
-
-    # checks if the component is correct
+    # Check if the component is correct
+    components = component_socket_mapping.keys()
     if component not in components:
         raise WazuhError(1101, f'Valid components: {", ".join(components)}')
 
-    sockets_path = os_path.join(common.WAZUH_PATH, "queue", "sockets")
+    def get_active_configuration_manager():
+        """Get manager active configuration."""
+        # Communicate with the socket that corresponds to the component requested
+        dest_socket = os_path.join(common.WAZUH_PATH, "queue", component_socket_dir_mapping[component],
+                                   component_socket_mapping[component])
 
-    if agent_id == '000':
-        dest_socket = os_path.join(sockets_path, component)
-        command = f"getconfig {configuration}"
         # Verify component configuration
         if not os.path.exists(dest_socket):
-            raise WazuhError(1121, extra_message=f"please verify that the component '{component}' \
-                is properly configured")
-    else:
-        dest_socket = os_path.join(sockets_path, "request")
-        command = f"{str(agent_id).zfill(3)} {component} getconfig {configuration}"
+            raise WazuhError(1121,
+                             extra_message=f"Please verify that the component '{component}' is properly configured")
 
-    # Socket connection
-    try:
-        s = WazuhSocket(dest_socket)
-    except Exception:
-        raise WazuhInternalError(1121)
+        # Simple socket message
+        if component_socket_mapping[component] not in sockets_json_protocol:
+            msg = f"{GETCONFIG_COMMAND} {configuration}"
 
-    # Send message
-    s.send(command.encode())
+            # Socket connection
+            try:
+                s = wazuh_socket.WazuhSocket(dest_socket)
+            except WazuhInternalError:
+                raise
+            except Exception as unhandled_exc:
+                raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
 
-    # Receive response
-    try:
-        # Receive data length
-        rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
-    except ValueError:
-        raise WazuhInternalError(1118, extra_message="Data could not be received")
+            # Send message
+            s.send(msg.encode())
 
-    s.close()
+            # Receive response
+            try:
+                # Receive data length
+                rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+            except ValueError:
+                raise WazuhInternalError(1118, extra_message="Data could not be received")
+            finally:
+                s.close()
 
-    if rec_msg_ok.startswith('ok'):
-        msg = json.loads(rec_msg)
+            return rec_msg_ok, rec_msg
+
+        # JSON socket message
+        else:  # component_socket_mapping[component] in sockets_json_protocol
+            msg = wazuh_socket.create_wazuh_socket_message(origin={'module': common.origin_module.get()},
+                                                           command=GETCONFIG_COMMAND,
+                                                           parameters={'section': configuration})
+
+            # Socket connection
+            try:
+                s = wazuh_socket.WazuhSocketJSON(dest_socket)
+            except WazuhInternalError:
+                raise
+            except Exception as unhandled_exc:
+                raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
+
+            # Send message
+            s.send(msg)
+
+            # Receive response
+            try:
+                response = s.receive(raw=True)
+            except ValueError:
+                raise WazuhInternalError(1118, extra_message="Data could not be received")
+            finally:
+                s.close()
+
+            return response['error'], response['data']
+
+    def get_active_configuration_agent():
+        """Get agent active configuration"""
+        # Always communicate with remote socket
+        dest_socket = common.REMOTED_SOCKET
+
+        # Simple socket message
+        msg = f"{str(agent_id).zfill(3)} {component} {GETCONFIG_COMMAND} {configuration}"
+
+        # Socket connection
+        try:
+            s = wazuh_socket.WazuhSocket(dest_socket)
+        except WazuhInternalError:
+            raise
+        except Exception as unhandled_exc:
+            raise WazuhInternalError(1121, extra_message=str(unhandled_exc))
+
+        # Send message
+        s.send(msg.encode())
+
+        # Receive response
+        try:
+            # Receive data length
+            rec_msg_ok, rec_msg = s.receive().decode().split(" ", 1)
+        except ValueError:
+            raise WazuhInternalError(1118, extra_message="Data could not be received")
+        finally:
+            s.close()
+
+        return rec_msg_ok, rec_msg
+
+    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_manager()
+
+    if rec_error == 'ok' or rec_error == 0:
+        data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
 
         # Include password if auth->use_password enabled and authd.pass file exists
-        if msg.get('auth', {}).get('use_password') == 'yes':
+        if data.get('auth', {}).get('use_password') == 'yes':
             try:
                 with open(os_path.join(common.WAZUH_PATH, "etc", "authd.pass"), 'r') as f:
-                    msg['authd.pass'] = f.read().rstrip()
+                    data['authd.pass'] = f.read().rstrip()
             except IOError:
                 pass
 
-        return msg
+        return data
     else:
-        raise WazuhError(1117 if "No such file or directory" in rec_msg or "Cannot send request" in rec_msg else 1116,
+        raise WazuhError(1117 if "No such file or directory" in rec_data or "Cannot send request" in rec_data else 1116,
                          extra_message=f'{component}:{configuration}')
 
 
 def write_ossec_conf(new_conf: str):
-    """
-    Replace the current wazuh configuration (ossec.conf) with the provided configuration.
+    """Replace the current wazuh configuration (ossec.conf) with the provided configuration.
 
     Parameters
     ----------
-    new_conf: str
+    new_conf : str
         The new configuration to be applied.
+
+    Raises
+    ------
+    WazuhError(1126)
+        Error updating ossec configuration.
     """
     try:
         with open(common.OSSEC_CONF, 'w') as f:
             f.writelines(new_conf)
-    except Exception:
-        raise WazuhError(1126)
+    except Exception as e:
+        raise WazuhError(1126, extra_message=str(e))
+
+
+def update_check_is_enabled() -> bool:
+    """Read the ossec.conf and check UPDATE_CHECK_OSSEC_FIELD value.
+
+    Returns
+    -------
+    bool
+        True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
+    """
+    try:
+        global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
+        return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE
+    except WazuhError as e:
+        if e.code != 1106:
+            raise e
+        return True
+
+
+def get_cti_url() -> str:
+    """Get the CTI service URL from the configuration.
+
+    Returns
+    -------
+    str
+        CTI service URL. The default value is returned if CTI_URL_FIELD isn't present.
+    """
+    try:
+        return get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get(CTI_URL_FIELD, DEFAULT_CTI_URL)
+    except WazuhError as e:
+        if e.code != 1106:
+            raise e
+        return DEFAULT_CTI_URL

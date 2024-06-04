@@ -64,14 +64,31 @@ extern const char *SYSCHECK_EVENT_STRINGS[];
 #include "shared.h"
 #include "aclapi.h"
 #include <sddl.h>
+#include <winreg.h>
 
 #define BUFFER_LEN 1024
 
+//Windows registers
+#define STR_HKEY_CLASSES_ROOT                   "HKEY_CLASSES_ROOT"
+#define STR_HKEY_CURRENT_CONFIG                 "HKEY_CURRENT_CONFIG"
+#define STR_HKEY_CURRENT_USER                   "HKEY_CURRENT_USER"
+#define STR_HKEY_LOCAL_MACHINE                  "HKEY_LOCAL_MACHINE"
+#define STR_HKEY_PERFORMANCE_DATA               "HKEY_PERFORMANCE_DATA"
+#define STR_HKEY_USERS                          "HKEY_USERS"
+#define check_wildcard(x)                       strchr(x,'*') || strchr(x,'?')
+
+/* Fields for paths */
+typedef struct _reg_path_struct {
+    char* path;
+    int has_wildcard;
+    int checked;
+} reg_path_struct;
+
 #endif
 
-#include "../syscheckd/syscheck.h"
-#include "analysisd/eventinfo.h"
-#include "os_net/os_net.h"
+#include "../syscheckd/include/syscheck.h"
+#include "../analysisd/eventinfo.h"
+#include "../os_net/os_net.h"
 
 #define FILE_ATTRIBUTE_INTEGRITY_STREAM         0x00008000
 #define FILE_ATTRIBUTE_NO_SCRUB_DATA            0x00020000
@@ -130,6 +147,7 @@ typedef enum fim_fields {
     FIM_REGISTRY_ARCH,
     FIM_REGISTRY_VALUE_NAME,
     FIM_REGISTRY_VALUE_TYPE,
+    FIM_REGISTRY_HASH,
     FIM_ENTRY_TYPE,
     FIM_EVENT_TYPE,
     FIM_NFIELDS
@@ -414,6 +432,58 @@ unsigned int get_registry_mtime(HKEY hndl);
  * @return 0 on success, error code on failure
  */
 int w_get_account_info(SID *sid, char **account_name, char **account_domain);
+
+/**
+ * @brief Checks if at least one structure exists whose path has a wildcard  (Windows)
+ *
+ * @param [in] array_struct Arrangement of structures.
+ * @retval 1 on success.
+ * @retval 0 if there is not more wildcards.
+ */
+int w_is_still_a_wildcard(reg_path_struct **array_struct);
+
+/**
+ * @brief Returns the HKEY corresponding to the root key name  (Windows)
+ *
+ * @param [in] str_rootkey String that represents the root key.
+ * @retval HKEY on success.
+ * @retval NULL if there is not match.
+ */
+HKEY w_switch_root_key(char* str_rootkey);
+
+/**
+ * @brief Return all keys based on a root key and subkey  (Windows)
+ *
+ * @param [in] root_key HKEY that represents the root key.
+ * @param [in] str_subkey String that represents the main subkey, this could be NULL.
+ * @retval A non empty array of string on success.
+ */
+char** w_list_all_keys(HKEY root_key, char* str_subkey);
+
+/**
+ * @brief Generate all valid paths that contains a * or ? (Windows)
+ *
+ * @param [in] array_struct Array of all possible paths.
+ * @param [out] array_struct Array of paths with tag checked in 1 and has_wildcard in 0.
+ */
+void w_expand_by_wildcard(reg_path_struct **array_struct, char wildcard_chr);
+
+
+/**
+ * @brief Extract the subkey from path (Windows)
+ *
+ * @param [in] key String path that contains the key and subkey.
+ * @return Allocated subkey or NULL if there is not one.
+ */
+char* get_subkey(char* key);
+
+/**
+ * @brief Return all possible paths based in a entry  (Windows)
+ *
+ * @param [in] entry Raw entry read from config file.
+ * @param [out] paths Array of paths expanded with tag checked in 1 and has_wildcard in 0.
+ */
+void expand_wildcard_registers(char* entry, char** paths);
 
 #endif
 

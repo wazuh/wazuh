@@ -496,11 +496,11 @@ char *__wrap_Eventinfo_to_jsonstr(const Eventinfo *lf, bool force_full_log){
     return mock_type(char *);
 }
 
-void __wrap_os_analysisd_free_log_msg(os_analysisd_log_msg_t ** log_msg) {
-    os_free((*log_msg)->file);
-    os_free((*log_msg)->func);
-    os_free((*log_msg)->msg);
-    os_free(*log_msg);
+void __wrap_os_analysisd_free_log_msg(os_analysisd_log_msg_t * log_msg) {
+    os_free(log_msg->file);
+    os_free(log_msg->func);
+    os_free(log_msg->msg);
+    os_free(log_msg);
     return;
 }
 
@@ -2938,6 +2938,12 @@ void test_w_logtest_process_request_error_check_input(void ** state) {
 
     will_return(__wrap_cJSON_PrintUnformatted, "{json response}");
 
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
+
     retval = w_logtest_process_request(input_raw_json, &connection);
 
     assert_string_equal(retval, "{json response}");
@@ -3033,6 +3039,12 @@ void test_w_logtest_process_request_type_remove_session_ok(void ** state) {
     expect_string(__wrap_cJSON_AddItemToObject, string, "data");
 
     will_return(__wrap_cJSON_PrintUnformatted, "{json response}");
+
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
 
     retval = w_logtest_process_request(input_raw_json, &connection);
 
@@ -3194,6 +3206,12 @@ void test_w_logtest_process_request_type_log_processing(void ** state) {
 
     will_return(__wrap_cJSON_PrintUnformatted, "{json response}");
 
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
+
     retval = w_logtest_process_request(input_raw_json, &connection);
 
     os_free(location.valuestring);
@@ -3260,6 +3278,44 @@ void test_w_logtest_decoding_phase_no_program_name(void ** state)
 }
 
 // w_logtest_preprocessing_phase
+void test_w_logtest_preprocessing_phase_json_location_to_scape_ok(void ** state)
+{
+    Eventinfo lf = {0};
+    cJSON request = {0};
+
+    cJSON json_event = {0};
+    cJSON json_event_child = {0};
+    char * raw_event = strdup("{event}");
+    char * str_location = strdup("loc:at\\ion");
+
+    lf.log = strdup("{event}");
+
+    json_event.child = &json_event_child;
+
+
+    const int expect_retval = 0;
+    int retval;
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, &json_event);
+    will_return(__wrap_cJSON_PrintUnformatted, raw_event);
+
+    will_return(__wrap_cJSON_GetObjectItemCaseSensitive, (cJSON *) 8);
+    will_return(__wrap_cJSON_GetStringValue, str_location);
+
+    will_return(__wrap_OS_CleanMSG, 0);
+
+
+    retval = w_logtest_preprocessing_phase(&lf, &request);
+
+    assert_int_equal(retval, expect_retval);
+
+
+    os_free(str_location);
+    os_free(lf.log);
+
+
+}
+
 void test_w_logtest_preprocessing_phase_json_event_ok(void ** state)
 {
     Eventinfo lf = {0};
@@ -4684,6 +4740,12 @@ void test_w_logtest_clients_handler_ok(void ** state)
     expect_string(__wrap_cJSON_AddItemToObject, string, "data");
 
     will_return(__wrap_cJSON_PrintUnformatted, strdup("{json response}"));
+
+    will_return(__wrap_pthread_rwlock_wrlock, 0);
+    will_return(__wrap_pthread_mutex_lock, 0);
+    will_return(__wrap_pthread_mutex_unlock, 0);
+    will_return(__wrap_pthread_rwlock_unlock, 0);
+    will_return(__wrap_pthread_mutex_destroy, 0);
 
     will_return(__wrap_OS_SendSecureTCP, 0);
 
@@ -6587,6 +6649,7 @@ int main(void)
         // Tests w_logtest_generate_error_response
         cmocka_unit_test(test_w_logtest_generate_error_response_ok),
         // Tests w_logtest_preprocessing_phase
+        cmocka_unit_test(test_w_logtest_preprocessing_phase_json_location_to_scape_ok),
         cmocka_unit_test(test_w_logtest_preprocessing_phase_json_event_ok),
         cmocka_unit_test(test_w_logtest_preprocessing_phase_json_event_fail),
         cmocka_unit_test(test_w_logtest_preprocessing_phase_str_event_ok),

@@ -1,0 +1,801 @@
+# Security Configuration Assessment
+# CIS Checks for HPUX 11i
+# Copyright (C) 2015, Wazuh Inc.
+#
+# This program is free software; you can redistribute it
+# and/or modify it under the terms of the GNU General Public
+# License (version 2) as published by the FSF - Free Software
+# Foundation
+#
+# Based on:
+# Center for Internet Security Benchmark for HP-UX 11i from 09-17-2009
+
+policy:
+  id: "cis_hpux_bastille"
+  file: "cis_hpux_11i_bastille.yml"
+  name: "CIS HP-UX 11i Benchmark"
+  description: "This document provides prescriptive guidance for establishing a secure configuration posture for HPUX version 11i. This guide was tested against HP-UX using Bastille"
+  references:
+    - https://www.cisecurity.org/wp-content/uploads/2017/04/CIS_HP-UX_11i_Benchmark_v1.5.0.pdf
+    - https://myenterpriselicense.hpe.com/cwp-ui/free-software/B6849AA
+
+requirements:
+  title: "Check HPUX version, bastille is installed and a bastille report is present."
+  description: "Requirements for running the SCA scan against HPUX family."
+  condition: all
+  rules:
+    - "c:swlist HPUX*OE* -> r:HPUX11i"
+    - "d:/opt/sec_mgmt/bastille/"
+    - "f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config"
+
+checks:
+  #################################################################
+  # 1.1  Install patches and supplementary software
+  #################################################################
+
+  - id: 30001
+    title: "Install and configure HP-UX Secure Shell."
+    description: "OpenSSH is a popular free distribution of the standards-track SSH protocols which allows secure encrypted network logins and file transfers. HP-UX Secure Shell is HP's pre-compiled and supported version of OpenSSH."
+    rationale: "Common login and file transfer services such as telnet, FTP, rsh, rlogin, and rcp use insecure, clear-text protocols that are vulnerable to attack. OpenSSH provides a secure, encrypted replacement for these services. Security is improved by further constraining services in the default configuration."
+    remediation: 'Perform the following to install and securely configure Secure Shell (SSH) 1. Download and install HP-UX Secure Shell if not already installed on the system. 2. Perform the following post-installation actions to secure the SSH service: a. Change to the /opt/ssh/etc directory b. Open sshd_config c. Set the Protocol token to 2. If it is absent, add and set it. d. Set the X11Forwarding token to yes. If it is absent, add and set it. e. Set the IgnoreRhosts token to yes. If it is absent, add and set it. f. Set the RhostsAuthentication token to no. If it is absent, add and set it. g. Set the RhostsRSAAuthentication token to no. If it is absent, add and set it. h. Set the PermitRootLogin token to no. If it is absent, add and set it. i. Set the PermitEmptyPasswords token to no. If it is absent, add and set it. j. Set the Banner token to /etc/issue. If it is absent, add and set it. k. Set root as the owner of sshd_config and ssh_config. l. Set sys as the group owner of sshd_config and ssh_config. m. Restrict write access to sshd_config and ssh_config to the file owner. The following script will perform the above procedure: 13 | P a g e cd /opt/ssh/etc cp -p sshd_config sshd_config.tmp awk '' /^Protocol/ /^IgnoreRhosts/ /^RhostsAuthentication/ /^RhostsRSAAuthentication/ { $2 ="no" }; /(^#|^)PermitRootLogin/    { $1 = "PermitRootLogin"; $2 = "no" }; /^PermitEmptyPasswords/    { $2 = "no" }; /^#Banner/                 { $1 = "Banner"; $2 = "/etc/issue" } { print }'' sshd_config.tmp > sshd_config { $2 ="2"}; { $2 = "yes" }; { $2 = "no" }; rm -f sshd_config.tmp chown root:sys ssh_config sshd_config chmod go-w ssh_config sshd_config'
+    compliance:
+      - cis: ["1.1.2"]
+      - cis_level: ["1"]
+    references:
+      - http://www.openssh.org/
+      - http://h20392.www2.hp.com/portal/swdepot/displayProductInfo.do?productNumber=T1471AA
+      - http://h20293.www2.hp.com/portal/swdepot/displayInstallInfo.do?productNumber=T1471AA
+    condition: all
+    rules:
+      - "c:swlist -l bundle SecureShell -> r:HP-UX Secure Shell"
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Protocol 2'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*X11Forwarding yes'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*IgnoreRhosts yes'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsAuthentication no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*RhostsRSAAuthentication no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitRootLogin no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*PermitEmptyPasswords no'
+      - 'f:/opt/ssh/etc/sshd_config -> r:^\s*Banner /etc/issue'
+      - 'not c:sh -c "ls -la /opt/ssh/etc/sshd_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+      - 'not c:sh -c "ls -la /opt/ssh/etc/ssh_config | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+
+  - id: 30002
+    title: "Use Bastille to report security configuration state."
+    description: "Bastille is a security hardening, lockdown tool supplied with HP-UX to assist administrators in securing their systems. Included is an assessment function that covers a wide range of lockdown items including most all items in this Benchmark. Bastille can serve as a reporting and audit tool. Appendix D provides a mapping of Benchmark items to related Bastille configuration items."
+    rationale: "An automated, tested, and vendor supported reporting tool such as Bastille is more efficient and less error-prone than most manual or custom scripted methods."
+    remediation: "Run Bastille to create an assessment report as shown: /opt/sec_mgmt/bastille/bin/bastille --assessnobrowser"
+    compliance:
+      - cis: ["1.1.3"]
+    references:
+      - https://www.hp.com/go/bastille
+    condition: all
+    rules:
+      - "f:/opt/sec_mgmt/bastille/bin/bastille"
+      - "f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config"
+
+  #################################################################
+  # 1.2 Minimize inetd network services
+  #################################################################
+
+  - id: 30003
+    title: "Disable Standard Services."
+    description: "The stock /etc/inetd.conf file shipped with HP-UX contains many services which are rarely used, or which have more secure alternatives. Indeed, after enabling SSH (see item 1.1.2) it may be possible to completely do away with all inetd-based services, since SSH provides both a secure login mechanism and a means of transferring files to and from the system. The steps articulated in the Remediation section will disable all services normally enabled in the HP-UX inetd.conf file. The rest of the actions in this section give the administrator the option of re-enabling certain services—in particular, the services that are disabled in the last two loops in the Action section below."
+    rationale: "The stock /etc/inetd.conf file shipped with HP-UX contains services that are rarely used or have more secure alternatives. Removing these from inetd will avoid exposure to possible security vulnerability in those services."
+    remediation: 'Perform the following to disable standard inetd-based services: 1. Change to the /etc directory 2. Open inetd.conf 3. Disable the following services by adding a comment character (#) to the beginning of its definition: a. echo b. discard c. daytime d. chargen e. dtspc f. exec g. ntalk h. finger i. uucp j. ident k. auth l. instl_boots m. registrar n. recserv o. rpc.rstatd p. rpc.rusersd q. rpc.rwalld r. rpc.sprayd s. rpc.cmsd t. kcms_server u. printer v. shell w. login h. finger x. telnet y. ftp z. tftp aa. bootps bb. kshell cc. klogin dd. rpc.rquotad ee. rpc.ttdbserver 4. Save inetd.conf. 5. Set root as the owner of inetd.conf. 6. Set sys as the group owner of inetd.conf. 7. Restrict write access to inetd.conf to the file owner. 8. Remove the executable and sticky bit from inetd.conf. 9. Invoke inetd to reread it''s config file: inetd -c The following script will perform the above procedure: cd /etc for svc in echo discard daytime chargen dtspc \ exec ntalk finger uucp ident auth \ instl_boots registrar recserv; do awk "(\$1 == \"$svc\") { \$1 = \"#\" \$1 }; {print}" \ inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf done for svc in rpc.rstatd rpc.rusersd rpc.rwalld \ rpc.sprayd rpc.cmsd kcms_server; do awk "/\\/$svc/ { \$1 = \"#\" \$1 }; { print }" \ inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf done for svc in printer shell login telnet ftp tftp \ bootps kshell klogin; do awk "(\$1 == \"$svc\") { \$1 = \"#\" \$1 }; {print}" \ inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf done for svc in rpc.rquotad rpc.ttdbserver; do awk "/^$svc\\// { \$1 = \"#\" \$1 }; { print }" \ /etc/inetd.conf > /etc/inetd.conf.new cp inetd.conf.new inetd.conf done chown root:sys inetd.conf chmod go-w,a-xs inetd.conf rm -f /etc/inetd.conf.new inetd -c'
+    compliance:
+      - cis: ["1.2.1"]
+      - cis_level: ["1"]
+    references:
+      - http://docs.hp.com/en/B2355-60130/inetd.conf.4.html
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.inetd_general="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_builtin="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_finger="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ident="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ntalk="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_recserv="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_time="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_uucp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_dttools="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_printer="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_telnet="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ftp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rtools="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_tftp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_printer="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ktools="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_bootp="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rquotad="Y"'
+      - 'not c:sh -c "ls -la /etc/inetd.conf | grep -v -e ^-rw-r--r--.*root.*sys | grep -v -e ^d | grep -v total" -> r:^\w'
+
+  - id: 30004
+    title: "Only enable telnet if absolutely necessary."
+    description: "Re-enable telnet. Telnet uses an unencrypted network protocol, which means data from the login session (such as passwords and all other data transmitted during the session) can be stolen by eavesdroppers on the network, and also that the session can be hijacked by outsiders to gain access to the remote system. HP-UX Secure Shell (OpenSSH) provides an encrypted alternative to telnet (and other utilities) and should be used instead."
+    rationale: "There is a mission-critical reason that requires users to access the system via telnet instead of the more secure SSH protocol."
+    remediation: 'Perform the following to re-enable telnet: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the telnet service definition. 3. Add -b /etc/issue to the end of the telnet service definition. This will cause telnet to display the contents of /etc/issue to users attempting to access the system via telnet. 4. Save /etc/inetd.conf. The following script will perform the above procedure: awk ''/^#telnet/ { $1 = "telnet" print $0 " -b /etc/issue"; next} { print } '' inetd.conf > /etc/inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new'
+    compliance:
+      - cis: ["1.2.2"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_telnet="Y"'
+
+  - id: 30005
+    title: "Only enable FTP if absolutely necessary."
+    description: "Re-enable ftp. Like telnet, the FTP protocol is unencrypted, which means passwords and other data transmitted during the session can be captured by sniffing the network, and that the FTP session itself can be hijacked by an external attacker. SSH provides two alternative, encrypted file transfer mechanisms, scp and sftp, which should be used instead of FTP. Even if FTP is required because the local system is an anonymous FTP server, consider requiring authenticated users on the system to transfer files via SSH-based protocols. For further information on restricting FTP access to the system, see item 1.6.2 below. Sites may also consider augmenting the 'ftpd -l' below with '-v' (10.x and 11.x) or '-L' (11.x only) for additional logging of FTP transactions, or with '-a' (11.x only) for fine grain FTP access control through the use of a configuration file - see the ftpd(1M) man page on your systems for details."
+    rationale: "This machine serves as an (anonymous) FTP server or other mission-critical role where data must be transferred via FTP instead of the more secure alternatives."
+    remediation: 'Perform the following to re-enable FTP: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the ftp service definition. 3. Save /etc/inetd.conf. The following script will perform the above procedure: awk '' /^#ftp/ { $1 = "ftp"; print $0; next} { print } '' inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new'
+    compliance:
+      - cis: ["1.2.3"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ftp="Y"'
+
+  - id: 30006
+    title: "Only enable rlogin/remsh/rcp if absolutely necessary."
+    description: "Re-enable rlogin/remsh/rcp. SSH was designed to be a drop-in replacement for these protocols. Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH (again, see item 1.2.1 - Install SSH)."
+    rationale: "There is a mission-critical reason to use rlogin/remsh/rcp instead of the more secure ssh/scp."
+    remediation: "Perform the following to re-enable rlogin/remsh/rcp: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the shell and login service definitions. 3. Save /etc/inetd.conf. The following script will perform the above procedure: sed 's/^#shell/shell/; s/^#login/login/' \ inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new"
+    compliance:
+      - cis: ["1.2.4"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rtools="Y"'
+
+  - id: 30007
+    title: "Only enable TFTP if absolutely necessary."
+    description: "Re-enable TFTP. TFTP is typically used for network booting of diskless workstations, X-terminals, and other similar devices. TFTP is also used during network installs of systems via the HP-UX Ignite facility. Routers and other network devices may copy configuration data to remote systems via TFTP for backup."
+    rationale: "This system serves as a boot server or has other mission-critical roles where data must be transferred to and from this system via TFTP."
+    remediation: "Perform the following to re-enable TFTP: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the tftp service definition. 3. Save /etc/inetd.conf. The following script will perform the above procedure: sed 's/^#tftp/tftp/' inetd.conf >inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new mkdir -p /var/opt/ignite"
+    compliance:
+      - cis: ["1.2.5"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_tftp="Y"'
+
+  - id: 30008
+    title: "Only enable printer service if absolutely necessary."
+    description: "Re-enable rlpdaemon based printer service. rlpdaemon provides a BSD-compatible print server interface. Even machines that are print servers may wish to leave this service disabled if they do not need to support BSD-style printing."
+    rationale: "This machine a print server for your network."
+    remediation: "Perform the following to re-enable the rlpdaemon based printer service: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the printer definition. 3. Save /etc/inetd.conf. The following script will perform the above procedure:  sed 's/^#printer/printer/' inetd.conf >inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new"
+    compliance:
+      - cis: ["1.2.6"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_printer="Y"'
+
+  - id: 30009
+    title: "Only enable rquotad if absolutely necessary."
+    description: "Re-enable rquotad. rquotad allows NFS clients to enforce disk quotas on file systems that are mounted from the local system. If your site does not use disk quotas, then you may leave the rquotad service disabled."
+    rationale: "This system an NFS file server that requires the use of disk quotas."
+    remediation: 'Perform the following to re-enable rquotad: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the rquotad definition. 3. Save /etc/inetd.conf. The following script will perform the above procedure: awk '' $6 ~ /\/rpc.rquotad$/ { sub(/^#/, "") } { print } '' inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new'
+    compliance:
+      - cis: ["1.2.7"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_rquotad="Y"'
+
+  - id: 30010
+    title: "Only enable CDE-related daemons if absolutely necessary."
+    description: "Re-enable CDE-related daemons. The rpc.ttdbserver service supports HP's CDE windowing environment. This service has a history of security problems. Not only is it vital to keep up to date on vendor patches, but also never enable this service on any system which is not well protected by a complete network security infrastructure (including network and host-based firewalls, packet filters, and intrusion detection infrastructure). Note that since this service uses ONC RPC mechanisms, it is important that the system's RPC portmapper (rpcbind) also be enabled when this service is turned on."
+    rationale: "There a mission-critical reason to run a CDE GUI on this system."
+    remediation: 'Perform the following to re-enable CDE-related daemons: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the rpc.ttdbserver 3. Save /etc/inetd.conf. The following script will perform the above procedure: awk '' $6 ~ /\/rpc.ttdbserver$/ { sub(/^#/, "") } { print } '' inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new'
+    compliance:
+      - cis: ["1.2.8"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_dttools="Y"'
+
+  - id: 30011
+    title: "Only enable Kerberos-related daemons if absolutely necessary."
+    description: "Re-enable Kerberos-related daemons. Kerberized rlogin/remsh offers a higher degree of security than traditional rlogin, remsh, or telnet by eliminating many clear-text password exchanges from the network. However it is still not as secure as SSH, which encrypts all traffic. Given the wide availability of free SSH implementations, there are few cases where these tools cannot be replaced with SSH."
+    rationale: "The Kerberos security system is in use at this site and there is a mission-critical reason that requires users to access this system via Kerberized rlogin/remsh, rather than the more secure SSH protocol."
+    remediation: "Perform the following to re-enable Kerberos-related daemons: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the klogin definition. 3. Save /etc/inetd.conf. The following script will perform the above procedure: sed 's/^#kshell/kshell/; s/^#klogin/klogin/' \ inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf.new"
+    compliance:
+      - cis: ["1.2.9"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_ktools="Y"'
+
+  - id: 30012
+    title: "Only enable BOOTP/DHCP daemon if absolutely necessary."
+    description: "Re-enable BOOTP/DHCP services. BOOTP/DHCP is a popular protocol for dynamically assigning IP addresses and other network information to systems on the network (rather than having administrators manually manage this information on each host). However, if this system is not a BOOTP/DHCP server for the network, there is no need to be running this service."
+    rationale: "This server a BOOTP/DHCP server for the network."
+    remediation: "Perform the following to re-enable BOOTP/DHCP services: 1. Open /etc/inetd.conf. 2. Delete the comment character (#) from the bootps definition. 3. Save /etc/inetd.conf. The following script will perform the above procedure: sed 's/^#bootps/bootps/' \ inetd.conf > inetd.conf.new cp inetd.conf.new inetd.conf rm -f /etc/inetd.conf"
+    compliance:
+      - cis: ["1.2.10"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.deactivate_bootp="Y"'
+
+  #################################################################
+  # 1.3 Minimize boot services
+  #################################################################
+
+  - id: 30013
+    title: "Disable login: prompts on serial ports."
+    description: "Disable the login: prompt on the system serial devices to make it more difficult for unauthorized users to attach modems, terminals, and other remote access devices to these ports."
+    rationale: "If there is not a mission-critical need to provide login capability from any serial ports (such as for a modem) then disabling the login: prompt on the system serial devices reduces the risk of unauthorized access via these ports."
+    remediation: "Perform the following to disable the login: prompt on the system serial devices: 1. Open /etc/inittab. 2. Disable each getty instance associated with a tty device by adding a comment character (#) to the beginning of the line. 3. Save /etc/inittab.* The following script will perform the above procedure: cp -p /etc/inittab /etc/inittab.tmp sed 's/^[^#].*getty.*tty.*$/#&/' \ /etc/inittab.tmp  > /etc/inittab rm -f /etc/inittab.tmp - Note that this action may safely be performed even if console access to the system is provided via the serial ports, as the line in the /etc/inittab file that corresponds to the console does not match the supplied pattern (i.e., it doesn't contain the string 'tty'). - Note that when serial port connectivity is needed, /etc/dialups and /etc/d_passwd can be set to require an extra password for serial port access. See the dialups(4) manual page for more information. - Note that by default in HP-UX 11i, only the console has a getty instance running on it."
+    compliance:
+      - cis: ["1.3.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.serial_port_login="Y"'
+
+  - id: 30014
+    title: "Disable NIS/NIS+ related processes, if possible."
+    description: "Disable NIS/NIS+ related processes. Network Information Service (NIS) is a distributed database providing centralized control of names, addresses, services, and key configuration files throughout a network of servers and clients. NIS was formerly known as Yellow Pages (YP). NIS+ is a replacement for NIS services, and is more scalable, flexible, and secure. It adds a security system with authentication and authorization services to validate users on the network and to determine if they allowed to access or modify the information requested. However, both systems have known security vulnerabilities, and have been an entry point for security attacks."
+    rationale: "Eliminate exposure to NIS/NIS+ vulnerabilities by not running related daemons on hosts that are not NIS/NIS+ servers or clients."
+    remediation: "Perform the following to disable the startup of NIS/NIS+ related processes: ch_rc -a -p NIS_MASTER_SERVER=0 -p NIS_SLAVE_SERVER=0 \ -p NIS_CLIENT=0 -p NISPLUS_SERVER=0 \ -p NISPLUS_CLIENT=0 /etc/rc.config.d/namesvrs"
+    compliance:
+      - cis: ["1.3.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_client="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nisplus_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nisplus_client="Y"'
+
+  - id: 30015
+    title: "Disable printer daemons, if possible."
+    description: "Disable printer daemons. The Technical Print Service (TPS) is a printer service used in the X-Windows and/or CDE environment. It is recommended that this service be disabled if the hosting system does not participate in print services The administrator may wish to consider converting to the LPRng print system (see http://www.lprng.org/) which was designed with security in mind and is widely portable across many different Unix platforms. Note, however, that LPRng is not supported by Hewlett-Packard."
+    rationale: "Disabling unused services, such as TPS, will reduce the remote and local attack surfaces of the hosting system."
+    remediation: 'Perform the following to disable printer daemons: 1. Set the LP parameter to zero in the lp system configuration file /etc/rc.config.d/lp 2. Set the XPRINTSERVERS parameter to an empty string in the tps system configuration file /etc/rc.config.d/tps The following script will perform the above procedure:  ch_rc -a -p XPRINTSERVERS="''''" /etc/rc.config.d/tps ch_rc -a -p LP=0 /etc/rc.config.d/lp'
+    compliance:
+      - cis: ["1.3.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Printing.xprintserver="Y"'
+
+  - id: 30016
+    title: "Disable the CDE GUI login, if possible."
+    description: "CDE stands for 'Common Desktop Environment,' and is an environment for logging on to and interacting with your system via an X-windows type GUI interface from the console. Intended for use with workstation or desktop systems, this service is not commonly used with the server-class systems or in large enterprise environments. The X Windows-based CDE GUI services were developed with a different set of security expecations from those expected in many enterprise deployments, and have had a history of security issues. Unless there is a mission-critical need for a CDE GUI login to the system, this service should not be run to further reduce opportunities for security attacks."
+    rationale: "The X Windows-based CDE GUI on HP-UX systems has had a history of security issues, and should be disabled if unused."
+    remediation: 'Perform the following to disable the GUI login: ch_rc -a -p DESKTOP="" /etc/rc.config.d/desktop'
+    compliance:
+      - cis: ["1.3.4"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.gui_login="Y"'
+
+  - id: 30017
+    title: "Disable email server, if possible."
+    description: "Disable the sendmail daemon to avoid processing incoming email. It is possible to run a Unix system with the Sendmail daemon disabled and still allow users on that system to send email out from that machine. Running Sendmail in 'daemon mode' (with the -bd command-line option) is only required on machines that act as mail servers, receiving and processing email from other hosts on the network. The remediation below will result in a machine that can send email but not receive it. - Note that after disabling the -bd option on the local mail server on systems running Sendmail v8.12 or later (8.13 is currently shipped as part of HP-UX 11iv3), it is also necessary to modify the /etc/mail/submit.cf file. Find the line that reads 'D{MTAHost}localhost' and change localhost to the name of some other local mail server for the organization. This will cause email generated on the local system to be relayed to that mail server for further processing and delivery. - Note that if the system is an email server, the administrator is encouraged to search the Web for additional documentation on Sendmail security issues."
+    rationale: "Avoid potential vulnerabilities in the sendmail server if incoming email service is not used."
+    remediation: "Perform the following to disable the sendmail server: 1. Set the SENDMAIL_SERVER parameter to zero in the mailservs system configuration file. 2. Setup a cron job to run sendmail at regular intervals (e.g. every hour) in order to process queued, outgoing mail. The following script will perform the above procedure: ch_rc -a -p SENDMAIL_SERVER=0 /etc/rc.config.d/mailservs cd /var/spool/cron/crontabs crontab -l >root.tmp echo '0 * * * * /usr/lib/sendmail -q' >>root.tmp crontab root.tmp rm -f root.tmp"
+    compliance:
+      - cis: ["1.3.5"]
+      - cis_level: ["1"]
+    references:
+      - http://www.deer-run.com/~hal/dns-sendmail/DNSandSendmail.pdf
+      - http://www.sendmail.org/
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmaildaemon="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Sendmail.sendmailcron="Y"'
+
+  - id: 30018
+    title: "Disable SNMP and OpenView Agents, if remote management or monitoring are not needed."
+    description: "Disable SNMP and OpenView agents if they are not needed. Note: If SNMP is used, it is recommended to change the default SNMP community string by modifying the get-community and set-community parameters in the SNMP configuration file /etc/SnmpAgent.d/snmpd.conf."
+    rationale: "If SNMP and OpenView agents are not needed, avoid potential security vulnerabilities in these programs by disabling them."
+    remediation: "Perform the following to disable the SNMP and OpenView Agents: cd /sbin/rc2.d mv -f S570SnmpFddi .NOS570SnmpFddi ch_rc -a -p SNMP_HPUNIX_START=0 \ /etc/rc.config.d/SnmpHpunix ch_rc -a -p SNMP_MASTER_START=0 \ /etc/rc.config.d/SnmpMaster ch_rc -a -p SNMP_MIB2_START=0 \ /etc/rc.config.d/SnmpMib2 ch_rc -a -p SNMP_TRAPDEST_START=0 \ /etc/rc.config.d/SnmpTrpDst ch_rc -a -p OSPFMIB=0 \ /etc/rc.config.d/netdaemons ch_rc -a -p OPCAGT=0 \ /etc/rc.config.d/opcagt"
+    compliance:
+      - cis: ["1.3.6"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.snmpd="Y"'
+
+  - id: 30019
+    title: "Disable rarely used standard boot services."
+    description: 'Disable other standard boot services. Setting these variables in the /etc/rc.config.d configuration files will effectively disable a wide variety of infrequently used subsystems. Variables are merely set (rather than renaming or removing startup scripts) so that the local administrator can easily "restore" any of these services if they discover a mission-critical need to have it. Additionally, HP-UX patches tend to supply fresh copies of the startup scripts, so they may get inadvertently re- enabled, whereas setting configuration variables usually survives patch installs. Finally, setting configuration variables is the method recommended and supported by HP. Note that not all of the configuration files listed above will exist on all systems (some are only valid for certain releases, others only exist if certain OEM vendor software is installed). The rest of the actions in this section give the administrator the option of re-enabling certain services - in particular, the services that are disabled in the second block of the remediation section below. Rather than disabling and then re-enabling these services, experienced administrators may wish to simply disable only those services that they know are unnecessary for their systems. Note: that HP-UX 11.31 was the first version to support disablement of the NFS core services. Disablement on earlier versions is possible by moving /sbin/rc2.d/S400nfs.core to /sbin/rc2.d/.NOS400nfs.core, but there is some risk of system instability.'
+    rationale: "Avoid potential security vulnerabilities in infrequently used subsystems by disabling them."
+    remediation: 'Perform the following: ch_rc -a -p START_SNAPLUS=0 -p START_SNANODE=0 \ -p START_SNAINETD=0 /etc/rc.config.d/snaplus2 ch_rc -a -p MROUTED=0 -p RWHOD=0 \-p DDFA=0 \ -p START_RBOOTD=0 /etc/rc.config.d/netdaemons ch_rc -a -p RARPD=0 -p RDPD=0 /etc/rc.config.d/netconf ch_rc -a -p PTYDAEMON_START=0 /etc/rc.config.d/ptydaemon ch_rc -a -p VTDAEMON_START=0 /etc/rc.config.d/vt ch_rc -a -p NAMED=0 /etc/rc.config.d/namesvrs ch_rc -a -p START_I4LMD=0 /etc/rc.config.d/i4lmd ch_rc -a -p RUN_X_FONT_SERVER=0 /etc/rc.config.d/xfs ch_rc -a -p AUDIO_SERVER=0 /etc/rc.config.d/audio ch_rc -a -p SLSD_DAEMON=0 /etc/rc.config.d/slsd ch_rc -a -p RUN_SAMBA=0 /etc/rc.config.d/samba ch_rc -a -p RUN_CIFSCLIENT=0 \ /etc/rc.config.d/cifsclient ch_rc -a -p NFS_SERVER=0 \ -p NFS_CLIENT=0 /etc/rc.config.d/nfsconf ch_rc -a -p HPWS_APACHE_START=0 /etc/rc.config.d/hpws_apacheconf ch_rc -a -p NFS_CORE=0 /etc/rc.config.d/nfsconf'
+    compliance:
+      - cis: ["1.3.7"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_rbootd="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_client="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_ptydaemon="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Apache.deactivate_hpws_apache="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.snmpd="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.license_server="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_core="Y"'
+
+  - id: 30020
+    title: "Only enable Windows-compatibility server processes if absolutely necessary."
+    description: "Re-enable CIFS Server (Samba) services. HP-UX 11i includes the popular Open Source Samba server (HP-UX CIFS Server) for providing file and print services to Windows-based systems. This allows an HP-UX system to act as a file or print server on a Windows network, and even act as a Domain Controller (authentication server) to older Windows operating systems. However, if this functionality is not required by the site, this service should be disabled."
+    rationale: "This machine provides authentication, file sharing, or printer sharing services to systems running Microsoft Windows operating systems."
+    remediation: "Perform the following to re-enable CIFS Server: ch_rc -a -p RUN_SAMBA=1 /etc/rc.config.d/samba"
+    compliance:
+      - cis: ["1.3.8"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_smbclient="Y"'
+
+  - id: 30021
+    title: "Only enable Windows-compatibility client processes if absolutely necessary."
+    description: "Re-enable the HP CIFS Client service."
+    rationale: "This system requires access to file systems from remote servers via the Windows (SMB) file services."
+    remediation: "Perform the following: ch_rc -a -p RUN_CIFSCLIENT=1 /etc/rc.config.d/cifsclient"
+    compliance:
+      - cis: ["1.3.9"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_smbsever="Y"'
+
+  - id: 30022
+    title: "Only enable NFS server processes if absolutely necessary."
+    description: 'Re-enable the NFS file service. NFS is frequently exploited to gain unauthorized access to files and systems. Clearly there is no need to run the NFS server-related daemons on hosts that are not NFS servers. If the system is an NFS server, the admin should take reasonable precautions when exporting file systems, including restricting NFS access to a specific range of local IP addresses and exporting file systems "read-only" and "nosuid" where appropriate. For more information consult the exportfs(1M) manual page. Much higher levels of security can be achieved by combining NFS with secure RPC or Kerberos, although there is significant administrative overhead involved in this transition. Note that since this service uses ONC RPC mechanisms, it is important that the system''s RPC portmapper (rpcbind) also be enabled when this service is turned on. For more information see Item 1.3.12 below. Also, note that some releases of Oracle software for HP-UX require NFS services in order to install properly. Therefore, the NFS server process may need to be started by hand on systems on which Oracle software is to be installed/updated. This can be accomplished by performing the following: 1. Temporarily set NFS_SERVER=1, /etc/rc.config.d/nfsconf 2. Execute:  /sbin/init.d/nfs.core start /sbin/init.d/nfs.server start 3. Install Oracle 4. Stop the NFS services:  /sbin/init.d/nfs.core stop /sbin/init.d/nfs.server stop 5. Disable the NFS services by resetting NFS_SERVER=0, NUM_NFSD=0, and NUM_NFSIOD=0 in /etc/rc.config.d/nfsconf.'
+    rationale: "This machine is a NFS file server."
+    remediation: "Perform the following: ch_rc -a -p NFS_SERVER=1 /etc/rc.config.d/nfsconf"
+    compliance:
+      - cis: ["1.3.10"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_server="Y"'
+
+  - id: 30023
+    title: "Only enable NFS client processes if absolutely necessary."
+    description: "Re-enable the NFS Client service. Again, unless there is a significant need for this system to acquire data via NFS, administrators should disable NFS-related services. Note that other file transfer schemes (such as rdist via SSH) can often be more secure than NFS for certain applications, although again the use of secure RPC or Kerberos can significantly improve NFS security. Also note that if the machine will be an NFS client, then the rpcbind process must be running (see Item 3.12 below). - Note that since this service uses ONC RPC mechanisms, it is important that the system's RPC portmapper (rpcbind) also be enabled when this service is turned on. For more information see Item 3.12 below."
+    rationale: "This system must access file systems from remote servers via NFS."
+    remediation: "Perform the following: ch_rc -a -p NFS_CLIENT=1 /etc/rc.config.d/nfsconf"
+    compliance:
+      - cis: ["1.3.11"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_client="Y"'
+
+  - id: 30024
+    title: "Only enable RPC-based services if absolutely necessary."
+    description: "Re-enable RPC-based services. RPC-based services typically use very weak or non-existent authentication and yet may share very sensitive information. Unless one of the services listed above is required on this machine, it is best to disable RPC-based tools completely. If you are unsure whether or not a particular third-party application requires RPC services, consult with the application vendor. Note that disabling this service by renaming the startup file may not survive the install of RPC-related patches."
+    rationale: "RPC-based services are used such as: - This machine is an NFS client or server. - This machine is an NIS (YP) or NIS+ client or server. - This machine runs a GUI or GUI-based administration tool. - The machine runs a third-party software application which is dependent on RPC support (example: FlexLM License managers)."
+    remediation: "Perform the following for 11.31 and later: ch_rc -a -p NFS_CORE=1 /etc/rc.config.d/nfsconf For 11.23 and prior:  mv -f /sbin/rc2.d/.NOS400nfs.core \ /sbin/rc2.d/400nfs.core"
+    compliance:
+      - cis: ["1.3.12"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nfs_core="Y"'
+
+  - id: 30025
+    title: "Only enable Web server if absolutely necessary."
+    description: "Re-enable the Web server suite. Even if this machine is a Web server, the local site may choose not to use the Web server provided with HP-UX in favor of a locally developed and supported Web environment. If the machine is a Web server, the administrator is encouraged to search the Web for additional documentation on Web server security. A good starting point is http://httpd.apache.org/docs-2.0/misc/security_tips.html. Note that this action only disables the default web server shipped with the system. Other webservers instances may still be running."
+    rationale: "There is a mission-critical reason why this system must run a Web server."
+    remediation: "Perform the following: ch_rc -a -p NS_FTRACK=1 /etc/rc.config.d/ns-ftrack ch_rc -a -p APACHE_START=1 /etc/rc.config.d/apacheconf ch_rc -a -p HPWS_APACHE32_START=1 /etc/rc.config.d/hpws_apache32conf ch_rc -a -p HPWS_TOMCAT_START=1 /etc/rc.config.d/hpws_tomcatconf ch_rc -a -p NS_FTRACK=1 /etc/rc.config.d/ns-ftrack ch_rc -a -p HPWS_WEBMIN_START=1 /etc/rc.config.d/hpws_webminconf"
+    compliance:
+      - cis: ["1.3.13"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:Apache.deactivate_hpws_apache="Y"'
+
+  - id: 30026
+    title: "Only enable BIND DNS server if absolutely necessary."
+    description: "Re-enable the BIND DNS service. The BIND DNS server, or named, maps IP addresses to hostnames across the Internet and supplies these services to other hosts on the local local network. Though it has been widely implemented, BIND has a long history of security flaws, especially in the BIND 8.x release tree generally shipped with HP-UX 11.x systems. Therefore, if you are going to run BIND, you should strongly consider moving to the BIND 9.x release-tree. HP has supported BIND 9 packages available from http://software.hp.com/portal/swdepot/displayProductInfo.do?productNumber=BIND9.2 . Or it is available directly from the Internet Software Consortium (the developers of BIND), whose website is at http://www.isc.org."
+    rationale: "There exists a mission-critical reason why this system must run a DNS server."
+    remediation: "Perform the following: 11.23 and prior: ch_rc -a -p NAMED=1 /etc/rc.config.d/namesvrs 11.31 and later: ch_rc -a -p NAMED=1 /etc/rc.config.d/namesvrs_dns"
+    compliance:
+      - cis: ["1.3.14"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.disable_bind="Y"'
+
+  #################################################################
+  # 1.4 Kernel Tuning
+  #################################################################
+
+  - id: 30027
+    title: "Enable stack protection."
+    description: "Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement. - Note that HP-UX 11i is much more capable in this and other security areas than older releases; therefore, administrators should strongly consider upgrading from older releases. - Note that this action requires a subsequent reboot to take effect in some versions of HP-UX."
+    rationale: "Buffer overflow exploits have been the basis for many of the recent highly publicized compromises and defacements of large numbers of Internet connected systems. Many of the automated tools in use by system crackers exploit well-known buffer overflow problems in vendor-supplied and third-party software. Enabling stack protection prevents certain classes of buffer overflow attacks and is a significant security enhancement."
+    remediation: "For 11i v2 and later: kctune -K executable_stack=0 For 11i v1: /usr/sbin/kmtune -s executable_stack=0 && mk_kernel && kmupdate"
+    compliance:
+      - cis: ["1.4.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.stack_execute="Y"'
+
+  - id: 30028
+    title: "Network parameter modifications."
+    description: "Modify the network parameter boot configuration file to meet current best practices. Note: HP-UX 11.11 systems require patch PHNE_25644 for ndd to set arp_cleanup_interval from /etc/rc.config.d/nddconf. - Bastille Note: Bastille performs a similar action but does not support the exact same changes."
+    rationale: "Network parameter default values should align with current best practices unless there is a specific need to use other values."
+    remediation: "Perform the following to update the default network parameter values: 1. Change to the /etc/rc.config.d directory 2. Open nddconf and review the comment lines on how to use the configuration file 3. Set each of the following network parameters to the recommended value. If a parameter does not have an entry in nddconf then add a new entry to the end of the file while properly incrementing the parameter index. 4. Save nddconf. - If creating this file for the first time: 1. Set root as the owner of nddconf. 2. Set sys as the group owner of nddconf. 3. Restrict write access to nddconf to the file owner. 4. Remove the executable and sticky bit from nddconf. If the existing nddconf file contains no entries, then the following script will perform the above procedure: cd /etc/rc.config.d cat <<EOF > nddconf # Increase size of half-open connection queue TRANSPORT_NAME[0]=tcp NDD_NAME[0]=tcp_syn_rcvd_max NDD_VALUE[0]=4096 # Reduce timeouts on ARP cache TRANSPORT_NAME[1]=arp NDD_NAME[1]=arp_cleanup_interval NDD_VALUE[1]=60000 # Drop source-routed packets TRANSPORT_NAME[2]=ip NDD_NAME[2]=ip_forward_src_routed NDD_VALUE[2]=0 # Don't forward directed broadcasts TRANSPORT_NAME[3]=ip NDD_NAME[3]=ip_forward_directed_broadcasts NDD_VALUE[3]=0 # Don't respond to unicast ICMP timestamp requests TRANSPORT_NAME[4]=ip NDD_NAME[4]=ip_respond_to_timestamp NDD_VALUE[4]=0 # Don't respond to broadcast ICMP tstamp reqs TRANSPORT_NAME[5]=ip NDD_NAME[5]=ip_respond_to_timestamp_broadcast NDD_VALUE[5]=0 # Don't respond to ICMP address mask requests TRANSPORT_NAME[6]=ip NDD_NAME[6]=ip_respond_to_address_mask_broadcast NDD_VALUE[6]=0 # Don‟t respond to broadcast echo requests TRANSPORT_NAME[7]=ip NDD_NAME[7]=ip_respond_to_echo_broadcast NDD_VALUE[7]=0 EOF chown root:sys nddconf chmod go-w,ug-s nddconf"
+    compliance:
+      - cis: ["1.4.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.ndd="Y"'
+
+  - id: 30029
+    title: "Use more random TCP sequence numbers."
+    description: "Generate initial TCP sequence numbers that comply with RFC1948. - Note: In HP-UX 11i v1 and later, an algorithm largely compliant with RFC1948 is already used. However, setting the isn passphrase closes the small remaining gap, and adds entropy to the seed."
+    rationale: "Makes remote off-net session hijacking attacks more difficult."
+    remediation: "Perform the following to use more random TCP sequence numbers upon system startup: 1. Create/open the file /sbin/rc2.d/S999tcpisn 2. Add the following line: ndd -set /dev/tcp tcp_isn_passprase=<random string> replacing <random string> with a string of random characters. 3. Save the file. 4. Set root as the owner and bin as the group owner of the file. 5. Restrict write access to the file. 6. Set the execution bit for the file."
+    compliance:
+      - cis: ["1.4.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.tcp_isn="Y"'
+
+  - id: 30030
+    title: "Additional network parameter modifications."
+    description: "Configure networking to NOT forward TCP/IP packets between multiple networks, even if the machine has multiple network adapters connected to multiple networks."
+    rationale: "System is not going to be used as a firewall or gateway to pass network traffic between different networks."
+    remediation: "Perform the following to disable forwarding TCP/IP packets between networks: 1. Change to the /etc/rc.config.d directory 2. Open nddconf and review the comment lines on how to use the configuration file 3. Set each of the following network parameters to the recommended value. If a parameter does not have an entry in nddconf then add a new entry to the end of the file while properly incrementing the parameter index. 4. Save nddconf. If creating this file for the first time: 5. Set root as the owner of nddconf. 6. Set sys as the group owner of nddconf. 7. Restrict write access to nddconf to the file owner. 8. Remove the executable and sticky bit from nddconf. The following script will perform the above procedure properly if used as a follow-on from the script in item 1.4.2: cat <<EOF >> /etc/rc.config.d/nddconf # Don‟t act as a router TRANSPORT_NAME[8]=ip NDD_NAME[8]=ip_forwarding NDD_VALUE[8]=0 TRANSPORT_NAME[9]=ip NDD_NAME[9]=ip_send_redirects NDD_VALUE[9]=0 EOF"
+    compliance:
+      - cis: ["1.4.4"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.ndd="Y"'
+
+  #################################################################
+  # 1.5 File/Directory Permissions/Access
+  #################################################################
+
+  - id: 30131
+    title: "Resolve 'unowned' files and directories."
+    description: "Evaluate ownership of any files that are not owned by a locally defined user, and consider reassignment to an active user."
+    rationale: "Sometimes when administrators delete users from the system they neglect to remove all files owned by those users from the system. A new user who is assigned the deleted user's user ID or group ID may then end up 'owning' these files, and thus have more access on the system than was intended. It is a good idea to locate files that are owned by users or groups not listed in the system configuration files, and make sure to reset the ownership of these files to some active user on the system (in this example, 'bin') as appropriate."
+    remediation: 'Perform the following to identify "unowned" files and directories, and consider resetting ownership to a default owner and restricting access permissions: 1. Locate all local files that are owned by users or groups not listed in the system configuration files. find / \( -nouser -o -nogroup \) 2. Consider resetting user and group ownership of these files to a default active user (e.g. bin) chown bin:bin <filename> 3. Consider restricting world-write permissions, and removing any SUID/SGID bits on these files. chmod ug-s,o-w <filename> - Note: there is no reason for an application to require an unowned file, so these changes should be application-safe.'
+    compliance:
+      - cis: ["1.5.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.unowned_files"Y"'
+
+  #################################################################
+  # 1.6 System Access, Authentication, and Authorization
+  #################################################################
+
+  - id: 30032
+    title: "Enable Hidden Passwords."
+    description: "Enable hidden passwords by converting the system to a Trusted System or to use Shadow Passwords. - Note: do not perform this if the system runs applications that read the encrypted password entries in /etc/passwd directly."
+    rationale: "Without hidden passwords, an intruder could use any user's account to obtain hashed passwords and use crack or similar utilities to find easily guessed passwords. Password aging (covered in item 1.8.3) ensures that users change their passwords on a regular basis and helps stop the use of stolen passwords."
+    remediation: "Perform one of the following to convert the system to trusted mode or shadowed mode: A. Use the system management program smh or sam to convert to a trusted system -or- B. Use the command pwconv to convert to shadowed passwords."
+    compliance:
+      - cis: ["1.6.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.hidepasswords="Y"'
+
+  - id: 30033
+    title: "Restrict users who can access to FTP."
+    description: "Configure FTP to prevent certain users from accessing the system via FTP. The file ftpusers contains a list of users who are not allowed to access the system via FTP. Generally, only normal users should ever access the system via FTP - there should be no reason for 'system' type accounts to be transferring information via this mechanism. Certainly, the root account should never be allowed to transfer files directly via FTP. - Note: more fine-grained FTP access controls can be placed in /etc/ftpd/ftpaccess."
+    rationale: "Privileged users such as root and other 'system' type accounts should never be transferring information via such an insecure service as FTP."
+    remediation: "Perform the following to restrict default priviledged users from access to FTP: 1. Add the users root daemon bin sys adm lp uucp nuucp nobody hpdb useradm to the file /etc/ftpd/ftpusers (each user on a single line). 2. Set the file owner and group owner to the user bin. 3. Set the file permissions so that only the file owner has read or write perms and no user has execute permission (600). The following script will create and populate the ftpusers file as described above: for name in root daemon bin sys adm lp \ uucp nuucp nobody hpdb useradm do echo $name done >> $ftpusers sort -u $ftpusers > $ftpusers.tmp cp $ftpusers.tmp $ftpusers rm -f $ftpusers.tmp chown bin:bin $ftpusers chmod 600 $ftpusers"
+    compliance:
+      - cis: ["1.6.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:FTP.ftpusers="Y"'
+
+  - id: 30034
+    title: "Prevent Syslog from accepting messages from the network."
+    description: "Prevent syslogd from accepting messages from the network. By default the system logging daemon, syslogd, listens for log messages from other systems on network port 514/udp. Unfortunately, the protocol used to transfer these messages does not include any form of authentication, so a malicious outsider could simply barrage the local system's Syslog port with spurious traffic—either as a denial-of-service attack on the system, or to fill up the local system's logging file systems so that subsequent attacks will not be logged. - Note: Do not perform this action if this machine is a log server, or needs to receive Syslog messages via the network from other systems. - Note: It is considered good practice to setup one or more machines as central 'log servers' to aggregate log traffic from all machines at a site. However, unless a system is set up to be one of these 'log server' systems, it should not be listening on 514/udp for incoming log messages."
+    rationale: "Disabling unused network services will reduce the remote attack surfaces of the hosting system."
+    remediation: 'Disable the syslog network option by doing the following: 1. Open the syslogd startup configuration file /etc/rc.config.d/syslogd 2. Add the parameter "-N" to the SYSLOGD_OPTS= line if it is not already present 3. Save and close the file. The following script will perform the procedure above: SYSLOGD_OPTS="`sh -c ". /etc/rc.config.d/syslogd ; \ echo "$SYSLOGD_OPTS"''`" if [[ "$SYSLOGD_OPTS" = *-N* ]]; then ch_rc -a -p SYSLOGD_OPTS="-N $SYSLOGD_OPTS" \ /etc/rc.config.d/syslogd fi'
+    compliance:
+      - cis: ["1.6.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.syslog_localonly="Y"'
+
+  - id: 30035
+    title: "Disable XDMCP port."
+    description: "Disable the XDMCP port for remote login services. The standard GUI login provided on most Unix systems can act as a remote login server to other devices (including X terminals and other workstations). Access control is handled via the Xaccess file—by default under HP-UX, this file allows any system on the network to get a remote login screen from the local system. This behavior can be overridden in the /etc/dt/config/Xaccess file."
+    rationale: "XDMCP is an unencrypted protocol that may reduce the confidentiality and integrity of data that traverses it."
+    remediation: "Perform the following to disable the XDMCP port: 1. Open the file /etc/dt/config/Xconfig. If it does not exist, copy it from /usr/dt/config/Xconfig. 2. Append the line Dtlogin.requestPort:0 to the file and close. The following script will perform the procedure above: if [ ! -f /etc/dt/config/Xconfig ]; then mkdir -p /etc/dt/config cp -p /usr/dt/config/Xconfig /etc/dt/config fi cd /etc/dt/config awk '/Dtlogin.requestPort:/ \ { print \"Dtlogin.requestPort: 0\"; next } { print }' Xconfig > Xconfig.new cp Xconfig.new Xconfig rm -f Xconfig.new"
+    compliance:
+      - cis: ["1.6.4"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.xaccess="Y"'
+
+  - id: 30036
+    title: "Set default locking screensaver timeout."
+    description: "The default timeout is between 10 and 30 minutes of keyboard/mouse inactivity before a password-protected screen saver is invoked by the CDE session manager depending on the OS release and the locale. Uniformly reduce this default timeout value to 10 minutes (this setting can still be overridden by individual users in their own environment.)"
+    rationale: "Setting the inactivity timer to a low value will reduce the probability of a malicious entity compromising the system via the console."
+    remediation: 'Perform the following to set a default screensaver timeout for all environments: 1. For every sys.resources file in each directory in /usr/dt/config/ create a corresponding /etc/dt/config/*/sys.resources file if it does not already exist. 2. Append the following lines to each /etc/dt/config/*/sys.resources dtsession*saverTimeout: 10 dtsession*lockTimeout: 10 The following script will perform the procedure above: for file in /usr/dt/config/*/sys.resources; do dir="$(dirname "$file" | sed ''s|^/usr/|/etc/|'')" mkdir -p "$dir" echo ''dtsession*saverTimeout: 10'' >>"$dir/sys.resources" echo ''dtsession*lockTimeout: 10'' >>"$dir/sys.resources" done'
+    compliance:
+      - cis: ["1.6.5"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.screensaver_timeout="Y"'
+
+  - id: 30037
+    title: "Configure IPFilter to allow only select communication."
+    description: "HP-UX IPFilter (B9901AA) is a stateful system firewall that controls IP packet flow in or out of a machine. It is installed by default on HP-UX 11iv2 (11.23) and later. On older systems, IPFilter can be obtained from http://www.hp.com/go/ipfilter. The rules below will work in an otherwise-empty ipf.conf file, or, if there are rules already present, it will block all that were not passed earlier in the ruleset. This is less likely to break things, but will allow more traffic through. Alternatively, you can instead take the pass lines below (not using the block rule), and change them into 'block in quick' rules, and place those at the top of the file. This will error on the side of blocking traffic. See ipf(5) for detail. Your ruleset can be tested using ipftest(1). Bastille note: if using to change and monitor the IPFilter firewall, ensure that rules are added to /etc/opt/sec_mgmt/bastille/ipf.customrules, and that Bastille is rerun with the last config file, so they will not be overwritten in a subsequent lockdown."
+    rationale: "Restricting incoming network traffic to explicitly allowed hosts will help prevent unauthorized access the system."
+    remediation: "Perform the following to add enable ipfilter and install a default ruleset to block unauthorized incoming connections: 1. Enable ipfilter: ipfilter -e 2. Append the following lines to /etc/opt/ipf/ipf.conf:  block in all pass in from <allowed net>/<mask> pass in from <allowed net>/<mask> replacing each <allowed net>/<mask> with an authorized IP address and mask. 3. Flush the old rules and read in the updated rules: ipf -Fa -f /etc/opt/ipf/ipf.conf The following script can be used to as a template for creating your own script to perform the procedure above: ipfilter -e cat <<EOF >> /etc/opt/ipf/ipf.conf block in all pass in from <allowed net>/<mask> pass in from <allowed net>/<mask> EOF ipf -Fa -f /etc/opt/ipf/ipf.conf"
+    compliance:
+      - cis: ["1.6.6"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:IPFilter.configure_ipfilter="N"'
+
+  - id: 30038
+    title: "Restrict at/cron to authorized users."
+    description: "The cron.allow and at.allow files are a list of users who are allowed to run the crontab and at commands to submit jobs to be run at scheduled intervals. - Note that even though a given user is not listed in cron.allow, cron jobs can still be run as that user. cron.allow only controls administrative access to the crontab command for scheduling and modifying cron jobs."
+    rationale: "On many systems, only the system administrator needs the ability to schedule jobs."
+    remediation: "Perform the following to restrict at/cron to root only: 1. Change to the /var/adm/cron directory 2. Archive or delete any existing cron.deny and at.deny files 3. Create or replace the cron.allow and at.allow files with a single line file containing just root 4. Ensure that the files are owned by root and group owned by sys 5. Ensure that no users have write/execute permission to the files, and that only root has read access to the files. The following script will perform the procedures above: cd /var/adm/cron rm -f cron.deny at.deny echo root >cron.allow echo root >at.allow chown root:sys cron.allow at.allow chmod 400 cron.allow at.allow"
+    compliance:
+      - cis: ["1.6.7"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.cronuser="Y"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.atuser="Y"'
+
+  - id: 30039
+    title: "Restrict crontab file permissions."
+    description: "The system crontab files are only accessed by the cron daemon (which runs with superuser privileges) and the crontab command (which is set-UID to root)."
+    rationale: "Allowing unprivileged users to read or (even worse) modify system crontab files can create the potential for a local user on the system to gain elevated privileges."
+    remediation: "Perform the following so that only root has access to the crontab files: 1. Change to the /var/spool/cron/crontabs directory 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the files. The following script will perform the procedure above: cd /var/spool/cron/crontabs chown root:sys * chmod og-rwx *"
+    compliance:
+      - cis: ["1.6.8"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.crontabs_file="Y"'
+
+  - id: 30040
+    title: "Restrict root logins to system console."
+    description: "Anonymous root logins should never be allowed except on the system console in emergency situations. At all other times, the administrator should access the system via an unprivileged account and use some authorized mechanism to gain additional privilege, such as the su command, the freely-available sudo package discussed in item SN.6, or the HP Role Based Authorization system also discussed in item SN.6. These mechanisms provide at least a limited audit trail in the event of problems."
+    rationale: "Anonymous root logins do not provide an audit trail, nor are subject to additional authorization provisions."
+    remediation: "Perform the following to restrict root logins to the system console only: 1. Replace the file /etc/securetty with a single line file containing console 2. Change the file owner to root and file group owner to sys 3. Set file permissions so that only root has access to the file. The following script will perform the procedure above:  echo console > /etc/securetty chown root:sys /etc/securetty chmod og-rwx /etc/securetty"
+    compliance:
+      - cis: ["1.6.9"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.create_securetty="Y"'
+
+  - id: 30041
+    title: "Disable nobody access for secure RPC."
+    description: 'The keyserv process stores user keys that are utilized with the ONC secure RPC mechanism. The action below prevents keyserv from using default keys for the "nobody" user, effectively stopping this user from accessing information via secure RPC.'
+    rationale: "The default 'nobody' user should not be accessing information via secure RPC."
+    remediation: "Perform the following to disable nobody access for secure RPC: 1. Add the '-d' option to the KEYSERV_OPTIONS parameter in the system startup configuration file /etc/rc.config.d/namesvrs The following script will perform the procedure above: KEYSERV_OPTIONS=\"`sh -c '. /etc/rc.config.d/namesvrs ; echo \"$KEYSERV_OPTIONS\"'`\" ch_rc -a -p KEYSERV_OPTIONS=\"-d $KEYSERV_OPTIONS \" \ /etc/rc.config.d/namesvrs"
+    compliance:
+      - cis: ["1.6.11"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nobody_secure_rpc="N"'
+
+  #################################################################
+  # 1.7 Logging
+  #################################################################
+
+  - id: 30042
+    title: "Enable kernel-level auditing."
+    description: "If inetd is running, it is a good idea to make use of the 'logging' (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd‟s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systemsdeposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its 'ipmon' daemon as either a compliment or alternative to inetd logging."
+    rationale: "By recording key system events in log files, kernel-level auditing provides a trail to detect and analyze security breaches. Moreover, this data can be used to detect potential security weakness, and also serves as a deterrent against system abuses."
+    remediation: "Use the Systems Management Homepage (SMH) facility to configure and enable the type and level of auditing appropriate for your environment."
+    compliance:
+      - cis: ["1.7.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.system_auditing="Y"'
+
+  - id: 30043
+    title: "Enable logging from inetd."
+    description: 'If inetd is running, it is a good idea to make use of the "logging" (-l) feature of the HP-UX inetd that logs information about the source of any network connections seen by the daemon, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd''s /var/adm/inetd.sec configuration file. This information is logged via Syslog and by default HP-UX systems deposit this logging information in var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination. IPFilter, which comes with HP-UX, can log inetd and other connections or attempted connections with its "ipmon" daemon as either a compliment or alternative to inetd logging.'
+    rationale: "Logging information about the source of inetd network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
+    remediation: "Perform the following: ch_rc -a -p INETD_ARGS=-l /etc/rc.config.d/netdaemons"
+    compliance:
+      - cis: ["1.7.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.log_inetd="Y"'
+
+  - id: 30144
+    title: "Turn on additional logging for FTP daemon."
+    description: "If the FTP daemon is left on, it is recommended that the command logging (-L) and connection logging (-l) flags also be enabled to track FTP activity on the system, allowing the administrator (or software) to scan the logs for unusual activity. This is especially powerful when combined with the access control capabilities accessible through inetd's /var/adm/inetd.sec configuration file. Note that this setting has no effect if the FTP daemon remains de-activated from item 2.1. Also note that enabling command logging on the FTP daemon (HP-UX 11.x only) can cause user passwords to appear in clear-text form in the system logs, if the user accidentally types their password at the username prompt. Information about FTP sessions will be logged to Syslog and by default HP-UX systems deposit this logging information in /var/adm/syslog/syslog.log with other system log messages. Should the administrator wish to capture this information in a separate file, simply modify /etc/syslog.conf to log daemon.notice to some other log file destination."
+    rationale: "Logging information about the source of ftp network connections assists in the detection and identification of unusual activity that may be associated with security intrusions."
+    remediation: 'Perform the following to enable logging for the FTP daemon: 1. Change directory to /etc. 2. Open the inetd.conf file and locate the ftpd configuration entry line. 3. Add the "-L" and "-l" flags to the ftpd entry if not already present. 4. Save and close file. The following script will perform the procedure above: cd /etc awk ''/^ftpd/ && !/-L/ { $NF = $NF " -L" } /^ftpd/ && !/-l/ { $NF = $NF " -l" } { print }'' inetd.conf > inetd.conf.tmp cp inetd.conf.tmp inetd.conf rm -f inetd.conf.tmp'
+    compliance:
+      - cis: ["1.7.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - "f:/etc/inetd.conf -> r:^ftpd && r:-l"
+      - "f:/etc/inetd.conf -> r:^ftpd && r:-L"
+
+  #################################################################
+  # 1.8 User Accounts and Environment
+  #################################################################
+
+  - id: 30045
+    title: "Block system accounts."
+    description: "Accounts that are not being used by regular users should be locked. Not only should the password field for the account be set to an invalid string, but the shell field in the password file should contain an invalid shell. Access to the uucp and nuucp accounts is only needed when the deprecated Unix to Unix Copy (UUCP) service is in use. The other listed accounts should never require direct access. The actions below locks the passwords to these accounts (on systems converted to Trusted Mode only) and sets the login shell to /bin/false. Note that the above is not an exhaustive list of possible system/application accounts that could be installed on the system. An audit of all users on the system is the only way to be sure that only authorized accounts are in place."
+    rationale: "System accounts are not used by regular users, and almost never require direct access; thus, they should be locked to prevent accidental or malicious usage."
+    remediation: 'Perform the following to properly lock the following known system users: www sys smbnull iwww owww sshd hpsmh named uucp nuucp adm daemon bin lp nobody noaccess hpdb useradm 1. Lock the account: passwd -l <user> 2. Set the login shell to an invalid program: /usr/sbin/usermod -s /bin/false <user> 3. If a trusted system, set the adminstrator lock: /usr/lbin/modprpw -m alock=YES <user> The following script will perform the procedure above: for user in www sys smbnull iwww owww sshd \ hpsmh named uucp nuucp adm daemon bin lp \ nobody noaccess hpdb useradm; do passwd -l "$user" /usr/sbin/usermod -s /bin/false "$user" if [[ -f /tcb ]]; then /usr/lbin/modprpw -m alock=YES "$user" fi done'
+    compliance:
+      - cis: ["1.8.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.block_system_accounts="Y"'
+
+  - id: 30046
+    title: "Verify that there are no accounts with empty password fields."
+    description: 'An account with an empty password field means that anybody may log in as that user without providing a password at all. All accounts should have strong passwords or should be locked by using a password string like "*", "NP", or "*LOCKED*"'
+    rationale: "User accounts should have passwords, or be locked."
+    remediation: "Perform the following to ensure that no accounts have an empty password field: 1. Identify all user accounts with an empty password field: logins -p 2. Lock each account: passwd -l <user> 3. If a trusted system, set the administrator lock: /usr/lbin/modprpw -m alock=YES <user>"
+    compliance:
+      - cis: ["1.8.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.lock_account_nopasswd="Y"'
+
+  - id: 30047
+    title: "Set account expiration parameters on active accounts."
+    description: "The commands below will set all active accounts (except the root account) to force password changes every 90 days (91 days when not running in HP-UX Trusted Mode) and then prevent password changes for seven days (one week) thereafter. Users will begin receiving warnings 30 days (28 days when not running in HP-UX Trusted Mode) before their password expires. Sites also have the option of expiring idle accounts after a certain number of days (see the on-line manual page for the usermod command, particularly the -f option). These are recommended starting values, but sites may choose to make them more restrictive depending on local policies."
+    rationale: "It is a good idea to force users to change passwords on a regular basis."
+    remediation: 'Perform the following to set password expiration parameters on all active accounts: 1. Identify all user accounts excluding root that are not locked, and for each: 2. Set password expiration parameters for the account (logname) by executing the following: passwd -x 91 -n 7 -w 28 <logname> for trusted systems, perform the following: /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 <logname> 3. Set the default account expiration parameters by appending the following lines to /etc/default/security: a. PASSWORD_MAXDAYS=91 b. PASSWORD_MINDAYS=7 c. PASSWORD_WARNDAYS=28 4. Set the default parameters for trusted systems with: /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30 The following script will perform the procedure above. logins -ox \ | awk -F: ''($8 != "LK" && $1 != "root") { print $1 }'' \ | while read logname; do passwd -x 91 -n 7 -w 28 "$logname" /usr/lbin/modprpw -m exptm=90,mintm=7,expwarn=30 \ "$logname" done echo PASSWORD_MAXDAYS=91 >> /etc/default/security echo PASSWORD_MINDAYS=7 >> /etc/default/security echo PASSWORD_WARNDAYS=28 >> /etc/default/security /usr/lbin/modprdef -m exptm=90,mintm=7,expwarn=30'
+    compliance:
+      - cis: ["1.8.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MAXDAYS="(\d+)" compare <= 91'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_MINDAYS="(\d+)" compare <= 7'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_WARNDAYS="(\d+)" compare <= 28'
+
+  - id: 30048
+    title: "Set strong password enforcement policies."
+    description: "The policies set here are designed to force users to make better password choices when changing their passwords. Sites often have differing opinions on the optimal value of the MIN_PASSWORD_LENGTH and PASSWORD_HISTORY_DEPTH parameters. A minimum password length of seven is in line with industry standards, especially the Payment Card Industry (PCI) Security Standard; however, a longer value may be warranted if account locks are not enabled (item 1.6.10). A password history depth of ten combined with passwords that expire four times per year (item 1.8.3) means users will typically not re-use the same password in any given year. Requiring an upper/lowercase and special character password will dramatically increase the password search space and lower the chances for brute-force attack significantly. - Note: these settings are known to exist for HP-UX 11iv2, 0512 and later. The man page for security(5) will indicate if these exist on your particular system. Be sure to consult you local security standards before adopting the values given above."
+    rationale: "All users should use strong passwords."
+    remediation: "Perform the following to set strong password enforcement policies: 1. Change the following parameters in the /etc/default/security file to establish default password policies for new users: a. MIN_PASSORD_LENGTH=7 b. PASSWORD_HISTORY_DEPTH=10 c. PASSWORD_MIN_UPPER_CASE_CHARS=1 d. PASSWORD_MIN_DIGIT_CHARS=1 e. PASSWORD_MIN_SPECIAL_CHARS=1 f. PASSWORD_MIN_LOWER_CASE_CHARS=1 2. If using a trusted system, issue the following modprdef commands to disallow null or trivial passwords:  modprdef -m nullpw=NO modprdef -m rstrpw=YES The following script will perform the procedure above: modprdef -m nullpw=NO modprdef -m rstrpw=YES ch_rc -a -p MIN_PASSORD_LENGTH=7 /etc/default/security ch_rc -a -p PASSWORD_HISTORY_DEPTH=10 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_UPPER_CASE_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_DIGIT_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_SPECIAL_CHARS=1 \ /etc/default/security ch_rc -a -p PASSWORD_MIN_LOWER_CASE_CHARS=1 \ /etc/default/security modprdef -m nullpw=NO modprdef -m rstrpw=YES"
+    compliance:
+      - cis: ["1.8.4"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.PASSWORD_HISTORY_DEPTH="(\d+) compare >= 10"'
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> n:AccountSecurity.MIN_PASSWORD_LENGTH="(\d+) compare >= 7"'
+
+  - id: 30049
+    title: "Verify no legacy '+' entries exist in passwd and group files."
+    description: "'+' entries in various passwd and group files served as markers for systems to insert data from NIS maps at a certain point in a system configuration file. HP-UX does not use these markers, but they may exist in files that have been imported from other platforms. They should be deleted if they exist."
+    rationale: "Legacy '+' entries are no longer required on HP-UX systems, and may provide an avenue for attackers to gain privileged access on the system."
+    remediation: "Perform the following to remove any legacy '+' entries in passwd and group files: 1. Display legacy '+' entries: grep '^+:' /etc/passwd /etc/group 2. Remove any entries found from the passwd and group files."
+    compliance:
+      - cis: ["1.8.5"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:MiscellaneousDaemons.nis_client="Y"'
+
+  - id: 30050
+    title: "No '.' or group/world-writable directory in root $PATH."
+    description: "Remove the current working directory ('.') or other world-writable directories from the root user's execution path. To execute a file in the current directory when „.‟ is not in the $PATH, use the format “./filename”."
+    rationale: "Including these paths in the root's executable path allows an attacker to gain superuser access if an administrator operating as root executes a Trojan horse program."
+    remediation: "Remove the following path components if they exist in the root user's $PATH: 1. current working directory ('.') 2. empty directories („::‟) 3. a trailing path seperator at the end of the $PATH (':') 4. any directory with world or group -write permissions set"
+    compliance:
+      - cis: ["1.8.6"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.root_path="Y"'
+
+  - id: 30051
+    title: "Secure user home directories."
+    description: "Remove group write and world access to all user home directories. While the modifications below are relatively benign, making global modifications to user home directories without alerting your user community can result in unexpected outages and unhappy users."
+    rationale: "Group or world-writable user home directories may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
+    remediation: 'Perform the following to secure user home directories: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group write permission (g-w) and all other permissions (o-rwx) The following script will perform the procedure above: logins -ox \ | awk -F: ''($8 == "PS" && $1 != "root") { print $6 }'' \ | grep /home/ \ | while read dir do  chmod g-w,o-rwx "$dir" done'
+    compliance:
+      - cis: ["1.8.7"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.restrict_home="Y"'
+
+  - id: 30052
+    title: "No user dot-files should be group/world writable."
+    description: "Remove group and world write permissions from user dot-files. While the modifications below are relatively benign, making global modifications to user dot-files without alerting your user community can result in unexpected outages and unhappy users."
+    rationale: "Group or world-writable user configuration files may enable malicious users to steal or modify other users' data or to gain another user's system privileges."
+    remediation: 'Perform the following: 1. Identify all user accounts excluding root that are not locked, and for each of these user home directories: 2. Remove group/other write permissions (go-w) from any files beginning with ''.'' The following script performs the procedure above: logins -ox \ | awk -F: ''($8 == "PS") { print $6 }'' \ | while read dir do ls -d "$dir/".[!.]* | while read file do  if [ ! -h "$file" -a -f "$file" ] then chmod go-w "$file" fi done done'
+    compliance:
+      - cis: ["1.8.8"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_dot_files="Y"'
+
+  - id: 30053
+    title: "Remove user .netrc, .rhosts and .shosts files."
+    description: "Remove user .netrc, .rhosts, and .shosts files. Note that making global modifications to user security files in their home directories without alerting your user community can result in unexpected outages and unhappy users."
+    rationale: ".netrc files may contain unencrypted passwords that may be used to attack other systems, while .rhosts and .shosts files used in conjunction with the BSD-style “r-commands” (rlogin, remsh, rcp) or SSH implement a weak form of authentication based on the network address or host name of the remote computer (which can be spoofed by a potential attacker to exploit the local system)."
+    remediation: 'Perform the following to remove user .netrc, .rhosts, and .shosts files. 1. Identify all user accounts, and for each existing home directory: 2. Remove .netrc, .rhosts, and .shosts files The following script performs the procedure above: logins -ox | cut -f6 -d: | while read h do for file in "$h/.netrc" "$h/.rhosts" "$h/.shosts" do  if [ -f "$file" ] then  echo "removing $file" rm -f "$file" fi done done'
+    compliance:
+      - cis: ["1.8.9"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.user_rc_files="Y"'
+
+  - id: 30054
+    title: "Set default umask for users."
+    description: "Set the default umask to 077 so that files created by users will not be readable by any other user on the system. A umask of 027 would make files and directories readable by users in the same Unix group, while a umask of 022 would make files readable by every user on the system. - Bastille Note: sets the default umask, but uses a umask of 027 rather than the 077."
+    rationale: "Restricting access to files and directories created by a user from any other user on the system reduces the possibility of an unauthorized account accessing that user's files. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files (.profile, .cshrc, etc.) in their home directories."
+    remediation: 'Perform the following to set a default umask for users: 1. Change directory to /etc 2. Append the line umask 077 to the following files: a. profile b. csh.login c. d.profile d. d.login 3. Update the UMASK parameter to 077 in the file /etc/default/security The following script performs the procedure above: cd /etc for file in profile csh.login d.profile d.login do echo umask 077 >> "$file" done ch_rc -a -p UMASK=077 /etc/default/security'
+    compliance:
+      - cis: ["1.8.10"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.umask="077"'
+
+  - id: 30055
+    title: "Set 'mesg n' as default for all users."
+    description: "Block the use of write or talk commands to contact the user at their terminal in order to slightly strengthen permissions on the user's tty device. Note that this setting is the default on HP-UX 11i."
+    rationale: "Since write and talk are no longer widely used at most sites, the incremental security increase is worth the loss of functionality."
+    remediation: 'Perform the following: 1. Change directory to /etc 2. Append the line mesg n to the following files: a. profile b. csh.login c. d.profile d. d.login The following script performs the procedure above:  cd /etc for file in profile csh.login d.profile d.login do  echo mesg n >> "$file" done'
+    compliance:
+      - cis: ["1.8.11"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:AccountSecurity.mesgn="Y"'
+
+  #################################################################
+  # 1.9 Warning Banners
+  #################################################################
+
+  - id: 30056
+    title: "Create warning banners for terminal-session logins."
+    description: "The contents of the /etc/issue file are displayed prior to the login prompt on the system's console and serial devices, as well as for remote terminal-session logins such as through SSH or Telnet.  /etc/motd is generally displayed after all successful logins, no matter where the user is logging in from, but is thought to be less useful because it only provides notification to the user after the machine has been accessed."
+    rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
+    remediation: "Perform the following to create warning banners for terminal-session logins: 1. Compose a default banner text string 2. Append this string to the files  /etc/motd and /etc/motd 3. Change the owner to root and group owner to sys  for the file /etc/motd 4. Change the owner to root and group owner to root for the file /etc/issue 5. Change file permissions to (644) for the files /etc/motd and /etc/issue"
+    compliance:
+      - cis: ["1.9.1"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:SecureInetd.banners="Y"'
+
+  - id: 30057
+    title: "Create warning banners for GUI logins."
+    description: "The standard graphical login program for HP-UX requires the user to enter their username in one dialog box and their password in a second separate dialog. The commands below set the warning message on both to be the same message, but the site has the option of using different messages on each screen. The Dtlogin*greeting.labelString is the message for the first dialog where the user is prompted for their username, and .perslabelString is the message on the second dialog box. Note that system administrators may wish to consult with their site’s legal council about the specifics of any warning banners."
+    rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
+    remediation: 'Perform the following to install default warning banners for GUI logins: 1. Create a default banner text string ($banner) 2. For each directory in /usr/dt/config that contains a Xresources file, copy that Xresources file into a corresponding directory in /etc/dt/config (creating the directory if needed) 3. Append the following lines (replacing $banner with the string in step 1) to each /etc/dt/config/*/Xresources file: a. Dtlogin*greeting.labelString: $banner b. Dtlogin*greeting.persLabelString: $banner 4. Change the owner to root and group owner to sys for each Xresource file 5. Change the file permissions to 644 for each Xresource file The following script performs the procedure above: banner="Authorized users only. All activity may \ be monitored and reported." for file in /usr/dt/config/*/Xresources; do dir="$(dirname "$file" | sed ''s|^/usr/|/etc/|'')" mkdir -p "$dir" if [ ! -f "$dir/Xresources" ]; then cp -p "$file" "$dir/Xresources" fi echo "Dtlogin*greeting.labelString: $banner" \ >> "$dir/Xresources" echo "Dtlogin*greeting.persLabelString: $banner" \ >> "$dir/Xresources" done chown root:sys /etc/dt/config/*/Xresources chmod 644 /etc/dt/config/*/Xresources'
+    compliance:
+      - cis: ["1.9.2"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:HP_UX.gui_banner="Y"'
+
+  - id: 30058
+    title: "Create warning banners for FTP daemon."
+    description: "The FTP daemon in HP-UX 11 is based on the popular Washington University FTP daemon (WU-FTPD), which is an Open Source program widely distributed on the Internet. Note that this setting has no effect if the FTP daemon remains de-activated from item 1.2.1."
+    rationale: "Presenting some sort of statutory warning message prior to the normal user logon may assist the prosecution of trespassers on the computer system. Changing some of these login banners also has the side effect of hiding OS version information and other detailed system information from attackers attempting to target specific attacks at a system."
+    remediation: 'Perform the following to install a default warning banner for the FTP daemon: 1. Ensure that an appropriate warning message exists in the /etc/issue file . 2. Append the line "banner /etc/issue" to the file /etc/ftpd/ftpaccess 3. Change file permissions to 600 for /etc/ftpd/ftpaccess 4. Change owner to root and group owner to sys for both /etc/ftpd and /etc/ftpd/ftpaccess The following script performs the procedure above: if [ -d /etc/ftpd ]; then echo "banner /etc/issue" >>/etc/ftpd/ftpaccess chmod 600 /etc/ftpd/ftpaccess chown root:sys /etc/ftpd /etc/ftpd/ftpaccess fi'
+    compliance:
+      - cis: ["1.9.3"]
+      - cis_level: ["1"]
+    condition: all
+    rules:
+      - 'f:/var/opt/sec_mgmt/bastille/log/Assessment/assessment-log.config -> r:FTP.ftpbanner="Y"'

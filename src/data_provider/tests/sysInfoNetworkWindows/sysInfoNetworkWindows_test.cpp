@@ -52,7 +52,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV4_THROW)
     nlohmann::json networkInfo {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::IPV4));
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 }
 
 TEST_F(SysInfoNetworkWindowsTest, Test_IPV6_THROW)
@@ -61,13 +61,13 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV6_THROW)
     nlohmann::json networkInfo {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(Utils::NetworkWindowsHelper::IPV6));
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 }
 
 TEST_F(SysInfoNetworkWindowsTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json networkInfo {};
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(nullptr)->buildNetworkData(networkInfo));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(nullptr)->buildNetworkData(networkInfo));
 }
 
 TEST_F(SysInfoNetworkWindowsTest, Test_IPV4)
@@ -85,7 +85,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV4)
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return(broadcast));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(dhcp));
     EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return(metrics));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 
     for (auto& element : networkInfo.at("IPv4"))
     {
@@ -112,7 +112,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_IPV6)
     EXPECT_CALL(*mock, broadcastV6()).Times(1).WillOnce(Return(broadcast));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return(dhcp));
     EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return(metrics));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 
     for (auto& element : networkInfo.at("IPv6"))
     {
@@ -143,7 +143,7 @@ TEST_F(SysInfoNetworkWindowsTest, Test_COMMON_DATA)
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(mtu));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return(gateway));
 
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::WINDOWS>::create(mock)->buildNetworkData(networkInfo));
 
     EXPECT_EQ(name, networkInfo.at("name").get_ref<const std::string&>());
     EXPECT_EQ(type, networkInfo.at("type").get_ref<const std::string&>());

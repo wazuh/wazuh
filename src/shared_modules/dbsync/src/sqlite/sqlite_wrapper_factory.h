@@ -17,7 +17,9 @@
 class ISQLiteFactory
 {
     public:
+        // LCOV_EXCL_START
         virtual ~ISQLiteFactory() = default;
+        // LCOV_EXCL_STOP
         virtual std::shared_ptr<SQLite::IConnection> createConnection(const std::string& path) = 0;
         virtual std::unique_ptr<SQLite::ITransaction> createTransaction(std::shared_ptr<SQLite::IConnection>& connection) = 0;
         virtual std::unique_ptr<SQLite::IStatement> createStatement(std::shared_ptr<SQLite::IConnection>& connection,
@@ -28,7 +30,9 @@ class SQLiteFactory : public ISQLiteFactory
 {
     public:
         SQLiteFactory() = default;
+        // LCOV_EXCL_START
         ~SQLiteFactory() = default;
+        // LCOV_EXCL_STOP
         SQLiteFactory(const SQLiteFactory&) = delete;
         SQLiteFactory& operator=(const SQLiteFactory&) = delete;
 

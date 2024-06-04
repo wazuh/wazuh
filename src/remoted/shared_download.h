@@ -12,7 +12,7 @@
 #ifndef SHARED_DOWNLOAD_H
 #define SHARED_DOWNLOAD_H
 
-#include "external/libyaml/include/yaml.h"
+#include "../external/libyaml/include/yaml.h"
 
 #define W_PARSER_ERROR -1
 #define W_SHARED_YAML_FILE "files.yml"

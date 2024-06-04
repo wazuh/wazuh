@@ -52,6 +52,6 @@
 <group name="ossec,">
   <rule id="7" level="0" noalert="1">
     <category>ossec</category>
-    <description>Generic template for all ossec rules.</description>
+    <description>Generic template for all wazuh rules.</description>
   </rule>
 </group>

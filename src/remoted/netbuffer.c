@@ -13,6 +13,7 @@
 #include <shared.h>
 #include <os_net/os_net.h>
 #include "remoted.h"
+#include "state.h"
 
 extern wnotify_t * notify;
 
@@ -89,6 +90,9 @@ int nb_recv(netbuffer_t * buffer, int sock) {
         cur_len = wnet_order(*(uint32_t *)(sockbuf->data + i));
 
         if (cur_len > OS_MAXSTR) {
+            char hex[OS_SIZE_2048 + 1] = {0};
+            print_hex_string(&sockbuf->data[i], sockbuf->data_len - i, hex, sizeof(hex));
+            mwarn("Unexpected message (hex): '%s'", hex);
             recv_len = -2;
             goto end;
         }
@@ -106,7 +110,7 @@ int nb_recv(netbuffer_t * buffer, int sock) {
 
     if (i > 0) {
         if (i < sockbuf->data_len) {
-            memcpy(sockbuf->data, sockbuf->data + i, sockbuf->data_len - i);
+            memmove(sockbuf->data, sockbuf->data + i, sockbuf->data_len - i);
         }
 
         sockbuf->data_len -= i;
@@ -166,7 +170,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
     #endif
                 break;
             default:
-                merror("socket: %d, send fail", socket);
+                merror("Could not send data to socket %d: %s (%d)", socket, strerror(errno), errno);
             }
         }
 
@@ -180,7 +184,7 @@ int nb_send(netbuffer_t * buffer, int socket) {
     return sent_bytes;
 }
 
-int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size) {
+int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_size, char * agent_id) {
     int retval = -1;
     int header_size = sizeof(uint32_t);
     char data[msg_size + header_size];
@@ -224,6 +228,7 @@ int nb_queue(netbuffer_t * buffer, int socket, char * crypt_msg, ssize_t msg_siz
     w_mutex_unlock(&mutex);
 
     if (retval < 0) {
+        rem_inc_send_discarded(agent_id);
         mwarn("Package dropped. Could not append data into buffer.");
     }
 

@@ -28,7 +28,7 @@
 
 /* Prototypes */
 static int OS_Bindport(u_int16_t _port, unsigned int _proto, const char *_ip, int ipv6);
-static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6);
+static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6, uint32_t network_interface);
 
 /* Unix socket -- not for windows */
 #ifndef WIN32
@@ -248,7 +248,7 @@ int OS_getsocketsize(int ossock)
 #endif
 
 /* Open a TCP/UDP client socket */
-static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6)
+static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, int ipv6, uint32_t network_interface)
 {
     int ossock;
     int max_msg_size = OS_MAXSTR + 512;
@@ -276,6 +276,15 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
         memset(&server6, 0, sizeof(server6));
         server6.sin6_family = AF_INET6;
         server6.sin6_port = htons( _port );
+
+        if (strncmp(_ip, IPV6_LINK_LOCAL_PREFIX, 20) == 0) {
+            if (network_interface <= 0) {
+                minfo("No network interface provided to use with link-local IPv6 address.");
+            } else {
+                server6.sin6_scope_id = network_interface;
+            }
+        }
+
         get_ipv6_numeric(_ip, &server6.sin6_addr);
 
         if (connect(ossock, (struct sockaddr *)&server6, sizeof(server6)) < 0) {
@@ -314,15 +323,15 @@ static int OS_Connect(u_int16_t _port, unsigned int protocol, const char *_ip, i
 }
 
 /* Open a TCP socket */
-int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6)
+int OS_ConnectTCP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_interface)
 {
-    return (OS_Connect(_port, IPPROTO_TCP, _ip, ipv6));
+    return (OS_Connect(_port, IPPROTO_TCP, _ip, ipv6, network_interface));
 }
 
 /* Open a UDP socket */
-int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6)
+int OS_ConnectUDP(u_int16_t _port, const char *_ip, int ipv6, uint32_t network_interface)
 {
-    int sock = OS_Connect(_port, IPPROTO_UDP, _ip, ipv6);
+    int sock = OS_Connect(_port, IPPROTO_UDP, _ip, ipv6, network_interface);
 
 #ifdef HPUX
     if (sock >= 0) {
@@ -832,10 +841,6 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
             }
     }
 
-    if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
-        return -2;
-    }
-
     size = wnet_order_big(*(uint32_t*)(buffer + 4));
     if (size > length) {
         mwarn("Cluster message size (%u) exceeds buffer length (%u)", (unsigned)size, (unsigned)length);
@@ -843,7 +848,13 @@ int OS_RecvSecureClusterTCP(int sock, char * ret, size_t length) {
     }
 
     /* Read the payload */
-    return os_recv_waitall(sock, ret, size);
+    int recv_size = os_recv_waitall(sock, ret, size);
+
+    if (strncmp(buffer+8, "err --------", CMD_SIZE) == 0) {
+        return -2;
+    }
+
+    return recv_size;
 }
 
 /* Receive a message from a stream socket, full message (MSG_WAITALL)

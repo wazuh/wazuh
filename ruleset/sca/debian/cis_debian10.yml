@@ -13,7 +13,7 @@
 policy:
   id: "cis_debian10"
   file: "cis_debian10.yml"
-  name: "CIS Benchmark for Debian/Linux 10"
+  name: "CIS Debian Linux 10 Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 10."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -23,17 +23,15 @@ requirements:
   description: "Requirements for running the SCA scan against Debian/Ubuntu."
   condition: all
   rules:
-    - 'f:/etc/debian_version'
-    - 'f:/proc/sys/kernel/ostype -> Linux'
+    - "f:/etc/debian_version"
+    - "f:/proc/sys/kernel/ostype -> Linux"
 
 checks:
+  ############################################################
+  # 1 Initial Setup
+  ############################################################
 
-
-############################################################
-# 1 Initial Setup
-############################################################
-
-# 1.1 Filesystem configuration
+  # 1.1 Filesystem configuration
   - id: 2500
     title: "Ensure mounting of freevxfs filesystems is disabled"
     description: "The freevxfs filesystem type is a free version of the Veritas type filesystem. This is the primary filesystem type for HP-UX operating systems."
@@ -46,8 +44,8 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v freevxfs -> r:^install /bin/true'
-      - 'not c:lsmod -> r:freevxfs'
+      - "c:/sbin/modprobe -n -v freevxfs -> r:^install /bin/true"
+      - "not c:lsmod -> r:freevxfs"
 
   - id: 2501
     title: "Ensure mounting of jffs2 filesystems is disabled"
@@ -61,8 +59,8 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v jffs2 -> r:^install /bin/true'
-      - 'not c:lsmod -> r:jffs2'
+      - "c:/sbin/modprobe -n -v jffs2 -> r:^install /bin/true"
+      - "not c:lsmod -> r:jffs2"
 
   - id: 2502
     title: "Ensure mounting of hfs filesystems is disabled"
@@ -76,8 +74,8 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v hfs -> r:^install /bin/true'
-      - 'not c:lsmod -> r:hfs'
+      - "c:/sbin/modprobe -n -v hfs -> r:^install /bin/true"
+      - "not c:lsmod -> r:hfs"
 
   - id: 2503
     title: "Ensure mounting of hfsplus filesystems is disabled"
@@ -91,8 +89,8 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v hfsplus -> r:^install /bin/true'
-      - 'not c:lsmod -> r:hfsplus'
+      - "c:/sbin/modprobe -n -v hfsplus -> r:^install /bin/true"
+      - "not c:lsmod -> r:hfsplus"
 
   - id: 2504
     title: "Ensure mounting of squashfs filesystems is disabled"
@@ -108,8 +106,8 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:modprobe -n -v squashfs -> r:install /bin/true|Module squashfs not found'
-      - 'not c:lsmod -> r:squashfs'
+      - "c:modprobe -n -v squashfs -> r:install /bin/true|Module squashfs not found"
+      - "not c:lsmod -> r:squashfs"
 
   - id: 2505
     title: "Ensure mounting of udf filesystems is disabled"
@@ -123,8 +121,8 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v udf -> r:^install /bin/true'
-      - 'not c:lsmod -> r:udf'
+      - "c:/sbin/modprobe -n -v udf -> r:^install /bin/true"
+      - "not c:lsmod -> r:udf"
 
   - id: 2506
     title: "Ensure mounting of FAT filesystems is disabled"
@@ -140,10 +138,10 @@ checks:
       - AJ Lewis, "LVM HOWTO", https://tldp.org/HOWTO/LVM-HOWTO/
     condition: all
     rules:
-      - 'c:modprobe -n -v vfat -> r:install /bin/true|Module vfat not found'
-      - 'not c:lsmod -> r:vfat'
+      - "c:modprobe -n -v vfat -> r:install /bin/true|Module vfat not found"
+      - "not c:lsmod -> r:vfat"
 
-# 1.1.x Filesystem Configuration
+  # 1.1.x Filesystem Configuration
   - id: 2507
     title: "Ensure /tmp is configured"
     description: "The /tmp directory is a world-writable directory used for temporary storage by all users and some applications."
@@ -206,7 +204,6 @@ checks:
     condition: all
     rules:
       - 'c:mount -> r:\s/tmp\s && r:noexec'
-
 
   - id: 2511
     title: "Ensure separate partition exists for /var"
@@ -287,8 +284,6 @@ checks:
     rules:
       - 'c:mount -> r:\s/var/tmp\s && r:noexec'
 
-
-
   - id: 2516
     title: "Ensure separate partition exists for /var/log"
     description: "The /var/log directory is used by system services to store log data."
@@ -339,7 +334,6 @@ checks:
     condition: all
     rules:
       - 'c:mount -> r:\s/home\s'
-
 
   - id: 2519
     title: "Ensure nodev option set on /home partition"
@@ -410,14 +404,13 @@ checks:
     remediation: "Run one of the following commands:  Run the following command to disable autofs: # systemctl --now disable autofs    OR  Run the following command to remove autofs:  # apt purge autofs"
     compliance:
       - cis: ["1.1.22"]
-      - cis_csc: ["8.4","8.5"]
+      - cis_csc: ["8.4", "8.5"]
       - pci_dss: ["2.2.4"]
       - nist_800_53: ["CM.1"]
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled autofs -> enabled'
-
+      - "c:systemctl is-enabled autofs -> enabled"
 
   - id: 2524
     title: "Disable USB Storage"
@@ -432,10 +425,10 @@ checks:
       - tsc: ["CC6.3"]
     condition: all
     rules:
-      - 'c:/sbin/modprobe -n -v usb-storage -> r:install /bin/true'
-      - 'not c:lsmod -> r:usb-storage'
+      - "c:/sbin/modprobe -n -v usb-storage -> r:install /bin/true"
+      - "not c:lsmod -> r:usb-storage"
 
-# 1.3 Configure Sudo
+  # 1.3 Configure Sudo
 
   - id: 2525
     title: "Ensure sudo is installed"
@@ -452,8 +445,8 @@ checks:
       - http://www.sudo.ws/
     condition: any
     rules:
-      - 'c:dpkg -s sudo -> r:install ok installed'
-      - 'c:dpkg -s sudo-ldap -> r:install ok installed'
+      - "c:dpkg -s sudo -> r:install ok installed"
+      - "c:dpkg -s sudo-ldap -> r:install ok installed"
 
   - id: 2526
     title: "Ensure sudo commands use pty"
@@ -475,7 +468,7 @@ checks:
     title: "Ensure sudo log file exists"
     description: "sudo can use a custom log file"
     rationale: "A sudo log file simplifies auditing of sudo commands"
-    remediation: "edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line:   Defaults logfile=\"<PATH TO CUSTOM LOG FILE>\"   Example    Defaults logfile=\"/var/log/sudo.log\""
+    remediation: 'edit the file /etc/sudoers or a file in /etc/sudoers.d/ with visudo -f and add the following line:   Defaults logfile="<PATH TO CUSTOM LOG FILE>"   Example    Defaults logfile="/var/log/sudo.log"'
     compliance:
       - cis: ["1.3.3"]
       - cis_csc: ["6.3"]
@@ -487,7 +480,7 @@ checks:
       - 'f:/etc/sudoers -> r:^\s*\t*Defaults\s*\t*logfile='
       - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
-# 1.4 Filesystem Integrity Checking
+  # 1.4 Filesystem Integrity Checking
   - id: 2528
     title: "Ensure AIDE is installed"
     description: "AIDE takes a snapshot of filesystem state including modification times, permissions, and file hashes which can then be used to compare against the current state of the filesystem to detect modifications to the system."
@@ -497,10 +490,10 @@ checks:
       - cis: ["1.4.1"]
       - cis_csc: ["14.9"]
       - pci_dss: ["11.5"]
-      - tsc: ["PI1.4","PI1.5","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'c:dpkg -s aide -> r:install ok installed'
+      - "c:dpkg -s aide -> r:install ok installed"
 
   - id: 2529
     title: "Ensure filesystem integrity is regularly checked"
@@ -511,16 +504,16 @@ checks:
       - cis: ["1.4.2"]
       - cis_csc: ["14.9"]
       - pci_dss: ["11.5"]
-      - tsc: ["PI1.4","PI1.5","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["PI1.4", "PI1.5", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     references:
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.service
       - https://github.com/konstruktoid/hardening/blob/master/config/aidecheck.timer
     condition: all
     rules:
       - 'c:grep -Rh aide /etc/cron.d /etc/cron.daily /etc/cron.hourly /etc/cron.monthly /etc/cron.weekly /etc/crontab -> r:\.+'
-      - 'c:crontab -u root -l -> r:aide'
+      - "c:crontab -u root -l -> r:aide"
 
-# 1.5 Secure Boot Settings
+  # 1.5 Secure Boot Settings
   - id: 2530
     title: "Ensure permissions on bootloader config are configured"
     description: "The grub configuration file contains information on boot settings and passwords for unlocking boot options. The grub configuration is usually grub.cfg stored in /boot/grub."
@@ -540,7 +533,7 @@ checks:
     title: "Ensure bootloader password is set"
     description: "Setting the boot loader password will require that anyone rebooting the system must enter a password before being able to set command line boot parameters."
     rationale: "Requiring a boot password upon execution of the boot loader will prevent an unauthorized user from entering boot parameters or changing the boot partition. This prevents users from weakening security (e.g. turning off SELinux at boot time)."
-    remediation: "Create an encrypted password with grub-mkpasswd-pbkdf2 : # grub-mkpasswd-pbkdf2     Enter password: <password>      Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF     set superusers=\"<username>\"   password_pbkdf2 <username> <encrypted-password>      EOF     The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS=  Example: CLASS=\"--class gnu-linux --class gnu --class os --unrestricted\" Run the following command to update the grub2 configuration: # update-grub"
+    remediation: 'Create an encrypted password with grub-mkpasswd-pbkdf2 : # grub-mkpasswd-pbkdf2     Enter password: <password>      Reenter password: <password> PBKDF2 hash of your password is <encrypted-password> Add the following into a custom /etc/grub.d configuration file: cat <<EOF     set superusers="<username>"   password_pbkdf2 <username> <encrypted-password>      EOF     The superuser/user information and password should not be contained in the /etc/grub.d/00_header file as this file could be overwritten in a package update. If there is a requirement to be able to boot/reboot without entering the password, edit /etc/grub.d/10_linux and add --unrestricted to the line CLASS=  Example: CLASS="--class gnu-linux --class gnu --class os --unrestricted" Run the following command to update the grub2 configuration: # update-grub'
     compliance:
       - cis: ["1.5.2"]
       - cis_csc: ["5.1"]
@@ -565,10 +558,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> r:^root:*:|^root:!:'
+      - "f:/etc/shadow -> r:^root:*:|^root:!:"
 
-
-# 1.6 Additional Process Hardening
+  # 1.6 Additional Process Hardening
 
   - id: 2533
     title: "Ensure XD/NX support is enabled"
@@ -614,7 +606,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s prelink -> r:install ok installed'
+      - "c:dpkg -s prelink -> r:install ok installed"
 
   - id: 2536
     title: "Ensure core dumps are restricted"
@@ -633,7 +625,7 @@ checks:
       - 'c:grep -Rh fs\.suid_dumpable /etc/sysctl.conf /etc/sysctl.d -> !r:^# && r:=\s*\t*0$'
       - 'c:grep -Rh ^*[[:space:]]*hard[[:space:]][[:space:]]*core[[:space:]][[:space:]]* /etc/security/limits.conf /etc/security/limits.d -> r:\s*\t*0$'
 
-# 1.7 Mandatory Access Control
+  # 1.7 Mandatory Access Control
 
   - id: 2537
     title: "Ensure AppArmor is installed"
@@ -648,14 +640,14 @@ checks:
       - tsc: ["CC5.2"]
     condition: any
     rules:
-      - 'c:dpkg -s apparmor-utils -> r:install ok installed'
-      - 'c:dpkg -s apparmor -> r:install ok installed'
+      - "c:dpkg -s apparmor-utils -> r:install ok installed"
+      - "c:dpkg -s apparmor -> r:install ok installed"
 
   - id: 2538
     title: "Ensure AppArmor is enabled in the bootloader configuration"
     description: "Configure AppArmor to be enabled at boot time and verify that it has not been overwrittenby the bootloader boot parameters."
     rationale: "AppArmor must be enabled at boot time in your grub configuration to ensure that the controls it provides are not overridden."
-    remediation: "Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line   GRUB_CMDLINE_LINUX=\"apparmor=1 security=apparmor\"      Run the following command to update the grub2 configuration # update-grub    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+    remediation: 'Edit /etc/default/grub and add the apparmor=1 and security=apparmor parameters to the GRUB_CMDLINE_LINUX= line   GRUB_CMDLINE_LINUX="apparmor=1 security=apparmor"      Run the following command to update the grub2 configuration # update-grub    Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
     compliance:
       - cis: ["1.7.1.2"]
       - cis_csc: ["14.6"]
@@ -680,8 +672,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:apparmor_status -> r:0 processes are unconfined'
-
+      - "c:apparmor_status -> r:0 processes are unconfined"
 
   - id: 2540
     title: "Ensure all AppArmor Profiles are enforcing"
@@ -700,11 +691,11 @@ checks:
       - 'c:apparmor_status -> r:^0\s*profiles are in complain mode'
       - 'c:apparmor_status -> r:^0\s*processes are unconfined'
 
-# 1.8 Warning Banners
+  # 1.8 Warning Banners
   - id: 2541
     title: "Ensure message of the day is configured properly"
     description: "The contents of the /etc/motd file are displayed to users after login and function as a message of the day for authenticated users. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
     remediation: "Edit the /etc/motd file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , \\v or references to the OS platform OR If the motd is not used, this file can be removed. Run the following command to remove the motd file: # rm /etc/motd"
     compliance:
       - cis: ["1.8.1.1"]
@@ -714,12 +705,12 @@ checks:
     condition: any
     rules:
       - 'not f:/etc/motd -> r:\\v|\\r|\\m|\\s|Debian|Ubuntu'
-      - 'not f:/etc/motd'
+      - "not f:/etc/motd"
 
   - id: 2542
     title: "Ensure local login warning banner is configured properly"
     description: "The contents of the /etc/issue file are displayed to users prior to login for local terminals. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
     remediation: "Edit the /etc/issue file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v , or references to the OS platform # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue"
     compliance:
       - cis: ["1.8.1.2"]
@@ -733,7 +724,7 @@ checks:
   - id: 2543
     title: "Ensure remote login warning banner is configured properly"
     description: "The contents of the /etc/issue.net file are displayed to users prior to login for remote connections from configured services. Unix-based systems have typically displayed information about the OS release and patch level upon logging in to the system. This information can be useful to developers who are developing software for a particular OS platform. If mingetty(8) supports the following options, they display operating system information: \\m - machine architecture \\r - operating system release \\s - operating system name \\v - operating system version"
-    rationale: "Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the \" uname -a \" command once they have logged in."
+    rationale: 'Warning messages inform users who are attempting to login to the system of their legal status regarding the system and must include the name of the organization that owns the system and any monitoring policies that are in place. Displaying OS and patch level information in login banners also has the side effect of providing detailed system information to attackers attempting to target specific exploits of a system. Authorized users can easily get this information by running the " uname -a " command once they have logged in.'
     remediation: "Edit the /etc/issue.net file with the appropriate contents according to your site policy, remove any instances of \\m , \\r , \\s , or \\v or references to the OS platform: # echo \"Authorized uses only. All activity may be monitored and reported.\" > /etc/issue.net"
     compliance:
       - cis: ["1.8.1.3"]
@@ -756,8 +747,8 @@ checks:
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
       - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -774,8 +765,8 @@ checks:
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
       - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -792,8 +783,8 @@ checks:
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
       - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -811,8 +802,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]'
-      - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-enable=true'
+      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^[org/gnome/login-screen]"
+      - "f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-enable=true"
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:^banner-message-text=\.+'
 
   - id: 2548
@@ -824,18 +815,18 @@ checks:
       - cis: ["1.9"]
       - cis_csc: ["3.4", "3.5"]
       - pci_dss: ["5.2"]
-      - nist_800_53: ["AU.6","SI.4"]
+      - nist_800_53: ["AU.6", "SI.4"]
       - gpg_13: ["4.2"]
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
       - tsc: ["A1.2"]
     condition: none
     rules:
-      - 'c:apt -s upgrade -> r:^The following packages will be upgraded'
+      - "c:apt -s upgrade -> r:^The following packages will be upgraded"
 
-############################################################
-# 2 Services
-############################################################
+  ############################################################
+  # 2 Services
+  ############################################################
 
   - id: 2549
     title: "Ensure xinetd is not installed"
@@ -853,7 +844,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s xinetd -> r:install ok installed'
+      - "c:dpkg -s xinetd -> r:install ok installed"
 
   - id: 2550
     title: "Ensure openbsd-inetd is not installed"
@@ -871,28 +862,28 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s openbsd-inetd -> r:install ok installed'
+      - "c:dpkg -s openbsd-inetd -> r:install ok installed"
 
   - id: 2551
     title: "Ensure time synchronization is in use"
     description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them."
     rationale: "Time synchronization is important to support time sensitive security mechanisms like Kerberos and also ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
-    remediation: "On systems where host based time synchronization is not available, configure systemd-timesyncd. If \"full featured\" and/or encrypted time synchronization is required, install chrony or NTP. To install chrony: # apt install chrony To install ntp: # apt install ntp On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization."
+    remediation: 'On systems where host based time synchronization is not available, configure systemd-timesyncd. If "full featured" and/or encrypted time synchronization is required, install chrony or NTP. To install chrony: # apt install chrony To install ntp: # apt install ntp On virtual systems where host based time synchronization is available consult your virtualization software documentation and setup host based synchronization.'
     compliance:
       - cis: ["2.2.1.1"]
       - cis_csc: ["6.1"]
       - pci_dss: ["10.4"]
       - nist_800_53: ["AU.8"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: any
     rules:
-      - 'c:dpkg -s ntp -> r:install ok installed'
-      - 'c:dpkg -s chrony -> r:install ok installed'
-      - 'c:systemctl is-enabled systemd-timesyncd -> enabled'
+      - "c:dpkg -s ntp -> r:install ok installed"
+      - "c:dpkg -s chrony -> r:install ok installed"
+      - "c:systemctl is-enabled systemd-timesyncd -> enabled"
 
   - id: 2552
     title: "Ensure systemd-timesyncd is configured"
-    description: "systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network. It implements an SNTP client. In contrast to NTP implementations such as chrony or the NTP reference server this only implements a client side, and does not bother with the full NTP complexity, focusing only on querying time from one remote server and synchronizing the local clock to it. The daemon runs with minimal privileges, and has been hooked up with networkd to only operate when network connectivity is available. The daemon saves the current clock to disk every time a new NTP sync has been acquired, and uses this to possibly correct the system clock early at bootup, in order to accommodate for systems that lack an RTC such as the Raspberry Pi and embedded devices, and make sure that time monotonically progresses on these systems, even if it is not always correct. To make use of this daemon a new system user and group \"systemd- timesync\" needs to be created on installation of systemd. Note: The systemd-timesyncd service specifically implements only SNTP. This minimalistic service will set the system clock for large offsets or slowly adjust it for smaller deltas. More complex use cases are not covered by systemd-timesyncd. This recommendation only applies if timesyncd is in use on the system."
+    description: 'systemd-timesyncd is a daemon that has been added for synchronizing the system clock across the network. It implements an SNTP client. In contrast to NTP implementations such as chrony or the NTP reference server this only implements a client side, and does not bother with the full NTP complexity, focusing only on querying time from one remote server and synchronizing the local clock to it. The daemon runs with minimal privileges, and has been hooked up with networkd to only operate when network connectivity is available. The daemon saves the current clock to disk every time a new NTP sync has been acquired, and uses this to possibly correct the system clock early at bootup, in order to accommodate for systems that lack an RTC such as the Raspberry Pi and embedded devices, and make sure that time monotonically progresses on these systems, even if it is not always correct. To make use of this daemon a new system user and group "systemd- timesync" needs to be created on installation of systemd. Note: The systemd-timesyncd service specifically implements only SNTP. This minimalistic service will set the system clock for large offsets or slowly adjust it for smaller deltas. More complex use cases are not covered by systemd-timesyncd. This recommendation only applies if timesyncd is in use on the system.'
     rationale: "Proper configuration is vital to ensuring time synchronization is working properly. This recommendation only applies if timesyncd is in use on the system."
     remediation: "Run the following command to enable systemd-timesyncd   # systemctl enable systemd-timesyncd.service  ||  Edit the file /etc/systemd/timesyncd.conf and add/modify the following lines:   NTP=0.debian.pool.ntp.org 1.debian.pool.ntp.org   FallbackNTP=2.debian.pool.ntp.org 3.debian.pool.ntp.org    RootDistanceMax=1  || Run the following commands to start systemd-timesyncd.service   # systemctl start systemd-timesyncd.service   # timedatectl set-ntp true  || Notes: Servers listed and RootDistanceMax should be In Accordance With Local Policy some versions of systemd have been compiled without systemd-timesycnd. On these distributions, chrony or NTP should be used instead of systemd-timesycnd. Not all options are available on all versions of systemd-timesyncd"
     compliance:
@@ -903,7 +894,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled systemd-timesyncd.service -> enabled'
+      - "c:systemctl is-enabled systemd-timesyncd.service -> enabled"
 
   - id: 2553
     title: "Ensure chrony is configured"
@@ -940,7 +931,7 @@ checks:
       - 'f:/etc/ntp.conf -> r:^server\.+|^pool\.+'
       - 'f:/etc/init.d/ntp -> r:^RUNASUSER\s*\t*=\s*\t*ntp'
 
-# 2.2.2 Ensure the X Window system is not installed (Scored)
+  # 2.2.2 Ensure the X Window system is not installed (Scored)
   - id: 2555
     title: "Ensure the X Window system is not installed"
     description: "The X Window System provides a Graphical User Interface (GUI) where users can have multiple windows in which to run programs and various add on. The X Windows system is typically used on workstations where users login, but not on servers where users typically do not login."
@@ -951,7 +942,7 @@ checks:
       - cis_csc: ["2.6"]
       - pci_dss: ["2.2.2"]
       - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2","CC6.1","CC6.8","CC7.1","CC7.2","CC8.1"]
+      - tsc: ["CC5.2", "CC6.1", "CC6.8", "CC7.1", "CC7.2", "CC8.1"]
     condition: none
     rules:
       - 'c:dpkg -l xserver-xorg-core* -> r:^\wi\s*xserver-xorg'
@@ -969,7 +960,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled avahi-daemon -> enabled'
+      - "c:systemctl is-enabled avahi-daemon -> enabled"
 
   - id: 2557
     title: "Ensure CUPS is not enabled"
@@ -986,7 +977,7 @@ checks:
       - https://www.cups.org
     condition: none
     rules:
-      - 'c:systemctl is-enabled cups -> enabled'
+      - "c:systemctl is-enabled cups -> enabled"
 
   - id: 2558
     title: "Ensure DHCP Server is not enabled"
@@ -1003,8 +994,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled isc-dhcp-server -> enabled'
-      - 'c:systemctl is-enabled isc-dhcp-server6 -> enabled'
+      - "c:systemctl is-enabled isc-dhcp-server -> enabled"
+      - "c:systemctl is-enabled isc-dhcp-server6 -> enabled"
 
   - id: 2559
     title: "Ensure LDAP server is not enabled"
@@ -1021,7 +1012,7 @@ checks:
       - https://www.openldap.org
     condition: none
     rules:
-      - 'c:systemctl is-enabled slapd -> enabled'
+      - "c:systemctl is-enabled slapd -> enabled"
 
   - id: 2560
     title: "Ensure NFS and RPC are not enabled"
@@ -1036,8 +1027,8 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled nfs-server -> enabled'
-      - 'c:systemctl is-enabled rpcbind -> enabled'
+      - "c:systemctl is-enabled nfs-server -> enabled"
+      - "c:systemctl is-enabled rpcbind -> enabled"
 
   - id: 2561
     title: "Ensure DNS Server is not enabled"
@@ -1052,7 +1043,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled bind9 -> enabled'
+      - "c:systemctl is-enabled bind9 -> enabled"
 
   - id: 2562
     title: "Ensure FTP Server is not enabled"
@@ -1067,7 +1058,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled vsftpd -> enabled'
+      - "c:systemctl is-enabled vsftpd -> enabled"
 
   - id: 2563
     title: "Ensure HTTP Server is not enabled"
@@ -1082,7 +1073,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled apache2 -> enabled'
+      - "c:systemctl is-enabled apache2 -> enabled"
 
   - id: 2564
     title: "Ensure email services are not enabled"
@@ -1097,7 +1088,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled dovecot -> enabled'
+      - "c:systemctl is-enabled dovecot -> enabled"
 
   - id: 2565
     title: "Ensure Samba is not enabled"
@@ -1112,7 +1103,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled smbd -> enabled'
+      - "c:systemctl is-enabled smbd -> enabled"
 
   - id: 2566
     title: "Ensure HTTP Proxy Server is not enabled"
@@ -1127,7 +1118,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled squid -> enabled'
+      - "c:systemctl is-enabled squid -> enabled"
 
   - id: 2567
     title: "Ensure SNMP Server is not enabled"
@@ -1142,7 +1133,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled snmpd -> enabled'
+      - "c:systemctl is-enabled snmpd -> enabled"
 
   - id: 2568
     title: "Ensure mail transfer agent is configured for local-only mode"
@@ -1153,8 +1144,8 @@ checks:
       - cis: ["2.2.15"]
       - cis_csc: ["9.2"]
       - pci_dss: ["2.2.2"]
-      - nist_800_53: ["CM.1","AC.4","SC.7"]
-      - tsc: ["CC5.2","CC6.4","CC6.6","CC6.7"]
+      - nist_800_53: ["CM.1", "AC.4", "SC.7"]
+      - tsc: ["CC5.2", "CC6.4", "CC6.6", "CC6.7"]
     condition: none
     rules:
       - 'c:ss -lntu -> r:\.*:25\.*LISTEN && !r:127.0.0.1:25\.+LISTEN|::1:25\.*LISTEN'
@@ -1171,7 +1162,7 @@ checks:
       - nist_800_53: ["CM.1"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled rsync -> enabled'
+      - "c:systemctl is-enabled rsync -> enabled"
 
   - id: 2570
     title: "Ensure NIS Server is not enabled"
@@ -1189,7 +1180,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:systemctl is-enabled nis -> enabled'
+      - "c:systemctl is-enabled nis -> enabled"
 
   - id: 2571
     title: "Ensure NIS Client is not installed"
@@ -1207,7 +1198,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s nis -> r:install ok installed'
+      - "c:dpkg -s nis -> r:install ok installed"
 
   - id: 2572
     title: "Ensure rsh client is not installed"
@@ -1225,7 +1216,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s rsh-client -> r:install ok installed'
+      - "c:dpkg -s rsh-client -> r:install ok installed"
 
   - id: 2573
     title: "Ensure talk client is not installed"
@@ -1243,7 +1234,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s talk -> r:install ok installed'
+      - "c:dpkg -s talk -> r:install ok installed"
 
   - id: 2574
     title: "Ensure telnet client is not installed"
@@ -1261,7 +1252,7 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s telnet -> r:install ok installed'
+      - "c:dpkg -s telnet -> r:install ok installed"
 
   - id: 2575
     title: "Ensure LDAP client is not installed"
@@ -1279,21 +1270,21 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'c:dpkg -s ldap-utils -> r:install ok installed'
+      - "c:dpkg -s ldap-utils -> r:install ok installed"
 
-############################################################
-# 3 Network Configuration
-############################################################
-############################################################
-# 3.1 Disable unused network protocols and devices
-############################################################
+  ############################################################
+  # 3 Network Configuration
+  ############################################################
+  ############################################################
+  # 3.1 Disable unused network protocols and devices
+  ############################################################
 
-# 3.1.1 Disable IPv6 (Not Scored)
+  # 3.1.1 Disable IPv6 (Not Scored)
   - id: 2576
     title: "Disable IPv6"
     description: "Although IPv6 has many advantages over IPv4, not all organizations have IPv6 or dual stack configurations implemented."
     rationale: "If IPv6 or dual stack is not to be used, it is recommended that IPv6 be disabled to reduce the attack surface of the system."
-    remediation: "Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX=\"ipv6.disable=1\" Run the following command to update the grub2 configuration: # update-grub"
+    remediation: 'Edit /etc/default/grub and add ipv6.disable=1 to the GRUB_CMDLINE_LINUX parameters: GRUB_CMDLINE_LINUX="ipv6.disable=1" Run the following command to update the grub2 configuration: # update-grub'
     compliance:
       - cis: ["3.1.1"]
       - cis_csc: ["9.4"]
@@ -1302,13 +1293,12 @@ checks:
       - gpg_13: ["4.3"]
       - gdpr_IV: ["35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.6","CC5.2"]
+      - tsc: ["CC6.6", "CC5.2"]
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:ipv6.disable=1'
 
-
-# 3.1.2 Ensure wireless interfaces are disabled (Scored)
+  # 3.1.2 Ensure wireless interfaces are disabled (Scored)
   - id: 2577
     title: "Ensure wireless interfaces are disabled"
     description: "Wireless networking is used when wired networks are unavailable. Debian contains a wireless tool kit to allow system administrators to configure and use wireless networks."
@@ -1323,12 +1313,12 @@ checks:
       - nmcli(1) - Linux man page
     condition: all
     rules:
-      - 'c:nmcli radio wifi -> r:^disabled'
-      - 'c:nmcli radio wwan -> r:^disabled'
-##########################################################
-# 3.2 Network Parameters
-##########################################################
-# 3.2.1 Ensure packet redirect sending is disabled
+      - "c:nmcli radio wifi -> r:^disabled"
+      - "c:nmcli radio wwan -> r:^disabled"
+  ##########################################################
+  # 3.2 Network Parameters
+  ##########################################################
+  # 3.2.1 Ensure packet redirect sending is disabled
   - id: 2578
     title: "Ensure packet redirect sending is disabled"
     description: "ICMP Redirects are used to send routing information to other hosts. As a host itself does not act as a router (in a host only configuration), there is no need to send redirects."
@@ -1346,7 +1336,7 @@ checks:
       - 'c:sysctl net.ipv4.conf.default.send_redirects -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.all\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.send_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.send_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.send_redirects\s*=\s*0$'
-# 3.2.2 Ensure IP forwarding is disabled
+  # 3.2.2 Ensure IP forwarding is disabled
   - id: 2579
     title: "Ensure IP forwarding is disabled"
     description: "The net.ipv4.ip_forward and net.ipv6.conf.all.forwarding flags are used to tell the system whether it can forward packets or not."
@@ -1365,10 +1355,10 @@ checks:
       - 'c:sysctl net.ipv6.conf.all.forwarding -> r:=\s*\t*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.all\.forwarding /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.forwarding\s*=\s*0$'
 
-#############################################################
-# 3.3 Network Parameters
-#############################################################
-# 3.3.1 Ensure source routed packets are not accepted
+  #############################################################
+  # 3.3 Network Parameters
+  #############################################################
+  # 3.3.1 Ensure source routed packets are not accepted
   - id: 2580
     title: "Ensure source routed packets are not accepted"
     description: "In networking, source routing allows a sender to partially or fully specify the route packets take through a network. In contrast, non-source routed packets travel a path determined by routers in the network. In some cases, systems may not be routable or reachable from some locations (e.g. private addresses vs. Internet routable), and so source routed packets would need to be used."
@@ -1391,7 +1381,7 @@ checks:
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_source_route\s*=\s*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_source_route /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_source_route\s*=\s*0$'
 
-# 3.3.2 Ensure ICMP redirects are not accepted
+  # 3.3.2 Ensure ICMP redirects are not accepted
   - id: 2581
     title: "Ensure ICMP redirects are not accepted"
     description: "ICMP redirect messages are packets that convey routing information and tell your host (acting as a router) to send packets via an alternate path. It is a way of allowing an outside routing device to update your system routing tables. By setting net.ipv4.conf.all.accept_redirects to 0, the system will not accept any ICMP redirect messages, and therefore, won't allow outsiders to update the system's routing tables."
@@ -1414,7 +1404,7 @@ checks:
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_redirects\s*=\s*0$'
 
-# 3.3.3 Ensure secure ICMP redirects are not accepted
+  # 3.3.3 Ensure secure ICMP redirects are not accepted
   - id: 2582
     title: "Ensure secure ICMP redirects are not accepted"
     description: "Secure ICMP redirects are the same as ICMP redirects, except they come from gateways listed on the default gateway list. It is assumed that these gateways are known to your system, and that they are likely to be secure."
@@ -1433,7 +1423,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.secure_redirects\s*=\s*0$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.secure_redirects /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.secure_redirects\s*=\s*0$'
 
-# 3.3.4 Ensure suspicious packets are logged (Scored)
+  # 3.3.4 Ensure suspicious packets are logged (Scored)
   - id: 2583
     title: "Ensure suspicious packets are logged"
     description: "When enabled, this feature logs packets with un-routable source addresses to the kernel log."
@@ -1452,7 +1442,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.log_martians\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.log_martians /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.log_martians\s*=\s*1$'
 
-# 3.3.5 Ensure broadcast ICMP requests are ignored
+  # 3.3.5 Ensure broadcast ICMP requests are ignored
   - id: 2584
     title: "Ensure broadcast ICMP requests are ignored"
     description: "Setting net.ipv4.icmp_echo_ignore_broadcasts to 1 will cause the system to ignore all ICMP echo and timestamp requests to broadcast and multicast addresses."
@@ -1469,7 +1459,7 @@ checks:
       - 'c:sysctl net.ipv4.icmp_echo_ignore_broadcasts -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv4\.icmp_echo_ignore_broadcasts /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_echo_ignore_broadcasts\s*=\s*1$'
 
-# 3.3.6 Ensure bogus ICMP responses are ignored (Scored)
+  # 3.3.6 Ensure bogus ICMP responses are ignored (Scored)
   - id: 2585
     title: "Ensure bogus ICMP responses are ignored"
     description: "Setting icmp_ignore_bogus_error_responses to 1 prevents the kernel from logging bogus responses (RFC-1122 non-compliant) from broadcast reframes, keeping file systems from filling up with useless log messages."
@@ -1486,7 +1476,7 @@ checks:
       - 'c:sysctl net.ipv4.icmp_ignore_bogus_error_responses -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv4\.icmp_ignore_bogus_error_responses /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.icmp_ignore_bogus_error_responses\s*=\s*1$'
 
-# 3.3.7 Ensure Reverse Path Filtering is enabled (Scored)
+  # 3.3.7 Ensure Reverse Path Filtering is enabled (Scored)
   - id: 2586
     title: "Ensure Reverse Path Filtering is enabled"
     description: "Setting net.ipv4.conf.all.rp_filter and net.ipv4.conf.default.rp_filter to 1 forces the Linux kernel to utilize reverse path filtering on a received packet to determine if the packet was valid. Essentially, with reverse path filtering, if the return packet does not go out the same interface that the corresponding source packet came from, the packet is dropped (and logged if log_martians is set)."
@@ -1505,7 +1495,7 @@ checks:
       - 'c:grep -Rh net\.ipv4\.conf\.all\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.all.rp_filter\s*=\s*1$'
       - 'c:grep -Rh net\.ipv4\.conf\.default\.rp_filter /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.conf.default.rp_filter\s*=\s*1$'
 
-# 3.3.8 Ensure TCP SYN Cookies is enabled (Scored)
+  # 3.3.8 Ensure TCP SYN Cookies is enabled (Scored)
   - id: 2587
     title: "Ensure TCP SYN Cookies is enabled"
     description: "When tcp_syncookies is set, the kernel will handle TCP SYN packets normally until the half-open connection queue is full, at which time, the SYN cookie functionality kicks in. SYN cookies work by not using the SYN queue at all. Instead, the kernel simply replies to the SYN with a SYN|ACK, but will include a specially crafted TCP sequence number that encodes the source and destination IP address and port number and the time the packet was sent. A legitimate connection would send the ACK packet of the three way handshake with the specially crafted sequence number. This allows the system to verify that it has received a valid response to a SYN cookie and allow the connection, even though there is no corresponding SYN in the queue."
@@ -1522,7 +1512,7 @@ checks:
       - 'c:sysctl net.ipv4.tcp_syncookies -> r:=\s*\t*1$'
       - 'c:grep -Rh net\.ipv4\.tcp_syncookies /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv4.tcp_syncookies\s*=\s*1$'
 
-# 3.3.9 Ensure IPv6 router advertisements are not accepted (Scored)
+  # 3.3.9 Ensure IPv6 router advertisements are not accepted (Scored)
   - id: 2588
     title: "Ensure IPv6 router advertisements are not accepted"
     description: "This setting disables the systems ability to accept router advertisements"
@@ -1544,11 +1534,10 @@ checks:
       - 'c:grep -Rh net\.ipv6\.conf\.all\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.all.accept_ra\s*=\s*0$'
       - 'c:grep -Rh net\.ipv6\.conf\.default\.accept_ra /etc/sysctl.conf /etc/sysctl.d -> r:^net.ipv6.conf.default.accept_ra\s*=\s*0$'
 
-
-#####################################################################
-# 3.4 Uncommon Network Protocols
-#####################################################################
-# 3.4.1 Ensure DCCP is disabled (Scored)
+  #####################################################################
+  # 3.4 Uncommon Network Protocols
+  #####################################################################
+  # 3.4.1 Ensure DCCP is disabled (Scored)
   - id: 2589
     title: "Ensure DCCP is disabled"
     description: "The Datagram Congestion Control Protocol (DCCP) is a transport layer protocol that supports streaming media and telephony. DCCP provides a way to gain access to congestion control, without having to do it at the application layer, but does not provide in- sequence delivery."
@@ -1565,10 +1554,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'not c:modprobe -n -v dccp -> r:install /bin/true'
-      - 'c:lsmod -> r:dccp'
+      - "not c:modprobe -n -v dccp -> r:install /bin/true"
+      - "c:lsmod -> r:dccp"
 
-# 3.4.2 Ensure SCTP is disabled (Scored)
+  # 3.4.2 Ensure SCTP is disabled (Scored)
   - id: 2590
     title: "Ensure SCTP is disabled"
     description: "The Stream Control Transmission Protocol (SCTP) is a transport layer protocol used to support message oriented communication, with several streams of messages in one connection. It serves a similar function as TCP and UDP, incorporating features of both. It is message-oriented like UDP, and ensures reliable in-sequence transport of messages with congestion control like TCP."
@@ -1585,11 +1574,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'not c:modprobe -n -v sctp -> r:install /bin/true'
-      - 'c:lsmod -> r:sctp'
+      - "not c:modprobe -n -v sctp -> r:install /bin/true"
+      - "c:lsmod -> r:sctp"
 
-
-# 3.4.3 Ensure RDS is disabled (Scored)
+  # 3.4.3 Ensure RDS is disabled (Scored)
   - id: 2591
     title: "Ensure RDS is disabled"
     description: "The Reliable Datagram Sockets (RDS) protocol is a transport layer protocol designed to provide low-latency, high-bandwidth communications between cluster nodes. It was developed by the Oracle Corporation."
@@ -1606,10 +1594,10 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'not c:modprobe -n -v rds -> r:install /bin/true'
-      - 'c:lsmod -> r:rds'
+      - "not c:modprobe -n -v rds -> r:install /bin/true"
+      - "c:lsmod -> r:rds"
 
-# 3.4.4 Ensure TIPC is disabled (Scored)
+  # 3.4.4 Ensure TIPC is disabled (Scored)
   - id: 2592
     title: "Ensure TIPC is disabled"
     description: "The Transparent Inter-Process Communication (TIPC) protocol is designed to provide communication between cluster nodes."
@@ -1626,18 +1614,16 @@ checks:
       - tsc: ["CC5.2"]
     condition: none
     rules:
-      - 'not c:modprobe -n -v tipc -> r:install /bin/true'
-      - 'c:lsmod -> r:tipc'
+      - "not c:modprobe -n -v tipc -> r:install /bin/true"
+      - "c:lsmod -> r:tipc"
 
-
-
-#################################################################
-# 3.5 Firewall configuration
-#################################################################
-#################################################################
-# 3.5.1 Ensure Firewall software is installed
-#################################################################
-# 3.5.1.1 Ensure a Firewall package is installed (Scored)
+  #################################################################
+  # 3.5 Firewall configuration
+  #################################################################
+  #################################################################
+  # 3.5.1 Ensure Firewall software is installed
+  #################################################################
+  # 3.5.1.1 Ensure a Firewall package is installed (Scored)
   - id: 2593
     title: "Ensure a Firewall package is installed"
     description: "A Firewall package should be selected. Most firewall configuration utilities operate as a front end to nftables or iptables."
@@ -1650,13 +1636,13 @@ checks:
       - tsc: ["CC6.6"]
     condition: any
     rules:
-      - 'c:dpkg -s ufw -> r:Status: install ok installed'
-      - 'c:dpkg -s nftables -> r:Status: install ok installed'
-      - 'c:dpkg -s iptables -> r:Status: install ok installed'
-#################################################################
-# 3.5.2 Configure UncomplicatedFirewall
-#################################################################
-# 3.5.2.1 Ensure ufw service is enabled (Scored)
+      - "c:dpkg -s ufw -> r:Status: install ok installed"
+      - "c:dpkg -s nftables -> r:Status: install ok installed"
+      - "c:dpkg -s iptables -> r:Status: install ok installed"
+  #################################################################
+  # 3.5.2 Configure UncomplicatedFirewall
+  #################################################################
+  # 3.5.2.1 Ensure ufw service is enabled (Scored)
   - id: 2594
     title: "Ensure ufw service is enabled"
     description: "UncomplicatedFirewall (ufw) is a frontend for iptables. ufw provides a framework for managing netfilter, as well as a command-line and available graphical user interface for manipulating the firewall. Ensure that the ufw service is enabled to protect your system."
@@ -1671,10 +1657,10 @@ checks:
       - "http://manpages.ubuntu.com/manpages/precise/en/man8/ufw.8.html"
     condition: all
     rules:
-      - 'c:systemctl is-enabled ufw -> enabled'
-      - 'c:ufw status -> Status: active'
+      - "c:systemctl is-enabled ufw -> enabled"
+      - "c:ufw status -> Status: active"
 
-# 3.5.2.2 Ensure default deny firewall policy (Scored)
+  # 3.5.2.2 Ensure default deny firewall policy (Scored)
   - id: 2595
     title: "Ensure default deny firewall policy"
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
@@ -1691,7 +1677,7 @@ checks:
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(outgoing)|reject\W+(outgoing)'
       - 'c:ufw status verbose -> r:^Default && r:deny\W+(routed)|reject\W+(routed)'
 
-# 3.5.2.3 Ensure loopback traffic is configured (Scored)
+  # 3.5.2.3 Ensure loopback traffic is configured (Scored)
   - id: 2596
     title: "Ensure loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8 for IPv4 and ::1/128 for IPv6)."
@@ -1711,11 +1697,11 @@ checks:
       - 'c:ufw status verbose -> r:Anywhere\s*\t*ALLOW OUT\s*\t*Anywhere on lo'
       - 'c:ufw status verbose -> r:Anywhere \(v6\)\s*\t*ALLOW OUT\s*\t*Anywhere \(v6\) on lo'
 
-######################################################################
-# 3.5.3 Configure nftables
-######################################################################
+  ######################################################################
+  # 3.5.3 Configure nftables
+  ######################################################################
 
-# 3.5.3.2 Ensure a table exists (Scored)
+  # 3.5.3.2 Ensure a table exists (Scored)
   - id: 2597
     title: "Ensure a table exists"
     description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
@@ -1730,7 +1716,7 @@ checks:
     rules:
       - 'c:nft list tables -> r:\w+'
 
-# 3.5.3.3 Ensure base chains exist (Scored)
+  # 3.5.3.3 Ensure base chains exist (Scored)
   - id: 2598
     title: "Ensure base chains exist"
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
@@ -1743,11 +1729,11 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
-      - 'c:nft list ruleset -> r:hook input'
-      - 'c:nft list ruleset -> r:hook forward'
-      - 'c:nft list ruleset -> r:hook output'
+      - "c:nft list ruleset -> r:hook input"
+      - "c:nft list ruleset -> r:hook forward"
+      - "c:nft list ruleset -> r:hook output"
 
-# 3.5.3.6 Ensure default deny firewall policy (Scored)
+  # 3.5.3.6 Ensure default deny firewall policy (Scored)
   - id: 2599
     title: "Ensure default deny firewall policy"
     description: "Base chain policy is the default verdict that will be applied to packets reaching the end of the chain."
@@ -1760,11 +1746,11 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
-      - 'c:nft list ruleset -> r:hook input && r:policy drop'
-      - 'c:nft list ruleset -> r:hook forward && r:policy drop'
-      - 'c:nft list ruleset -> r:hook output && r:policy drop'
+      - "c:nft list ruleset -> r:hook input && r:policy drop"
+      - "c:nft list ruleset -> r:hook forward && r:policy drop"
+      - "c:nft list ruleset -> r:hook output && r:policy drop"
 
-# 3.5.3.7 Ensure nftables service is enabled (Scored)
+  # 3.5.3.7 Ensure nftables service is enabled (Scored)
   - id: 2600
     title: "Ensure nftables service is enabled"
     description: "The nftables service allows for the loading of nftables rulesets during boot, or starting of the nftables service."
@@ -1777,15 +1763,15 @@ checks:
       - tsc: ["CC6.6"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled nftables -> enabled'
+      - "c:systemctl is-enabled nftables -> enabled"
 
-#######################################################################
-# 3.5.4 Configure iptables
-#######################################################################
-#######################################################################
-# 3.5.4.1 Configure IPv4 iptables
-#######################################################################
-# 3.5.4.1.1 Ensure default deny firewall policy (Scored)
+  #######################################################################
+  # 3.5.4 Configure iptables
+  #######################################################################
+  #######################################################################
+  # 3.5.4.1 Configure IPv4 iptables
+  #######################################################################
+  # 3.5.4.1.1 Ensure default deny firewall policy (Scored)
   - id: 2601
     title: "Ensure default deny firewall policy"
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
@@ -1802,7 +1788,7 @@ checks:
       - 'c:iptables -L -> r:Chain FORWARD \(policy DROP\)|Chain FORWARD \(policy REJECT\)'
       - 'c:iptables -L -> r:Chain OUTPUT \(policy DROP\)|Chain OUTPUT \(policy REJECT\)'
 
-# 3.5.4.1.2 Ensure loopback traffic is configured (Scored)
+  # 3.5.4.1.2 Ensure loopback traffic is configured (Scored)
   - id: 2602
     title: "Ensure loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (127.0.0.0/8)."
@@ -1819,10 +1805,10 @@ checks:
       - 'c:iptables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*127.0.0.0/8\.*0.0.0.0/0'
       - 'c:iptables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*0.0.0.0/0\.*0.0.0.0/0'
 
-#########################################################################
-# 3.5.4.2 Configure IPv6 ip6tables
-#########################################################################
-# 3.5.4.2.1 Ensure IPv6 default deny firewall policy (Scored)
+  #########################################################################
+  # 3.5.4.2 Configure IPv6 ip6tables
+  #########################################################################
+  # 3.5.4.2.1 Ensure IPv6 default deny firewall policy (Scored)
   - id: 2603
     title: "Ensure IPv6 default deny firewall policy"
     description: "A default deny all policy on connections ensures that any unconfigured network usage will be rejected."
@@ -1835,11 +1821,11 @@ checks:
       - tsc: ["CC8.1"]
     condition: all
     rules:
-      - 'c:ip6tables -L -> r:^Chain INPUT && r:policy DROP'
-      - 'c:ip6tables -L -> r:^Chain FORWARD && r:policy DROP'
-      - 'c:ip6tables -L -> r:^Chain OUTPUT && r:policy DROP'
+      - "c:ip6tables -L -> r:^Chain INPUT && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain FORWARD && r:policy DROP"
+      - "c:ip6tables -L -> r:^Chain OUTPUT && r:policy DROP"
 
-# 3.5.4.2.2 Ensure IPv6 loopback traffic is configured (Scored)
+  # 3.5.4.2.2 Ensure IPv6 loopback traffic is configured (Scored)
   - id: 2604
     title: "Ensure IPv6 loopback traffic is configured"
     description: "Configure the loopback interface to accept traffic. Configure all other interfaces to deny traffic to the loopback network (::1)."
@@ -1856,13 +1842,9 @@ checks:
       - 'c:ip6tables -L INPUT -v -n -> r:\.*DROP\.*all\.**\.**\.*::1\.*::/0'
       - 'c:ip6tables -L OUTPUT -v -n -> r:\.*ACCEPT\.*all\.**\.*lo\.*::/0\.*::/0'
 
-
-
-############################################################
-# 4 Logging and Auditing
-############################################################
-
-
+  ############################################################
+  # 4 Logging and Auditing
+  ############################################################
 
   - id: 2605
     title: "Ensure auditd is installed"
@@ -1875,11 +1857,11 @@ checks:
       - pci_dss: ["10.1"]
       - nist_800_53: ["AU.2"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'c:dpkg -s auditd -> r:install ok installed'
-      - 'c:dpkg -s audispd-plugins -> r:install ok installed'
+      - "c:dpkg -s auditd -> r:install ok installed"
+      - "c:dpkg -s audispd-plugins -> r:install ok installed"
 
   - id: 2606
     title: "Ensure auditd service is enabled"
@@ -1889,28 +1871,28 @@ checks:
     compliance:
       - cis: ["4.1.1.2"]
       - cis_csc: ["6.2", "6.3"]
-      - pci_dss: ["10.1","10.7"]
+      - pci_dss: ["10.1", "10.7"]
       - nist_800_53: ["AU.2"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.2","CC6.3","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.2", "CC6.3", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled auditd -> enabled'
+      - "c:systemctl is-enabled auditd -> enabled"
 
   - id: 2607
     title: "Ensure auditing for processes that start prior to auditd is enabled"
     description: "Configure grub so that processes that are capable of being audited can be audited even if they start up prior to auditd startup."
     rationale: "Audit events need to be captured on processes that start up prior to auditd, so that potential malicious activity cannot go undetected."
-    remediation: "Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: GRUB_CMDLINE_LINUX=\"audit=1\" Run the following command to update the grub2 configuration: # update-grub Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings."
+    remediation: 'Edit /etc/default/grub and add audit=1 to GRUB_CMDLINE_LINUX: GRUB_CMDLINE_LINUX="audit=1" Run the following command to update the grub2 configuration: # update-grub Notes: This recommendation is designed around the grub bootloader, if LILO or another bootloader is in use in your environment enact equivalent settings.'
     compliance:
       - cis: ["4.1.1.3"]
       - cis_csc: ["6.2", "6.3"]
-      - pci_dss: ["10.2.6","10.7"]
+      - pci_dss: ["10.2.6", "10.7"]
       - nist_800_53: ["AU.2"]
       - gpg_13: ["7.9"]
-      - gdpr_IV: ["35.7.d","32.2"]
+      - gdpr_IV: ["35.7.d", "32.2"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: none
     rules:
       - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:audit=1'
@@ -1928,8 +1910,8 @@ checks:
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/auditd.conf'
+      - "d:/etc/audit"
+      - "f:/etc/audit/auditd.conf"
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file\s*\t*=\s*\t*\d+'
 
   - id: 2609
@@ -1945,8 +1927,8 @@ checks:
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/auditd.conf'
+      - "d:/etc/audit"
+      - "f:/etc/audit/auditd.conf"
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*max_log_file_action\s*\t*=\s*\t*keep_logs'
 
   - id: 2610
@@ -1960,30 +1942,29 @@ checks:
       - pci_dss: ["10.7"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'f:/etc/audit/auditd.conf'
+      - "d:/etc/audit"
+      - "f:/etc/audit/auditd.conf"
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*action_mail_acct\s*\t*=\s*\t*root'
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*space_left_action\s*\t*=\s*\t*email'
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*admin_space_left_action\s*\t*=\s*\t*halt'
 
-
   - id: 2611
     title: "Ensure events that modify date and time information are collected"
-    description: "Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier \"time-change\""
+    description: 'Capture events where the system date and/or time has been modified. The parameters in this section are set to determine if the adjtimex (tune kernel clock), settimeofday (Set time, using timeval and timezone structures) stime (using seconds since 1/1/1970) or clock_settime (allows for the setting of several internal clocks and timers) system calls have been executed and always write an audit record to the /var/log/audit.log file upon exit, tagging the records with the identifier "time-change"'
     rationale: "Unexpected changes in system date and/or time could be a sign of malicious activity on the system."
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time- change | -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change | -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change | -a always,exit -F arch=b64 -S clock_settime -k time-change -a always,exit -F arch=b32 -S clock_settime -k time-change | -w /etc/localtime -p wa -k time-change"
     compliance:
       - cis: ["4.1.3"]
       - cis_csc: ["5.5"]
-      - pci_dss: ["10.4.2","10.2.7"]
-      - nist_800_53: ["AU.14","AU.6"]
+      - pci_dss: ["10.4.2", "10.2.7"]
+      - nist_800_53: ["AU.14", "AU.6"]
       - gpg_13: ["7.9"]
-      - gdpr_IV: ["32.2","35.7.d"]
+      - gdpr_IV: ["32.2", "35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S adjtimex && r:-S settimeofday && r:-S stime && r:-k time-change'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S clock_settime && r:-k time-change'
@@ -1991,7 +1972,7 @@ checks:
 
   - id: 2612
     title: "Ensure events that modify user/group information are collected"
-    description: "Record events affecting the group , passwd (user IDs), shadow and gshadow (passwords) or /etc/security/opasswd (old passwords, based on remember parameter in the PAM configuration) files. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier \"identity\" in the audit log file."
+    description: 'Record events affecting the group , passwd (user IDs), shadow and gshadow (passwords) or /etc/security/opasswd (old passwords, based on remember parameter in the PAM configuration) files. The parameters in this section will watch the files to see if they have been opened for write or have had attribute changes (e.g. permissions) and tag them with the identifier "identity" in the audit log file.'
     rationale: "Unexpected changes to these files could be an indication that the system has been compromised and that an unauthorized user is attempting to hide their activities or compromise additional accounts."
     remediation: "edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /etc/group -p wa -k identity | -w /etc/passwd -p wa -k identity | -w /etc/gshadow -p wa -k identity | -w /etc/shadow -p wa -k identity | -w /etc/security/opasswd -p wa -k identity Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
@@ -2001,11 +1982,11 @@ checks:
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/group && r:-p wa && r:-k identity'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/passwd && r:-p wa && r:-k identity'
@@ -2016,7 +1997,7 @@ checks:
   - id: 2613
     title: "Ensure events that modify the system's network environment are collected"
     description: "Record changes to network environment files or system calls. The below parameters monitor the sethostname (set the systems host name) or setdomainname (set the systems domainname) system calls, and write an audit event on system call exit. The other parameters monitor the /etc/issue and /etc/issue.net files (messages displayed pre- login), /etc/hosts (file containing host names and associated IP addresses) and /etc/sysconfig/network (directory containing network interface scripts and configurations) files."
-    rationale: "Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier \"system-locale.\""
+    rationale: 'Monitoring sethostname and setdomainname will identify potential unauthorized changes to host and domainname of a system. The changing of these names could potentially break security parameters that are set based on those names. The /etc/hosts file is monitored for changes in the file that can indicate an unauthorized intruder is trying to change machine associations with IP addresses and trick users and processes into connecting to unintended machines. Monitoring /etc/issue and /etc/issue.net is important, as intruders could put disinformation into those files and trick users into providing information to the intruder. Monitoring /etc/network is important as it can show if network interfaces or scripts are being modified in a way that can lead to the machine becoming unavailable or compromised. All audit records will be tagged with the identifier "system-locale."'
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules and add the following lines: -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale      -w /etc/issue -p wa -k system-locale      -w /etc/issue.net -p wa -k system-locale     -w /etc/hosts -p wa -k system-locale-w /etc/network -p wa -k system-locale     For 64 bit systems Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules Example: vi /etc/audit/rules.d/system-locale.rules   and add the following lines:  -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale   -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale       -w /etc/issue -p wa -k system-locale          -w /etc/issue.net -p wa -k system-locale           -w /etc/hosts -p wa -k system-locale         -w /etc/network -p wa -k system-locale"
     compliance:
       - cis: ["4.1.5"]
@@ -2025,11 +2006,11 @@ checks:
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S sethostname && r:-S setdomainname && r:-k system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/issue && r:-p wa && r:-k system-locale'
@@ -2049,11 +2030,11 @@ checks:
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor/ && r:-p wa && r:-k MAC-policy'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/apparmor.d/ && r:-p wa && r:-k MAC-policy'
@@ -2067,14 +2048,14 @@ checks:
       - cis: ["4.1.7"]
       - cis_csc: ["4.9", "16.11", "16.13"]
       - pci_dss: ["10.2.1", "10.2.4", "10.3"]
-      - nist_800_53: ["AC.7","AU.14"]
+      - nist_800_53: ["AC.7", "AU.14"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["32.2","35.7.d"]
+      - gdpr_IV: ["32.2", "35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/faillog && r:-p wa && r:-k logins'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins'
@@ -2082,18 +2063,18 @@ checks:
 
   - id: 2616
     title: "Ensure session initiation information is collected"
-    description: "Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp file tracks all currently logged in users. All audit records will be tagged with the identifier \"session.\" The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier \"logins.\""
+    description: 'Monitor session initiation events. The parameters in this section track changes to the files associated with session events. The file /var/run/utmp file tracks all currently logged in users. All audit records will be tagged with the identifier "session." The /var/log/wtmp file tracks logins, logouts, shutdown, and reboot events. The file /var/log/btmp keeps track of failed login attempts and can be read by entering the command /usr/bin/last -f /var/log/btmp . All audit records will be tagged with the identifier "logins."'
     rationale: "Monitoring these files for changes could alert a system administrator to logins occurring at unusual hours, which could indicate intruder activity (i.e. a user logging in at a time when they do not normally log in)."
     remediation: "Edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /var/run/utmp -p wa -k session | -w /var/log/wtmp -p wa -k logins | -w /var/log/btmp -p wa -k logins. Notes: The last command can be used to read /var/log/wtmp (last with no parameters) and /var/run/utmp (last -f /var/run/utmp). Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.8"]
       - cis_csc: ["4.9", "16.11", "16.13"]
       - pci_dss: ["10.3"]
-      - nist_800_53: ["AC.7","AU.14"]
+      - nist_800_53: ["AC.7", "AU.14"]
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/var/log/wtmp && r:-p wa && r:-k logins'
@@ -2101,7 +2082,7 @@ checks:
 
   - id: 2617
     title: "Ensure discretionary access control permission modification events are collected"
-    description: "Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >= 1000) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier \"perm_mod.\""
+    description: 'Monitor changes to file permissions, attributes, ownership and group. The parameters in this section track changes for system calls that affect file permissions and attributes. The chmod , fchmod and fchmodat system calls affect the permissions associated with a file. The chown , fchown , fchownat and lchown system calls affect owner and group attributes on a file. The setxattr , lsetxattr , fsetxattr (set extended file attributes) and removexattr , lremovexattr , fremovexattr (remove extended file attributes) control extended file attributes. In all cases, an audit record will only be written for non-system user ids (auid >= 1000) and will ignore Daemon events (auid = 4294967295). All audit records will be tagged with the identifier "perm_mod."'
     rationale: "Monitoring for changes in file attributes could alert a system administrator to activity that could indicate intruder activity or policy violation."
     remediation: "For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod | -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
@@ -2111,11 +2092,11 @@ checks:
       - hipaa: ["164.312.b"]
       - nist_800_53: ["AU.14", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - gdpr_IV: ["35.7", "32.2"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chmod && r:-S fchmod && r:-S fchmodat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S chown && r:-S fchown && r:-S fchownat && r:-S lchown && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k perm_mod'
@@ -2123,7 +2104,7 @@ checks:
 
   - id: 2618
     title: "Ensure unsuccessful unauthorized file access attempts are collected"
-    description: "Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation ( creat ), opening ( open , openat ) and truncation ( truncate , ftruncate ) of files. An audit log record will only be written if the user is a non- privileged user (auid > = 1000), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier \"access.\""
+    description: 'Monitor for unsuccessful attempts to access files. The parameters below are associated with system calls that control creation ( creat ), opening ( open , openat ) and truncation ( truncate , ftruncate ) of files. An audit log record will only be written if the user is a non- privileged user (auid > = 1000), is not a Daemon event (auid=4294967295) and if the system call returned EACCES (permission denied to the file) or EPERM (some other permanent error associated with the specific system call). All audit records will be tagged with the identifier "access."'
     rationale: "Failed attempts to open, create or truncate files could be an indication that an individual or process is trying to gain unauthorized access to the system."
     remediation: "For 32 bit systems Edit or create a file in the /etc/audit/rules.d/directory ending in .rules  Example: vi /etc/audit/rules.d/audit.rules and add the following lines:    -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access    |    -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access                    For 64 bit systems Edit or create a file in the /etc/audit/rules.d/directory ending in .rules Example: vi /etc/audit/rules.d/access.rules and add the following lines:                -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access     |  -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access     |    -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access   |  -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access          Notes: Reloading the auditd config toset active settings requires the auditd service to be restarted, and may require a system reboot."
     compliance:
@@ -2132,12 +2113,12 @@ checks:
       - pci_dss: ["10.2.4"]
       - nist_800_53: ["AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["32.2","35.7.d"]
+      - gdpr_IV: ["32.2", "35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EACCES && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S creat && r:-S open && r:-S openat && r:-S truncate && r:-F exit=-EPERM && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k access'
@@ -2151,20 +2132,20 @@ checks:
       - cis: ["4.1.12"]
       - cis_csc: ["13"]
       - pci_dss: ["10.2.7"]
-      - nist_800_53: ["AU.14","AU.6"]
+      - nist_800_53: ["AU.14", "AU.6"]
       - gpg_13: ["7.9"]
-      - gdpr_IV: ["32.2","35.7.d"]
+      - gdpr_IV: ["32.2", "35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k mounts'
 
   - id: 2620
     title: "Ensure file deletion events by users are collected"
-    description: "Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for the unlink (remove a file), unlinkat (remove a file attribute), rename (rename a file) and renameat (rename a file attribute) system calls and tags them with the identifier \"delete\"."
+    description: 'Monitor the use of system calls associated with the deletion or renaming of files and file attributes. This configuration statement sets up monitoring for the unlink (remove a file), unlinkat (remove a file attribute), rename (rename a file) and renameat (rename a file attribute) system calls and tags them with the identifier "delete".'
     rationale: "Monitoring these calls from non-privileged users could provide a system administrator with evidence that inappropriate removal of files and file attributes associated with protected files is occurring. While this audit option will look at all events, system administrators will want to look for specific privileged files that are being deleted or altered."
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete | -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete. Notes: At a minimum, configure the audit system to collect file deletion events for all users and root. Reloading the auditd config to set active settings may require a system reboot."
     compliance:
@@ -2173,16 +2154,16 @@ checks:
       - pci_dss: ["10.5.5"]
       - nist_800_53: ["AU.14"]
       - hipaa: ["164.312.b"]
-      - tsc: ["PI1.4","PI1.5","CC7.1","CC7.2","CC7.3","CC8.1"]
+      - tsc: ["PI1.4", "PI1.5", "CC7.1", "CC7.2", "CC7.3", "CC8.1"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S unlink && r:-S unlinkat && r:-S rename && r:-S renameat && r:-F auid>=1000 && r:-F auid!=4294967295 && r:-k delete'
 
   - id: 2621
     title: "Ensure changes to system administration scope (sudoers) is collected"
-    description: "Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier \"scope.\""
+    description: 'Monitor scope changes for system administrations. If the system has been properly configured to force system administrators to log in as themselves first and then use the sudo command to execute privileged commands, it is possible to monitor changes in scope. The file /etc/sudoers will be written to when the file or its attributes have changed. The audit records will be tagged with the identifier "scope."'
     rationale: "Changes in the /etc/sudoers file can indicate that an unauthorized change has been made to scope of system administrator activity."
     remediation: "Add the following line to the /etc/audit/audit.rules file: -w /etc/sudoers -p wa -k scope | -w /etc/sudoers.d/ -p wa -k scope. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
@@ -2191,10 +2172,10 @@ checks:
       - pci_dss: ["10.5.5"]
       - nist_800_53: ["AU.14"]
       - hipaa: ["164.312.b"]
-      - tsc: ["PI1.4","PI1.5","CC7.1","CC7.2","CC7.3","CC8.1"]
+      - tsc: ["PI1.4", "PI1.5", "CC7.1", "CC7.2", "CC7.3", "CC8.1"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers && r:-p wa && r:-k scope'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/sudoers.d/ && r:-p wa && r:-k scope'
@@ -2208,34 +2189,34 @@ checks:
       - cis: ["4.1.15"]
       - cis_csc: ["4.9"]
       - pci_dss: ["10.2.2"]
-      - nist_800_53: ["AU.14","AC.6","AC.7"]
+      - nist_800_53: ["AU.14", "AC.6", "AC.7"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["32.2","35.7.d"]
+      - gdpr_IV: ["32.2", "35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w \.+ && r:-p wa && r:-k actions'
 
   - id: 2623
     title: "Ensure kernel module loading and unloading is collected"
-    description: "Monitor the loading and unloading of kernel modules. The programs insmod (install a kernel module), rmmod (remove a kernel module), and modprobe (a more sophisticated program to load and unload modules, as well as some other features) control loading and unloading of modules. The init_module (load a module) and delete_module (delete a module) system calls control loading and unloading of modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of \"modules\"."
+    description: 'Monitor the loading and unloading of kernel modules. The programs insmod (install a kernel module), rmmod (remove a kernel module), and modprobe (a more sophisticated program to load and unload modules, as well as some other features) control loading and unloading of modules. The init_module (load a module) and delete_module (delete a module) system calls control loading and unloading of modules. Any execution of the loading and unloading module programs and system calls will trigger an audit record with an identifier of "modules".'
     rationale: "Monitoring the use of insmod, rmmod and modprobe could provide system administrators with evidence that an unauthorized user loaded or unloaded a kernel module, possibly compromising the security of the system. Monitoring of the init_module and delete_module system calls would reflect an unauthorized user attempting to use a different program to load and unload modules."
     remediation: "For 32 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /sbin/insmod -p x -k modules | -w /sbin/rmmod -p x -k modules | -w /sbin/modprobe -p x -k modules | -a always,exit -F arch=b32 -S init_module -S delete_module -k modules. For 64 bit systems edit or create a file in the /etc/audit/rules.d/ directory ending in .rules and add the following lines: -w /sbin/insmod -p x -k modules | -w /sbin/rmmod -p x -k modules | -w /sbin/modprobe -p x -k modules | -a always,exit -F arch=b64 -S init_module -S delete_module -k modules. Notes: Reloading the auditd config to set active settings may require a system reboot."
     compliance:
       - cis: ["4.1.16"]
       - cis_csc: ["5.1"]
       - pci_dss: ["10.2.7"]
-      - nist_800_53: ["AU.14","AU.6"]
+      - nist_800_53: ["AU.14", "AU.6"]
       - gpg_13: ["7.9"]
-      - gdpr_IV: ["32.2","35.7.d"]
+      - gdpr_IV: ["32.2", "35.7.d"]
       - hipaa: ["164.312.b"]
-      - tsc: ["CC6.1","CC6.8","CC7.2","CC7.3","CC7.4"]
+      - tsc: ["CC6.1", "CC6.8", "CC7.2", "CC7.3", "CC7.4"]
     condition: all
     rules:
-      - 'd:/etc/audit'
+      - "d:/etc/audit"
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/insmod && r:-p x && r:-k modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/sbin/rmmod && r:-p x && r:-k modules'
@@ -2244,7 +2225,7 @@ checks:
 
   - id: 2624
     title: "Ensure the audit configuration is immutable"
-    description: "Set system audit so that audit rules cannot be modified with auditctl. Setting the flag \"-e 2\" forces audit to be put in immutable mode. Audit changes can only be made on system reboot."
+    description: 'Set system audit so that audit rules cannot be modified with auditctl. Setting the flag "-e 2" forces audit to be put in immutable mode. Audit changes can only be made on system reboot.'
     rationale: "In immutable mode, unauthorized users cannot execute changes to the audit system to potentially hide malicious activity and then put the audit rules back. Users would most likely notice a system reboot and that could alert administrators of an attempt to make unauthorized audit changes."
     remediation: "Edit or create the file /etc/audit/rules.d/99-finalize.rules and add the line: -e 2. Notes: This setting will ensure reloading the auditd config to set active settings requires a system reboot."
     compliance:
@@ -2255,12 +2236,11 @@ checks:
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - 'd:/etc/audit'
-      - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$'
+      - "d:/etc/audit"
+      - "d:/etc/audit/rules.d -> r:^99-finalize.rules$"
       - 'd:/etc/audit/rules.d -> r:^99-finalize.rules$ -> r:^\s*\t*-e 2$'
 
-
-# 4.2,1 Configure rsyslog
+  # 4.2,1 Configure rsyslog
   - id: 2625
     title: "Ensure rsyslog is installed"
     description: "The rsyslog software are recommended replacements to the original syslogd daemon which provide improvements over syslogd , such as connection-oriented (i.e. TCP) transmission of logs, the option to log to database formats, and the encryption of log data en route to a central logging server."
@@ -2275,7 +2255,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: any
     rules:
-      - 'c:dpkg -s rsyslog -> r:install ok installed'
+      - "c:dpkg -s rsyslog -> r:install ok installed"
   - id: 2626
     title: "Ensure rsyslog Service is enabled"
     description: "Once the rsyslog package is installed it needs to be activated."
@@ -2290,7 +2270,7 @@ checks:
       - hipaa: ["164.312.b"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled rsyslog -> enabled'
+      - "c:systemctl is-enabled rsyslog -> enabled"
 
   - id: 2627
     title: "Ensure rsyslog default file permissions configured"
@@ -2300,8 +2280,8 @@ checks:
     compliance:
       - cis: ["4.2.1.4"]
       - cis_csc: ["5.1"]
-      - pci_dss: ["10.5.1","10.5.2"]
-      - nist_800_53: ["CM.1","AU.9"]
+      - pci_dss: ["10.5.1", "10.5.2"]
+      - nist_800_53: ["CM.1", "AU.9"]
       - tsc: ["CC5.2", "CC6.1", "CC7.2", "CC.7.3", "CC7.4"]
     condition: any
     rules:
@@ -2312,12 +2292,12 @@ checks:
     title: "Ensure rsyslog is configured to send logs to a remote log host"
     description: "The rsyslog utility supports the ability to send logs it gathers to a remote log host running syslogd(8) or to receive messages from remote hosts, reducing administrative overhead."
     rationale: "Storing log data on a remote host protects log integrity from local attacks. If an attacker gains root access on the local system, they could tamper with or remove log data that is stored on the local system."
-    remediation: "Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add one of the following lines: Newer syntax: <files to sent to the remote log server> action(type=\"omfwd\" target=\"<FQDN or ip of loghost>\" port=\"<port number>\" protocol=\"tcp\" ction.resumeRetryCount=\"<number of re-tries>\"  queue.type=\"linkList\" queue.size=<number of messages to queue>\") Example: *.* action(type=\"omfwd\" target=\"192.168.2.100\" port\"514\" protocol=\"tcp\" action.resumeRetryCount=\"100\" queue.type=\"linkList\" queue.size=\"1000\") Older syntax: *.* @@<FQDN or ip of loghost>"
+    remediation: 'Edit the /etc/rsyslog.conf and /etc/rsyslog.d/*.conf files and add one of the following lines: Newer syntax: <files to sent to the remote log server> action(type="omfwd" target="<FQDN or ip of loghost>" port="<port number>" protocol="tcp" ction.resumeRetryCount="<number of re-tries>"  queue.type="linkList" queue.size=<number of messages to queue>") Example: *.* action(type="omfwd" target="192.168.2.100" port"514" protocol="tcp" action.resumeRetryCount="100" queue.type="linkList" queue.size="1000") Older syntax: *.* @@<FQDN or ip of loghost>'
     compliance:
       - cis: ["4.2.1.5"]
       - cis_csc: ["6.6", "6.8"]
       - pci_dss: ["10.5.3"]
-      - nist_800_53: ["CM.1","AU.4"]
+      - nist_800_53: ["CM.1", "AU.4"]
       - tsc: ["CC5.2"]
     references:
       - rsyslog.conf(5) man page
@@ -2341,7 +2321,7 @@ checks:
       - 'c:grep -Rh ^\$ModLoad[[:space:]]*imtcp /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$ModLoad\s*\t*imtcp'
       - 'c:grep -Rh ^\$InputTCPServerRun /etc/rsyslog.conf /etc/rsyslog.d/ -> r:^\$InputTCPServerRun\s*\t*514'
 
-# 4.2.2.1 Ensure journald is configured to send logs to rsyslog (Scored)
+  # 4.2.2.1 Ensure journald is configured to send logs to rsyslog (Scored)
   - id: 2630
     title: "Ensure journald is configured to send logs to rsyslog"
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Utilities exist to accept remote export of journald logs, however, use of the rsyslog service provides a consistent means of log collection and export."
@@ -2351,15 +2331,15 @@ checks:
       - cis: ["4.2.2.1"]
       - cis_csc: ["6.5"]
       - pci_dss: ["10.5.3"]
-      - nist_800_53: ["CM.1","AU.9","AU.4"]
-      - tsc: ["CC5.2","CC7.2"]
+      - nist_800_53: ["CM.1", "AU.9", "AU.4"]
+      - tsc: ["CC5.2", "CC7.2"]
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*ForwardToSyslog\s*=\s*yes'
 
-# 4.2.2.2 Ensure journald is configured to compress large log files (Scored)
+  # 4.2.2.2 Ensure journald is configured to compress large log files (Scored)
   - id: 2631
     title: "Ensure journald is configured to compress large log files"
     description: "The journald system includes the capability of compressing overly large files to avoid filling up the system with logs or making the logs unmanageably large."
@@ -2369,7 +2349,7 @@ checks:
       - cis: ["4.2.2.2"]
       - cis_csc: ["6.4"]
       - pci_dss: ["10.7"]
-      - nist_800_53: ["CM.1","AU.4"]
+      - nist_800_53: ["CM.1", "AU.4"]
       - tsc: ["CC5.2"]
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
@@ -2377,7 +2357,7 @@ checks:
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*\t*Compress\s*=\s*yes'
 
-# 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk (Scored)
+  # 4.2.2.3 Ensure journald is configured to write logfiles to persistent disk (Scored)
   - id: 2632
     title: "Ensure journald is configured to write logfiles to persistent disk"
     description: "Data from journald may be stored in volatile memory or persisted locally on the server. Logs in memory will be lost upon a system reboot. By persisting logs to local disk on the server they are protected from loss."
@@ -2385,9 +2365,9 @@ checks:
     remediation: "Edit the /etc/systemd/journald.conf file and add the following line:   Storage=persistent"
     compliance:
       - cis: ["4.2.2.3"]
-      - cis_csc: ["6.2","6.3"]
+      - cis_csc: ["6.2", "6.3"]
       - pci_dss: ["10.7"]
-      - nist_800_53: ["CM.1","AU.4"]
+      - nist_800_53: ["CM.1", "AU.4"]
       - tsc: ["CC5.2"]
     references:
       - "https://github.com/konstruktoid/hardening/blob/master/systemd.adoc#etcsystemdjournaldconf"
@@ -2400,13 +2380,13 @@ checks:
     title: "Ensure permissions on all logfiles are configured"
     description: "Log files stored in /var/log/ contain logged information from many services on the system, or on log hosts others as well."
     rationale: "It is important to ensure that log files have the correct permissions to ensure that sensitivebdata is archived and protected."
-    remediation: "Run the following command to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx \"{}\" + -o -type d -exec chmod g-w,o-rwx \"{}\" +"
+    remediation: 'Run the following command to set permissions on all existing log files: find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g-w,o-rwx "{}" +'
     compliance:
       - cis: ["4.2.3"]
       - cis_csc: ["5.1"]
-      - pci_dss: ["10.5.1","10.5.2"]
-      - nist_800_53: ["CM.1","AU.9"]
-      - tsc: ["CC5.2","CC7.2"]
+      - pci_dss: ["10.5.1", "10.5.2"]
+      - nist_800_53: ["CM.1", "AU.9"]
+      - tsc: ["CC5.2", "CC7.2"]
     condition: none
     rules:
       - 'c:find /var/log -type f -ls -> r:-\w\w\w\ww\w\w\w\w|-\w\w\w\w\wx\w\w\w|-\w\w\w\w\w\w\ww\w|-\w\w\w\w\w\wr\w\w|-\w\w\w\w\w\w\w\wx'
@@ -2423,13 +2403,12 @@ checks:
     rules:
       - 'f:/etc/logrotate.conf -> r:^\s*\t*create\s*\t*0\d40|^\s*\t*create\s*\t*0\d00 && r:^\s*\t*create\s*\t*06\d0|^\s*\t*create\s*\t*04\d0|^\s*\t*create\s*\t*02\d0|^\s*\t*create\s*\t*00\d0'
 
-
-############################################################
-# 5 Access, Authentication and Authorization
-############################################################
-############################################################
-# 5.1 Configure cron
-############################################################
+  ############################################################
+  # 5 Access, Authentication and Authorization
+  ############################################################
+  ############################################################
+  # 5.1 Configure cron
+  ############################################################
   - id: 2635
     title: "Ensure cron daemon is enabled"
     description: "The cron daemon is used to execute batch jobs on the system."
@@ -2443,10 +2422,9 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'c:systemctl is-enabled cron -> enabled'
+      - "c:systemctl is-enabled cron -> enabled"
 
-
-# 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
+  # 5.1.2 Ensure permissions on /etc/crontab are configured (Scored)
   - id: 2636
     title: "Ensure permissions on /etc/crontab are configured"
     description: "The /etc/crontab file is used by cron to control its own jobs. The commands in this item make sure that root is the user and group owner of the file and that only the owner can access the file."
@@ -2460,13 +2438,12 @@ checks:
       - nist_800_53: ["AU.14", "AC.7"]
       - tsc: ["CC7.2", "CC6.1"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
+      - gdpr_IV: ["35.7", "32.2"]
     condition: all
     rules:
       - 'c:stat -L /etc/crontab -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-
-# 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Scored)
+  # 5.1.3 Ensure permissions on /etc/cron.hourly are configured (Scored)
   - id: 2637
     title: "Ensure permissions on /etc/cron.hourly are configured"
     description: "This directory contains system cron jobs that need to run on an hourly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
@@ -2482,7 +2459,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.hourly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-# 5.1.4 Ensure permissions on /etc/cron.daily are configured (Scored)
+  # 5.1.4 Ensure permissions on /etc/cron.daily are configured (Scored)
   - id: 2638
     title: "Ensure permissions on /etc/cron.daily are configured"
     description: "The /etc/cron.daily directory contains system cron jobs that need to run on a daily basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
@@ -2498,7 +2475,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.daily -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-# 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Scored)
+  # 5.1.5 Ensure permissions on /etc/cron.weekly are configured (Scored)
   - id: 2639
     title: "Ensure permissions on /etc/cron.weekly are configured"
     description: "The /etc/cron.weekly directory contains system cron jobs that need to run on a weekly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
@@ -2514,8 +2491,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.weekly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-
-# 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Scored)
+  # 5.1.6 Ensure permissions on /etc/cron.monthly are configured (Scored)
   - id: 2640
     title: "Ensure permissions on /etc/cron.monthly are configured"
     description: "The /etc/cron.monthly directory contains system cron jobs that need to run on a monthly basis. The files in this directory cannot be manipulated by the crontab command, but are instead edited by system administrators using a text editor. The commands below restrict read/write and search access to user and group root, preventing regular users from accessing this directory."
@@ -2531,7 +2507,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.monthly -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-# 5.1.7 Ensure permissions on /etc/cron.d are configured (Scored)
+  # 5.1.7 Ensure permissions on /etc/cron.d are configured (Scored)
   - id: 2641
     title: "Ensure permissions on /etc/cron.d are configured"
     description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow , cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
@@ -2547,7 +2523,7 @@ checks:
     rules:
       - 'c:stat -L /etc/cron.d -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-# 5.1.8 Ensure at/cron is restricted to authorized users (Scored)
+  # 5.1.8 Ensure at/cron is restricted to authorized users (Scored)
   - id: 2642
     title: "Ensure at/cron is restricted to authorized users"
     description: "Configure /etc/cron.allow and /etc/at.allow to allow specific users to use these services. If /etc/cron.allow or /etc/at.allow do not exist, then /etc/at.deny and /etc/cron.deny are checked. Any user not specifically defined in those files is allowed to use at and cron. By removing the files, only users in /etc/cron.allow and /etc/at.allow are allowed to use at and cron. Note that even though a given user is not listed in cron.allow, cron jobs can still be run as that user. The cron.allow file only controls administrative access to the crontab command for scheduling and modifying cron jobs."
@@ -2561,17 +2537,17 @@ checks:
       - tsc: ["CC5.2"]
     condition: all
     rules:
-      - 'f:/etc/cron.allow'
-      - 'f:/etc/at.allow'
-      - 'not f:/etc/cron.deny'
-      - 'not f:/etc/at.deny'
+      - "f:/etc/cron.allow"
+      - "f:/etc/at.allow"
+      - "not f:/etc/cron.deny"
+      - "not f:/etc/at.deny"
       - 'c:stat -L /etc/cron.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:stat -L /etc/at.allow -> r:^Access: \(0\d\d0/\w\w\w\w\w-----\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-######################################################
-# 5.2 SSH Server Configuration
-######################################################
-# 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured
+  ######################################################
+  # 5.2 SSH Server Configuration
+  ######################################################
+  # 5.2.1 Ensure permissions on /etc/ssh/sshd_config are configured
   - id: 2643
     title: "Ensure permissions on /etc/ssh/sshd_config are configured"
     description: "The /etc/ssh/sshd_config file contains configuration specifications for sshd. The command below sets the owner and group of the file to root."
@@ -2587,7 +2563,7 @@ checks:
     rules:
       - 'c:stat -L /etc/ssh/sshd_config -> r:^Access: \(0\d00/\w\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-# 5.2.2 Ensure permissions on SSH private host key files are configured (Scored)
+  # 5.2.2 Ensure permissions on SSH private host key files are configured (Scored)
   - id: 2644
     title: "Ensure permissions on SSH private host key files are configured"
     description: "An SSH private key is one of two files used in SSH public key authentication. In this authentication method, The possession of the private key is proof of identity. Only a private key that corresponds to a public key will be able to authenticate successfully. The private keys need to be stored and handled carefully, and no copies of the private key should be distributed."
@@ -2605,7 +2581,7 @@ checks:
       - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:stat -L /etc/ssh/ssh_host_ed25519_key -> r:^Access: \(0\d00/-\w\w\w------\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-# 5.2.3 Ensure permissions on SSH public host key files are configured (Scored)
+  # 5.2.3 Ensure permissions on SSH public host key files are configured (Scored)
   - id: 2645
     title: "Ensure permissions on SSH public host key files are configured"
     description: "An SSH public key is one of two files used in SSH public key authentication. In this authentication method, a public key is a key that can be used for verifying digital signatures generated using a corresponding private key. Only a public key that corresponds to a private key will be able to authenticate successfully."
@@ -2623,7 +2599,7 @@ checks:
       - 'c:stat -L /etc/ssh/ssh_host_ecdsa_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
       - 'c:stat -L /etc/ssh/ssh_host_ed25519_key.pub -> r:^Access: \(0\d\d\d/-\w\w\w\w--\w--\)  Uid: \(    0/    root\)   Gid: \(    0/    root\)$'
 
-# 5.2.4 Ensure SSH Protocol is not set to 1 (Scored)
+  # 5.2.4 Ensure SSH Protocol is not set to 1 (Scored)
   - id: 2646
     title: "Ensure SSH Protocol is not set to 1"
     description: "Older versions of SSH support two different and incompatible protocols: SSH1 and SSH2. SSH1 was the original protocol and was subject to security issues. SSH2 is more advanced and secure."
@@ -2640,7 +2616,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:Protocol\s*\t*1'
 
-# 5.2.5 Ensure SSH LogLevel is appropriate (Scored)
+  # 5.2.5 Ensure SSH LogLevel is appropriate (Scored)
   - id: 2647
     title: "Ensure SSH LogLevel is appropriate"
     description: "INFO level is the basic level that only records login activity of SSH users. In many situations, such as Incident Response, it is important to determine when a particular user was active on a system. The logout record can eliminate those users who disconnected, which helps narrow the field. VERBOSE level specifies that login and logout activity as well as the key fingerprint for any SSH key used for login will be logged. This information is important for SSH key management, especially in legacy environments."
@@ -2659,7 +2635,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:LogLevel\s+INFO|LogLevel\s+VERBOSE'
 
-# 5.2.6 Ensure SSH X11 forwarding is disabled (Scored)
+  # 5.2.6 Ensure SSH X11 forwarding is disabled (Scored)
   - id: 2648
     title: "Ensure SSH X11 forwarding is disabled"
     description: "The X11Forwarding parameter provides the ability to tunnel X11 traffic through the connection to enable remote graphic connections."
@@ -2678,7 +2654,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:X11Forwarding\s+no'
 
-# 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less (Scored)
+  # 5.2.7 Ensure SSH MaxAuthTries is set to 4 or less (Scored)
   - id: 2649
     title: "Ensure SSH MaxAuthTries is set to 4 or less"
     description: "The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure."
@@ -2694,7 +2670,7 @@ checks:
     rules:
       - 'c:sshd -T -> n:^MaxAuthTries\s*\t*(\d+) compare <= 4'
 
-# 5.2.8 Ensure SSH IgnoreRhosts is enabled (Scored)
+  # 5.2.8 Ensure SSH IgnoreRhosts is enabled (Scored)
   - id: 2650
     title: "Ensure SSH IgnoreRhosts is enabled"
     description: "The IgnoreRhosts parameter specifies that .rhostsand .shostsfiles will not be used in RhostsRSAAuthenticationor HostbasedAuthentication."
@@ -2711,7 +2687,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:IgnoreRhosts\s+yes'
 
-# 5.2.9 Ensure SSH HostbasedAuthentication is disabled (Scored)
+  # 5.2.9 Ensure SSH HostbasedAuthentication is disabled (Scored)
   - id: 2651
     title: "Ensure SSH HostbasedAuthentication is disabled"
     description: "The HostbasedAuthentication parameter specifies if authentication is allowed through trusted hosts via the user of .rhosts, or /etc/hosts.equiv, along with successful public key client host authentication. This option only applies to SSH Protocol Version 2."
@@ -2728,7 +2704,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:HostbasedAuthentication\s+no'
 
-# 5.2.10 Ensure SSH root login is disabled (Scored)
+  # 5.2.10 Ensure SSH root login is disabled (Scored)
   - id: 2652
     title: "Ensure SSH root login is disabled"
     description: "The PermitRootLogin parameter specifies if the root user can log in using ssh(1). The default is no."
@@ -2745,7 +2721,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:PermitRootLogin\s+no'
 
-# 5.2.11 Ensure SSH PermitEmptyPasswords is disabled (Scored)
+  # 5.2.11 Ensure SSH PermitEmptyPasswords is disabled (Scored)
   - id: 2653
     title: "Ensure SSH PermitEmptyPasswords is disabled"
     description: "The PermitEmptyPasswords parameter specifies if the server allows login to accounts with empty password strings."
@@ -2762,7 +2738,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:PermitEmptyPasswords\s+no'
 
-# 5.2.12 Ensure SSH PermitUserEnvironment is disabled (Scored)
+  # 5.2.12 Ensure SSH PermitUserEnvironment is disabled (Scored)
   - id: 2654
     title: "Ensure SSH PermitUserEnvironment is disabled"
     description: "The PermitUserEnvironment option allows users to present environment options to the ssh daemon."
@@ -2779,11 +2755,11 @@ checks:
     rules:
       - 'c:sshd -T -> r:PermitUserEnvironment\s+no'
 
-# 5.2.13 Ensure only strong Ciphers are used (Scored)
+  # 5.2.13 Ensure only strong Ciphers are used (Scored)
   - id: 2655
     title: "Ensure only strong ciphers are used"
     description: "This variable limits the ciphers that SSH can use during communication."
-    rationale: "Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a \"Sweet32\" attack The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the \"Bar Mitzvah\" issue The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors The mm_newkeys_from_blob function in monitor_wrap.c, when an AES-GCM cipher is used, does not properly initialize memory for a MAC context data structure, which allows remote authenticated users to bypass intended ForceCommand and login-shell restrictions via packet data that provides a crafted callback address"
+    rationale: 'Weak ciphers that are used for authentication to the cryptographic module cannot be relied upon to provide confidentiality or integrity, and system data may be compromised The DES, Triple DES, and Blowfish ciphers, as used in SSH, have a birthday bound of approximately four billion blocks, which makes it easier for remote attackers to obtain cleartext data via a birthday attack against a long-duration encrypted session, aka a "Sweet32" attack The RC4 algorithm, as used in the TLS protocol and SSL protocol, does not properly combine state data with key data during the initialization phase, which makes it easier for remote attackers to conduct plaintext-recovery attacks against the initial bytes of a stream by sniffing network traffic that occasionally relies on keys affected by the Invariance Weakness, and then using a brute-force approach involving LSB values, aka the "Bar Mitzvah" issue The passwords used during an SSH session encrypted with RC4 can be recovered by an attacker who is able to capture and replay the session Error handling in the SSH protocol; Client and Server, when using a block cipher algorithm in Cipher Block Chaining (CBC) mode, makes it easier for remote attackers to recover certain plaintext data from an arbitrary block of ciphertext in an SSH session via unknown vectors The mm_newkeys_from_blob function in monitor_wrap.c, when an AES-GCM cipher is used, does not properly initialize memory for a MAC context data structure, which allows remote authenticated users to bypass intended ForceCommand and login-shell restrictions via packet data that provides a crafted callback address'
     remediation: "Edit the /etc/ssh/sshd_config file add/modify the Ciphers line to contain a comma separated list of the site approved ciphers Example: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr"
     compliance:
       - cis: ["5.2.13"]
@@ -2793,19 +2769,19 @@ checks:
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.7", "CC6.1", "CC7.2"]
     reference:
-      - 'https://nvd.nist.gov/vuln/detail/CVE-2016-2183'
-      - 'https://nvd.nist.gov/vuln/detail/CVE-2015-2808'
-      - 'https://www.kb.cert.org/vuls/id/565052'
-      - 'https://www.openssh.com/txt/cbc.adv'
-      - 'https://nvd.nist.gov/vuln/detail/CVE-2008-5161'
-      - 'https://nvd.nist.gov/vuln/detail/CVE-2013-4548'
-      - 'https://www.kb.cert.org/vuls/id/565052'
-      - 'https://www.openssh.com/txt/cbc.adv'
+      - "https://nvd.nist.gov/vuln/detail/CVE-2016-2183"
+      - "https://nvd.nist.gov/vuln/detail/CVE-2015-2808"
+      - "https://www.kb.cert.org/vuls/id/565052"
+      - "https://www.openssh.com/txt/cbc.adv"
+      - "https://nvd.nist.gov/vuln/detail/CVE-2008-5161"
+      - "https://nvd.nist.gov/vuln/detail/CVE-2013-4548"
+      - "https://www.kb.cert.org/vuls/id/565052"
+      - "https://www.openssh.com/txt/cbc.adv"
     condition: none
     rules:
-      - 'c:sshd -T -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se'
+      - "c:sshd -T -> r:ciphers && r:3des-cbc|aes128-cbc|aes192-cbc|aes256-cbc|arcfour|arcfour128|arcfour256|blowfish-cbc|cast128-cbc|rijndael-cbc@lysator.liu.se"
 
-# 5.2.14 Ensure only strong MAC algorithms are used (Scored)
+  # 5.2.14 Ensure only strong MAC algorithms are used (Scored)
   - id: 2656
     title: "Ensure only strong MAC algorithms are used"
     description: "This variable limits the types of MAC algorithms that SSH can use during communication."
@@ -2813,18 +2789,18 @@ checks:
     remediation: "Edit the /etc/ssh/sshd_config file and add/modify the MACs line to contain a comma separated list of the site approved MACs Example: MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256"
     compliance:
       - cis: ["5.2.14"]
-      - cis_csc: ["14.4","16.5"]
+      - cis_csc: ["14.4", "16.5"]
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
       - tsc: ["CC6.7", "CC6.1", "CC7.2"]
     reference:
-      - 'http://www.mitls.org/pages/attacks/SLOTH'
+      - "http://www.mitls.org/pages/attacks/SLOTH"
     condition: none
     rules:
-      - 'c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com'
+      - "c:sshd -T -> r:MACs && r:hmac-md5|hmac-md5-96|hmac-ripemd160|hmac-sha1|hmac-sha1-96|umac-64@openssh.com|umac-128@openssh.com|hmac-md5-etm@openssh.com|hmac-md5-96-etm@openssh.com|hmac-ripemd160-etm@openssh.com|hmac-sha1-etm@openssh.com|hmac-sha1-96-etm@openssh.com|umac-64-etm@openssh.com|umac-128-etm@openssh.com"
 
-# 5.2.15 Ensure only strong Key Exchange algorithms are used (Scored)
+  # 5.2.15 Ensure only strong Key Exchange algorithms are used (Scored)
   - id: 2657
     title: "Ensure only strong Key Exchange algorithms are used"
     description: "Key exchange is any method in cryptography by which cryptographic keys are exchanged between two parties, allowing use of a cryptographic algorithm. If the sender and receiver wish to exchange encrypted messages, each must be equipped to encrypt messages to be sent and decrypt messages received"
@@ -2839,9 +2815,9 @@ checks:
       - tsc: ["CC6.7", "CC6.1", "CC7.2"]
     condition: none
     rules:
-      - 'c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1'
+      - "c:sshd -T -> r:kexalgorithms && r:diffie-hellman-group1-sha1|diffie-hellman-group14-sha1|diffie-hellman-group-exchange-sha1"
 
-# 5.2.16 Ensure SSH Idle Timeout Interval is configured (Scored)
+  # 5.2.16 Ensure SSH Idle Timeout Interval is configured (Scored)
   - id: 2658
     title: "Ensure SSH Idle Timeout Interval is configured"
     description: "The two options ClientAliveInterval and ClientAliveCountMax control the timeout of ssh sessions. When the ClientAliveInterval variable is set, ssh sessions that have no activity for the specified length of time are terminated. When the ClientAliveCountMax variable is set, sshd will send client alive messages at every ClientAliveInterval interval. When the number of consecutive client alive messages are sent with no response from the client, the ssh session is terminated. For example, if the ClientAliveInterval is set to 15 seconds and the ClientAliveCountMax is set to 3, the client ssh session will be terminated after 45 seconds of idle time."
@@ -2856,7 +2832,7 @@ checks:
       - 'c:sshd -T -> n:ClientAliveInterval\s*\t*(\d+) compare <= 300 && n:ClientAliveInterval\s*\t*(\d+) compare != 0'
       - 'c:sshd -T -> n:ClientAliveCountMax\s*\t*(\d+) compare <= 3'
 
-# 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less (Scored)
+  # 5.2.17 Ensure SSH LoginGraceTime is set to one minute or less (Scored)
   - id: 2659
     title: "Ensure SSH LoginGraceTime is set to one minute or less"
     description: "The LoginGraceTime parameter specifies the time allowed for successful authentication to the SSH server. The longer the Grace period is the more open unauthenticated connections can exist. Like other session controls in this session the Grace Period should be limited to appropriate organizational limits to ensure the service is available for needed access."
@@ -2871,7 +2847,7 @@ checks:
     rules:
       - 'c:sshd -T -> n:LoginGraceTime\s*\t*(\d+) compare <= 60 && n:LoginGraceTime\s*\t*(\d+) compare != 0'
 
-# 5.2.18 Ensure SSH access is limited (Scored)
+  # 5.2.18 Ensure SSH access is limited (Scored)
   - id: 2660
     title: "Ensure SSH access is limited"
     description: "There are several options available to limit which users and group can access the system via SSH. It is recommended that at least one of the following options be leveraged: AllowUsers, AllowGroups, DenyUsers, DenyGroups."
@@ -2886,7 +2862,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:AllowUsers\s+\w+|AllowGroups\s+\w+|DenyUsers\s+\w+|DenyGroups\s+\w+'
 
-# 5.2.19 Ensure SSH warning banner is configured (Scored)
+  # 5.2.19 Ensure SSH warning banner is configured (Scored)
   - id: 2661
     title: "Ensure SSH warning banner is configured"
     description: "The Banner parameter specifies a file whose contents must be sent to the remote user before authentication is permitted. By default, no banner is displayed."
@@ -2902,7 +2878,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:Banner\s*\t*/etc/issue.net'
 
-# 5.2.20 Ensure SSH PAM is enabled (Scored)
+  # 5.2.20 Ensure SSH PAM is enabled (Scored)
   - id: 2662
     title: "Ensure SSH PAM is enabled"
     description: "UsePAM Enables the Pluggable Authentication Module interface. If set to “yes” this will enable PAM authentication using ChallengeResponseAuthentication and PasswordAuthentication in addition to PAM account and session module processing for all authentication types."
@@ -2918,8 +2894,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*usepam\s+yes'
 
-
-# 5.2.21 Ensure SSH AllowTcpForwarding is disabled (Scored)
+  # 5.2.21 Ensure SSH AllowTcpForwarding is disabled (Scored)
   - id: 2663
     title: "Ensure SSH AllowTcpForwarding is disabled"
     description: "SSH port forwarding is a mechanism in SSH for tunneling application ports from the client to the server, or servers to clients. It can be used for adding encryption to legacy applications, going through firewalls, and some system administrators and IT professionals use it for opening backdoors into the internal network from their home machines."
@@ -2931,13 +2906,12 @@ checks:
       - pci_dss: ["4.1"]
       - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
       - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1","CC6.7","CC7.2"]
+      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
     references:
       - https://www.ssh.com/ssh/tunneling/example
     condition: all
     rules:
       - 'c:sshd -T -> r:^\s*AllowTcpForwarding\s+no'
-
 
   - id: 2664
     title: "Ensure SSH MaxStartups is configured"
@@ -2951,7 +2925,7 @@ checks:
     rules:
       - 'c:sshd -T -> r:^\s*maxstartups\s+10:30:60'
 
-# 5.2.23 Ensure SSH MaxSessions is limited (Scored)
+  # 5.2.23 Ensure SSH MaxSessions is limited (Scored)
   - id: 2665
     title: "Ensure SSH MaxSessions is limited"
     description: "The MaxSessions parameter specifies the maximum number of open sessions permitted from a given connection."
@@ -2967,10 +2941,10 @@ checks:
     rules:
       - 'c:sshd -T -> n:^MaxSessions\s+(\d+) compare <= 10'
 
-######################################################
-# 5.3 Configure PAM
-######################################################
-# 5.3.1 Ensure password creation requirements are configured (Scored)
+  ######################################################
+  # 5.3 Configure PAM
+  ######################################################
+  # 5.3.1 Ensure password creation requirements are configured (Scored)
   - id: 2666
     title: "Ensure password creation requirements are configured"
     description: "The pam_pwquality.so module checks the strength of passwords. It performs checks such as making sure a password is not a dictionary word, it is a certain length, contains a mix of characters (e.g. alphabet, numeric, other) and more. The following are definitions of the pam_pwquality.so options: - retry=3 (Allow 3 tries before sending back a failure). The following options are set in the /etc/security/pwquality.conf file: - minlen = 14 dcredit = -1 ucredit = -1 ocredit = -1 lcredit = -1 (The settings shown above are one possible policy. Alter these values to conform to your own organization's password policies.)"
@@ -2986,12 +2960,12 @@ checks:
       - 'f:/etc/security/pwquality.conf -> !r:^# && n:minlen\s*\t*=\s*\t*(\d+) compare >= 14'
       - 'f:/etc/pam.d/common-password -> !r:^# && n:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+) compare <=3'
 
-# 5.3.2 Ensure lockout for failed password attempts is configured (Scored)
+  # 5.3.2 Ensure lockout for failed password attempts is configured (Scored)
   - id: 2667
     title: "Ensure lockout for failed password attempts is configured"
     description: "Lock out users after n unsuccessful consecutive login attempts. The first sets of changes are made to the PAM configuration files. The second set of changes are applied to the program specific PAM configuration file. The second set of changes must be applied to each program that will lock out users. Check the documentation for each secondary program for instructions on how to configure them to work with PAM. Set the lockout number to the policy in effect at your site."
     rationale: "Locking out user IDs after n unsuccessful consecutive login attempts mitigates brute force password attacks against your systems."
-    remediation: "Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900. Edit the /etc/pam.d/common-account file and add the account lines below: account    requisite    pam_deny.so      account    required    pam_tally2.so. Note: If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_tally2.so module, the user can be unlocked by issuing the command /sbin/pam_tally2 -u <username> --reset. This command sets the failed count to 0, effectively unlocking the user. Notes:BUG In pam_tally2.so To work around this issue the addition of pam_tally2.so in the accounts section of the /etc/pam.d/common-account file has been added to the audit and remediation sections. pam_tally2 line must be added for the counter to reset to 0 when using sudo.     Use of the \"audit\" keyword may log credentials in the case of user error during authentication. This risk should be evaluated in the context of the site policies of your organization."
+    remediation: 'Edit the /etc/pam.d/common-auth file and add the auth line below: auth required pam_tally2.so onerr=fail audit silent deny=5 unlock_time=900. Edit the /etc/pam.d/common-account file and add the account lines below: account    requisite    pam_deny.so      account    required    pam_tally2.so. Note: If a user has been locked out because they have reached the maximum consecutive failure count defined by deny= in the pam_tally2.so module, the user can be unlocked by issuing the command /sbin/pam_tally2 -u <username> --reset. This command sets the failed count to 0, effectively unlocking the user. Notes:BUG In pam_tally2.so To work around this issue the addition of pam_tally2.so in the accounts section of the /etc/pam.d/common-account file has been added to the audit and remediation sections. pam_tally2 line must be added for the counter to reset to 0 when using sudo.     Use of the "audit" keyword may log credentials in the case of user error during authentication. This risk should be evaluated in the context of the site policies of your organization.'
     compliance:
       - cis: ["5.3.2"]
       - cis_csc: ["16.7"]
@@ -3003,7 +2977,7 @@ checks:
       - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*requisite\s*\t*pam_deny.so'
       - 'f:/etc/pam.d/common-account -> !r:^# && r:account\s*\t*required\s*\t*pam_tally2.so'
 
-# 5.3.3 Ensure password reuse is limited (Scored)
+  # 5.3.3 Ensure password reuse is limited (Scored)
   - id: 2668
     title: "Ensure password reuse is limited"
     description: "The /etc/security/opasswd file stores the users' old passwords and can be checked to ensure that users are not recycling recent passwords."
@@ -3019,7 +2993,7 @@ checks:
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && n:remember\s*\t*=\s*\t*(\d+) compare < 5'
       - 'f:/etc/pam.d/common-password -> !r:^# && r:password\s*\t*required\s*\t*pam_pwhistory.so && !r:remember'
 
-# 5.3.4 Ensure password hashing algorithm is SHA-512 (Scored)
+  # 5.3.4 Ensure password hashing algorithm is SHA-512 (Scored)
   - id: 2669
     title: "Ensure password hashing algorithm is SHA-512"
     description: "The commands below change password encryption from md5 to sha512 (a much stronger hashing algorithm). All existing accounts will need to perform a password change to upgrade the stored hashes to the new algorithm."
@@ -3028,19 +3002,19 @@ checks:
     compliance:
       - cis: ["5.3.4"]
       - cis_csc: ["16.14"]
-      - pci_dss: ["3.6.1","8.2.1"]
-      - tsc: ["CC6.1","CC6.7"]
+      - pci_dss: ["3.6.1", "8.2.1"]
+      - tsc: ["CC6.1", "CC6.7"]
     condition: none
     rules:
       - 'f:/etc/pam.d/common-password -> r:^password\.+pam_unix.so && !r:sha512'
 
-####################################################
-# 5.4 User Accounts and Environment
-####################################################
-####################################################
-# 5.4.1 Set Shadow Password Suite Parameters
-####################################################
-# 5.4.1.1 Ensure password expiration is 365 days or less (Scored)
+  ####################################################
+  # 5.4 User Accounts and Environment
+  ####################################################
+  ####################################################
+  # 5.4.1 Set Shadow Password Suite Parameters
+  ####################################################
+  # 5.4.1.1 Ensure password expiration is 365 days or less (Scored)
   - id: 2670
     title: "Ensure password expiration is 365 days or less"
     description: "The PASS_MAX_DAYS parameter in /etc/login.defs allows an administrator to force passwords to expire once they reach a defined age. It is recommended that the PASS_MAX_DAYS parameter be set to less than or equal to 365 days."
@@ -3056,7 +3030,7 @@ checks:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
       - 'not f:/etc/login.defs -> n:^\s*\t*PASS_MAX_DAYS\s*\t*(\d+) compare < 0'
 
-# 5.4.1.2 Ensure minimum days between password changes is configured
+  # 5.4.1.2 Ensure minimum days between password changes is configured
   - id: 2671
     title: "Ensure minimum days between password changes is 7 or more"
     description: "The PASS_MIN_DAYS parameter in /etc/login.defs allows an administrator to prevent users from changing their password until a minimum number of days have passed since the last time the user changed their password. It is recommended that PASS_MIN_DAYS parameter be set to 7 or more days."
@@ -3071,7 +3045,7 @@ checks:
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
 
-# 5.4.1.3 Ensure password expiration warning days is 7 or more (Scored)
+  # 5.4.1.3 Ensure password expiration warning days is 7 or more (Scored)
   - id: 2672
     title: "Ensure password expiration warning days is 7 or more"
     description: "The PASS_WARN_AGE parameter in /etc/login.defs allows an administrator to notify users that their password will expire in a defined number of days. It is recommended that the PASS_WARN_AGE parameter be set to 7 or more days."
@@ -3086,7 +3060,7 @@ checks:
     rules:
       - 'f:/etc/login.defs -> n:^\s*\t*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
 
-# 5.4.1.4 Ensure inactive password lock is 30 days or less (Scored)
+  # 5.4.1.4 Ensure inactive password lock is 30 days or less (Scored)
   - id: 2673
     title: "Ensure inactive password lock is 30 days or less"
     description: "User accounts that have been inactive for over a given period of time can be automatically disabled. It is recommended that accounts that are inactive for 30 days after password expiration be disabled."
@@ -3102,7 +3076,7 @@ checks:
       - 'c:useradd -D -> n:^INACTIVE=(\d+) compare <= 30'
       - 'not c:useradd -D -> n:^INACTIVE=(\d+) compare < 0'
 
-# 5.4.3 Ensure default group for the root account is GID 0 (Scored)
+  # 5.4.3 Ensure default group for the root account is GID 0 (Scored)
   - id: 2674
     title: "Ensure default group for the root account is GID 0"
     description: "The usermod command can be used to specify which group the root user belongs to. This affects permissions of files that are created by the root user."
@@ -3117,7 +3091,7 @@ checks:
     rules:
       - 'f:/etc/passwd -> !r:^# && r:root:\w+:\w+:0:'
 
-# 5.4.4 Ensure default user umask is 027 or more restrictive (Scored)
+  # 5.4.4 Ensure default user umask is 027 or more restrictive (Scored)
   - id: 2675
     title: "Ensure default user umask is 027 or more restrictive"
     description: "The default umask determines the permissions of files created by users. The user creating the file has the discretion of making their files and directories readable by others via the chmod command. Users who wish to allow their files and directories to be readable by others by default may choose a different default umask by inserting the umask command into the standard shell configuration files ( .profile , .bashrc , etc.) in their home directories."
@@ -3137,9 +3111,7 @@ checks:
       - 'd:/etc/profile.d -> .sh -> !r:^\s*\t*# && r:umask \d0\d|umask \d1\d|umask \d4\d|umask \d5\d'
       - 'd:/etc/profile.d -> .sh -> !r:^\s*t*# && n:umask \d\d(\d) compare != 7'
 
-
-
-# 5.4.5 Ensure default user shell timeout is 900 seconds or less (Scored)
+  # 5.4.5 Ensure default user shell timeout is 900 seconds or less (Scored)
   - id: 2676
     title: "Ensure default user shell timeout is 900 seconds or less"
     description: "The default TMOUT determines the shell timeout for users. The TMOUT value is measured in seconds."
@@ -3158,7 +3130,7 @@ checks:
       - 'f:/etc/bash.bashrc -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
       - 'f:/etc/profile -> r:^\s*\t*readonly && n:TMOUT\s*\t*=\s*\t*(\d+) compare <= 900'
 
-# 5.6 Ensure access to the su command is restricted (Scored)
+  # 5.6 Ensure access to the su command is restricted (Scored)
   - id: 2677
     title: "Ensure access to the su command is restricted"
     description: "The su command allows a user to run a command or shell as another user. The program has been superseded by sudo, which allows for more granular control over privileged access. Normally, the su command can be executed by any user. By uncommenting the pam_wheel.so statement in /etc/pam.d/su, the su command will only allow users in the sudo group to execute su."
@@ -3172,19 +3144,19 @@ checks:
       - nist_800_53: ["AU.14", "AC.7"]
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
+      - gdpr_IV: ["35.7", "32.2"]
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> !r:^# && r:auth\s*\t*required\s*\t*pam_wheel.so && r:use_uid && r:group='
 
-############################################################
-# 6 System Maintenance
-############################################################
+  ############################################################
+  # 6 System Maintenance
+  ############################################################
 
-############################################################
-# 6.1 System File Permissions
-############################################################
-# 6.1.2 Ensure permissions on /etc/passwd are configured (Scored)
+  ############################################################
+  # 6.1 System File Permissions
+  ############################################################
+  # 6.1.2 Ensure permissions on /etc/passwd are configured (Scored)
   - id: 2678
     title: "Ensure permissions on /etc/passwd are configured"
     description: "The /etc/passwd file contains user account information that is used by many system utilities and therefore must be readable for these utilities to operate."
@@ -3200,7 +3172,7 @@ checks:
     rules:
       - 'c:stat -L /etc/passwd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.3 Ensure permissions on /etc/gshadow- are configured (Scored)
+  # 6.1.3 Ensure permissions on /etc/gshadow- are configured (Scored)
   - id: 2679
     title: "Ensure permissions on /etc/gshadow- are configured"
     description: "The /etc/gshadow- file is used to store backup information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -3216,7 +3188,7 @@ checks:
     rules:
       - 'c:stat -L /etc/gshadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.4 Ensure permissions on /etc/shadow are configured (Scored)
+  # 6.1.4 Ensure permissions on /etc/shadow are configured (Scored)
   - id: 2680
     title: "Ensure permissions on /etc/shadow are configured"
     description: "The /etc/shadow file is used to store the information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -3232,7 +3204,7 @@ checks:
     rules:
       - 'c:stat -L /etc/shadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-# 6.1.5 Ensure permissions on /etc/group are configured (Scored)
+  # 6.1.5 Ensure permissions on /etc/group are configured (Scored)
   - id: 2681
     title: "Ensure permissions on /etc/group are configured"
     description: "The /etc/group file contains a list of all the valid groups defined in the system. The command below allows read/write access for root and read access for everyone else."
@@ -3248,7 +3220,7 @@ checks:
     rules:
       - 'c:stat -L /etc/group -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.6 Ensure permissions on /etc/passwd- are configured (Scored)
+  # 6.1.6 Ensure permissions on /etc/passwd- are configured (Scored)
   - id: 2682
     title: "Ensure permissions on /etc/passwd- are configured"
     description: "The /etc/passwd- file contains backup user account information."
@@ -3264,7 +3236,7 @@ checks:
     rules:
       - 'c:stat -L /etc/passwd- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.7 Ensure permissions on /etc/shadow- are configured (Scored)
+  # 6.1.7 Ensure permissions on /etc/shadow- are configured (Scored)
   - id: 2683
     title: "Ensure permissions on /etc/shadow- are configured"
     description: "The /etc/shadow- file is used to store backup information about user accounts that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -3280,7 +3252,7 @@ checks:
     rules:
       - 'c:stat -L /etc/shadow- -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)|Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.8 Ensure permissions on /etc/group- are configured (Scored)
+  # 6.1.8 Ensure permissions on /etc/group- are configured (Scored)
   - id: 2684
     title: "Ensure permissions on /etc/group- are configured"
     description: "The /etc/group- file contains a backup list of all the valid groups defined in the system."
@@ -3296,7 +3268,7 @@ checks:
     rules:
       - 'c:stat -L /etc/group- -> r:Access:\s*\(0\d00/-\w\w-------\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
 
-# 6.1.9 Ensure permissions on /etc/gshadow are configured (Scored)
+  # 6.1.9 Ensure permissions on /etc/gshadow are configured (Scored)
   - id: 2685
     title: "Ensure permissions on /etc/gshadow are configured"
     description: "The /etc/gshadow file is used to store the information about groups that is critical to the security of those accounts, such as the hashed password and other security information."
@@ -3312,11 +3284,11 @@ checks:
     rules:
       - 'c:stat -L /etc/gshadow -> r:Access:\s*\(0\d\d0/-\w\w-\w-----\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*\d+/\s*\t*shadow\)'
 
-####################################################
-# 6.2 User and Group Settings
-####################################################
+  ####################################################
+  # 6.2 User and Group Settings
+  ####################################################
 
-# 6.2.1 Ensure password fields are not empty (Scored)
+  # 6.2.1 Ensure password fields are not empty (Scored)
   - id: 2686
     title: "Ensure password fields are not empty"
     description: "An account with an empty password field means that anybody may log in as that user without providing a password."
@@ -3331,9 +3303,9 @@ checks:
     rules:
       - 'f:/etc/shadow -> r:^\w+::'
 
-# 6.2.2 Ensure no legacy "+" entries exist in /etc/passwd (Scored)
+  # 6.2.2 Ensure no legacy "+" entries exist in /etc/passwd (Scored)
   - id: 2687
-    title: "Ensure no legacy \"+\" entries exist in /etc/passwd"
+    title: 'Ensure no legacy "+" entries exist in /etc/passwd'
     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
     remediation: "Remove any legacy + entries from /etc/passwd if they exist."
@@ -3348,11 +3320,11 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - 'f:/etc/passwd -> !r:^# && r:^+:'
+      - "f:/etc/passwd -> !r:^# && r:^+:"
 
-# 6.2.4 Ensure no legacy "+" entries exist in /etc/shadow (Scored)
+  # 6.2.4 Ensure no legacy "+" entries exist in /etc/shadow (Scored)
   - id: 2688
-    title: "Ensure no legacy \"+\" entries exist in /etc/shadow"
+    title: 'Ensure no legacy "+" entries exist in /etc/shadow'
     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
     remediation: "Remove any legacy + entries from /etc/shadow if they exist."
@@ -3367,11 +3339,11 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - 'f:/etc/shadow -> !r:^# && r:^+:'
+      - "f:/etc/shadow -> !r:^# && r:^+:"
 
-# 6.2.5 Ensure no legacy "+" entries exist in /etc/group (Scored)
+  # 6.2.5 Ensure no legacy "+" entries exist in /etc/group (Scored)
   - id: 2689
-    title: "Ensure no legacy \"+\" entries exist in /etc/group"
+    title: 'Ensure no legacy "+" entries exist in /etc/group'
     description: "The character + in various files used to be markers for systems to insert data from NIS maps at a certain point in a system configuration file. These entries are no longer required on most systems, but may exist in files that have been imported from other platforms."
     rationale: "These entries may provide an avenue for attackers to gain privileged access on the system."
     remediation: "Remove any legacy + entries from /etc/group if they exist."
@@ -3386,9 +3358,9 @@ checks:
       - hipaa: ["164.312.b"]
     condition: none
     rules:
-      - 'f:/etc/group -> !r:^# && r:^+:'
+      - "f:/etc/group -> !r:^# && r:^+:"
 
-# 6.2.6 Ensure root is the only UID 0 account (Scored)
+  # 6.2.6 Ensure root is the only UID 0 account (Scored)
   - id: 2690
     title: "Ensure root is the only UID 0 account"
     description: "Any account with UID 0 has superuser privileges on the system."
@@ -3401,12 +3373,12 @@ checks:
       - nist_800_53: ["AU.14", "AC.7"]
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
+      - gdpr_IV: ["35.7", "32.2"]
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^# && !r:^root: && r:^\w+:\w+:0:'
 
-# 6.2.20 Ensure shadow group is empty (Scored)
+  # 6.2.20 Ensure shadow group is empty (Scored)
   - id: 2691
     title: "Ensure shadow group is empty"
     description: "The shadow group allows system programs which require access the ability to read the /etc/shadow file. No users should be assigned to the shadow group."
@@ -3419,7 +3391,7 @@ checks:
       - nist_800_53: ["AU.14", "AC.7"]
       - tsc: ["CC7.2", "CC6.1", "CC6.8", "CC7.3", "CC7.4"]
       - gpg_13: ["7.8"]
-      - gdpr_IV: ["35.7","32.2"]
+      - gdpr_IV: ["35.7", "32.2"]
     condition: none
     rules:
       - 'f:/etc/group -> !r:^# && r:shadow:\w*:\w*:\S+'

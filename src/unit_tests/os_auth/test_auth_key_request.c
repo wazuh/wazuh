@@ -291,7 +291,7 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, key);
 
     key_request_agent_info *ret = get_agent_info_from_json(input_raw_json, &error_msg);
-    
+
     assert_string_equal(ret->id, id->valuestring);
     assert_string_equal(ret->name, name->valuestring);
     assert_string_equal(ret->ip, ip->valuestring);
@@ -304,7 +304,7 @@ void test_get_agent_info_from_json_agent_success(void **state) {
     __real_cJSON_Delete(ip);
     __real_cJSON_Delete(key);
     __real_cJSON_Delete(input_raw_json);
-    
+
     key_request_agent_info_destroy(ret);
 }
 
@@ -339,7 +339,7 @@ void test_key_request_socket_output_long_request(void **state) {
 
     memset(buffer_request, 'a', 126);
     buffer_request[126] = '\0';
- 
+
     will_return(__wrap_external_socket_connect, 4);
     expect_string(__wrap__mdebug1, formatted_msg, "Request is too long for socket.");
 
@@ -347,7 +347,7 @@ void test_key_request_socket_output_long_request(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_send_fail(void **state) { 
+void test_key_request_socket_output_send_fail(void **state) {
     will_return(__wrap_external_socket_connect, 4);
     will_return(__wrap_send, -1);
 
@@ -355,7 +355,7 @@ void test_key_request_socket_output_send_fail(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_no_data_received(void **state) { 
+void test_key_request_socket_output_no_data_received(void **state) {
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
@@ -366,7 +366,7 @@ void test_key_request_socket_output_no_data_received(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_empty_string_received(void **state) { 
+void test_key_request_socket_output_empty_string_received(void **state) {
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
@@ -376,7 +376,7 @@ void test_key_request_socket_output_empty_string_received(void **state) {
     assert_null(ret);
 }
 
-void test_key_request_socket_output_success(void **state) { 
+void test_key_request_socket_output_success(void **state) {
     will_return(__wrap_external_socket_connect, 4);
 
     will_return(__wrap_send, 0);
@@ -455,6 +455,8 @@ void test_key_request_dispatch_error_parsing_json(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Socket output: Hello World!");
 
     will_return(__wrap_cJSON_ParseWithOpts, NULL);
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
+
     expect_string(__wrap__mdebug1, formatted_msg, "Error parsing JSON event ()");
 
     expect_value(__wrap_OSHash_Delete_ex, self, NULL);
@@ -479,6 +481,7 @@ void test_key_request_dispatch_error_parsing_agent_json(void **state) {
     will_return(__wrap_recv, 12);
     expect_string(__wrap__mdebug2, formatted_msg, "Socket output: Hello World!");
 
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, msg);
@@ -549,6 +552,8 @@ void test_key_request_dispatch_success(void **state) {
     will_return(__wrap_cJSON_GetObjectItem, name);
     will_return(__wrap_cJSON_GetObjectItem, ip);
     will_return(__wrap_cJSON_GetObjectItem, key);
+
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
 
     expect_string(__wrap__mdebug1, formatted_msg, "Forwarding agent key request response to the master node for agent '001'");
@@ -592,6 +597,8 @@ void test_key_request_dispatch_success_add_agent(void **state) {
     will_return(__wrap_send, 0);
     will_return(__wrap_recv, 12);
     expect_string(__wrap__mdebug2, formatted_msg, "Socket output: Hello World!");
+
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
 
     will_return(__wrap_cJSON_GetObjectItem, field);
@@ -626,7 +633,7 @@ void test_key_request_dispatch_success_add_agent(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(response);
@@ -667,6 +674,7 @@ void test_key_request_dispatch_success_exec_output(void **state) {
     will_return(__wrap_wm_exec, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Exec output: Output command");
 
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -700,7 +708,7 @@ void test_key_request_dispatch_success_exec_output(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(response);
@@ -745,6 +753,7 @@ void test_key_request_dispatch_error_socket_success_exec_output(void **state) {
     will_return(__wrap_wm_exec, 0);
     expect_string(__wrap__mdebug2, formatted_msg, "Exec output: Output command");
 
+    will_return(__wrap_cJSON_ParseWithOpts, NULL);
     will_return(__wrap_cJSON_ParseWithOpts, (cJSON *)1);
     will_return(__wrap_cJSON_GetObjectItem, field);
     will_return(__wrap_cJSON_GetObjectItem, data);
@@ -778,7 +787,7 @@ void test_key_request_dispatch_error_socket_success_exec_output(void **state) {
     expect_string(__wrap_OSHash_Delete_ex, key, buffer);
     will_return(__wrap_OSHash_Delete_ex, 0);
 
-    int ret = key_request_dispatch(buffer); 
+    int ret = key_request_dispatch(buffer);
     assert_int_equal(ret, 0);
 
     __real_cJSON_Delete(response);

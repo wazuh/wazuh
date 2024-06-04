@@ -130,39 +130,49 @@ int OS_AddChild(RuleInfo *read_rule, RuleNode **r_node, OSList* log_msg)
 
     /* Adding for if_sid */
     if (read_rule->if_sid != NULL) {
-        int val = 0;
+
         const char * sid_ptr = read_rule->if_sid;
+        bool id_found = false;     // True if sid_ptr points to a sid (number)
+        bool added_as_child = false; // True if the rule was added as a child of at least one rule
 
         /* Loop to read all the rules (comma or space separated) */
         do {
             if ((*sid_ptr == ',') || (*sid_ptr == ' ')) {
-                val = 0;
+                id_found = false;
                 continue;
-            } else if ((isdigit((int)*sid_ptr)) || (*sid_ptr == '\0')) {
+            } else if ((isdigit((int) *sid_ptr)) || (*sid_ptr == '\0')) {
 
-                if (val == 0) {
+                if (!id_found) {
+                    id_found = true;
 
                     int if_sid_rule_id = atoi(sid_ptr);
 
                     if (_AddtoRule(if_sid_rule_id, 0, 0, NULL, *r_node, read_rule) == 0) {
-
-                        smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND,
-                               if_sid_rule_id, read_rule->if_matched_sid != 0 ?
-                                                    "if_matched_sid" : "if_sid",
-                               read_rule->sigid);
-                        return -1;
+                        if (read_rule->if_matched_sid != 0) {
+                            // if_matched_sid is not a list of sid, but a single sid
+                            smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND_MID, if_sid_rule_id, read_rule->sigid);
+                            return -1;
+                        } else {
+                            smwarn(log_msg, ANALYSISD_SIG_ID_NOT_FOUND, if_sid_rule_id, read_rule->sigid);
+                        }
+                    } else {
+                        added_as_child = true;
                     }
-                    val = 1;
                 }
-            } else {
 
-                smwarn(log_msg, ANALYSISD_INV_SIG_ID,
-                        read_rule->if_matched_sid != 0 ? "if_matched_sid"
-                                                       : "if_sid",
-                        read_rule->sigid);
-                return -1;
+            } else {
+                // This should not happen if the if_sid was validated on loading
+                smwarn(log_msg, ANALYSISD_INV_SIG_ID, read_rule->if_matched_sid != 0 ? "if_matched_sid" : "if_sid",
+                       read_rule->sigid);
+                return added_as_child ? 0 : -1;
             }
         } while (*sid_ptr++ != '\0');
+
+        // If the rule was not added as a child of at least one rule, return error
+        if (!added_as_child) {
+            smwarn(log_msg, ANALYSISD_EMPTY_SID, read_rule->sigid);
+            return -1;
+        }
     }
 
     /* Adding for if_level */
@@ -320,9 +330,9 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
             w_free_expression_t(&r_node->ruleinfo->dstip);
             r_node->ruleinfo->dstip = newrule->dstip;
 #ifdef LIBGEOIP_ENABLED
-            w_free_expression_t(&ruleinfo->srcgeoip);
+            w_free_expression_t(&r_node->ruleinfo->srcgeoip);
             r_node->ruleinfo->srcgeoip = newrule->srcgeoip;
-            w_free_expression_t(&ruleinfo->dstgeoip);
+            w_free_expression_t(&r_node->ruleinfo->dstgeoip);
             r_node->ruleinfo->dstgeoip = newrule->dstgeoip;
 #endif
             w_free_expression_t(&r_node->ruleinfo->srcport);
@@ -396,6 +406,9 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_sid", sid);
                 }
             }
+
+            os_free(newrule->if_sid);
+
             if (newrule->if_group && !newrule->if_matched_group) {
                 if (!r_node->ruleinfo->if_group ||
                         strcmp(r_node->ruleinfo->if_group, newrule->if_group)) {
@@ -408,6 +421,8 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
                     smwarn(log_msg, ANALYSISD_INV_OVERWRITE, "if_level", sid);
                 }
             }
+
+            os_free(newrule->if_level);
 
             if (r_node->ruleinfo->if_matched_regex) {
                 OSRegex_FreePattern(r_node->ruleinfo->if_matched_regex);
@@ -452,7 +467,13 @@ int OS_AddRuleInfo(RuleNode *r_node, RuleInfo *newrule, int sid, OSList* log_msg
             r_node->ruleinfo->mitre_technique_id = newrule->mitre_technique_id;
 
             /* Finally the reference to newrule is store so it is freed at the end */
-            r_node->ruleinfo->rule_overwrite = newrule;
+
+            if (r_node->ruleinfo->rule_overwrite == NULL) {
+                r_node->ruleinfo->rule_overwrite = OSList_Create();
+                OSList_SetFreeDataPointer(r_node->ruleinfo->rule_overwrite, free);
+            }
+
+            OSList_PushData(r_node->ruleinfo->rule_overwrite, newrule);
 
             return (1);
         }
@@ -680,7 +701,7 @@ void os_remove_ruleinfo(RuleInfo *ruleinfo) {
     free_strarray(ruleinfo->mitre_tactic_id);
     free_strarray(ruleinfo->mitre_technique_id);
 
-    os_free(ruleinfo->rule_overwrite);
+    OSList_Destroy(ruleinfo->rule_overwrite);
     os_free(ruleinfo);
 }
 

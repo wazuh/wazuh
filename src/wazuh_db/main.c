@@ -10,7 +10,10 @@
  */
 
 #include "wdb.h"
+#include "wdb_state.h"
 #include <os_net/os_net.h>
+
+#define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
 
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
@@ -21,13 +24,14 @@ static void * run_gc(void * args);
 static void * run_up(void * args);
 static void * run_backup(void * args);
 
+extern wdb_state_t wdb_state;
 
 //int wazuhdb_fdsock;
 wnotify_t * notify_queue;
 //static w_queue_t * sock_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 //static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
-static volatile int running = 1;
+static volatile _Atomic(int) running = 1;
 rlim_t nofile;
 
 int main(int argc, char ** argv)
@@ -92,11 +96,21 @@ int main(int argc, char ** argv)
     wconfig.open_db_limit = getDefine_Int("wazuh_db", "open_db_limit", 1, 4096);
     nofile = getDefine_Int("wazuh_db", "rlimit_nofile", 1024, 1048576);
 
+    wconfig.fragmentation_threshold = getDefine_Int("wazuh_db", "fragmentation_threshold", 0, 100);
+    wconfig.fragmentation_delta = getDefine_Int("wazuh_db", "fragmentation_delta", 0, 100);
+    wconfig.free_pages_percentage = getDefine_Int("wazuh_db", "free_pages_percentage", 0, 99);
+    wconfig.max_fragmentation = getDefine_Int("wazuh_db", "max_fragmentation", 0, 100);
+    wconfig.check_fragmentation_interval = getDefine_Int("wazuh_db", "check_fragmentation_interval", 1, 30758400);
+
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
+    int modules = 0;
+    modules |= WAZUHDB;
+    modules |= CCLUSTER;
+
     // Read ossec.conf
-    if (ReadConfig(WAZUHDB, OSSECCONF, NULL, NULL) < 0) {
+    if (ReadConfig(modules, OSSECCONF, &gconfig, NULL) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
 
@@ -116,8 +130,7 @@ int main(int argc, char ** argv)
 
     // Initialize variables
 
-    open_dbs = OSHash_Create();
-    if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
+    wdb_pool_init();
 
     if (!run_foreground) {
         goDaemon();
@@ -187,10 +200,26 @@ int main(int argc, char ** argv)
 
     minfo(STARTUP_MSG, (int)getpid());
 
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
+
+    // Router provider initialization
+    if (router_agent_events_handle = router_provider_create(WDB_AGENT_EVENTS_TOPIC, false), !router_agent_events_handle) {
+        mdebug2("Failed to create router handle for 'wdb-agent-events'.");
+    }
+
     if (notify_queue = wnotify_init(1), !notify_queue) {
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
                 strerror(errno), errno);
     }
+
+    // Global stats uptime
+
+    wdb_state.uptime = time(NULL);
+
+    // Create template
+
+    wdb_create_profile();
 
     // Start threads
 
@@ -227,7 +256,6 @@ int main(int argc, char ** argv)
     }
 
     // Join threads
-
     pthread_join(thread_dealer, NULL);
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
@@ -242,8 +270,6 @@ int main(int argc, char ** argv)
         pthread_join(thread_backup, NULL);
     }
     wdb_close_all();
-
-    OSHash_Free(open_dbs);
     wdb_free_conf();
 
     // Reset template here too, remove queue/db/.template.db again
@@ -251,6 +277,7 @@ int main(int argc, char ** argv)
     snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
+    minfo("Graceful process shutdown.");
 
     return EXIT_SUCCESS;
 
@@ -366,7 +393,7 @@ void * run_worker(__attribute__((unused)) void * args) {
 
         switch (length) {
         case -1:
-            merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
+            mdebug1("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
             close(peer);
             continue;
 
@@ -385,12 +412,17 @@ void * run_worker(__attribute__((unused)) void * args) {
             }
 
             *response = '\0';
-            wdb_parse(buffer, response, peer);
+
+            if (buffer[0] == '{') {
+                wdbcom_dispatch(buffer, response);
+            } else {
+                wdb_parse(buffer, response, peer);
+            }
             if (length = strlen(response), length > 0) {
                 if (terminal && length < OS_MAXSTR - 1) {
                     response[length++] = '\n';
                 }
-                if (OS_SendSecureTCP(peer,length,response) < 0) {
+                if (OS_SendSecureTCP(peer, length, response) < 0) {
                     merror("at run_worker(): OS_SendSecureTCP(%d): %s (%d)",
                             peer, strerror(errno), errno);
                 }
@@ -408,9 +440,19 @@ void * run_worker(__attribute__((unused)) void * args) {
 }
 
 void * run_gc(__attribute__((unused)) void * args) {
+    int fragmentation_interval = wconfig.check_fragmentation_interval;
     while (running) {
         wdb_commit_old();
+
+        if (fragmentation_interval <= 0) {
+            wdb_check_fragmentation();
+            fragmentation_interval = wconfig.check_fragmentation_interval;
+        } else {
+            fragmentation_interval--;
+        }
+
         wdb_close_old();
+
         sleep(1);
     }
 
@@ -438,7 +480,7 @@ void * run_backup(__attribute__((unused)) void * args) {
                                 merror("Creating Global DB snapshot by interval failed: %s", output);
                             }
                             last_global_backup_time = current_time;
-                            wdb_leave(wdb);
+                            wdb_pool_leave(wdb);
                         }
                     }
                     break;
@@ -495,7 +537,11 @@ void * run_up(__attribute__((unused)) void * args) {
 
         *(name++) = '\0';
         wdb = wdb_open_agent2(atoi(entry));
-        wdb_leave(wdb);
+
+        if (wdb != NULL) {
+            wdb_pool_leave(wdb);
+        }
+
         free(entry);
 
         sleep(1);

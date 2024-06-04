@@ -15,7 +15,7 @@
 -->
 
 <decoder name="fortiddos-like">
-  <prematch>device_id=\S+ date=\S+ time=\S+ | devid=\S+ date=\S+ time=\S+</prematch>
+  <prematch>device_id=\S+ date=\S+ time=\S+ |devid=\S+ date=\S+ time=\S+</prematch>
 </decoder>
 
 <decoder name="fortiddos-like-child">
@@ -149,3 +149,16 @@
   <regex>sppoperatingmode=(\S+)</regex>
   <order>sppoperatingmode</order>
 </decoder>
+
+<decoder name="fortiddos-like-child">
+  <parent>fortiddos-like</parent>
+  <regex>subtype="(\.+)"</regex>
+  <order>subtype</order>
+</decoder>
+
+<decoder name="fortiddos-like-child">
+  <parent>fortiddos-like</parent>
+  <regex>severity="(\.+)"</regex>
+  <order>severity</order>
+</decoder>
+

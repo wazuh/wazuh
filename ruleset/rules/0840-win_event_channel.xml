@@ -2,11 +2,11 @@
   Copyright (C) 2015, Wazuh Inc.
 -->
 
-<!-- 
+<!--
   General Windows Event channel detection rules: 92650 - 92700
 -->
 
-<group name="win_evt_channel,">
+<group name="win_evt_channel,windows,">
 
   <rule id="92650" level="12">
     <if_sid>61138</if_sid>
@@ -33,9 +33,10 @@
   <rule id="92652" level="6">
     <if_sid>92651</if_sid>
     <field name="win.eventdata.authenticationPackageName" type="pcre2">NTLM</field>
-    <description>Successful Remote Logon Detected - NTLM authentication, possible pass-the-hash attack.</description>
+    <description>Successful Remote Logon Detected - User:$(win.eventdata.subjectDomainName)\$(win.eventdata.targetUserName) - NTLM authentication, possible pass-the-hash attack.</description>
     <mitre>
       <id>T1550.002</id>
+      <id>T1078.002</id>
     </mitre>
     <group>authentication_success,gdpr_IV_32.2,gpg13_7.1,gpg13_7.2,hipaa_164.312.b,nist_800_53_AC.7,nist_800_53_AU.14,pci_dss_10.2.5,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
@@ -63,7 +64,7 @@
 
   <rule id="92655" level="15">
     <if_sid>60011</if_sid>
-    <field name="win.system.eventID" type="pcre2">808</field>
+    <field name="win.system.eventID">^808$</field>
     <description>Printer driver failed to load, possible remote code execution using PrinterNightmare exploit: CVE-2021-34527.</description>
     <mitre>
       <id>T1210</id>
@@ -80,6 +81,20 @@
       <id>T1021.001</id>
       <id>T1078.002</id>
     </mitre>
+  </rule>
+
+  <rule id="92657" level="6">
+    <if_sid>92652</if_sid>
+    <field name="win.eventdata.workstationName" type="pcre2">.+</field>
+    <description>Successful Remote Logon Detected - User:$(win.eventdata.subjectDomainName)\$(win.eventdata.targetUserName) - NTLM authentication, possible pass-the-hash attack - Possible RDP connection. Verify that $(win.eventdata.workstationName) is allowed to perform RDP connections</description>
+    <mitre>
+      <id>T1550.002</id>
+      <id>T1078.002</id>
+      <id>T1021.001</id>
+    </mitre>
+    <group>
+      authentication_success,pci_dss_10.2.5,gpg13_7.1,gpg13_7.2,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,
+    </group>
   </rule>
 
 </group>

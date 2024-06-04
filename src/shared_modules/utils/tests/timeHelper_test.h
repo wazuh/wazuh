@@ -12,7 +12,7 @@
 #ifndef TIME_HELPER_TESTS_H
 #define TIME_HELPER_TESTS_H
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 class TimeUtilsTest : public ::testing::Test
 {

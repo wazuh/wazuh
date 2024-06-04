@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015, Wazuh Inc.
 #
 # This program is free software; you can redistribute it
 # and/or modify it under the terms of the GNU General Public
@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 3.10)
 list(APPEND sha256_tests_names "test_sha256_op")
 list(APPEND sha256_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
-                                -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
+                                -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,wfopen -Wl,--wrap,popen")
 
 # Compiling tests
 list(LENGTH sha256_tests_names count)

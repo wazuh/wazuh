@@ -46,6 +46,13 @@ include_directories(${SHARED_MODULES}/dbsync/include/)
 include_directories(${SHARED_MODULES}/utils/)
 include_directories(${SHARED_MODULES}/common/)
 
+if(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+  link_directories(${INSTALL_PREFIX}/lib)
+  add_definitions(-DPROMISE_TYPE=PromiseType::SLEEP)
+else()
+  add_definitions(-DPROMISE_TYPE=PromiseType::NORMAL)
+endif(CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
+
 link_directories(${SHARED_MODULES}/dbsync/build/lib/)
 link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/cJSON/)
@@ -55,28 +62,22 @@ file(GLOB RSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/*.cpp")
 
 add_library(rsync SHARED
-    ${RSYNC_SRC} )
+    ${RSYNC_SRC}
+    ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)
   set_target_properties(rsync PROPERTIES
         PREFIX ""
         SUFFIX ".dll"
-        LINK_FLAGS "-Wl,--add-stdcall-alias -static-libstdc++"
+        LINK_FLAGS "-Wl,--add-stdcall-alias"
         POSITION_INDEPENDENT_CODE 0 # this is to avoid MinGW warning;
         # MinGW generates position-independent-code for DLL by default
   )
 elseif(UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
-    set_target_properties(rsync PROPERTIES
-      LINK_FLAGS "-static-libstdc++")
-  else()
-    set_target_properties(rsync PROPERTIES
-      LINK_FLAGS "-static-libgcc -static-libstdc++")
-  endif(CMAKE_SYSTEM STREQUAL "SunOS-5.10")
-  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  if(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
     string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
-  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX")
+  endif(NOT CMAKE_SYSTEM_NAME STREQUAL "AIX" AND NOT CMAKE_SYSTEM_NAME STREQUAL "HP-UX")
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(rsync dbsync wazuhext)

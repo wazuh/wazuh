@@ -21,24 +21,23 @@ typedef enum global_db_access {
     WDB_UPDATE_AGENT_DATA,
     WDB_UPDATE_AGENT_KEEPALIVE,
     WDB_UPDATE_AGENT_CONNECTION_STATUS,
-    WDB_SET_AGENT_LABELS,
+    WDB_UPDATE_AGENT_STATUS_CODE,
     WDB_GET_ALL_AGENTS,
     WDB_FIND_AGENT,
     WDB_GET_AGENT_INFO,
     WDB_GET_AGENT_LABELS,
     WDB_SELECT_AGENT_NAME,
     WDB_SELECT_AGENT_GROUP,
-    WDB_SELECT_KEEPALIVE,
     WDB_FIND_GROUP,
     WDB_SELECT_GROUPS,
     WDB_DELETE_AGENT,
     WDB_DELETE_GROUP,
-    WDB_SELECT_GROUP_BELONG,
-    WDB_DELETE_AGENT_BELONG,
     WDB_SET_AGENT_GROUPS,
     WDB_RESET_AGENTS_CONNECTION,
     WDB_GET_AGENTS_BY_CONNECTION_STATUS,
-    WDB_DISCONNECT_AGENTS
+    WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
+    WDB_DISCONNECT_AGENTS,
+    WDB_GET_DISTINCT_AGENT_GROUP
 } global_db_access;
 
 /**
@@ -109,19 +108,22 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
  * @param[in] connection_status String with the connection status to be set.
  * @param[in] sync_status String with the cluster synchronization status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @param[in] status_code Enum with the status code to be set.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock);
+int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_status_code_t status_code);
 
 /**
- * @brief Update agent's labels.
+ * @brief Update agent's last keepalive and modifies the cluster synchronization status.
  *
- * @param[in] id Id of the agent for whom the labels must be updated.
- * @param[in] labels String with the key-values separated by EOL.
+ * @param[in] id Id of the agent for whom the keepalive must be updated.
+ * @param[in] status_code Enum with the status code to be set.
+ * @param[in] version Agent version to be set.
+ * @param[in] sync_status String with the cluster synchronization status to be set.
  * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
  * @return OS_SUCCESS on success or OS_INVALID on failure.
  */
-int wdb_set_agent_labels(int id, const char *labels, int *sock);
+int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, int *sock);
 
 /**
  * @brief Returns an array containing the ID of every agent (except 0), ended with -1.
@@ -135,6 +137,19 @@ int wdb_set_agent_labels(int id, const char *labels, int *sock);
  * @retval NULL on errors.
  */
 int* wdb_get_all_agents(bool include_manager, int *sock);
+
+/**
+ * @brief Returns a RB tree containing the ID of every agent (except 0).
+ * This method creates and sends a command to WazuhDB to receive the ID of every agent.
+ * If the response is bigger than the capacity of the socket, multiple commands will be sent until every agent ID is obtained.
+ * The RB tree is heap allocated memory that must be freed by the caller.
+ *
+ * @param [in] include_manager flag to include the manager on agents list
+ * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Pointer to the RB tree, on success.
+ * @retval NULL on errors.
+ */
+rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock);
 
 /**
  * @brief Find agent id by name and address.
@@ -185,16 +200,6 @@ char* wdb_get_agent_name(int id, int *sock);
 char* wdb_get_agent_group(int id, int *sock);
 
 /**
- * @brief Function to get the agent last keepalive.
- *
- * @param [in] name String with the name of the agent.
- * @param [in] ip String with the ip of the agent.
- * @param [in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns this value, 0 on NULL or OS_INVALID on error.
- */
-time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock);
-
-/**
  * @brief Find group by name.
  *
  * @param[in] name The group name.
@@ -229,24 +234,6 @@ int wdb_remove_agent(int id, int *sock);
  * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
  */
 int wdb_remove_group_db(const char *name, int *sock);
-
-/**
- * @brief Get groups from agent id in belongs table.
- *
- * @param id Id of the agent to get the groups from.
- * @param sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return JSON* with the information on success or NULL on failure.
- */
-cJSON* wdb_select_group_belong(int id, int *sock);
-
-/**
- * @brief Delete an agent from belongs table in global.db by using its ID.
- *
- * @param[in] id Id of the agent to be deleted.
- * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
- * @return Returns OS_SUCCESS on success or OS_INVALID on failure.
- */
-int wdb_delete_agent_belongs(int id, int *sock);
 
 /**
  * @brief Set the groups of an agent using a comma separated string to represent the groups.
@@ -319,5 +306,26 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock);
  * @return Returns the agent first registration date.
  */
 time_t get_agent_date_added(int agent_id);
+
+/**
+ * @brief Returns an array containing the ID of every agent of the current node (excluding the manager) that matches
+ *        the specified connection status, last_id and limit, ended with -1.
+ *
+ * @param[in] connection_status Filter the query by agent connection status.
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @param[in] last_id Filter the query with ids higer than this value.
+ * @param[in] limit Limit number of rows returned.
+ * @return Returns pointer to the array of agents ids, on success. NULL on errors.
+ */
+int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit);
+
+/**
+ * @brief Returns a JSON array containing the group and group_hash assigned to all agents,
+ *        if two agents have the same group assigned it is only included once
+ *
+ * @param[in] sock The Wazuh DB socket connection. If NULL, a new connection will be created and closed locally.
+ * @return Returns pointer to the array of groups/group_hash, on success. NULL on errors.
+ */
+cJSON* wdb_get_distinct_agent_groups(int *sock);
 
 #endif

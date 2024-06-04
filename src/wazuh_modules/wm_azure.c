@@ -32,12 +32,13 @@ cJSON *wm_azure_dump(const wm_azure_t *azure);                          // Dump 
 //  Azure module context definition
 
 const wm_context WM_AZURE_CONTEXT = {
-    AZ_WM_NAME,
-    (wm_routine)wm_azure_main,
-    (wm_routine)(void *)wm_azure_destroy,
-    (cJSON * (*)(const void *))wm_azure_dump,
-    NULL,
-    NULL
+    .name = AZ_WM_NAME,
+    .start = (wm_routine)wm_azure_main,
+    .destroy = (void(*)(void *))wm_azure_destroy,
+    .dump = (cJSON * (*)(const void *))wm_azure_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 // Module main function. It won't return.
@@ -128,11 +129,6 @@ void wm_azure_log_analytics(wm_azure_api_t *log_analytics) {
         if (log_analytics->auth_path) {
             wm_strcat(&command, "--la_auth_path", ' ');
             wm_strcat(&command, log_analytics->auth_path, ' ');
-        } else {
-            wm_strcat(&command, "--la_id", ' ');
-            wm_strcat(&command, log_analytics->application_id, ' ');
-            wm_strcat(&command, "--la_key", ' ');
-            wm_strcat(&command, log_analytics->application_key, ' ');
         }
 
         wm_strcat(&command, "--la_tenant_domain", ' ');
@@ -217,11 +213,6 @@ void wm_azure_graphs(wm_azure_api_t *graph) {
         if (graph->auth_path) {
             wm_strcat(&command, "--graph_auth_path", ' ');
             wm_strcat(&command, graph->auth_path, ' ');
-        } else {
-            wm_strcat(&command, "--graph_id", ' ');
-            wm_strcat(&command, graph->application_id, ' ');
-            wm_strcat(&command, "--graph_key", ' ');
-            wm_strcat(&command, graph->application_key, ' ');
         }
 
         wm_strcat(&command, "--graph_tenant_domain", ' ');
@@ -305,11 +296,6 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         if (storage->auth_path) {
             wm_strcat(&command, "--storage_auth_path", ' ');
             wm_strcat(&command, storage->auth_path, ' ');
-        } else {
-            wm_strcat(&command, "--account_name", ' ');
-            wm_strcat(&command, storage->account_name, ' ');
-            wm_strcat(&command, "--account_key", ' ');
-            wm_strcat(&command, storage->account_key, ' ');
         }
 
         wm_strcat(&command, "--container", ' ');
@@ -337,6 +323,11 @@ void wm_azure_storage(wm_azure_storage_t *storage) {
         if (curr_container->time_offset) {
             wm_strcat(&command, "--storage_time_offset", ' ');
             wm_strcat(&command, curr_container->time_offset, ' ');
+        }
+
+        if (curr_container->path) {
+            wm_strcat(&command, "--prefix", ' ');
+            wm_strcat(&command, curr_container->path, ' ');
         }
 
         if (isDebug()) {
@@ -447,10 +438,6 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
 
         next_api = curr_api->next;
         free(curr_api->tenantdomain);
-        if (curr_api->application_id)
-            free(curr_api->application_id);
-        if (curr_api->application_key)
-            free(curr_api->application_key);
         if (curr_api->auth_path)
             free(curr_api->auth_path);
 
@@ -476,10 +463,6 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
 
         next_storage = curr_storage->next;
         free(curr_storage->tag);
-        if (curr_storage->account_name)
-            free(curr_storage->account_name);
-        if (curr_storage->account_key)
-            free(curr_storage->account_key);
         if (curr_storage->auth_path)
             free(curr_storage->auth_path);
 
@@ -493,6 +476,7 @@ void wm_azure_destroy(wm_azure_t *azure_config) {
             free(curr_container->blobs);
             free(curr_container->content_type);
             free(curr_container->time_offset);
+            free(curr_container->path);
             free(curr_container);
 
         }
@@ -524,8 +508,6 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
             cJSON *api = cJSON_CreateObject();
             if (api_config->type == LOG_ANALYTICS) cJSON_AddStringToObject(api, "type", "log_analytics"); else cJSON_AddStringToObject(api, "type", "graph");
             cJSON_AddStringToObject(api, "tenantdomain", api_config->tenantdomain);
-            if (api_config->application_id) cJSON_AddStringToObject(api, "application_id", api_config->application_id);
-            if (api_config->application_key) cJSON_AddStringToObject(api, "application_key", api_config->application_key);
             if (api_config->auth_path) cJSON_AddStringToObject(api, "auth_path", api_config->auth_path);
             if (api_config->request) {
                 cJSON *requests = cJSON_CreateArray();
@@ -545,8 +527,6 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
         for (storage_conf = azure->storage; storage_conf; storage_conf = storage_conf->next) {
             cJSON *storage = cJSON_CreateObject();
             cJSON_AddStringToObject(storage, "tag", storage_conf->tag);
-            if (storage_conf->account_name) cJSON_AddStringToObject(storage, "account_name", storage_conf->account_name);
-            if (storage_conf->account_key) cJSON_AddStringToObject(storage, "account_key", storage_conf->account_key);
             if (storage_conf->auth_path) cJSON_AddStringToObject(storage, "auth_path", storage_conf->auth_path);
             if (storage_conf->container) {
                 cJSON *containers = cJSON_CreateArray();
@@ -557,6 +537,7 @@ cJSON *wm_azure_dump(const wm_azure_t * azure) {
                     cJSON_AddStringToObject(container, "blobs", container_conf->blobs);
                     cJSON_AddStringToObject(container, "content_type", container_conf->content_type);
                     cJSON_AddStringToObject(container, "time_offset", container_conf->time_offset);
+                    cJSON_AddStringToObject(container, "prefix", container_conf->path);
                     if (container_conf->timeout) cJSON_AddNumberToObject(container, "timeout", container_conf->timeout);
                     cJSON_AddItemToArray(containers, container);
                 }

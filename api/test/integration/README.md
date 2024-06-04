@@ -29,7 +29,7 @@ The Wazuh environment used to perform the API integration tests is built using `
 
 This environment is composed of **12 docker containers**. These containers have the following components installed: 3
 Wazuh managers, that compose a Wazuh cluster (1 master, 2 workers); 4 Wazuh agents with the same version as the managers
-forming the cluster; 4 Wazuh agents with version 3.13.2 (old); and 1 NGINX load balancer.
+forming the cluster; 4 Wazuh agents with version 3.13.2 (old); and 1 HAProxy load balancer.
 
 The Wazuh version used for the managers and non-old agents is the one specified by the branch used to perform the API
 integration tests.
@@ -109,10 +109,10 @@ tests that we consider the basic ones are performed. These tests are the followi
 - `test_agent_PUT_endpoints.tavern.yaml`
 - `test_cluster_endpoints.tavern.yaml`
 - `test_experimental_endpoints.tavern.yaml`
-- `test_agent_DELETE_endpoints.tavern.yaml`
-- `test_agent_GET_endpoints.tavern.yaml`
-- `test_agent_POST_endpoints.tavern.yaml`
-- `test_agent_PUT_endpoints.tavern.yaml`
+- `test_security_DELETE_endpoints.tavern.yaml`
+- `test_security_GET_endpoints.tavern.yaml`
+- `test_security_POST_endpoints.tavern.yaml`
+- `test_security_PUT_endpoints.tavern.yaml`
 
 The `wazuh/api/test/integration/mapping` directory contains the `integration_test_api_endpoints.json` file that
 represents a mapping between the API and framework files; and the API integration tests that need to be performed. The
@@ -153,6 +153,18 @@ test_agent_GET_endpoints.tavern.yaml ...........................................
 ...............................                                                                    [100%]
 
 ============================== 92 passed, 98 warnings in 217.61s (0:03:37) ===============================
+```
+
+```text
+API integration tests
+
+optional arguments:
+  --build-managers-only            
+                  Recreates only the managers' image once the AIT test environment is built.
+  --nobuild
+                  Prevents rebuilding the environment when running tests once the images are already created.
+  --disable-warnings 
+                  Disables warnings during test execution.
 ```
 
 We can also use the `wazuh/api/test/integration/run_tests.py` script. This script includes the possibility to collect a 

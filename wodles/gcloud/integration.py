@@ -14,7 +14,7 @@ from sys import path
 from os.path import dirname, abspath
 path.insert(0, dirname(dirname(abspath(__file__))))
 import exceptions
-from utils import ANALYSISD
+from utils import ANALYSISD, MAX_EVENT_SIZE
 
 
 class WazuhGCloudIntegration:
@@ -93,6 +93,11 @@ class WazuhGCloudIntegration:
             If the socket is unable to send the message to analysisd.
         """
         event_json = f'{self.header}{msg}'.encode(errors='replace')
+
+        # Logs warning if event is bigger than max size
+        if len(event_json) > MAX_EVENT_SIZE:
+            logging.warning(f"WARNING: Event size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+
         self.logger.debug(f'Sending msg to analysisd: "{event_json}"')
         try:
             self.socket.send(event_json)

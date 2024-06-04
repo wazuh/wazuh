@@ -39,7 +39,7 @@ int yaml_parse_file(const char * path, yaml_document_t * document) {
     FILE * finput;
     int error = -1;
 
-    if (finput = fopen(path, "rb"), finput) {
+    if (finput = wfopen(path, "rb"), finput) {
         yaml_parser_initialize(&parser);
         yaml_parser_set_input_file(&parser, finput);
 

@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 11, 2022.
  *
  * This program is free software; you can redistribute it
@@ -37,4 +37,3 @@ class SolarisPackageImpl final : public IPackage
 };
 
 #endif // _PACKAGE_SOLARIS_H
-

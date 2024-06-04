@@ -1,6 +1,14 @@
 #include <stdio.h>
 #include "sym_load.h"
 
+#ifndef WIN32
+#ifdef RTLD_NOLOAD
+#define W_RTLD_NOLOAD RTLD_NOLOAD
+#else
+#define W_RTLD_NOLOAD 0x0
+#endif // RTLD_NOLOAD
+#endif // WIN32
+
 void* so_get_module_handle_on_path(const char *path, const char *so){
 #ifdef WIN32
     char file_name[MAX_PATH] = { 0 };
@@ -21,7 +29,20 @@ void* so_get_module_handle(const char *so){
 #ifdef WIN32
     char file_name[MAX_PATH] = { 0 };
     snprintf(file_name, MAX_PATH-1, "%s.dll", so);
-    return LoadLibrary(file_name);
+
+    HMODULE handle = NULL;
+    char full_path[MAX_PATH] = { 0 };
+
+    // Get full path to the module's file.
+    // If the function succeeds, the return value is the length of the string that is copied to the buffer,
+    // in characters, not including the terminating null character.
+    // If the function fails, the return value is NULL.
+
+    if (GetFullPathName(file_name, MAX_PATH, full_path, NULL)) {
+        handle = LoadLibrary(full_path);
+    }
+
+    return handle;
 #else
     char file_name[4096] = { 0 };
 #if defined(__MACH__)
@@ -30,6 +51,22 @@ void* so_get_module_handle(const char *so){
     snprintf(file_name, 4096-1, "lib%s.so", so);
 #endif
     return dlopen(file_name, RTLD_LAZY);
+#endif
+}
+
+void* so_check_module_loaded(const char *so){
+#ifdef WIN32
+    char file_name[MAX_PATH] = { 0 };
+    snprintf(file_name, MAX_PATH-1, "%s.dll", so);
+    return GetModuleHandle(file_name);
+#else
+    char file_name[4096] = { 0 };
+#if defined(__MACH__)
+    snprintf(file_name, 4096-1, "lib%s.dylib", so);
+#else
+    snprintf(file_name, 4096-1, "lib%s.so", so);
+#endif
+    return dlopen(file_name, W_RTLD_NOLOAD | RTLD_LAZY);
 #endif
 }
 

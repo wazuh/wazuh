@@ -287,6 +287,50 @@ stages:
           total_affected_items: 0
           total_failed_items: 0
 
+  - name: Filter CDB list by query
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: filename=audit-keys
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Try to filter CDB list using an invalid query
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/lists"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        q: value%=invalid
+    response:
+      status_code: 400
+      json:
+        error: 1407
+
+  - name: Get distinct CDB list
+    request:
+      verify: False
+      <<: *get_lists
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /lists/files
 
@@ -535,7 +579,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404
 
   # GET /lists/files/{filename}
   - name: Try to get CDB list (invalid file 2)
@@ -688,7 +732,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404
 
 ---
 test_name: DELETE /lists/files/{filename}
@@ -745,4 +789,4 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      status_code: 400
+      status_code: 404

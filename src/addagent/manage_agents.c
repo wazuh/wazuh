@@ -24,7 +24,6 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuh_db/wdb.h"
 
-
 #if defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
 {
@@ -129,7 +128,7 @@ int add_agent(int json_output)
     if (sock = auth_connect(), sock < 0) {
         authd_running = 0;
         /* Check if we can open the auth_file */
-        fp = fopen(KEYS_FILE, "a");
+        fp = wfopen(KEYS_FILE, "a");
         if (!fp) {
             if (json_output) {
                 char buffer[1024];
@@ -504,7 +503,6 @@ int remove_agent(int json_output)
         sock = -1;
     }
 
-
     do {
         if (!json_output) {
             printf(REMOVE_ID);
@@ -564,26 +562,7 @@ int remove_agent(int json_output)
         /* If user confirms */
         if (user_input[0] == 'y' || user_input[0] == 'Y') {
             if (!authd_running) {
-                /* Get full agent name */
-                char *full_name = getFullnameById(u_id);
-                if (!full_name) {
-                    if (json_output) {
-                        char buffer[1024];
-                        cJSON *json_root = cJSON_CreateObject();
-                        snprintf(buffer, 1023, "Invalid ID '%s' given. ID is not present", u_id);
-                        cJSON_AddNumberToObject(json_root, "error", 78);
-                        cJSON_AddStringToObject(json_root, "message", buffer);
-                        printf("%s", cJSON_PrintUnformatted(json_root));
-                        exit(1);
-                    } else
-                        printf(NO_ID, u_id);
-
-                    goto cleanup;
-                }
-
                 if (!OS_RemoveAgent(u_id)) {
-                    free(full_name);
-
                     if (json_output) {
                         char buffer[1024];
                         cJSON *json_root = cJSON_CreateObject();
@@ -595,9 +574,6 @@ int remove_agent(int json_output)
                     } else
                         merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
                 }
-
-                free(full_name);
-                full_name = NULL;
             } else {
                 if (sock = auth_connect(), sock < 0) {
                     if (json_output) {

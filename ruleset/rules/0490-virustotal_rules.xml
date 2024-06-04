@@ -57,4 +57,12 @@
         </mitre>
     </rule>
 
+    <rule id="87106" level="3">
+         <if_sid>87100</if_sid>
+         <field name="virustotal.error">408</field>
+         <description>VirusTotal: Error: API request timed out</description>
+         <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
+         <options>no_full_log</options>
+     </rule>
+
 </group>

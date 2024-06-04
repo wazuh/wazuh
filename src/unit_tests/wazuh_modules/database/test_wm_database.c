@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * March, 2022.
  *
  * This program is free software; you can redistribute it
@@ -20,9 +20,13 @@
 #include "../../../wazuh_modules/wm_database.h"
 
 #include "../../wrappers/common.h"
+#include "../../wrappers/wazuh/os_crypto/keys_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/rbtree_op_wrappers.h"
+#include "../../wrappers/wazuh/shared/validate_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
 #include "../../wrappers/libc/string_wrappers.h"
 #include "../../wrappers/posix/dirent_wrappers.h"
@@ -33,14 +37,49 @@
 extern int test_mode;
 extern int is_worker;
 
-int setup_wmdb(void **state)
-{
+int setup_wmdb(void **state) {
     test_mode = 1;
     return OS_SUCCESS;
 }
 
-int teardown_wmdb(void **state)
-{
+int teardown_wmdb(void **state) {
+    test_mode = 0;
+    return OS_SUCCESS;
+}
+
+int setup_keys_to_db(void **state) {
+    keystore keys = KEYSTORE_INITIALIZER;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry *key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+    keys.keyentries[0] = key;
+
+    key->id = strdup("001");
+    key->name = strdup("agent1");
+    key->ip = (os_ip *)1;
+    key->raw_key = strdup("1234567890abcdef");
+
+    os_calloc(1, sizeof(keystore), *state);
+    memcpy(*state, &keys, sizeof(keystore));
+
+    test_mode = 1;
+    return OS_SUCCESS;
+}
+
+int teardown_keys_to_db(void **state) {
+    keystore * keys = (keystore *)*state;
+
+    os_free(keys->keyentries[0]->id);
+    os_free(keys->keyentries[0]->name);
+    os_free(keys->keyentries[0]->raw_key);
+    os_free(keys->keyentries[0]);
+    os_free(keys->keyentries);
+    os_free(keys);
+
     test_mode = 0;
     return OS_SUCCESS;
 }
@@ -54,8 +93,7 @@ int teardown_wmdb(void **state)
  * @param ngroups The number of group names to be included in the CSV string
  * @return char* The groups CSV string.
  */
-char *generate_groups_csv_string(unsigned int ngroups)
-{
+char *generate_groups_csv_string(unsigned int ngroups) {
     char *groups = NULL;
     os_calloc(OS_BUFFER_SIZE, sizeof(char), groups);
 
@@ -71,8 +109,7 @@ char *generate_groups_csv_string(unsigned int ngroups)
 
 /* Tests wm_sync_group_file */
 
-void test_wm_sync_group_file_error_agent_id(void **state)
-{
+void test_wm_sync_group_file_error_agent_id(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "invalid_name";
     const char *group_file_path = "invalid_path";
@@ -86,16 +123,15 @@ void test_wm_sync_group_file_error_agent_id(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_sync_group_file_error_opening_file(void **state)
-{
+void test_wm_sync_group_file_error_opening_file(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = "invalid_path";
 
     // Error opening agent groups file specified by 'group_file_path'
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, group_file_path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Groups file 'invalid_path' could not be opened for syncronization.");
 
@@ -104,8 +140,7 @@ void test_wm_sync_group_file_error_opening_file(void **state)
     assert_int_equal(ret, OS_INVALID);
 }
 
-void test_wm_sync_group_file_success_empty_file(void **state)
-{
+void test_wm_sync_group_file_success_empty_file(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = GROUPS_DIR "/001";
@@ -113,9 +148,9 @@ void test_wm_sync_group_file_success_empty_file(void **state)
     const char *groups_in_file = NULL;
 
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, path, group_file_path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // No data when reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
@@ -130,8 +165,7 @@ void test_wm_sync_group_file_success_empty_file(void **state)
     assert_int_equal(ret, OS_SUCCESS);
 }
 
-void test_wm_sync_group_file_success_more_than_max_groups(void **state)
-{
+void test_wm_sync_group_file_success_more_than_max_groups(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = GROUPS_DIR "/001";
@@ -142,9 +176,9 @@ void test_wm_sync_group_file_success_more_than_max_groups(void **state)
     char *groups_in_file = generate_groups_csv_string(MAX_GROUPS_PER_MULTIGROUP+1);
 
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, path, group_file_path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // Reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
@@ -164,8 +198,7 @@ void test_wm_sync_group_file_success_more_than_max_groups(void **state)
     os_free(groups_in_file);
 }
 
-void test_wm_sync_group_file_success_max_groups(void **state)
-{
+void test_wm_sync_group_file_success_max_groups(void **state) {
     int ret = OS_INVALID;
     const char *group_file = "001";
     const char *group_file_path = GROUPS_DIR "/001";
@@ -176,9 +209,9 @@ void test_wm_sync_group_file_success_max_groups(void **state)
     char *groups_in_file = generate_groups_csv_string(MAX_GROUPS_PER_MULTIGROUP);
 
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, path, group_file_path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // Reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
@@ -200,8 +233,7 @@ void test_wm_sync_group_file_success_max_groups(void **state)
 
 /* Tests wm_sync_legacy_groups_files */
 
-void test_wm_sync_legacy_groups_files_error_opening_groups_dir(void **state)
-{
+void test_wm_sync_legacy_groups_files_error_opening_groups_dir(void **state) {
     // Error opening groups directory
     will_return(__wrap_opendir, NULL);
     will_return(__wrap_strerror, "ERROR");
@@ -211,8 +243,7 @@ void test_wm_sync_legacy_groups_files_error_opening_groups_dir(void **state)
     wm_sync_legacy_groups_files();
 }
 
-void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **state)
-{
+void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **state) {
     DIR *dir = (DIR *)1;
     struct dirent *dir_ent = NULL;
     os_calloc(1, sizeof(struct dirent), dir_ent);
@@ -244,8 +275,7 @@ void test_wm_sync_legacy_groups_files_success_files_worker_error_dir(void **stat
     os_free(dir_ent);
 }
 
-void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state)
-{
+void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state) {
     DIR *dir = (DIR *)1;
     struct dirent *dir_ent = NULL;
     os_calloc(1, sizeof(struct dirent), dir_ent);
@@ -267,9 +297,9 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state)
     char *groups_in_file = generate_groups_csv_string(MAX_GROUPS_PER_MULTIGROUP);
     // Calling wm_sync_group_file
     // Agent groups file opened succesfully
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, fp_group_file);
+    expect_string(__wrap_wfopen, path, group_file_path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, fp_group_file);
     // Reading the file
     will_return(__wrap_fgets, groups_in_file);
     expect_value(__wrap_fgets, __stream, fp_group_file);
@@ -300,8 +330,7 @@ void test_wm_sync_legacy_groups_files_success_files_success_dir(void **state)
     os_free(dir_ent);
 }
 
-void test_wm_sync_legacy_groups_files_error_files(void **state)
-{
+void test_wm_sync_legacy_groups_files_error_files(void **state) {
     DIR *dir = (DIR *)1;
     struct dirent *dir_ent = NULL;
     os_calloc(1, sizeof(struct dirent), dir_ent);
@@ -318,9 +347,9 @@ void test_wm_sync_legacy_groups_files_error_files(void **state)
     const char *group_file_path = GROUPS_DIR "/001";
     // Calling wm_sync_group_file
     // Error opening agent groups file specified by 'group_file_path'
-    expect_string(__wrap_fopen, path, group_file_path);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, group_file_path);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
     expect_string(__wrap__mtdebug1, formatted_msg, "Groups file 'queue/agent-groups/001' could not be opened for syncronization.");
 
@@ -331,6 +360,170 @@ void test_wm_sync_legacy_groups_files_error_files(void **state)
     wm_sync_legacy_groups_files();
 
     os_free(dir_ent);
+}
+
+/* Tests sync_keys_with_wdb */
+
+void test_sync_keys_with_wdb_insert(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    char *test_ip = "1.1.1.1";
+
+    char **ids = NULL;
+    ids = os_AddStrArray("001", ids);
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+
+    expect_value(__wrap_rbtree_get, tree, tree);
+    expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
+    will_return(__wrap_rbtree_get, NULL);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
+
+    expect_any(__wrap_OS_CIDRtoStr, ip);
+    expect_value(__wrap_OS_CIDRtoStr, size, IPSIZE);
+    will_return(__wrap_OS_CIDRtoStr, test_ip);
+    will_return(__wrap_OS_CIDRtoStr, 0);
+
+    expect_value(__wrap_wdb_insert_agent, id, 1);
+    expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
+    expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
+    expect_string(__wrap_wdb_insert_agent, internal_key, keys.keyentries[0]->raw_key);
+    expect_value(__wrap_wdb_insert_agent, keep_date, 1);
+    will_return(__wrap_wdb_insert_agent, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't insert agent '001' in the database.");
+
+    will_return(__wrap_rbtree_keys, ids);
+
+    expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
+    will_return(__wrap_OS_IsAllowedID, 0);
+
+    sync_keys_with_wdb(&keys);
+}
+
+void test_sync_keys_with_wdb_delete(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    char **ids = NULL;
+    ids = os_AddStrArray("001", ids);
+
+    char *test_name = strdup("TESTNAME");
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+
+    expect_value(__wrap_rbtree_get, tree, tree);
+    expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
+    will_return(__wrap_rbtree_get, 1);
+
+    will_return(__wrap_rbtree_keys, ids);
+
+    expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
+    will_return(__wrap_OS_IsAllowedID, -1);
+
+    expect_value(__wrap_wdb_get_agent_name, id, 1);
+    will_return(__wrap_wdb_get_agent_name, test_name);
+
+    expect_value(__wrap_wdb_remove_agent, id, 1);
+    will_return(__wrap_wdb_remove_agent, -1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Couldn't remove agent '001' from the database.");
+
+    sync_keys_with_wdb(&keys);
+}
+
+void test_sync_keys_with_wdb_insert_delete(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    rb_tree *tree = NULL;
+    os_calloc(1, sizeof(rb_tree), tree);
+
+    char *test_ip = "1.1.1.1";
+    char *test_name = strdup("TESTNAME");
+
+    char **ids = NULL;
+    ids = os_AddStrArray("001", ids);
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, tree);
+
+    expect_value(__wrap_rbtree_get, tree, tree);
+    expect_string(__wrap_rbtree_get, key, keys.keyentries[0]->id);
+    will_return(__wrap_rbtree_get, NULL);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Synchronizing agent 001 'agent1'.");
+
+    expect_any(__wrap_OS_CIDRtoStr, ip);
+    expect_value(__wrap_OS_CIDRtoStr, size, IPSIZE);
+    will_return(__wrap_OS_CIDRtoStr, test_ip);
+    will_return(__wrap_OS_CIDRtoStr, 0);
+
+    expect_value(__wrap_wdb_insert_agent, id, 1);
+    expect_string(__wrap_wdb_insert_agent, name, keys.keyentries[0]->name);
+    expect_string(__wrap_wdb_insert_agent, register_ip, test_ip);
+    expect_string(__wrap_wdb_insert_agent, internal_key, keys.keyentries[0]->raw_key);
+    expect_value(__wrap_wdb_insert_agent, keep_date, 1);
+    will_return(__wrap_wdb_insert_agent, 0);
+
+    will_return(__wrap_rbtree_keys, ids);
+
+    expect_string(__wrap_OS_IsAllowedID, id, keys.keyentries[0]->id);
+    will_return(__wrap_OS_IsAllowedID, -1);
+
+    expect_value(__wrap_wdb_get_agent_name, id, 1);
+    will_return(__wrap_wdb_get_agent_name, test_name);
+
+    expect_value(__wrap_wdb_remove_agent, id, 1);
+    will_return(__wrap_wdb_remove_agent, 0);
+
+    expect_value(__wrap_wdbc_query_ex, *sock, -1);
+    expect_string(__wrap_wdbc_query_ex, query, "wazuhdb remove 1");
+    expect_value(__wrap_wdbc_query_ex, len, OS_SIZE_1024);
+    will_return(__wrap_wdbc_query_ex, "ok");
+    will_return(__wrap_wdbc_query_ex, -1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Could not remove the wazuh-db DB of the agent 1.");
+
+    expect_string(__wrap_rmdir_ex, name, "queue/diff/TESTNAME");
+    will_return(__wrap_rmdir_ex, 0);
+
+    expect_string(__wrap_unlink, file, "queue/rids/001");
+    will_return(__wrap_unlink, 0);
+
+    expect_string(__wrap_wfopen, path, "queue/agents-timestamp");
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
+
+    sync_keys_with_wdb(&keys);
+}
+
+void test_sync_keys_with_wdb_null(void **state) {
+    keystore keys = *((keystore *)*state);
+    keys.keysize = 1;
+
+    expect_value(__wrap_wdb_get_all_agents_rbtree, include_manager, 0);
+    will_return(__wrap_wdb_get_all_agents_rbtree, NULL);
+
+    expect_string(__wrap__mterror, tag, "wazuh-modulesd:database");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't synchronize the keystore with the DB.");
+
+    sync_keys_with_wdb(&keys);
 }
 
 int main()
@@ -347,6 +540,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_success_files_worker_error_dir, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_success_files_success_dir, setup_wmdb, teardown_wmdb),
         cmocka_unit_test_setup_teardown(test_wm_sync_legacy_groups_files_error_files, setup_wmdb, teardown_wmdb),
+        // sync_keys_with_wdb
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_delete, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_insert_delete, setup_keys_to_db, teardown_keys_to_db),
+        cmocka_unit_test_setup_teardown(test_sync_keys_with_wdb_null, setup_keys_to_db, teardown_keys_to_db),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

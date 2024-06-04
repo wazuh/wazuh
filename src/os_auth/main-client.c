@@ -27,6 +27,7 @@
 #include <openssl/ssl.h>
 #include "auth.h"
 #include "enrollment_op.h"
+#include "dll_load_notify.h"
 
 #undef ARGV0
 #define ARGV0 "agent-auth"
@@ -37,29 +38,30 @@ static void help_agent_auth(char * home_path) __attribute__((noreturn));
 static void help_agent_auth(char * home_path)
 {
     print_header();
-    print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
-    print_out("    -V          Version and license message.");
-    print_out("    -h          This help message.");
-    print_out("    -d          Execute in debug mode. This parameter");
-    print_out("                can be specified multiple times");
-    print_out("                to increase the debug level.");
-    print_out("    -t          Test configuration.");
+    print_out("  %s: -[Vhdti] [-g group] [-D dir] [-m IP address] [-p port] [-n network-interface] [-A name] [-c ciphers] [-v path] [-x path] [-k path] [-P pass] [-G group] [-I IP address]", ARGV0);
+    print_out("    -V                     Version and license message.");
+    print_out("    -h                     This help message.");
+    print_out("    -d                     Execute in debug mode. This parameter");
+    print_out("                           can be specified multiple times");
+    print_out("                           to increase the debug level.");
+    print_out("    -t                     Test configuration.");
 #ifndef WIN32
-    print_out("    -g <group>  Group to run as (default: %s).", GROUPGLOBAL);
-    print_out("    -D <dir>    Directory to chdir into (default: %s).", home_path);
+    print_out("    -g <group>             Group to run as (default: %s).", GROUPGLOBAL);
+    print_out("    -D <dir>               Directory to chdir into (default: %s).", home_path);
 #endif
-    print_out("    -m <addr>   Manager IP address.");
-    print_out("    -p <port>   Manager port (default: %d).", DEFAULT_PORT);
-    print_out("    -A <name>   Agent name (default: hostname).");
-    print_out("    -c <cipher> SSL cipher list (default: %s)", DEFAULT_CIPHERS);
-    print_out("    -v <path>   Full path to CA certificate used to verify the server.");
-    print_out("    -x <path>   Full path to agent certificate.");
-    print_out("    -k <path>   Full path to agent key.");
-    print_out("    -P <pass>   Authorization password.");
-    print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
-    print_out("    -G <group>  Assigns the agent to one or more existing groups (separated by commas).");
-    print_out("    -I <IP>     Set the agent IP address.");
-    print_out("    -i          Let the agent IP address be set by the manager connection.");
+    print_out("    -m <addr>              Manager IP address.");
+    print_out("    -p <port>              Manager port (default: %d).", DEFAULT_PORT);
+    print_out("    -n <network-interface> Network interface to use in an IPv6 connection (only necessary in case of use of link-local address).");
+    print_out("    -A <name>              Agent name (default: hostname).");
+    print_out("    -c <cipher>            SSL cipher list (default: %s)", DEFAULT_CIPHERS);
+    print_out("    -v <path>              Full path to CA certificate used to verify the server.");
+    print_out("    -x <path>              Full path to agent certificate.");
+    print_out("    -k <path>              Full path to agent key.");
+    print_out("    -P <pass>              Authorization password.");
+    print_out("    -a                     Auto select SSL/TLS method. Default: TLS v1.2 only.");
+    print_out("    -G <group>             Assigns the agent to one or more existing groups (separated by commas).");
+    print_out("    -I <IP>                Set the agent IP address.");
+    print_out("    -i                     Let the agent IP address be set by the manager connection.");
     print_out(" ");
     os_free(home_path);
     exit(1);
@@ -67,6 +69,11 @@ static void help_agent_auth(char * home_path)
 
 int main(int argc, char **argv)
 {
+#ifdef WIN32
+    // This must be always the first instruction
+    enable_dll_verification();
+#endif
+
     int c;
     int test_config = 0;
 #ifndef WIN32
@@ -76,6 +83,7 @@ int main(int argc, char **argv)
     w_enrollment_target *target_cfg = w_enrollment_target_init();
     w_enrollment_cert *cert_cfg = w_enrollment_cert_init();
     char *server_address = NULL;
+    uint32_t network_interface = 0;
     bio_err = 0;
     int debug_level = 0;
 
@@ -95,7 +103,7 @@ int main(int argc, char **argv)
     }
 #endif
 
-    while ((c = getopt(argc, argv, "VdhtG:m:p:A:c:v:x:k:D:P:aI:i"
+    while ((c = getopt(argc, argv, "VdhtG:m:p:n:A:c:v:x:k:D:P:aI:i"
 #ifndef WIN32
     "g:D:"
 #endif
@@ -141,6 +149,16 @@ int main(int argc, char **argv)
                     os_realloc(server_address, IPSIZE + 1, server_address);
                     OS_ExpandIPv6(server_address, IPSIZE);
                 }
+                break;
+            case 'n':
+                if (!optarg) {
+                    merror_exit("-%c needs an argument", c);
+                }
+                int index_numeric = atoi(optarg);
+                if (index_numeric <= 0 ) {
+                    merror_exit("Invalid network_interface: %s", optarg);
+                }
+                network_interface = (uint32_t)index_numeric;
                 break;
             case 'A':
                 if (!optarg) {
@@ -289,7 +307,7 @@ int main(int argc, char **argv)
     OS_ReadKeys(&agent_keys, W_RAW_KEY, 0);
 
     w_enrollment_ctx *cfg = w_enrollment_init(target_cfg, cert_cfg, &agent_keys);
-    int ret = w_enrollment_request_key(cfg, server_address);
+    int ret = w_enrollment_request_key(cfg, server_address, network_interface);
 
     w_enrollment_target_destroy(target_cfg);
     w_enrollment_cert_destroy(cert_cfg);

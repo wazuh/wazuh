@@ -1,0 +1,17 @@
+- sections:
+  - section: 'ruleset'
+    elements:
+    - decoder_dir:
+        value: 'ruleset/decoders'
+    - rule_dir:
+        value: 'ruleset/rules'
+    - rule_exclude:
+        value: '0215-policy_rules.xml'
+    - rule_dir:
+        value: 'etc/rules'
+  - section: 'alerts'
+    elements:
+    - log_alert_level:
+        value: LOG_ALERT_LEVEL
+    - email_alert_level:
+        value: 12

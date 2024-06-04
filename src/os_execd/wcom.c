@@ -18,7 +18,6 @@
 #include "external/zlib/zlib.h"
 #include "client-agent/agentd.h"
 #include "logcollector/logcollector.h"
-#include "syscheckd/syscheck.h"
 #include "rootcheck/rootcheck.h"
 
 static int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
@@ -120,7 +119,7 @@ size_t wcom_unmerge(const char *file_path, char ** output) {
         return strlen(*output);
     }
 
-    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY) == 0) {
+    if (UnmergeFiles(final_path, INCOMING_DIR, OS_BINARY, NULL) == 0) {
         merror("At WCOM unmerge: Error unmerging file '%s.'", final_path);
         os_strdup("err Cannot unmerge file", *output);
         return strlen(*output);
@@ -156,7 +155,7 @@ size_t wcom_uncompress(const char * source, const char * target, char ** output)
         return strlen(*output);
     }
 
-    if (ftarget = fopen(final_target, "wb"), !ftarget) {
+    if (ftarget = wfopen(final_target, "wb"), !ftarget) {
         gzclose(fsource);
         merror("At WCOM uncompress: Unable to open '%s'", final_target);
         os_strdup("err Unable to open target", *output);
@@ -333,36 +332,46 @@ size_t wcom_check_manager_config(char **output) {
     char *command_out = NULL;
     cJSON *response = cJSON_CreateObject();
 
-    for (i = 0; daemons[i]; i++) {
-        response_retval = 0;
-        snprintf(command_in, PATH_MAX, "%s -t", daemons[i]);
-        // Exec a command with a timeout of 2000 seconds.
-        if (wm_exec(command_in, &command_out, &response_retval, 2000, NULL) < 0) {
-            if (response_retval == EXECVE_ERROR) {
-                mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
-            } else {
-                mwarn("Error executing [%s]", command_in);
+    OS_XML xml_check;
+    const char *cfg = OSSECCONF;
+
+    if (OS_ReadXML(cfg, &xml_check) < 0) {
+        snprintf(response_string, 0, "Error reading %s file", cfg);
+        response_retval = EXECVE_ERROR;
+    } else {
+        OS_ClearXML(&xml_check);
+
+        for (i = 0; daemons[i]; i++) {
+            response_retval = 0;
+            snprintf(command_in, PATH_MAX, "%s -t", daemons[i]);
+            // Exec a command with a timeout of 2000 seconds.
+            if (wm_exec(command_in, &command_out, &response_retval, 2000, NULL) < 0) {
+                if (response_retval == EXECVE_ERROR) {
+                    mwarn("Path is invalid or file has insufficient permissions. %s", command_in);
+                } else {
+                    mwarn("Error executing [%s]", command_in);
+                }
+
+                os_free(response_string);
+                size_t size = snprintf(NULL, 0, "Error executing %s - (%d)", command_in, response_retval);
+                os_calloc(size + 1, sizeof(char), response_string);
+                snprintf(response_string, size, "Error executing %s - (%d)", command_in, response_retval);
+                break;
             }
 
-            os_free(response_string);
-            size_t size = snprintf(NULL, 0, "Error executing %s - (%d)", command_in, response_retval);
-            os_calloc(size + 1, sizeof(char), response_string);
-            snprintf(response_string, size, "Error executing %s - (%d)", command_in, response_retval);
-            break;
-        }
+            if (command_out && *command_out) {
+                // Remove last newline
+                size_t lastchar = strlen(command_out) - 1;
+                command_out[lastchar] = command_out[lastchar] == '\n' ? '\0' : command_out[lastchar];
 
-        if (command_out && *command_out) {
-            // Remove last newline
-            size_t lastchar = strlen(command_out) - 1;
-            command_out[lastchar] = command_out[lastchar] == '\n' ? '\0' : command_out[lastchar];
+                wm_strcat(&response_string, command_out, ' ');
+            }
 
-            wm_strcat(&response_string, command_out, ' ');
-        }
+            os_free(command_out);
 
-        os_free(command_out);
-
-        if(response_retval) {
-            break;
+            if(response_retval) {
+                break;
+            }
         }
     }
 

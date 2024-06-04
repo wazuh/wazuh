@@ -13,7 +13,6 @@
 #include "os_crypto/sha256/sha256_op.h"
 #include "../os_net/os_net.h"
 #include "../addagent/manage_agents.h"
-#include "syscheckd/syscheck.h"
 #include "config/authd-config.h"
 #include "os_auth/auth.h"
 #include "wazuh_db/helpers/wdb_global_helpers.h"
@@ -102,12 +101,12 @@ char *os_read_agent_name()
 
     mdebug2("Calling os_read_agent_name().");
 
-    fp = fopen(AGENT_INFO_FILE, "r");
+    fp = wfopen(AGENT_INFO_FILE, "r");
 
     /* We give 1 second for the file to be created */
     if (!fp) {
         sleep(1);
-        fp = fopen(AGENT_INFO_FILE, "r");
+        fp = wfopen(AGENT_INFO_FILE, "r");
     }
 
     if (!fp) {
@@ -149,7 +148,7 @@ char *os_read_agent_ip()
 
     mdebug2("Calling os_read_agent_ip().");
 
-    fp = fopen(AGENT_INFO_FILE, "r");
+    fp = wfopen(AGENT_INFO_FILE, "r");
     if (!fp) {
         merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
@@ -180,7 +179,7 @@ char *os_read_agent_id()
 
     mdebug2("Calling os_read_agent_id().");
 
-    fp = fopen(AGENT_INFO_FILE, "r");
+    fp = wfopen(AGENT_INFO_FILE, "r");
     if (!fp) {
         merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (NULL);
@@ -217,7 +216,7 @@ char *os_read_agent_profile()
     FILE *fp;
 
     mdebug2("Calling os_read_agent_profile().");
-    fp = fopen(AGENT_INFO_FILE, "r");
+    fp = wfopen(AGENT_INFO_FILE, "r");
 
     if (!fp) {
         merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
@@ -254,7 +253,7 @@ int os_write_agent_info(const char *agent_name, __attribute__((unused)) const ch
 {
     FILE *fp;
 
-    fp = fopen(AGENT_INFO_FILE, "w");
+    fp = wfopen(AGENT_INFO_FILE, "w");
     if (!fp) {
         merror(FOPEN_ERROR, AGENT_INFO_FILE, errno, strerror(errno));
         return (0);
@@ -614,41 +613,55 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
     int sock = -1;
     int result = 0;
     int response_length = 0;
+    int send_attempts = 0;
+    bool send_error = FALSE;
 
     strcpy(sockname, CLUSTER_SOCK);
-
-    if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock >= 0) {
-        if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
-            if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
-                switch (response_length) {
-                case -2:
-                    merror("Cluster error detected");
-                    break;
-                case -1:
-                    merror("OS_RecvSecureClusterTCP(): %s", strerror(errno));
-                    break;
-
-                case 0:
-                    mdebug1("Empty message from local client.");
-                    break;
-
-
-                case OS_MAXLEN:
-                    merror("Received message > %i", OS_MAXSTR);
-                    break;
+    for (send_attempts = 0; send_attempts < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++send_attempts) {
+        result = 0;
+        send_error = FALSE;
+        if (sock = external_socket_connect(sockname, WAZUH_IPC_TIMEOUT), sock >= 0) {
+            if (OS_SendSecureTCPCluster(sock, command, payload, strlen(payload)) >= 0) {
+                if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
+                    switch (response_length) {
+                    case -2:
+                        mwarn("Cluster error detected");
+                        send_error = TRUE;
+                        break;
+                    case -1:
+                        mwarn("OS_RecvSecureClusterTCP(): %s", strerror(errno));
+                        send_error = TRUE;
+                        break;
+                    case 0:
+                        mdebug1("Empty message from local client.");
+                        break;
+                    case OS_MAXLEN:
+                        merror("Received message > %i", OS_MAXSTR);
+                        break;
+                    }
+                    result = -1;
                 }
-                result = -1;
             }
+            else {
+                mwarn("OS_SendSecureTCPCluster(): %s", strerror(errno));
+                send_error = TRUE;
+                result = -2;
+            }
+            close(sock);
         }
-        else{
-            merror("OS_SendSecureTCPCluster(): %s", strerror(errno));
+        else {
+            mwarn("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
             result = -2;
+            send_error = TRUE;
         }
-        close(sock);
-    }
-    else {
-        merror("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
-        result = -2;
+
+        if (!send_error) {
+            break;
+        } else if (send_attempts == CLUSTER_SEND_MESSAGE_ATTEMPTS - 1) {
+            merror("Could not send message through the cluster after '%d' attempts.", CLUSTER_SEND_MESSAGE_ATTEMPTS);
+        } else {
+            sleep(1);
+        }
     }
 
     return result;
@@ -773,7 +786,7 @@ char * get_agent_id_from_name(const char *agent_name) {
 
     snprintf(path,PATH_MAX,"%s", KEYS_FILE);
 
-    fp = fopen(path, "r");
+    fp = wfopen(path, "r");
 
     if (!fp) {
         mdebug1("Couldnt open file '%s'", KEYS_FILE);

@@ -44,7 +44,7 @@ int __wrap_wdb_finalize() {
     return mock();
 }
 
-int  __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
+int __wrap_wdb_step(__attribute__((unused)) sqlite3_stmt *stmt) {
     return mock();
 }
 
@@ -243,6 +243,12 @@ wdb_t* __wrap_wdb_init(__attribute__((unused)) sqlite3* db, const char* id) {
 }
 
 int __wrap_wdb_close(__attribute__((unused)) wdb_t * wdb, __attribute__((unused))bool commit) {
+    int free_db = mock_type(int);
+
+    if (free_db) {
+        os_free(wdb->db);
+    }
+
     return mock();
 }
 
@@ -365,4 +371,27 @@ int __wrap_wdb_commit2(__attribute__((unused))wdb_t * wdb) {
 
 void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb) {
     function_called();
+}
+
+int __wrap_wdb_vacuum(__attribute__((unused))sqlite3 * db) {
+    return mock();
+}
+
+int __wrap_wdb_get_db_state(__attribute__((unused))wdb_t * wdb) {
+    return mock();
+}
+
+int __wrap_wdb_update_last_vacuum_data(__attribute__((unused))wdb_t* wdb, __attribute__((unused))const char *last_vacuum_time, const char *last_vacuum_value) {
+    check_expected(last_vacuum_value);
+    return mock();
+}
+
+int __wrap_wdb_get_db_free_pages_percentage(__attribute__((unused))wdb_t * wdb) {
+    return mock();
+}
+
+int __wrap_wdb_sca_find(__attribute__((unused))wdb_t *socket, 
+                        __attribute__((unused))int pm_id, char *result_found) {
+
+    return mock();
 }

@@ -1,0 +1,19 @@
+- sections:
+    - section: socket
+      elements:
+        - name:
+            value: 'SOCKET_NAME'
+        - location:
+            value: 'SOCKET_PATH'
+    - section: localfile
+      elements:
+        - location:
+            value: 'LOCATION'
+        - log_format:
+            value: 'LOG_FORMAT'
+        - target:
+            value: 'TARGET'
+        - out_format:
+            value: OUT_FORMAT
+            attributes:
+              - target: TARGET_OUT_FORMAT

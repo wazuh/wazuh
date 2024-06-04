@@ -12,7 +12,7 @@
 #define CROOTCHECK_H
 
 #include <stdio.h>
-#include "os_regex/os_regex.h"
+#include "../os_regex/os_regex.h"
 
 #define RK_CONF_UNPARSED -2
 #define RK_CONF_UNDEFINED -1

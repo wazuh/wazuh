@@ -15,7 +15,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include "shared.h"
-#include "wazuh_modules/wmodules.h"
+#include "../../../wazuh_modules/wmodules.h"
 
 typedef struct test_structure {
     wmodule *module;

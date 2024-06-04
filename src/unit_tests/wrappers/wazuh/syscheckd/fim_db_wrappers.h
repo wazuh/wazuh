@@ -11,7 +11,8 @@
 #ifndef FIM_DB_WRAPPERS_H
 #define FIM_DB_WRAPPERS_H
 
-#include "syscheckd/syscheck.h"
+#include "../../../../syscheckd/include/syscheck.h"
+#include "../../../../syscheckd/src/db/include/fimCommonDefs.h"
 
 int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      fim_type type,
@@ -23,17 +24,11 @@ int __wrap_fim_db_get_checksum_range(fdb_t *fim_sql,
                                      char **str_pathlh,
                                      char **str_pathuh);
 
-int __wrap_fim_db_delete_not_scanned(fdb_t * fim_sql,
-                                     fim_tmp_file *file,
-                                     pthread_mutex_t *mutex,
-                                     int storage);
+int __wrap_fim_db_get_count_file_entry();
 
-int __wrap_fim_db_delete_range(fdb_t * fim_sql,
-                               fim_tmp_file *file,
-                               pthread_mutex_t *mutex,
-                               int storage);
+int __wrap_fim_db_get_count_registry_data();
 
-int __wrap_fim_db_get_count_file_entry(fdb_t * fim_sql);
+int __wrap_fim_db_get_count_registry_key();
 
 int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
                                   fim_type type,
@@ -41,147 +36,71 @@ int __wrap_fim_db_get_count_range(fdb_t *fim_sql,
                                   char *top,
                                   int *count);
 
-int __wrap_fim_db_get_data_checksum(fdb_t *fim_sql,
-                                    void * arg);
+FIMDBErrorCode __wrap_fim_db_get_path(const char *file_path, callback_context_t callback);
+void expect_fim_db_get_path(const char* path, int ret_val);
 
-int __wrap_fim_db_get_not_scanned(fdb_t * fim_sql,
-                                  fim_tmp_file **file,
-                                  int storage);
+FIMDBErrorCode __wrap_fim_db_init(int storage,
+                                  int sync_interval,
+                                  uint32_t sync_max_interval,
+                                  uint32_t sync_response_timeout,
+                                  fim_sync_callback_t sync_callback,
+                                  logging_callback_t log_callback,
+                                  int file_limit,
+                                  int value_limit,
+                                  int sync_registry_enable,
+                                  int sync_thread_pool,
+                                  int sync_queue_size);
 
-fim_entry *__wrap_fim_db_get_path(fdb_t *fim_sql,
-                                  const char *file_path);
+void expect_wrapper_fim_db_init(int storage,
+                                int sync_interval,
+                                uint32_t sync_max_interval,
+                                uint32_t sync_response_timeout,
+                                int file_limit,
+                                int value_limit,
+                                int sync_registry_enable,
+                                int sync_thread_pool,
+                                int sync_queue_size);
 
-int __wrap_fim_db_get_path_range(fdb_t *fim_sql,
-                                 fim_type type,
-                                 char *start,
-                                 char *top,
-                                 fim_tmp_file **file,
-                                 int storage);
-
-int __wrap_fim_db_get_path_from_pattern(fdb_t *fim_sql,
-                                        const char *pattern,
-                                        fim_tmp_file **file,
-                                        int storage);
-
-char **__wrap_fim_db_get_paths_from_inode(fdb_t *fim_sql,
-                                          const unsigned long int inode,
-                                          const unsigned long int dev);
-
-int __wrap_fim_db_get_row_path(fdb_t * fim_sql,
-                               int mode,
-                               char **path);
-
-fdb_t *__wrap_fim_db_init(int memory);
-
-int __wrap_fim_db_insert(fdb_t *fim_sql,
-                         const char *file_path,
-                         fim_file_data *entry,
-                         int alert_type);
-
-int __wrap_fim_db_process_missing_entry(fdb_t *fim_sql,
-                                        fim_tmp_file *file,
-                                        pthread_mutex_t *mutex,
-                                        int storage,
-                                        event_data_t *evt_data);
-
-int __wrap_fim_db_remove_wildcard_entry(fdb_t *fim_sql,
-                                        fim_tmp_file *file,
-                                        pthread_mutex_t *mutex,
-                                        int storage,
-                                        event_data_t *evt_data,
-                                        directory_t *configuration);
-
-int __wrap_fim_db_remove_path(fdb_t *fim_sql, char *path);
-
-int __wrap_fim_db_set_all_unscanned(fdb_t *fim_sql);
-
-int __wrap_fim_db_set_scanned(fdb_t *fim_sql,
-                              char *path);
-
-int __wrap_fim_db_sync_path_range(fdb_t *fim_sql,
-                                  pthread_mutex_t *mutex,
-                                  fim_tmp_file *file,
-                                  int storage);
-
-int __wrap_fim_db_get_count_entries(fdb_t *fim_sql);
-
-
-#ifndef WIN32
-fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql,
-                                                 __attribute__((unused)) fim_type type,
-                                                 const char *path);
-
-#else
-fim_entry *__wrap_fim_db_get_entry_from_sync_msg(fdb_t *fim_sql, fim_type type, const char *path);
-#endif
+FIMDBErrorCode __wrap_fim_db_remove_path(const char *path);
 
 int __wrap_fim_db_read_line_from_file(fim_tmp_file *file, int storage, int it, char **buffer);
 
 void __wrap_fim_db_clean_file(fim_tmp_file **file, int storage);
 
 /**
- * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_path_range
+ * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_count_file_entry
  */
-void expect_wrapper_fim_db_get_path_range_call(const fdb_t *db,
-                                       const char *start_str,
-                                       const char *top_str,
-                                       int storage,
-                                       fim_tmp_file *tmp_file,
-                                       int ret);
-
-/**
- * @brief This function loads the expect and will_return calls for the wrapper of fim_db_delete_range
- */
-void expect_wrapper_fim_db_delete_range_call(const fdb_t *db, int storage, const fim_tmp_file *file, int ret);
-
-/**
- * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_count_entries
- */
-void expect_wrapper_fim_db_get_count_entries(const fdb_t *fim_sql, int ret);
-
-/**
- * @brief This function loads the expect and will_return calls for the wrapper of fim_db_get_paths_from_inode
- */
-void expect_wrapper_fim_db_get_paths_from_inode(fdb_t *db, int inode, int dev, char **ret);
-
-/**
- * @brief This function mocks a call to fim_db_process_read_file
- */
-int __wrap_fim_db_process_read_file(fdb_t *fim_sql,
-                                    fim_tmp_file *file,
-                                    int type,
-                                    pthread_mutex_t *mutex,
-                                    void (*callback)(fdb_t *, fim_entry *, pthread_mutex_t *, void *, void *, void *),
-                                    int storage,
-                                    void *alert,
-                                    void *mode,
-                                    void *w_evt);
-void expect_fim_db_get_path_from_pattern(fdb_t *fim_sql,
-                                         const char *pattern,
-                                         fim_tmp_file *file,
-                                         int storage,
-                                         int ret);
+void expect_wrapper_fim_db_get_count_file_entry(int ret);
 
 /**
  * @brief This function loads the expect and will_return calls for the wrapper of fim_db_remove_path
  */
-void expect_fim_db_remove_path(fdb_t *fim_sql, char *path, int ret_val);
+void expect_fim_db_remove_path(const char *path, int ret_val);
 
-int __wrap_fim_db_file_is_scanned(__attribute__((unused)) fdb_t *fim_sql, const char *path);
+FIMDBErrorCode __wrap_fim_db_file_update(fim_entry* new, callback_context_t callback);
 
-int __wrap_fim_db_data_exists(__attribute__((unused)) fdb_t *fim_sql, unsigned long int inode, unsigned long int dev);
+FIMDBErrorCode __wrap_fim_db_file_pattern_search(const char* pattern,
+                                      __attribute__((unused)) callback_context_t callback);
 
-int __wrap_fim_db_append_paths_from_inode(fdb_t *fim_sql,
-                                          unsigned long int inode,
-                                          unsigned long int dev,
-                                          OSList *list,
-                                          rb_tree *tree);
+void expect_fim_db_file_pattern_search(const char* pattern, int ret_val);
 
-int __wrap_fim_db_file_update(fdb_t *fim_sql,
-                              const char *path,
-                              const __attribute__((unused)) fim_file_data *data,
-                              fim_entry **saved);
+FIMDBErrorCode __wrap_fim_db_file_inode_search(const unsigned long inode,
+                                    const unsigned long dev,
+                                    __attribute__((unused)) callback_context_t callback);
+void expect_fim_db_file_inode_search(const unsigned long inode,
+                                     const unsigned long dev,
+                                     int ret_val);
 
-int __wrap_fim_db_is_full(fdb_t *fim_sql);
+int __wrap_fim_db_get_count_file_inode();
+
+void __wrap_fim_run_integrity();
+
+void __wrap_is_fim_shutdown();
+
+void __wrap_fim_db_teardown();
+
+void __wrap__imp__dbsync_initialize();
+
+void __wrap__imp__rsync_initialize();
 
 #endif

@@ -1,5 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import itertools
 import logging
@@ -168,13 +170,16 @@ class AbstractClient(common.Handler):
         future_result : asyncio.Future object
             Result of the hello request.
         """
-        response_msg = future_result.result()[0]
-        if isinstance(response_msg, Exception):
-            self.logger.error(f"Could not connect to master: {response_msg}.")
-            self.transport.close()
-        else:
+        try:
+            result = future_result.result()
+            if isinstance(future_result.result()[0], Exception):
+                raise result[0]
+
             self.logger.info("Successfully connected to master.")
             self.connected = True
+        except Exception as e:
+            self.logger.error(f"Could not connect to master: {str(e)}.")
+            self.transport.close()
 
     def connection_made(self, transport):
         """Define process of connecting to the server.
@@ -185,8 +190,8 @@ class AbstractClient(common.Handler):
             Socket to write data on.
         """
         self.transport = transport
-        future_response = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
-        future_response.add_done_callback(self.connection_result)
+        future = asyncio.gather(self.send_request(command=b'hello', data=self.client_data))
+        future.add_done_callback(self.connection_result)
 
     def connection_lost(self, exc):
         """Define process of closing connection with the server.
@@ -210,9 +215,19 @@ class AbstractClient(common.Handler):
         self._cancel_all_tasks()
 
     def _cancel_all_tasks(self):
-        """Iterate asyncio tasks and cancel each of them."""
+        """Cancel all asyncio tasks and clients."""
         for task in asyncio.all_tasks():
-            task.cancel()
+            try:
+                task.cancel()
+            except Exception as e:
+                self.logger.error(f"Error cancelling task {task}: {e}")
+
+        for client in list(self.get_manager().local_server.clients.keys()):
+            try:
+                self.get_manager().local_server.clients[client].close()
+                del self.get_manager().local_server.clients[client]
+            except Exception as e:
+                self.logger.error(f"Error closing client {client}: {e}")
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for clients.
@@ -310,14 +325,18 @@ class AbstractClient(common.Handler):
             Payload length.
         """
         while not self.on_con_lost.done():
-            before = perf_counter()
-            result = await self.send_request(b'echo', b'a' * test_size)
-            after = perf_counter()
-            if len(result) != test_size:
-                self.logger.error(result, exc_info=False)
-            else:
-                self.logger.info(f"Received size: {len(result)} // Time: {after - before}")
+            try:
+                before = perf_counter()
+                result = await self.send_request(b'echo', b'a' * test_size)
+                after = perf_counter()
+                if len(result) != test_size:
+                    self.logger.error(result, exc_info=False)
+                else:
+                    self.logger.info(f"Received size: {len(result)} // Time: {after - before}")
+            except Exception as e:
+                self.logger.error(f"Error during performance test: {e}")
             await asyncio.sleep(3)
+
 
     async def concurrency_test_client(self, n_msgs: int):
         """Send lots of requests to the server at the same time.
@@ -330,11 +349,14 @@ class AbstractClient(common.Handler):
             Number of requests to send.
         """
         while not self.on_con_lost.done():
-            before = perf_counter()
-            for i in range(n_msgs):
-                await self.send_request(b'echo', f'concurrency {i}'.encode())
+            try:
+                before = perf_counter()
+                for i in range(n_msgs):
+                    await self.send_request(b'echo', f'concurrency {i}'.encode())
                 after = perf_counter()
-            self.logger.info(f"Time sending {n_msgs} messages: {after - before}")
+                self.logger.info(f"Time sending {n_msgs} messages: {after - before}")
+            except Exception as e:
+                self.logger.error(f"Error during concurrency test: {e}")
             await asyncio.sleep(10)
 
     async def send_file_task(self, filename: str):

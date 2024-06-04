@@ -19,11 +19,13 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     int s = 0;
     int tries = 0;
     int temp_file_created = 0;
+    int opt_file_created = 0;
     unsigned int alert_level = 0;
     unsigned int rule_id = 0;
     char integration_path[2048 + 1];
     char exec_tmp_file[2048 + 1];
     char exec_full_cmd[4096 + 1];
+    char opt_tmp_file[2048 + 1];
     FILE *fp;
 
     file_queue jfileq;
@@ -79,7 +81,16 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 continue;
             }
         }
-
+        else if(strcmp(integrator_config[s]->name, "shuffle") == 0)
+        {
+            if(!integrator_config[s]->hookurl)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing hook URL.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+        }
         else if(strcmp(integrator_config[s]->name, "pagerduty") == 0)
         {
             if(!integrator_config[s]->apikey)
@@ -92,6 +103,23 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
         }
 		else if(strcmp(integrator_config[s]->name, "virustotal") == 0)
         {
+            if(!integrator_config[s]->apikey)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing API Key.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
+        }
+        else if(strcmp(integrator_config[s]->name, "maltiverse") == 0)
+        {
+            if(!integrator_config[s]->hookurl)
+            {
+                integrator_config[s]->enabled = 0;
+                merror("Unable to enable integration for: '%s'. Missing hook URL.", integrator_config[s]->name);
+                s++;
+                continue;
+            }
             if(!integrator_config[s]->apikey)
             {
                 integrator_config[s]->enabled = 0;
@@ -119,7 +147,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
     }
 
     /* Infinite loop reading the alerts and inserting them. */
-    while(1)
+    while(FOREVER())
     {
 
         /* Get JSON message if available (timeout of 5 seconds) */
@@ -130,13 +158,13 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             continue;
         }
 
-        mdebug1("sending new alert.");
+        mdebug1("Sending new alert.");
         temp_file_created = 0;
 
         /* If JSON does not contain rule block, continue */
         if (rule = cJSON_GetObjectItem(al_json, "rule"), !rule){
                 s++;
-                mdebug2("skipping: Alert does not contain a rule block.");
+                mdebug2("Skipping: Alert does not contain a rule block.");
                 cJSON_Delete(al_json);
                 continue;
         }
@@ -148,7 +176,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             if(integrator_config[s]->enabled == 0)
             {
                 s++;
-                mdebug2("skipping: integration disabled");
+                mdebug2("Skipping: Integration disabled");
                 continue;
             }
 
@@ -163,7 +191,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                                    strlen(location->valuestring),
                                    integrator_config[s]->location))
                 {
-                    mdebug2("skipping: location doesn't match");
+                    mdebug2("Skipping: Location doesn't match");
                     s++; continue;
                 }
             }
@@ -177,7 +205,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 alert_level = json_field->valueint;
                 if(alert_level < integrator_config[s]->level)
                 {
-                    mdebug2("skipping: alert level is too low");
+                    mdebug2("Skipping: Alert level is too low");
                     s++; continue;
                 }
             }
@@ -209,7 +237,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 }
 
                 if (!found) {
-                    mdebug2("skipping: group doesn't match.");
+                    mdebug2("Skipping: Group doesn't match.");
                     s++; continue;
                 }
             }
@@ -222,7 +250,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 int rule_match = -1;
 
                 if (json_field = cJSON_GetObjectItem(rule,"id"), !json_field) {
-                    mdebug2("skipping: alert does not containg rule id.");
+                    mdebug2("Skipping: Alert does not containg rule id.");
                     s++; continue;
                 }
                 rule_id = atoi(json_field->valuestring);
@@ -241,197 +269,224 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 /* skip integration if none are matched */
                 if(rule_match == -1)
                 {
-                    mdebug2("skipping: rule doesn't match.");
+                    mdebug2("Skipping: Rule doesn't match.");
                     s++; continue;
                 }
             }
 
-            /* Create temp file once per alert. */
-            if(temp_file_created == 0)
+            /* Create temp file once per alert and integration. */
+            snprintf(exec_tmp_file, 2048, "/tmp/%s-%d-%ld.alert",
+                        integrator_config[s]->name, (int)time(0), (long int)os_random());
+
+            fp = wfopen(exec_tmp_file, "w");
+            if(!fp)
             {
-                snprintf(exec_tmp_file, 2048, "/tmp/%s-%d-%ld.alert",
-                         integrator_config[s]->name, (int)time(0), (long int)os_random());
+                mdebug2("File %s couldn't be created.", exec_tmp_file);
+                exec_tmp_file[0] = '\0';
+            }
+            else
+            {
+                if(integrator_config[s]->alert_format != NULL && strncmp(integrator_config[s]->alert_format, "json", 4) == 0){
+                    char * unformatted = cJSON_PrintUnformatted(al_json);
+                    fprintf(fp, "%s\n", unformatted);
+                    temp_file_created = 1;
+                    mdebug2("File %s was written.", exec_tmp_file);
+                    fclose(fp);
+                    free(unformatted);
+                }else{
+                    int log_count = 0;
+                    char *srcip = NULL;
+                    json_field = cJSON_GetObjectItem(al_json, "full_log");
+                    char *full_log = json_field ? json_field->valuestring : "";
+                    char *tmpstr = full_log;
 
-                fp = fopen(exec_tmp_file, "w");
-                if(!fp)
-                {
-                    mdebug2("File %s couldn't be created.", exec_tmp_file);
-                    exec_tmp_file[0] = '\0';
-                }
-                else
-                {
-                    if(integrator_config[s]->alert_format != NULL && strncmp(integrator_config[s]->alert_format, "json", 4) == 0){
-                        char * unformatted = cJSON_PrintUnformatted(al_json);
-                        fprintf(fp, "%s", unformatted);
-                        temp_file_created = 1;
-                        mdebug2("file %s was written.", exec_tmp_file);
-                        fclose(fp);
-                        free(unformatted);
-                    }else{
-                        int log_count = 0;
-                        char *srcip = NULL;
-                        json_field = cJSON_GetObjectItem(al_json, "full_log");
-                        char *full_log = json_field ? json_field->valuestring : "";
-                        char *tmpstr = full_log;
-
-                        while(*tmpstr != '\0')
+                    while(*tmpstr != '\0')
+                    {
+                        if(*tmpstr == '\'')
                         {
-                            if(*tmpstr == '\'')
-                            {
-                                *tmpstr = ' ';
-                            }
-                            else if(*tmpstr == '\\')
-                            {
-                                *tmpstr = '/';
-                            }
-                            else if(*tmpstr == '`')
-                            {
-                                *tmpstr = ' ';
-                            }
-                            else if(*tmpstr == '"')
-                            {
-                                *tmpstr = ' ';
-                            }
-                            else if(*tmpstr == ';')
-                            {
-                                *tmpstr = ',';
-                            }
-                            else if(*tmpstr == '!')
-                            {
-                                *tmpstr = ' ';
-                            }
-                            else if(*tmpstr == '$')
-                            {
-                                *tmpstr = ' ';
-                            }
-
-                            else if(*tmpstr < 32 || *tmpstr > 122)
-                            {
-                                *tmpstr = ' ';
-                            }
-                            log_count++;
-                            tmpstr++;
-
-                            if(log_count >= (int)integrator_config[s]->max_log)
-                            {
-                                *tmpstr='\0';
-                                *(tmpstr -1)='.';
-                                *(tmpstr -2)='.';
-                                *(tmpstr -3)='.';
-                                break;
-                            }
+                            *tmpstr = ' ';
                         }
-                        if (data = cJSON_GetObjectItem(al_json,"data"), data)
+                        else if(*tmpstr == '\\')
                         {
-                            if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field)
-                            {
-                                srcip = json_field->valuestring;
-                                tmpstr = srcip;
-
-                                while(*tmpstr != '\0')
-                                {
-                                    if(*tmpstr == '\'')
-                                    {
-                                        *tmpstr = ' ';
-                                    }
-                                    else if(*tmpstr == '\\')
-                                    {
-                                        *tmpstr = ' ';
-                                    }
-                                    else if(*tmpstr == '`')
-                                    {
-                                        *tmpstr = ' ';
-                                    }
-                                    else if(*tmpstr == ' ')
-                                    {
-                                    }
-                                    else if(*tmpstr < 46 || *tmpstr > 122)
-                                    {
-                                        *tmpstr = ' ';
-                                    }
-
-                                    tmpstr++;
-                                }
-                            }
+                            *tmpstr = '/';
                         }
-                        char *date = NULL;
-                        char *location = NULL;
-                        char *rule_id = NULL;
-                        int alert_level;
-                        char *rule_description = NULL;
+                        else if(*tmpstr == '`')
+                        {
+                            *tmpstr = ' ';
+                        }
+                        else if(*tmpstr == '"')
+                        {
+                            *tmpstr = ' ';
+                        }
+                        else if(*tmpstr == ';')
+                        {
+                            *tmpstr = ',';
+                        }
+                        else if(*tmpstr == '!')
+                        {
+                            *tmpstr = ' ';
+                        }
+                        else if(*tmpstr == '$')
+                        {
+                            *tmpstr = ' ';
+                        }
 
-                        json_field = cJSON_GetObjectItem(al_json,"timestamp");
-                        date = json_field ? json_field->valuestring : "";
+                        else if(*tmpstr < 32 || *tmpstr > 122)
+                        {
+                            *tmpstr = ' ';
+                        }
+                        log_count++;
+                        tmpstr++;
 
-                        json_field = cJSON_GetObjectItem(al_json,"location");
-                        location = json_field ? json_field->valuestring : "";
-
-                        json_field = cJSON_GetObjectItem(rule,"id");
-                        rule_id = json_field ? json_field->valuestring : "";
-
-                        json_field = cJSON_GetObjectItem(rule,"level");
-                        alert_level = json_field ? json_field->valueint : 0;
-
-                        json_field = cJSON_GetObjectItem(rule,"description");
-                        rule_description = json_field ? json_field->valuestring : "";
-
-
-                        fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%s'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", date, location, rule_id, alert_level, rule_description, full_log, srcip == NULL?"":srcip);
-                        temp_file_created = 1;
-                        mdebug2("file %s was written.", exec_tmp_file);
-                        fclose(fp);
-
+                        if(log_count >= (int)integrator_config[s]->max_log)
+                        {
+                            *tmpstr='\0';
+                            *(tmpstr -1)='.';
+                            *(tmpstr -2)='.';
+                            *(tmpstr -3)='.';
+                            break;
+                        }
                     }
+                    if (data = cJSON_GetObjectItem(al_json,"data"), data)
+                    {
+                        if (json_field = cJSON_GetObjectItem(data,"srcip"), json_field)
+                        {
+                            srcip = json_field->valuestring;
+                            tmpstr = srcip;
+
+                            while(*tmpstr != '\0')
+                            {
+                                if(*tmpstr == '\'')
+                                {
+                                    *tmpstr = ' ';
+                                }
+                                else if(*tmpstr == '\\')
+                                {
+                                    *tmpstr = ' ';
+                                }
+                                else if(*tmpstr == '`')
+                                {
+                                    *tmpstr = ' ';
+                                }
+                                else if(*tmpstr == ' ')
+                                {
+                                }
+                                else if(*tmpstr < 46 || *tmpstr > 122)
+                                {
+                                    *tmpstr = ' ';
+                                }
+
+                                tmpstr++;
+                            }
+                        }
+                    }
+                    char *date = NULL;
+                    char *location = NULL;
+                    char *rule_id = NULL;
+                    int alert_level;
+                    char *rule_description = NULL;
+
+                    json_field = cJSON_GetObjectItem(al_json,"timestamp");
+                    date = json_field ? json_field->valuestring : "";
+
+                    json_field = cJSON_GetObjectItem(al_json,"location");
+                    location = json_field ? json_field->valuestring : "";
+
+                    json_field = cJSON_GetObjectItem(rule,"id");
+                    rule_id = json_field ? json_field->valuestring : "";
+
+                    json_field = cJSON_GetObjectItem(rule,"level");
+                    alert_level = json_field ? json_field->valueint : 0;
+
+                    json_field = cJSON_GetObjectItem(rule,"description");
+                    rule_description = json_field ? json_field->valuestring : "";
+
+
+                    fprintf(fp, "alertdate='%s'\nalertlocation='%s'\nruleid='%s'\nalertlevel='%d'\nruledescription='%s'\nalertlog='%s'\nsrcip='%s'", date, location, rule_id, alert_level, rule_description, full_log, srcip == NULL?"":srcip);
+                    temp_file_created = 1;
+                    mdebug2("File %s was written.", exec_tmp_file);
+                    fclose(fp);
+
                 }
             }
 
-            if(temp_file_created == 1)
-            {
-                int dbg_lvl = isDebug();
-                os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s", INTEGRATORDIR, exec_tmp_file, integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey, integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl, dbg_lvl <= 0 ? "" : "debug");
-                if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
+            /* Create temp file for integration options. */
+            if (integrator_config[s]->options != NULL) {
+                snprintf(opt_tmp_file, 2048, "/tmp/%s-%d-%ld.options",
+                            integrator_config[s]->name, (int)time(0), (long int) os_random());
 
-                mdebug1("Running: %s", exec_full_cmd);
-
-                char **cmd = OS_StrBreak(' ', exec_full_cmd, 5);
-
-                if(cmd) {
-                    wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
-                    if(wfd){
-                        char buffer[4096];
-                        while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
-                            mdebug2("integratord: %s", buffer);
-                        }
-                        int wp_closefd = wpclose(wfd);
-                        if ( WIFEXITED(wp_closefd) ) {
-                            int wstatus = WEXITSTATUS(wp_closefd);
-                            if (wstatus == 127) {
-                                // 127 means error in exec
-                                merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
-                            } else if(wstatus != 0){
-                                merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, INTEGRATORDIR);
-                                merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, INTEGRATORDIR, buffer);
-                                merror("Exit status was: %d", wstatus);
-                            } else {
-                                mdebug1("Command ran successfully.");
-                            }
-                        } else {
-                            merror("Command (%s) execution exited abnormally.", exec_full_cmd);
-                        }
-
-                    } else {
-                        merror("Could not launch command %s (%d)", strerror(errno), errno);
-                    }
-                    free_strarray(cmd);
+                fp = wfopen(opt_tmp_file, "w");
+                if (!fp) {
+                    mdebug2("File %s couldn't be created.", opt_tmp_file);
+                    opt_tmp_file[0] = '\0';
                 }
+                else {
+                    fprintf(fp, "%s\n", integrator_config[s]->options);
+                    opt_file_created = 1;
+                    mdebug2("File %s was written.", opt_tmp_file);
+                    fclose(fp);
+                }
+            }
+
+            int dbg_lvl = isDebug();
+            os_snprintf(exec_full_cmd, 4095, "%s %s %s %s %s %s %d %d",
+                INTEGRATORDIR,
+                exec_tmp_file,
+                integrator_config[s]->apikey == NULL ? "" : integrator_config[s]->apikey,
+                integrator_config[s]->hookurl == NULL ? "" : integrator_config[s]->hookurl,
+                dbg_lvl <= 0 ? "" : "debug",
+                opt_file_created == 0 ? "" : opt_tmp_file,
+                integrator_config[s]->timeout,
+                integrator_config[s]->retries);
+
+            if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
+
+            mdebug1("Running script with args: %s", exec_full_cmd);
+
+            char **cmd = OS_StrBreak(' ', exec_full_cmd, 9);
+
+            if (cmd) {
+                wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);
+                if (wfd) {
+                    char buffer[4096];
+                    while (fgets(buffer, sizeof(buffer), wfd->file_out)) {
+                        mdebug2("%s", buffer);
+                    }
+                    int wp_closefd = wpclose(wfd);
+                    if ( WIFEXITED(wp_closefd) ) {
+                        int wstatus = WEXITSTATUS(wp_closefd);
+                        if (wstatus == 127) {
+                            // 127 means error in exec
+                            merror("Couldn't execute command (%s). Check file and permissions.", exec_full_cmd);
+                        } else if(wstatus != 0){
+                            merror("Unable to run integration for %s -> %s",  integrator_config[s]->name, INTEGRATORDIR);
+                            merror("While running %s -> %s. Output: %s ",  integrator_config[s]->name, INTEGRATORDIR, buffer);
+                            merror("Exit status was: %d", wstatus);
+                        } else {
+                            mdebug1("Command ran successfully.");
+                        }
+                    } else {
+                        merror("Command (%s) execution exited abnormally.", exec_full_cmd);
+                    }
+
+                } else {
+                    merror("Could not launch command %s (%d)", strerror(errno), errno);
+                }
+                free_strarray(cmd);
             }
             s++;
+
+            /* Clearing the memory */
+            if (temp_file_created == 1) {
+                unlink(exec_tmp_file);
+                temp_file_created = 0;
+            }
+            if (opt_file_created == 1) {
+                unlink(opt_tmp_file);
+                opt_file_created = 0;
+            }
+
         }
-
-        /* Clearing the memory */
-        if(temp_file_created == 1)
-            unlink(exec_tmp_file);
-
 
         if (al_json) {
             cJSON_Delete(al_json);

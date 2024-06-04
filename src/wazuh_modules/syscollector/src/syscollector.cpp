@@ -16,6 +16,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+#include "../../wm_syscollector.h"
+
 void syscollector_start(const unsigned int inverval,
                         send_data_callback_t callbackDiff,
                         send_data_callback_t callbackSync,
@@ -49,11 +51,11 @@ void syscollector_start(const unsigned int inverval,
         }
     };
 
-    std::function<void(const syscollector_log_level_t, const std::string&)> callbackLogWrapper
+    std::function<void(const modules_log_level_t, const std::string&)> callbackLogWrapper
     {
-        [callbackLog](const syscollector_log_level_t level, const std::string & data)
+        [callbackLog](const modules_log_level_t level, const std::string & data)
         {
-            callbackLog(level, data.c_str());
+            callbackLog(level, data.c_str(), WM_SYS_LOGTAG);
         }
     };
 
@@ -61,7 +63,7 @@ void syscollector_start(const unsigned int inverval,
     {
         [callbackLog](const std::string & data)
         {
-            callbackLog(SYS_LOG_ERROR, data.c_str());
+            callbackLog(LOG_ERROR, data.c_str(), WM_SYS_LOGTAG);
         }
     };
 
@@ -70,9 +72,9 @@ void syscollector_start(const unsigned int inverval,
     try
     {
         Syscollector::instance().init(std::make_shared<SysInfo>(),
-                                      callbackDiffWrapper,
-                                      callbackSyncWrapper,
-                                      callbackLogWrapper,
+                                      std::move(callbackDiffWrapper),
+                                      std::move(callbackSyncWrapper),
+                                      std::move(callbackLogWrapper),
                                       dbPath,
                                       normalizerConfigPath,
                                       normalizerType,

@@ -172,7 +172,7 @@ void test_wm_task_manager_decode_status_timeout(void **state)
 
     const char *ret = wm_task_manager_decode_status(status);
 
-    assert_string_equal(ret, "Timeout reached while waiting for the response from the agent");
+    assert_string_equal(ret, "Timeout reached while waiting for the response from the agent, check the result manually on the agent for more information");
 }
 
 void test_wm_task_manager_decode_status_legacy(void **state)
@@ -365,8 +365,7 @@ void test_wm_task_manager_parse_data_result_last_update_0(void **state)
     assert_null(cJSON_GetObjectItem(response, "error_msg"));
     assert_non_null(cJSON_GetObjectItem(response, "create_time"));
     assert_string_equal(cJSON_GetObjectItem(response, "create_time")->valuestring, "5/5/20 12:30:55.666");
-    assert_non_null(cJSON_GetObjectItem(response, "update_time"));
-    assert_string_equal(cJSON_GetObjectItem(response, "update_time")->valuestring, "0");
+    assert_null(cJSON_GetObjectItem(response, "update_time"));
 }
 
 void test_wm_task_manager_parse_data_result_no_last_update(void **state)

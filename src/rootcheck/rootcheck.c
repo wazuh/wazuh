@@ -77,6 +77,7 @@ int rootcheck_init(int test_config)
     rootcheck.basedir = NULL;
     rootcheck.unixaudit = NULL;
     rootcheck.ignore = NULL;
+    rootcheck.ignore_sregex = NULL;
     rootcheck.rootkit_files = NULL;
     rootcheck.rootkit_trojans = NULL;
     rootcheck.winaudit = NULL;
@@ -174,7 +175,7 @@ int rootcheck_init(int test_config)
 
     /* Read configuration  --function specified twice (check makefile) */
     if (Read_Rootcheck_Config(cfg) < 0) {
-        merror(RCONFIG_ERROR, ARGV0, cfg);
+        mwarn(RCONFIG_ERROR, ARGV0, cfg);
         return (1);
     }
 

@@ -19,4 +19,10 @@ int __wrap_OS_IsAllowedIP(__attribute__((unused)) keystore *keys, const char *sr
 
 int __wrap_OS_IsAllowedID(__attribute__((unused)) keystore *keys, const char *id);
 
+keyentry * __wrap_OS_DupKeyEntry(const keyentry * key);
+
+int __wrap_OS_AddSocket(keystore * keys, unsigned int i, int sock);
+
+void __wrap_OS_FreeKey(keyentry *key);
+
 #endif

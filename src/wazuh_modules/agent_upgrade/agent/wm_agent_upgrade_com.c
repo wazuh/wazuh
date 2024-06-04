@@ -229,7 +229,7 @@ STATIC char * wm_agent_upgrade_com_open(const cJSON* json_object) {
         return wm_agent_upgrade_command_ack(ERROR_INVALID_FILE_NAME, error_messages[ERROR_INVALID_FILE_NAME]);
     }
 
-    if (file.fp = fopen(final_path, mode_obj->valuestring), file.fp) {
+    if (file.fp = wfopen(final_path, mode_obj->valuestring), file.fp) {
         snprintf(file.path, sizeof(file.path), "%s", final_path);
         return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
     } else {
@@ -353,7 +353,7 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
     }
 
     //Unmerge
-    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY) == 0) {
+    if (UnmergeFiles(merged, UPGRADE_DIR, OS_BINARY, NULL) == 0) {
         unlink(merged);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_UNMERGING_FILE_ERROR, "upgrade", merged);
         return wm_agent_upgrade_command_ack(ERROR_UNMERGE, error_messages[ERROR_UNMERGE]);
@@ -494,7 +494,7 @@ STATIC int _uncompress(const char * source, const char *package, char dest[PATH_
         return -1;
     }
 
-    if (ftarget = fopen(dest, "wb"), !ftarget) {
+    if (ftarget = wfopen(dest, "wb"), !ftarget) {
         gzclose(fsource);
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_FILE_OPEN_ERROR, "uncompress()", dest);
         return -1;

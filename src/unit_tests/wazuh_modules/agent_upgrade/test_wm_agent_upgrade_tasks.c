@@ -15,6 +15,7 @@
 
 #include "../../wrappers/common.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
+#include "../../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/cluster_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/hash_op_wrappers.h"
@@ -576,6 +577,7 @@ void test_wm_agent_send_task_information_worker(void **state)
     will_return(__wrap_cJSON_Duplicate, input);
 
     expect_string(__wrap_w_create_sendsync_payload, daemon_name, TASK_MANAGER_WM_NAME);
+    will_return(__wrap_w_create_sendsync_payload, 0);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
@@ -733,6 +735,7 @@ void test_wm_agent_upgrade_send_tasks_information_worker(void **state)
     will_return(__wrap_cJSON_Duplicate, input);
 
     expect_string(__wrap_w_create_sendsync_payload, daemon_name, TASK_MANAGER_WM_NAME);
+    will_return(__wrap_w_create_sendsync_payload, 0);
     will_return(__wrap_w_create_sendsync_payload, cluster_request);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");

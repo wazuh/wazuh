@@ -8,6 +8,7 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <winsock2.h>
 #include <windows.h>
 #include <versionhelpers.h>
 #include <sysinfoapi.h>
@@ -199,7 +200,8 @@ static std::string getName()
     std::string name;
     static const std::string MSFT_PREFIX{"Microsoft"};
     constexpr auto SM_SERVER32_VALUE{89};//www.docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getsystemmetrics
-    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    //https://learn.microsoft.com/en-us/windows/win32/winprog64/example-of-registry-reflection-and-redirection-on-wow64
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)", KEY_WOW64_64KEY | KEY_READ};
 
     if (currentVersion.string("ProductName", name))
     {

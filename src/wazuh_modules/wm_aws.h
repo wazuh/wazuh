@@ -24,8 +24,6 @@ typedef struct wm_aws_state_t {
 
 typedef struct wm_aws_bucket {
     char *bucket;                       // S3 bucket
-    char *access_key;                   // IAM access key
-    char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
     char *iam_role_duration;            // IAM role session duration
@@ -48,8 +46,6 @@ typedef struct wm_aws_bucket {
 
 typedef struct wm_aws_service {
     char *type;                         // String defining service type.
-    char *access_key;                   // IAM access key
-    char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
     char *iam_role_duration;            // IAM role session duration
@@ -63,14 +59,26 @@ typedef struct wm_aws_service {
     unsigned int remove_log_streams:1;  // Remove the log stream from the log group
     char *sts_endpoint;                 // URL for the VPC endpoint to use to obtain the STS token
     char *service_endpoint;             // URL for the endpoint to use to obtain the logs
-    struct wm_aws_service *next;     // Pointer to next
+    struct wm_aws_service *next;        // Pointer to next
 } wm_aws_service;
+
+typedef struct wm_aws_subscriber {
+    char *type;                            // String defining subscriber type.
+    char *aws_profile;                     // AWS credentials profile
+    char *sqs_name;                        // String defining SQS name
+    char *external_id;                     // AWS external ID
+    char *iam_role_arn;                    // IAM role
+    char *iam_role_duration;               // IAM role session duration
+    char *discard_field;                   // Name of the event's field to apply the discard_regex on
+    char *discard_regex;                   // REGEX to determine if an event should be skipped
+    char *sts_endpoint;                    // URL for the VPC endpoint to use to obtain the STS token
+    char *service_endpoint;                // URL for the endpoint to use to obtain the logs
+    struct wm_aws_subscriber *next;        // Pointer to next
+} wm_aws_subscriber;
 
 typedef struct wm_aws {
     sched_scan_config scan_config;
     char *bucket;                       // DEPRECATE
-    char *access_key;                   // DEPRECATE
-    char *secret_key;                   // DEPRECATE
     int queue_fd;
     unsigned int enabled:1;
     unsigned int run_on_start:1;
@@ -79,6 +87,7 @@ typedef struct wm_aws {
     wm_aws_state_t state;
     wm_aws_bucket *buckets;      // buckets (linked list)
     wm_aws_service *services;      // services (linked list)
+    wm_aws_subscriber *subscribers;
 } wm_aws;
 
 extern const wm_context WM_AWS_CONTEXT;   // Context

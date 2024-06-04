@@ -49,12 +49,12 @@ void Lists_OP_MakeCDB(const char *txt_filename, const char *cdb_filename, const 
     	if (show_message){
             printf(" * CDB list %s has been updated successfully\n", cdb_filename);
         }
-        if (tmp_fd = fopen(tmp_filename, "w+"), !tmp_fd) {
+        if (tmp_fd = wfopen(tmp_filename, "w+"), !tmp_fd) {
             merror(FOPEN_ERROR, tmp_filename, errno, strerror(errno));
             return;
         }
         cdb_make_start(&cdbm, tmp_fd);
-        if (!(txt_fd = fopen(txt_filename, "r"))) {
+        if (!(txt_fd = wfopen(txt_filename, "r"))) {
             merror(FOPEN_ERROR, txt_filename, errno, strerror(errno));
             return;
         }

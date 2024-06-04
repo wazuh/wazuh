@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 28, 2021.
  *
  * This program is free software; you can redistribute it
@@ -14,6 +14,7 @@
 
 #include "json.hpp"
 #include "rpmPackageManager.h"
+#include "sharedDefs.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -41,12 +42,16 @@ namespace PackageLinuxHelper
             ret["name"]         = package.name;
             ret["size"]         = package.size;
             ret["install_time"] = package.installTime;
+            ret["location"]     = UNKNOWN_VALUE;
             ret["groups"]       = package.group;
             ret["version"]      = version;
+            ret["priority"]     = UNKNOWN_VALUE;
             ret["architecture"] = package.architecture;
+            ret["source"]       = UNKNOWN_VALUE;
             ret["format"]       = "rpm";
             ret["vendor"]       = package.vendor;
             ret["description"]  = package.description;
+            // The multiarch field won't have a default value
         }
 
         return ret;

@@ -10,6 +10,7 @@
 
 #include "manage_agents.h"
 #include <stdlib.h>
+#include "dll_load_notify.h"
 
 #if defined(__MINGW32__) || defined(__hppa__)
 static int setenv(const char *name, const char *val, __attribute__((unused)) int overwrite)
@@ -80,6 +81,11 @@ char shost[512];
 
 int main(int argc, char **argv)
 {
+#ifdef WIN32
+    // This must be always the first instruction
+    enable_dll_verification();
+#endif
+
     int c = 0, cmdlist = 0, json_output = 0;
     int disconnected_time;
     int after_registration_time;
@@ -268,7 +274,7 @@ int main(int argc, char **argv)
     w_ch_exec_dir();
 
     /* Check permissions */
-    fp = fopen(OSSECCONF, "r");
+    fp = wfopen(OSSECCONF, "r");
     if (fp) {
         fclose(fp);
     } else {

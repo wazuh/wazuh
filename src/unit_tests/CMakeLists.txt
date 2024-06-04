@@ -13,13 +13,14 @@ get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
 
 message(Source folder: ${SRC_FOLDER})
 include_directories(${SRC_FOLDER}/headers)
+include_directories(${SRC_FOLDER}/shared_modules)
 include_directories(${SRC_FOLDER}/external/openssl/include)
 include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER}/external/cJSON)
 include_directories(${SRC_FOLDER}/external/msgpack/include)
 include_directories(${SRC_FOLDER}/shared_modules/common)
-include_directories(${SRC_FOLDER})
+include_directories(${SRC_FOLDER}/shared_modules/router/include/)
 add_definitions(-DWAZUH_UNIT_TESTING)
 
 # Wazuh libraries
@@ -36,6 +37,11 @@ if(NOT TARGET)
   message(FATAL_ERROR "No TARGET specified. Aborting...")
 elseif(${TARGET} STREQUAL "server")
   include("./server.cmake")
+  configure_file("config_files/test_global.conf" "wazuh_modules/vulnerability_detection/test_global.conf" COPYONLY)
+  configure_file("config_files/test_vulnerability_detection_multiple_configuration.conf" "wazuh_modules/vulnerability_detection/test_vulnerability_detection_multiple_configuration.conf" COPYONLY)
+  configure_file("config_files/test_vulnerability_detection_duplicate_configuration.conf" "wazuh_modules/vulnerability_detection/test_vulnerability_detection_duplicate_configuration.conf" COPYONLY)
+  configure_file("config_files/test_vulnerability_detection.conf" "wazuh_modules/vulnerability_detection/test_vulnerability_detection.conf" COPYONLY)
+  configure_file("config_files/test_global_no_cti_url.conf" "wazuh_modules/vulnerability_detection/test_global_no_cti_url.conf" COPYONLY)
 elseif(${TARGET} STREQUAL "agent")
   include("./agent.cmake")
 elseif(${TARGET} STREQUAL "winagent")
@@ -54,6 +60,7 @@ if((${uname} STREQUAL "Linux") OR (${uname} STREQUAL "Win32"))
   add_subdirectory(os_xml)
   add_subdirectory(os_regex)
   add_subdirectory(os_zlib)
+  add_subdirectory(config)
   endif()
 
 if(${uname} STREQUAL "Linux")
@@ -117,7 +124,7 @@ add_custom_target(coverage
 
     # Add baseline counters
     COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info --rc lcov_branch_coverage=1 --output-file coverage.total
-    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*" --remove coverage.total "*unit_tests/*" --remove coverage.total "*data_provider/*" --remove coverage.total "*shared_modules/*" --remove coverage.total "*syscollector/*" --rc lcov_branch_coverage=1 --output-file coverage.info.cleaned
+    COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*" --remove coverage.total "*unit_tests/*" --remove coverage.total "*data_provider/*" --remove coverage.total "*shared_modules/*" --remove coverage.total "*syscollector/*" --remove coverage.total "*syscheckd/src/db/*" --rc lcov_branch_coverage=1 --output-file coverage.info.cleaned
 
     # Generate HTML report
     COMMAND ${GENHTML_PATH} -q --output-directory coverage-report --title "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --legend coverage.info.cleaned

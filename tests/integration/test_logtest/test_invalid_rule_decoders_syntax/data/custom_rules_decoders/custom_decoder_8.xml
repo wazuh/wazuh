@@ -1,0 +1,12 @@
+<!-- Test: two-level order parenting -->
+<decoder name="name0">
+  <program_name>^test</program_name>
+</decoder>
+
+<decoder name="name1">
+  <parent>name0</parent>
+</decoder>
+
+<decoder name="name2">
+  <parent>name1</parent>
+</decoder>

@@ -4,18 +4,19 @@
 
 import logging
 
-from aiohttp import web
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 
-from api.encoder import dumps, prettify
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from api.controllers.util import json_response
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deprecate_endpoint
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.syscheck import run, clear, files, last_scan
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
-                       wait_for_complete: bool = False) -> web.Response:
+async def put_syscheck(agents_list: str = '*', pretty: bool = False,
+                       wait_for_complete: bool = False) -> ConnexionResponse:
     """Run a syscheck scan in the specified agents.
 
     Parameters
@@ -29,8 +30,8 @@ async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {'agent_list': agents_list}
 
@@ -41,16 +42,18 @@ async def put_syscheck(request, agents_list: str = '*', pretty: bool = False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           broadcasting=agents_list == '*',
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=False, offset=0,
-                             limit=None, select=None, sort=None, search=None, distinct=False,
-                             summary=False, md5=None, sha1=None, sha256=None, q=None, arch=None):
+@deprecate_endpoint()
+async def get_syscheck_agent(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                             search: str = None, distinct: bool = False, summary: bool = False, md5: str = None,
+                             sha1: str = None, sha256: str = None, q: str = None, arch: str = None) -> ConnexionResponse:
     """Get file integrity monitoring scan result from an agent.
 
     Parameters
@@ -65,10 +68,11 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
         First element to return in the collection.
     limit : int
         Maximum number of elements to return.
-    select : list[str]
+    select : str
         Select which fields to return (separated by comma).
     sort : str
-        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending or descending order.
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in ascending
+        or descending order.
     search : str
         Looks for elements with the specified string.
     summary : bool
@@ -88,19 +92,19 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    ConnexionResponse
+        API response.
     """
 
     # get type parameter from query
-    type_ = request.query.get('type', None)
+    type_ = request.query_params.get('type', None)
     # get hash parameter from query
-    hash_ = request.query.get('hash', None)
+    hash_ = request.query_params.get('hash', None)
     # get file parameter from query
-    file_ = request.query.get('file', None)
+    file_ = request.query_params.get('file', None)
 
     filters = {'type': type_, 'md5': md5, 'sha1': sha1, 'sha256': sha256, 'hash': hash_, 'file': file_, 'arch': arch,
-               'value.name': request.query.get('value.name', None), 'value.type': request.query.get('value.type', None)}
+               'value.name': request.query_params.get('value.name', None), 'value.type': request.query_params.get('value.type', None)}
 
     f_kwargs = {'agent_list': [agent_id], 'offset': offset, 'limit': limit,
                 'select': select, 'sort': parse_api_param(sort, 'sort'), 'search': parse_api_param(search, 'search'),
@@ -112,14 +116,16 @@ async def get_syscheck_agent(request, agent_id, pretty=False, wait_for_complete=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_complete=False):
+@deprecate_endpoint()
+async def delete_syscheck_agent(agent_id: str = '*', pretty: bool = False,
+                                wait_for_complete: bool = False) -> ConnexionResponse:
     """Clear file integrity monitoring scan results for a specified agent.
 
     Parameters
@@ -133,8 +139,8 @@ async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_co
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -144,15 +150,16 @@ async def delete_syscheck_agent(request, agent_id='*', pretty=False, wait_for_co
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete=False):
-    """Return when the last syscheck scan of a specified agent started and ended
+async def get_last_scan_agent(agent_id: str, pretty: bool = False,
+                              wait_for_complete: bool = False) -> ConnexionResponse:
+    """Return when the last syscheck scan of a specified agent started and ended.
 
     Parameters
     ----------
@@ -165,8 +172,8 @@ async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete
 
     Returns
     -------
-    result : json_response
-        Json response with the API response.
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id]}
 
@@ -176,8 +183,8 @@ async def get_last_scan_agent(request, agent_id, pretty=False, wait_for_complete
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

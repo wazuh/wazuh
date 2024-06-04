@@ -64,12 +64,12 @@ WAZUH_AGENT="../src/init/wazuh-client.sh"
 WAZUH_LOCAL="../src/init/wazuh-local.sh"
 NSIS_FILE="../src/win32/wazuh-installer.nsi"
 MSI_FILE="../src/win32/wazuh-installer.wxs"
-FW_SETUP="../framework/setup.py"
 FW_INIT="../framework/wazuh/__init__.py"
 CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 API_SETUP="../api/setup.py"
 API_SPEC="../api/api/spec/spec.yaml"
 VERSION_DOCU="../src/Doxyfile"
+WIN_RESOURCE="../src/win32/version.rc"
 
 if [ -n "$version" ]
 then
@@ -122,7 +122,6 @@ then
 
     # Framework
 
-    sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $FW_SETUP
     sed -E -i'' -e "s/__version__ = '.+'/__version__ = '${version:1}'/g" $FW_INIT
 
     # Cluster
@@ -133,10 +132,35 @@ then
 
     sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $API_SETUP
     sed -E -i'' -e "s/version: '.+'/version: '${version:1}'/g" $API_SPEC
+    sed -E -i'' -e "s_/v[0-9]+\.[0-9]+\.[0-9]+_/${version}_g" $API_SPEC
+    sed -E -i'' -e "s_com/[0-9]+\.[0-9]+_com/$(expr match "$version" 'v\([0-9]*.[0-9]*\).*')_g" $API_SPEC
 
     # Documentation config file
 
     sed -E -i'' -e "s/PROJECT_NUMBER         = \".+\"/PROJECT_NUMBER         = \"$version\"/g" $VERSION_DOCU
+
+    # version.rc
+
+    egrep "^#define VER_PRODUCTVERSION_STR v.+" $WIN_RESOURCE > /dev/null
+
+    if [ $? != 0 ]
+    then
+        echo "Error: no suitable version definition (VER_PRODUCTVERSION_STR) found at file $WIN_RESOURCE"
+        exit 1
+    fi
+
+    sed -E -i'' -e "s/^(#define VER_PRODUCTVERSION_STR +)v.+/\1$version/" $WIN_RESOURCE
+
+    egrep "^#define VER_PRODUCTVERSION [[:digit:]]+,[[:digit:]]+,[[:digit:]]+,[[:digit:]]+" $WIN_RESOURCE > /dev/null
+
+    if [ $? != 0 ]
+    then
+        echo "Error: no suitable version definition (VER_PRODUCTVERSION) found at file $WIN_RESOURCE"
+        exit 1
+    fi
+
+    product_commas=`echo "${version:1}.0" | tr '.' ','`
+    sed -E -i'' -e "s/^(#define VER_PRODUCTVERSION +).+/\1$product_commas/" $WIN_RESOURCE
 fi
 
 if [ -n "$revision" ]

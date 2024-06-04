@@ -53,14 +53,14 @@ void reportFunction(const std::string& /*payload*/)
     // std::cout << payload << std::endl;
 }
 
-void logFunction(const syscollector_log_level_t /*level*/, const std::string& /*log*/)
+void logFunction(const modules_log_level_t /*level*/, const std::string& /*log*/)
 {
-    // static const std::map<syscollector_log_level_t, std::string> s_logStringMap
+    // static const std::map<modules_log_level_t, std::string> s_logStringMap
     // {
-    //     {SYS_LOG_ERROR, "ERROR"},
-    //     {SYS_LOG_INFO, "INFO"},
-    //     {SYS_LOG_DEBUG, "DEBUG"},
-    //     {SYS_LOG_DEBUG_VERBOSE, "DEBUG2"}
+    //     {LOG_ERROR, "ERROR"},
+    //     {LOG_INFO, "INFO"},
+    //     {LOG_DEBUG, "DEBUG"},
+    //     {LOG_DEBUG_VERBOSE, "DEBUG2"}
     // };
     // std::cout << s_logStringMap.at(level) << ": " << log << std::endl;
 }
@@ -79,7 +79,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -135,11 +135,11 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
@@ -151,7 +151,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -183,7 +183,7 @@ TEST_F(SyscollectorImpTest, defaultCtor)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -339,7 +339,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -391,11 +391,11 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
@@ -407,7 +407,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -435,7 +435,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -448,6 +448,10 @@ TEST_F(SyscollectorImpTest, noHardware)
     const auto expectedResult20
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_hwinfo","data":{},"type":"integrity_clear"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -468,6 +472,7 @@ TEST_F(SyscollectorImpTest, noHardware)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -507,7 +512,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -559,11 +564,11 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
@@ -575,7 +580,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult11
     {
@@ -603,7 +608,7 @@ TEST_F(SyscollectorImpTest, noOs)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -616,6 +621,10 @@ TEST_F(SyscollectorImpTest, noOs)
     const auto expectedResult20
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_osinfo","data":{},"type":"integrity_clear"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -636,6 +645,7 @@ TEST_F(SyscollectorImpTest, noOs)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -674,7 +684,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -730,7 +740,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -750,7 +760,7 @@ TEST_F(SyscollectorImpTest, noNetwork)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -760,6 +770,19 @@ TEST_F(SyscollectorImpTest, noNetwork)
     {
         R"({"component":"syscollector_hotfixes","data":{"begin":"KB12345678","end":"KB12345678"},"type":"integrity_check_global"})"
     };
+    const auto expectedResult20
+    {
+        R"({"component":"syscollector_network_address","data":{},"type":"integrity_clear"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_network_protocol","data":{},"type":"integrity_clear"})"
+    };
+    const auto expectedResult22
+    {
+        R"({"component":"syscollector_network_iface","data":{},"type":"integrity_clear"})"
+    };
+
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
@@ -773,6 +796,9 @@ TEST_F(SyscollectorImpTest, noNetwork)
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult22)).Times(1);
 
     std::thread t
     {
@@ -865,11 +891,11 @@ TEST_F(SyscollectorImpTest, noPackages)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
@@ -919,6 +945,11 @@ TEST_F(SyscollectorImpTest, noPackages)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_packages","data":{},"type":"integrity_clear"})"
+    };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -937,6 +968,7 @@ TEST_F(SyscollectorImpTest, noPackages)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -975,7 +1007,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -1031,11 +1063,11 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult8
     {
@@ -1043,7 +1075,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1071,7 +1103,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1084,6 +1116,10 @@ TEST_F(SyscollectorImpTest, noPorts)
     const auto expectedResult20
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_ports","data":{},"type":"integrity_clear"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1104,7 +1140,7 @@ TEST_F(SyscollectorImpTest, noPorts)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
-
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1144,7 +1180,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -1200,11 +1236,11 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
@@ -1216,7 +1252,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1248,7 +1284,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1266,6 +1302,7 @@ TEST_F(SyscollectorImpTest, noPortsAll)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -1326,7 +1363,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
 
@@ -1379,11 +1416,11 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
@@ -1391,7 +1428,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1419,7 +1456,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
@@ -1433,6 +1470,12 @@ TEST_F(SyscollectorImpTest, noProcesses)
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
     };
+    const auto expectedResult21
+    {
+        R"({"component":"syscollector_processes","data":{},"type":"integrity_clear"})"
+    };
+
+
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult2)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult3)).Times(1);
@@ -1451,7 +1494,7 @@ TEST_F(SyscollectorImpTest, noProcesses)
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult20)).Times(1);
-
+    EXPECT_CALL(wrapper, callbackMock(expectedResult21)).Times(1);
 
     std::thread t
     {
@@ -1491,7 +1534,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json));
 
     EXPECT_CALL(*spInfoWrapper, hotfixes()).Times(0);
 
@@ -1547,11 +1590,11 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult5
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult6
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult7
     {
@@ -1563,7 +1606,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult9
     {
-        R"({"data":{"architecture":"amd64","checksum":"561243cbb871f6d842c1d2c1533892a3339252d4","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c084f78ed87ed19974b1fd90bbf727c2d1416f7d","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult10
     {
@@ -1595,11 +1638,15 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     };
     const auto expectedResult17
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult18
     {
         R"({"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"})"
+    };
+    const auto expectedResult19
+    {
+        R"({"component":"syscollector_hotfixes","data":{},"type":"integrity_clear"})"
     };
 
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult1)).Times(1);
@@ -1620,6 +1667,7 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     EXPECT_CALL(wrapper, callbackMock(expectedResult16)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult17)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult18)).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(expectedResult19)).Times(1);
 
     std::thread t
     {
@@ -1643,7 +1691,6 @@ TEST_F(SyscollectorImpTest, noHotfixes)
     {
         t.join();
     }
-
 }
 
 TEST_F(SyscollectorImpTest, pushMessageOk)
@@ -1709,7 +1756,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(*spInfoWrapper, packages(_))
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
-              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14", "os_patch":""})"_json));
+              (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14", "os_patch":"","format":"deb","location":" "})"_json));
     EXPECT_CALL(*spInfoWrapper, processes(_))
     .Times(testing::AtLeast(1))
     .WillOnce(::testing::InvokeArgument<0>
@@ -1762,7 +1809,7 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult5
     {
-        R"({"component":"syscollector_packages","data":{"begin":"7a119de04989606ebae116083afc1ec2579b0631","end":"7a119de04989606ebae116083afc1ec2579b0631"},"type":"integrity_check_global"})"
+        R"({"component":"syscollector_packages","data":{"begin":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","end":"4846c220a185b0fc251a07843efbfbb0d90ac4a5"},"type":"integrity_check_global"})"
     };
     const auto expectedResult6
     {
@@ -1775,10 +1822,6 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     const auto expectedResult8
     {
         R"({"component":"syscollector_processes","data":{"begin":"45","end":"45"},"type":"integrity_check_global"})"
-    };
-    const auto expectedResult9
-    {
-        R"({"component":"syscollector_processes","data":{"begin":"45","end":"99"},"type":"integrity_check_right"})"
     };
     const auto expectedResult10
     {
@@ -1802,15 +1845,15 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     };
     const auto expectedResult15
     {
-        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","dhcp":"unknown","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","metric":" ","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"192.168.153.1","broadcast":"192.168.153.255","checksum":"72dfd66759bd8062cdc17607d760a48c906189b3","iface":"enp4s0","item_id":"3d48ddc47fac84c62a19746af66fbfcf78547de9","netmask":"255.255.255.0","proto":0},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult16
     {
-        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","dhcp":"unknown","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","metric":" ","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
+        R"({"data":{"address":"fe80::250:56ff:fec0:8","checksum":"f606d1a1c551874d8fab33e4e5cfaa0370673ec8","iface":"enp4s0","item_id":"65973316a5dc8615a6d20b2d6c4ce52ecd074496","netmask":"ffff:ffff:ffff:ffff::","proto":1},"operation":"INSERTED","type":"dbsync_network_address"})"
     };
     const auto expectedResult17
     {
-        R"({"data":{"architecture":"amd64","checksum":"031f048e87e1b1ebb4e33b68d3198527a60b4b41","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","os_patch":null,"priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","checksum":"c1a125f40a70bab20a252f42ea4ec0dcf90733e8","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","os_patch":null,"priority":"optional","size":"411","source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
     const auto expectedResult18
     {
@@ -1837,7 +1880,6 @@ TEST_F(SyscollectorImpTest, pushMessageOk1)
     EXPECT_CALL(wrapper, callbackMock(expectedResult6)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult7)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult8)).Times(1);
-    EXPECT_CALL(wrapper, callbackMock(expectedResult9)).Times(1);
     EXPECT_CALL(wrapper, callbackMock(expectedResult10)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult11)).Times(1);
     EXPECT_CALL(wrapperDelta, callbackMock(expectedResult12)).Times(1);
@@ -2238,9 +2280,9 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     .Times(::testing::AtLeast(1))
     .WillOnce(::testing::DoAll(
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json),
+                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json),
                   ::testing::InvokeArgument<0>
-                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"})"_json)));
+                  (R"({"architecture":"amd64","scan_time":"2020/12/28 21:49:50", "group":"x11","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14","format":"deb","location":" "})"_json)));
 
 
 
@@ -2258,7 +2300,7 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
 
     const auto expectedResult1
     {
-        R"({"data":{"architecture":"amd64","group":"x11","item_id":"7a119de04989606ebae116083afc1ec2579b0631","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
+        R"({"data":{"architecture":"amd64","format":"deb","group":"x11","item_id":"4846c220a185b0fc251a07843efbfbb0d90ac4a5","location":" ","name":"xserver-xorg","priority":"optional","size":411,"source":"xorg","version":"1:7.7+19ubuntu14"},"operation":"INSERTED","type":"dbsync_packages"})"
     };
 
     EXPECT_CALL(wrapper, callbackMock(expectedResult1)).Times(1);
@@ -2278,6 +2320,76 @@ TEST_F(SyscollectorImpTest, PackagesDuplicated)
     };
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+}
+
+TEST_F (SyscollectorImpTest, SyncOverlap)
+{
+    constexpr auto firstMessageToPush{R"(syscollector_packages no_data {"begin":"0005a2bdc731445bbe68d6706e452937bdbc9e2f","end":"fff931b8ce752c06e9b219189281b7eae4285d44","id":1713982194})"};
+    constexpr auto secondMessageToPush{R"(syscollector_packages checksum_fail {"begin":"0005a2bdc731445bbe68d6706e452937bdbc9e2f","end":"fff931b8ce752c06e9b219189281b7eae4285d44","id":1713982197})"};
+    const time_t intervalValue = 3;
+
+    const auto spInfoWrapper{std::make_shared<SysInfoWrapper>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                      R"({"board_serial":"Intel Corporation","scan_time":"2020/12/28 21:49:50", "cpu_MHz":2904,"cpu_cores":2,"cpu_name":"Intel(R) Core(TM) i5-9400 CPU @ 2.90GHz","ram_free":2257872,"ram_total":4972208,"ram_usage":54})")));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                      R"({"iface":[{"address":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "mac":"d4:5d:64:51:07:5d", "gateway":"192.168.0.1|600","broadcast":"127.255.255.255", "name":"ens1", "mtu":1500, "name":"enp4s0", "adapter":" ", "type":"ethernet", "state":"up", "dhcp":"disabled","iface":"Loopback Pseudo-Interface 1","metric":"75","netmask":"255.0.0.0","proto":"IPv4","rx_bytes":0,"rx_dropped":0,"rx_errors":0,"rx_packets":0,"tx_bytes":0,"tx_dropped":0,"tx_errors":0,"tx_packets":0, "IPv4":[{"address":"192.168.153.1","broadcast":"192.168.153.255","dhcp":"unknown","metric":" ","netmask":"255.255.255.0"}], "IPv6":[{"address":"fe80::250:56ff:fec0:8","dhcp":"unknown","metric":" ","netmask":"ffff:ffff:ffff:ffff::"}]}]})")));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                R"({"architecture":"x86_64","scan_time":"2020/12/28 21:49:50", "hostname":"UBUNTU","os_build":"7601","os_major":"6","os_minor":"1","os_name":"Microsoft Windows 7","os_release":"sp1","os_version":"6.1.7601"})")));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(
+                                                                   R"([{"inode":0,"local_ip":"127.0.0.1","scan_time":"2020/12/28 21:49:50", "local_port":631,"pid":0,"process_name":"System Idle Process","protocol":"tcp","remote_ip":"0.0.0.0","remote_port":0,"rx_queue":0,"state":"listening","tx_queue":0}])")));
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(R"([{"hotfix":"KB12345678"}])"_json));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .Times(::testing::AtLeast(2))
+    .WillOnce(::testing::InvokeArgument<0>
+              (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json))
+    .WillOnce(::testing::InvokeArgument<0>
+              (R"({"name":"TEXT", "scan_time":"2020/12/28 21:49:50", "version":"TEXT", "vendor":"TEXT", "install_time":"TEXT", "location":"TEXT", "architecture":"TEXT", "groups":"TEXT", "description":"TEXT", "size":"TEXT", "priority":"TEXT", "multiarch":"TEXT", "source":"TEXT", "os_patch":"TEXT"})"_json));
+
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .Times(testing::AtLeast(2))
+    .WillOnce(::testing::InvokeArgument<0>
+              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json))
+    .WillOnce(::testing::InvokeArgument<0>
+              (R"({"egroup":"root","euser":"root","fgroup":"root","name":"kworker/u256:2-","scan_time":"2020/12/28 21:49:50", "nice":0,"nlwp":1,"pgrp":0,"pid":431625,"ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","session":0,"sgroup":"root","share":0,"size":0,"start_time":9302261,"state":"I","stime":3,"suser":"root","tgid":431625,"tty":0,"utime":0,"vm_size":0})"_json));
+
+    const auto captureLog
+    {
+        [](const modules_log_level_t /*level*/, const std::string & log)
+        {
+            std::string expectedStr {"Syscollector synchronization process concluded recently, delaying scan for 1 second/s"};
+
+            if (log.find("Discarded") != std::string::npos)
+            {
+                EXPECT_STREQ(log.c_str(), expectedStr.c_str());
+            }
+        }
+    };
+
+    std::thread t
+    {
+        [&spInfoWrapper, &captureLog, &intervalValue]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          reportFunction,
+                                          captureLog,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          intervalValue, true, true, true, true, true, true, true, true, true, true);
+        }
+    };
+    std::this_thread::sleep_for(std::chrono::seconds{1});
+    Syscollector::instance().push(firstMessageToPush);
+    std::this_thread::sleep_for(std::chrono::seconds{intervalValue});
+    Syscollector::instance().push(secondMessageToPush);
+    std::this_thread::sleep_for(std::chrono::seconds{1});
     Syscollector::instance().destroy();
 
     if (t.joinable())

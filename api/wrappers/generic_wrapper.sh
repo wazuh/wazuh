@@ -23,7 +23,7 @@ case ${DIR_NAME} in
             WAZUH_PATH="$(cd ${DIR_NAME}/..; pwd)"
         fi
 
-        PYTHON_SCRIPT="${WAZUH_PATH}/api/scripts/${SCRIPT_NAME}.py"
+        PYTHON_SCRIPT="${WAZUH_PATH}/api/scripts/$(echo ${SCRIPT_NAME} | sed 's/\-/_/g').py"
     ;;
      */integrations)
         if [ -z "${WAZUH_PATH}" ]; then

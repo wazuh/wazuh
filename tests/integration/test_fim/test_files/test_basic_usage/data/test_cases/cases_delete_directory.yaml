@@ -1,0 +1,32 @@
+- name: Delete folder - Real-time
+  description: When a real-time monitored directory es deleted
+               or added FIM inmediately raises a log.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, testfile.log]
+    fim_mode: realtime
+
+- name: Delete folder - Scheduled
+  description: When a scheduled monitored directory es deleted
+               or added FIM raises a log in the next scan, in
+               this case the scan are made every 3 secconds.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir]
+    FREQUENCY: 3
+    FIM_MODE:
+      realtime: 'no'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+          args: [!!python/object/apply:os.getcwd [], test_dir, testfile.log]
+    fim_mode: scheduled

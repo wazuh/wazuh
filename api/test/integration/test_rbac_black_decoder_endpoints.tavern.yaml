@@ -263,7 +263,7 @@ stages:
             - <<: *full_item_decoders_parent
               filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders_parent
-              filename: 0010-active-response_decoders.xml
+              filename: 0007-wazuh-api_decoders.xml
             - <<: *full_item_decoders_parent
               filename: 0010-active-response_decoders.xml
           failed_items: []

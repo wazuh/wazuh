@@ -18,6 +18,9 @@
 #include <functional>
 #include <iostream>
 #include "threadSafeQueue.h"
+#include "promiseFactory.h"
+#include "commonDefs.h"
+
 namespace Utils
 {
     // *
@@ -65,10 +68,11 @@ namespace Utils
     class AsyncDispatcher
     {
         public:
-            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency())
+            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
                 : m_functor{ functor }
                 , m_running{ true }
-                , m_numberOfThreads{ numberOfThreads }
+                , m_numberOfThreads{ numberOfThreads ? numberOfThreads : 1 }
+                , m_maxQueueSize { maxQueueSize }
             {
                 m_threads.reserve(m_numberOfThreads);
 
@@ -88,13 +92,16 @@ namespace Utils
             {
                 if (m_running)
                 {
-                    m_queue.push
-                    (
-                        [value, this]()
+                    if (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue.size() < m_maxQueueSize)
                     {
-                        this->m_functor(value);
+                        m_queue.push
+                        (
+                            [value, this]()
+                        {
+                            this->m_functor(value);
+                        }
+                        );
                     }
-                    );
                 }
             }
 
@@ -102,16 +109,15 @@ namespace Utils
             {
                 if (m_running)
                 {
-                    std::promise<void> promise;
-                    auto fut { promise.get_future() };
+                    auto promise { PromiseFactory<PROMISE_TYPE>::getPromiseObject() };
                     m_queue.push
                     (
                         [&promise]()
                     {
-                        promise.set_value();
+                        promise->set_value();
                     }
                     );
-                    fut.wait();
+                    promise->wait();
                     cancel();
                 }
             }
@@ -171,13 +177,16 @@ namespace Utils
             std::vector<std::thread> m_threads;
             std::atomic_bool m_running;
             const unsigned int m_numberOfThreads;
+            const size_t m_maxQueueSize;
     };
 
     template <typename Input, typename Functor>
     class SyncDispatcher
     {
         public:
-            SyncDispatcher(Functor functor, const unsigned int /*numberOfThreads = 0*/)
+            SyncDispatcher(Functor functor,
+                           const unsigned int /*numberOfThreads = std::thread::hardware_concurrency()*/,
+                           const size_t /*maxQueueSize = UNLIMITED_QUEUE_SIZE*/)
                 : m_functor{functor}
                 , m_running{true}
             {

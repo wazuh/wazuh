@@ -24,24 +24,23 @@ static const char *global_db_commands[] = {
     [WDB_UPDATE_AGENT_DATA] = "global update-agent-data %s",
     [WDB_UPDATE_AGENT_KEEPALIVE] = "global update-keepalive %s",
     [WDB_UPDATE_AGENT_CONNECTION_STATUS] = "global update-connection-status %s",
-    [WDB_SET_AGENT_LABELS] = "global set-labels %d %s",
+    [WDB_UPDATE_AGENT_STATUS_CODE] = "global update-status-code %s",
     [WDB_GET_ALL_AGENTS] = "global get-all-agents last_id %d",
     [WDB_FIND_AGENT] = "global find-agent %s",
     [WDB_GET_AGENT_INFO] = "global get-agent-info %d",
     [WDB_GET_AGENT_LABELS] = "global get-labels %d",
     [WDB_SELECT_AGENT_NAME] = "global select-agent-name %d",
     [WDB_SELECT_AGENT_GROUP] = "global select-agent-group %d",
-    [WDB_SELECT_KEEPALIVE] = "global select-keepalive %s %s",
     [WDB_FIND_GROUP] = "global find-group %s",
     [WDB_SELECT_GROUPS] = "global select-groups",
     [WDB_DELETE_AGENT] = "global delete-agent %d",
     [WDB_DELETE_GROUP] = "global delete-group %s",
-    [WDB_SELECT_GROUP_BELONG] = "global select-group-belong %d",
-    [WDB_DELETE_AGENT_BELONG] = "global delete-agent-belong %d",
     [WDB_SET_AGENT_GROUPS] = "global set-agent-groups %s",
     [WDB_RESET_AGENTS_CONNECTION] = "global reset-agents-connection %s",
     [WDB_GET_AGENTS_BY_CONNECTION_STATUS] = "global get-agents-by-connection-status %d %s",
-    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s"
+    [WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE] = "global get-agents-by-connection-status %d %s %s %d",
+    [WDB_DISCONNECT_AGENTS] = "global disconnect-agents %d %d %s",
+    [WDB_GET_DISTINCT_AGENT_GROUP] = "global get-distinct-groups %s"
 };
 
 int wdb_insert_agent(int id,
@@ -334,7 +333,7 @@ int wdb_update_agent_keepalive(int id, const char *connection_status, const char
     return result;
 }
 
-int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock) {
+int wdb_update_agent_connection_status(int id, const char *connection_status, const char *sync_status, int *sock, agent_status_code_t status_code) {
     int result = 0;
     cJSON *data_in = NULL;
     char *data_in_str = NULL;
@@ -353,6 +352,7 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     cJSON_AddNumberToObject(data_in, "id", id);
     cJSON_AddStringToObject(data_in, "connection_status", connection_status);
     cJSON_AddStringToObject(data_in, "sync_status", sync_status);
+    cJSON_AddNumberToObject(data_in, "status_code", status_code);
     data_in_str = cJSON_PrintUnformatted(data_in);
 
     os_malloc(WDBQUERY_SIZE, wdbquery);
@@ -390,25 +390,39 @@ int wdb_update_agent_connection_status(int id, const char *connection_status, co
     return result;
 }
 
-int wdb_set_agent_labels(int id, const char *labels, int *sock) {
+int wdb_update_agent_status_code(int id, agent_status_code_t status_code, const char *version, const char *sync_status, int *sock) {
     int result = 0;
-    // Making use of a big buffer for the query because it
-    // will contain all the keys and values.
-    // The output will be just a JSON OK.
-    char wdbquery[OS_MAXSTR] = "";
-    char wdboutput[OS_BUFFER_SIZE] = "";
+    cJSON *data_in = NULL;
+    char *data_in_str = NULL;
+    char *wdbquery = NULL;
+    char *wdboutput = NULL;
     char *payload = NULL;
     int aux_sock = -1;
 
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SET_AGENT_LABELS], id, labels);
+    data_in = cJSON_CreateObject();
 
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
+    if (!data_in) {
+        mdebug1("Error creating data JSON for Wazuh DB.");
+        return OS_INVALID;
     }
 
-    switch (result){
+    cJSON_AddNumberToObject(data_in, "id", id);
+    cJSON_AddNumberToObject(data_in, "status_code", status_code);
+    if (version != NULL) {
+        char wazuh_version[OS_SIZE_128 + 1] = "";
+        snprintf(wazuh_version, OS_SIZE_128, "%s %s", __ossec_name, version);
+        cJSON_AddStringToObject(data_in, "version", wazuh_version);
+    }
+    cJSON_AddStringToObject(data_in, "sync_status", sync_status);
+    data_in_str = cJSON_PrintUnformatted(data_in);
+
+    os_malloc(WDBQUERY_SIZE, wdbquery);
+    snprintf(wdbquery, WDBQUERY_SIZE, global_db_commands[WDB_UPDATE_AGENT_STATUS_CODE], data_in_str);
+
+    os_malloc(WDBOUTPUT_SIZE, wdboutput);
+    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, WDBOUTPUT_SIZE);
+
+    switch (result) {
         case OS_SUCCESS:
             if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
                 mdebug1("Global DB Error reported in the result of the query");
@@ -424,6 +438,15 @@ int wdb_set_agent_labels(int id, const char *labels, int *sock) {
             mdebug2("Global DB SQL query: %s", wdbquery);
             result = OS_INVALID;
     }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    cJSON_Delete(data_in);
+    os_free(data_in_str);
+    os_free(wdbquery);
+    os_free(wdboutput);
 
     return result;
 }
@@ -457,6 +480,40 @@ int* wdb_get_all_agents(bool include_manager, int *sock) {
     }
 
     return array;
+}
+
+rb_tree* wdb_get_all_agents_rbtree(bool include_manager, int *sock) {
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int last_id = include_manager ? -1 : 0;
+    rb_tree *tree = NULL;
+    wdbc_result status = WDBC_DUE;
+    int aux_sock = -1;
+
+    tree = rbtree_init();
+
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_ALL_AGENTS], last_id);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            status = wdb_parse_chunk_to_rbtree(wdboutput, &tree, "id", &last_id);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    if (status == WDBC_ERROR) {
+        merror("Error querying Wazuh DB to get agent's IDs.");
+        rbtree_destroy(tree);
+        tree = NULL;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return tree;
 }
 
 int wdb_find_agent(const char *name, const char *ip, int *sock) {
@@ -614,38 +671,6 @@ char* wdb_get_agent_group(int id, int *sock) {
     return output;
 }
 
-time_t wdb_get_agent_keepalive(const char *name, const char *ip, int *sock){
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    time_t output = 0;
-    cJSON *root = NULL;
-    cJSON *json_keepalive = NULL;
-    int aux_sock = -1;
-
-    if (!name || !ip) {
-        mdebug1("Empty agent name or ip when trying to get last keepalive.");
-        return OS_INVALID;
-    }
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_KEEPALIVE], name, ip);
-    root = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!root) {
-        merror("Error querying Wazuh DB to get the last agent keepalive.");
-        return OS_INVALID;
-    }
-
-    json_keepalive = cJSON_GetObjectItem(root->child,"last_keepalive");
-    output = cJSON_IsNumber(json_keepalive) ? json_keepalive->valueint : 0;
-
-    cJSON_Delete(root);
-    return output;
-}
-
 int wdb_find_group(const char *name, int *sock) {
     int output = OS_INVALID;
     char wdbquery[WDBQUERY_SIZE] = "";
@@ -798,61 +823,6 @@ int wdb_remove_group_db(const char *name, int *sock) {
     int aux_sock = -1;
 
     snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_GROUP], name);
-    result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    switch (result) {
-        case OS_SUCCESS:
-            if (WDBC_OK != wdbc_parse_result(wdboutput, &payload)) {
-                mdebug1("Global DB Error reported in the result of the query");
-                result = OS_INVALID;
-            }
-            break;
-        case OS_INVALID:
-            mdebug1("Global DB Error in the response from socket");
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-        default:
-            mdebug1("Global DB Cannot execute SQL query; err database %s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
-            mdebug2("Global DB SQL query: %s", wdbquery);
-            return OS_INVALID;
-    }
-
-    return result;
-}
-
-cJSON* wdb_select_group_belong(int id, int *sock) {
-    cJSON *result = NULL;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_SELECT_GROUP_BELONG], id);
-    result = wdbc_query_parse_json(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
-
-    if (!sock) {
-        wdbc_close(&aux_sock);
-    }
-
-    if (!result) {
-        merror("Error querying Wazuh DB to get groups from agent %d.", id);
-        return NULL;
-    }
-
-    return result;
-}
-
-int wdb_delete_agent_belongs(int id, int *sock) {
-    int result = 0;
-    char wdbquery[WDBQUERY_SIZE] = "";
-    char wdboutput[WDBOUTPUT_SIZE] = "";
-    char *payload = NULL;
-    int aux_sock = -1;
-
-    snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_DELETE_AGENT_BELONG], id);
     result = wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput));
 
     if (!sock) {
@@ -1059,6 +1029,47 @@ wdbc_result wdb_parse_chunk_to_int(char* input, int** output, const char* item, 
     return status;
 }
 
+wdbc_result wdb_parse_chunk_to_rbtree(char* input, rb_tree** output, const char* item, int* last_item) {
+    int _last_item = 0;
+    char* payload = NULL;
+
+    if (output == NULL || *output == NULL) {
+        mdebug1("Invalid RB tree.");
+        return WDBC_ERROR;
+    }
+
+    if (item == NULL) {
+        mdebug1("Invalid item.");
+        return WDBC_ERROR;
+    }
+
+    wdbc_result status = wdbc_parse_result(input, &payload);
+    if (status == WDBC_OK || status == WDBC_DUE) {
+        cJSON* response = cJSON_Parse(payload);
+        if (response != NULL) {
+            //Add items to RB tree
+            cJSON* agent = NULL;
+            cJSON_ArrayForEach(agent, response) {
+                cJSON* json_item = cJSON_GetObjectItem(agent, item);
+                if (cJSON_IsNumber(json_item)) {
+                    char c_agent_id[OS_SIZE_16];
+                    snprintf(c_agent_id, OS_SIZE_16, "%03d", json_item->valueint);
+                    rbtree_insert(*output, c_agent_id, &(json_item->valueint));
+                    _last_item = json_item->valueint;
+                }
+            }
+            cJSON_Delete(response);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    if (last_item) *last_item = _last_item;
+
+    return status;
+}
+
 int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     char wdbquery[WDBQUERY_SIZE] = "";
     char wdboutput[WDBOUTPUT_SIZE] = "";
@@ -1090,109 +1101,6 @@ int* wdb_disconnect_agents(int keepalive, const char *sync_status, int *sock) {
     return array;
 }
 
-int wdb_create_agent_db(int id, const char *name) {
-    const char *ROOT = "root";
-    char src_path[OS_FLSIZE + 1];
-    char dst_path[OS_FLSIZE + 1];
-    char buffer[4096];
-    struct stat st_buffer;
-    FILE *source;
-    FILE *dest;
-    size_t nbytes;
-    int result = 0;
-    uid_t uid;
-    gid_t gid;
-
-    if (!name) {
-        return OS_INVALID;
-    }
-
-    snprintf(dst_path, OS_FLSIZE, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
-    if (OS_SUCCESS == stat(dst_path, &st_buffer)) {
-        mdebug2("Agent database already exist.");
-        return OS_SUCCESS;
-    }
-
-    snprintf(src_path, OS_FLSIZE, "%s/%s", WDB_DIR, WDB_PROF_NAME);
-    if (!(source = fopen(src_path, "r"))) {
-        if (errno != ENOENT) // If we get any other error other than 'file does not exits'
-        {
-            merror("Error accessing file (%s): (%s)", src_path, strerror(errno));
-            return OS_INVALID;
-        }
-
-        mdebug1("Profile database not found, creating.");
-
-        if (wdb_create_profile(src_path) < 0) {
-            return OS_INVALID;
-        }
-
-        if (!(source = fopen(src_path, "r"))) {
-            merror("Couldn't open profile '%s'.", src_path);
-            return OS_INVALID;
-        }
-    }
-
-    if (!(dest = fopen(dst_path, "w"))) {
-        fclose(source);
-        merror("Couldn't create database '%s'.", dst_path);
-        return OS_INVALID;
-    }
-
-    while (nbytes = fread(buffer, 1, 4096, source), nbytes) {
-        if (fwrite(buffer, 1, nbytes, dest) != nbytes) {
-            result = -1;
-            break;
-        }
-    }
-
-    fclose(source);
-    if (fclose(dest) == -1 || result < 0) {
-        merror("Couldn't write/close file '%s' completely.", dst_path);
-        return OS_INVALID;
-    }
-
-    uid = Privsep_GetUser(ROOT);
-    gid = Privsep_GetGroup(GROUPGLOBAL);
-
-    if (uid == (uid_t) - 1 || gid == (gid_t) - 1) {
-        merror(USER_ERROR, ROOT, GROUPGLOBAL, strerror(errno), errno);
-        return OS_INVALID;
-    }
-
-    if (chown(dst_path, uid, gid) < 0) {
-        merror(CHOWN_ERROR, dst_path, errno, strerror(errno));
-        return OS_INVALID;
-    }
-
-    if (chmod(dst_path, 0660) < 0) {
-        merror(CHMOD_ERROR, dst_path, errno, strerror(errno));
-        return OS_INVALID;
-    }
-
-    return OS_SUCCESS;
-}
-
-int wdb_remove_agent_db(int id, const char * name) {
-    char path[PATH_MAX];
-    char path_aux[PATH_MAX];
-
-    snprintf(path, PATH_MAX, "%s/agents/%03d-%s.db", WDB_DIR, id, name);
-
-    if (!remove(path)) {
-        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-shm", WDB_DIR, id, name);
-        if (remove(path_aux) < 0) {
-            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
-        }
-        snprintf(path_aux, PATH_MAX, "%s/agents/%03d-%s.db-wal", WDB_DIR, id, name);
-        if (remove(path_aux) < 0) {
-            mdebug2(DELETE_ERROR, path_aux, errno, strerror(errno));
-        }
-        return OS_SUCCESS;
-    } else
-        return OS_INVALID;
-}
-
 time_t get_agent_date_added(int agent_id) {
     char path[PATH_MAX + 1] = {0};
     char line[OS_BUFFER_SIZE] = {0};
@@ -1203,7 +1111,7 @@ time_t get_agent_date_added(int agent_id) {
 
     snprintf(path, PATH_MAX, "%s", TIMESTAMP_FILE);
 
-    fp = fopen(path, "r");
+    fp = wfopen(path, "r");
 
     if (!fp) {
         return 0;
@@ -1267,4 +1175,108 @@ time_t get_agent_date_added(int agent_id) {
 
     fclose(fp);
     return 0;
+}
+
+int* wdb_get_agents_ids_of_current_node(const char* connection_status, int *sock, int last_id, int limit) {
+    char wdbquery[WDBQUERY_SIZE] = "";
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    int *array = NULL;
+    int len = 0;
+    wdbc_result status = WDBC_DUE;
+    char *node_name = NULL;
+    int aux_sock = -1;
+
+    node_name = get_node_name();
+    while (status == WDBC_DUE) {
+        // Query WazuhDB
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE], last_id, connection_status, node_name, limit);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            status = wdb_parse_chunk_to_int(wdboutput, &array, "id", &last_id, &len);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+    os_free(node_name);
+
+    if (status == WDBC_ERROR) {
+        os_free(array);
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return array;
+}
+
+wdbc_result wdb_parse_chunk_to_json_by_string_item(char* input, cJSON** output_json, const char *item, char **last_item_value) {
+    char* payload = NULL;
+
+    if (output_json == NULL || !cJSON_IsArray(*output_json)) {
+        mdebug1("Invalid JSON array.");
+        return WDBC_ERROR;
+    }
+
+    if (item == NULL) {
+        mdebug1("Invalid item.");
+        return WDBC_ERROR;
+    }
+
+    wdbc_result status = wdbc_parse_result(input, &payload);
+    if (status == WDBC_OK || status == WDBC_DUE) {
+        cJSON* response = cJSON_Parse(payload);
+        if (response != NULL) {
+            int array_size = cJSON_GetArraySize(response);
+            if (array_size > 0) {
+                cJSON_AddItemToArray(*output_json, response);
+                cJSON *last_item_json = cJSON_GetObjectItem(cJSON_GetArrayItem(response, array_size - 1), item);
+                if (last_item_json && cJSON_GetStringValue(last_item_json) && last_item_value) {
+                    os_strdup(cJSON_GetStringValue(last_item_json), *last_item_value);
+                }
+            } else {
+                cJSON_Delete(response);
+            }
+        } else {
+            status = WDBC_ERROR;
+        }
+    }
+
+    return status;
+}
+
+cJSON* wdb_get_distinct_agent_groups(int *sock) {
+    cJSON *root = NULL;
+    char wdboutput[WDBOUTPUT_SIZE] = "";
+    char wdbquery[WDBQUERY_SIZE] = "";
+    int aux_sock = -1;
+    wdbc_result status = WDBC_DUE;
+    char *tmp_last_hash_group = NULL;
+
+    root = cJSON_CreateArray();
+
+    os_strdup("", tmp_last_hash_group);
+    while (status == WDBC_DUE) {
+        snprintf(wdbquery, sizeof(wdbquery), global_db_commands[WDB_GET_DISTINCT_AGENT_GROUP], tmp_last_hash_group);
+        if (wdbc_query_ex(sock?sock:&aux_sock, wdbquery, wdboutput, sizeof(wdboutput)) == 0) {
+            os_free(tmp_last_hash_group);
+            status = wdb_parse_chunk_to_json_by_string_item(wdboutput, &root, "group_hash", &tmp_last_hash_group);
+        }
+        else {
+            status = WDBC_ERROR;
+        }
+    }
+    os_free(tmp_last_hash_group);
+
+    if (status == WDBC_ERROR) {
+        merror("Error querying Wazuh DB to get agent's groups.");
+        cJSON_Delete(root);
+        root = NULL;
+    }
+
+    if (!sock) {
+        wdbc_close(&aux_sock);
+    }
+
+    return root;
 }

@@ -9,7 +9,7 @@
 #ifndef RUN_REALTIME_WRAPPERS_H
 #define RUN_REALTIME_WRAPPERS_H
 
-#include "config/syscheck-config.h"
+#include "../../../../config/syscheck-config.h"
 
 int __wrap_realtime_adddir(const char *dir,
                            directory_t *configuration);

@@ -10,7 +10,7 @@
 #ifndef JSON_QUEUE_H
 #define JSON_QUEUE_H
 
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 #include "file-queue.h"
 
 // Initializes queue. Equivalent to initialize every field to 0.

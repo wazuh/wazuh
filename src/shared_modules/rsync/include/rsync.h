@@ -13,6 +13,7 @@
 #define _RSYNC_H_
 
 // Define EXPORTED for any platform
+#ifndef EXPORTED
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -23,6 +24,7 @@
 #define EXPORTED __attribute__((visibility("default")))
 #else
 #define EXPORTED
+#endif
 #endif
 
 #include "commonDefs.h"
@@ -39,6 +41,13 @@ extern "C" {
 EXPORTED void rsync_initialize(log_fnc_t log_function);
 
 /**
+ * @brief Initialize the shared library with a full log function.
+ *
+ * @param logFunc Pointer to full log function to be used by the rsync.
+ */
+EXPORTED void rsync_initialize_full_log_function(full_log_fnc_t logFunc);
+
+/**
  * @brief Turns off the services provided by the shared library.
  */
 EXPORTED void rsync_teardown(void);
@@ -46,9 +55,11 @@ EXPORTED void rsync_teardown(void);
 /**
  * @brief Creates a new RSync instance.
  *
+ * @param thread_pool_size Size of the thread pool.
+ * @param max_queue_size Size of the message dispatch queue, if the value is 0, it is unlimited.
  * @return Handle instance to be used for synchronization between the manager and the agent.
  */
-EXPORTED RSYNC_HANDLE rsync_create();
+EXPORTED RSYNC_HANDLE rsync_create(const unsigned int thread_pool_size, const size_t max_queue_size);
 
 /**
  * @brief Initializes the \p handle instance.

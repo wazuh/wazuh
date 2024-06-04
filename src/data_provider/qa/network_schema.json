@@ -1,0 +1,201 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "networks": {
+            "type": "object",
+            "properties": {
+                "iface": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "IPv4": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "address": {
+                                            "type": "string",
+                                            "format": "ipv4"
+                                        },
+                                        "broadcast": {
+                                            "type": "string",
+                                            "format": "ipv4"
+                                        },
+                                        "dhcp": {
+                                            "type": "string",
+                                            "enum": [
+                                                "enabled",
+                                                "disabled",
+                                                "unknown"
+                                            ]
+                                        },
+                                        "metric": {
+                                            "type": "string"
+                                        },
+                                        "netmask": {
+                                            "type": "string",
+                                            "format": "ipv4"
+                                        }
+                                    },
+                                    "required": [
+                                        "address",
+                                        "broadcast",
+                                        "dhcp",
+                                        "metric",
+                                        "netmask"
+                                    ]
+                                }
+                            },
+                            "IPv6": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "address": {
+                                            "type": "string",
+                                            "format": "ipv6"
+                                        },
+                                        "broadcast": {
+                                            "type": "string"
+                                        },
+                                        "dhcp": {
+                                            "type": "string",
+                                            "enum": [
+                                                "enabled",
+                                                "disabled",
+                                                "unknown"
+                                            ]
+                                        },
+                                        "metric": {
+                                            "type": "string"
+                                        },
+                                        "netmask": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "address",
+                                        "broadcast",
+                                        "dhcp",
+                                        "metric",
+                                        "netmask"
+                                    ]
+                                }
+                            },
+                            "adapter": {
+                                "type": "string"
+                            },
+                            "gateway": {
+                                "type": "string"
+                            },
+                            "mac": {
+                                "type": "string"
+                            },
+                            "mtu": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "rx_bytes": {
+                                "type": "integer"
+                            },
+                            "rx_dropped": {
+                                "type": "integer"
+                            },
+                            "rx_errors": {
+                                "type": "integer"
+                            },
+                            "rx_packets": {
+                                "type": "integer"
+                            },
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "up",
+                                    "down",
+                                    "unknown"
+                                ]
+                            },
+                            "tx_bytes": {
+                                "type": "integer"
+                            },
+                            "tx_dropped": {
+                                "type": "integer"
+                            },
+                            "tx_errors": {
+                                "type": "integer"
+                            },
+                            "tx_packets": {
+                                "type": "integer"
+                            },
+                            "type": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "adapter",
+                            "gateway",
+                            "mac",
+                            "mtu",
+                            "name",
+                            "rx_bytes",
+                            "rx_dropped",
+                            "rx_errors",
+                            "rx_packets",
+                            "state",
+                            "tx_bytes",
+                            "tx_dropped",
+                            "tx_errors",
+                            "tx_packets",
+                            "type"
+                        ],
+                        "if": {
+                            "properties": {
+                                "state": {
+                                    "anyOf": [
+                                        {
+                                            "const": "unknown"
+                                        },
+                                        {
+                                            "const": "down"
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "then": {
+                            "properties": {
+                                "mac": {
+                                    "anyOf": [
+                                        {
+                                            "pattern": "^([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})$"
+                                        },
+                                        {
+                                            "const": ""
+                                        }
+                                    ]
+                                }
+                            }
+                        },
+                        "else": {
+                            "properties": {
+                                "mac": {
+                                    "pattern": "^([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})$"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "required": [
+                "iface"
+            ]
+        }
+    },
+    "required": [
+        "networks"
+    ]
+}

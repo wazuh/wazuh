@@ -9,7 +9,8 @@ Type=forking
 ExecStart=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control start
 ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
 ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control reload
-KillMode=none
+
+KillMode=process
 RemainAfterExit=yes
 
 [Install]

@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 22, 2021.
  *
  * This program is free software; you can redistribute it
@@ -93,11 +93,14 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
 
     if (rpmlib->rpmtsOpenDB(m_transactionSet, O_RDONLY))
     {
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtsOpenDB failed");
     }
 
     if (rpmlib->rpmtsRun(m_transactionSet, nullptr, 0))
     {
+        m_rpmlib->rpmtsCloseDB(m_transactionSet);
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtsRun failed");
     }
 
@@ -105,6 +108,8 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
 
     if (!m_dataContainer)
     {
+        m_rpmlib->rpmtsCloseDB(m_transactionSet);
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtdNew failed");
     }
 
@@ -112,6 +117,9 @@ RpmPackageManager::Iterator::Iterator(std::shared_ptr<IRpmLibWrapper>& rpmlib)
 
     if (!m_matches)
     {
+        m_rpmlib->rpmtdFree(m_dataContainer);
+        m_rpmlib->rpmtsCloseDB(m_transactionSet);
+        m_rpmlib->rpmtsFree(m_transactionSet);
         throw std::runtime_error("rpmtsInitIterator failed");
     }
 

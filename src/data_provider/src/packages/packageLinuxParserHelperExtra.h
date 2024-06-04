@@ -54,13 +54,20 @@ namespace PackageLinuxHelper
             }
         }
 
-        groups = groups.empty() ? "" : groups.substr(0, groups.size() - 1);
-        packageInfo["groups"]       = groups;
-        packageInfo["version"]      = alpmWrapper(alpm_pkg_get_version(pArchPkg));
-        packageInfo["architecture"] = alpmWrapper(alpm_pkg_get_arch(pArchPkg));
+        packageInfo["groups"]       = groups.empty() ? UNKNOWN_VALUE : groups.substr(0, groups.size() - 1);
+        const std::string version          = alpmWrapper(alpm_pkg_get_version(pArchPkg));
+        packageInfo["version"]      = version.empty() ? UNKNOWN_VALUE : version;
+        packageInfo["location"]     = UNKNOWN_VALUE;
+        const std::string architecture = alpmWrapper(alpm_pkg_get_arch(pArchPkg));
+        packageInfo["architecture"] = architecture.empty() ? UNKNOWN_VALUE : architecture;
+        packageInfo["priority"]         = UNKNOWN_VALUE;
         packageInfo["format"]       = "pacman";
         packageInfo["vendor"]       = "Arch Linux";
-        packageInfo["description"]  = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
+        packageInfo["source"]       = UNKNOWN_VALUE;
+        const std::string description = alpmWrapper(alpm_pkg_get_desc(pArchPkg));
+        packageInfo["description"]  = description.empty() ? UNKNOWN_VALUE : description;
+        // The multiarch field won't have a default value
+
         return packageInfo;
     }
 

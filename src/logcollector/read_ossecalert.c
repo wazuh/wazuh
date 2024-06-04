@@ -28,7 +28,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     }
 
     /* Obtain context to calculate hash */
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     os_sha1 output;
     int64_t current_position = w_ftell(lf->fp);
 
@@ -36,7 +36,7 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
         merror(FAIL_SHA1_GEN, lf->file);
     }
 
-    w_update_file_status(lf->file, current_position, &context);
+    w_update_file_status(lf->file, current_position, context);
 
     memset(syslog_msg, '\0', OS_SIZE_2048 + 1);
 
@@ -110,8 +110,9 @@ void *read_ossecalert(logreader *lf, __attribute__((unused)) int *rc, int drop_i
     /* Clear the memory */
     FreeAlertData(al_data);
 
-    /* Send message to queue */
-    if (drop_it == 0) {
+    /* Check ignore and restrict log regex, if configured. */
+    if (drop_it == 0 && !check_ignore_and_restrict(lf->regex_ignore, lf->regex_restrict, syslog_msg)) {
+        /* Send message to queue */
         w_msg_hash_queues_push(syslog_msg, lf->file, strlen(syslog_msg) + 1, lf->log_target, LOCALFILE_MQ);
     }
 

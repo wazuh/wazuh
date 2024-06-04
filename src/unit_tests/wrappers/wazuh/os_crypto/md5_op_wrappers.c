@@ -23,6 +23,16 @@ int __wrap_OS_MD5_File(const char *fname, os_md5 output, int mode) {
     return mock();
 }
 
+int __wrap_OS_MD5_Str(const char *str, ssize_t length, os_md5 output) {
+    check_expected(str);
+    check_expected(length);
+
+    char *md5 = mock_type(char *);
+    strncpy(output, md5, sizeof(os_md5));
+
+    return mock();
+}
+
 void expect_OS_MD5_File_call(const char *fname, os_md5 output, int mode, int ret) {
     expect_string(__wrap_OS_MD5_File, fname, fname);
     expect_value(__wrap_OS_MD5_File, mode, mode);

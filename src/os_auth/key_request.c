@@ -205,15 +205,14 @@ char * key_request_exec_output(request_type_t type, char *request) {
         os_free(output);
         return NULL;
     }
-    
+
     return output;
 }
 
 void* run_key_request_main(__attribute__((unused)) void *arg) {
     int sock;
-    int recv;
     unsigned int i;
-    char buffer[OS_MAXSTR + 1];
+    char buffer[OS_MAXSTR + 1] = {0};
     char * copy;
 
     authd_sigblock();
@@ -253,7 +252,7 @@ void* run_key_request_main(__attribute__((unused)) void *arg) {
             }
         }
 
-        if (recv = OS_RecvUnix(sock, OS_MAXSTR, buffer), recv) {
+        if (OS_RecvUnix(sock, OS_MAXSTR, buffer) > 0) {
             if(OSHash_Get_ex(request_hash, buffer)){
                 mdebug2("Request '%s' already being processed. Discarding request.", buffer);
                 continue;
@@ -414,7 +413,7 @@ int key_request_dispatch(char * buffer) {
 
     OSHash_Delete_ex(request_hash, buffer);
     return 0;
-} 
+}
 
 void * key_request_dispatch_thread(__attribute__((unused)) void *arg) {
     char *msg = NULL;

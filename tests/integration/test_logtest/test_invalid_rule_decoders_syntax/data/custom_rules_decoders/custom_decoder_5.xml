@@ -1,0 +1,5 @@
+<!-- Test: regex attribute without order attribute -->
+<decoder name="test">
+  <prematch>\s</prematch>
+  <regex>^\s*(\S+)\s*:</regex>
+</decoder>

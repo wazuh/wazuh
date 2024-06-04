@@ -13,22 +13,22 @@
 
 #ifdef WIN32
 static DWORD WINAPI wm_oscap_main(wm_oscap *arg);       // Module main function. It won't return
-static DWORD WINAPI wm_oscap_destroy(void *oscap);      // Destroy data
 #else
 static void* wm_oscap_main(wm_oscap *oscap);        // Module main function. It won't return
-static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
 #endif
+static void wm_oscap_destroy(wm_oscap *oscap);      // Destroy data
 cJSON *wm_oscap_dump(const wm_oscap *oscap);
 
 // OpenSCAP module context definition
 
 const wm_context WM_OSCAP_CONTEXT = {
-    "open-scap",
-    (wm_routine)wm_oscap_main,
-    (wm_routine)(void *)wm_oscap_destroy,
-    (cJSON * (*)(const void *))wm_oscap_dump,
-    NULL,
-    NULL
+    .name = "open-scap",
+    .start = (wm_routine)wm_oscap_main,
+    .destroy = (void(*)(void *))wm_oscap_destroy,
+    .dump = (cJSON * (*)(const void *))wm_oscap_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 #ifndef WIN32
@@ -344,12 +344,7 @@ cJSON *wm_oscap_dump(const wm_oscap *oscap) {
 }
 
 // Destroy data
-#ifdef WIN32
-DWORD WINAPI wm_oscap_destroy(void *oscap_ptr) {
-    wm_oscap *oscap = (wm_oscap *)oscap_ptr;
-#else
 void wm_oscap_destroy(wm_oscap *oscap) {
-#endif
     wm_oscap_eval *cur_eval;
     wm_oscap_eval *next_eval;
     wm_oscap_profile *cur_profile;
@@ -377,8 +372,4 @@ void wm_oscap_destroy(wm_oscap *oscap) {
     }
 
     free(oscap);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
-

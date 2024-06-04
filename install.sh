@@ -66,21 +66,24 @@ Install()
     MAKEBIN=make
     ## Find make/gmake
     if [ "X$NUNAME" = "XOpenBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XFreeBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XNetBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XDragonflyBSD" ]; then
-        MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XBitrig" ]; then
-  	    MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XSunOS" ]; then
-	      MAKEBIN=gmake
+          MAKEBIN=gmake
     elif [ "X$NUNAME" = "XHP-UX" ]; then
           MAKEBIN=/usr/local/bin/gmake
     elif [ "X$NUNAME" = "XAIX" ]; then
           MAKEBIN=/opt/freeware/bin/gmake
+    fi
+    if [ $(grep "Alpine Linux" /etc/os-release > /dev/null  && echo 1) ]; then
+        ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
     fi
 
     # On CentOS <= 5 we need to disable syscollector compilation
@@ -102,7 +105,7 @@ Install()
     # Binary install will use the previous generated code.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries if missing
-        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps TARGET=${INSTYPE}
+        find external/* > /dev/null 2>&1 || ${MAKEBIN} deps ${ALPINE_DEPS} TARGET=${INSTYPE}
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
@@ -140,7 +143,7 @@ Install()
 
     # If update, start Wazuh
     if [ "X${update_only}" = "Xyes" ]; then
-        WazuhUpgrade
+        WazuhUpgrade $INSTYPE
         # Update versions previous to Wazuh 1.2
         UpdateOldVersions
         echo "Starting Wazuh..."
@@ -236,6 +239,16 @@ UseSSLCert()
     else
         SSL_CERT="yes"
     fi
+}
+
+UseUpdateCheck()
+{
+    # Update_check config predefined (is overwritten by the preload-vars file)
+    if [ "X${USER_ENABLE_UPDATE_CHECK}" = "Xn" ]; then
+        UPDATE_CHECK="no"
+     else
+        UPDATE_CHECK="yes"
+     fi
 }
 
 ##########
@@ -540,6 +553,7 @@ ConfigureServer()
         EnableAuthd "3.7"
         ConfigureBoot "3.8"
         SetupLogs "3.9"
+        UseUpdateCheck
         WriteManager
     else
         ConfigureBoot "3.6"
@@ -846,7 +860,7 @@ main()
     fi
 
     # Initial message
-    echo " $NAME $VERSION (Rev. $REVISION) ${installscript} - http://www.wazuh.com"
+    echo " $NAME $VERSION (Rev. $REVISION) ${installscript} - https://www.wazuh.com"
     catMsg "0x101-initial"
     echo ""
     echo "  - $system: $UNAME (${DIST_NAME} ${DIST_VER}.${DIST_SUBVER})"

@@ -12,7 +12,12 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
+#include <cJSON.h>
 
 void __wrap_fim_registry_scan() {
     return;
+}
+
+cJSON* __wrap_fim_dbsync_registry_value_json_event(){
+    return mock_ptr_type(cJSON*);
 }

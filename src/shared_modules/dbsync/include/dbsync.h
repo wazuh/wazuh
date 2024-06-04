@@ -13,6 +13,7 @@
 #define _DBSYNC_H_
 
 // Define EXPORTED for any platform
+#ifndef EXPORTED
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -23,6 +24,7 @@
 #define EXPORTED __attribute__((visibility("default")))
 #else
 #define EXPORTED
+#endif
 #endif
 
 #include "commonDefs.h"
@@ -39,12 +41,14 @@ extern "C" {
 EXPORTED void dbsync_initialize(log_fnc_t log_function);
 
 /**
- * @brief Creates a new DBSync instance.
+ * @brief Creates a new DBSync instance (wrapper)
  *
- * @param host_type     Dynamic library host type to be used.
- * @param db_type       Database type to be used (currently only supported SQLITE3)
- * @param path          Path where the local database will be created.
- * @param sql_statement SQL sentence to create tables in a SQL engine.
+ * @param host_type          Dynamic library host type to be used.
+ * @param db_type            Database type to be used (currently only supported SQLITE3)
+ * @param path               Path where the local database will be created.
+ * @param sql_statement      SQL sentence to create tables in a SQL engine.
+ *
+ * @note db_management will be DbManagement::VOLATILE as default and upgrade_statements will be NULL.
  *
  * @return Handle instance to be used for common sql operations (cannot be used by more than 1 thread).
  */
@@ -52,6 +56,25 @@ EXPORTED DBSYNC_HANDLE dbsync_create(const HostType      host_type,
                                      const DbEngineType  db_type,
                                      const char*         path,
                                      const char*         sql_statement);
+
+/**
+ * @brief Creates a new DBSync instance (wrapper)
+ *
+ * @param host_type          Dynamic library host type to be used.
+ * @param db_type            Database type to be used (currently only supported SQLITE3)
+ * @param path               Path where the local database will be created.
+ * @param sql_statement      SQL sentence to create tables in a SQL engine.
+ * @param upgrade_statements SQL sentences to upgrade tables in a SQL engine.
+ *
+ * @note db_management will be DbManagement::PERSISTENT as default.
+ *
+ * @return Handle instance to be used for common sql operations (cannot be used by more than 1 thread).
+ */
+EXPORTED DBSYNC_HANDLE dbsync_create_persistent(const HostType      host_type,
+                                                const DbEngineType  db_type,
+                                                const char*         path,
+                                                const char*         sql_statement,
+                                                const char**        upgrade_statements);
 
 /**
  * @brief Turns off the services provided by the shared library.
@@ -70,8 +93,6 @@ EXPORTED void dbsync_teardown(void);
  *                       and user data space returned in each callback call.
  *
  * @return Handle instance to be used in transacted operations.
- *
- * @details If the max queue size is reached then this will be processed synchronously.
  */
 EXPORTED TXN_HANDLE dbsync_create_txn(const DBSYNC_HANDLE handle,
                                       const cJSON*        tables,
@@ -135,19 +156,17 @@ EXPORTED int dbsync_insert_data(const DBSYNC_HANDLE handle,
  *
  * @return 0 if succeeded,
  *         specific error code (OS dependent) otherwise.
- *
- * @details The table will work as a queue if the limit is exceeded.
  */
-EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE      handle,
-                                       const char*              table,
-                                       const unsigned long long max_rows);
+EXPORTED int dbsync_set_table_max_rows(const DBSYNC_HANDLE handle,
+                                       const char*         table,
+                                       const long long     max_rows);
 
 /**
  * @brief Inserts (or modifies) a database record.
  *
  * @param handle         Handle instance assigned as part of the \ref dbsync_create method().
  * @param input          JSON information used to add/modified a database record.
- * @param callback_data  This struct contain the result callback will be called for each result
+ * @param callback_data  This struct contains the result callback that will be called for each result
  *                       and user data space returned in each callback call.
  *
  * @return 0 if succeeded,
@@ -161,7 +180,7 @@ EXPORTED int dbsync_sync_row(const DBSYNC_HANDLE handle,
  * @brief Select data, based in \p json_data_input data, from the database table.
  *
  * @param handle          Handle assigned as part of the \ref dbsync_create method().
- * @param js_data_input   JSON with table name, fields and filters to apply in the query.
+ * @param js_data_input   JSON with table name, fields, filters and options to apply in the query.
  * @param callback_data   This struct contain the result callback will be called for each result
  *                        and user data space returned in each callback call.
  *

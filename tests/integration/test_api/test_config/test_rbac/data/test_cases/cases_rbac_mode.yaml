@@ -1,0 +1,13 @@
+- name: RBAC_WHITE
+  description: Check that the API forbids requests when setting RBAC mode to `white`
+  configuration_parameters:
+    RBAC_MODE: white
+  metadata:
+    expected_code: 403
+
+- name: RBAC_BLACK
+  description: Check that the API requests are performed correctly when setting RBAC mode to `black`
+  configuration_parameters:
+    RBAC_MODE: black
+  metadata:
+    expected_code: 200

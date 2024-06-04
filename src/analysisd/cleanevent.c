@@ -25,9 +25,10 @@ static const char *(month[]) = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 /* Format a received message in the Eventinfo structure */
 int OS_CleanMSG(char *msg, Eventinfo *lf)
 {
+    char loc_buff[OS_SIZE_8192 + OS_SIZE_256 + 3] = {0};
     size_t loglen;
     char *pieces;
-    char *arrow = NULL;
+    char *msg_cpy;
     struct tm p = { .tm_sec = 0 };
     struct timespec local_c_timespec;
 
@@ -38,24 +39,21 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
     /* Ignore the id of the message in here */
     msg += 2;
 
-    /* Avoid ipv6 ':', msg that include "[" have an "->" after the ip */
-    if (*msg == '[') {
-        if (!(arrow = strstr(msg, "->"))) {
-            merror(FORMAT_ERROR);
-            return (-1);
-        }
+    /* Look for the first non scape ":" */
+    msg_cpy = msg;
+    if (pieces = wstr_chr_escape(msg_cpy, ':', '|'), pieces == NULL) {
+        merror(FORMAT_ERROR);
+        return (-1);
     }
+    *pieces = '\0';
+    pieces++;
 
-    pieces = strchr(arrow ? arrow : msg, ':');
-    if (!pieces) {
+    if (OS_INVALID == wstr_unescape(loc_buff, sizeof(loc_buff), msg, '|')) {
         merror(FORMAT_ERROR);
         return (-1);
     }
 
-    *pieces = '\0';
-    pieces++;
-
-    os_strdup(msg, lf->location);
+    os_strdup(loc_buff, lf->location);
 
     /* Get the log length */
     loglen = strlen(pieces) + 1;
@@ -88,6 +86,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
      * ( ex: Dec 29 10:00:01
      *   or  2015 Dec 29 10:00:01
      *   or  2007-06-14T15:48:55-04:00 for syslog-ng isodate
+     *   or  2022-12-19T15:02:53.288+00:00 for syslog isodate
      *   or  2009-05-22T09:36:46.214994-07:00 for rsyslog )
      *   or  2015-04-16 21:51:02,805 (proftpd 1.3.5)
      *   or  2021-04-21 10:16:09.404756-0700 (for macos ULS --syslog output)
@@ -110,7 +109,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
 	    (pieces[13] == ':') &&
 	    (pieces[16] == ':') &&
 	    (pieces[19] == ',') &&
-	    (lf->log += 23)
+	    (lf->log += 24)
 	)
 	||
         (
@@ -126,9 +125,11 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
                  (pieces[25] == ' ') && (lf->log += 26)) ||
 
                 ((pieces[19] == '.') &&
-                 (pieces[29] == ':') && (lf->log += 33))  ||
-
-                ((pieces[19] == '.') && (lf->log += 32))
+                (
+                    ((pieces[26] == ':') && (lf->log += 30))  ||
+                    ((pieces[29] == ':') && (lf->log += 33))  ||
+                    (lf->log += 32)
+                ))
             )
         )
      ||
@@ -152,7 +153,7 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
             (pieces[13] == ':') &&
             (pieces[16] == ':') &&
             (pieces[19] == '.') &&
-            (pieces[26] == '-') &&
+            (pieces[26] == '-' || pieces[26] == '+') &&
             (pieces[31] == ' ') && (lf->log += 32)
         )
 
@@ -614,6 +615,48 @@ int OS_CleanMSG(char *msg, Eventinfo *lf)
         print_out("       log: '%s'", lf->log);
     }
 #endif
-    
+
     return (0);
+}
+
+char *extract_module_from_message(char *msg) {
+    char *module_name = NULL;
+    char *end = NULL;
+
+    msg += 2;
+
+    if (*msg == '[') {
+        if (!(module_name = strstr(msg, "->"))) {
+            merror(FORMAT_ERROR);
+            return NULL;
+        }
+    }
+
+    if (module_name == NULL) {
+        module_name = msg;
+    } else {
+        module_name += 2;
+    }
+
+    end = strchr(module_name, ':');
+    if (!end) {
+        merror(FORMAT_ERROR);
+        return NULL;
+    }
+
+    *end = '\0';
+
+    return module_name;
+}
+
+const char *extract_module_from_location(const char *location) {
+    const char *module_name = strstr(location, "->");
+
+    if (module_name == NULL) {
+        module_name = location;
+    } else {
+        module_name += 2;
+    }
+
+    return module_name;
 }

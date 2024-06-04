@@ -239,6 +239,7 @@ cJSON * w_logtest_process_log(cJSON * request, w_logtest_session_t * session,
 
 int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
 
+    char loc_buff[OS_BUFFER_SIZE + 1] = {0};
     char * event_str = NULL;
     char * location_str = NULL;
     char * log = NULL;
@@ -259,10 +260,15 @@ int w_logtest_preprocessing_phase(Eventinfo * lf, cJSON * request) {
     location = cJSON_GetObjectItemCaseSensitive(request, W_LOGTEST_JSON_LOCATION);
     location_str = cJSON_GetStringValue(location);
 
-    int logsize = strlen(location_str) + strlen(event_str) + 4;
+    if (OS_INVALID == wstr_escape(loc_buff, sizeof(loc_buff), location_str, '|', ':')) {
+        if (event_json) os_free(event_str);
+        return -1;
+    }
+
+    int logsize = strlen(loc_buff) + strlen(event_str) + 4;
 
     os_calloc(logsize, sizeof(char), log);
-    snprintf(log, logsize, "1:%s:%s", location_str, event_str);
+    snprintf(log, logsize, "1:%s:%s", loc_buff, event_str);
 
     if (OS_CleanMSG(log, lf) < 0) {
         os_free(log);
@@ -433,7 +439,7 @@ w_logtest_session_t * w_logtest_initialize_session(OSList * list_msg) {
         files++;
     }
 
-    if (SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname, 
+    if (SetDecodeXML(list_msg, &session->decoder_store, &session->decoderlist_nopname,
                      &session->decoderlist_forpname) == 0) {
         goto cleanup;
     }
@@ -977,7 +983,7 @@ void w_logtest_add_msg_response(cJSON * response, OSList * list_msg, int * error
         /* Cleanup */
         os_free(raw_msg);
         os_free(json_str_msj);
-        os_analysisd_free_log_msg(&data_msg);
+        os_analysisd_free_log_msg(data_msg);
         OSList_DeleteCurrentlyNode(list_msg);
 
         node_log_msg = OSList_GetFirstNode(list_msg);
@@ -1006,6 +1012,7 @@ char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * co
     }
 
     OSList_SetMaxSize(list_msg, ERRORLIST_MAXSIZE);
+    OSList_SetFreeDataPointer(list_msg, (void (*)(void *))os_analysisd_free_log_msg);
 
     /* Check message and generate a request */
     json_response = cJSON_CreateObject();
@@ -1038,7 +1045,7 @@ char * w_logtest_process_request(char * raw_request, w_logtest_connection_t * co
     str_response = cJSON_PrintUnformatted(json_response);
     cJSON_Delete(json_response);
     cJSON_Delete(json_request);
-    os_free(list_msg);
+    OSList_Destroy(list_msg);
 
     return str_response;
 }
@@ -1261,7 +1268,7 @@ bool w_logtest_ruleset_load_config(OS_XML * xml, XML_NODE conf_section_nodes, _C
         }
 
         /* Load ruleset */
-        if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0 
+        if (strcmp(conf_section_nodes[i]->element, XML_RULESET) == 0
             && Read_Rules(options_node, ruleset_config, list_msg) < 0) {
 
             OS_ClearNode(options_node);

@@ -13,7 +13,11 @@
 
 #include "shared.h"
 #include "sec.h"
-#include "external/cJSON/cJSON.h"
+#include <cJSON.h>
+
+#ifndef ARGV0
+#define ARGV0 "manage_agents"
+#endif
 
 /** Prototypes **/
 
@@ -43,7 +47,7 @@ int OS_IsValidID(const char *id);
 int IDExist(const char *id, int discard_removed);
 int NameExist(const char *u_name);
 char *IPExist(const char *u_ip);
-char *getFullnameById(const char *id);
+char *getNameById(const char *id);
 int OS_AddNewAgent(keystore *keys, const char *id, const char *name, const char *ip, const char *key);
 int OS_RemoveAgent(const char *id);
 void OS_AddAgentTimestamp(const char *id, const char *name, const char *ip, time_t now);
@@ -125,7 +129,6 @@ extern char shost[];
 #define EXTRACT_KEY     "Provide the ID of the agent to extract " \
                         "the key (or '\\q' to quit): "
 #define EXTRACT_MSG     "\nAgent key information for '%s' is: \n%s\n"
-
 
 /* Common errors */
 #define ERROR_KEYS      "Unable to handle keys file. Exiting.\n"

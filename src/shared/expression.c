@@ -12,6 +12,11 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #include "unit_tests/wrappers/externals/pcre2/pcre2_wrappers.h"
+#else
+#define w_pcre2_match_data_create_from_pattern pcre2_match_data_create_from_pattern
+#define w_pcre2_match                          pcre2_match
+#define w_pcre2_match_data_free                pcre2_match_data_free
+#define w_pcre2_get_ovector_pointer            pcre2_get_ovector_pointer
 #endif
 
 void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type) {
@@ -31,6 +36,7 @@ void w_calloc_expression_t(w_expression_t ** var, w_exp_type_t type) {
 
         case EXP_TYPE_PCRE2:
             os_calloc(1, sizeof(w_pcre2_code_t), (*var)->pcre2);
+            break;
 
         default:
             break;
@@ -83,6 +89,42 @@ void w_free_expression_t(w_expression_t ** var) {
     os_free(*var);
 }
 
+void w_free_expression(w_expression_t * var) {
+    w_free_expression_t(&var);
+}
+
+void w_free_expression_match(w_expression_t * expression, regex_matching **reg){
+    if (expression == NULL) {
+        return;
+    }
+
+    switch (expression->exp_type) {
+         case EXP_TYPE_OSMATCH:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_OSREGEX:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_PCRE2:
+            OSRegex_free_regex_matching(*reg);
+            os_free(*reg);
+            break;
+
+        case EXP_TYPE_STRING:
+            break;
+
+        case EXP_TYPE_OSIP_ARRAY:
+            break;
+
+        default:
+            break;
+    }
+}
+
 bool w_expression_add_osip(w_expression_t ** var, char * ip) {
 
     unsigned int ip_s = 0;
@@ -107,7 +149,7 @@ bool w_expression_add_osip(w_expression_t ** var, char * ip) {
     return true;
 }
 
-bool w_expression_compile(w_expression_t * expression, char * pattern, int flags) {
+bool w_expression_compile(w_expression_t * expression, const char * pattern, int flags) {
 
     bool retval = true;
 
@@ -187,23 +229,23 @@ bool w_expression_match(w_expression_t * expression, const char * str_test, cons
 
         case EXP_TYPE_PCRE2:
 
-            if (match_data = pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL), !match_data) {
+            if (match_data = w_pcre2_match_data_create_from_pattern(expression->pcre2->code, NULL), !match_data) {
                 break;
             }
-            captured_groups = pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test, 
+            captured_groups = w_pcre2_match(expression->pcre2->code, (PCRE2_SPTR) str_test,
                                           strlen(str_test), 0, 0, match_data, NULL);
 
             /* successful match */
             if (captured_groups > 0) {
                 retval = true;
-                ovector = pcre2_get_ovector_pointer(match_data);
+                ovector = w_pcre2_get_ovector_pointer(match_data);
                 ret_match = str_test + ovector[1] - 1;
 
                 if (regex_match) {
                     w_expression_PCRE2_fill_regex_match(captured_groups, str_test, match_data, regex_match);
                 }
             }
-            pcre2_match_data_free(match_data);
+            w_pcre2_match_data_free(match_data);
             break;
 
         case EXP_TYPE_STRING:
@@ -244,9 +286,8 @@ void w_expression_PCRE2_fill_regex_match(int captured_groups, const char * str_t
     os_realloc(*sub_strings, sizeof(char *) * captured_groups, *sub_strings);
     memset((void *) *sub_strings, 0, sizeof(char *) * captured_groups);
     str_sizes->sub_strings_size = sizeof(char *) * captured_groups;
-    str_sizes->prts_str_alloc_size = sizeof(char *) * (captured_groups - 1);
 
-    ovector = pcre2_get_ovector_pointer(match_data);
+    ovector = w_pcre2_get_ovector_pointer(match_data);
     for (int i = 1; i < captured_groups; i++) {
         size_t substring_length = ovector[2 * i + 1] - ovector[2 * i];
         regex_match->sub_strings[i - 1] = w_strndup(str_test + ovector[2 * i], substring_length);
@@ -308,7 +349,7 @@ const char * w_expression_get_regex_type(w_expression_t * expression) {
         case EXP_TYPE_PCRE2:
             retval = PCRE2_STR;
             break;
-        
+
         case EXP_TYPE_STRING:
             retval = STRING_STR;
             break;

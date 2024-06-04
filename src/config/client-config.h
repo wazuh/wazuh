@@ -22,6 +22,7 @@ typedef struct agent_server {
     char * rip;
     int port;
     int protocol;
+    uint32_t network_interface;
     int max_retries; ///< Maximum number of connection retries.
     int retry_interval; ///< Time interval between connection attempts.
 } agent_server;
@@ -35,7 +36,6 @@ typedef struct _agent {
     int cfgadq;
     int rip_id; ///< Holds the index of the current connected server
     int server_count; ///< Holds the total amount of servers
-    char *lip;
     int notify_time;
     int max_time_reconnect_try;
     long force_reconnect_interval;
@@ -59,6 +59,13 @@ void Free_Client(agent * config);
  * @return Returns true if successful and false if not success
  */
 bool Validate_Address(agent_server *servers);
+
+/**
+ * @brief Checks if at least one <server> block is not a link-local ipv6 address or it has a network interface configured.
+ * @param servers Server(s) configuration block in agent ossec.conf
+ * @return Returns true if successful and false if not success.
+ */
+bool Validate_IPv6_Link_Local_Interface(agent_server *servers);
 
 #define DEFAULT_MAX_RETRIES 5
 #define DEFAULT_RETRY_INTERVAL 10

@@ -1,0 +1,114 @@
+' Copyright (C) 2015, Wazuh Inc.
+' Created by Wazuh, Inc. <info@wazuh.com>.
+' This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+@startuml analysisd
+
+    collections others_modules
+    box "Analysisd Module"
+    participant analysisd
+    database state
+    end box
+    skinparam sequenceMessageAlign right
+
+    others_modules -> analysisd : Enqueue event
+    rnote over analysisd
+            DEFAULTQUEUE
+        queue/sockets/queue
+    endrnote
+    analysisd -> analysisd: Dequeue event
+    analysisd -> state: received++
+
+    alt Is syscheck event
+        analysisd -> analysisd: Enqueue event in syscheck queue
+        alt Queue full
+            analysisd -> state: dropped->modules->syscheck++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->syscheck++
+            end
+        end
+    else Is rootcheck event
+        analysisd -> analysisd: Enqueue event in rootcheck queue
+        alt Queue full
+            analysisd -> state: dropped->modules->rootcheck++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->rootcheck++
+            end
+        end
+    else Is sca event
+        analysisd -> analysisd: Enqueue event in sca queue
+        alt Queue full
+            analysisd -> state: dropped->modules->sca++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->sca++
+            end
+        end
+    else Is syscollector event
+        analysisd -> analysisd: Enqueue event in syscollector queue
+        alt Queue full
+            analysisd -> state: dropped->modules->syscollector++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->syscollector++
+            end
+        end
+    else Is hostinfo event
+        analysisd -> analysisd: Enqueue event in hostinfo queue
+        alt Queue full
+            analysisd -> state: dropped->modules->logcollector->others++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->logcollector->others++
+            end
+        end
+    else Is winevent event
+        analysisd -> analysisd: Enqueue event in winevent queue
+        alt Queue full
+            analysisd -> state: dropped->modules->logcollector->eventchannel++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->logcollector->eventchannel++
+            end
+        end
+    else Is dbsync event
+        analysisd -> analysisd: Enqueue event in dbsync queue
+        alt Queue full
+            analysisd -> state: dropped->dbsync++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->dbsync++
+            end
+        end
+    else Is upgrade event
+        analysisd -> analysisd: Enqueue event in upgrade queue
+        alt Queue full
+            analysisd -> state: dropped->modules->upgrade++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->upgrade++
+            end
+        end
+    else Is CISCAT event
+        analysisd -> analysisd: Enqueue event in event queue
+        alt Queue full
+            analysisd -> state: dropped->modules->ciscat++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->modules->ciscat++
+            end
+        end
+    else Is syslog event
+        analysisd -> analysisd: Enqueue event in event queue
+        alt Queue full
+            analysisd -> state: dropped->syslog++
+        else
+            alt Is decoded
+                analysisd -> state: decoded->syslog++
+            end
+        end
+    end
+
+@enduml

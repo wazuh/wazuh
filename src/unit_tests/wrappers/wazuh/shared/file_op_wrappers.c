@@ -14,6 +14,8 @@
 #include <cmocka.h>
 #include <string.h>
 #include <errno.h>
+#include "file_op.h"
+#include "../../common.h"
 
 int __wrap_abspath(const char *path, char *buffer, size_t size) {
     check_expected(path);
@@ -97,15 +99,20 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
     will_return(__wrap_w_uncompress_gzfile, ret);
 }
 
-FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
-    check_expected(__filename);
-    check_expected(__modes);
-    return mock_type(FILE *);
+FILE *__real_wfopen(const char * path, const char * mode);
+FILE *__wrap_wfopen(const char * path, const char * mode) {
+    if(test_mode) {
+        check_expected(path);
+        check_expected(mode);
+        return mock_type(FILE *);
+    } else {
+        return __real_wfopen(path, mode);
+    }
 }
 
-void expect_wfopen(const char * __filename, const char * __modes, FILE *ret) {
-    expect_string(__wrap_wfopen, __filename, __filename);
-    expect_string(__wrap_wfopen, __modes, __modes);
+void expect_wfopen(const char * path, const char * mode, FILE *ret) {
+    expect_string(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, mode);
     will_return(__wrap_wfopen, ret);
 }
 
@@ -154,6 +161,16 @@ void expect_rename_ex(const char *source, const char *destination, int ret) {
     will_return(__wrap_rename_ex, ret);
 }
 
+int __wrap_mkstemp_ex(char *tmp_path) {
+    check_expected(tmp_path);
+    return mock();
+}
+
+void expect_mkstemp_ex(char *tmp_path, int ret) {
+    expect_string(__wrap_mkstemp_ex, tmp_path, tmp_path);
+    will_return(__wrap_mkstemp_ex, ret);
+}
+
 float __wrap_DirSize(const char *path) {
     check_expected(path);
 
@@ -177,6 +194,11 @@ int __wrap_w_ref_parent_folder(const char * path) {
 }
 
 int __wrap_cldir_ex(__attribute__((unused)) const char *name) {
+    return mock();
+}
+
+int __wrap_cldir_ex_ignore(const char *name, __attribute__((unused)) const char ** ignore) {
+    check_expected(name);
     return mock();
 }
 
@@ -205,11 +227,8 @@ int __wrap_w_fseek(FILE *x, int64_t pos, __attribute__((unused)) int mode) {
     return mock_type(int);
 }
 
-int __wrap_MergeAppendFile(const char *finalpath, __attribute__((unused)) const char *files, const char *tag, int path_offset) {
-    check_expected(finalpath);
-    if (tag) {
-        check_expected(tag);
-    }
+int __wrap_MergeAppendFile(FILE *finalfp, __attribute__((unused)) const char *files, int path_offset) {
+    check_expected(finalfp);
     check_expected(path_offset);
     return mock_type(int);
 }
@@ -236,4 +255,21 @@ int __wrap_w_copy_file(const char *src, const char *dst, char mode, __attribute_
     check_expected(mode);
     check_expected(silent);
     return mock_type(int);
+}
+
+char *__wrap_GetRandomNoise() {
+    return mock_ptr_type(char*);
+}
+
+const char *__wrap_getuname() {
+    return mock_ptr_type(char*);
+}
+
+char * __wrap_w_get_file_content(__attribute__ ((__unused__)) const char * path,
+                                 __attribute__ ((__unused__)) int max_size) {
+    return mock_type(char *);
+}
+
+void expect_w_get_file_content(const char *buffer) {
+    will_return(__wrap_w_get_file_content, buffer);
 }

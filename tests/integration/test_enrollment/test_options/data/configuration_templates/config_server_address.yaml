@@ -1,0 +1,9 @@
+  - sections:
+    - section: client
+      elements:
+          - server:
+              elements:
+              - address:
+                  value: SERVER_ADDRESS
+              - max_retries:
+                  value: 1

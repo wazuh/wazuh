@@ -13,7 +13,7 @@
 #include <ctime>
 #include <cstdlib>
 #include "agentEmulator.h"
-
+#include "cjsonSmartDeleter.hpp"
 
 
 constexpr auto CREATE_STATEMENT { "CREATE TABLE data_values(`key` BIGINT, `data1` BIGINT, `data2` BIGINT, `data3` BIGINT, PRIMARY KEY (`key`)) WITHOUT ROWID;"};
@@ -33,36 +33,21 @@ static DBSYNC_HANDLE createDbsyncHandle(const std::string& dbName)
     return handle;
 }
 
-struct SmartDeleterJson final
-{
-    void operator()(cJSON* data)
-    {
-        cJSON_Delete(data);
-    }
-};
-
-struct CJsonDeleter final
-{
-    void operator()(char* json)
-    {
-        cJSON_free(json);
-    }
-};
-
 static void callback(const ReturnTypeCallback /*type*/,
                      const cJSON* /*json*/,
                      void* /*ctx*/)
 {
-    // const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(json) };
+    // const std::unique_ptr<char, CJsonSmartFree> spJsonBytes{ cJSON_PrintUnformatted(json) };
     // std::cout << spJsonBytes.get() << std::endl;
 }
 
 AgentEmulator::AgentEmulator(const std::chrono::milliseconds updatePeriod,
                              const unsigned int maxDbItems,
                              const std::shared_ptr<SyncQueue>& outQueue,
-                             const std::string& dbFolder)
+                             const std::string& dbFolder,
+                             const size_t maxQueueSize)
     : m_agentId{ std::to_string(reinterpret_cast<unsigned long>(this)) }
-    , m_rsyncHandle{ rsync_create() }
+    , m_rsyncHandle{ rsync_create(std::thread::hardware_concurrency(), maxQueueSize) }
     , m_dbSyncHandle{ createDbsyncHandle(dbFolder + m_agentId + ".db") }
     , m_config{ nullptr }//TODO: define config based on dbsync handle create statement
     , m_startConfig{ nullptr }//TODO: define config based on first/last sync information statement
@@ -126,7 +111,7 @@ void AgentEmulator::updateData()
         {
             R"({"table":"data_values","data":[{"key":)" + key + R"(, "data1":)" + data1 + R"(, "data2":)" + data2 + R"(, "data3":)" + data3 + R"(}]})"
         };
-        const std::unique_ptr<cJSON, SmartDeleterJson> jsSync{ cJSON_Parse(dataToSync.c_str()) };
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsSync{ cJSON_Parse(dataToSync.c_str()) };
         callback_data_t callbackData { callback, nullptr };
 
         dbsync_sync_row(m_dbSyncHandle, jsSync.get(), callbackData);

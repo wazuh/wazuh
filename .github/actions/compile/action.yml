@@ -1,0 +1,25 @@
+name: "Compile"
+description: "Executes a compilation."
+
+inputs:
+  path:
+    required: true
+    description: "Path to compile and test"
+    default: src/
+
+runs:
+  using: "composite"
+  steps:
+      - name: Compile
+        run: |
+          SRC_FOLDER=$(pwd)/src
+
+          VERSION=$(cat src/VERSION)
+          echo $VERSION
+          REVISION=$(cat src/REVISION)
+          echo $REVISION
+
+          cd ${{ inputs.path }}
+          mkdir -p build && cd build
+          cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
+        shell: bash

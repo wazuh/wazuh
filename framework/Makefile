@@ -34,17 +34,19 @@ install:
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster
 	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster/dapi
+	$(INSTALL_DIR) $(INSTALLDIR)/framework/wazuh/core/cluster/hap_helper
 
 	$(INSTALL_FILE) scripts/*.py ${INSTALLDIR}/framework/scripts
 	$(INSTALL_FILE) wazuh/*.py ${INSTALLDIR}/framework/wazuh
 	$(INSTALL_FILE) wazuh/core/cluster/*.json ${INSTALLDIR}/framework/wazuh/core/cluster
 	$(INSTALL_FILE) wazuh/core/cluster/*.py ${INSTALLDIR}/framework/wazuh/core/cluster
 	$(INSTALL_FILE) wazuh/core/cluster/dapi/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/dapi
+	$(INSTALL_FILE) wazuh/core/cluster/hap_helper/*.py ${INSTALLDIR}/framework/wazuh/core/cluster/hap_helper
 
 #	Remove update_ruleset script when upgrading to >=4.2.0 (deprecated)
 	[ ! -e ${INSTALLDIR}/bin/update_ruleset ] || $(RM_FILE) ${INSTALLDIR}/bin/update_ruleset
 #	Install scripts/%.py on $(INSTALLDIR)/bin/%
-	$(foreach script,$(wildcard scripts/*),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
+	$(foreach script,$(wildcard scripts/*.py),$(INSTALL_EXEC) wrappers/generic_wrapper.sh $(patsubst scripts/%.py,$(INSTALLDIR)/bin/%,$(script));)
 #   Provisional name change for wazuh-logtest and wazuh-clusterd
 	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_logtest $(INSTALLDIR)/bin/wazuh-logtest
 	$(MV_FILE) $(INSTALLDIR)/bin/wazuh_clusterd $(INSTALLDIR)/bin/wazuh-clusterd

@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.5.0"
-REVISION="40500"
+VERSION="v5.0.0"
+REVISION="50000"
 TYPE="server"
 
 ###  Do not modify below here ###
@@ -277,8 +277,8 @@ start_service()
     checkpid;
 
     # Delete all files in temporary folder
-    TO_DELETE="$DIR/tmp/*"
-    rm -rf $TO_DELETE
+    TO_DELETE="$DIR/tmp"
+    find $TO_DELETE -mindepth 1 -name "*" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
 
     # Stop deprecated daemons that could keep alive on updates
     for i in ${DEPRECATED_DAEMONS}; do
@@ -544,6 +544,21 @@ info()
     fi
 }
 
+restart_service()
+{
+    touch ${DIR}/var/run/.restart
+    testconfig
+    lock
+    if [ $USE_JSON = true ]; then
+        stop_service > /dev/null 2>&1
+    else
+        stop_service
+    fi
+    start_service
+    rm -f ${DIR}/var/run/.restart
+    unlock
+}
+
 ### MAIN HERE ###
 
 if [ "$1" = "-j" ]; then
@@ -568,24 +583,11 @@ stop)
     unlock
     ;;
 restart)
-    touch ${DIR}/var/run/.restart
-    testconfig
-    lock
-    if [ $USE_JSON = true ]; then
-        stop_service > /dev/null 2>&1
-    else
-        stop_service
-    fi
-    start_service
-    rm -f ${DIR}/var/run/.restart
-    unlock
+    restart_service
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
-    lock
-    stop_service
-    start_service
-    unlock
+    restart_service
     ;;
 status)
     lock

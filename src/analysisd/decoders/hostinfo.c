@@ -83,13 +83,13 @@ void HostinfoInit()
     snprintf(_hi_buf, OS_SIZE_1024, "%s", HOSTINFO_FILE);
 
     /* r+ to read and write. Do not truncate */
-    _hi_fp = fopen(_hi_buf, "r+");
+    _hi_fp = wfopen(_hi_buf, "r+");
     if (!_hi_fp) {
         /* Try opening with a w flag, file probably does not exist */
-        _hi_fp = fopen(_hi_buf, "w");
+        _hi_fp = wfopen(_hi_buf, "w");
         if (_hi_fp) {
             fclose(_hi_fp);
-            _hi_fp = fopen(_hi_buf, "r+");
+            _hi_fp = wfopen(_hi_buf, "r+");
         }
     }
     if (!_hi_fp) {

@@ -87,7 +87,8 @@
             "timeout_agent_groups": 40,
             "keep_alive": 60,
             "connection_retry": 10,
-            "max_failed_keepalive_attempts": 2
+            "max_failed_keepalive_attempts": 2,
+            "agent_groups_mismatch_limit": 5
         },
 
         "master": {
@@ -95,8 +96,6 @@
             "sync_agent_groups": 10,
             "timeout_extra_valid": 40,
             "recalculate_integrity": 8,
-            "timeout_agent_info": 40,
-            "timeout_agent_groups": 40,
             "agent_group_start_delay": 30,
             "check_worker_lastkeepalive": 60,
             "max_allowed_time_without_keepalive": 120,

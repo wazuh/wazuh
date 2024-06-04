@@ -11,8 +11,8 @@
 #ifndef WM_TASK_MANAGER_WRAPPERS_H
 #define WM_TASK_MANAGER_WRAPPERS_H
 
-#include "headers/shared.h"
-#include "wazuh_modules/wmodules.h"
+#include "../../../../headers/shared.h"
+#include "../../../../wazuh_modules/wmodules.h"
 
 #ifndef CLIENT
 

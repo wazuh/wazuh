@@ -32,11 +32,24 @@ static const char *SQL_GLOBAL_STMT[] = {
 
 // Upgrade agent database to last version
 wdb_t * wdb_upgrade(wdb_t *wdb) {
-    const char *UPDATES[] = { schema_upgrade_v1_sql, schema_upgrade_v2_sql,
-                              schema_upgrade_v3_sql, schema_upgrade_v4_sql,
-                              schema_upgrade_v5_sql, schema_upgrade_v6_sql,
-                              schema_upgrade_v7_sql, schema_upgrade_v8_sql };
+    const char * UPDATES[] = {
+        schema_upgrade_v1_sql,
+        schema_upgrade_v2_sql,
+        schema_upgrade_v3_sql,
+        schema_upgrade_v4_sql,
+        schema_upgrade_v5_sql,
+        schema_upgrade_v6_sql,
+        schema_upgrade_v7_sql,
+        schema_upgrade_v8_sql,
+        schema_upgrade_v9_sql,
+        schema_upgrade_v10_sql,
+        schema_upgrade_v11_sql,
+        schema_upgrade_v12_sql,
+        schema_upgrade_v13_sql,
+        schema_upgrade_v14_sql,
+    };
 
+    bool database_updated = false;
     char db_version[OS_SIZE_256];
     int version = 0;
 
@@ -46,18 +59,51 @@ wdb_t * wdb_upgrade(wdb_t *wdb) {
 
         if (version < 0) {
             merror("DB(%s): Incorrect database version: %d", wdb->id, version);
-            return wdb;
+            return NULL;
         }
 
         for (unsigned i = version; i < sizeof(UPDATES) / sizeof(char *); i++) {
             mdebug2("Updating database '%s' to version %d", wdb->id, i + 1);
+            database_updated = false;
 
             if (wdb_sql_exec(wdb, UPDATES[i]) == -1 ||
                 wdb_adjust_upgrade(wdb, i)) {
                 wdb = wdb_backup(wdb, version);
                 break;
             }
+            database_updated = true;
         }
+    }
+
+    if (router_agent_events_handle && database_updated) {
+        cJSON* j_msg_to_send = NULL;
+        cJSON* j_agent_info = NULL;
+        cJSON* j_data = NULL;
+        char* msg_to_send = NULL;
+
+        j_msg_to_send = cJSON_CreateObject();
+        j_agent_info = cJSON_CreateObject();
+        j_data = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(j_agent_info, "agent_id", wdb->id);
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        cJSON_AddStringToObject(j_msg_to_send, "action", "upgradeAgentDB");
+
+        cJSON_AddNumberToObject(j_data, "db_version", version);
+        cJSON_AddNumberToObject(j_data, "new_db_version", sizeof(UPDATES) / sizeof(char *));
+        cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+
+        if (msg_to_send) {
+            router_provider_send(router_agent_events_handle, msg_to_send, strlen(msg_to_send));
+        } else {
+            mdebug2("Unable to dump agent db upgrade message to publish. Agent %s", wdb->id);
+        }
+
+        cJSON_Delete(j_msg_to_send);
+        cJSON_free(msg_to_send);
     }
 
     return wdb;
@@ -68,7 +114,9 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
         schema_global_upgrade_v1_sql,
         schema_global_upgrade_v2_sql,
         schema_global_upgrade_v3_sql,
-        schema_global_upgrade_v4_sql
+        schema_global_upgrade_v4_sql,
+        schema_global_upgrade_v5_sql,
+        schema_global_upgrade_v6_sql,
     };
 
     char output[OS_MAXSTR + 1] = { 0 };
@@ -91,7 +139,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                  */
                 mwarn("DB(%s): Error trying to get DB version", wdb->id);
                 wdb->enabled = false;
-                return wdb;
             }
         }
         else {
@@ -108,6 +155,7 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
                 else {
                     wdb = wdb_recreate_global(wdb);
                 }
+
                 return wdb;
             }
         }
@@ -159,8 +207,6 @@ wdb_t * wdb_upgrade_global(wdb_t *wdb) {
 wdb_t * wdb_backup(wdb_t *wdb, int version) {
     char path[PATH_MAX];
     char * sagent_id;
-    wdb_t * new_wdb = NULL;
-    sqlite3 * db;
 
     os_strdup(wdb->id, sagent_id),
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, sagent_id);
@@ -177,32 +223,27 @@ wdb_t * wdb_backup(wdb_t *wdb, int version) {
                 return NULL;
             }
 
-            if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
-                sqlite3_close_v2(db);
+            if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+                merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(wdb->db));
+                sqlite3_close_v2(wdb->db);
+                wdb->db = NULL;
                 free(sagent_id);
                 return NULL;
             }
-
-            new_wdb = wdb_init(db, sagent_id);
-            wdb_pool_append(new_wdb);
         }
     } else {
         merror("Couldn't create SQLite database backup for agent '%s'", sagent_id);
     }
 
     free(sagent_id);
-    return new_wdb;
+    return wdb;
 }
 
 wdb_t * wdb_recreate_global(wdb_t *wdb) {
     char path[PATH_MAX];
-    wdb_t * new_wdb = NULL;
-    sqlite3 * db;
 
     snprintf(path, PATH_MAX, "%s/%s.db", WDB2_DIR, WDB_GLOB_NAME);
 
-    wdb_leave(wdb);
     if (wdb_close(wdb, TRUE) != OS_INVALID) {
         unlink(path);
 
@@ -211,19 +252,15 @@ wdb_t * wdb_recreate_global(wdb_t *wdb) {
             return NULL;
         }
 
-        if (sqlite3_open_v2(path, &db, SQLITE_OPEN_READWRITE, NULL)) {
-            merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(db));
-            sqlite3_close_v2(db);
+        if (sqlite3_open_v2(path, &wdb->db, SQLITE_OPEN_READWRITE, NULL)) {
+            merror("Can't open SQLite backup database '%s': %s", path, sqlite3_errmsg(wdb->db));
+            sqlite3_close_v2(wdb->db);
+            wdb->db = NULL;
             return NULL;
         }
-
-        new_wdb = wdb_init(db, WDB_GLOB_NAME);
-        wdb_pool_append(new_wdb);
-        w_mutex_lock(&new_wdb->mutex);
-        new_wdb->refcount++;
     }
 
-    return new_wdb;
+    return wdb;
 }
 
 /* Create backup for agent. Returns 0 on success or -1 on error. */
@@ -237,14 +274,14 @@ int wdb_create_backup(const char * agent_id, int version) {
 
     snprintf(path, OS_FLSIZE, "%s/%s.db", WDB2_DIR, agent_id);
 
-    if (!(source = fopen(path, "r"))) {
+    if (!(source = wfopen(path, "r"))) {
         merror("Couldn't open source '%s': %s (%d)", path, strerror(errno), errno);
         return -1;
     }
 
     snprintf(path, OS_FLSIZE, "%s/%s.db-oldv%d-%lu", WDB2_DIR, agent_id, version, (unsigned long)time(NULL));
 
-    if (!(dest = fopen(path, "w"))) {
+    if (!(dest = wfopen(path, "w"))) {
         merror("Couldn't open dest '%s': %s (%d)", path, strerror(errno), errno);
         fclose(source);
         return -1;
@@ -311,7 +348,7 @@ int wdb_adjust_v4(wdb_t *wdb) {
     sqlite3_stmt *get_stmt = wdb->stmt[WDB_STMT_FIM_GET_ATTRIBUTES];
     char decoded_attrs[OS_SIZE_256];
 
-    while (sqlite3_step(get_stmt) == SQLITE_ROW) {
+    while (wdb_step(get_stmt) == SQLITE_ROW) {
         const char *file = (char *) sqlite3_column_text(get_stmt, 0);
         const char *attrs = (char *) sqlite3_column_text(get_stmt, 1);
 
@@ -331,7 +368,7 @@ int wdb_adjust_v4(wdb_t *wdb) {
         sqlite3_bind_text(update_stmt, 1, decoded_attrs, -1, NULL);
         sqlite3_bind_text(update_stmt, 2, file, -1, NULL);
 
-        if (sqlite3_step(update_stmt) != SQLITE_DONE) {
+        if (wdb_step(update_stmt) != SQLITE_DONE) {
             mdebug1("DB(%s) The attribute coded as %s could not be updated.", wdb->id, attrs);
         }
     }
@@ -353,7 +390,7 @@ bool wdb_is_older_than_v310(wdb_t *wdb) {
         merror("DB(%s) sqlite3_prepare_v2(): %s", wdb->id, sqlite3_errmsg(wdb->db));
     }
     else {
-        switch (sqlite3_step(stmt)) {
+        switch (wdb_step(stmt)) {
             case SQLITE_ROW: {
                 result = sqlite3_column_int(stmt, 0);
                 break;

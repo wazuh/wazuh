@@ -11,7 +11,7 @@
 #  cert: "server.crt"
 #  use_ca: False
 #  ca: "ca.crt"
-#  ssl_protocol: "TLSv1.2"
+#  ssl_protocol: "auto"
 #  ssl_ciphers: ""
 
 # Modify API's intervals (time in seconds)
@@ -20,22 +20,22 @@
 
 # Logging configuration
 # Values for API log level: disabled, info, warning, error, debug, debug2 (each level includes the previous level).
+# Values for API log max_size: <value><unit>. Valid units: K (kilobytes), M (megabytes)
+# Enabling the API log max_size will disable the time based rotation (on midnight)
 # logs:
 #  level: "info"
 #  format: "plain"
+#  max_size:
+#    enabled: False
+#    size: "1M"
 
-# Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
+# Cross-origin resource sharing: https://www.starlette.io/middleware/#corsmiddleware
 # cors:
 #  enabled: no
 #  source_route: "*"
 #  expose_headers: "*"
 #  allow_headers: "*"
 #  allow_credentials: no
-
-# Cache (time in seconds)
-# cache:
-#  enabled: yes
-#  time: 0.750
 
 # Access parameters
 # access:
@@ -52,12 +52,20 @@
 # Maximum body size that the API can accept, in bytes (0 -> limitless)
 # max_upload_size: 10485760
 
-# Enable remote commands
-# remote_commands:
-#   localfile:
-#     enabled: yes
-#     exceptions: []
-#
-#   wodle_command:
-#     enabled: yes
-#     exceptions: []
+# Uploadable Wazuh configuration sections
+# upload_configuration:
+#   remote_commands:
+#     localfile:
+#       allow: yes
+#       exceptions: []
+#     wodle_command:
+#       allow: yes
+#       exceptions: []
+#   limits:
+#     eps:
+#       allow: yes
+#   agents:
+#     allow_higher_versions:
+#       allow: yes
+#   indexer:
+#     allow: yes

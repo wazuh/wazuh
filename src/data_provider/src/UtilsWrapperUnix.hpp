@@ -1,6 +1,6 @@
 /*
  * Wazuh SYSINFO
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * December 17, 2021.
  *
  * This program is free software; you can redistribute it
@@ -23,7 +23,7 @@ class UtilsWrapperUnix
 {
     public:
         static int createSocket(int domain, int type, int protocol);
-        static int ioctl(int fd, unsigned long request, char *argp);
+        static int ioctl(int fd, unsigned long request, char* argp);
 };
 
 #endif // _UTILS_WRAPPER_UNIX_H

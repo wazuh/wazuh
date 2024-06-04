@@ -11,7 +11,7 @@
 #ifndef WDB_WRAPPERS_H
 #define WDB_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 wdb_t* __wrap_wdb_open_global();
 
@@ -27,7 +27,7 @@ int __wrap_wdb_fim_update_date_entry(wdb_t* socket, const char *path);
 
 int __wrap_wdb_finalize();
 
-int  __wrap_wdb_step(sqlite3_stmt *stmt);
+int __wrap_wdb_step(sqlite3_stmt *stmt);
 
 int __wrap_wdb_scan_info_fim_checks_control(wdb_t* socket, const char *last_check);
 
@@ -90,5 +90,17 @@ int __wrap_wdb_get_global_group_hash(wdb_t * wdb, os_sha1 hexdigest);
 int __wrap_wdb_commit2(wdb_t * wdb);
 
 void __wrap_wdb_finalize_all_statements(__attribute__((unused))wdb_t * wdb);
+
+int __wrap_wdb_vacuum(__attribute__((unused))sqlite3 * db);
+
+int __wrap_wdb_get_db_state(__attribute__((unused))wdb_t * wdb);
+
+int __wrap_wdb_update_last_vacuum_data(__attribute__((unused))wdb_t* wdb, __attribute__((unused))const char *last_vacuum_time, const char *last_vacuum_value);
+
+int __wrap_wdb_get_db_free_pages_percentage(__attribute__((unused))wdb_t * wdb);
+
+int __wrap_wdb_exec_stmt_send(__attribute__((unused)) sqlite3_stmt* stmt, int peer);
+
+int __wrap_wdb_sca_find(wdb_t *socket, int pm_id, char *result_found);
 
 #endif

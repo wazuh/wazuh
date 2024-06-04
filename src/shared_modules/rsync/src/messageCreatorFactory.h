@@ -12,6 +12,7 @@
 #ifndef _MESSAGE_CREATOR_FACTORY_H
 #define _MESSAGE_CREATOR_FACTORY_H
 
+#include <memory>
 #include "messageChecksum.h"
 #include "messageRowData.h"
 #include "rsync_exception.h"

@@ -131,7 +131,7 @@ int DecodeWinevt(Eventinfo *lf){
         goto cleanup;
     }
 
-    event = cJSON_PrintUnformatted(json_received_event);
+    w_strdup(json_received_event->valuestring, event);
 
     if(event){
         if (OS_ReadXMLString(event, &xml) < 0){
@@ -143,22 +143,19 @@ int DecodeWinevt(Eventinfo *lf){
             }
         } else {
             node = OS_GetElementsbyNode(&xml, NULL);
-            int i = 0, l = 0;
-            if (node && node[i] && (child = OS_GetElementsbyNode(&xml, node[i]))) {
-                int j = 0;
 
-                while (child && child[j]){
+            if (node && node[0] && (child = OS_GetElementsbyNode(&xml, node[0]))) {
+                for (int j = 0; child && child[j]; j++){
 
                     XML_NODE child_attr = NULL;
                     child_attr = OS_GetElementsbyNode(&xml, child[j]);
-                    int p = 0;
 
-                    while (child_attr && child_attr[p]){
+                    for (int p = 0; child_attr && child_attr[p]; p++) {
 
                         if(child[j]->element && !strcmp(child[j]->element, "System") && child_attr[p]->element){
 
-                            if (!strcmp(child_attr[p]->element, "Provider")) {
-                                while(child_attr[p]->attributes[l]){
+                            if (!strcmp(child_attr[p]->element, "Provider") && child_attr[p]->attributes != NULL) {
+                                for (int l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name")){
                                         cJSON_AddStringToObject(json_system_in, "providerName", child_attr[p]->values[l]);
                                     } else if (!strcmp(child_attr[p]->attributes[l], "Guid")){
@@ -166,18 +163,19 @@ int DecodeWinevt(Eventinfo *lf){
                                     } else if (!strcmp(child_attr[p]->attributes[l], "EventSourceName")){
                                         cJSON_AddStringToObject(json_system_in, "eventSourceName", child_attr[p]->values[l]);
                                     }
-                                    l++;
                                 }
-                            } else if (!strcmp(child_attr[p]->element, "TimeCreated")) {
+                            } else if (!strcmp(child_attr[p]->element, "TimeCreated") && child_attr[p]->attributes != NULL) {
                                 if(!strcmp(child_attr[p]->attributes[0], "SystemTime")){
                                     cJSON_AddStringToObject(json_system_in, "systemTime", child_attr[p]->values[0]);
                                 }
-                            } else if (!strcmp(child_attr[p]->element, "Execution")) {
-                                if(!strcmp(child_attr[p]->attributes[0], "ProcessID")){
-                                    cJSON_AddStringToObject(json_system_in, "processID", child_attr[p]->values[0]);
-                                }
-                                if(!strcmp(child_attr[p]->attributes[1], "ThreadID")){
-                                    cJSON_AddStringToObject(json_system_in, "threadID", child_attr[p]->values[1]);
+                            } else if (!strcmp(child_attr[p]->element, "Execution") && child_attr[p]->attributes != NULL) {
+                                for (int l = 0; child_attr[p]->attributes[l]; l++) {
+                                    if (!strcmp(child_attr[p]->attributes[l], "ProcessID")){
+                                        cJSON_AddStringToObject(json_system_in, "processID", child_attr[p]->values[l]);
+                                    }
+                                    else if (!strcmp(child_attr[p]->attributes[l], "ThreadID")){
+                                        cJSON_AddStringToObject(json_system_in, "threadID", child_attr[p]->values[l]);
+                                    }
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Channel")) {
                                 cJSON_AddStringToObject(json_system_in, "channel", child_attr[p]->content);
@@ -190,14 +188,14 @@ int DecodeWinevt(Eventinfo *lf){
                                 }
                             } else if (!strcmp(child_attr[p]->element, "Level")) {
                                 if (level){
-                                    os_free(level);
+                                    free(level);
                                 }
                                 os_strdup(child_attr[p]->content, level);
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
                                 cJSON_AddStringToObject(json_system_in, child_attr[p]->element, child_attr[p]->content);
                             } else if (!strcmp(child_attr[p]->element, "Keywords")) {
                                 if (keywords){
-                                    os_free(keywords);
+                                    free(keywords);
                                 }
                                 os_strdup(child_attr[p]->content, keywords);
                                 *child_attr[p]->element = tolower(*child_attr[p]->element);
@@ -209,7 +207,7 @@ int DecodeWinevt(Eventinfo *lf){
                             }
                         } else if (child[j]->element && !strcmp(child[j]->element, "EventData") && child_attr[p]->element){
                             if (!strcmp(child_attr[p]->element, "Data") && child_attr[p]->values && strlen(child_attr[p]->content) > 0){
-                                for (l = 0; child_attr[p]->attributes[l]; l++) {
+                                for (int l = 0; child_attr[p]->attributes[l]; l++) {
                                     if (!strcmp(child_attr[p]->attributes[l], "Name") && strcmp(child_attr[p]->content, "(NULL)") != 0
                                             && strcmp(child_attr[p]->content, "-") != 0) {
                                         filtered_string = replace_win_format(child_attr[p]->content, 0);
@@ -218,14 +216,14 @@ int DecodeWinevt(Eventinfo *lf){
                                         // Save category ID
                                         if (!strcmp(child_attr[p]->values[l], "categoryId")){
                                             if (categoryId){
-                                                os_free(categoryId);
+                                                free(categoryId);
                                             }
                                             os_strdup(filtered_string, categoryId);
 
                                         // Save subcategory ID
                                         } else if (!strcmp(child_attr[p]->values[l], "subcategoryId")){
                                             if (subcategoryId){
-                                                os_free(subcategoryId);
+                                                free(subcategoryId);
                                             }
                                             os_strdup(filtered_string, subcategoryId);
                                         }
@@ -233,7 +231,7 @@ int DecodeWinevt(Eventinfo *lf){
                                         // Save Audit Policy Changes
                                         if (!strcmp(child_attr[p]->values[l], "auditPolicyChanges")){
                                             if (auditPolicyChangesId){
-                                                os_free(auditPolicyChangesId);
+                                                free(auditPolicyChangesId);
                                             }
                                             os_strdup(filtered_string, auditPolicyChangesId);
                                             cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChangesId", filtered_string);
@@ -264,7 +262,7 @@ int DecodeWinevt(Eventinfo *lf){
                                         snprintf(join_data, strlen(filtered_string) + 1, "%s", filtered_string);
                                     }
                                     if (join_data2){
-                                        os_free(join_data2);
+                                        free(join_data2);
                                     }
                                     os_strdup(join_data,join_data2);
                                 } else if (strcmp(child_attr[p]->element, "Data")){
@@ -302,12 +300,9 @@ int DecodeWinevt(Eventinfo *lf){
                             }
                             OS_ClearNode(extra_data_child);
                         }
-                        p++;
                     }
 
                     OS_ClearNode(child_attr);
-
-                    j++;
                 }
 
                 OS_ClearNode(child);
@@ -628,14 +623,13 @@ int DecodeWinevt(Eventinfo *lf){
                 char **audit_split;
                 char *audit_pol_changes = NULL;
                 char *audit_final_field = NULL;
-                int i = 0;
 
                 char * filtered_changes = wstr_replace(auditPolicyChangesId, "%%", "");
                 os_free(auditPolicyChangesId);
 
                 audit_split = OS_StrBreak(',', filtered_changes, 4);
 
-                while (audit_split[i]) {
+                for (int i = 0; audit_split[i]; i++) {
                     audit_split_n = strtol(audit_split[i], NULL, 10);
 
                     switch (audit_split_n) {
@@ -654,8 +648,6 @@ int DecodeWinevt(Eventinfo *lf){
                         default:
                             break;
                     }
-
-                    i++;
                 }
                 audit_final_field = wstr_replace(audit_pol_changes, ",", ", ");
                 cJSON_AddStringToObject(json_eventdata_in, "auditPolicyChanges", audit_final_field);
@@ -713,11 +705,11 @@ int DecodeWinevt(Eventinfo *lf){
 
     returned_event = cJSON_PrintUnformatted(final_event);
 
-    if (returned_event){
-        lf->full_log[strlen(returned_event)] = '\0';
-        memcpy(lf->full_log, returned_event, strlen(returned_event));
+    if (returned_event) {
+        free(lf->full_log);
+        lf->full_log = returned_event;
     } else {
-        lf->full_log = NULL;
+        lf->full_log[0] = '\0';
     }
 
     lf->log = lf->full_log;
@@ -734,7 +726,6 @@ cleanup:
     os_free(filtered_string);
     os_free(keywords);
     os_free(msg_from_prov);
-    os_free(returned_event);
     os_free(categoryId);
     os_free(subcategoryId);
     os_free(auditPolicyChangesId);

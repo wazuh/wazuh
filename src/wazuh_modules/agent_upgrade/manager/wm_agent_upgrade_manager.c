@@ -48,7 +48,8 @@ const char* upgrade_error_codes[] = {
     [WM_UPGRADE_SEND_SHA1_ERROR] = "Send verify sha1 error",
     [WM_UPGRADE_SEND_UPGRADE_ERROR] = "Send upgrade command error",
     [WM_UPGRADE_UPGRADE_ERROR] = "Upgrade procedure exited with error code",
-    [WM_UPGRADE_UNKNOWN_ERROR] "Upgrade procedure could not start"
+    [WM_UPGRADE_UPGRADE_ERROR_MISSING_PACKAGE] = "Upgrade procedure exited with error code, missing dependency in agent",
+    [WM_UPGRADE_UNKNOWN_ERROR] = "Upgrade procedure could not start"
 };
 
 /**

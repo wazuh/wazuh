@@ -1,0 +1,87 @@
+name: "Compile and test"
+description: "Executes a compilation and test (optional) routine based on a path. It also validates the right execution with ASAN or Valgrind"
+
+inputs:
+  path:
+    required: true
+    description: "Path to compile and test"
+    default: src/
+  asan:
+    required: false
+    description: "Enable address sanitizer"
+    default: "false"
+  test:
+    required: false
+    description: "Run tests"
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+      # Dependencies for testing:
+      # - valgrind
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: valgrind
+          version: 1.0
+
+      # Dependencies for coverage:
+      # - lcov
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: lcov
+          version: 1.0
+
+      - name: Compile
+        run: |
+          SRC_FOLDER=$(pwd)/src
+
+          VERSION=$(cat src/VERSION)
+          echo $VERSION
+          REVISION=$(cat src/REVISION)
+          echo $REVISION
+
+          cd ${{ inputs.path }}
+          mkdir -p build && cd build
+
+          if [[ ${{ inputs.test }} == "false" ]]; then
+            echo "Compiling without tests"
+            cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
+          else
+            if [[ "${{ inputs.asan }}" != "false" ]]; then
+              # Compile for ASAN
+              echo "Compiling for ASAN"
+              export COMPILATION_FLAGS="-g -fsanitize=address -fsanitize=undefined -fsanitize=leak"
+            else
+              # Compile for valgrind and coverage
+              echo "Compiling for valgrind and coverage"
+              export COMPILATION_FLAGS="-fprofile-arcs -ftest-coverage -lgcov --coverage"
+            fi
+            # Read version and revision file.
+            cmake -DSRC_FOLDER=${SRC_FOLDER} -DCMAKE_CXX_FLAGS="$COMPILATION_FLAGS" -DUNIT_TEST=ON -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
+          fi
+
+        shell: bash
+
+      - name: Test
+        run: |
+
+          if [[ ${{ inputs.test }} == "false" ]]; then
+            echo "Skipping tests"
+          else
+            cd ${{ inputs.path }}/build
+
+            if [[ "${{ inputs.asan }}" != "false" ]]; then
+              # Run for ASAN
+              echo "Running tests for ASAN"
+              ctest --output-on-failure
+            else
+              # Run for valgrind and coverage
+              echo "Running tests for valgrind and coverage"
+              valgrind ctest --output-on-failure
+            fi
+          fi
+
+        shell: bash

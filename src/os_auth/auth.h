@@ -30,15 +30,15 @@
 #define ARGV0 "wazuh-authd"
 #endif
 
-#include "addagent/manage_agents.h"
-#include "os_net/os_net.h"
-#include "config/authd-config.h"
+#include "../addagent/manage_agents.h"
+#include "../os_net/os_net.h"
+#include "../config/authd-config.h"
 #include <pthread.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
-#include "os_crypto/md5/md5_op.h"
-#include "os_crypto/sha1/sha1_op.h"
+#include "../os_crypto/md5/md5_op.h"
+#include "../os_crypto/sha1/sha1_op.h"
 
 extern BIO *bio_err;
 #define KEYFILE  "etc/sslmanager.key"
@@ -191,6 +191,14 @@ cJSON* local_add(const char *id,
                         const char *key,
                         const char *key_hash,
                         authd_force_options_t *force_options);
+
+/**
+ * @brief Returns a MD5 hash of some random data collected from different sources.
+ *        The result must be freed by the caller.
+ *
+ * @return const char* The resulting hash or NULL on error.
+ */
+char *w_generate_random_pass();
 
 extern char shost[512];
 extern keystore keys;

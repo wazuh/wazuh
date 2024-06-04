@@ -5,26 +5,42 @@
 import datetime
 import logging
 
-from aiohttp import web
+from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.manager as manager
 import wazuh.stats as stats
-from api.encoder import dumps, prettify
+from api.constants import INSTALLATION_UID_KEY, UPDATE_INFORMATION_KEY
+from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date
+from api.util import (
+    deprecate_endpoint, deserialize_date, only_master_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
+)
+from api.validator import check_component_configuration_pair
+from api.signals import cti_context
 from wazuh.core import common
+from wazuh.core import configuration
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.manager import query_update_check_service
 from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_status(request, pretty=False, wait_for_complete=False):
+async def get_status(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get manager's or local_node's Wazuh daemons status
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -34,18 +50,27 @@ async def get_status(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_info(request, pretty=False, wait_for_complete=False):
+async def get_info(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get manager's or local_node's basic information
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -55,21 +80,22 @@ async def get_info(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_configuration(request, pretty=False, wait_for_complete=False, section=None, field=None,
-                            raw: bool = False):
+async def get_configuration(pretty: bool = False, wait_for_complete: bool = False, section: str = None,
+                            field: str = None, raw: bool = False,
+                            distinct: bool = False) -> ConnexionResponse:
     """Get manager's or local_node's configuration (ossec.conf)
 
     Parameters
     ----------
     pretty : bool, optional
-        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
+        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `False`
     wait_for_complete : bool, optional
         Disable response timeout or not. Default `False`
     section : str
@@ -77,19 +103,22 @@ async def get_configuration(request, pretty=False, wait_for_complete=False, sect
     field : str
         Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
     raw : bool, optional
-        Whether to return the file content in raw or JSON format. Default `True`
+        Whether to return the file content in raw or JSON format. Default `False`
+    distinct : bool
+        Look for distinct values.
 
     Returns
     -------
-    web.json_response or ConnexionResponse
-        Depending on the `raw` parameter, it will return an object or other:
+    ConnexionResponse
+        Depending on the `raw` parameter, it will return a ConnexionResponse object:
             raw=True            -> ConnexionResponse (application/xml)
-            raw=False (default) -> web.json_response (application/json)
-        If any exception was raised, it will return a web.json_response with details.
+            raw=False (default) -> ConnexionResponse (application/json)
+        If any exception was raised, it will return a ConnexionResponse with details.
     """
     f_kwargs = {'section': section,
                 'field': field,
-                'raw': raw}
+                'raw': raw,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=manager.read_ossec_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -97,25 +126,63 @@ async def get_configuration(request, pretty=False, wait_for_complete=False, sect
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
     if isinstance(data, AffectedItemsWazuhResult):
-        response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+        response = json_response(data, pretty=pretty)
     else:
-        response = ConnexionResponse(body=data["message"], mimetype='application/xml', content_type='application/xml')
+        response = ConnexionResponse(body=data["message"],
+                                     content_type=XML_CONTENT_TYPE)
     return response
 
 
-async def get_stats(request, pretty=False, wait_for_complete=False, date=None):
+async def get_daemon_stats(pretty: bool = False, wait_for_complete: bool = False, daemons_list: list = None):
+    """Get Wazuh statistical information from the specified manager's daemons.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    daemons_list : list
+        List of the daemons to get statistical information from.
+    """
+    daemons_list = daemons_list or []
+    f_kwargs = {'daemons_list': daemons_list}
+
+    dapi = DistributedAPI(f=stats.get_daemons_stats,
+                          f_kwargs=remove_nones_to_dict(f_kwargs),
+                          request_type='local_any',
+                          is_async=True,
+                          wait_for_complete=wait_for_complete,
+                          logger=logger,
+                          rbac_permissions=request.context['token_info']['rbac_policies'])
+    data = raise_if_exc(await dapi.distribute_function())
+
+    return json_response(data, pretty=pretty)
+
+
+async def get_stats(pretty: bool = False, wait_for_complete: bool = False, date: str = None) -> ConnexionResponse:
     """Get manager's or local_node's stats.
 
     Returns Wazuh statistical information for the current or specified date.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param date: Selects the date for getting the statistical information. Format ISO 8601.
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Disable response timeout or not.
+    date : str
+        Selects the date for getting the statistical information. Format ISO 8601.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     if not date:
         date = datetime.datetime.today()
@@ -130,21 +197,30 @@ async def get_stats(request, pretty=False, wait_for_complete=False, date=None):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_stats_hourly(request, pretty=False, wait_for_complete=False):
+async def get_stats_hourly(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get manager's or local_node's stats by hour.
 
     Returns Wazuh statistical information per hour. Each number in the averages field represents the average of alerts
     per hour.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Disable response timeout or not.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -154,21 +230,30 @@ async def get_stats_hourly(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
+async def get_stats_weekly(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get manager's or local_node's stats by week.
 
     Returns Wazuh statistical information per week. Each number in the averages field represents the average of alerts
     per hour for that specific day.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Disable response timeout or not.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -178,69 +263,116 @@ async def get_stats_weekly(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_stats_analysisd(request, pretty=False, wait_for_complete=False):
-    """Get manager's or local_node's analysisd stats.
+@deprecate_endpoint()
+async def get_stats_analysisd(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Get manager's or local_node's analysisd statistics.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
+
+    Returns
+    -------
+    ConnexionResponse
     """
     f_kwargs = {'filename': common.ANALYSISD_STATS}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_stats_remoted(request, pretty=False, wait_for_complete=False):
-    """Get manager's or local_node's remoted stats.
+@deprecate_endpoint()
+async def get_stats_remoted(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Get manager's or local_node's remoted statistics.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Notes
+    -----
+    To be deprecated in v5.0.
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool, optional
+        Whether to disable response timeout or not. Default `False`
+
+    Returns
+    -------
+    ConnexionResponse
     """
     f_kwargs = {'filename': common.REMOTED_STATS}
 
-    dapi = DistributedAPI(f=stats.get_daemons_stats,
+    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_any',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                  search=None, tag=None, level=None, q=None):
+async def get_log(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0, limit: int = None,
+                  sort: str = None, search: str = None, tag: str = None, level: str = None,
+                  q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get manager's or local_node's last 2000 wazuh log entries.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param tag: Filter by category/tag of log.
-    :param level: Filters by log level.
-    :param q: Query to filter results by.
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    offset : int
+        First element to return in the collection.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
+        ascending or descending order.
+    search : str
+        Look for elements with the specified string.
+    tag : bool
+        Filters by category/tag of log.
+    level : str
+        Filters by log level.
+    q : str
+        Query to filter agents by.
+    select : str
+        Select which fields to return (separated by comma).
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {'offset': offset,
                 'limit': limit,
@@ -250,7 +382,9 @@ async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limi
                 'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
                 'tag': tag,
                 'level': level,
-                'q': q}
+                'q': q,
+                'select': select,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=manager.ossec_log,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -258,18 +392,27 @@ async def get_log(request, pretty=False, wait_for_complete=False, offset=0, limi
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_log_summary(request, pretty=False, wait_for_complete=False):
+async def get_log_summary(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get manager's or local_node's summary of the last 2000 wazuh log entries.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -279,18 +422,27 @@ async def get_log_summary(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_api_config(request, pretty=False, wait_for_complete=False):
+async def get_api_config(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get active API configuration in manager or local_node.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -300,18 +452,27 @@ async def get_api_config(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def put_restart(request, pretty=False, wait_for_complete=False):
+async def put_restart(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart manager or local_node.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -321,18 +482,27 @@ async def put_restart(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_conf_validation(request, pretty=False, wait_for_complete=False):
+async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Check if Wazuh configuration is correct in manager or local_node.
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {}
 
@@ -342,23 +512,36 @@ async def get_conf_validation(request, pretty=False, wait_for_complete=False):
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_manager_config_ondemand(request, component, pretty=False, wait_for_complete=False, **kwargs):
-    """Get active configuration in manager or local_node for one component [on demand]
+async def get_manager_config_ondemand(component: str, pretty: bool = False, wait_for_complete: bool = False,
+                                      **kwargs: dict) -> ConnexionResponse:
+    """Get active configuration in manager or local_node for one component [on demand].
 
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param component: Specified component.
+    Parameters
+    ----------
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    component : str
+        Specified component.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {'component': component,
                 'config': kwargs.get('configuration', None)
                 }
+
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
 
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -366,22 +549,30 @@ async def get_manager_config_ondemand(request, component, pretty=False, wait_for
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def update_configuration(request, body, pretty=False, wait_for_complete=False):
+async def update_configuration(body: bytes, pretty: bool = False,
+                               wait_for_complete: bool = False) -> ConnexionResponse:
     """Update manager's or local_node's configuration (ossec.conf).
 
     Parameters
     ----------
-    pretty : bool, optional
-        Show results in human-readable format. It only works when `raw` is False (JSON format). Default `True`
-    wait_for_complete : bool, optional
-        Disable response timeout or not. Default `False`
+    pretty: bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    body : bytes
+        New ossec.conf configuration.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     # Parse body to utf-8
     Body.validate_content_type(request, expected_content_type='application/octet-stream')
@@ -395,8 +586,48 @@ async def update_configuration(request, body, pretty=False, wait_for_complete=Fa
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
+    return json_response(data, pretty=pretty)
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+
+@only_master_endpoint
+async def check_available_version(pretty: bool = False, force_query: bool = False) -> ConnexionResponse:
+    """Get available update information.
+
+    Parameters
+    ----------
+    pretty : bool, optional
+        Show results in human-readable format, by default False.
+    force_query : bool, optional
+        Make the query to the CTI service on demand, by default False.
+
+    Returns
+    -------
+    web.Response
+        API response.
+    """
+    if force_query and configuration.update_check_is_enabled():
+        logger.debug('Forcing query to the update check service...')
+        dapi = DistributedAPI(f=query_update_check_service,
+                              f_kwargs={
+                                  INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY]
+                              },
+                              request_type='local_master',
+                              is_async=True,
+                              logger=logger
+                              )
+        update_information = raise_if_exc(await dapi.distribute_function())
+        cti_context[UPDATE_INFORMATION_KEY] = update_information.dikt
+
+    dapi = DistributedAPI(f=manager.get_update_information,
+                          f_kwargs={
+                              UPDATE_INFORMATION_KEY: cti_context.get(UPDATE_INFORMATION_KEY, {})
+                          },
+                          request_type='local_master',
+                          is_async=False,
+                          logger=logger
+                          )
+    data = raise_if_exc(await dapi.distribute_function())
+    return json_response(data, pretty=pretty)

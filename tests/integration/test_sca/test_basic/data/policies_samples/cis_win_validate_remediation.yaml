@@ -1,0 +1,40 @@
+policy:
+  id: cis_win_validate_remediation
+  file: cis_win_validate_remediation.yaml
+  name: CIS Benchmark for Windows
+  description: This is mock file for checking CIS SCA compliance on Windows systems
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
+
+requirements:
+  title: Check Windows family platform
+  description: Requirements for running the policy against Windows family.
+  condition: any
+  rules:
+    - 'r:HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion -> ProductName -> r:^Windows'
+
+checks:
+
+  # Check that user lockout duration is >= 50
+  - id: 1
+    title: Test_1
+    description: Test sca rules
+    rationale: Test_1
+    remediation: The user lockout duration should be >= 50. Use net accounts /lockoutduration:100 command to fix duration
+    compliance:
+      - cis: [1.8.1.5]
+    condition: all
+    rules:
+      - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare >= 50'
+
+  # Check that user lockout duration is < 50
+  - id: 2
+    title: Test_2
+    description: Test sca rules
+    rationale: Test_2
+    remediation: The testfile permissions should be '644'. Use net accounts /lockoutduration:30 command to fix duration
+    compliance:
+      - cis: [1.8.1.5]
+    condition: all
+    rules:
+      - 'c:net.exe accounts -> n:Lockout duration \(minutes\):\s+(\d+) compare < 50'

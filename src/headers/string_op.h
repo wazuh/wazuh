@@ -11,7 +11,7 @@
 #ifndef H_STRINGOP_OS
 #define H_STRINGOP_OS
 
-#include <external/cJSON/cJSON.h>
+#include <cJSON.h>
 #include <stdbool.h>
 
 #ifdef WIN32
@@ -100,7 +100,40 @@ char* filter_special_chars(const char *string);
 char * wstr_replace(const char * string, const char * search, const char * replace);
 
 // Locate first occurrence of non escaped character in string
-char * wstr_chr(char * str, int character);
+char * wstr_chr(const char * str, char character);
+
+/**
+ * @brief Locate first occurrence of non escaped character in string.
+ *
+ * @param str A valid pointer to a string where look for a non escaped character.
+ * @param character The non escaped character.
+ * @param escape The character used to escape.
+ * @return The position of the non escaped character, or NULL if fail.
+ */
+char * wstr_chr_escape(const char * str, char character, char escape);
+
+/**
+ * @brief Escape a specific character from a character string.
+ *
+ * @param dststr A valid pointer to a char buffer where escaped string will be stored.
+ * @param dst_size The dststr size to control buffer overflow.
+ * @param str A valid pointer to a string to escape.
+ * @param escape The character used to escape.
+ * @param match The value to escape.
+ * @return The size of the dststr if success, or OS_INVALID if fail.
+ */
+ssize_t wstr_escape(char *dststr, size_t dst_size, const char *str, char escape, char match);
+
+/**
+ * @brief Unescape a specific character from a character string.
+ *
+ * @param dststr A valid pointer to a char buffer where unescaped string will be stored.
+ * @param dst_size The dststr size to control buffer overflow.
+ * @param str A valid pointer to a string to unescape.
+ * @param escape The character used to unescape.
+ * @return The size of the dststr if success, or OS_INVALID if fail.
+ */
+ssize_t wstr_unescape(char *dststr, size_t dst_size, const char *str, char escape);
 
 // Free string array
 void free_strarray(char ** array);
@@ -359,5 +392,15 @@ char** w_strtok(const char *string);
  * @return Allocated string with list concatenation.
  */
 char* w_strcat_list(char ** list, char sep);
+
+/**
+ * @brief Convert a given string to hexadecimal and store it in a buffer
+ * @param src_buf Input buffer containing the string to be converted
+ * @param src_size Input buffer size
+ * @param dst_buf Output buffer where to store the converted string
+ * @param dst_size Output buffer size
+ * @return OS_SUCCESS on success, OS_INVALID on failure
+ */
+int print_hex_string(const char *src_buf, unsigned int src_size, char *dst_buf, unsigned int dst_size);
 
 #endif

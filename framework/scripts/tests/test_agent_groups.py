@@ -27,19 +27,17 @@ def test_signal_handler(mock_exit):
 
 @pytest.mark.asyncio
 @patch('builtins.print')
-async def test_show_groups(print_mock):
+async def test_show_groups(print_mock: MagicMock):
     """Check that the show_groups function displays the groups properly."""
     class AffectedItems:
         def __init__(self, affected_items):
             self.affected_items = affected_items
             self.total_affected_items = len(affected_items)
 
-    def forward_function(func, f_kwargs):
-        return AffectedItems([{'name': 'a', 'count': 1}, {'name': 'b', 'count': 2}])
-
-    with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
+    with patch('scripts.agent_groups.cluster_utils.forward_function', 
+               return_value=AffectedItems([{'name': 'a', 'count': 1}, {'name': 'b', 'count': 2}])) as forward_mock:
         await agent_groups.show_groups()
-        forward_mock.has_calls([call(func=agent.get_agent_groups, kwargs={}),
+        forward_mock.assert_has_calls([call(func=agent.get_agent_groups, f_kwargs={}),
                                 call(func=agent.get_agents, f_kwargs={'q': 'id!=000;group=null'})])
         print_mock.assert_has_calls([call('Groups (2):'), call('  a (1)'),
                                      call('  b (2)'), call('Unassigned agents: 2.')])
@@ -47,7 +45,7 @@ async def test_show_groups(print_mock):
 
 @pytest.mark.asyncio
 @patch('builtins.print')
-async def test_show_group(print_mock):
+async def test_show_group(print_mock: MagicMock):
     """Check that the show_group function shows the groups to which an agent belongs."""
     class AffectedItems:
         called = False
@@ -59,14 +57,14 @@ async def test_show_group(print_mock):
             self.total_failed_items = len(failed_items)
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'id': 1, 'name': 'a', 'count': 1}, {'id': 2, 'name': 'b', 'count': 2}],
                              failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         agent_id = '1'
         await agent_groups.show_group(agent_id)
-        forward_mock.has_calls(call(func=agent.get_agents, f_kwargs={'agent_list': agent_id}))
+        forward_mock.assert_called_once_with(func=agent.get_agents, f_kwargs={'agent_list': [agent_id]})
         print_mock.assert_has_calls([call("The agent 'a' with ID '1' belongs to groups: Null.")])
         print_mock.reset_mock()
 
@@ -87,7 +85,7 @@ async def test_show_synced_agent(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'id': 1, 'name': 'a', 'synced': True},
                                              {'id': 2, 'name': 'b', 'synced': False}],
                              failed_items={'a': 'b'})
@@ -95,7 +93,7 @@ async def test_show_synced_agent(print_mock):
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         agent_id = 0
         await agent_groups.show_synced_agent(agent_id)
-        forward_mock.has_calls(call(func=agent.get_agents_sync_group, f_kwargs={'agent_list': [agent_id]}))
+        forward_mock.assert_called_once_with(func=agent.get_agents_sync_group, f_kwargs={'agent_list': [agent_id]})
         print_mock.assert_has_calls([call("Agent '0' is synchronized. ")])
         print_mock.reset_mock()
         await agent_groups.show_synced_agent(0)
@@ -115,14 +113,16 @@ async def test_show_agents_with_group(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'name': 'a', 'id': 1, 'synced': True},
                                              {'id': 2, 'name': 'b', 'synced': False}],
                              failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         await agent_groups.show_agents_with_group(group_id='testing')
-        forward_mock.has_calls(call(func=agent.get_agents_in_group, f_kwargs={'group_list': 'testing'}))
+        forward_mock.assert_called_once_with(func=agent.get_agents_in_group, 
+                                             f_kwargs={'group_list': ['testing'], 'select': ['name'],
+                                                            'limit': None})
         print_mock.assert_has_calls([call("2 agent(s) in group 'testing':"),
                                      call('  ID: 1  Name: a.'), call('  ID: 2  Name: b.')])
         print_mock.reset_mock()
@@ -143,13 +143,13 @@ async def test_show_group_files(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'filename': 'a', 'hash': 'aa'}, {'filename': 'b', 'hash': 'bb'}],
                              failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         await agent_groups.show_group_files(group_id='testing')
-        forward_mock.has_calls(call(func=agent.get_group_files, f_kwargs={'group_list': 'testing'}))
+        forward_mock.assert_called_once_with(func=agent.get_group_files, f_kwargs={'group_list': ['testing']})
         print_mock.assert_has_calls([call("2 files for 'testing' group:"), call('  a  [aa]'), call('  b  [bb]')])
         print_mock.reset_mock()
         await agent_groups.show_group_files(group_id='testing')
@@ -169,7 +169,7 @@ async def test_unset_group(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'filename': 'a', 'hash': 'aa'}, {'filename': 'b', 'hash': 'bb'}],
                              failed_items={'a': 'b'})
 
@@ -178,8 +178,8 @@ async def test_unset_group(print_mock):
             agent_id = '99'
             group_id = 'testing'
             await agent_groups.unset_group(agent_id=agent_id, group_id=group_id)
-            forward_mock.has_calls(call(func=agent.remove_agent_from_groups,
-                                        f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]}))
+            forward_mock.assert_called_once_with(func=agent.remove_agent_from_groups,
+                                        f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]})
             get_stdin_mock.assert_has_calls([call("Do you want to delete the group 'testing' of agent '99'? [y/N]: ")])
             print_mock.assert_has_calls([call("Agent '99' removed from testing.")])
             print_mock.reset_mock()
@@ -208,15 +208,15 @@ async def test_remove_group(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'testing': ['a', 'b']}], failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
             await agent_groups.remove_group(group_id='testing')
-            forward_mock.has_calls(call(func=agent.delete_groups, f_kwargs={'group_list': ['testing']}))
+            forward_mock.assert_called_once_with(func=agent.delete_groups, f_kwargs={'group_list': ['testing']})
             get_stdin_mock.assert_has_calls([call("Do you want to remove the 'testing' group? [y/N]: ")])
-            print_mock.assert_has_calls([call('Group testing removed.\nAffected agents: a, b.')])
+            print_mock.assert_has_calls([call('Group testing removed.')])
             print_mock.reset_mock()
             get_stdin_mock.reset_mock()
 
@@ -243,14 +243,14 @@ async def test_set_group(print_mock):
             self.total_affected_items = 0 if AffectedItems.called else len(affected_items)
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'testing': ['agent0', 'agent1']}], failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
             await agent_groups.set_group(agent_id=1, group_id='testing')
-            forward_mock.has_calls(call(func=agent.assign_agents_to_group,
-                                   f_kwargs={'group_list': ['testing'], 'agent_list': [1], 'replace': False}))
+            forward_mock.assert_called_once_with(func=agent.assign_agents_to_group,
+                                   f_kwargs={'group_list': ['testing'], 'agent_list': ['001'], 'replace': False})
             get_stdin_mock.assert_has_calls(
                 [call("Do you want to add the group 'testing' to the agent '001'? [y/N]: ")])
             print_mock.assert_has_calls([call("Group 'testing' added to agent '001'.")])
@@ -281,14 +281,14 @@ async def test_create_group(print_mock):
             self.dikt = {'message': 'dikt_testing'}
             AffectedItems.called = True
 
-    def forward_function(func, f_kwargs):
+    async def forward_function(func, f_kwargs):
         return AffectedItems(affected_items=[{'testing': ['agent0', 'agent1']}], failed_items={'a': 'b'})
 
     with patch('scripts.agent_groups.cluster_utils.forward_function', side_effect=forward_function) as forward_mock:
         with patch('scripts.agent_groups.get_stdin', return_value='y') as get_stdin_mock:
             group_id = 'testing'
             await agent_groups.create_group(group_id=group_id)
-            forward_mock.has_calls(call(func=agent.create_group, f_kwargs={'group_id': group_id}))
+            forward_mock.assert_called_once_with(func=agent.create_group, f_kwargs={'group_id': group_id})
             get_stdin_mock.assert_has_calls([call(f"Do you want to create the group '{group_id}'? [y/N]: ")])
             print_mock.assert_has_calls([call('dikt_testing')])
             print_mock.reset_mock()

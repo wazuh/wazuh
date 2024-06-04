@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import json
 
 import six
@@ -8,9 +12,24 @@ from wazuh.core.results import AbstractWazuhResult
 
 
 class WazuhAPIJSONEncoder(JSONEncoder):
+    """"
+    Define the custom Wazuh API JSON encoder class.
+    """
     include_nulls = False
 
-    def default(self, o):
+    def default(self, o: object) -> dict:
+        """Override the default method of the JSONEncoder class.
+
+        Parameters
+        ----------
+        o : object
+            Object to be encoded as JSON.
+
+        Returns
+        -------
+        dict
+            Dictionary representing the object.
+        """
         if isinstance(o, Model):
             result = {}
             for attr, _ in six.iteritems(o.swagger_types):
@@ -26,13 +45,12 @@ class WazuhAPIJSONEncoder(JSONEncoder):
 
 
 def dumps(obj: object) -> str:
-    """
-    Get a JSON encoded str from an object.
+    """Get a JSON encoded str from an object.
 
     Parameters
     ----------
     obj: object
-        Object to be encoded in a JSON string
+        Object to be encoded in a JSON string.
 
     Raises
     ------
@@ -46,13 +64,12 @@ def dumps(obj: object) -> str:
 
 
 def prettify(obj: object) -> str:
-    """
-    Get a prettified JSON encoded str from an object.
+    """Get a prettified JSON encoded str from an object.
 
     Parameters
     ----------
     obj: object
-        Object to be encoded in a JSON string
+        Object to be encoded in a JSON string.
 
     Raises
     ------

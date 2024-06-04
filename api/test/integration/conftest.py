@@ -1,3 +1,9 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+
+import contextlib
 import json
 import os
 import re
@@ -15,11 +21,12 @@ from py.xml import html
 
 current_path = os.path.dirname(os.path.abspath(__file__))
 env_path = os.path.join(current_path, 'env')
+common_file = os.path.join(current_path, 'common.yaml')
 test_logs_path = os.path.join(current_path, '_test_results', 'logs')
 docker_log_path = os.path.join(test_logs_path, 'docker.log')
 results = dict()
 
-with open('common.yaml', 'r') as stream:
+with open(common_file, 'r') as stream:
     common = yaml.safe_load(stream)['variables']
 login_url = f"{common['protocol']}://{common['host']}:{common['port']}/{common['login_endpoint']}"
 basic_auth = f"{common['user']}:{common['pass']}".encode()
@@ -34,7 +41,8 @@ cluster_env_mode = 'cluster'
 
 
 def pytest_addoption(parser):
-    parser.addoption('--nobuild', action='store_false', help='Do not run docker-compose build.')
+    parser.addoption('--nobuild', action='store_false', help='Do not run docker compose build.')
+    parser.addoption('--build-managers-only', action='store_true', help='Build only the managers images.')
 
 
 def pytest_collection_modifyitems(items: list):
@@ -67,14 +75,14 @@ def get_token_login_api():
         raise Exception(f"Error obtaining login token: {response.json()}")
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     """Disable HTTPS verification warnings."""
     urllib3.disable_warnings()
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10,
-                 build: bool = True) -> dict:
+def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
     """Build all Docker environments needed for the current test.
 
     Parameters
@@ -82,75 +90,72 @@ def build_and_up(env_mode: str, interval: int = 10, interval_build_env: int = 10
     env_mode : str
         Indicates the environment to be used in the process.
     interval : int
-        Time interval between every healthcheck.
-    interval_build_env : int
-        Time interval between every docker environment healthcheck.
+        Time interval between every build.
     build : bool
         Flag to indicate if images need to be built.
-
-    Returns
-    -------
-    dict
-        Dict with healthchecks parameters.
     """
-    os.chdir(env_path)
-    values = {
-        'interval': interval,
-        'max_retries': 90,
-        'retries': 0
-    }
-    values_build_env = {
-        'interval': interval_build_env,
-        'max_retries': 3,
-        'retries': 0
-    }
-    # Get current branch
-    current_branch = '/'.join(open('../../../../.git/HEAD', 'r').readline().split('/')[2:])
-    os.makedirs(test_logs_path, exist_ok=True)
-    with open(docker_log_path, mode='w') as f_docker:
-        while values_build_env['retries'] < values_build_env['max_retries']:
-            if build:
-                current_process = subprocess.Popen(
-                    ["docker-compose", "--profile", env_mode,
-                     "build", "--build-arg", f"WAZUH_BRANCH={current_branch}", "--build-arg", f"ENV_MODE={env_mode}"],
-                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
-                current_process.wait()
-            current_process = subprocess.Popen(
-                ["docker-compose", "--profile", env_mode, "up", "-d"], env=dict(os.environ, ENV_MODE=env_mode),
-                stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
-            current_process.wait()
+    # Get current branch or tag
+    with open('../../../.git/HEAD', 'r') as f:
+        ref = f.readline().strip()
 
-            if current_process.returncode == 0:
-                time.sleep(values_build_env['interval'])
+    if ref.startswith("ref:"):
+        current_branch = ref.split("refs/heads/")[1]
+    else:
+        current_branch = ref.split("/")[-1]
+
+    if build:
+        # Ping the current branch tarball used to build the manager image.
+        response = requests.get(f"https://github.com/wazuh/wazuh/tarball/{current_branch}")
+        if response.status_code == 404:
+            pytest.fail("Current branch tarball doesn't exist")
+        elif not response.ok:
+            pytest.fail(f"Couldn't obtain branch tarball: {response.reason}")
+
+    os.chdir(env_path)
+    max_retries = 3
+    retries = 0
+
+    with open(docker_log_path, mode='w') as f_docker:
+        while retries < max_retries:
+            if build:
+                build_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
+                    "build", "--build-arg", f"WAZUH_BRANCH={current_branch}",
+                    "--build-arg", f"ENV_MODE={env_mode}", "--no-cache"],
+                    stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+                build_process.wait()
+            up_process = subprocess.Popen(
+                ["docker", "compose", "--profile", env_mode, "up", "-d"],
+                env=dict(os.environ, ENV_MODE=env_mode),
+                stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
+            up_process.wait()
+
+            if up_process.returncode == 0:
                 break
-            else:
-                time.sleep(values_build_env['interval'])
-                values_build_env['retries'] += 1
+
+            time.sleep(interval)
+            retries += 1
+
     os.chdir(current_path)
 
-    return values
 
-
-def down_env():
+def down_env(env_mode: str):
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker-compose", "down", "-t0"], stdout=f_docker,
-                                           stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode, "down"],
+                                           stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
 
 
-def check_health(interval: int = 10, node_type: str = 'manager', agents: list = None,
+def check_health(node_type: str = 'manager', agents: list = None,
                  only_check_master_health: bool = False):
     """Check the Wazuh nodes health.
 
     Parameters
     ----------
-    interval : int
-        Time interval between every healthcheck.
     node_type : str
-        Can be agent or manager.
+        Can be agent, manager or haproxy-lb.
     agents : list
         List of active agents for the current test
         (only needed if the agents need a custom healthcheck).
@@ -162,22 +167,30 @@ def check_health(interval: int = 10, node_type: str = 'manager', agents: list = 
     bool
         True if all healthchecks passed, False otherwise.
     """
-    time.sleep(interval)
     if node_type == 'manager':
         nodes_to_check = ['master'] if only_check_master_health else env_cluster_nodes
         for node in nodes_to_check:
             health = subprocess.check_output(
-                f"docker inspect env_wazuh-{node}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+                f"docker inspect env-wazuh-{node}-1 -f '{{{{json .State.Health.Status}}}}'",
+                shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
-        return True
     elif node_type == 'agent':
         for agent in agents:
             health = subprocess.check_output(
-                f"docker inspect env_wazuh-agent{agent}_1 -f '{{{{json .State.Health.Status}}}}'", shell=True)
+                f"docker inspect env-wazuh-agent{agent}-1 -f '{{{{json .State.Health.Status}}}}'",
+                shell=True)
             if not health.startswith(b'"healthy"'):
                 return False
-        return True
+    elif node_type == 'haproxy-lb':
+        health = subprocess.check_output(
+            "docker inspect env-haproxy-lb-1 -f '{{json .State.Health.Status}}'", shell=True)
+        if not health.startswith(b'"healthy"'):
+            return False
+    else:
+        raise ValueError(f"Invalid node_type value: '{node_type}'.")
+
+    return True
 
 
 def general_procedure(module: str):
@@ -189,12 +202,13 @@ def general_procedure(module: str):
     module : str
         Name of the tested module.
     """
-    base_content = os.path.join(env_path, 'configurations', 'base', '*')
-    module_content = os.path.join(env_path, 'configurations', module, '*')
+    base_content = os.path.join(env_path, 'configurations', 'base')
+    module_content = os.path.join(env_path, 'configurations', module)
     tmp_content = os.path.join(env_path, 'configurations', 'tmp')
-    os.makedirs(tmp_content, exist_ok=True)
-    os.popen(f'cp -rf {base_content} {tmp_content}').close()
-    os.popen(f'cp -rf {module_content} {tmp_content}').close()
+    with contextlib.suppress(FileNotFoundError):
+        shutil.copytree(base_content, tmp_content, dirs_exist_ok=True)
+    with contextlib.suppress(FileNotFoundError):
+        shutil.copytree(module_content, tmp_content, dirs_exist_ok=True)
 
 
 def change_rbac_mode(rbac_mode: str = 'white'):
@@ -219,7 +233,7 @@ def enable_white_mode():
                            'security.yaml'), '+r') as rbac_conf:
         content = rbac_conf.read()
         rbac_conf.seek(0)
-        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', f'rbac_mode: white', content))
+        rbac_conf.write(re.sub(r'rbac_mode: (white|black)', 'rbac_mode: white', content))
 
 
 def clean_tmp_folder():
@@ -290,6 +304,7 @@ def rbac_custom_config_generator(module: str, rbac_mode: str):
 
 def save_logs(test_name: str):
     """Save API, cluster and Wazuh logs from every cluster node and Wazuh logs from every agent if tests fail.
+    Save haproxy-lb log.
 
     Examples:
     "test_{test_name}-{node/agent}-{log}" -> "test_decoder-worker1-api.log"
@@ -308,7 +323,7 @@ def save_logs(test_name: str):
         for log in logs:
             try:
                 subprocess.check_output(
-                    f"docker cp env_wazuh-{node}_1:{os.path.join(logs_path, log)} "
+                    f"docker cp env-wazuh-{node}-1:{os.path.join(logs_path, log)} "
                     f"{os.path.join(test_logs_path, f'test_{test_name}-{node}-{log}')}",
                     shell=True)
             except subprocess.CalledProcessError:
@@ -318,11 +333,18 @@ def save_logs(test_name: str):
     for agent in agent_names:
         try:
             subprocess.check_output(
-                f"docker cp env_wazuh-{agent}_1:{os.path.join(logs_path, 'ossec.log')} "
+                f"docker cp env-wazuh-{agent}-1:{os.path.join(logs_path, 'ossec.log')} "
                 f"{os.path.join(test_logs_path, f'test_{test_name}-{agent}-ossec.log')}",
                 shell=True)
         except subprocess.CalledProcessError:
             continue
+
+    # Save haproxy-lb log
+    with open(os.path.join(test_logs_path, f'test_{test_name}-haproxy-lb.log'), mode='w') as f_log:
+        current_process = subprocess.Popen(
+                ["docker", "logs", "env-haproxy-lb-1"],
+                stdout=f_log, stderr=subprocess.STDOUT, universal_newlines=True)
+        current_process.wait()
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -336,7 +358,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         Object that contains information about the current test
     """
 
-    def clean_up_env():
+    def clean_up_env(env_mode: str):
         """Clean temporary folder, save environment logs and status; and stop and remove all Docker containers."""
         clean_tmp_folder()
         if request.session.testsfailed > 0:
@@ -345,14 +367,15 @@ def api_test(request: _pytest.fixtures.SubRequest):
         # Get the environment current status
         global environment_status
         environment_status = get_health()
-        down_env()
+        down_env(env_mode)
 
     # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
     mode = request.node.config.getoption("-m")
     env_mode = standalone_env_mode if mode == 'standalone' else cluster_env_mode
+    os.makedirs(test_logs_path, exist_ok=True)
 
     # Add clean_up_env as fixture finalizer
-    request.addfinalizer(clean_up_env)
+    request.addfinalizer(lambda: clean_up_env(env_mode))
 
     test_filename = request.node.config.args[0].split('_')
     if 'rbac' in test_filename:
@@ -371,25 +394,35 @@ def api_test(request: _pytest.fixtures.SubRequest):
         enable_white_mode()
 
     general_procedure(module)
-    values = build_and_up(interval=10, build=request.config.getoption('--nobuild'), env_mode=env_mode)
+    build_and_up(build=request.config.getoption('--nobuild'), env_mode=env_mode)
+
+    max_retries = 30
+    retries = 0
+
+    while retries < max_retries:
+        managers_health = check_health(only_check_master_health=env_mode == standalone_env_mode)
+        agents_health = check_health(node_type='agent', agents=list(range(1, 9)))
+        nginx_health = check_health(node_type='nginx-lb')
 
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'],
                                        only_check_master_health=env_mode == standalone_env_mode)
         agents_health = check_health(interval=values['interval'], node_type='agent', agents=list(range(1, 9)))
+        haproxy_health = check_health(interval=values['interval'], node_type='haproxy-lb')
         # Check if entrypoint was successful
         try:
-            error_message = subprocess.check_output(["docker", "exec", "-t", "env_wazuh-master_1", "sh", "-c",
+            error_message = subprocess.check_output(["docker", "exec", "-t", "env-wazuh-master-1", "sh", "-c",
                                                      "cat /entrypoint_error"]).decode().strip()
             pytest.fail(error_message)
         except subprocess.CalledProcessError:
             pass
 
-        if managers_health and agents_health:
+        if managers_health and agents_health and haproxy_health:
             time.sleep(values['interval'])
             return
-        else:
-            values['retries'] += 1
+
+        retries += 1
+        time.sleep(10)
 
 
 def get_health():
@@ -402,7 +435,8 @@ def get_health():
     """
     health = "\nEnvironment final status\n"
     health += subprocess.check_output(
-        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}' --filter name=^env_wazuh",
+        "docker ps --format 'table {{.Names}}\t{{.RunningFor}}\t{{.Status}}'"
+        " --filter name=^env-wazuh",
         shell=True).decode()
     health += '\n'
 
@@ -440,12 +474,14 @@ class HTMLStyle(html):
         style = html.Style(color='#0094ce')
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_html_results_table_header(cells):
     cells.insert(2, html.th('Stages'))
     # Remove links
     cells.pop()
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_html_results_table_row(report, cells):
     try:
         # Replace the original full name for the test case name
@@ -501,6 +537,7 @@ def pytest_runtest_makereport(item, call):
         report.sections.append(('Environment section', environment_status))
 
 
+@pytest.hookimpl(optionalhook=True)
 def pytest_html_results_summary(prefix, summary, postfix):
     postfix.extend([HTMLStyle.table(
         html.thead(
@@ -521,3 +558,39 @@ def pytest_html_results_summary(prefix, summary, postfix):
                 HTMLStyle.td(v['error']),
             ])
         ) for k, v in results.items()])])
+
+
+@pytest.fixture(scope='function', autouse=True)
+def big_events_payload() -> list:
+    """Return a payload with a number of events larger than the maximum allowed.
+
+    Returns
+    -------
+    list
+        Events payload.
+    """
+    return [f"Event {i}" for i in range(101)]
+
+
+@pytest.fixture(scope='function', autouse=True)
+def max_size_event() -> str:
+    """Return an event with the max size allowed.
+
+    Returns
+    -------
+    str
+        The max size event.
+    """
+    return " ".join(str(i) for i in range(12772))
+
+
+@pytest.fixture(scope='function', autouse=True)
+def large_event() -> str:
+    """Return an event with the size larger than the maximum allowed.
+
+    Returns
+    -------
+    str
+        The larger event.
+    """
+    return " ".join(str(i) for i in range(12773))

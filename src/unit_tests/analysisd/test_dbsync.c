@@ -215,8 +215,8 @@ static void test_dispatch_send_local_success(void **state) {
     will_return(__wrap_OS_ConnectUnixDomain, 65555);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 65555);
-    expect_value(__wrap_OS_SendSecureTCP, size, 45);
-    expect_string(__wrap_OS_SendSecureTCP, msg, "This is a mock query, it won't go anywhere...");
+    expect_value(__wrap_OS_SendSecureTCP, size, 0x36);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "syscheck This is a mock query, it won't go anywhere...");
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     // Assertions to this function are done through wrappers.
@@ -399,8 +399,8 @@ static void test_dispatch_answer_local_success(void **state) {
     will_return(__wrap_OS_ConnectUnixDomain, 65555);
 
     expect_value(__wrap_OS_SendSecureTCP, sock, 65555);
-    expect_value(__wrap_OS_SendSecureTCP, size, 54);
-    expect_string(__wrap_OS_SendSecureTCP, msg, "dbsync result_text {\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
+    expect_value(__wrap_OS_SendSecureTCP, size, 0x3f);
+    expect_string(__wrap_OS_SendSecureTCP, msg, "syscheck dbsync result_text {\"begin\":\"/a/path\",\"end\":\"/z/path\"}");
     will_return(__wrap_OS_SendSecureTCP, 0);
 
     dispatch_answer(data->ctx, result);

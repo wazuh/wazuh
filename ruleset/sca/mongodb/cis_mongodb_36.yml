@@ -8,12 +8,12 @@
 # Foundation
 #
 # Based on:
-# Center for Internet Security Benchmark for MongoDB 3.6 - 31-12-2019
+# Center for Internet Security Benchmark for MongoDB 3.6 v1.0.0 - 31-12-2019
 
 policy:
   id: "cis_mongodb"
   file: "cis_mongodb_36.yml"
-  name: "CIS MongoDB 3.6 Benchmark"
+  name: "CIS MongoDB 3.6 Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for MongoDB version 3.6. This guide was tested against MongoDB 3.6 running on Ubuntu Linux and Windows but applies to other distributions as well"
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -30,12 +30,12 @@ variables:
   $main-conf: /etc/mongod.conf
 
 checks:
-#1 Installation and Patching
-#1.1 Ensure the appropriate MongoDB software version/patches are installed - Not implemented
+  #1 Installation and Patching
+  #1.1 Ensure the appropriate MongoDB software version/patches are installed - Not implemented
 
-#2 Authentication
-#2.1
-  - id: 23500
+  #2 Authentication
+  #2.1
+  - id: 22500
     title: "Ensure Authentication is configured."
     description: "This setting ensures that all clients, users, servers are required to authenticate before being granted access to the MongoDB database. Authentication is the process of verifying the identity of a client. When access control, i.e. authorization, is enabled, MongoDB requires all clients to authenticate themselves in order to determine their access. To authenticate as a user, you must provide a username, password, and the authentication database associated with that user."
     rationale: "Failure to authenticate clients, users, servers can enable unauthorized access to the MongoDB database and can prevent tracing actions back to their sources."
@@ -49,8 +49,8 @@ checks:
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A4 \"security:\"" -> r:authorization: "enabled"'
 
-#2.2
-  - id: 23501
+  #2.2
+  - id: 22501
     title: "Ensure that MongoDB does not bypass authentication via the localhost exception."
     description: "MongoDB should not be set to bypass authentication via the localhost exception. The localhost exception allows the user to enable authorization before creating the first user in the system. When active, the localhost exception allows all connections from the localhost interface to have full access to that instance. The exception applies only when there are no users created in the MongoDB instance. Note: This recommendation only applies when there are no users created in the MongoDB instance."
     rationale: "Disabling this exception will prevent unauthorized local access to the MongoDB database. It will also ensure the traceability of each database activity to a specific user. Localhost Exception allows direct connect to Mongod’s without any UN/PW."
@@ -64,8 +64,8 @@ checks:
     rules:
       - 'f:$main-conf -> r:enableLocalhostAuthBypass: \(0|false\)'
 
-#2.3
-  - id: 23502
+  #2.3
+  - id: 22502
     title: "Ensure authentication is enabled in the sharded cluster."
     description: "Authentication is enabled in a sharded cluster when the certificate or key files are created and configured for all components. This ensures that every client that accesses the cluster must provide credentials, to include MongoDB instances that access each other within the cluster. With keyfile authentication, each mongod or mongos instance in the sharded cluster uses the contents of the keyfile as the shared password for authenticating other members in the deployment. Only mongod or mongos instances with the correct keyfile can join the sharded cluster. For Production Environment: x.509 certificate authentication with secure TSL/SSL connection must be used for authentication. For Development Purpose: Key file can be used as an authentication mechanism between the shared cluster. Keyfiles are bare-minimum forms of security and are best suited for testing or development environments."
     rationale: "Enforcing a key or certificate on a sharded cluster prevents unauthorized access to the MongoDB database and provides traceability of database activities to a specific user or component. A MongoDB sharded cluster can enforce user authentication as well as internal authentication of its components to secure against unauthorized access."
@@ -85,11 +85,11 @@ checks:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A10 \"security:\"" -> r:clusterAuthMode: "x509"'
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A10 \"security:\"" -> r:authenticationMechanisms: "MONGODB-X509"'
 
-#3 Access Control
-#3.1 - Requires mongo shell commands, currently not supported
+  #3 Access Control
+  #3.1 - Requires mongo shell commands, currently not supported
 
-#3.2
-  - id: 23503
+  #3.2
+  - id: 22503
     title: "Ensure that MongoDB only listens for network connections on authorized interfaces."
     description: "Ensuring that MongoDB runs in a trusted network environment involves limiting the network interfaces on which MongoDB instances listen for incoming connections. Any untrusted network connections should be dropped by MongoDB. Firewalls allow administrators to filter and control access to a system by providing granular control over network communications. For administrators of MongoDB, the following capabilities are important: 1. Limiting incoming traffic on a specific port to specific systems, 2. Limiting incoming traffic from untrusted hosts. On Linux systems, the iptables interface provides access to the underlying netfilter firewall. On Windows systems, netsh command line interface provides access to the underlying Windows Firewall."
     rationale: "This configuration blocks connections from untrusted networks, leaving only systems on authorized and trusted networks able to attempt to connect to the MongoDB. If not configured, this may lead to unauthorized connections from untrusted networks to MongoDB."
@@ -105,8 +105,8 @@ checks:
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 \"net:\"" -> r:bindIp'
 
-#3.3
-  - id: 23504
+  #3.3
+  - id: 22504
     title: "Ensure that MongoDB is run using a Least Privileges, dedicated service account."
     description: "The MongoDB service should not be run using a privileged account such as 'root' because this unnecessarily exposes the operating system to high risk. This setting ensures that the monogd service runs as a least-privileged user."
     rationale: "Using a non-privileged, dedicated service account restricts the database from accessing the critical areas of the operating system which are not required by MongoDB. This will also mitigate the potential for unauthorized access via a compromised, privileged account on the operating system. Anyone who has been a victim of viruses, worms, and other malicious software (malware) will appreciate the security principle of “least privilege.” If all processes ran with the minial set of privileges needed to perform the user's tasks, it would be more difficult for malware to infect a machine and propagate to other machines."
@@ -120,21 +120,21 @@ checks:
     rules:
       - 'not c:sh -c "ps -aef | grep mongod" -> r:root'
 
-#3.4 - Requires mongo shell commands, currently not supported
-#  - id: 23507
-#    title: "Ensure that each role for each MongoDB database is needed and grants only the necessary privileges."
+  #3.4 - Requires mongo shell commands, currently not supported
+  #  - id: 22507
+  #    title: "Ensure that each role for each MongoDB database is needed and grants only the necessary privileges."
 
-#3.5 - Requires mongo shell commands, currently not supported
-#  - id: 23508
-#    title: "Review User-Defined Roles."
+  #3.5 - Requires mongo shell commands, currently not supported
+  #  - id: 22508
+  #    title: "Review User-Defined Roles."
 
-#3.6 - Requires mongo shell commands, currently not supported
-#  - id: 23509
-#    title: "Review Superuser/Admin Roles."
+  #3.6 - Requires mongo shell commands, currently not supported
+  #  - id: 22509
+  #    title: "Review Superuser/Admin Roles."
 
-#4 Data Encryption
-#4.1
-  - id: 23505
+  #4 Data Encryption
+  #4.1
+  - id: 22505
     title: "Ensure Encryption of Data in Transit TLS/SSL (Transport Encryption)."
     description: "Use TLS or SSL to protect all incoming and outgoing connections. This should include using TLS or SSL to encrypt communication between the mongod and mongos components of a MongoDB client as well as between all applications and MongoDB. MongoDB supports TLS/SSL (Transport Layer Security/Secure Sockets Layer) to encrypt all of MongoDB’s network traffic. TLS/SSL ensures that MongoDB network traffic is only readable by the intended client."
     rationale: "This prevents sniffing of cleartext traffic between MongoDB components or performing a man-in-the-middle attack for MongoDB."
@@ -152,28 +152,28 @@ checks:
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 \"ssl:\"" -> r:mode: "requireSSL"'
 
-#4.2
-  - id: 23506
+  #4.2
+  - id: 22506
     title: "Ensure Federal Information Processing Standard (FIPS) is enabled."
     description: "The Federal Information Processing Standard (FIPS) is a computer security standard used to certify software modules and libraries that encrypt and decrypt data securely. You can configure MongoDB to run with a FIPS 140-2 certified library for OpenSSL. FIPS is a property of the encryption system and not the access control system. However, the environment requires FIPS compliant encryption and access control. Organizations must ensure that the access control system uses only FIPS-compliant encryption."
     rationale: "FIPS is an industry standard which dictates how data should be encrypted at rest and during transmission."
     remediation: "Configuring FIPS mode, ensure that your certificate is FIPS compliant. Run mongod or mongos instance in FIPS mode. Make changes to configuration file, to configure your mongod or mongos instance to use FIPS mode, shut down the instance and update the configuration file"
     compliance:
       - cis: ["4.2"]
-      - cis_csc: ["14.2","14.5","14.4","14.8",]
+      - cis_csc: ["14.2", "14.5", "14.4", "14.8"]
     references:
       - https://docs.mongodb.com/v3.6/tutorial/configure-fips/
     condition: all
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A12 \"ssl:\"" -> r:FIPSMode: \(1|true\)'
 
-#4.3 - Does not provide audit steps
-#  - id: 23512
-#    title: "Ensure Encryption of Data at Rest."
+  #4.3 - Does not provide audit steps
+  #  - id: 22512
+  #    title: "Ensure Encryption of Data at Rest."
 
-#5 Auditing
-#5.1
-  - id: 23507
+  #5 Auditing
+  #5.1
+  - id: 22507
     title: "Ensure that system activity is audited."
     description: "Track access and changes to database configurations and data. MongoDB Enterprise includes a system auditing facility that can record system events (e.g. user operations, connection events) on a MongoDB instance. These audit records permit forensic analysis and allow administrators to verify proper controls."
     rationale: "System level logs can be handy while troubleshooting an operational problem or handling a security incident."
@@ -187,8 +187,8 @@ checks:
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A4 \"auditLog\"" -> r:destination'
 
-#5.2
-  - id: 23508
+  #5.2
+  - id: 22508
     title: "Ensure that system activity is audited."
     description: "MongoDB Enterprise supports auditing of various operations. When enabled, the audit facility, by default, records all auditable operations as detailed in Audit Event Actions, Details, and Results. To specify which events to record, the audit feature includes the --auditFilter option. This check is only for Enterprise editions."
     rationale: "All operations carried out on the database are logged. This helps in backtracking and tracing any incident that occurs."
@@ -203,8 +203,8 @@ checks:
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A10 \"auditLog\"" -> r:filter'
 
-#5.3
-  - id: 23509
+  #5.3
+  - id: 22509
     title: "Ensure that audit filters are configured properly."
     description: "The SystemLog.quiet option stops logging of information such as:connection events, authentication events, replication sync activitie, evidence of some potentially impactful commands being run (eg: drop , dropIndexes , validate ). This information should be logged whenever possible. This check is only for Enterprise editions."
     rationale: "The use of SystemLog.quiet makes troubleshooting problems and investigating possible security incidents much more difficult."
@@ -218,8 +218,8 @@ checks:
     rules:
       - 'f:$main-conf -> r:quiet: \(0|false\)'
 
-#5.4
-  - id: 23510
+  #5.4
+  - id: 22510
     title: "Ensure that new entries are appended to the end of the log file."
     description: "By default, new log entries will overwrite old entries after a restart of the mongod or mongos service. Enabling the systemLog.logAppend setting causes new entries to be appended to the end of the log file rather than overwriting the existing content of the log when the mongod or mongos instance restarts."
     rationale: "Allowing old entries to be overwritten by new entries instead of appending new entries to the end of the log may destroy old log data that is needed for a variety of purposes."
@@ -233,9 +233,9 @@ checks:
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A10 \"systemLog\"" -> r:logAppend: \(1|true\)'
 
-#6 Operating System Hardening
-#6.1
-  - id: 23511
+  #6 Operating System Hardening
+  #6.1
+  - id: 22511
     title: "Ensure that MongoDB uses a non-default port."
     description: "Changing the default port used by MongoDB makes it harder for attackers to find the database and target it."
     rationale: "Standard ports are used in automated attacks and by attackers to verify which applications are running on a server."
@@ -247,14 +247,14 @@ checks:
       - https://docs.mongodb.com/v3.6/reference/default-mongodb-port/
     condition: all
     rules:
-      - 'not f:$main-conf -> r:port: 27017'
+      - "not f:$main-conf -> r:port: 27017"
 
-#6.2 - Has to be done manually as it is specific to the MongoDB deployment
-#  - id: 23518
-#    title: "Ensure that operating system resource limits are set for MongoDB."
+  #6.2 - Has to be done manually as it is specific to the MongoDB deployment
+  #  - id: 22518
+  #    title: "Ensure that operating system resource limits are set for MongoDB."
 
-#6.3
-  - id: 23512
+  #6.3
+  - id: 22512
     title: "Ensure that server-side scripting is disabled if not needed."
     description: "MongoDB supports the execution of JavaScript code for certain server-side operations: mapReduce , group , and $where . If you do not use these operations, server-side scripting should be disabled."
     rationale: "If server-side scripting is not needed and is not disabled, this introduces unnecessary risk which may allow an attacker to take advantage of insecure coding."
@@ -267,12 +267,11 @@ checks:
     condition: all
     rules:
       - 'c:sh -c "cat /etc/mongod.conf | grep \\-A10 \"security\"" -> r:javascriptEnabled: 0|false'
-
-#7 File Permissions
-#7.1 - Has to be done manually as it is specific to the MongoDB deployment
-#  - id: 23520
+# 7 File Permissions
+# 7.1 - Has to be done manually as it is specific to the MongoDB deployment
+#  - id: 22520
 #    title: "Ensure authentication file permissions are set correctly."
 
-#7.2 - Has to be done manually as it is specific to the MongoDB deployment
-#  - id: 23521
+# 7.2 - Has to be done manually as it is specific to the MongoDB deployment
+#  - id: 22521
 #    title: "Ensure that database file permissions are set correctly."

@@ -38,6 +38,9 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND analysisd_names "test_analysisd_syscheck")
 list(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND analysisd_names "test_cleanevent")
+list(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
+
 list(APPEND analysisd_names "test_dbsync")
 list(APPEND analysisd_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP \
                          -Wl,--wrap,connect_to_remoted -Wl,--wrap,send_msg_to_agent -Wl,--wrap,wdbc_query_ex \
@@ -55,7 +58,7 @@ list(APPEND analysisd_flags "-Wl,--wrap,OS_SendUnix -Wl,--wrap,wdb_get_agent_inf
 list(APPEND analysisd_names "test_log")
 list(APPEND analysisd_flags "-Wl,--wrap,fprintf,-wrap,fflush,--wrap,fclose,--wrap,fgets,--wrap,fgetpos,--wrap,fopen \
                              -Wl,--wrap,fread,--wrap,fseek,--wrap,fwrite,--wrap,remove,--wrap,fgetc,--wrap,fputc \
-                             -Wl,--wrap,ctime_r")
+                             -Wl,--wrap,ctime_r -Wl,--wrap,wfopen -Wl,--wrap,popen")
 
 list(APPEND analysisd_names "test_labels")
 list(APPEND analysisd_flags "-Wl,--wrap,wdb_get_agent_labels")
@@ -77,7 +80,7 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,ReadConfig -Wl,--wrap,_merror -Wl,--wrap
                              -Wl,--wrap,OSList_SetMaxSize -Wl,--wrap,OSHash_setSize -Wl,--wrap,OSHash_Delete_ex \
                              -Wl,--wrap,OSHash_Free -Wl,--wrap,os_remove_rules_list -Wl,--wrap,os_remove_decoders_list \
                              -Wl,--wrap,os_remove_cdblist -Wl,--wrap,os_remove_cdbrules -Wl,--wrap,os_remove_eventlist \
-                             -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,time -Wl,--wrap,difftime \
+                             -Wl,--wrap,sleep -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex -Wl,--wrap,time -Wl,--wrap,difftime \
                              -Wl,--wrap,OSHash_Next -Wl,--wrap,FOREVER -Wl,--wrap,OS_CreateEventList \
                              -Wl,--wrap,ReadDecodeXML -Wl,--wrap,Lists_OP_LoadList -Wl,--wrap,Lists_OP_MakeAll \
                              -Wl,--wrap,Rules_OP_ReadRules -Wl,--wrap,OS_ListLoadRules -Wl,--wrap,_setlevels \
@@ -139,6 +142,34 @@ LIST(APPEND analysisd_flags "-Wl,--wrap,send_rootcheck_log ${DEBUG_OP_WRAPPERS}"
 
 LIST(APPEND analysisd_names "test_decoder_syscollector")
 LIST(APPEND analysisd_flags "-Wl,--wrap,wdbc_query_ex ${DEBUG_OP_WRAPPERS}")
+
+LIST(APPEND analysisd_names "test_decoder_winevtchannel")
+LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,cJSON_ParseWithOpts -Wl,--wrap,cJSON_GetObjectItem        \
+                              -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_CreateObject \
+                              -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddStringToObject                      \
+                              -Wl,--wrap,JSON_Decoder_Exec                                                             \
+                              -Wl,--wrap,OS_ReadXMLString -Wl,--wrap,OS_GetElementsbyNode -Wl,--wrap,OS_ClearXML       \
+                              -Wl,--wrap,w_get_attr_val_by_name")
+
+LIST(APPEND analysisd_names "test_decoder_winevtchannel_input")
+LIST(APPEND analysisd_flags "${DEBUG_OP_WRAPPERS}")
+
+
+list(APPEND analysisd_names "test_analysis-state")
+list(APPEND analysisd_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_qsize -Wl,--wrap,rem_get_tsize \
+                            -Wl,--wrap,OSHash_Create -Wl,--wrap,OSHash_Add -Wl,--wrap,OSHash_Add_ex -Wl,--wrap,OSHash_Begin -Wl,--wrap,OSHash_Begin_ex \
+                            -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
+                            -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
+                            -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
+                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror -Wl,--wrap,limit_reached")
+
+list(APPEND analysisd_names "test_asyscom")
+list(APPEND analysisd_flags "-Wl,--wrap,asys_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
+                             -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getGlobalConfig -Wl,--wrap,asys_create_agents_state_json \
+                             -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS}")
+
+LIST(APPEND analysisd_names "test_limits")
+LIST(APPEND analysisd_flags "-Wl,--wrap,_minfo -Wl,--wrap,_mwarn")
 
 list(LENGTH analysisd_names count)
 math(EXPR count "${count} - 1")

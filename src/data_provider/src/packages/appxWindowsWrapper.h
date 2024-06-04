@@ -112,7 +112,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
         std::string multiarch() const override
         {
-            return UNKNOWN_VALUE;
+            return std::string();
         }
 
     private:
@@ -234,15 +234,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
                 if (installTimeRegistry.qword("InstallTime", value))
                 {
-
-                    // Format of value is 18-digit LDAP/FILETIME timestamps.
-                    // 18-digit LDAP/FILETIME timestamps -> Epoch/Unix time
-                    // (value/10000000ULL) - 11644473600ULL
-                    const time_t time {static_cast<long int>((value / 10000000ULL) - WINDOWS_UNIX_EPOCH_DIFF_SECONDS)};
-                    char formatString[20] = {0};
-
-                    std::strftime(formatString, sizeof(formatString), "%Y/%m/%d %H:%M:%S", std::localtime(&time));
-                    installTime.assign(formatString);
+                    installTime = Utils::buildTimestamp(value);
                 }
             }
             catch (...)

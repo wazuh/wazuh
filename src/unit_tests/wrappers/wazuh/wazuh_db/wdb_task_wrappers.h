@@ -11,7 +11,7 @@
 #ifndef WDB_TASK_WRAPPERS_H
 #define WDB_TASK_WRAPPERS_H
 
-#include "wazuh_db/wdb.h"
+#include "../wazuh_db/wdb.h"
 
 int __wrap_wdb_task_insert_task(__attribute__((unused)) wdb_t* wdb, int agent_id, const char *node, const char *module, const char *command);
 int __wrap_wdb_task_get_upgrade_task_status(__attribute__((unused)) wdb_t* wdb, int agent_id, const char *node, char **status);

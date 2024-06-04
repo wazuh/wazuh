@@ -143,7 +143,7 @@ int k_import(const char *cmdimport)
                     }
 #endif
 
-                    fp = fopen(tmp_path, "w");
+                    fp = wfopen(tmp_path, "w");
                     if (!fp) {
                         if (unlink(tmp_path)) {
                             minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
@@ -243,7 +243,7 @@ int k_extract(const char *cmdextract, int json_output)
     }
 
     /* Try to open the auth file */
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
     if (!fp) {
         if (json_output) {
             char buffer[1024];
@@ -337,14 +337,14 @@ int k_bulkload(const char *cmdbulk)
 
     /* Check if we can open the input file */
     printf("Opening: [%s]\n", cmdbulk);
-    infp = fopen(cmdbulk, "r");
+    infp = wfopen(cmdbulk, "r");
     if (!infp) {
         perror("Failed.");
         merror_exit(FOPEN_ERROR, cmdbulk, errno, strerror(errno));
     }
 
     /* Check if we can open the auth_file */
-    fp = fopen(KEYS_FILE, "a");
+    fp = wfopen(KEYS_FILE, "a");
     if (!fp) {
         merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
     }
@@ -446,7 +446,7 @@ int k_bulkload(const char *cmdbulk)
             time3 = time(0);
             rand2 = os_random();
 
-            fp = fopen(KEYS_FILE, "a");
+            fp = wfopen(KEYS_FILE, "a");
             if (!fp) {
                 merror_exit(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
             }

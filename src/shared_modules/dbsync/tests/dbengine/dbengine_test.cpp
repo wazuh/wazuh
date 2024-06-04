@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <string>
+#include "abstractLocking.hpp"
 #include "dbengine_test.h"
 #include "sqlite_dbengine.h"
 #include "../mocks/sqlitewrapper_mock.h"
@@ -28,6 +29,9 @@ static void initNoMetaDataMocks(std::unique_ptr<SQLiteDBEngine>& spEngine)
 
     auto mockTransaction { std::make_unique<MockTransaction>() };
 
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
+
     EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
@@ -37,8 +41,9 @@ static void initNoMetaDataMocks(std::unique_ptr<SQLiteDBEngine>& spEngine)
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
                                    mockFactory,
@@ -58,13 +63,20 @@ TEST_F(DBEngineTest, Initialization)
     const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
     const auto& mockConnection { std::make_shared<MockConnection>() };
     auto mockStatement { std::make_unique<MockStatement>() };
+    auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
-    EXPECT_CALL(*mockStatement, step()).WillOnce(Return(SQLITE_DONE));
-    EXPECT_CALL(*mockFactory, createStatement(_, _)).WillOnce(Return(ByMove(std::move(mockStatement))));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockStatement, step())
+    .WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockFactory, createStatement(_, _))
+    .WillOnce(Return(ByMove(std::move(mockStatement))));
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
                         mockFactory,
@@ -78,12 +90,16 @@ TEST_F(DBEngineTest, InitializationSQLError)
     const auto& mockConnection { std::make_shared<MockConnection>() };
     auto mockStatement { std::make_unique<MockStatement>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
-    EXPECT_CALL(*mockStatement, step()).WillOnce(Return(SQLITE_ERROR));
-    EXPECT_CALL(*mockFactory, createStatement(_, _)).WillOnce(Return(ByMove(std::move(mockStatement))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockStatement, step())
+    .WillOnce(Return(SQLITE_ERROR));
+    EXPECT_CALL(*mockFactory, createStatement(_, _))
+    .WillOnce(Return(ByMove(std::move(mockStatement))));
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_THROW(std::make_unique<SQLiteDBEngine>(
                      mockFactory,
@@ -95,11 +111,16 @@ TEST_F(DBEngineTest, InitializationEmptyQuery)
 {
     const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
     const auto& mockConnection { std::make_shared<MockConnection>() };
+    auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
                         mockFactory,
@@ -122,9 +143,10 @@ TEST_F(DBEngineTest, InitializeStatusField)
 
     auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
-    EXPECT_CALL(*mockTransaction, commit()).Times(1);
-    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
@@ -134,8 +156,9 @@ TEST_F(DBEngineTest, InitializeStatusField)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -200,19 +223,23 @@ TEST_F(DBEngineTest, InitializeStatusFieldNoMetadata)
 
     auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
-    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockStatement_1, step())
+    .WillOnce(Return(SQLITE_DONE));
     EXPECT_CALL(*mockFactory,
                 createStatement(_, "NNN"))
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -237,20 +264,23 @@ TEST_F(DBEngineTest, InitializeStatusFieldPreExistent)
 
     auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
-    EXPECT_CALL(*mockTransaction, commit()).Times(1);
-    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockStatement_1, step())
+    .WillOnce(Return(SQLITE_DONE));
     EXPECT_CALL(*mockFactory,
                 createStatement(_, "NNN"))
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -324,19 +354,25 @@ TEST_F(DBEngineTest, DeleteRowsByStatusField)
 
     auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
-    EXPECT_CALL(*mockTransaction, commit()).Times(1);
-    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockStatement_1, step())
+    .WillOnce(Return(SQLITE_DONE));
     EXPECT_CALL(*mockFactory,
                 createStatement(_, "NNN"))
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
+
+    EXPECT_CALL(*mockConnection, changes()).Times(1)
+    .WillOnce(Return(1));
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -410,8 +446,10 @@ TEST_F(DBEngineTest, DeleteRowsByStatusFieldNoMetadata)
 
     auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
-    EXPECT_CALL(*mockFactory, createTransaction(_)).WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
@@ -420,8 +458,9 @@ TEST_F(DBEngineTest, DeleteRowsByStatusFieldNoMetadata)
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -443,18 +482,25 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
 {
     const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
     const auto& mockConnection { std::make_shared<MockConnection>() };
+    auto mockTransaction1 { std::make_unique<MockTransaction>() };
+    auto mockTransaction2 { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockTransaction1, commit()).Times(1);
+    EXPECT_CALL(*mockFactory, createTransaction(_)).Times(2)
+    .WillOnce(Return(ByMove(std::move(mockTransaction1))))
+    .WillOnce(Return(ByMove(std::move(mockTransaction2))));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
-    EXPECT_CALL(*mockFactory,
-                createStatement(_, "NNN"))
+    EXPECT_CALL(*mockFactory, createStatement(_, "NNN"))
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -465,11 +511,12 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
     auto mockStatement_2 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_2, step())
     .WillOnce(Return(SQLITE_DONE));
-    EXPECT_CALL(*mockFactory,
-                createStatement(_, "PRAGMA table_info(dummy);"))
+    EXPECT_CALL(*mockFactory, createStatement(_, "PRAGMA table_info(dummy);"))
     .WillOnce(Return(ByMove(std::move(mockStatement_2))));
 
-    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr), dbengine_error);
+    std::shared_timed_mutex mutex;
+    std::unique_lock<std::shared_timed_mutex> lock(mutex);
+    EXPECT_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, nullptr, lock), dbengine_error);
 }
 
 TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
@@ -477,7 +524,17 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
     const auto& mockFactory { std::make_shared<MockSQLiteFactory>() };
     const auto& mockConnection { std::make_shared<MockConnection>() };
 
+    // First transaction, during the initialization of the engine.
+    auto mockTransaction1 { std::make_unique<MockTransaction>() };
+    // Second transaction, created after the getDeletedRows call.
+    auto mockTransaction2 { std::make_unique<MockTransaction>() };
+
     EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockTransaction1, commit()).Times(1);
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .Times(2)
+    .WillOnce(Return(ByMove(std::move(mockTransaction1))))
+    .WillOnce(Return(ByMove(std::move(mockTransaction2))));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
     EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
@@ -487,8 +544,9 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -560,16 +618,20 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
                 createStatement(_, "SELECT PID FROM dummy WHERE db_status_field_dm=0;"))
     .WillOnce(Return(ByMove(std::move(mockStatement_3))));
 
-    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}));
+    std::shared_timed_mutex mutex;
+    std::unique_lock<std::shared_timed_mutex> lock(mutex);
+    EXPECT_NO_THROW(spEngine->returnRowsMarkedForDelete({"dummy"}, [](ReturnTypeCallback, const nlohmann::json&) {}, lock));
 }
 
 TEST_F(DBEngineTest, syncTableRowDataWithoutMetadataShouldThrow)
 {
     std::unique_ptr<SQLiteDBEngine> spEngine;
-    initNoMetaDataMocks(spEngine);
+    std::shared_timed_mutex mutex;
+    Utils::ExclusiveLocking lock(mutex);
 
+    initNoMetaDataMocks(spEngine);
     // Due to the no metadata this should throw
-    EXPECT_THROW(spEngine->syncTableRowData("dummy", {}, nullptr, false), dbengine_error);
+    EXPECT_THROW(spEngine->syncTableRowData({{"table", "dummy"}, {"data", {}}}, nullptr, false, lock), dbengine_error);
 }
 
 TEST_F(DBEngineTest, deleteTableRowsDataWithoutMetadataShouldThrow)
@@ -587,7 +649,9 @@ TEST_F(DBEngineTest, selectDataWithoutMetadataShouldThrow)
     initNoMetaDataMocks(spEngine);
 
     // Due to the no metadata this should throw
-    EXPECT_THROW(spEngine->selectData("dummy", {}, nullptr), dbengine_error);
+    std::shared_timed_mutex mutex;
+    std::unique_lock<std::shared_timed_mutex> lock(mutex);
+    EXPECT_THROW(spEngine->selectData("dummy", {}, nullptr, lock), dbengine_error);
 }
 
 TEST_F(DBEngineTest, bulkInsertWithoutMetadataShouldThrow)
@@ -628,7 +692,10 @@ TEST_F(DBEngineTest, AddTableRelationship)
             }
         )"
                                    )};
+    auto mockTransaction { std::make_unique<MockTransaction>() };
 
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
     EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
@@ -639,8 +706,9 @@ TEST_F(DBEngineTest, AddTableRelationship)
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -753,19 +821,25 @@ TEST_F(DBEngineTest, AddTableRelationshipNoMetadata)
             }
         )"
                                    )};
+    auto mockTransaction { std::make_unique<MockTransaction>() };
 
-    EXPECT_CALL(*mockFactory, createConnection(_)).WillOnce(Return(mockConnection));
+    EXPECT_CALL(*mockFactory, createTransaction(_))
+    .WillOnce(Return(ByMove(std::move(mockTransaction))));
+    EXPECT_CALL(*mockFactory, createConnection(_))
+    .WillOnce(Return(mockConnection));
 
     auto mockStatement_1 { std::make_unique<MockStatement>() };
-    EXPECT_CALL(*mockStatement_1, step()).WillOnce(Return(SQLITE_DONE));
+    EXPECT_CALL(*mockStatement_1, step())
+    .WillOnce(Return(SQLITE_DONE));
     EXPECT_CALL(*mockFactory,
                 createStatement(_, "NNN"))
     .WillOnce(Return(ByMove(std::move(mockStatement_1))));
 
 
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
-    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = memory;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(

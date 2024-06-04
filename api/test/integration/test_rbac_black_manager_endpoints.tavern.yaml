@@ -94,6 +94,21 @@ stages:
       <<: *permission_allowed
 
 ---
+test_name: GET /manager/daemons/stats
+
+stages:
+
+  - name: Request daemons statistics (Allow)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+
+---
 test_name: GET /manager/stats
 
 stages:

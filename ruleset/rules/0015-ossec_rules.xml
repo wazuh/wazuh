@@ -11,35 +11,35 @@
   <rule id="500" level="0">
     <category>ossec</category>
     <decoded_as>ossec</decoded_as>
-    <description>Grouping of ossec rules.</description>
+    <description>Grouping of wazuh rules.</description>
   </rule>
 
   <rule id="501" level="3">
     <if_sid>500</if_sid>
     <if_fts />
     <match>Agent started</match>
-    <description>New ossec agent connected.</description>
+    <description>New wazuh agent connected.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="502" level="3">
     <if_sid>500</if_sid>
-    <match>Ossec started</match>
-    <description>Ossec server started.</description>
+    <match>Manager started</match>
+    <description>Wazuh server started.</description>
     <group>pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
   <rule id="503" level="3">
     <if_sid>500</if_sid>
     <match>Agent started</match>
-    <description>Ossec agent started.</description>
+    <description>Wazuh agent started.</description>
     <group>pci_dss_10.6.1,pci_dss_10.2.6,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,nist_800_53_AU.14,nist_800_53_AU.5,tsc_CC7.2,tsc_CC7.3,tsc_CC6.8,</group>
   </rule>
 
   <rule id="504" level="3">
     <if_sid>500</if_sid>
     <match>Agent disconnected</match>
-    <description>Ossec agent disconnected.</description>
+    <description>Wazuh agent disconnected.</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -49,7 +49,7 @@
   <rule id="505" level="3">
     <if_sid>500</if_sid>
     <match>Agent removed</match>
-    <description>Ossec agent removed.</description>
+    <description>Wazuh agent removed.</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -59,7 +59,7 @@
   <rule id="506" level="3">
     <if_sid>500</if_sid>
     <match>Agent stopped</match>
-    <description>Ossec agent stopped.</description>
+    <description>Wazuh agent stopped.</description>
     <mitre>
       <id>T1562.001</id>
     </mitre>
@@ -77,7 +77,7 @@
     <if_sid>509</if_sid>
     <description>Host-based anomaly detection event (rootcheck).</description>
     <group>rootcheck,pci_dss_10.6.1,gdpr_IV_35.7.d,</group>
-   <!-- <if_fts />  -->
+    <!-- <if_fts />  -->
   </rule>
 
   <rule id="511" level="0">
@@ -116,7 +116,6 @@
     <match>^Starting syscheck scan|^Ending syscheck scan.|</match>
     <match>^Starting OpenSCAP scan|^Ending OpenSCAP scan.|</match>
     <match>^Starting CIS-CAT scan|^Ending CIS-CAT scan.|</match>
-    <match>^Starting vulnerability scan|^Ending vulnerability scan.|</match>
     <match>^Starting Azure-logs scan.|^Ending Azure-logs scan.</match>
     <description>Ignoring scan messages.</description>
     <group>rootcheck,syscheck,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
@@ -174,7 +173,7 @@
   <rule id="530" level="0">
     <if_sid>500</if_sid>
     <match>^ossec: output: </match>
-    <description>OSSEC process monitoring rules.</description>
+    <description>Wazuh process monitoring rules.</description>
     <group>process_monitor,</group>
   </rule>
 
@@ -186,7 +185,7 @@
     <group>low_diskspace,pci_dss_10.6.1,gpg13_10.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
   </rule>
 
- <rule id="532" level="0">
+  <rule id="532" level="0">
     <if_sid>531</if_sid>
     <match>cdrom|/media|usb|/mount|floppy|dvd</match>
     <description>Ignoring external medias.</description>
@@ -219,8 +218,8 @@
 
   <rule id="536" level="0">
     <if_sid>531</if_sid>
-      <regex>'df -P':\s+/dev/loop\d+\s+\d+\s+\d+\s+0\s+100%\s+/snap/\w+/\d+</regex>
-      <description>Ignore snap disks because they are always at 100% of capacity</description>
+    <regex>'df -P':\s+/dev/loop\d+\s+\d+\s+\d+\s+0\s+100%\s+/snap/\w+/\d+</regex>
+    <description>Ignore snap disks because they are always at 100% of capacity</description>
   </rule>
 
 
@@ -463,6 +462,13 @@
     <if_sid>650</if_sid>
     <field name="command">add|delete</field>
     <description>Active response: $(parameters.program) - $(command)</description>
+    <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
+  </rule>
+
+  <rule id="658" level="5">
+    <if_sid>650</if_sid>
+    <status>inactive</status>
+    <description>Active response related to $(script) has been activated, but may not have an effect because the firewall is $(status)</description>
     <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
 

@@ -1,9 +1,11 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import json
 from unittest.mock import patch
 
 import pytest
-
-from api.models.configuration_model import HTTPSModel
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
@@ -13,14 +15,14 @@ with patch('wazuh.common.wazuh_uid'):
 
 def custom_hook(dct):
     if 'key' in dct:
-        return HTTPSModel.from_dict(dct)
+        return {'key': dct['key']}
     elif 'error' in dct:
         return WazuhResult.decode_json({'result': dct, 'str_priority': 'v2'})
     else:
         return dct
 
 
-@pytest.mark.parametrize('o', [HTTPSModel(key='v1'),
+@pytest.mark.parametrize('o', [{'key': 'v1'},
                                WazuhResult({'k1': 'v1'}, str_priority='v2')
                                ]
                          )

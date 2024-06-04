@@ -24,7 +24,9 @@
         "post_proc_func": null,
         "post_proc_kwargs": null
     },
-    "function_params": {},
+    "function_params": {
+      "call_func": true
+    },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"]},
     "allowed_resources": [["000", "001", "002", "003", "004", "005"]]
   },
@@ -41,6 +43,24 @@
         "post_proc_kwargs": null
     },
     "function_params": {},
+    "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
+    "allowed_resources": [["000", "002", "004"]]
+  },
+  {
+    "rbac": {
+      "agent:read": {
+        "agent:group:group1": "deny"
+      }
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "call_func": false
+    },
     "fake_system_resources": {"agent:id:*": ["000", "001", "002", "003", "004", "005"], "agent:group:group1":  ["001", "003", "005"]},
     "allowed_resources": [["000", "002", "004"]]
   },
@@ -74,7 +94,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "role_ids": ["1"]
+      "role_ids": ["1"],
+      "call_func": true
     },
     "fake_system_resources": {"role:id:*": ["1", "2", "3", "4", "5"], "policy:id:*": ["1", "2", "3", "4", "5"]},
     "allowed_resources": [[]],
@@ -98,6 +119,29 @@
     "function_params": {
       "role_ids": ["1"],
       "policy_ids": ["9", "8"]
+    },
+    "fake_system_resources": {"role:id:*": ["1", "2", "3", "4", "5"], "policy:id:*": ["8"]},
+    "allowed_resources": [["1"], ["8"]]
+  },
+  {
+    "rbac": {
+      "security:read": {
+        "role:id:1": "allow",
+        "policy:id:*": "deny",
+        "policy:id:8": "allow",
+        "policy:id:3": "allow"
+      }
+    },
+    "decorator_params": {
+        "actions": ["security:read"],
+        "resources": ["role:id:{role_ids}", "policy:id:{policy_ids}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "role_ids": ["1"],
+      "policy_ids": ["9", "8"],
+      "call_func": false
     },
     "fake_system_resources": {"role:id:*": ["1", "2", "3", "4", "5"], "policy:id:*": ["8"]},
     "allowed_resources": [["1"], ["8"]]
@@ -300,7 +344,8 @@
         "post_proc_kwargs": null
     },
     "function_params": {
-      "user_id": ["wazuh", "wazuh-wui"]
+      "user_id": ["wazuh", "wazuh-wui"],
+      "call_func": true
     },
     "fake_system_resources": {"user:id:*": ["wazuh"]},
     "allowed_resources": [["wazuh-wui"]]
@@ -419,6 +464,23 @@
     },
     "function_params": {
       "agent_list": null
+    },
+    "fake_system_resources": {"agent:id:*": []},
+    "allowed_resources": [[]],
+    "exception": "4000"
+  },
+  {
+    "rbac": {
+    },
+    "decorator_params": {
+        "actions": ["agent:read"],
+        "resources": ["agent:id:{agent_list}"],
+        "post_proc_func": null,
+        "post_proc_kwargs": null
+    },
+    "function_params": {
+      "agent_list": null,
+      "call_func": false
     },
     "fake_system_resources": {"agent:id:*": []},
     "allowed_resources": [[]],

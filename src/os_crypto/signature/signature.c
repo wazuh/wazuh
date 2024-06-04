@@ -10,6 +10,7 @@
 
 #include <headers/shared.h>
 #include <openssl/pem.h>
+#include <openssl/evp.h>
 #include <openssl/err.h>
 
 #define SIGNLEN 2048 / 8
@@ -23,11 +24,10 @@ static int wpk_verify_cert(X509 * cert, const char ** ca_store);
 int w_wpk_unsign(const char * source, const char * target, const char ** ca_store) {
     X509 * cert = NULL;
     EVP_PKEY * pkey = NULL;
-    RSA * rsa = NULL;
-    SHA256_CTX hash;
+    EVP_PKEY_CTX *ctx = NULL;
+    EVP_MD_CTX *hash = NULL;
     FILE * filein = NULL;
     FILE * fileout = NULL;
-    unsigned long err;
     unsigned char signature[SIGNLEN];
     unsigned char digest[SHA256_DIGEST_LENGTH];
     unsigned char buffer[BUFLEN];
@@ -37,7 +37,7 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
 
     // Read signed file
 
-    if (filein = fopen(source, "rb"), !filein) {
+    if (filein = wfopen(source, "rb"), !filein) {
         merror("opening input file: %s", strerror(errno));
         goto cleanup;
     }
@@ -86,10 +86,21 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    SHA256_Init(&hash);
+    if (hash = EVP_MD_CTX_new(), !hash) {
+        merror("Couldn't create hash context.");
+        goto cleanup;
+    }
+
+    if (1 != EVP_DigestInit(hash, EVP_sha256())) {
+        merror("Couldn't initialize hash context.");
+        goto cleanup;
+    }
 
     while (length = fread(buffer, 1, BUFLEN, filein), length > 0) {
-        SHA256_Update(&hash, buffer, length);
+        if (1 != EVP_DigestUpdate(hash, buffer, length)) {
+            merror("Couldn't update hash.");
+            goto cleanup;
+        }
     }
 
     if (length < 0) {
@@ -97,40 +108,46 @@ int w_wpk_unsign(const char * source, const char * target, const char ** ca_stor
         goto cleanup;
     }
 
-    SHA256_Final(digest, &hash);
+    if (1 != EVP_DigestFinal(hash, digest, NULL)) {
+        merror("Couldn't finalize hash.");
+        goto cleanup;
+    }
 
     // Verify signature (PKCS1)
 
-    if (pkey = X509_get_pubkey(cert), !pkey) {
+    if (pkey = X509_get0_pubkey(cert), !pkey) {
         merror("Couldn't get public key from certificate.");
         goto cleanup;
     }
 
-    if (rsa = EVP_PKEY_get1_RSA(pkey), !rsa) {
-        merror("Couldn't get public RSA key from certificate.");
+    if (EVP_PKEY_base_id(pkey) != EVP_PKEY_RSA) {
+        merror("Public key is not RSA.");
         goto cleanup;
     }
 
-    if (RSA_verify(NID_sha256, digest, SHA256_DIGEST_LENGTH, signature, SIGNLEN, rsa) != 1) {
-        ERR_load_crypto_strings();
+    if (ctx = EVP_PKEY_CTX_new(pkey, NULL), !ctx) {
+        merror("Couldn't create public key context.");
+        goto cleanup;
+    }
 
-        while (err = ERR_get_error(), err) {
-            switch (ERR_GET_REASON(err)) {
-            case RSA_R_BAD_SIGNATURE:
-                merror("Bad WPK signature.");
-                break;
+    if (EVP_PKEY_verify_init(ctx) <= 0) {
+        merror("Failed to initialize public key context.");
+        goto cleanup;
+    }
 
-            default:
-                merror("At RSA_verify(): %s (%lu)", ERR_reason_error_string(err), err);
-            }
-        }
+    if (EVP_PKEY_CTX_set_signature_md(ctx, EVP_sha256()) <= 0) {
+        merror("Failed to set signature digest type.");
+        goto cleanup;
+    }
 
+    if (1 != EVP_PKEY_verify(ctx, signature, SIGNLEN, digest, SHA256_DIGEST_LENGTH)) {
+        merror("Failed to verify signature.");
         goto cleanup;
     }
 
     // Extract file
 
-    if (fileout = fopen(target, "wb"), !fileout) {
+    if (fileout = wfopen(target, "wb"), !fileout) {
         merror("Opening output file: %s", strerror(errno));
         goto cleanup;
     }
@@ -164,9 +181,17 @@ cleanup:
         fclose(fileout);
     }
 
-    X509_free(cert);
-    EVP_PKEY_free(pkey);
-    RSA_free(rsa);
+    if (hash) {
+        EVP_MD_CTX_free(hash);
+    }
+
+    if (ctx) {
+        EVP_PKEY_CTX_free(ctx);
+    }
+
+    if (cert) {
+        X509_free(cert);
+    }
 
     return retval;
 }

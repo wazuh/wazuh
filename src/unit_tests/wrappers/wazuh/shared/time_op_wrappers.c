@@ -36,6 +36,10 @@ void __wrap_gettime(struct timespec *ts) {
     ts->tv_sec = mock_type(time_t);
 }
 
+double __wrap_time_diff(__attribute__((unused)) const struct timespec * a, __attribute__((unused)) const struct timespec * b) {
+    return mock_type(double);
+}
+
 #ifdef WIN32
 long long __wrap_get_windows_file_time_epoch(FILETIME ftime) {
     check_expected(ftime.dwLowDateTime);

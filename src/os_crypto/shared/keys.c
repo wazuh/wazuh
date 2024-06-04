@@ -155,7 +155,7 @@ int OS_CheckKeys()
         return (0);
     }
 
-    fp = fopen(KEYS_FILE, "r");
+    fp = wfopen(KEYS_FILE, "r");
     if (!fp) {
         /* We can leave from here */
         merror(FOPEN_ERROR, KEYS_FILE, errno, strerror(errno));
@@ -195,7 +195,7 @@ void OS_ReadKeys(keystore *keys, key_mode_t key_mode, int save_removed)
     }
 
     keys->inode = File_Inode(keys_file);
-    fp = fopen(keys_file, "r");
+    fp = wfopen(keys_file, "r");
     if (!fp) {
         if (!pass_empty_keyfile) {
             /* We can leave from here */
@@ -702,10 +702,11 @@ int OS_AddSocket(keystore * keys, unsigned int i, int sock) {
     char strsock[16] = "";
 
     snprintf(strsock, sizeof(strsock), "%d", sock);
-    keys->keyentries[i]->sock = sock;
 
     w_mutex_lock(&keys->keytree_sock_mutex);
-    int r = rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[i]) ? 2 : rbtree_replace(keys->keytree_sock, strsock, keys->keyentries[i]) ? 1 : 0;
+    int r = rbtree_insert(keys->keytree_sock, strsock, keys->keyentries[i]) ? OS_ADDSOCKET_KEY_ADDED :
+            rbtree_replace(keys->keytree_sock, strsock, keys->keyentries[i]) ? OS_ADDSOCKET_KEY_UPDATED :
+            OS_ADDSOCKET_ERROR;
     w_mutex_unlock(&keys->keytree_sock_mutex);
 
     return r;
@@ -749,7 +750,7 @@ int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_i
 int OS_ReadTimestamps(keystore * keys) {
     char line[OS_BUFFER_SIZE];
 
-    FILE * fp = fopen(TIMESTAMP_FILE, "r");
+    FILE * fp = wfopen(TIMESTAMP_FILE, "r");
 
     if (fp == NULL) {
         return errno == ENOENT ? 0 : -1;

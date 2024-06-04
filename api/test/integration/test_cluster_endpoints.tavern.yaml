@@ -110,6 +110,78 @@ stages:
           total_failed_items: 0
 
 ---
+test_name: GET /cluster/ruleset/synchronization
+
+stages:
+
+  - name: Get cluster ruleset synchronization status
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'master-node'
+              synced: !anybool
+            - name: 'worker1'
+              synced: !anybool
+            - name: 'worker2'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 3
+          total_failed_items: 0
+
+  - name: Get cluster ruleset synchronization status (specific node)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "master-node"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: 'master-node'
+              synced: !anybool
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Get cluster ruleset synchronization status (node does not exist)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/ruleset/synchronization"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        nodes_list: "not-exists"
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1730
+              id:
+                - "not-exists"
+          total_affected_items: 0
+          total_failed_items: 1
+
+---
 test_name: GET /cluster/local/info
 
 marks:
@@ -393,6 +465,17 @@ stages:
     response:
       <<: *connexion_error
 
+  - name: Get distinct cluster nodes
+    request:
+      verify: False
+      <<: *get_cluster_nodes
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /cluster/nodes
 
@@ -494,7 +577,7 @@ marks:
 
 stages:
 
-  - name: Request {master-node}
+  - name: Request (master-node)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
@@ -521,7 +604,8 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -553,7 +637,8 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -750,98 +835,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
 
-  #### Upload corrupted rules file
-  - name: Upload corrupted configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: PUT
-      data: "{corrupted_rules_file}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-    delay_after: !float "{cluster_sync_delay}"
-
-  - name: Request validation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          failed_items:
-            - error:
-                code: 1908
-              id:
-                - 'master-node'
-                - 'worker1'
-                - 'worker2'
-          total_affected_items: 0
-          total_failed_items: 3
-
-    #### Delete corrupted rules file
-  - name: Delete rules file
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-    delay_after: !float "{cluster_sync_delay}"
-
-  - name: Request cluster validation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        nodes_list: 'worker1,worker2'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - name: worker1
-              status: 'OK'
-            - name: worker2
-              status: 'OK'
-          failed_items: []
-          total_affected_items: 2
-          total_failed_items: 0
-
-  - name: Request cluster validation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        nodes_list: 'master-node'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - name: master-node
-              status: 'OK'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
 ---
 test_name: GET /cluster/api/config
 
@@ -878,21 +871,37 @@ stages:
                   ssl_ciphers: !anystr
                 logs:
                   level: !anystr
+                  max_size:
+                    enabled: !anybool
+                    size: !anystr
                 cors:
                   enabled: !anybool
                   source_route: !anystr
                   expose_headers: !anystr
                   allow_headers: !anystr
                   allow_credentials: !anybool
-                cache:
-                  enabled: !anybool
-                  time: !anything
                 access:
                   max_login_attempts: !anyint
                   block_time: !anyint
                   max_request_per_minute: !anyint
                 drop_privileges: !anybool
                 experimental_features: !anybool
+                upload_configuration:
+                  remote_commands:
+                    localfile:
+                      allow: !anybool
+                      exceptions: !anything
+                    wodle_command:
+                      allow: !anybool
+                      exceptions: !anything
+                  limits:
+                    eps:
+                      allow: !anybool
+                  agents:
+                    allow_higher_versions:
+                      allow: !anybool
+                  indexer:
+                    allow: !anybool
             - node_name: "worker1"
               node_api_config:
                 <<: *default_api_config
@@ -1202,6 +1211,24 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Show the config of monitor/reports in the manager
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/monitor/reports"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - reports: !anything
+          failed_items: [ ]
+          total_affected_items: 1
+          total_failed_items: 0
+
   - name: Show the config of request/remote on worker2
     request:
       verify: False
@@ -1344,6 +1371,51 @@ stages:
           total_affected_items: 1
           total_failed_items: 0
 
+  - name: Show the config of wazuh-db/internal on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/internal"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wazuh_db:
+                commit_time_max: !anyint
+                commit_time_min: !anyint
+                open_db_limit: !anyint
+                worker_pool_size: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+  - name: Show the config of wazuh-db/wdb on master
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-db/wdb"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: !anyint
+        data:
+          affected_items:
+            - wdb:
+                backup:
+                  - database: !anystr
+                    enabled: !anybool
+                    interval: !anyint
+                    max_files: !anyint
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
   - name: Show the config of wmodules/wmodules on master
     request:
       verify: False
@@ -1361,6 +1433,18 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+  - name: Try to show the invalid config of component in the master node
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/agent/wmodules"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: GET
+    response:
+      status_code: 400
+      json:
+        error: 1128
 
 ---
 test_name: GET /cluster/{node_id}/info
@@ -1391,7 +1475,6 @@ stages:
           affected_items:
             - path: !anystr
               version: !anystr
-              compilation_date: !anystr
               type: !anystr
               max_agents: !anystr
               openssl_support: !anystr
@@ -1582,6 +1665,22 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
+  - name: Read logs with filters -> tag=wazuh-unknown-daemon {node_id}
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        tag: wazuh-unknown-daemon
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          failed_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+
   - name: Read logs with filters -> level=info, limit=1 {node_id}
     request:
       verify: False
@@ -1619,6 +1718,48 @@ stages:
             key: "level"
             expected_values: "info"
 
+  - name: Read logs using valid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'timestamp,tag'
+    response:
+      verify_response_with:
+        # Check response item keys are the selected keys
+        function: tavern_utils:test_select_key_affected_items
+        extra_kwargs:
+          select_key: 'timestamp,tag'
+      status_code: 200
+      json:
+        error: 0
+        data:
+          total_affected_items: !anyint
+          failed_items: []
+          total_failed_items: 0
+
+  - name: Try to read logs using invalid select
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        select: 'noexists'
+    response:
+      status_code: 400
+      json: &invalid_select
+        error: 1724
+
+  - name: Get distinct cluster node logs
+    request:
+      verify: False
+      <<: *get_cluster_logs
+      params:
+        distinct: true
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_distinct_key
+
 ---
 test_name: GET /cluster/{node_id}/logs/summary
 
@@ -1649,6 +1790,98 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
         message: !anystr
+
+---
+test_name: GET /cluster/{node_id}/daemons/stats
+
+marks:
+  - cluster
+  - parametrize:
+      key: node_id
+      vals:
+        - master-node
+        - worker1
+        - worker2
+
+stages:
+
+  # GET /cluster/{node_id}/daemons/stats
+  - name: Get all daemons' statistics from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-remoted
+            - name: wazuh-analysisd
+            - name: wazuh-db
+          total_affected_items: 3
+          failed_items: []
+          total_failed_items: 0
+
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-remoted
+  - name: Get statistics from a single daemon from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        daemons_list: wazuh-remoted
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-remoted
+          total_affected_items: 1
+          failed_items: []
+          total_failed_items: 0
+
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wazuh-remoted,wazuh-db,wazuh-analysisd
+  - name: Get statistics from a list of daemons from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        daemons_list: wazuh-remoted,wazuh-db,wazuh-analysisd
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-remoted
+            - name: wazuh-db
+            - name: wazuh-analysisd
+          total_affected_items: 3
+          failed_items: []
+          total_failed_items: 0
+
+  # GET /cluster/{node_id}/daemons/stats?daemons_list=wrong-daemon-name
+  - name: Try to get statistics from a wrong daemon from {node_id}
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        daemons_list: wrong-daemon-name
+    response:
+      status_code: 400
 
 ---
 test_name: GET /cluster/{node_id}/stats
@@ -1756,21 +1989,12 @@ stages:
           affected_items:
             - total_events_decoded: !anyfloat
               syscheck_events_decoded: !anyfloat
-              syscheck_edps: !anyfloat
               syscollector_events_decoded: !anyfloat
-              syscollector_edps: !anyfloat
               rootcheck_events_decoded: !anyfloat
-              rootcheck_edps: !anyfloat
               sca_events_decoded: !anyfloat
-              sca_edps: !anyfloat
-              hostinfo_events_decoded: !anyfloat
-              hostinfo_edps: !anyfloat
               winevt_events_decoded: !anyfloat
-              winevt_edps: !anyfloat
               other_events_decoded: !anyfloat
-              other_events_edps: !anyfloat
               events_processed: !anyfloat
-              events_edps: !anyfloat
               events_received: !anyfloat
               events_dropped: !anyfloat
               alerts_written: !anyfloat
@@ -1870,7 +2094,6 @@ stages:
               evt_count: !anyfloat
               ctrl_msg_count: !anyfloat
               discarded_count: !anyfloat
-              queued_msgs: !anyfloat
               sent_bytes: !anyfloat
               recv_bytes: !anyfloat
           total_affected_items: 1
@@ -2083,6 +2306,30 @@ stages:
           failed_items:
             - error:
                 code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an invalid xml
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_xml:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: [ ]
+          failed_items:
+            - error:
+                code: 1908
               id:
                 - 'worker1'
           total_affected_items: 0

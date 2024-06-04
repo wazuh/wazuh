@@ -10,7 +10,6 @@
  */
 
 #include "filesystemHelper_test.h"
-#include "filesystemHelper.h"
 
 void FilesystemUtilsTest::SetUp() {};
 
@@ -33,6 +32,15 @@ TEST_F(FilesystemUtilsTest, FilesystemExistsDir)
     EXPECT_TRUE(Utils::existsDir(R"(/usr)"));
 }
 
+TEST_F(FilesystemUtilsTest, FilesystemExistsRegular)
+{
+    // Check correct input, for macos and linux.
+    EXPECT_TRUE(Utils::existsRegular(R"(/etc/services)"));
+
+    // Check wrong input
+    EXPECT_FALSE(Utils::existsRegular(R"(/etc)"));
+}
+
 TEST_F(FilesystemUtilsTest, FilesystemEnumerateDir)
 {
     const auto items {Utils::enumerateDir(R"(/usr)")};
@@ -51,4 +59,6 @@ TEST_F(FilesystemUtilsTest, getFileBinaryContent)
     const auto binContent {Utils::getBinaryContent("/usr/bin/gcc")};
     EXPECT_FALSE(binContent.empty());
 }
+
+
 #endif

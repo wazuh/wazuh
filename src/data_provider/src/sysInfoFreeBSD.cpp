@@ -17,7 +17,7 @@
 #include <sys/utsname.h>
 #include "sharedDefs.h"
 
-void SysInfo::getMemory(nlohmann::json& info) const
+static void getMemory(nlohmann::json& info)
 {
     constexpr auto vmPageSize{"vm.stats.vm.v_page_size"};
     constexpr auto vmTotal{"vm.vmtotal"};
@@ -74,7 +74,7 @@ void SysInfo::getMemory(nlohmann::json& info) const
 }
 
 
-int SysInfo::getCpuMHz() const
+static int getCpuMHz()
 {
     unsigned long cpuMHz{0};
     constexpr auto clockRate{"hw.clockrate"};
@@ -94,9 +94,82 @@ int SysInfo::getCpuMHz() const
     return cpuMHz;
 }
 
-std::string SysInfo::getSerialNumber() const
+static std::string getSerialNumber()
 {
     return UNKNOWN_VALUE;
+}
+
+static int getCpuCores()
+{
+    int cores{0};
+    size_t len{sizeof(cores)};
+    const std::vector<int> mib{CTL_HW, HW_NCPU};
+    const auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), &cores, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error reading cpu cores number."
+        };
+    }
+
+    return cores;
+}
+
+static std::string getCpuName()
+{
+    const std::vector<int> mib{CTL_HW, HW_MODEL};
+    size_t len{0};
+    auto ret{sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name size."
+        };
+    }
+
+    const auto spBuff{std::make_unique<char[]>(len + 1)};
+
+    if (!spBuff)
+    {
+        throw std::runtime_error
+        {
+            "Error allocating memory to read the cpu name."
+        };
+    }
+
+    ret = sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
+
+    if (ret)
+    {
+        throw std::system_error
+        {
+            ret,
+            std::system_category(),
+            "Error getting cpu name"
+        };
+    }
+
+    spBuff.get()[len] = 0;
+    return std::string{reinterpret_cast<const char*>(spBuff.get())};
+}
+
+nlohmann::json SysInfo::getHardware() const
+{
+    nlohmann::json hardware;
+    hardware["board_serial"] = getSerialNumber();
+    hardware["cpu_name"] = getCpuName();
+    hardware["cpu_cores"] = getCpuCores();
+    hardware["cpu_mhz"] = double(getCpuMHz());
+    getMemory(hardware);
+    return hardware;
 }
 
 nlohmann::json SysInfo::getPackages() const
@@ -166,9 +239,17 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
             package["name"] = data[0];
             package["vendor"] = data[1];
             package["version"] = data[2];
+            package["install_time"] = UNKNOWN_VALUE;
+            package["location"] = UNKNOWN_VALUE;
             package["architecture"] = data[3];
+            package["groups"] = UNKNOWN_VALUE;
             package["description"] = data[4];
+            package["size"] = 0;
+            package["priority"] = UNKNOWN_VALUE;
+            package["source"] = UNKNOWN_VALUE;
             package["format"] = "pkg";
+            // The multiarch field won't have a default value
+
             callback(package);
         }
     }

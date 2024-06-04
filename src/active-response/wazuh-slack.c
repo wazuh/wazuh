@@ -9,8 +9,6 @@
 
 #include "active_responses.h"
 
-#define CURL "curl"
-#define WGET "wget"
 
 /**
  * Get json with the data to share on slack from an alert. Example:
@@ -43,6 +41,8 @@ int main (int argc, char **argv) {
     (void)argc;
     char *site_url = NULL;
     char *output_str = NULL;
+    char *cmd_path = NULL;
+    char log_msg[OS_MAXSTR];
     int action = OS_INVALID;
     int return_value = OS_INVALID;
     cJSON *input_json = NULL;
@@ -76,9 +76,14 @@ int main (int argc, char **argv) {
 
     // Try with curl
     bool success_command = false;
-    char *exec_cmd1[9] = { CURL, "-H", "Accept: application/json", "-H", "Content-Type: application/json", "-d", output_str, site_url, NULL };
+    if (get_binary_path("curl", &cmd_path) < 0) {
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+        write_debug_file(argv[0], log_msg);
+    }
+    char *exec_cmd1[9] = { cmd_path, "-H", "Accept: application/json", "-H", "Content-Type: application/json", "-d", output_str, site_url, NULL };
 
-    wfd_t *wfd = wpopenv(CURL, exec_cmd1, W_BIND_STDOUT | W_BIND_STDERR);
+    wfd_t *wfd = wpopenv(cmd_path, exec_cmd1, W_BIND_STDOUT | W_BIND_STDERR);
     if (wfd) {
         char buffer[4096];
         while (fgets(buffer, sizeof(buffer), wfd->file_out));
@@ -96,9 +101,15 @@ int main (int argc, char **argv) {
         write_debug_file(argv[0], "Unable to run curl, trying with wget...");
 
         // Try with wget
-        char *exec_cmd2[6] = { WGET, "--keep-session-cookies", "--post-data", output_str, site_url, NULL };
+        os_free(cmd_path);
+        if (get_binary_path("wget", &cmd_path) < 0) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", cmd_path);
+            write_debug_file(argv[0], log_msg);
+        }
+        char *exec_cmd2[6] = { cmd_path, "--keep-session-cookies", "--post-data", output_str, site_url, NULL };
 
-        wfd = wpopenv(WGET, exec_cmd2, W_BIND_STDOUT | W_BIND_STDERR);
+        wfd = wpopenv(cmd_path, exec_cmd2, W_BIND_STDOUT | W_BIND_STDERR);
         if (wfd) {
             char buffer[4096];
             while (fgets(buffer, sizeof(buffer), wfd->file_out));
@@ -124,6 +135,7 @@ int main (int argc, char **argv) {
     cJSON_Delete(input_json);
     os_free(output_str);
     os_free(site_url);
+    os_free(cmd_path);
 
     return return_value;
 }

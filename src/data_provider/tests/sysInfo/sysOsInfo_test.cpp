@@ -33,7 +33,6 @@ class SysOsInfoProviderWrapper : public ISysOsInfoProvider
         MOCK_METHOD(std::string, displayVersion, (), (const override));
         MOCK_METHOD(std::string, machine, (), (const override));
         MOCK_METHOD(std::string, nodeName, (), (const override));
-        MOCK_METHOD(std::string, getSerialNumber, (), (const override));
 };
 
 

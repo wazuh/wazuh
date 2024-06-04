@@ -65,7 +65,7 @@ int main (int argc, char **argv) {
         }
     }
 
-    if (!strstr(srcip, ".") && !strstr(srcip, ":")) {
+    if (get_ip_version(srcip) == OS_INVALID) {
         memset(log_msg, '\0', OS_MAXSTR);
         snprintf(log_msg, OS_MAXSTR -1, "Unable to run active response (invalid IP: '%s')", srcip);
         write_debug_file(argv[0], log_msg);
@@ -104,7 +104,7 @@ int main (int argc, char **argv) {
             return OS_INVALID;
         }
 
-        host_deny_fp = fopen(hosts_deny_path, "r");
+        host_deny_fp = wfopen(hosts_deny_path, "r");
         if (!host_deny_fp) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", hosts_deny_path);
@@ -130,7 +130,7 @@ int main (int argc, char **argv) {
         fclose(host_deny_fp);
 
         // Open again to append rule
-        host_deny_fp = fopen(hosts_deny_path, "a");
+        host_deny_fp = wfopen(hosts_deny_path, "a");
         if (!host_deny_fp) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", hosts_deny_path);
@@ -167,7 +167,7 @@ int main (int argc, char **argv) {
 
         bool write_fail = false;
 
-        host_deny_fp = fopen(hosts_deny_path, "r");
+        host_deny_fp = wfopen(hosts_deny_path, "r");
         if (!host_deny_fp) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", hosts_deny_path);
@@ -178,7 +178,7 @@ int main (int argc, char **argv) {
         }
 
         // Create the temporary file
-        temp_host_deny_fp = fopen(temp_hosts_deny_path, "w");
+        temp_host_deny_fp = wfopen(temp_hosts_deny_path, "w");
         if (!temp_host_deny_fp) {
             memset(log_msg, '\0', OS_MAXSTR);
             snprintf(log_msg, OS_MAXSTR -1, "Could not open file '%s'", temp_hosts_deny_path);

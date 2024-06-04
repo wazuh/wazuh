@@ -1,0 +1,80 @@
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'Microsoft-Windows-Sysmon/Operational'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'Microsoft-Windows-Sysmon/Operational'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'Microsoft-Windows-Windows Firewall With Advanced Security/Firewall'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'Microsoft-Windows-Windows Firewall With Advanced Security/Firewall'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'Application'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'Application'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'Security'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'Security'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'System'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'System'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'Microsoft-Windows-Windows Defender/Operational'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'Microsoft-Windows-Windows Defender/Operational'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'File Replication Service'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'File Replication Service'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'Service Microsoft-Windows-TerminalServices-RemoteConnectionManager'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'Service Microsoft-Windows-TerminalServices-RemoteConnectionManager'
+    log_format: 'eventchannel'
+
+- name: Basic configuration location windows
+  description: Basic configuration location windows
+  configuration_parameters:
+    LOCATION: 'invalidchannel'
+    LOG_FORMAT: 'eventchannel'
+  metadata:
+    location: 'invalidchannel'
+    log_format: 'eventchannel'

@@ -17,12 +17,6 @@ from pubsub.subscriber import WazuhGCloudSubscriber
 from concurrent.futures import ThreadPoolExecutor
 
 
-try:
-    max_threads = cpu_count() * 5
-except TypeError:
-    max_threads = 5
-
-
 def main():
     logger = tools.get_stdout_logger(tools.logger_name)
 
@@ -31,11 +25,11 @@ def main():
         arguments = tools.get_script_arguments()
         logger.setLevel(arguments.log_level)
         credentials_file = arguments.credentials_file
-        max_messages = arguments.max_messages
         log_level = arguments.log_level
         num_processed_messages = 0
 
         if arguments.integration_type == "pubsub":
+            logger.info("Working with Google Cloud Pub/Sub")
             if arguments.subscription_id is None:
                 raise exceptions.GCloudError(1200)
             if arguments.project is None:
@@ -45,6 +39,11 @@ def main():
             subscription_id = arguments.subscription_id
             max_messages = arguments.max_messages
             n_threads = arguments.n_threads
+
+            try:
+                max_threads = cpu_count() * 5
+            except TypeError:
+                max_threads = 5
 
             if n_threads > max_threads:
                 n_threads = max_threads
@@ -63,6 +62,7 @@ def main():
 
                 # check permissions
                 subscriber_client = WazuhGCloudSubscriber(credentials_file, project, logger, subscription_id)
+                logger.debug("Checking credentials")
                 subscriber_client.check_permissions()
                 messages_per_thread = max_messages // n_threads
                 remaining_messages = max_messages % n_threads
@@ -76,8 +76,7 @@ def main():
             num_processed_messages = sum([future.result() for future in futures])
 
         elif arguments.integration_type == "access_logs":
-            if arguments.n_threads != tools.min_num_threads:
-                raise exceptions.GCloudError(1102)
+            logger.info("Working with Google Cloud Access Logs")
             if not arguments.bucket_name:
                 raise exceptions.GCloudError(1103)
 
@@ -87,6 +86,7 @@ def main():
                         "only_logs_after": arguments.only_logs_after,
                         "reparse": arguments.reparse}
             integration = GCSAccessLogs(arguments.credentials_file, logger, **f_kwargs)
+            logger.debug("Checking credentials")
             integration.check_permissions()
             num_processed_messages = integration.process_data()
 
@@ -98,13 +98,11 @@ def main():
             isinstance(gcloud_exception, exceptions.WazuhIntegrationInternalError) else \
             logger.error
 
-        logging_func('An exception happened while running the wodle: '
-                     f'{gcloud_exception}', exc_info=log_level == 1)
+        logging_func(f'An exception happened while running the wodle: {gcloud_exception}', exc_info=log_level == 1)
         exit(gcloud_exception.errcode)
 
-    except Exception:
-        logger.critical('Unknown error',
-                        exc_info=True)
+    except Exception as e:
+        logger.critical(f'Unknown error: {e}', exc_info=True)
         exit(exceptions.UNKNOWN_ERROR_ERRCODE)
 
     else:

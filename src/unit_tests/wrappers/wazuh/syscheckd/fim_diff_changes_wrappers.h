@@ -20,7 +20,7 @@
 
 char *__wrap_fim_file_diff(const char *filename);
 
-char *__wrap_fim_diff_process_delete_file(const char *file_name);
+int __wrap_fim_diff_process_delete_file(const char *file_name);
 
 /**
  * @brief This function loads the expect and will return of the function fim_file_diff
@@ -30,14 +30,14 @@ void expect_fim_file_diff(const char *filename, char *ret);
 /**
  * @brief This function loads the expect and will return of the function fim_diff_process_delete_file
  */
-void expect_fim_diff_process_delete_file(const char *filename, char *ret);
+void expect_fim_diff_process_delete_file(const char *filename, int ret);
 
 #ifdef WIN32
 char *__wrap_fim_registry_value_diff(const char *key_name,
                                      const char *value_name,
                                      const char *value_data,
                                      DWORD data_type,
-                                     const registry *configuration);
+                                     const registry_t *configuration);
 
 /**
  * @brief This function loads the expect and will return of the function fim_registry_value_diff

@@ -14,6 +14,7 @@
 #define OS_XML_H
 
 #include <stdio.h>
+#include <stdbool.h>
 
 /* XML Node structure */
 typedef struct _xml_node {
@@ -50,14 +51,57 @@ typedef struct _OS_XML {
 
 typedef xml_node **XML_NODE;
 
-/* Start the XML structure reading a file */
+/**
+ * @brief Parses a XML file and stores the content in the OS_XML struct.
+ *        This legacy method will always fail if the content of a tag is bigger than XML_MAXSIZE.
+ *
+ * @param file The source file to read.
+ * @param lxml The struct to store the result.
+ * @return int OS_SUCCESS on success, OS_INVALID otherwise.
+ */
 int OS_ReadXML(const char *file, OS_XML *lxml) __attribute__((nonnull));
 
-/* Start the XML structure reading a string */
+/**
+ * @brief Parses a XML file and stores the content in the OS_XML struct.
+ *
+ * @param file The source file to read.
+ * @param lxml The struct to store the result.
+ * @param flag_truncate Toggles the behavior in case of the content of a tag is bigger than XML_MAXSIZE:
+ *                      truncate on TRUE or fail on FALSE.
+ * @return int OS_SUCCESS on success, OS_INVALID otherwise.
+ */
+int OS_ReadXML_Ex(const char *file, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
+
+/**
+ * @brief Parses a XML string and stores the content in the OS_XML struct.
+ *        This legacy method will always fail if the content of a tag is bigger than XML_MAXSIZE.
+ *
+ * @param string The source string to read.
+ * @param lxml The struct to store the result.
+ * @return int OS_SUCCESS on success, OS_INVALID otherwise.
+ */
 int OS_ReadXMLString(const char *string, OS_XML *_lxml) __attribute__((nonnull));
 
-/* Parse the XML */
-int ParseXML(OS_XML *_lxml) __attribute__((nonnull));
+/**
+ * @brief Parses a XML string and stores the content in the OS_XML struct.
+ *
+ * @param string The source string to read.
+ * @param lxml The struct to store the result.
+ * @param flag_truncate Toggles the behavior in case of the content of a tag is bigger than XML_MAXSIZE:
+ *                      truncate on TRUE or fail on FALSE.
+ * @return int OS_SUCCESS on success, OS_INVALID otherwise.
+ */
+int OS_ReadXMLString_Ex(const char *string, OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
+
+/**
+ * @brief Parses a XML string or file.
+ *
+ * @param _lxml The xml struct.
+ * @param flag_truncate Toggles the behavior in case of the content of a tag is bigger than XML_MAXSIZE:
+ *                      truncate on TRUE or fail on FALSE.
+ * @return int OS_SUCCESS on success, OS_INVALID otherwise.
+ */
+int ParseXML(OS_XML *_lxml, bool flag_truncate) __attribute__((nonnull));
 
 /* Clear the XML structure memory */
 void OS_ClearXML(OS_XML *_lxml) __attribute__((nonnull));

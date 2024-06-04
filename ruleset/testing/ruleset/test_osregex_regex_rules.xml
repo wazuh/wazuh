@@ -219,4 +219,22 @@
     <description>Testing OSREGEX data negation</description>
   </rule>
 
+  <!-- Dec 25 20:45:02 MyHost osregex_realloc_test[12345]: fieldx=0 field1=1 field2=2 field3=3 field4=4 field5=5 field5=5 field6=6 field7=7 field8=8 field9=9 field10=10 -->
+  <rule id="999733" level="3">
+    <decoded_as>osregex_realloc_test</decoded_as>
+    <field name="f0">0</field>
+    <field name="f1">1</field>
+    <field name="f2">2</field>
+    <field name="f3">3</field>
+    <field name="f4">4</field>
+    <field name="f5">5</field>
+    <field name="f55">5</field>
+    <field name="f6">6</field>
+    <field name="f7">7</field>
+    <field name="f8">8</field>
+    <field name="f9">9</field>
+    <field name="f10">10</field>
+    <description>Testing OSREGEX realloc</description>
+  </rule>
+
 </group>

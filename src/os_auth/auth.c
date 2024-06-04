@@ -19,6 +19,10 @@
 
 #ifdef WAZUH_UNIT_TESTING
 #define static
+
+// Redefine ossec_version
+#undef __ossec_version
+#define __ossec_version "v4.5.0"
 #endif
 
 keystore keys;
@@ -85,7 +89,7 @@ w_err_t w_auth_parse_data(const char* buf,
 
         if (parseok == 0) {
             merror("Invalid password provided by %s. Closing connection.", ip);
-            snprintf(response, 2048, "ERROR: Invalid password");
+            snprintf(response, OS_SIZE_2048, "ERROR: Invalid password");
             return OS_INVALID;
         }
     }
@@ -113,48 +117,80 @@ w_err_t w_auth_parse_data(const char* buf,
 
     if (!parseok) {
         merror("Invalid request for new agent from: %s", ip);
-        snprintf(response, 2048, "ERROR: Invalid request for new agent");
+        snprintf(response, OS_SIZE_2048, "ERROR: Invalid request for new agent");
         return OS_INVALID;
     }
 
     if (!OS_IsValidName(*agentname)) {
         merror("Invalid agent name: %s from %s", *agentname, ip);
-        snprintf(response, 2048, "ERROR: Invalid agent name: %s", *agentname);
+        snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", *agentname);
         return OS_INVALID;
     }
 
+    /* Check for valid agent version */
+    const char * agent_version_token = " V:";
+    if (strncmp(buf, agent_version_token, 3) == 0) {
+        char version[OS_BUFFER_SIZE+1] = {0};
+        sscanf(buf," V:\'%2048[^\']\"",version);
+
+        /* Validate the version */
+        if (buf[strlen(version) + 4] != '\'') {
+            merror("Unterminated version field");
+            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated version field");
+            return OS_INVALID;
+        }
+
+        if (!config.allow_higher_versions && compare_wazuh_versions(__ossec_version, version, false) < 0) {
+            merror("Incompatible version for new agent from: %s", ip);
+            snprintf(response, OS_SIZE_2048, "ERROR: %s", HC_INVALID_VERSION_RESPONSE);
+            return OS_INVALID;
+        }
+
+        /* Forward the string pointer V:'........' 3 for " V:", 2 for '' */
+        buf += strlen(version) + 5;
+    }
+
     /* Check for valid centralized group */
-    char centralized_group_token[2] = "G:";
-    if (strncmp(++buf, centralized_group_token, 2) == 0) {
+    const char * centralized_group_token = " G:";
+    if (strncmp(buf, centralized_group_token, 3) == 0) {
         char tmp_groups[OS_SIZE_65536+1] = {0};
         sscanf(buf," G:\'%65536[^\']\"",tmp_groups);
 
         /* Validate the group name */
+        if (buf[strlen(tmp_groups) + 4] != '\'') {
+            merror("Unterminated group field");
+            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated group field");
+            return OS_INVALID;
+        }
+
         if (0 > w_validate_group_name(tmp_groups, response)) {
             merror("Invalid group name: %.255s... ,",tmp_groups);
             return OS_INVALID;
         }
         *groups = wstr_delete_repeated_groups(tmp_groups);
         if (!*groups) {
-            snprintf(response, 2048, "ERROR: Insuficient memory");
+            snprintf(response, OS_SIZE_2048, "ERROR: Insuficient memory");
             return OS_MEMERR;
         }
         mdebug1("Group(s) is: %s",*groups);
 
-        /*Forward the string pointer G:'........' 2 for G:, 2 for ''*/
-        buf+= 2+strlen(tmp_groups)+2;
-
-    } else {
-        buf--;
+        /* Forward the string pointer G:'........' 3 for " G:", 2 for '' */
+        buf += strlen(tmp_groups) + 5;
     }
 
     /* Check for IP when client uses -i option */
     char client_source_ip[IPSIZE + 1] = {0};
-    char client_source_ip_token[3] = "IP:";
-    if (strncmp(++buf, client_source_ip_token, 3) == 0) {
+    const char * client_source_ip_token = " IP:";
+    if (strncmp(buf, client_source_ip_token, 4) == 0) {
         char format[15];
-        sprintf(format, " IP:\'%%%d[^\']\"", IPSIZE);
+        sprintf(format, " IP:\'%%%d[^\' ]\"", IPSIZE);
         sscanf(buf, format, client_source_ip);
+
+        if (buf[strlen(client_source_ip) + 5] != '\'') {
+            merror("Unterminated IP field");
+            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated IP field");
+            return OS_INVALID;
+        }
 
         /* If IP: != 'src' overwrite the provided ip */
         if (strncmp(client_source_ip,"src",3) != 0) {
@@ -162,7 +198,7 @@ w_err_t w_auth_parse_data(const char* buf,
             os_calloc(1, sizeof(os_ip), aux_ip);
             if (!OS_IsValidIP(client_source_ip, aux_ip)) {
                 merror("Invalid IP: '%s'", client_source_ip);
-                snprintf(response, 2048, "ERROR: Invalid IP: %s", client_source_ip);
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid IP: %s", client_source_ip);
                 w_free_os_ip(aux_ip);
                 return OS_INVALID;
             }
@@ -170,10 +206,9 @@ w_err_t w_auth_parse_data(const char* buf,
             w_free_os_ip(aux_ip);
         }
 
-        /* Forward the string pointer IP:'........' 3 for IP: , 2 for '' */
-        buf+= 3 + strlen(client_source_ip) + 2;
+        /* Forward the string pointer IP:'........' 4 for " IP:", 2 for '' */
+        buf += strlen(client_source_ip) + 6;
     } else {
-        buf--;
         if (!config.flags.use_source_ip) {
             // use_source-ip = 0 and no -I argument in agent
             snprintf(ip, IPSIZE, "any");
@@ -181,12 +216,18 @@ w_err_t w_auth_parse_data(const char* buf,
     }
 
     /* Check for key hash when the agent already has one*/
-    char key_hash_token[2] = "K:";
-    if (strncmp(++buf, key_hash_token, 2) == 0) {
+    const char * key_hash_token = " K:";
+    if (strncmp(buf, key_hash_token, 3) == 0) {
         os_calloc(1, sizeof(os_sha1), *key_hash);
         char format[15] = {0};
         sprintf(format, " K:\'%%%ld[^\']\"", sizeof(os_sha1) - 1);
         sscanf(buf, format, *key_hash);
+
+        if (buf[strlen(*key_hash) + 4] != '\'') {
+            merror("Unterminated key field");
+            snprintf(response, OS_SIZE_2048, "ERROR: Unterminated key field");
+            return OS_INVALID;
+        }
     }
 
     return OS_SUCCESS;
@@ -295,7 +336,7 @@ w_err_t w_auth_validate_data(char *response,
             minfo("Duplicate IP '%s'. %s", ip, str_result);
         } else {
             mwarn("Duplicate IP '%s', rejecting enrollment. %s", ip, str_result);
-            snprintf(response, 2048, "ERROR: Duplicate IP: %s", ip);
+            snprintf(response, OS_SIZE_2048, "ERROR: Duplicate IP: %s", ip);
             result = OS_INVALID;
         }
     }
@@ -303,7 +344,7 @@ w_err_t w_auth_validate_data(char *response,
     /* Check whether the agent name is the same as the manager */
     if (result != OS_INVALID && !strcmp(agentname, shost)) {
         merror("Invalid agent name %s (same as manager)", agentname);
-        snprintf(response, 2048, "ERROR: Invalid agent name: %s", agentname);
+        snprintf(response, OS_SIZE_2048, "ERROR: Invalid agent name: %s", agentname);
         result = OS_INVALID;
     }
 
@@ -313,7 +354,7 @@ w_err_t w_auth_validate_data(char *response,
             minfo("Duplicate name. %s", str_result);
         } else {
             mwarn("Duplicate name '%s', rejecting enrollment. %s", agentname, str_result);
-            snprintf(response, 2048, "ERROR: Duplicate agent name: %s", agentname);
+            snprintf(response, OS_SIZE_2048, "ERROR: Duplicate agent name: %s", agentname);
             result = OS_INVALID;
         }
     }
@@ -329,7 +370,7 @@ w_err_t w_auth_add_agent(char *response, const char *ip, const char *agentname, 
 
     if (index = OS_AddNewAgent(&keys, NULL, agentname, ip, NULL), index < 0) {
         merror("Unable to add agent: %s (internal error)", agentname);
-        snprintf(response, 2048, "ERROR: Internal manager error adding agent: %s", agentname);
+        snprintf(response, OS_SIZE_2048, "ERROR: Internal manager error adding agent: %s", agentname);
         return OS_INVALID;
     }
 
@@ -358,7 +399,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         if (max_multigroups > MAX_GROUPS_PER_MULTIGROUP) {
             merror("Maximum multigroup reached: Limit is %d",MAX_GROUPS_PER_MULTIGROUP);
             if (response) {
-                snprintf(response, 2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
+                snprintf(response, OS_SIZE_2048, "ERROR: Maximum multigroup reached: Limit is %d", MAX_GROUPS_PER_MULTIGROUP);
             }
             ret = OS_INVALID;
             break;
@@ -369,7 +410,7 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         if (!dp) {
             merror("Invalid group: %.255s",group);
             if (response) {
-                snprintf(response, 2048, "ERROR: Invalid group: %s", group);
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group: %s", group);
             }
             ret = OS_INVALID;
             break;
@@ -380,4 +421,60 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     }
     os_free(tmp_groups);
     return ret;
+}
+
+char *w_generate_random_pass()
+{
+    int rand1;
+    int rand2;
+    char *rand3;
+    char *rand4;
+    os_md5 md1;
+    os_md5 md3;
+    os_md5 md4;
+    char *fstring = NULL;
+    char *str1 = NULL;
+    int time_value = (int)time(NULL);
+
+    rand1 = os_random();
+    rand2 = os_random();
+
+    rand3 = GetRandomNoise();
+    rand4 = GetRandomNoise();
+
+    OS_MD5_Str(rand3, -1, md3);
+    OS_MD5_Str(rand4, -1, md4);
+
+    const int requested_size = snprintf(NULL,
+                                        0,
+                                        "%d%d%s%d%s%s",
+                                        time_value,
+                                        rand1,
+                                        getuname(),
+                                        rand2,
+                                        md3,
+                                        md4);
+
+    if (requested_size > 0) {
+        os_calloc(requested_size + 1, sizeof(char), str1);
+        const int requested_size_assignation = snprintf(str1,
+                                                        requested_size + 1,
+                                                        "%d%d%s%d%s%s",
+                                                        time_value,
+                                                        rand1,
+                                                        getuname(),
+                                                        rand2,
+                                                        md3,
+                                                        md4);
+
+        if (requested_size_assignation > 0 && requested_size_assignation == requested_size) {
+            OS_MD5_Str(str1, -1, md1);
+            fstring = strdup(md1);
+        }
+    }
+
+    free(rand3);
+    free(rand4);
+    os_free(str1);
+    return(fstring);
 }

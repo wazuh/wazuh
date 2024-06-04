@@ -1,0 +1,6 @@
+---
+- actions:
+  - event:ingest
+  resources:
+  - "*:*:*"
+  effect: allow

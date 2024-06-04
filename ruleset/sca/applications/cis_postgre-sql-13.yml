@@ -14,8 +14,7 @@ policy:
   id: "cis_postgresql_13"
   file: "cis_postgre-sql-13.yml"
   name: "CIS Benchmark for PostgreSQL 13"
-  description: >
-    "This document, CIS PostgreSQL 13 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for PostgreSQL 13."
+  description: "This document, CIS PostgreSQL 13 Benchmark, provides prescriptive guidance for establishing a secure configuration posture for PostgreSQL 13."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
 
@@ -39,15 +38,15 @@ requirements:
   condition: all
   rules:
     - 'c:psql -U $user -h $host $db -c "\\l" -w -> r:row'
-    - 'c:psql --version -> r:13'
+    - "c:psql --version -> r:13"
 
 checks:
-# 1 Installation and Patches
+  # 1 Installation and Patches
 
-# 1.1 Ensure packages are obtained from authorized repositories (Manual)
-# Not Applicable: requiers manual verification
+  # 1.1 Ensure packages are obtained from authorized repositories (Manual)
+  # Not Applicable: requiers manual verification
 
-# 1.2 Ensure systemd Service Files Are Enabled (Automated)
+  # 1.2 Ensure systemd Service Files Are Enabled (Automated)
   - id: 24000
     title: Ensure systemd Service Files Are Enabled
     description: Confirm, and correct if necessary, the PostgreSQL systemd service is enabled.
@@ -70,18 +69,18 @@ checks:
     rules:
       - c:sh -c "systemctl get-default | systemctl list-dependencies | grep postgres" -> r:postgres
 
-# 1.3 Ensure Data Cluster Initialized Successfully (Automated)
-# Not Applicable: user switching
+  # 1.3 Ensure Data Cluster Initialized Successfully (Automated)
+  # Not Applicable: user switching
 
-# 2 Directory and File Permissions
-# Not Applicable: user switching
+  # 2 Directory and File Permissions
+  # Not Applicable: user switching
 
-# 3 Logging Monitoring And Auditing
+  # 3 Logging Monitoring And Auditing
 
-# 3.1.1
-# Not Applicable: Not covered
+  # 3.1.1
+  # Not Applicable: Not covered
 
-# 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
+  # 3.1.2 Ensure the log destinations are set correctly (Automated) --TODO--
   - id: 24001
     title: Ensure the log destinations are set correctly
     description: >
@@ -117,7 +116,7 @@ checks:
     rules:
       - c:sh -c "psql -U $user -h $host $db -c \"SHOW log_destination\" | grep $log_destination$" -> r:\.+
 
-# 3.1.3 Ensure the logging collector is enabled (Automated)
+  # 3.1.3 Ensure the logging collector is enabled (Automated)
   - id: 24002
     title: Ensure the logging collector is enabled
     description: >
@@ -161,7 +160,7 @@ checks:
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW logging_collector" -> r:\son'
 
-# 3.1.4 Ensure the log file destination directory is set correctly (Automated)
+  # 3.1.4 Ensure the log file destination directory is set correctly (Automated)
   - id: 24003
     title: Ensure the log file destination directory is set correctly
     description: >
@@ -216,7 +215,7 @@ checks:
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_directory\" | grep $log_directory$" -> r:\.+'
 
-# 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
+  # 3.1.5 Ensure the filename pattern for log files is set correctly (Automated)
   - id: 24004
     title: Ensure the filename pattern for log files is set correctly
     description: >
@@ -257,7 +256,7 @@ checks:
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_filename\" | grep $log_filename" -> r:\.+'
 
-# 3.1.6 Ensure the log file permissions are set correctly (Automated)
+  # 3.1.6 Ensure the log file permissions are set correctly (Automated)
   - id: 24005
     title: Ensure the log file permissions are set correctly
     description: >
@@ -294,10 +293,10 @@ checks:
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: all
-    rules: 
+    rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_file_mode\" | grep $log_file_mode" -> r:\.+'
 
-# 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
+  # 3.1.7 Ensure 'log_truncate_on_rotation' is enabled (Automated)
   - id: 24006
     title: Ensure 'log_truncate_on_rotation' is enabled
     description: >
@@ -342,9 +341,9 @@ checks:
       - cis_csc: ["6.3", "6.4"]
     condition: all
     rules:
-        - 'c:psql -U $user -h $host $db -c "SHOW log_truncate_on_rotation" -> r:\son'
+      - 'c:psql -U $user -h $host $db -c "SHOW log_truncate_on_rotation" -> r:\son'
 
-# 3.1.8 Ensure the maximum log file lifetime is set correctly (Automated)
+  # 3.1.8 Ensure the maximum log file lifetime is set correctly (Automated)
   - id: 24007
     title: Ensure the maximum log file lifetime is set correctly
     description: >
@@ -373,7 +372,7 @@ checks:
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_age\" | grep $log_rotation_age" -> r:\.+'
 
-# 3.1.9 Ensure the maximum log file size is set correctly (Automated)
+  # 3.1.9 Ensure the maximum log file size is set correctly (Automated)
   - id: 24008
     title: Ensure the maximum log file size is set correctly
     description: >
@@ -401,7 +400,7 @@ checks:
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"SHOW log_rotation_size\" | grep $log_rotation_size" -> r:\.+'
 
-# 3.1.10 Ensure the correct syslog facility is selected (Manual)
+  # 3.1.10 Ensure the correct syslog facility is selected (Manual)
   - id: 24009
     title: Ensure the correct syslog facility is selected
     description: >
@@ -431,7 +430,7 @@ checks:
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_facility\" | grep $syslog_facility" -> r:\.+'
 
-# 3.1.11 Ensure the program name for PostgreSQL syslog messages is correct (Automated)
+  # 3.1.11 Ensure the program name for PostgreSQL syslog messages is correct (Automated)
   - id: 24010
     title: Ensure the program name for PostgreSQL syslog messages is correct
     description: >
@@ -464,7 +463,7 @@ checks:
     rules:
       - 'c:sh -c "psql -U $user -h $host $db -c \"show syslog_ident\" | grep $syslog_ident" -> r:\.+'
 
-# 3.1.12 Ensure the correct messages are written to the server log (Automated)
+  # 3.1.12 Ensure the correct messages are written to the server log (Automated)
   - id: 24011
     title: Ensure the correct messages are written to the server log
     description: >
@@ -485,14 +484,14 @@ checks:
       (1 row)
     compliance:
       - cis: ["3.1.12"]
-      - cis_csc: ["6","6.4"]
+      - cis_csc: ["6", "6.4"]
     references:
       - https://www.postgresql.org/docs/current/static/runtime-config-logging.html
     condition: none
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_min_messages" -> r:\serror|\slog$|\sfatal$|\spanic$'
 
-## 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
+  ## 3.1.13 Ensure the correct SQL statements generating errors are recorded (Automated)
   - id: 24012
     title: Ensure the correct SQL statements generating errors are recorded
     description: >
@@ -526,7 +525,7 @@ checks:
     rules:
       - 'c:psql -U $user -h $host $db -c "SHOW log_min_error_statement" -> r:\slog$|\sfatal$|\spanic$'
 
-## 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
+  ## 3.1.14 Ensure 'debug_print_parse' is disabled (Automated)
   - id: 24013
     title: Ensure 'debug_print_parse' is disabled
     description: >
@@ -555,7 +554,7 @@ checks:
     rules:
       - 'c:psql -U $user -h $host $db -c "show debug_print_parse" -> r:\soff'
 
-## 3.1.15 Ensure 'debug_print_rewritten' is disabled (Automated)
+  ## 3.1.15 Ensure 'debug_print_rewritten' is disabled (Automated)
   - id: 24014
     title: Ensure 'debug_print_rewritten' is disabled
     description: >
@@ -584,7 +583,7 @@ checks:
     rules:
       - 'c:psql -U $user -h $host $db -c "show debug_print_rewritten" -> r:\soff'
 
-## 3.1.16 Ensure 'debug_print_plan' is disabled (Automated)
+  ## 3.1.16 Ensure 'debug_print_plan' is disabled (Automated)
   - id: 24015
     title: Ensure 'debug_print_plan' is disabled
     description: >
@@ -979,7 +978,6 @@ checks:
     condition: all
     rules:
       - 'c:psql -U $user -h $host $db -c "select * from pg_available_extensions where name=\"pg_permissions\";" -> r:pg_permissions && !r:(0\srows) && !r:ERROR'
-      
 
   ## 4.6 Ensure Row Level Security (RLS) is configured correctly (Manual)
   ## Not Aplicable: subjective
@@ -1051,7 +1049,7 @@ checks:
     rules:
       - 'c:fips-mode-setup --check -> r:FIPS\smode\sis\senabled'
 
-# 6.8 Ensure SSL is enabled and configured correctly (Automated)
+  # 6.8 Ensure SSL is enabled and configured correctly (Automated)
   - id: 24028
     title: Ensure SSL is enabled and configured correctly
     description: >
@@ -1139,4 +1137,4 @@ checks:
       - https://www.postgresql.org/docs/current/static/app-pgbasebackup.html
     condition: none
     rules:
-      - 'c:pgbackrest -> -bash: pgbackrest: command not found'
+      - "c:pgbackrest -> -bash: pgbackrest: command not found"

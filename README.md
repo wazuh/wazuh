@@ -77,31 +77,31 @@ The Wazuh WUI provides a powerful user interface for data visualization and anal
 
 **Modules overview**
 
-![Modules overview](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app.png)
+![Modules overview](https://github.com/wazuh/wazuh-dashboard-plugins/raw/master/screenshots/app.png)
 
 **Security events**
 
-![Module: Security events](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app2.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app2.png)
 
 **Integrity monitoring**
 
-![Module: Integrity monitoring](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app3.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app3.png)
 
 **Vulnerability detection**
 
-![Module: Vulnerabilities](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app4.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app4.png)
 
 **Regulatory compliance**
 
-![Module: PCI DSS](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app5.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app5.png)
 
 **Agents overview**
 
-![Agents overview](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app6.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app6.png)
 
 **Agent summary**
 
-![Agent summary](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app7.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app7.png)
 
 ## Orchestration
 
@@ -130,20 +130,36 @@ Here you can find all the automation tools maintained by the Wazuh team.
 
 ## Software and libraries used
 
-* Modified version of Zlib and a embedded part of OpenSSL (SHA1, SHA256, SHA512, AES and Blowfish libraries).
-* OpenSSL Project for use in the OpenSSL Toolkit (http://www.openssl.org/).
-* Cryptographic software written by Eric Young (eay@cryptsoft.com).
-* Software developed by the Zlib project (Jean-loup Gailly and Mark Adler).
-* Software developed by the cJSON project (Dave Gamble).
-* Software developed by the MessagePack project (https://msgpack.org/).
-* Software developed by the CURL project (https://curl.haxx.se/).
-* Software developed by the bzip2 project (Julian Seward).
-* Software developed by the libYAML project (Kirill Simonov).
-* The Linux audit userspace project (https://github.com/linux-audit/audit-userspace).
-* A embedded part of the Berkeley DB library (https://github.com/berkeleydb/libdb).
-* CPython interpreter by Guido van Rossum and the Python Software Foundation (https://www.python.org).
-* PyPi packages: [azure-storage-blob](https://github.com/Azure/azure-storage-python), [boto3](https://github.com/boto/boto3), [cryptography](https://github.com/pyca/cryptography), [docker](https://github.com/docker/docker-py), [pytz](https://pythonhosted.org/pytz/), [requests](http://python-requests.org/) and [uvloop](http://github.com/MagicStack/uvloop).
-* PCRE2 library by Philip Hazel (https://www.pcre.org/).
+|Software|Version|Author|License|
+|---|---|---|---|
+|[bzip2](https://github.com/libarchive/bzip2)|1.0.8|Julian Seward|BSD License|
+|[cJSON](https://github.com/DaveGamble/cJSON)|1.7.12|Dave Gamble|MIT License|
+|[cPython](https://github.com/python/cpython)|3.10.13|Guido van Rossum|Python Software Foundation License version 2|
+|[cURL](https://github.com/curl/curl)|8.5.0|Daniel Stenberg|MIT License|
+|[Flatbuffers](https://github.com/google/flatbuffers/)|23.5.26|Google Inc.|Apache 2.0 License|
+|[GoogleTest](https://github.com/google/googletest)|1.11.0|Google Inc.|3-Clause "New" BSD License|
+|[jemalloc](https://github.com/jemalloc/jemalloc)|5.2.1|Jason Evans|2-Clause "Simplified" BSD License|
+|[Lua](https://github.com/lua/lua)|5.3.6|PUC-Rio|MIT License|
+|[libarchive](https://github.com/libarchive/libarchive)|3.7.2|Tim Kientzle|3-Clause "New" BSD License|
+|[libdb](https://github.com/yasuhirokimura/db18)|18.1.40|Oracle Corporation|Affero GPL v3|
+|[libffi](https://github.com/libffi/libffi)|3.2.1|Anthony Green|MIT License|
+|[libpcre2](https://github.com/PCRE2Project/pcre2)|10.42.0|Philip Hazel|BSD License|
+|[libplist](https://github.com/libimobiledevice/libplist)|2.2.0|Aaron Burghardt et al.|GNU Lesser General Public License version 2.1|
+|[libYAML](https://github.com/yaml/libyaml)|0.1.7|Kirill Simonov|MIT License|
+|[liblzma](https://github.com/tukaani-project/xz)|5.4.2|Lasse Collin, Jia Tan et al.|GNU Public License version 3|
+|[Linux Audit userspace](https://github.com/linux-audit/audit-userspace)|2.8.4|Rik Faith|LGPL (copyleft)|
+|[msgpack](https://github.com/msgpack/msgpack-c)|3.1.1|Sadayuki Furuhashi|Boost Software License version 1.0|
+|[nlohmann](https://github.com/nlohmann/json)|3.7.3|Niels Lohmann|MIT License|
+|[OpenSSL](https://github.com/openssl/openssl)|3.0.12|OpenSSL Software Foundation|Apache 2.0 License|
+|[pacman](https://gitlab.archlinux.org/pacman/pacman)|5.2.2|Judd Vinet|GNU Public License version 2 (copyleft)|
+|[popt](https://github.com/rpm-software-management/popt)|1.16|Jeff Johnson & Erik Troan|MIT License|
+|[procps](https://gitlab.com/procps-ng/procps)|2.8.3|Brian Edmonds et al.|LGPL (copyleft)|
+|[RocksDB](https://github.com/facebook/rocksdb/)|8.3.2|Facebook Inc.|Apache 2.0 License|
+|[rpm](https://github.com/rpm-software-management/rpm)|4.18.2|Marc Ewing & Erik Troan|GNU Public License version 2 (copyleft)|
+|[sqlite](https://github.com/sqlite/sqlite)|3.45.0|D. Richard Hipp|Public Domain (no restrictions)|
+|[zlib](https://github.com/madler/zlib)|1.3.1|Jean-loup Gailly & Mark Adler|zlib/libpng License|
+
+* [PyPi packages](framework/requirements.txt)
 
 ## Documentation
 
@@ -169,6 +185,6 @@ Stay up to date on news, releases, engineering articles and more.
 
 ## Authors
 
-Wazuh Copyright (C) 2015-2022 Wazuh Inc. (License GPLv2)
+Wazuh Copyright (C) 2015-2023 Wazuh Inc. (License GPLv2)
 
 Based on the OSSEC project started by Daniel Cid.

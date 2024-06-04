@@ -22,8 +22,8 @@
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/exec_op_wrappers.h"
-#include "wazuh_modules/wmodules.h"
-#include "wazuh_modules/wm_docker.h"
+#include "../../../wazuh_modules/wmodules.h"
+#include "../../../wazuh_modules/wm_docker.h"
 #include "../scheduling/wmodules_scheduling_helpers.h"
 
 #define TEST_MAX_DATES 5
@@ -58,6 +58,7 @@ static int setup_module() {
     int ret = wm_docker_read(nodes, docker_module);
     OS_ClearNode(nodes);
     test_mode = 1;
+    wm_children_pool_init();
     return ret;
 }
 

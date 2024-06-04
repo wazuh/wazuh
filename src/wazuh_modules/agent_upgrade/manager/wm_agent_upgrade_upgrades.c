@@ -206,7 +206,7 @@ STATIC void* wm_agent_upgrade_start_upgrade(void *arg) {
             if (WM_UPGRADE_UPGRADE == agent_task->task_info->command) {
                 wm_upgrade_task *upgrade_task = agent_task->task_info->task;
 
-                if (upgrade_task->custom_version && (wm_agent_upgrade_compare_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM) < 0)) {
+                if (upgrade_task->custom_version && (compare_wazuh_versions(upgrade_task->custom_version, WM_UPGRADE_NEW_UPGRADE_MECHANISM, true) < 0)) {
 
                     cJSON_Delete(status_request);
                     cJSON_Delete(status_response);
@@ -320,7 +320,7 @@ STATIC int wm_agent_upgrade_send_wpk_to_agent(const wm_agent_task *agent_task, c
     }
 
     // Compare actual agent version to know which command format to use
-    int wpk_message_format = wm_agent_upgrade_compare_versions(strchr(agent_task->agent_info->wazuh_version, 'v'), WM_UPGRADE_NEW_UPGRADE_MECHANISM);
+    int wpk_message_format = compare_wazuh_versions(strchr(agent_task->agent_info->wazuh_version, 'v'), WM_UPGRADE_NEW_UPGRADE_MECHANISM, true);
 
     // open wb
     if ((result == WM_UPGRADE_SUCCESS) && wm_agent_upgrade_send_open(agent_task->agent_info->agent_id, wpk_message_format, wpk_path)) {
@@ -428,7 +428,7 @@ STATIC int wm_agent_upgrade_send_write(int agent_id, int wpk_message_format, con
 
     os_calloc(OS_MAXSTR, sizeof(char), command);
 
-    FILE *file = fopen(file_path, "rb");
+    FILE *file = wfopen(file_path, "rb");
     if (file) {
         while (bytes = fread(buffer, 1, sizeof(buffer), file), bytes) {
 
@@ -602,7 +602,7 @@ char* wm_agent_upgrade_send_command_to_agent(const char *command, const size_t c
     char *response = NULL;
     int length = 0;
 
-    const char *path = REMOTE_REQ_SOCK;
+    const char *path = REMOTE_LOCAL_SOCK;
 
     int sock = OS_ConnectUnixDomain(path, SOCK_STREAM, OS_MAXSTR);
 

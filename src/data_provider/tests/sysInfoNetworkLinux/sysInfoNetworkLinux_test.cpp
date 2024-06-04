@@ -53,7 +53,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET_THROW)
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET));
     EXPECT_CALL(*mock, address()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET)
@@ -66,7 +66,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET)
     EXPECT_CALL(*mock, broadcast()).Times(1).WillOnce(Return("192.168.0.255"));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("8.8.8.8"));
     EXPECT_CALL(*mock, metrics()).Times(1).WillOnce(Return("100"));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv4"))
     {
@@ -84,7 +84,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET6_THROW)
     nlohmann::json ifaddr {};
     EXPECT_CALL(*mock, family()).Times(1).WillOnce(Return(AF_INET6));
     EXPECT_CALL(*mock, addressV6()).Times(1).WillOnce(Return(""));
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET6)
@@ -97,7 +97,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_INET6)
     EXPECT_CALL(*mock, broadcastV6()).Times(1).WillOnce(Return("2001:db8:85a3:8d3:1319:8a2e:370:0000"));
     EXPECT_CALL(*mock, dhcp()).Times(1).WillOnce(Return("8.8.8.8"));
     EXPECT_CALL(*mock, metricsV6()).Times(1).WillOnce(Return("100"));
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
     for (auto& element : ifaddr.at("IPv6"))
     {
@@ -124,7 +124,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("10.2.2.50"));
 
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
     EXPECT_EQ("eth01", ifaddr.at("name").get_ref<const std::string&>());
     EXPECT_EQ("adapter", ifaddr.at("adapter").get_ref<const std::string&>());
@@ -148,7 +148,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_AF_PACKET)
 TEST_F(SysInfoNetworkLinuxTest, Test_AF_UNSPEC_THROW_NULLPTR)
 {
     nlohmann::json ifaddr {};
-    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(nullptr)->buildNetworkData(ifaddr));
+    EXPECT_ANY_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(nullptr)->buildNetworkData(ifaddr));
 }
 
 TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
@@ -165,7 +165,7 @@ TEST_F(SysInfoNetworkLinuxTest, Test_Gateway_7546)
     EXPECT_CALL(*mock, mtu()).Times(1).WillOnce(Return(1500));
     EXPECT_CALL(*mock, gateway()).Times(1).WillOnce(Return("A12BA8C0")); // Gateway value in hexa: A12BA8C0
 
-    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSType::LINUX>::create(mock)->buildNetworkData(ifaddr));
+    EXPECT_NO_THROW(FactoryNetworkFamilyCreator<OSPlatformType::LINUX>::create(mock)->buildNetworkData(ifaddr));
 
     EXPECT_EQ("eth01", ifaddr.at("name").get_ref<const std::string&>());
     EXPECT_EQ("adapter", ifaddr.at("adapter").get_ref<const std::string&>());

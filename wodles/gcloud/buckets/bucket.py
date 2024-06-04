@@ -73,6 +73,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
         self.default_date = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         self.db_path = join(utils.find_wazuh_path(), "wodles/gcloud/gcloud.db")
         self.db_connector = None
+        self.db_table_name = None
         self.datetime_format = "%Y-%m-%d %H:%M:%S.%f%z"
         self.reparse = reparse
 
@@ -143,10 +144,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                 'bucket_name': self.bucket_name,
                 'prefix': self.prefix
             })
-        try:
-            return [p[0] for p in processed_files.fetchall()]
-        except (TypeError, IndexError):
-            return list()
+        return [p[0] for p in processed_files.fetchall()]
 
     def _update_last_processed_files(self, processed_files: list):
         """Remove the records for the previous execution and store the new values from the current one.
@@ -164,7 +162,7 @@ class WazuhGCloudBucket(WazuhGCloudIntegration):
                     'bucket_name': self.bucket_name,
                     'prefix': self.prefix
                 })
-            except sqlite3.IntegrityError:
+            except sqlite3.OperationalError:
                 pass
 
             for blob in processed_files:

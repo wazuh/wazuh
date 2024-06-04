@@ -25,6 +25,7 @@ int get_info_attributes(char **attributes, char **values, OSList* log_msg);
 bool w_check_attr_negate(xml_node *node, int rule_id, OSList* log_msg);
 bool w_check_attr_field_name(xml_node * node, FieldInfo ** field, int rule_id, OSList* log_msg);
 w_exp_type_t w_check_attr_type(xml_node *node, w_exp_type_t default_type, int rule_id, OSList* log_msg);
+void w_free_rules_tmp_params(rules_tmp_params_t * rule_tmp_params);
 
 /* setup/teardown */
 

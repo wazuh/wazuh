@@ -12,6 +12,8 @@
 #ifndef _IMESSAGE_CREATOR_H
 #define _IMESSAGE_CREATOR_H
 
+#include "json.hpp"
+#include "rsyncImplementation.h"
 
 namespace RSync
 {

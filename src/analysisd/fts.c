@@ -78,10 +78,10 @@ int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
     }
 
     /* Create fts list */
-    fp_list = fopen(FTS_QUEUE, "r+");
+    fp_list = wfopen(FTS_QUEUE, "r+");
     if (!fp_list) {
         /* Create the file if we cant open it */
-        fp_list = fopen(FTS_QUEUE, "w+");
+        fp_list = wfopen(FTS_QUEUE, "w+");
         if (fp_list) {
             fclose(fp_list);
         }
@@ -100,7 +100,7 @@ int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
             }
         }
 
-        fp_list = fopen(FTS_QUEUE, "r+");
+        fp_list = wfopen(FTS_QUEUE, "r+");
         if (!fp_list) {
             merror(FOPEN_ERROR, FTS_QUEUE, errno, strerror(errno));
             return (0);
@@ -130,10 +130,10 @@ int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
     }
 
     /* Create ignore list */
-    *fp_ignore = fopen(IG_QUEUE, "r+");
+    *fp_ignore = wfopen(IG_QUEUE, "r+");
     if (!*fp_ignore) {
         /* Create the file if we cannot open it */
-        *fp_ignore = fopen(IG_QUEUE, "w+");
+        *fp_ignore = wfopen(IG_QUEUE, "w+");
         if (*fp_ignore) {
             fclose(*fp_ignore);
         }
@@ -152,7 +152,7 @@ int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
             }
         }
 
-        *fp_ignore = fopen(IG_QUEUE, "r+");
+        *fp_ignore = wfopen(IG_QUEUE, "r+");
         if (!*fp_ignore) {
             merror(FOPEN_ERROR, IG_QUEUE, errno, strerror(errno));
             return (0);
@@ -160,7 +160,7 @@ int FTS_Init(int threads, OSList **fts_list, OSHash **fts_store)
     }
 
     for (i = 1; i < threads; i++) {
-        fp_ignore[i] = fopen(IG_QUEUE, "r+");
+        fp_ignore[i] = wfopen(IG_QUEUE, "r+");
     }
 
     return (1);
@@ -312,6 +312,8 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         return NULL;
     }
 
+    w_mutex_lock(&fts_write_lock);
+
     /* Check if from the last FTS events, we had at least 3 "similars" before.
      * If yes, we just ignore it.
      */
@@ -338,6 +340,7 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         if (!line_for_list) {
             merror(MEM_ERROR, errno, strerror(errno));
             free(_line);
+            w_mutex_unlock(&fts_write_lock);
             return NULL;
         }
 
@@ -345,6 +348,7 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         if (!fts_node) {
             free(line_for_list);
             free(_line);
+            w_mutex_unlock(&fts_write_lock);
             return NULL;
         }
     }
@@ -355,6 +359,7 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         if (!line_for_list) {
             merror(MEM_ERROR, errno, strerror(errno));
             free(_line);
+            w_mutex_unlock(&fts_write_lock);
             return NULL;
         }
     }
@@ -363,9 +368,11 @@ char * FTS(Eventinfo *lf, OSList **fts_list, OSHash **fts_store)
         if (fts_node) OSList_DeleteThisNode(*fts_list, fts_node);
         free(line_for_list);
         free(_line);
+        w_mutex_unlock(&fts_write_lock);
         return NULL;
     }
 
+    w_mutex_unlock(&fts_write_lock);
     return _line;
 }
 

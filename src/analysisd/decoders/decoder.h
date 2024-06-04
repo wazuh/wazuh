@@ -96,8 +96,8 @@ typedef struct dbsync_context_t {
  *  data fields and their corresponding table
  */
 struct deltas_fields_match {
-    char key[OS_SIZE_32];
-    char value[OS_SIZE_32];
+    char *key;
+    char *value;
 };
 
 /**
@@ -106,6 +106,31 @@ struct deltas_fields_match {
 struct deltas_fields_match_list {
     struct deltas_fields_match current;
     const struct deltas_fields_match_list *next;
+};
+
+
+/**
+ * @brief Generic function to handle value mapping
+ *
+ */
+typedef bool (*mapping_t)(cJSON*,const char*);
+
+/**
+ * @brief Struct to map a field name their custom value mapper function
+ *
+ */
+struct delta_values_mapping {
+    char *key;
+    mapping_t mapping;
+};
+
+/**
+ * @brief Linked list of deltas values mappers
+ *
+ */
+struct delta_values_mapping_list {
+    struct delta_values_mapping current;
+    const struct delta_values_mapping_list *next;
 };
 
 /**
@@ -151,7 +176,10 @@ void OS_CreateOSDecoderList(void);
  * @param pi decoder to add in decoder list
  * @param pn_osdecodernode decoder list for events with program name
  * @param npn_osdecodernode decoder list for events without program name
- * @return 1 on success, otherwise 0
+ * @return status code
+ * @retval 1 success
+ * @retval 0 failure, the decoder has not been added to the list
+ * @retval -1 failure, but the decoder has already been added to the list
  */
 int OS_AddOSDecoder(OSDecoderInfo *pi, OSDecoderNode **pn_osdecodernode,
                     OSDecoderNode **npn_osdecodernode, OSList* log_msg);

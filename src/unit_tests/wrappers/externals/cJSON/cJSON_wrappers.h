@@ -10,7 +10,7 @@
 #ifndef CJSON_WRAPPERS_H
 #define CJSON_WRAPPERS_H
 
-#include "external/cJSON/cJSON.h"
+#include <cJSON.h>
 #include <stdbool.h>
 
 #ifdef WIN32
@@ -30,6 +30,8 @@ extern cJSON_bool __real_cJSON_AddItemToObject(cJSON *object, const char *string
 cJSON *__wrap_cJSON_AddStringToObject(cJSON *const object, const char *const name, const char *const string);
 
 cJSON *__wrap_cJSON_AddObjectToObject(cJSON *const object, const char *const name);
+
+cJSON* __wrap_cJSON_AddFalseToObject(__attribute__ ((__unused__)) cJSON * const object, const char * const name);
 
 extern cJSON *__real_cJSON_AddStringToObject(cJSON *const object, const char *const name, const char *const string);
 

@@ -1,4 +1,5 @@
 *.so
+*.so.*
 *.o
 *.a
 *.dSYM
@@ -18,6 +19,8 @@ src/selinux/*.mod
 src/selinux/*.pp
 framework/wazuh/core/wazuh.json
 src/**/build/*
+src/generated_headers/*.h
+src/generated_headers/*.hpp
 
 # Compiled programs
 src/agent-auth
@@ -66,6 +69,7 @@ src/wazuh-remoted
 src/wazuh-reportd
 src/wazuh-syscheckd
 src/wazuh-integratord
+src/wazuh-keystore
 
 # Active responses
 src/firewall-drop
@@ -96,6 +100,8 @@ src/win32/route-null-2012.cmd
 src/win32/netsh.cmd
 src/win32/VERSION
 src/win32/REVISION
+src/libwazuhshared.*
+src/libwazuhext.*
 
 # Eclipse files
 .cproject
@@ -125,6 +131,7 @@ src/shared_modules/dbsync/smokeTests/output/
 src/shared_modules/dbsync/smokeTests/temp.db
 src/shared_modules/rsync/coverage_report/
 src/shared_modules/utils/coverage_report/
+src/shared_modules/utils/tests/coverage_report
 src/wazuh_modules/syscollector/coverage_report/
 src/ossec.test
 src/tap_*
@@ -142,9 +149,16 @@ src/active-response/firewall-drop.sh
 # Databases commits
 framework/wazuh/rbac/migrations/versions/*
 
-# Documentation folder
+# Documentation files
 documentation/
+doxygen_config.cfg
+doxygen_errors.txt
 
-# MSU for Vulnerability Detector
-src/wazuh_modules/vulnerability_detector/msu.json.gz
+# Flatbuffers generated headers.
+src/shared_modules/utils/flatbuffers/include/
+src/wazuh_modules/syscollector/include/*_generated.h
+src/wazuh_modules/vulnerability_scanner/include/*_schema.h
+src/wazuh_modules/vulnerability_scanner/include/*_generated.h
 
+# Test files
+src/wazuh_modules/vulnerability_scanner/qa/test_data/*/input_*.bin

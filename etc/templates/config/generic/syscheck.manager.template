@@ -46,13 +46,12 @@
     <process_priority>10</process_priority>
 
     <!-- Maximum output throughput -->
-    <max_eps>100</max_eps>
+    <max_eps>50</max_eps>
 
     <!-- Database synchronization settings -->
     <synchronization>
       <enabled>yes</enabled>
       <interval>5m</interval>
-      <max_interval>1h</max_interval>
       <max_eps>10</max_eps>
     </synchronization>
   </syscheck>

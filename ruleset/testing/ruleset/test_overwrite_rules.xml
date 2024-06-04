@@ -1,6 +1,6 @@
 <group name="qa,test,">
 
-  <!-- 
+  <!--
       First use case:
         Testing overwritten rules followed by child rules. See https://github.com/wazuh/wazuh/issues/13414
   -->
@@ -25,7 +25,7 @@
     <description>Rule to overwrite the original.</description>
   </rule>
 
-  <!-- 
+  <!--
     Second use case:
       Testing overwrite & if_matched_sid
       Every option apart from if_matched_sid should be overwritten
@@ -47,7 +47,7 @@
     <description>Overwrite if_matched_sid.</description>
   </rule>
 
-  <!-- 
+  <!--
     Third use case:
       Testing overwrite & if_matched_group
       Every option apart from if_matched_group should be overwritten
@@ -95,7 +95,7 @@
     <description>Overwrite and CDB list.</description>
   </rule>
 
-  <!-- 
+  <!--
     Fifth use case:
       Testing overwrite & list & decoded_as
   -->
@@ -109,6 +109,86 @@
     <decoded_as>test_overwrite</decoded_as>
     <field name="example">TEST5</field>
     <description>Successfully field match.</description>
+  </rule>
+
+  <!--
+    Sixth use case:
+      Testing multiple overwrite
+  -->
+  <rule id="999920" level="3">
+    <decoded_as>test_overwrite</decoded_as>
+    <field name="example">TEST</field>
+    <description>Testing multiple overwrite.</description>
+  </rule>
+
+  <rule id="999920" level="3" overwrite="yes">
+    <decoded_as>test_overwrite</decoded_as>
+    <field name="example">TEST</field>
+    <description>Testing multiple overwrite.</description>
+  </rule>
+
+  <rule id="999920" level="3" overwrite="yes">
+    <decoded_as>test_overwrite</decoded_as>
+    <field name="example">TEST</field>
+    <description>Testing multiple overwrite.</description>
+  </rule>
+
+  <rule id="999920" level="3" overwrite="yes">
+    <decoded_as>test_overwrite</decoded_as>
+    <field name="example">TEST</field>
+    <description>Testing multiple overwrite.</description>
+  </rule>
+
+  <rule id="999920" level="3" overwrite="yes">
+    <decoded_as>test_overwrite</decoded_as>
+    <field name="example">MULTIPLE</field>
+    <description>Testing multiple overwrite.</description>
+  </rule>
+
+  <!--
+    Seventh use case:
+      Testing overwrite with if_sid
+  -->
+
+  <rule id="999921" level="3">
+    <decoded_as>test_overwrite</decoded_as>
+    <field name="example">TEST7</field>
+    <description>Testing overwrite with if_sid.</description>
+  </rule>
+
+  <rule id="999922" level="3">
+    <if_sid>999921</if_sid>
+    <field name="example">TEST7</field>
+    <description>Testing overwrite with if_sid.</description>
+  </rule>
+
+  <rule id="999922" level="3" overwrite="yes">
+    <if_sid>999921</if_sid>
+    <field name="example">TEST7</field>
+    <description>Testing overwrite with if_sid.</description>
+  </rule>
+
+  <!--
+    Eighth use case:
+      Testing overwrite with if_sid
+  -->
+
+  <rule id="999923" level="3">
+    <decoded_as>test_overwrite</decoded_as>
+    <field name="example">TEST8</field>
+    <description>Testing overwrite with if_level.</description>
+  </rule>
+
+  <rule id="999924" level="3">
+    <if_level>3</if_level>
+    <field name="example">TEST8</field>
+    <description>Testing overwrite with if_level.</description>
+  </rule>
+
+  <rule id="999924" level="3" overwrite="yes">
+    <if_level>3</if_level>
+    <field name="example">TEST8</field>
+    <description>Testing overwrite with if_level.</description>
   </rule>
 
 </group>

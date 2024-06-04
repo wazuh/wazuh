@@ -3,6 +3,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import argparse
 import asyncio
 import logging
@@ -11,13 +12,27 @@ import signal
 import sys
 
 from wazuh.core.utils import clean_pid_files
-
+from wazuh.core.wlogging import WazuhLogger
 
 #
 # Aux functions
 #
 
-def set_logging(foreground_mode=False, debug_mode=0):
+def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
+    """Set cluster logger.
+
+    Parameters
+    ----------
+    foreground_mode : bool
+        Whether to log in the standard output or not.
+    debug_mode : int
+        Debug mode.
+
+    Returns
+    -------
+    WazuhLogger
+        Cluster logger.
+    """
     cluster_logger = cluster_utils.ClusterLogger(foreground_mode=foreground_mode, log_path='logs/cluster.log',
                                                  debug_level=debug_mode,
                                                  tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s')
@@ -26,7 +41,8 @@ def set_logging(foreground_mode=False, debug_mode=0):
 
 
 def print_version():
-    from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
+    """Print Wazuh metadata."""
+    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
     print(f"\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}")
 
 
@@ -51,28 +67,61 @@ def exit_handler(signum, frame):
 #
 # Master main
 #
-async def master_main(args, cluster_config, cluster_items, logger):
-    from wazuh.core.cluster import master, local_server
+async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_items: dict, logger: WazuhLogger):
+    """Start main process of the master node.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Script arguments.
+    cluster_config : dict
+        Cluster configuration.
+    cluster_items : dict
+        Content of the cluster.json file.
+    logger : WazuhLogger
+        Cluster logger.
+    """
+    from wazuh.core.cluster import local_server, master
+    from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
+
     cluster_utils.context_tag.set('Master')
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
                               cluster_items=cluster_items)
+    # Spawn pool processes
+    if my_server.task_pool is not None:
+        my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
+
     my_local_server = local_server.LocalServerMaster(performance_test=args.performance_test, logger=logger,
                                                      concurrency_test=args.concurrency_test, node=my_server,
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
-    # Spawn pool processes
-    if my_server.task_pool is not None:
-        my_server.task_pool.map(cluster_utils.process_spawn_sleep, range(my_server.task_pool._max_workers))
-    await asyncio.gather(my_server.start(), my_local_server.start())
+    tasks = [my_server, my_local_server]
+    if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
+        tasks.append(HAPHelper)
+    await asyncio.gather(*[task.start() for task in tasks])
 
 
 #
 # Worker main
 #
-async def worker_main(args, cluster_config, cluster_items, logger):
-    from wazuh.core.cluster import worker, local_server
+async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_items: dict, logger: WazuhLogger):
+    """Start main process of a worker node.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Script arguments.
+    cluster_config : dict
+        Cluster configuration.
+    cluster_items : dict
+        Content of the cluster.json file.
+    logger : WazuhLogger
+        Cluster logger.
+    """
     from concurrent.futures import ProcessPoolExecutor
+
+    from wazuh.core.cluster import local_server, worker
     cluster_utils.context_tag.set('Worker')
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
@@ -97,7 +146,9 @@ async def worker_main(args, cluster_config, cluster_items, logger):
                                                          concurrency_test=args.concurrency_test, node=my_client,
                                                          configuration=cluster_config, enable_ssl=args.ssl,
                                                          cluster_items=cluster_items)
-
+        # Spawn pool processes
+        if my_client.task_pool is not None:
+            my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
@@ -105,12 +156,12 @@ async def worker_main(args, cluster_config, cluster_items, logger):
             await asyncio.sleep(cluster_items['intervals']['worker']['connection_retry'])
 
 
-def get_script_arguments():
+def get_script_arguments() -> argparse.Namespace:
     """Get script arguments.
 
     Returns
     -------
-    ArgumentParser object
+    argparse.Namespace
         Arguments passed to the script.
     """
 
@@ -145,7 +196,7 @@ def get_script_arguments():
 
 
 def main():
-    """Main function of the wazuh_clusterd script in charge of starting the cluster process."""
+    """Main function of the wazuh-clusterd script in charge of starting the cluster process."""
     import wazuh.core.cluster.cluster
 
     # Set correct permissions on cluster.log file
@@ -170,12 +221,7 @@ def main():
     if args.test_config:
         sys.exit(0)
 
-    cluster_status = wazuh.core.cluster.utils.get_cluster_status()
-    if cluster_status['running'] == 'yes':
-        main_logger.error("Cluster is already running.", exc_info=False)
-        sys.exit(1)
-
-    # clean
+    # Clean cluster files from previous executions
     wazuh.core.cluster.cluster.clean_up()
 
     # Check for unused PID files
@@ -212,7 +258,7 @@ def main():
 
 if __name__ == '__main__':
     import wazuh.core.cluster.utils as cluster_utils
-    from wazuh.core import pyDaemonModule, common, configuration
+    from wazuh.core import common, configuration, pyDaemonModule
 
     cluster_items = cluster_utils.get_cluster_items()
     original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)

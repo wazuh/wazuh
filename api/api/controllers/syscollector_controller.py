@@ -4,24 +4,37 @@
 
 import logging
 
-from aiohttp import web
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 
 import wazuh.syscollector as syscollector
-from api.encoder import dumps, prettify
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
+from api.controllers.util import json_response
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deprecate_endpoint
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_hardware_info(request, agent_id, pretty=False, wait_for_complete=False, select=None):
-    """ Get hardware info of an agent
+@deprecate_endpoint()
+async def get_hardware_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                            select: str = None) -> ConnexionResponse:
+    """Get hardware info of an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param select: Select which fields to return (separated by comma)
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    select : str
+        Select which fields to return (separated by comma).
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id],
                 'select': select,
@@ -32,29 +45,49 @@ async def get_hardware_info(request, agent_id, pretty=False, wait_for_complete=F
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, sort=None,
-                          search=None, select=None, hotfix=None, q=None):
-    """ Get info about an agent's hotfixes
+@deprecate_endpoint()
+async def get_hotfix_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, select: str = None,
+                          hotfix: str = None, q: str = None, distinct: bool = False) -> ConnexionResponse:
+    """Get info about an agent's hotfixes.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param select: Select which fields to return (separated by comma)
-    :param hotfix: Filters by hotfix in Windows agents
-    :param q: Query to filter results by.
-    :return:
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    hotfix : str
+        Filters by hotfix in Windows agents.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
 
     filters = {'hotfix': hotfix}
@@ -67,7 +100,8 @@ async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=Fal
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'hotfixes',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -75,34 +109,59 @@ async def get_hotfix_info(request, agent_id, pretty=False, wait_for_complete=Fal
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_network_address_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
-                                   select=None, sort=None, search=None, iface=None, proto=None, address=None,
-                                   broadcast=None, netmask=None, q=None):
-    """ Get network address info of an agent
+@deprecate_endpoint()
+async def get_network_address_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                                   offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                                   search: str = None, iface: str = None, proto: str = None, address: str = None,
+                                   broadcast: str = None, netmask: str = None, q: str = None,
+                                   distinct: bool = False) -> ConnexionResponse:
+    """Get network address info of an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param iface: Filters by interface name
-    :param proto: Filters by IP protocol
-    :param address: IP address associated with the network interface
-    :param broadcast: Filters by broadcast direction
-    :param netmask: Filters by netmask
-    :param q: Query to filter results by.
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    iface : str
+        Filters by interface name.
+    proto : str
+        Filters by IP protocol.
+    address : str
+        IP address associated with the network interface.
+    broadcast : str
+        Filters by broadcast direction.
+    netmask : str
+        Filters by netmask.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     filters = {'iface': iface,
                'proto': proto,
@@ -118,7 +177,8 @@ async def get_network_address_info(request, agent_id, pretty=False, wait_for_com
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'netaddr',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -126,43 +186,66 @@ async def get_network_address_info(request, agent_id, pretty=False, wait_for_com
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_network_interface_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
-                                     select=None, sort=None, search=None, name=None, adapter=None, state=None,
-                                     mtu=None, q=None):
-    """ Get network interface info of an agent
+@deprecate_endpoint()
+async def get_network_interface_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                                     offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                                     search: str = None, name: str = None, adapter: str = None, state: str = None,
+                                     mtu: str = None, q: str = None, distinct: bool = False) -> ConnexionResponse:
+    """Get network interface info of an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param name: Name of the network interface
-    :param adapter: Filters by adapter
-    :param state: Filters by state
-    :param mtu: Filters by mtu
-    :param q: Query to filter results by.
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    name : str
+        Name of the network interface.
+    adapter : str
+        Filters by adapter.
+    state : str
+        Filters by state.
+    mtu : str
+        Filters by mtu.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     filters = {'adapter': adapter,
-               'type': request.query.get('type', None),
+               'type': request.query_params.get('type', None),
                'state': state,
                'name': name,
                'mtu': mtu}
     # Add nested fields to kwargs filters
     nested = ['tx.packets', 'rx.packets', 'tx.bytes', 'rx.bytes', 'tx.errors', 'rx.errors', 'tx.dropped', 'rx.dropped']
     for field in nested:
-        filters[field] = request.query.get(field, None)
+        filters[field] = request.query_params.get(field, None)
 
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
@@ -172,7 +255,8 @@ async def get_network_interface_info(request, agent_id, pretty=False, wait_for_c
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'netiface',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -180,34 +264,57 @@ async def get_network_interface_info(request, agent_id, pretty=False, wait_for_c
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
-                                    select=None, sort=None, search=None, iface=None, gateway=None, dhcp=None, q=None):
-    """ Get network protocol info of an agent
+@deprecate_endpoint()
+async def get_network_protocol_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                                    offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                                    search: str = None, iface: str = None, gateway: str = None, dhcp: str = None,
+                                    q: str = None, distinct: bool = False) -> ConnexionResponse:
+    """Get network protocol info of an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param iface: Filters by iface
-    :param gateway: Filters by gateway
-    :param dhcp: Filters by dhcp
-    :param q: Query to filter results by.
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    iface : str
+        Filters by iface.
+    gateway : str
+        Filters by gateway.
+    dhcp : str
+        Filters by dhcp.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     filters = {'iface': iface,
-               'type': request.query.get('type', None),
+               'type': request.query_params.get('type', None),
                'gateway': gateway,
                'dhcp': dhcp}
 
@@ -219,7 +326,8 @@ async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_co
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'netproto',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -227,21 +335,33 @@ async def get_network_protocol_info(request, agent_id, pretty=False, wait_for_co
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_os_info(request, agent_id, pretty=False, wait_for_complete=False, select=None):
-    """ Get OS info of an agent
+@deprecate_endpoint()
+async def get_os_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                      select: str = None) -> ConnexionResponse:
+    """Get OS info of an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param select: Select which fields to return (separated by comma)
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    select : str
+        Select which fields to return.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     f_kwargs = {'agent_list': [agent_id],
                 'select': select,
@@ -253,37 +373,61 @@ async def get_os_info(request, agent_id, pretty=False, wait_for_complete=False, 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                            sort=None, search=None, vendor=None, name=None, architecture=None, version=None, q=None):
-    """ Get packages info of an agent
+@deprecate_endpoint()
+async def get_packages_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                            offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                            search: str = None, vendor: str = None, name: str = None, architecture: str = None,
+                            version: str = None, q: str = None, distinct: bool = False) -> ConnexionResponse:
+    """Get packages info of an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param vendor: Filters by vendor
-    :param name: Filters by name
-    :param architecture: Filters by architecture
-    :param version: Filters by version
-    :param q: Query to filter results by.
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    vendor : str
+        Filters by vendor.
+    name : str
+        Filters by name.
+    architecture : str
+        Filters by architecture.
+    version : str
+        Filters by version.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     filters = {'vendor': vendor,
                'name': name,
                'architecture': architecture,
-               'format': request.query.get('format', None),
+               'format': request.query_params.get('format', None),
                'version': version}
 
     f_kwargs = {'agent_list': [agent_id],
@@ -294,7 +438,8 @@ async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=F
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'packages',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -302,34 +447,58 @@ async def get_packages_info(request, agent_id, pretty=False, wait_for_complete=F
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None, select=None,
-                         sort=None, search=None, pid=None, protocol=None, tx_queue=None, state=None, process=None,
-                         q=None):
-    """ Get ports info of an agent
+@deprecate_endpoint()
+async def get_ports_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+                         limit: int = None, select: str = None, sort: str = None, search: str = None, pid: str = None,
+                         protocol: str = None, tx_queue: str = None, state: str = None, process: str = None,
+                         q: str = None, distinct: bool = False) -> ConnexionResponse:
+    """Get ports info of an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param pid: Filters by pid
-    :param protocol: Filters by protocol
-    :param tx_queue: Filters by tx_queue
-    :param state: Filters by state
-    :param process: Filters by process
-    :param q: Query to filter results by.
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    pid : str
+        Filters by pid.
+    protocol : str
+        Filters by protocol.
+    tx_queue : str
+        Filters by tx_queue.
+    state : str
+        Filters by state.
+    process : str
+        Filters by process.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     filters = {'pid': pid,
                'protocol': protocol,
@@ -339,7 +508,7 @@ async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=Fals
     # Add nested fields to kwargs filters
     nested = ['local.ip', 'local.port', 'remote.ip']
     for field in nested:
-        filters[field] = request.query.get(field, None)
+        filters[field] = request.query_params.get(field, None)
 
     f_kwargs = {'agent_list': [agent_id],
                 'offset': offset,
@@ -349,7 +518,8 @@ async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=Fals
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'ports',
-                'q': q}
+                'q': q,
+                'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -357,44 +527,79 @@ async def get_ports_info(request, agent_id, pretty=False, wait_for_complete=Fals
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=False, offset=0, limit=None,
-                             select=None, sort=None, search=None, pid=None, state=None, ppid=None, egroup=None,
-                             euser=None, fgroup=None, name=None, nlwp=None, pgrp=None, priority=None, rgroup=None,
-                             ruser=None, sgroup=None, suser=None, q=None):
-    """ Get processes info an agent
+@deprecate_endpoint()
+async def get_processes_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
+                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
+                             search: str = None, pid: str = None, state: str = None, ppid: str = None,
+                             egroup: str = None, euser: str = None, fgroup: str = None, name: str = None,
+                             nlwp: str = None, pgrp: str = None, priority: str = None, rgroup: str = None,
+                             ruser: str = None, sgroup: str = None, suser: str = None, q: str = None,
+                             distinct: bool = False) -> ConnexionResponse:
+    """Get processes info an agent.
 
-    :param agent_id: Agent ID
-    :param pretty: Show results in human-readable format
-    :param wait_for_complete: Disable timeout response
-    :param offset: First element to return in the collection
-    :param limit: Maximum number of elements to return
-    :param select: Select which fields to return (separated by comma)
-    :param sort: Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
-    ascending or descending order.
-    :param search: Looks for elements with the specified string
-    :param pid: Filters by process pid
-    :param state: Filters by process state
-    :param ppid: Filters by process parent pid
-    :param egroup: Filters by process egroup
-    :param euser Filters by process euser
-    :param fgroup: Filters by process fgroup
-    :param name: Filters by process name
-    :param nlwp: Filters by process nlwp
-    :param pgrp: Filters by process pgrp
-    :param priority: Filters by process priority
-    :param rgroup: Filters by process rgroup
-    :param ruser: Filters by process ruser
-    :param sgroup: Filters by process sgroup
-    :param suser: Filters by process suser
-    :param q: Query to filter results by.
-    :return: Data
+    Parameters
+    ----------
+    agent_id : str
+        Agent ID.
+    offset : int
+        First element to return.
+    limit : int
+        Maximum number of elements to return.
+    sort : str
+        Sorts the collection by a field or fields (separated by comma). Use +/. at the beginning to list in ascending
+        or descending order.
+    search : str
+        Look for elements with the specified string.
+    select : str
+        Select which fields to return.
+    q : str
+        Query to filter results by.
+    pretty : bool
+        Show results in human-readable format.
+    wait_for_complete : bool
+        Disable timeout response.
+    pid : str
+        Filters by pid.
+    state : str
+        Filters by process state.
+    ppid : str
+        Filters by process parent pid.
+    egroup : str
+        Filters by process egroup.
+    euser : str
+        Filters by process euser.
+    fgroup : str
+        Filters by process fgroup.
+    name : str
+        Filters by process name.
+    nlwp : str
+        Filters by process nlwp.
+    pgrp : str
+        Filters by process pgrp.
+    priority : str
+        Filters by process priority.
+    rgroup : str
+        Filters by process rgroup.
+    ruser : str
+        Filters by process ruser.
+    sgroup : str
+        Filters by process sgroup.
+    suser : str
+        Filters by process suser.
+    distinct : bool
+        Look for distinct values.
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
     """
     filters = {'state': state,
                'pid': pid,
@@ -419,7 +624,8 @@ async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=
                 'search': parse_api_param(search, 'search'),
                 'filters': filters,
                 'element_type': 'processes',
-                'q': q}
+                'q': q,
+               'distinct': distinct}
 
     dapi = DistributedAPI(f=syscollector.get_item_agent,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -427,8 +633,8 @@ async def get_processes_info(request, agent_id, pretty=False, wait_for_complete=
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

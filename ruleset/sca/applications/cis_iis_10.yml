@@ -13,7 +13,7 @@
 policy:
   id: "cis_iis_10"
   file: "cis_iis_10.yml"
-  name: "CIS Benchmark for Microsoft IIS 10"
+  name: "CIS Microsoft IIS 10 Benchmark v1.1.1"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft IIS."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -35,7 +35,6 @@ checks:
     compliance:
       - cis: ["1.1"]
       - cis_csc: ["14"]
-
     condition: none
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd list vdir -> r:SystemDrive'
@@ -115,7 +114,7 @@ checks:
       - cis_csc: ["9.2"]
     condition: all
     rules:
-      - 'c:powershell.exe import-module servermanager;Get-WindowsFeature Web-DAV-Publishing -> r:available'
+      - "c:powershell.exe import-module servermanager;Get-WindowsFeature Web-DAV-Publishing -> r:available"
 
   # 2  Configure Authentication and Authorization
   - id: 22006
@@ -288,7 +287,7 @@ checks:
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd list config -section:system.webServer/security/requestFiltering -> r:removeServerHeader="true"'
 
-#4 Request Filtering and Other Restriction Modules
+  #4 Request Filtering and Other Restriction Modules
   - id: 22015
     title: "Ensure 'maxAllowedContentLength' is configured"
     description: "The maxAllowedContentLength Request Filter is the maximum size of the http request, measured in bytes, which can be sent from a client to the server. Configuring this value enables the total request size to be restricted to a configured value. It is recommended that the overall size of requests be restricted to a maximum value appropriate for the server, site, or application."
@@ -443,7 +442,7 @@ checks:
     title: "Ensure 'Dynamic IP Address Restrictions' is enabled"
     description: "IIS Dynamic IP Address Restrictions capability can be used to thwart DDos attacks. This is complimentary to the IP Addresses and Domain names Restrictions lists that can be manually maintained within IIS. In contrast, Dynamic IP address filtering allows administrators to configure the server to block access for IPs that exceed the specified request threshold. The default action Deny action for restrictions is to return a Forbidden response to the client."
     rationale: "Dynamic IP address filtering allows administrators to configure the server to block access for IPs that exceed the specified number of requests or requests frequency. Ensure that you receive the Forbidden page once the block has been enforced."
-    remediation: "Enter the following commands in powershell.exe to configure: Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter \"system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests\" -name\"enabled\" -value \"True\"Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter \"system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests\" -name \"maxConcurrentRequests\" -value <number of requests>"
+    remediation: 'Enter the following commands in powershell.exe to configure: Set-WebConfigurationProperty -pspath ''MACHINE/WEBROOT/APPHOST'' -filter "system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests" -name"enabled" -value "True"Set-WebConfigurationProperty -pspath ''MACHINE/WEBROOT/APPHOST'' -filter "system.webServer/security/dynamicIpSecurity/denyByConcurrentRequests" -name "maxConcurrentRequests" -value <number of requests>'
     compliance:
       - cis: ["4.11"]
       - cis_csc: ["9.5"]
@@ -453,7 +452,7 @@ checks:
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.webServer/security/dynamicIpSecurity -> r:denyByConcurrentRequests enabled="true" && r:denyByRequestRate enabled="true"'
 
-#5 IIS Logging Recommendations
+  #5 IIS Logging Recommendations
   - id: 22026
     title: "Ensure Default IIS web log location is moved"
     description: "IIS will log relatively detailed information on every request. These logs are usually the first item looked at in a security response, and can be the most valuable. Malicious users are aware of this, and will often try to remove evidence of their activities. It is therefore recommended that the default location for IIS log files be changed to a restricted, non system drive"
@@ -474,7 +473,7 @@ checks:
   #5.3 - Has to be done manually, requires user interaction
   #    title: "Ensure 'ETW Logging' is enabled"
 
-#6 FTP Requests
+  #6 FTP Requests
   - id: 22027
     title: "Ensure FTP requests are encrypted"
     description: "The new FTP Publishing Service for IIS supports adding an SSL certificate to an FTP site. Using an SSL certificate with an FTP site is also known as FTP-S or FTP over Secure Socket Layers (SSL). FTP-S is an RFC standard (RFC 4217) where an SSL certificate is added to an FTP site and thereby making it possible to perform secure file transfers."
@@ -505,10 +504,10 @@ checks:
     rules:
       - 'c:%systemroot%\system32\inetsrv\appcmd.exe list config -section:system.ftpServer/security/authentication -> r:denyByFailure enabled="true"'
 
-#7 Transport Encryption
+  #7 Transport Encryption
   - id: 22029
     title: "Ensure HSTS Header is set"
-    description: "HTTP Strict Transport Security (HSTS) allows a site to inform the user agent to communicate with the site only over HTTPS. This header takes two parameters: max-age, \"specifies the number of seconds, after the reception of the STS header field, during whichthe user agent regards the host (from whom the message was received) as a Known HSTSHost [speaks only HTTPS]\"; and includeSubDomains. includeSubDomains is an optionaldirective that defines how this policy is applied to subdomains. If includeSubDomains isincluded in the header, it provides the following definition: this HSTS Policy also applies toany hosts whose domain names are subdomains of the Known HSTS Host's domain name."
+    description: 'HTTP Strict Transport Security (HSTS) allows a site to inform the user agent to communicate with the site only over HTTPS. This header takes two parameters: max-age, "specifies the number of seconds, after the reception of the STS header field, during whichthe user agent regards the host (from whom the message was received) as a Known HSTSHost [speaks only HTTPS]"; and includeSubDomains. includeSubDomains is an optionaldirective that defines how this policy is applied to subdomains. If includeSubDomains isincluded in the header, it provides the following definition: this HSTS Policy also applies toany hosts whose domain names are subdomains of the Known HSTS Host''s domain name.'
     rationale: "HTTP Strict Transport Security (HSTS) is a simple and widely supported standard to protect visitors by ensuring that their browsers always connect to a website over HTTPS. HSTS exists to remove the need for the common, insecure practice of redirecting users from http:// to https:// URLs. HSTS relies on the User Agent/Browser to enforce the required behavior. All major browsers support it. If the browser doesn't support HSTS, it will be ignored.When a browser knows that a domain has enabled HSTS, it does two things:1. Always uses an https:// connection, even when clicking on an http:// link or after typing a domain into the location bar without specifying a protocol.2. Removes the ability for users to click through warnings about invalid certificates.A domain instructs browsers that it has enabled HSTS by returning an HTTP header over an HTTPS connection."
     remediation: "To set the HTTP Header at the server level using an AppCmd.exe command, run the following command from an elevated command prompt: %systemroot%\\system32\\inetsrv\\appcmd.exe set config -section:system.webServer/httpProtocol /+\"customHeaders.[name='Strict-Transport-Security',value='max-age=480; preload']\""
     compliance:
@@ -565,7 +564,7 @@ checks:
 
   - id: 22032
     title: "Ensure TLS 1.0 is Disabled"
-    description: "The PCI Data Security Standard 3.1 recommends disabling \"early TLS\" along with SSL: SSL and early TLS are not considered strong cryptography and cannot be used as a security control after June 30, 2016."
+    description: 'The PCI Data Security Standard 3.1 recommends disabling "early TLS" along with SSL: SSL and early TLS are not considered strong cryptography and cannot be used as a security control after June 30, 2016.'
     rationale: "Disabling weak protocols will help ensure the confidentiality and integrity of in-transit data."
     remediation: "Set the following key to 0: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Server:Enabled HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Client:Enabled. Set the following key is set to 1: HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Server:DisabledByDefault HKLM\\SYSTEM\\CurrentControlSet\\Control\\SecurityProviders\\SCHANNEL\\Protocols\\TLS 1.0\\Client:DisabledByDefault"
     compliance:

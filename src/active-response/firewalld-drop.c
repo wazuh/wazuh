@@ -11,7 +11,6 @@
 
 #define LOCK_PATH "active-response/bin/fw-drop"
 #define LOCK_FILE "active-response/bin/fw-drop/pid"
-#define DEFAULT_FW_CMD "/bin/firewall-cmd"
 
 int main (int argc, char **argv) {
     (void)argc;
@@ -83,8 +82,7 @@ int main (int argc, char **argv) {
 
     if (!strcmp("Linux", uname_buffer.sysname)) {
         char arg1[COMMANDSIZE_4096] = {0};
-        char fw_cmd[COMMANDSIZE_4096] = {0};
-        char fw_cmd_tmp[COMMANDSIZE_4096 - 5] = DEFAULT_FW_CMD;
+        char *fw_cmd_path = NULL;
 
         if (action == ADD_COMMAND) {
             strcpy(arg1, "--add-rich-rule");
@@ -93,19 +91,13 @@ int main (int argc, char **argv) {
         }
 
         // Checking if firewall-cmd is present
-        if (access(fw_cmd_tmp, F_OK) < 0) {
-            char fw_cmd_path[COMMANDSIZE_4096] = {0};
-            snprintf(fw_cmd_path, sizeof(fw_cmd_path), "/usr%s", fw_cmd_tmp);
-            if (access(fw_cmd_path, F_OK) < 0) {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR -1, "The firewall-cmd file '%s' is not accessible: %s (%d)", fw_cmd_path, strerror(errno), errno);
-                write_debug_file(argv[0], log_msg);
-                cJSON_Delete(input_json);
-                return OS_INVALID;
-            }
-            snprintf(fw_cmd, sizeof(fw_cmd), "%s", fw_cmd_path);
-        } else {
-            strncpy(fw_cmd, fw_cmd_tmp, COMMANDSIZE_4096 - 1);
+        if (get_binary_path("firewall-cmd", &fw_cmd_path) < 0) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR -1, "The firewall-cmd file '%s' is not accessible: %s (%d)", fw_cmd_path, strerror(errno), errno);
+            write_debug_file(argv[0], log_msg);
+            cJSON_Delete(input_json);
+            os_free(fw_cmd_path);
+            return OS_INVALID;
         }
 
         memset(lock_path, '\0', COMMANDSIZE_4096);
@@ -119,15 +111,16 @@ int main (int argc, char **argv) {
             snprintf(log_msg, OS_MAXSTR -1, "Unable to take lock. End.");
             write_debug_file(argv[0], log_msg);
             cJSON_Delete(input_json);
+            os_free(fw_cmd_path);
             return OS_INVALID;
         }
 
         int count = 0;
         bool flag = true;
         while (flag) {
-            char *exec_cmd1[4] = { fw_cmd, arg1, rule, NULL };
+            char *exec_cmd1[4] = { fw_cmd_path, arg1, rule, NULL };
 
-            wfd_t *wfd = wpopenv(fw_cmd, exec_cmd1, W_BIND_STDERR);
+            wfd_t *wfd = wpopenv(fw_cmd_path, exec_cmd1, W_BIND_STDERR);
             if (wfd) {
                 int wp_closefd = wpclose(wfd);
                 if ( WIFEXITED(wp_closefd) ) {
@@ -150,7 +143,7 @@ int main (int argc, char **argv) {
             }
         }
         unlock(lock_path, argv[0]);
-
+        os_free(fw_cmd_path);
     } else {
         write_debug_file(argv[0], "Invalid system");
     }

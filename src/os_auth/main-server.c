@@ -32,6 +32,7 @@
 #include "wazuh_db/helpers/wdb_global_helpers.h"
 #include "wazuhdb_op.h"
 #include "os_err.h"
+#include "generate_cert.h"
 
 /* Prototypes */
 static void help_authd(char * home_path) __attribute((noreturn));
@@ -71,7 +72,6 @@ extern struct keynode * volatile *remove_tail;
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
-
 /* Print help statement */
 static void help_authd(char * home_path)
 {
@@ -93,39 +93,14 @@ static void help_authd(char * home_path)
     print_out("    -k <path>   Full path to server key. Default: %s.", KEYFILE);
     print_out("    -a          Auto select SSL/TLS method. Default: TLS v1.2 only.");
     print_out("    -L          Force insertion though agent limit reached.");
+    print_out("    -C          Specify the certificate validity in days.");
+    print_out("    -B          Specify the certificate key size in bits.");
+    print_out("    -K          Specify the path to store the certificate key.");
+    print_out("    -X          Specify the path to store the certificate.");
+    print_out("    -S          Specify the certificate subject.");
     print_out(" ");
     os_free(home_path);
     exit(1);
-}
-
-/* Generates a random and temporary shared pass to be used by the agents. */
-char *__generatetmppass()
-{
-    int rand1;
-    int rand2;
-    char *rand3;
-    char *rand4;
-    os_md5 md1;
-    os_md5 md3;
-    os_md5 md4;
-    char *fstring = NULL;
-    char str1[STR_SIZE +1];
-
-    rand1 = os_random();
-    rand2 = os_random();
-
-    rand3 = GetRandomNoise();
-    rand4 = GetRandomNoise();
-
-    OS_MD5_Str(rand3, -1, md3);
-    OS_MD5_Str(rand4, -1, md4);
-
-    os_snprintf(str1, STR_SIZE, "%d%d%s%d%s%s",(int)time(0), rand1, getuname(), rand2, md3, md4);
-    OS_MD5_Str(str1, -1, md1);
-    fstring = strdup(md1);
-    os_free(rand3);
-    os_free(rand4);
-    return(fstring);
 }
 
 /* Function to use with SSL on non blocking socket,
@@ -150,6 +125,7 @@ static int ssl_error(const SSL *ssl, int ret)
 
 int main(int argc, char **argv)
 {
+
     FILE *fp;
     /* Count of pids we are wait()ing on */
     int debug_level = 0;
@@ -175,8 +151,12 @@ int main(int argc, char **argv)
     /* Initialize some variables */
     bio_err = 0;
 
-    // Get options
+    /* Change working directory */
+    if (chdir(home_path) == -1) {
+        merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+    }
 
+    // Get options
     {
         int c;
         int use_pass = 0;
@@ -186,9 +166,17 @@ int main(int argc, char **argv)
         const char *ca_cert = NULL;
         const char *server_cert = NULL;
         const char *server_key = NULL;
+        char cert_val[OS_SIZE_32 + 1] = "\0";
+        char cert_key_bits[OS_SIZE_32 + 1] = "\0";
+        char cert_key_path[PATH_MAX + 1] = "\0";
+        char cert_path[PATH_MAX + 1] = "\0";
+        char cert_subj[OS_MAXSTR + 1] = "\0";
+        bool generate_certificate = false;
         unsigned short port = 0;
+        unsigned long days_val = 0;
+        unsigned long key_bits = 0;
 
-        while (c = getopt(argc, argv, "Vdhtfig:D:p:c:v:sx:k:PF:ar:L"), c != -1) {
+        while (c = getopt(argc, argv, "Vdhtfigj:D:p:c:v:sx:k:PF:ar:L:C:B:K:X:S:"), c != -1) {
             switch (c) {
                 case 'V':
                     print_version();
@@ -247,7 +235,12 @@ int main(int argc, char **argv)
                     if (!optarg) {
                         merror_exit("-%c needs an argument", c);
                     }
-                    ciphers = optarg;
+                    else {
+                        if (w_str_is_number(optarg)) {
+                            merror_exit("-%c needs a valid list of SSL ciphers", c);
+                        }
+                        ciphers = optarg;
+                    }
                     break;
 
                 case 'v':
@@ -291,15 +284,113 @@ int main(int argc, char **argv)
                     mwarn("This option no longer applies. The agent limit has been removed.");
                     break;
 
+                case 'C':
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+
+                    if (w_str_is_number(optarg)) {
+                        generate_certificate = true;
+                        if (snprintf(cert_val, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
+                            mwarn("-%c argument exceeds %d bytes. Certificate validity info truncated", c, OS_SIZE_32);
+                        }
+                    }
+                    else {
+                        merror_exit("-%c needs a numeric argument", c);
+                    }
+                    break;
+
+                case 'B':
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+
+                    if (w_str_is_number(optarg)) {
+                        generate_certificate = true;
+                        if (snprintf(cert_key_bits, OS_SIZE_32 + 1, "%s", optarg) > OS_SIZE_32) {
+                            mwarn("-%c argument exceeds %d bytes. Certificate key size info truncated", c, OS_SIZE_32);
+                        }
+                    }
+                    else {
+                        merror_exit("-%c needs a numeric argument", c);
+                    }
+                    break;
+
+                case 'K':
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+
+                    generate_certificate = true;
+                    if (snprintf(cert_key_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate key path info truncated", c, PATH_MAX);
+                    }
+                    break;
+
+                case 'X':
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+
+                    generate_certificate = true;
+                    if (snprintf(cert_path, PATH_MAX + 1, "%s", optarg) > PATH_MAX) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate path info truncated", c, PATH_MAX);
+                    }
+                    break;
+
+                case 'S':
+                    if (!optarg) {
+                        merror_exit("-%c needs an argument", c);
+                    }
+
+                    generate_certificate = true;
+                    if (snprintf(cert_subj, OS_MAXSTR + 1, "%s", optarg) > OS_MAXSTR) {
+                        mwarn("-%c argument exceeds %d bytes. Certificate subject info truncated", c, OS_MAXSTR);
+                    }
+                    break;
+
                 default:
                     help_authd(home_path);
                     break;
             }
         }
 
-        /* Change working directory */
-        if (chdir(home_path) == -1) {
-            merror_exit(CHDIR_ERROR, home_path, errno, strerror(errno));
+        if (generate_certificate) {
+            // Sanitize parameters
+            if (strlen(cert_val) == 0) {
+                merror_exit("Certificate expiration time not defined.");
+            }
+
+            if (strlen(cert_key_bits) == 0) {
+                merror_exit("Certificate key size not defined.");
+            }
+
+            if (strlen(cert_key_path) == 0) {
+                merror_exit("Key path not defined.");
+            }
+
+            if (strlen(cert_path) == 0) {
+                merror_exit("Certificate path not defined.");
+            }
+
+            if (strlen(cert_subj) == 0) {
+                merror_exit("Certificate subject not defined.");
+            }
+
+            if (days_val = strtol(cert_val, NULL, 10), days_val == 0) {
+                merror_exit("Unable to set certificate validity to 0 days.");
+            }
+
+            if (key_bits = strtol(cert_key_bits, NULL, 10), key_bits == 0) {
+                merror_exit("Unable to set certificate private key size to 0 bits.");
+            }
+
+            if (generate_cert(days_val, key_bits, cert_key_path, cert_path, cert_subj) == 0) {
+                mdebug2("Certificates generated successfully.");
+                exit(0);
+            } else {
+                merror_exit("Unable to generate auth certificates.");
+            }
         }
 
         /* Set the Debug level */
@@ -367,7 +458,7 @@ int main(int argc, char **argv)
 
     /* Exit here if disabled */
     if (config.flags.disabled) {
-        minfo("Daemon is disabled. Closing.");
+        minfo("Daemon is disabled. Closing.");
         exit(0);
     }
 
@@ -423,7 +514,7 @@ int main(int argc, char **argv)
     minfo(STARTUP_MSG, (int)getpid());
 
     /* Checking client keys file */
-    fp = fopen(KEYS_FILE, "a");
+    fp = wfopen(KEYS_FILE, "a");
     if (!fp) {
         merror("Unable to open %s (key file)", KEYS_FILE);
         exit(1);
@@ -445,11 +536,20 @@ int main(int argc, char **argv)
 
         /* Check if password is enabled */
         if (config.flags.use_password) {
-            fp = fopen(AUTHD_PASS, "r");
+            fp = wfopen(AUTHD_PASS, "r");
             buf[0] = '\0';
 
             /* Checking if there is a custom password file */
             if (fp) {
+                fseek(fp, 0, SEEK_END);
+
+                if (ftell(fp) <= 1) {
+                    merror("Empty password provided.");
+                    exit(1);
+                }
+
+                fseek(fp, 0, SEEK_SET);
+
                 buf[4096] = '\0';
                 char *ret = fgets(buf, 4095, fp);
 
@@ -468,8 +568,11 @@ int main(int argc, char **argv)
                 minfo("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
             } else {
                 /* Getting temporary pass. */
-                authpass = __generatetmppass();
-                minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                if (authpass = w_generate_random_pass(), authpass) {
+                    minfo("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                } else {
+                    merror_exit("Unable to generate random password. Exiting.");
+                }
             }
         } else {
             minfo("Accepting connections on port %hu. No password required.", config.port);
@@ -517,7 +620,7 @@ int main(int argc, char **argv)
             return EXIT_FAILURE;
         }
     } else {
-        minfo("Port %hu was set as disabled.", config.port);
+        minfo("Port %hu was set as disabled.", config.port);
     }
 
     if (!config.worker_node) {
@@ -927,16 +1030,14 @@ void* run_writer(__attribute__((unused)) void *arg) {
         }
 
         for (cur = copy_remove; cur; cur = next) {
-            char full_name[FILE_SIZE + 1];
             next = cur->next;
-            snprintf(full_name, sizeof(full_name), "%s-%s", cur->name, cur->ip);
 
             mdebug1("[Writer] Performing delete([%s] %s).", cur->id, cur->name);
 
             gettime(&t0);
-            delete_agentinfo(cur->id, full_name);
+            delete_diff(cur->name);
             gettime(&t1);
-            mdebug2("[Writer] delete_agentinfo(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
+            mdebug2("[Writer] delete_diff(): %d µs.", (int)(1000000. * (double)time_diff(&t0, &t1)));
 
             gettime(&t0);
             OS_RemoveCounter(cur->id);

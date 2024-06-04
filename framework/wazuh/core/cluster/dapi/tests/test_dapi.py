@@ -1,18 +1,19 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import json
 import logging
 import os
 import sys
 from asyncio import TimeoutError
-from typing import Iterator
-from unittest.mock import patch, MagicMock
+from unittest.mock import call, MagicMock, patch
 
 import pytest
 from connexion import ProblemException
 from sqlalchemy.exc import OperationalError
+from sqlite3 import OperationalError as SQLiteOperationalError, DatabaseError, Error
 
 from wazuh.core import common
 
@@ -37,7 +38,8 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.cluster import local_client
 
 logger = logging.getLogger('wazuh')
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
 
 DEFAULT_REQUEST_TIMEOUT = 10
 
@@ -65,6 +67,33 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
             assert False, f'Unexpected exception: {e.ext}'
 
 
+class TestingLoggerParent:
+    """Class used to create the parent attribute of TestingLogger objects."""
+    __test__ = False
+
+    def __init__(self):
+        self.handlers = []
+
+
+class TestingLogger:
+    """Class used to create custom Logger objects for testing purposes."""
+    __test__ = False
+    
+    def __init__(self, logger_name):
+        self.name = logger_name
+        self.handlers = []
+        self.parent = TestingLoggerParent()
+
+    def error(self, message):
+        pass
+
+    def debug(self, message):
+        pass
+
+    def debug2(self, message):
+        pass
+
+
 @pytest.mark.parametrize('kwargs', [
     {'f_kwargs': {'select': ['id']}, 'rbac_permissions': {'mode': 'black'}, 'nodes': ['worker1'],
      'basic_services': ('wazuh-modulesd', 'wazuh-db'), 'request_type': 'local_master'},
@@ -72,8 +101,7 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
     {'api_timeout': 15},
     {'api_timeout': 5}
 ])
-@patch('wazuh.core.cluster.dapi.dapi.common.WAZUH_INSTALL_TYPE', return_value='local')
-def test_DistributedAPI(install_type_mock, kwargs):
+def test_DistributedAPI(kwargs):
     """Test constructor from DistributedAPI class.
 
     Parameters
@@ -88,16 +116,6 @@ def test_DistributedAPI(install_type_mock, kwargs):
 
 def test_DistributedAPI_debug_log():
     """Check that error messages are correctly sent to the logger in the DistributedAPI class."""
-    class TestingLogger:
-        def __init__(self, logger_name):
-            self.name = logger_name
-
-        def debug(self, message):
-            pass
-
-        def debug2(self, message):
-            pass
-
     logger_ = TestingLogger(logger_name="wazuh-api")
     message = "Testing debug2"
     with patch.object(logger_, "debug2") as debug2_mock:
@@ -251,7 +269,7 @@ def test_DistributedAPI_local_request_errors():
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.check_wazuh_status', side_effect=None)
 @patch('asyncio.wait_for', new=AsyncMock(return_value='Testing'))
 def test_DistributedAPI_local_request(mock_local_request):
-    """Test `local_request` method from class DistributedAPI and check the behaviour when an error raise."""
+    """Test `local_request` method from class DistributedAPI and check the behaviour when an error raises."""
     dapi_kwargs = {'f': manager.status, 'logger': logger}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
@@ -281,9 +299,18 @@ def test_DistributedAPI_local_request(mock_local_request):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3021)
 
-    with patch('asyncio.wait_for', new=AsyncMock(side_effect=OperationalError(statement=None, params=[], orig=None))):
+    orig_message = 'database or disk is full'
+    orig = SQLiteOperationalError(DatabaseError(Error(Exception(orig_message))))
+    with patch('asyncio.wait_for', new=AsyncMock(side_effect=OperationalError(statement=None, params=[], orig=orig))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=2008)
+
+        dapi = DistributedAPI(f=manager.status, logger=logger, debug=True)
+        try:
+            raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+        except WazuhInternalError as e:
+            assert e.code == 2008
+            assert str(e).endswith(orig_message)
 
     with patch('asyncio.wait_for', new=AsyncMock(side_effect=WazuhInternalError(1001))):
         dapi_kwargs = {'f': manager.status, 'logger': logger}
@@ -305,10 +332,31 @@ def test_DistributedAPI_local_request(mock_local_request):
         except Exception as e:
             assert type(e) == KeyError
 
+    testing_logger = TestingLogger('test')
+    exc_code = 3000
+    cluster_exc = WazuhClusterError(exc_code)
+    with patch('asyncio.wait_for', new=AsyncMock(side_effect=cluster_exc)):
+        with patch.object(TestingLogger, "error") as logger_error_mock:
+            # Test WazuhClusterError caught in execute_local_request and ProblemException raised
+            dapi_kwargs = {'f': manager.status, 'logger': testing_logger}
+            raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=exc_code)
+
+            # Test WazuhClusterError is raised when using debug in execute_local_request and distribute_function
+            dapi = DistributedAPI(f=manager.status, logger=testing_logger, debug=True)
+            try:
+                raise_if_exc(loop.run_until_complete(dapi.distribute_function()))
+            except WazuhClusterError as e:
+                assert e.dapi_errors == dapi.get_error_info(e)
+
+            # Test the logger `error` method was called for both distribute_function calls
+            logger_error_mock.assert_has_calls([call(f"{cluster_exc.message}", exc_info=False),
+                                                call(f"{cluster_exc.message}", exc_info=False)])
+
 
 @patch("asyncio.get_running_loop")
 def test_DistributedAPI_get_client(loop_mock):
     """Test get_client function from DistributedAPI."""
+
     class Node:
         def __init__(self):
             self.cluster_items = {"cluster_items": ["worker1", "worker2"]}
@@ -322,7 +370,7 @@ def test_DistributedAPI_get_client(loop_mock):
 
     node = Node()
     dapi = DistributedAPI(f=agent.get_agents_summary_status, node=node, logger=logger)
-    assert dapi.get_client() == node
+    assert dapi.get_client()
 
 
 @patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'worker'})
@@ -514,6 +562,7 @@ def test_APIRequestQueue_init(queue_mock):
 @patch("asyncio.get_event_loop")
 async def test_APIRequestQueue_run(loop_mock, import_module_mock):
     """Test `APIRequestQueue.run` function."""
+
     class DistributedAPI_mock:
         def __init__(self):
             pass
@@ -548,35 +597,26 @@ async def test_APIRequestQueue_run(loop_mock, import_module_mock):
                                             "not connected or does not exist: 'wazuh'.")
 
         node = NodeMock()
-        with patch.object(node, "send_string", return_value=b"noerror"):
-            with patch.object(node, "send_request", return_value=b"Error"):
+        with patch.object(node, "send_request", side_effect=WazuhClusterError(3020, extra_message="test")):
+            with patch.object(node, "send_string", return_value=b"noerror"):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
                     server.clients = {"wazuh": node}
                     with pytest.raises(Exception):
                         await apirequest.run()
 
-        with patch.object(node, "send_string", return_value=b"noerror"):
-            with patch.object(node, "send_request", return_value=WazuhError(1000)):
+            with patch.object(node, "send_string", Exception("break while true")):
                 with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
-                    server.clients = {"wazuh": node}
-                    with pytest.raises(Exception):
-                        await apirequest.run()
-
-        with patch.object(node, "send_string", Exception("break while true")):
-            with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
-                apirequest.logger = logging.getLogger("apirequest")
-                with pytest.raises(Exception):
-                    await apirequest.run()
-
-        with patch.object(node, "send_string", return_value=b"noerror"):
-            with patch("wazuh.core.cluster.dapi.dapi.DistributedAPI", return_value=DistributedAPI_mock()):
-                with pytest.raises(Exception):
-                    await apirequest.run()
+                    with patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception()):
+                        apirequest.logger = logging.getLogger("apirequest")
+                        with pytest.raises(Exception):
+                            await apirequest.run()
 
 
+@patch("wazuh.core.cluster.dapi.dapi.contextlib.suppress", side_effect=Exception())
 @patch("asyncio.get_event_loop")
-async def test_SendSyncRequestQueue_run(loop_mock):
+async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
     """Test `SendSyncRequestQueue.run` function."""
+
     class NodeMock:
         async def send_request(self, command, data):
             pass
@@ -604,18 +644,12 @@ async def test_SendSyncRequestQueue_run(loop_mock):
 
         node = NodeMock()
         with patch.object(node, "send_request", Exception("break while true")):
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect=Exception("break while true")):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect=Exception("break while true")):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
                 with pytest.raises(Exception):
                     await sendsync.run()
 
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect="noerror"):
                 with pytest.raises(Exception):
-                    await sendsync.run()
-
-        with patch.object(node, "send_request", return_value=WazuhError(1000)):
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", return_value="valid"):
-                sendsync.logger = logger
-                with pytest.raises(Exception, match=".*break while true.*"):
                     await sendsync.run()

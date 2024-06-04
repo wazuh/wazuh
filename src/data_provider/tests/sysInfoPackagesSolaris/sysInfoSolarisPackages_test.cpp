@@ -1,6 +1,6 @@
 /*
  * Wazuh SysInfo
- * Copyright (C) 2015-2021, Wazuh Inc.
+ * Copyright (C) 2015, Wazuh Inc.
  * January 12, 2022.
  *
  * This program is free software; you can redistribute it
@@ -58,9 +58,8 @@ TEST_F(SysInfoSolarisPackagesTest, Test_Success_Data)
     EXPECT_CALL(*mock, size()).Times(1).WillOnce(Return(0));
     EXPECT_CALL(*mock, vendor()).Times(1).WillOnce(Return("Oracle corporation"));
     EXPECT_CALL(*mock, install_time()).Times(1).WillOnce(Return("2022/01/13 14:48:58"));
-    EXPECT_CALL(*mock, multiarch()).Times(1).WillOnce(Return(""));
 
-    EXPECT_NO_THROW(FactoryPackageFamilyCreator<OSType::SOLARIS>::create(mock)->buildPackageData(packages));
+    EXPECT_NO_THROW(FactoryPackageFamilyCreator<OSPlatformType::SOLARIS>::create(mock)->buildPackageData(packages));
 
     EXPECT_EQ("libstdc++6", packages.at("name").get_ref<const std::string&>());
     EXPECT_EQ("5.5.0", packages.at("version").get_ref<const std::string&>());
@@ -74,5 +73,4 @@ TEST_F(SysInfoSolarisPackagesTest, Test_Success_Data)
     EXPECT_EQ(0, packages.at("size").get<const int>());
     EXPECT_EQ("Oracle corporation", packages.at("vendor").get_ref<const std::string&>());
     EXPECT_EQ("2022/01/13 14:48:58", packages.at("install_time").get_ref<const std::string&>());
-    EXPECT_EQ("", packages.at("multiarch").get_ref<const std::string&>());
 }

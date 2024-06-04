@@ -11,7 +11,7 @@
 #ifndef WIN_WHODATA_WRAPPERS_H
 #define WIN_WHODATA_WRAPPERS_H
 
-#include "config/syscheck-config.h"
+#include "../../../../config/syscheck-config.h"
 
 int __wrap_run_whodata_scan();
 

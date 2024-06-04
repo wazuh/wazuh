@@ -9,7 +9,7 @@
 #ifndef ATOMIC_WRAPPERS
 #define ATOMIC_WRAPPERS
 
-#include "headers/atomic.h"
+#include "../../../../headers/atomic.h"
 
 int __wrap_atomic_int_get(atomic_int_t *atomic);
 

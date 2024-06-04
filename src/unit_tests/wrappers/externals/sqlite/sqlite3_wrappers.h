@@ -11,7 +11,7 @@
 #ifndef SQLITE3_WRAPPERS_H
 #define SQLITE3_WRAPPERS_H
 
-#include "external/sqlite/sqlite3.h"
+#include "../external/sqlite/sqlite3.h"
 
 int __wrap_sqlite3_bind_int(sqlite3_stmt *stmt,
                             int index,

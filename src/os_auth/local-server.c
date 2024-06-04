@@ -319,8 +319,7 @@ char* local_dispatch(const char *input) {
             ierror = EINTERNAL;
             goto fail;
         }
-
-        if (response) {
+        else {
             output = cJSON_PrintUnformatted(response);
             cJSON_Delete(response);
         }

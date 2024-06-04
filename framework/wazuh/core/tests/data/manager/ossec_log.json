@@ -1,0 +1,15 @@
+{"timestamp":"2023/01/18 12:52:56","tag":"wazuh-remoted","pid":27006,"file":"secure.c","line":374,"routine":"rem_keyupdate_main","level":"debug","description":"Checking for keys file changes."}
+{"timestamp":"2023/01/18 12:52:57","tag":"wazuh-remoted","pid":27006,"file":"state.c","line":161,"routine":"rem_write_state","level":"debug","description":"Updating state file."}
+{"timestamp":"2023/01/18 12:52:59","tag":"wazuh-db","pid":26854,"file":"wdb_parser.c","line":821,"routine":"wdb_parse","level":"debug","description":"Global query: sync-agent-groups-get {\"condition\": \"sync_status\", \"set_synced\": true, \"get_global_hash\": true}"}
+{"timestamp":"2023/01/18 12:52:59","tag":"wazuh-db","pid":26854,"file":"wdb_integrity.c","line":699,"routine":"wdb_get_global_group_hash","level":"debug","description":"Using global group hash from cache"}
+{"timestamp":"2023/01/18 12:53:02","tag":"wazuh-remoted","pid":27006,"file":"state.c","line":161,"routine":"rem_write_state","level":"debug","description":"Updating state file."}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-remoted","pid":27006,"file":"manager.c","line":693,"routine":"c_files","level":"debug","description":"Updating shared files sums."}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-db","pid":26854,"file":"main.c","line":324,"routine":"run_dealer","level":"debug","description":"New client connected (39)."}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-db","pid":26854,"file":"wdb_parser.c","line":821,"routine":"wdb_parse","level":"debug","description":"Global query: get-all-agents last_id 0"}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-db","pid":26854,"file":"main.c","line":324,"routine":"run_dealer","level":"debug","description":"New client connected (41)."}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-db","pid":26854,"file":"main.c","line":386,"routine":"run_worker","level":"debug","description":"Client 39 disconnected."}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-db","pid":26854,"file":"wdb_parser.c","line":821,"routine":"wdb_parse","level":"debug","description":"Global query: get-agent-info 1"}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-remoted","pid":27006,"file":"manager.c","line":715,"routine":"c_files","level":"debug","description":"End updating shared files sums."}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-db","pid":26854,"file":"main.c","line":386,"routine":"run_worker","level":"debug","description":"Client 41 disconnected."}
+{"timestamp":"2023/01/18 12:53:06","tag":"wazuh-remoted","pid":27006,"file":"secure.c","line":374,"routine":"rem_keyupdate_main","level":"debug","description":"Checking for keys file changes."}
+{"timestamp":"2023/01/18 12:53:07","tag":"wazuh-remoted","pid":27006,"file":"state.c","line":161,"routine":"rem_write_state","level":"debug","description":"Updating state file."}

@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.5.0"
-REVISION="40500"
+VERSION="v5.0.0"
+REVISION="50000"
 TYPE="local"
 
 ###  Do not modify below here ###
@@ -230,9 +230,8 @@ start_service()
     checkpid;
 
     # Delete all files in temporary folder
-    TO_DELETE="$DIR/tmp/*"
-    rm -rf $TO_DELETE
-
+    TO_DELETE="$DIR/tmp"
+    find $TO_DELETE -mindepth 1 -name "*" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
 
     # We actually start them now.
     for i in ${SDAEMONS}; do
@@ -365,6 +364,15 @@ info()
     fi
 }
 
+restart_service()
+{
+    testconfig
+    lock
+    stop_service
+    start_service
+    unlock
+}
+
 ### MAIN HERE ###
 
 arg=$2
@@ -382,18 +390,11 @@ stop)
     unlock
     ;;
 restart)
-    testconfig
-    lock
-    stop_service
-    start_service
-    unlock
+    restart_service
     ;;
 reload)
     DAEMONS=$(echo $DAEMONS | sed 's/wazuh-execd//')
-    lock
-    stop_service
-    start_service
-    unlock
+    restart_service
     ;;
 status)
     lock

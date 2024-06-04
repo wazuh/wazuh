@@ -1,0 +1,3 @@
+[
+    "Match found, the package 'networkd-dispatcher', is vulnerable to 'CVE-2022-29799'. Current version: '1.6-0ubuntu3.5' (less than '1.7-0ubuntu3.4' or equal to ''). - Agent '' (ID: '001', Version: '')."
+]

@@ -11,14 +11,11 @@
 #ifndef CREATE_DB_WRAPPERS_H
 #define CREATE_DB_WRAPPERS_H
 
-#include "syscheckd/syscheck.h"
+#include "../../../../syscheckd/include/syscheck.h"
 
 void __wrap_fim_checker(const char *path, event_data_t *evt_data, const directory_t *configuration);
 
 directory_t *__wrap_fim_configuration_directory(const char *path);
-
-cJSON *__wrap_fim_entry_json(const char * path,
-                             fim_file_data * data);
 
 cJSON *__wrap_fim_json_event();
 
@@ -39,4 +36,16 @@ void expect_fim_configuration_directory_call(const char *path, directory_t *ret)
 void expect_fim_checker_call(const char *path, const directory_t *configuration);
 
 void __wrap_free_entry(fim_entry *entry);
+
+
+TXN_HANDLE __wrap_fim_db_transaction_start(const char*, result_callback_t, void*);
+
+int __wrap_fim_db_transaction_sync_row(TXN_HANDLE, const fim_entry*);
+
+void __wrap_fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
+                                            result_callback_t callback,
+                                            void* txn_ctx);
+int __wrap_Start_win32_Syscheck();
+
+void __wrap_fim_generate_delete_event();
 #endif

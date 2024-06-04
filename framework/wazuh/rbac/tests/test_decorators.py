@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from importlib import reload
 
 from wazuh.core.exception import WazuhError
+from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.rbac.tests.utils import init_db
 
 test_path = os.path.dirname(os.path.realpath(__file__))
@@ -25,8 +26,9 @@ def db_setup():
             with patch('shutil.chown'), patch('os.chmod'):
                 with patch('api.constants.SECURITY_PATH', new=test_data_path):
                     import wazuh.rbac.decorators as decorator
-                    reload(decorator)
+
     init_db('schema_security_test.sql', test_data_path)
+    reload(decorator)
 
     yield decorator
 
@@ -90,13 +92,15 @@ def test_expose_resources(db_setup, decorator_params, function_params, rbac, fak
     with patch('wazuh.rbac.decorators._expand_resource', side_effect=mock_expand_resource):
         @db_setup.expose_resources(**decorator_params)
         def framework_dummy(**kwargs):
-            for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']),
-                                                      allowed_resources):
+            for target_param, allowed_resource in zip(get_identifier(decorator_params['resources']), allowed_resources):
                 assert set(kwargs[target_param]) == set(allowed_resource)
+                assert 'call_func' not in kwargs
+                return True
 
         try:
-            framework_dummy(**function_params)
+            output = framework_dummy(**function_params)
             assert (result is None or result == "allow")
+            assert output == function_params.get('call_func', True) or isinstance(output, AffectedItemsWazuhResult)
         except WazuhError as e:
             assert (result is None or result == "deny")
             for allowed_resource in allowed_resources:

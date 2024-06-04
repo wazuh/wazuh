@@ -39,42 +39,36 @@ char *getsharedfiles()
     return (ret);
 }
 
-#ifndef WIN32
+
 char *get_agent_ip()
 {
     char agent_ip[IPSIZE + 1] = { '\0' };
-#if defined (__linux__) || defined (__MACH__) || defined (sun) || defined(FreeBSD) || defined(OpenBSD)
-    int sock;
-    int i;
-    static const char * REQUEST = "host_ip";
+    struct sockaddr_storage sas;
+    socklen_t len = sizeof(sas);
+    const int err = getsockname(agt->sock, (struct sockaddr *)&sas, &len);
 
-    for (i = SOCK_ATTEMPTS; i > 0; --i) {
-        if (sock = control_check_connection(), sock >= 0) {
-            if (OS_SendUnix(sock, REQUEST, strlen(REQUEST)) < 0) {
-                mdebug1("Error sending msg to control socket (%d) %s", errno, strerror(errno));
-            }
-            else{
-                if (OS_RecvUnix(sock, IPSIZE, agent_ip) <= 0) {
-                    mdebug1("Error receiving msg from control socket (%d) %s", errno, strerror(errno));
-                    agent_ip[0] = '\0';
-                }
-            }
-
-            close(sock);
-            break;
-        } else {
-            mdebug2("Control module not yet available. Remaining attempts: %d", i - 1);
-            sleep(1);
+    if (!err) {
+        switch (sas.ss_family) {
+            case AF_INET:
+                get_ipv4_string(((struct sockaddr_in *)&sas)->sin_addr, agent_ip, IPSIZE);
+                break;
+            case AF_INET6:
+                get_ipv6_string(((struct sockaddr_in6 *)&sas)->sin6_addr, agent_ip, IPSIZE);
+                break;
+            default:
+                mdebug2("Unknown address family: %d", sas.ss_family);
+                break;
         }
+    } else {
+        #ifdef WIN32
+            mdebug2("getsockname() failed: %s", win_strerror(WSAGetLastError()));
+        #else
+            mdebug2("getsockname() failed: %s", strerror(errno));
+        #endif
     }
 
-    if(sock < 0) {
-        mdebug1("Cannot get the agent host's IP because the control module is not available: (%d) %s.", errno, strerror(errno));
-    }
-#endif
     return strdup(agent_ip);
 }
-#endif /* !WIN32 */
 
 /* Clear merged hash cache, to be updated in the next iteration.*/
 void clear_merged_hash_cache() {
@@ -177,7 +171,7 @@ void run_notify()
         }
     }
     /* Create message */
-    if(*agent_ip != '\0' && strcmp(agent_ip, "Err")) {
+    if (*agent_ip != '\0') {
         char label_ip[60];
         snprintf(label_ip, sizeof label_ip, "#\"_agent_ip\":%s", agent_ip);
         if ((File_DateofChange(AGENTCONFIG) > 0 ) &&

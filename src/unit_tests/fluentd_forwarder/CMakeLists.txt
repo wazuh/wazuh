@@ -24,7 +24,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate fluentd_forwarder tests
 list(APPEND fluentd_forwarder_names "test_fluentd_forwarder")
-list(APPEND fluentd_forwarder_flags "-Wl,--wrap,OS_ConnectTCP ${DEBUG_OP_WRAPPERS}")
+list(APPEND fluentd_forwarder_flags "-Wl,--wrap,time -Wl,--wrap,OS_SendUnix -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_ConnectTCP ${DEBUG_OP_WRAPPERS}")
 
 # Compiling tests
 list(LENGTH fluentd_forwarder_names count)

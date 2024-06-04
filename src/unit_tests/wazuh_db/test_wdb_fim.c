@@ -23,6 +23,18 @@
 #include "../wrappers/externals/cJSON/cJSON_wrappers.h"
 
 static const char *VALID_ENTRY = "{\"path\":\"/test\",\"timestamp\":10,\"version\":2,\"attributes\":{\"type\":\"file\"}}";
+static const char *VALUE_V3_ENTRY = "{\"arch\":\"[x32]\",\"attributes\":{\"checksum\":\"920b517a949aec0a6fa91b0556f0a60503058fbb\",\
+                                  \"hash_md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"hash_sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\
+                                  \"hash_sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\",\"size\":3221225472,\
+                                  \"type\":\"registry_value\",\"value_type\":\"REG_UNKNOWN\"},\"index\":\"00a7ee53218b25b5364c8773f37a38c93eae3880\",\
+                                  \"path\":\"HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key\",\
+                                  \"timestamp\":1645981428,\"value_name\":\"test_name\",\"version\":3}";
+static const char *KEY_V3_ENTRY = "{\"arch\":\"[x32]\",\"attributes\":{\"checksum\":\"6853b29eef33ff39d8b63911673cf7b078f95485\",\
+                                    \"gid\":\"0\",\"group_name\":\"SYSTEM\",\"mtime\":1645882878,\"perm\":\"perm_json\",\
+                                    \"type\":\"registry_key\",\"uid\":\"0\",\"user_name\":\"Administradores\"},\
+                                    \"index\":\"ff03d79932df0148efa6a066552badf25ea9c466\",\
+                                    \"path\":\"HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key\",\
+                                    \"timestamp\":1645981428,\"version\":3}";
 
 #define BASE_WIN_ALLOWED_ACE \
     "["                      \
@@ -73,7 +85,7 @@ static cJSON *_prepare_valid_entry(sqlite3_int64 inode, void *perm, perm_format_
     cJSON* data = cJSON_Parse(VALID_ENTRY);
     cJSON *object = cJSON_CreateObject();
 
-    cJSON_AddItemToObject(object, "size", cJSON_CreateNumber(2048));
+    cJSON_AddItemToObject(object, "size", cJSON_CreateNumber(3221225472));
     cJSON_AddItemToObject(object, "mtime", cJSON_CreateNumber(10));
     cJSON_AddItemToObject(object, "inode", cJSON_CreateNumber(inode));
     cJSON_AddItemToObject(object, "type", cJSON_CreateString("file"));
@@ -115,7 +127,7 @@ void _expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode, const char *cons
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "/test", 1);
 
-    expect_sqlite3_bind_int_call(4, 2048, 1);
+    expect_sqlite3_bind_int64_call(4, 3221225472, 1);
     expect_sqlite3_bind_int_call(12, 10, 1);
     expect_sqlite3_bind_int64_call(13, inode, 1);
 
@@ -131,7 +143,7 @@ void _expect_wdb_fim_insert_entry2_success(sqlite3_int64 inode, const char *cons
     expect_sqlite3_bind_text_call(17, "GGGGGGGGGGGG", 1);
     expect_sqlite3_bind_text_call(15, "readonly", 1);
 
-    expect_sqlite3_step_call(SQLITE_DONE);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
 }
 
 /* setup/teardown */
@@ -397,9 +409,10 @@ static void test_wdb_fim_insert_entry2_fail_sqlite3_stmt(void **state) {
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "/test", 1);
 
-    expect_sqlite3_step_call(0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) sqlite3_step(): out of memory");
+    will_return(__wrap_wdb_step, SQLITE_ERROR);
+    //expect_string(__wrap__mdebug1, formatted_msg, "sqlite3_prepare_v2(): out of memory");
+    //expect_string(__wrap__mdebug1, formatted_msg, "Global DB Cannot rollback transaction");
+    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) SQLite: out of memory");
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -521,7 +534,7 @@ static void test_wdb_fim_insert_entry2_registry_succesful(void **state) {
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
 
-    expect_sqlite3_step_call(SQLITE_DONE);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -551,7 +564,7 @@ static void test_wdb_fim_insert_entry2_registry_key_succesful(void **state) {
     expect_sqlite3_bind_text_call(19, NULL, 1);
     expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key", 1);
 
-    expect_sqlite3_step_call(SQLITE_DONE);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -591,7 +604,74 @@ static void test_wdb_fim_insert_entry2_registry_value_succesful(void **state) {
     expect_sqlite3_bind_text_call(21, "[x32] HKEY_LOCAL_MACHINE\\\\System\\\\TEST\\\\key:testname", 1);
     expect_sqlite3_bind_text_call(20, "REG_SZ", 1);
 
-    expect_sqlite3_step_call(SQLITE_DONE);
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_insert_entry2_registry_key_succesful_v3(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(KEY_V3_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
+    expect_sqlite3_bind_text_call(2, "registry_key", 1);
+    expect_sqlite3_bind_int64_call(3, 1645981428, 0);
+    expect_sqlite3_bind_text_call(18, "[x32]", 1);
+    expect_sqlite3_bind_text_call(19, NULL, 1);
+    expect_sqlite3_bind_text_call(21, "ff03d79932df0148efa6a066552badf25ea9c466", 1);
+
+    expect_sqlite3_bind_text_call(17, "6853b29eef33ff39d8b63911673cf7b078f95485", 1);
+    expect_sqlite3_bind_text_call(7, "0", 1);
+    expect_sqlite3_bind_text_call(11, "SYSTEM", 1);
+    expect_sqlite3_bind_int_call(12, 1645882878, 1);
+    expect_sqlite3_bind_text_call(5, "perm_json", 1);
+    expect_sqlite3_bind_text_call(6, "0", 1);
+    expect_sqlite3_bind_text_call(10, "Administradores", 1);
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
+
+    ret = wdb_fim_insert_entry2(wdb, data);
+
+    cJSON_Delete(data);
+    assert_int_equal(ret, 0);
+}
+
+static void test_wdb_fim_insert_entry2_registry_value_succesful_v3(void **state) {
+    int ret;
+    wdb_t * wdb = *state;
+    cJSON* data = cJSON_Parse(VALUE_V3_ENTRY);
+
+    if (data == NULL) {
+        fail_msg("Unable to parse base json");
+    }
+
+    expect_wdb_stmt_cache_call(1);
+
+    expect_sqlite3_bind_text_call(1, "HKEY_LOCAL_MACHINE\\System\\TEST\\key", 1);
+    expect_sqlite3_bind_text_call(2, "registry_value", 1);
+    expect_sqlite3_bind_int64_call(3, 1645981428, 0);
+    expect_sqlite3_bind_text_call(18, "[x32]", 1);
+    expect_sqlite3_bind_text_call(19, "test_name", 1);
+    expect_sqlite3_bind_text_call(21, "00a7ee53218b25b5364c8773f37a38c93eae3880", 1);
+
+    expect_sqlite3_bind_text_call(17, "920b517a949aec0a6fa91b0556f0a60503058fbb", 1);
+    expect_sqlite3_bind_text_call(8, "d41d8cd98f00b204e9800998ecf8427e", 1);
+    expect_sqlite3_bind_text_call(9, "da39a3ee5e6b4b0d3255bfef95601890afd80709", 1);
+    expect_sqlite3_bind_text_call(14, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", 1);
+    expect_sqlite3_bind_int64_call(4, 3221225472, 1);
+    expect_sqlite3_bind_text_call(20, "REG_UNKNOWN", 1);
+
+    will_return(__wrap_wdb_step, SQLITE_DONE);
 
     ret = wdb_fim_insert_entry2(wdb, data);
 
@@ -708,10 +788,13 @@ int main(void) {
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_succesful),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_key_succesful),
         cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_succesful),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_key_succesful_v3),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_registry_value_succesful_v3),
         cmocka_unit_test(test_wdb_fim_insert_entry2_success),
         cmocka_unit_test(test_wdb_fim_insert_entry2_large_inode),
         cmocka_unit_test(test_wdb_fim_insert_entry2_json_perms),
         cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object),
+        cmocka_unit_test(test_wdb_fim_insert_entry2_invalid_json_object)
     };
 
     return cmocka_run_group_tests(tests, setup_wdb_t, teardown_wdb_t);

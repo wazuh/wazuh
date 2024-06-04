@@ -22,6 +22,9 @@
 #include <sys/stat.h>
 #include <vector>
 #include <dirent.h>
+#include <algorithm>
+#include <array>
+#include "stringHelper.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -38,6 +41,13 @@ namespace Utils
         struct stat info {};
         return !stat(path.c_str(), &info) && (info.st_mode & S_IFREG);
     }
+#ifndef WIN32
+    static bool existsSocket(const std::string& path)
+    {
+        struct stat info {};
+        return !stat(path.c_str(), &info) && ((info.st_mode & S_IFMT) == S_IFSOCK);
+    }
+#endif
     struct DirSmartDeleter
     {
         void operator()(DIR* dir)

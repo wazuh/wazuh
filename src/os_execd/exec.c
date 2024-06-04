@@ -39,7 +39,7 @@ int ReadExecConfig()
     exec_size = 0;
 
     /* Open file */
-    fp = fopen(DEFAULTAR, "r");
+    fp = wfopen(DEFAULTAR, "r");
     if (!fp) {
         merror(FOPEN_ERROR, DEFAULTAR, errno, strerror(errno));
         return (0);
@@ -88,10 +88,10 @@ int ReadExecConfig()
         *tmp_str = '\0';
         tmp_str += 3;
 
-        // Directory transversal test
+        // Directory traversal test
 
         if (w_ref_parent_folder(str_pt)) {
-            merror("Active response command '%s' vulnerable to directory transversal attack. Ignoring.", str_pt);
+            merror("Active response command '%s' vulnerable to directory traversal attack. Ignoring.", str_pt);
             exec_cmd[exec_size][0] = '\0';
         } else {
             /* Write the full command path */
@@ -99,7 +99,7 @@ int ReadExecConfig()
                      "%s/%s",
                      AR_BINDIR,
                      str_pt);
-            process_file = fopen(exec_cmd[exec_size], "r");
+            process_file = wfopen(exec_cmd[exec_size], "r");
             if (!process_file) {
                 if (f_time_reading) {
                     minfo("Active response command not present: '%s'. "
@@ -163,6 +163,11 @@ char *GetCommandbyName(const char *name, int *timeout)
     // Filter custom commands
 
     if (name[0] == '!') {
+        if (w_ref_parent_folder(name + 1)) {
+            mwarn("Active response command '%s' vulnerable to directory traversal attack. Ignoring.", name + 1);
+            return NULL;
+        }
+
         static char command[OS_FLSIZE];
 
         if (snprintf(command, sizeof(command), "%s/%s", AR_BINDIR, name + 1) >= (int)sizeof(command)) {

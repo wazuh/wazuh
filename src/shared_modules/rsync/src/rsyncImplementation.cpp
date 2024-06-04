@@ -13,17 +13,24 @@
 #include "makeUnique.h"
 #include "stringHelper.h"
 #include "hashHelper.h"
+#include "loggerHelper.h"
 #include "messageCreatorFactory.h"
+#include "rsync.hpp"
+#include "synchronizationController.hpp"
 
 using namespace RSync;
+
+SynchronizationController RSyncImplementation::m_synchronizationController;
 
 void RSyncImplementation::release()
 {
     std::lock_guard<std::mutex> lock{ m_mutex };
+    m_synchronizationController.clear();
 
     for (const auto& ctx : m_remoteSyncContexts)
     {
-        ctx.second->m_msgDispatcher.rundown();
+        m_registrationController.removeComponentByHandle(ctx.first);
+        ctx.second->m_msgDispatcher->rundown();
     }
 
     m_remoteSyncContexts.clear();
@@ -31,16 +38,18 @@ void RSyncImplementation::release()
 
 void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
 {
-    remoteSyncContext(handle)->m_msgDispatcher.rundown();
+    m_registrationController.removeComponentByHandle(handle);
+    remoteSyncContext(handle)->m_msgDispatcher->rundown();
     std::lock_guard<std::mutex> lock{ m_mutex };
+    m_synchronizationController.stop(handle);
     m_remoteSyncContexts.erase(handle);
 }
 
-RSYNC_HANDLE RSyncImplementation::create()
+RSYNC_HANDLE RSyncImplementation::create(const unsigned int threadPoolSize, const size_t maxQueueSize)
 {
     const auto spRSyncContext
     {
-        std::make_shared<RSyncContext>()
+        std::make_shared<RSyncContext>(threadPoolSize, maxQueueSize)
     };
     const RSYNC_HANDLE handle{ spRSyncContext.get() };
     std::lock_guard<std::mutex> lock{m_mutex};
@@ -54,12 +63,12 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
                                      const ResultCallback callbackWrapper)
 {
     const auto ctx                  { remoteSyncContext(handle) };
-    const auto& jsStartParams       { startConfiguration                     };
-    const auto& jsStartParamsTable  { jsStartParams.at("table")              };
-    const auto& firstQuery          { jsStartParams.find("first_query")      };
-    const auto& lastQuery           { jsStartParams.find("last_query")       };
 
-    if (!jsStartParamsTable.empty() && firstQuery != jsStartParams.end() && lastQuery != jsStartParams.end())
+    const auto& jsStartParamsTable  { startConfiguration.at("table")              };
+    const auto& firstQuery          { startConfiguration.find("first_query")      };
+    const auto& lastQuery           { startConfiguration.find("last_query")       };
+
+    if (!jsStartParamsTable.empty() && firstQuery != startConfiguration.end() && lastQuery != startConfiguration.end())
     {
         const auto& jsFirstLastOutput { executeSelectQuery(spDBSyncWrapper, jsStartParamsTable, firstQuery.value(), lastQuery.value()) };
         const auto& jsonFirstQueryResult { jsFirstLastOutput.at("first_result") };
@@ -67,14 +76,14 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
 
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 
-        ChecksumContext checksumCtx;
+        ChecksumContext checksumCtx {};
         // In this case, 'size' field will not be used because of the checksum type (CHECKSUM_COMPLETE).
         checksumCtx.size = 0;
         checksumCtx.rightCtx.id = std::time(nullptr);
 
         if (!jsonFirstQueryResult.empty() && !jsonLastQueryResult.empty())
         {
-            const auto& indexField { jsStartParams.at("index").get_ref<const std::string&>() };
+            const auto& indexField { startConfiguration.at("index").get_ref<const std::string&>() };
             const auto& begin      { jsonFirstQueryResult.at(indexField) };
             const auto& end        { jsonLastQueryResult.at(indexField)  };
 
@@ -85,7 +94,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             {
                 checksumCtx.rightCtx.begin = begin;
                 checksumCtx.rightCtx.end   = end;
-                fillChecksum(spDBSyncWrapper, jsStartParams, begin, end, checksumCtx);
+                fillChecksum(spDBSyncWrapper, startConfiguration, begin, end, checksumCtx);
             }
             else
             {
@@ -95,7 +104,7 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
                 const auto endString{std::to_string(endNumber)};
                 checksumCtx.rightCtx.begin = beginString;
                 checksumCtx.rightCtx.end   = endString;
-                fillChecksum(spDBSyncWrapper, jsStartParams, beginString, endString, checksumCtx);
+                fillChecksum(spDBSyncWrapper, startConfiguration, beginString, endString, checksumCtx);
             }
         }
         else
@@ -103,9 +112,12 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
+        m_synchronizationController.start(handle, jsStartParamsTable, checksumCtx.rightCtx.id);
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
-        messageCreator->send(callbackWrapper, jsStartParams, checksumCtx.rightCtx);
+        messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
+
+        logDebug2(RSYNC_LOG_TAG, "Remote sync started: %s", RSync::IntegrityCommands[checksumCtx.rightCtx.type].c_str());
     }
     else
     {
@@ -126,35 +138,30 @@ std::shared_ptr<RSyncImplementation::RSyncContext> RSyncImplementation::remoteSy
     return it->second;
 }
 
-void callbackDBSync(ReturnTypeCallback /*resultType*/, const cJSON* resultJson, void* userData)
-{
-    if (userData && resultJson)
-    {
-        std::function<void(const nlohmann::json&)>* callback { static_cast<std::function<void(const nlohmann::json&)>*>(userData) };
-        const std::unique_ptr<char, CJsonDeleter> spJsonBytes{ cJSON_PrintUnformatted(resultJson) };
-        const auto& json { nlohmann::json::parse(spJsonBytes.get()) };
-        (*callback)(json);
-    }
-}
-
 void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
                                          const std::string& messageHeaderID,
                                          const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
                                          const nlohmann::json& syncConfiguration,
                                          const ResultCallback callbackWrapper)
 {
-    const auto ctx { remoteSyncContext(handle) };
+    if (isComponentRegistered(messageHeaderID))
+    {
+        throw rsync_error { COMPONENT_ALREADY_REGISTERED };
+    }
 
+    const auto ctx { remoteSyncContext(handle) };
     const SyncMsgBodyType syncMessageType { SyncMsgBodyTypeMap.at(syncConfiguration.at("decoder_type")) };
 
-    ctx->m_msgDispatcher.setMessageDecoderType(messageHeaderID, syncMessageType);
+    ctx->m_msgDispatcher->setMessageDecoderType(messageHeaderID, syncMessageType);
 
     const auto registerCallback
     {
-        [spDBSyncWrapper, syncConfiguration, callbackWrapper] (const SyncInputData & syncData)
+        [spDBSyncWrapper, syncConfiguration, callbackWrapper, handle] (const SyncInputData & syncData)
         {
             try
             {
+                m_synchronizationController.checkId(handle, syncConfiguration.at("table"), syncData.id);
+
                 if (0 == syncData.command.compare("checksum_fail"))
                 {
                     sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
@@ -175,7 +182,9 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
 
         }
     };
-    ctx->m_msgDispatcher.addCallback(messageHeaderID, registerCallback);
+
+    ctx->m_msgDispatcher->addCallback(messageHeaderID, registerCallback);
+    m_registrationController.initComponentByHandle(handle, messageHeaderID);
 }
 
 
@@ -185,7 +194,7 @@ void RSyncImplementation::push(const RSYNC_HANDLE handle, const std::vector<unsi
     {
         remoteSyncContext(handle)
     };
-    spRSyncContext->m_msgDispatcher.push(data);
+    spRSyncContext->m_msgDispatcher->push(data);
 }
 
 void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>& spDBSyncWrapper,
@@ -201,7 +210,7 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
 
         FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData);
     }
-    else if (1 <= size)
+    else if (1 < size)
     {
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 
@@ -238,9 +247,9 @@ size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& 
     const auto& countFieldName { querySelect.at("count_field_name").get_ref<const std::string&>() };
 
     size_t size { 0ull };
-    std::function<void(const nlohmann::json&)> sizeRange
+    ResultCallbackData callback
     {
-        [&size, &countFieldName] (const nlohmann::json & resultJSON)
+        [&size, &countFieldName] (ReturnTypeCallback /*returnType*/, const nlohmann::json & resultJSON)
         {
             size = resultJSON.at(countFieldName);
         }
@@ -255,8 +264,7 @@ size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& 
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
-    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &sizeRange });
+    spDBSyncWrapper->select(selectData, callback);
 
     return size;
 }
@@ -277,9 +285,9 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
     const auto middle { ctx.size / 2 };
 
     std::unique_ptr<Utils::HashData> hash{ std::make_unique<Utils::HashData>() };
-    std::function<void(const nlohmann::json&)> calcChecksum
+    ResultCallbackData callback
     {
-        [&] (const nlohmann::json & resultJSON)
+        [&] (ReturnTypeCallback /*callback*/, const nlohmann::json & resultJSON)
         {
             const auto checksumValue { resultJSON.at(checksumFieldName).get_ref<const std::string&>() };
             hash->update(checksumValue.data(), checksumValue.size());
@@ -316,8 +324,7 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
-    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &calcChecksum });
+    spDBSyncWrapper->select(selectData, callback);
 
     // rightCtx field will have the final checksum
     ctx.rightCtx.checksum = Utils::asciiToHex(hash->hash());
@@ -328,9 +335,9 @@ nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncWrapp
                                                const std::string& index)
 {
     nlohmann::json rowData;
-    std::function<void(const nlohmann::json&)> getRowData
+    ResultCallbackData callback
     {
-        [&rowData] (const nlohmann::json & resultJSON)
+        [&rowData] (ReturnTypeCallback /*callbackType*/, const nlohmann::json & resultJSON)
         {
             rowData = resultJSON;
         }
@@ -362,8 +369,7 @@ nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncWrapp
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
-    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &getRowData });
+    spDBSyncWrapper->select(selectData, callback);
     return rowData;
 }
 
@@ -395,13 +401,23 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
                                       const SyncInputData& syncData)
 {
     const auto& messageCreator { FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create() };
-    std::function<void(const nlohmann::json&)> sendRowData
+    ResultCallbackData callback
     {
-        [&callbackWrapper, &messageCreator, &jsonSyncConfiguration] (const nlohmann::json & resultJSON)
+        [&callbackWrapper, &messageCreator, &jsonSyncConfiguration] (ReturnTypeCallback /*callbackType*/, const nlohmann::json & resultJSON)
         {
-            messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON);
+            const auto component { jsonSyncConfiguration.at("component").get_ref<const std::string&>() };
+
+            if (RSyncImplementation::instance().isComponentRegistered(component))
+            {
+                messageCreator->send(callbackWrapper, jsonSyncConfiguration, resultJSON);
+            }
+            else
+            {
+                throw std::runtime_error("Synchronization cancelled, component inactivated");
+            }
         }
     };
+
     nlohmann::json selectData;
     selectData["table"] = jsonSyncConfiguration.at("table");
     const auto& querySelect { jsonSyncConfiguration.at("no_data_query_json") };
@@ -417,7 +433,11 @@ void RSyncImplementation::sendAllData(const std::shared_ptr<DBSyncWrapper>& spDB
     queryParam["distinct_opt"] = querySelect.at("distinct_opt");
     queryParam["order_by_opt"] = querySelect.at("order_by_opt");
 
-    const std::unique_ptr<cJSON, CJsonDeleter> spJson{ cJSON_Parse(selectData.dump().c_str()) };
-    spDBSyncWrapper->select(spJson.get(), { callbackDBSync, &sendRowData });
+    spDBSyncWrapper->select(selectData, callback);
 
+}
+
+bool RSyncImplementation::isComponentRegistered(const std::string& component)
+{
+    return m_registrationController.isComponentRegistered(component);
 }

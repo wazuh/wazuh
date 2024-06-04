@@ -13,8 +13,8 @@
 
 #include "shared.h"
 #include "sec.h"
-#include "config/config.h"
-#include "config/client-config.h"
+#include "../config/config.h"
+#include "../config/client-config.h"
 #include "state.h"
 
 /* Buffer functions */
@@ -52,7 +52,7 @@ int receive_msg(void);
 
 /* Receiver messages for Windows */
 #ifdef WIN32
-DWORD WINAPI receiver_thread(LPVOID none);
+int receiver_messages(void);
 #endif
 
 /* Initialize agent buffer */
@@ -98,10 +98,11 @@ void send_agent_stopped_message();
 
 /**
  * Tries to enroll to a server indicated by server_rip
- * @return 0 on success
- *         -1 on error
+ * @return 0 on success -1 on error
+ * @param server_rip the server ip where enrollment is attempted
+ * @param network_interface network interface through which enrollment is attempted. (Required for IPv6 link-local addresses)
  * */
-int try_enroll_to_server(const char *server_rip);
+int try_enroll_to_server(const char *server_rip, uint32_t network_interface);
 
 /* Notify server */
 void run_notify(void);

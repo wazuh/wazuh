@@ -30,21 +30,21 @@
  * */
 #ifdef WIN32
 STATIC DWORD WINAPI wm_agent_upgrade_main(void *arg);
-STATIC DWORD WINAPI wm_agent_upgrade_destroy(void* upgrade_config);
 #else
 STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
-STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
 #endif
+STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
 STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 
 /* Context definition */
 const wm_context WM_AGENT_UPGRADE_CONTEXT = {
-    AGENT_UPGRADE_WM_NAME,
-    (wm_routine)wm_agent_upgrade_main,
-    (wm_routine)(void *)wm_agent_upgrade_destroy,
-    (cJSON * (*)(const void *))wm_agent_upgrade_dump,
-    NULL,
-    NULL
+    .name = AGENT_UPGRADE_WM_NAME,
+    .start = (wm_routine)wm_agent_upgrade_main,
+    .destroy = (void(*)(void *))wm_agent_upgrade_destroy,
+    .dump = (cJSON * (*)(const void *))wm_agent_upgrade_dump,
+    .sync = NULL,
+    .stop = NULL,
+    .query = NULL,
 };
 
 #ifdef WIN32
@@ -66,20 +66,12 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 #endif
 }
 
-#ifdef WIN32
-STATIC DWORD WINAPI wm_agent_upgrade_destroy(void* upgrade_config_ptr) {
-    wm_agent_upgrade *upgrade_config = (wm_agent_upgrade *)upgrade_config_ptr;
-#else
 STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
-#endif
     mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_FINISHED);
     #ifndef CLIENT
     os_free(upgrade_config->manager_config.wpk_repository);
     #endif
     os_free(upgrade_config);
-    #ifdef WIN32
-    return 0;
-    #endif
 }
 
 STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){

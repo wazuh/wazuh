@@ -37,7 +37,6 @@ extern OSDecoderInfo *NULL_Decoder;
 extern rlim_t nofile;
 extern int sys_debug_level;
 extern OSDecoderInfo *fim_decoder;
-extern time_t current_time;
 
 /**
  * @brief Structure to save all CDB lists.
@@ -49,43 +48,47 @@ extern ListNode *os_analysisd_cdblists;
  */
 extern ListRule *os_analysisd_cdbrules;
 
-/**
- * @brief Listen to analysisd socket for new requests
- */
-void * asyscom_main(__attribute__((unused)) void * arg) ;
+/* Archives writer queue */
+extern w_queue_t * writer_queue;
 
-/**
- * @brief Check that request is to get a configuration
- * @param command message received from api
- * @param output the configuration to send
- * @return the size of the string "output" containing the configuration
- */
-size_t asyscom_dispatch(char * command, char ** output);
+/* Alerts log writer queue */
+extern w_queue_t * writer_queue_log;
 
-/**
- * @brief Process the message received to send the configuration requested
- * @param section contains the name of configuration requested
- * @param output the configuration to send
- * @return the size of the string "output" containing the configuration
- */
-size_t asyscom_getconfig(const char * section, char ** output);
+/* Statistical log writer queue */
+extern w_queue_t * writer_queue_log_statistical;
 
+/* Firewall log writer queue */
+extern w_queue_t * writer_queue_log_firewall;
 
-#define WM_ANALYSISD_LOGTAG ARGV0 "" // Tag for log messages
+/* Decode syscheck input queue */
+extern w_queue_t * decode_queue_syscheck_input;
 
-/**
- * @brief Get the number of elements divided by the size of queues
- * 
- * Values are save in state's variables
- */
-void w_get_queues_size();
+/* Decode syscollector input queue */
+extern w_queue_t * decode_queue_syscollector_input;
 
-/**
- * @brief Obtains analysisd's queues sizes
- * 
- * Values are save in state's variables
- */
-void w_get_initial_queues_size();
+/* Decode rootcheck input queue */
+extern w_queue_t * decode_queue_rootcheck_input;
+
+/* Decode policy monitoring input queue */
+extern w_queue_t * decode_queue_sca_input;
+
+/* Decode hostinfo input queue */
+extern w_queue_t * decode_queue_hostinfo_input;
+
+/* Decode event input queue */
+extern w_queue_t * decode_queue_event_input;
+
+/* Decode pending event output */
+extern w_queue_t * decode_queue_event_output;
+
+/* Decode windows event input queue */
+extern w_queue_t * decode_queue_winevt_input;
+
+/* Database synchronization input queue */
+extern w_queue_t * dispatch_dbsync_input;
+
+/* Upgrade module decoder  */
+extern w_queue_t * upgrade_module_input;
 
 /**
  * @brief Initialize queues
@@ -93,7 +96,6 @@ void w_get_initial_queues_size();
  * Queues: decoded event, log writer, database synchronization message and archives writer
  */
 void w_init_queues();
-
 
 #define WAZUH_SERVER    "wazuh-server"
 #define MAX_DECODER_ORDER_SIZE  1024
@@ -104,5 +106,17 @@ extern int num_rule_matching_threads;
 #define FIM_MAX_WAZUH_DB_ATTEMPS 5
 #define SYS_MAX_WAZUH_DB_ATTEMPS 5
 #define PM_MAX_WAZUH_DB_ATTEMPS 5
+
+/**
+ * @brief mutex for any condition passed as an argument
+ * @return none
+ * */
+#define w_guard_mutex_variable(mutex, AnyVariable)              \
+    w_mutex_lock(&mutex);                                       \
+    (void)(AnyVariable);                                        \
+    w_mutex_unlock(&mutex)
+
+
+time_t w_get_current_time(void);
 
 #endif /* LOGAUDIT_H */

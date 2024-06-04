@@ -20,8 +20,8 @@
 ; general
 !define MUI_ICON install.ico
 !define MUI_UNICON uninstall.ico
-!define VERSION "4.5.0"
-!define REVISION "40500"
+!define VERSION "5.0.0"
+!define REVISION "50000"
 !define NAME "Wazuh"
 !define SERVICE "WazuhSvc"
 
@@ -36,10 +36,10 @@ Name "${NAME} Windows Agent v${VERSION}"
 BrandingText "Copyright (C) 2015, Wazuh Inc."
 OutFile "${OutFile}"
 
-VIProductVersion "4.0.0.0"
+VIProductVersion "5.0.0.0"
 VIAddVersionKey ProductName "${NAME}"
 VIAddVersionKey CompanyName "Wazuh Inc."
-VIAddVersionKey LegalCopyright "2022 - Wazuh Inc."
+VIAddVersionKey LegalCopyright "2023 - Wazuh Inc."
 VIAddVersionKey FileDescription "Wazuh Agent installer"
 VIAddVersionKey FileVersion "${VERSION}"
 VIAddVersionKey ProductVersion "${VERSION}"
@@ -209,7 +209,8 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=active-response\bin\restart-wazuh.exe restart-wazuh.exe
     File /oname=active-response\bin\netsh.exe netsh.exe
     File /oname=libwinpthread-1.dll libwinpthread-1.dll
-    File /oname=libgcc_s_sjlj-1.dll libgcc_s_sjlj-1.dll
+    File /oname=libgcc_s_dw2-1.dll libgcc_s_dw2-1.dll
+    File /oname=libstdc++-6.dll libstdc++-6.dll
     File agent-auth.exe
     File /oname=wpk_root.pem ..\..\etc\wpk_root.pem
     File /oname=libwazuhext.dll ..\libwazuhext.dll
@@ -218,8 +219,8 @@ Section "Wazuh Agent (required)" MainSec
     File /oname=rsync.dll ..\shared_modules\rsync\build\bin\rsync.dll
     File /oname=sysinfo.dll ..\data_provider\build\bin\sysinfo.dll
     File /oname=syscollector.dll ..\wazuh_modules\syscollector\build\bin\syscollector.dll
+    File /oname=libfimdb.dll ..\syscheckd/build/bin/libfimdb.dll
     File /oname=queue\syscollector\norm_config.json ..\wazuh_modules\syscollector\norm_config.json
-    File /oname=ruleset\sca\sca_win_audit.yml ..\..\ruleset\sca\windows\sca_win_audit.yml
     File VERSION
     File REVISION
 
@@ -478,7 +479,7 @@ Section "Uninstall"
 
     ; remove files and uninstaller
     Delete "$INSTDIR\wazuh-agent.exe"
-	Delete "$INSTDIR\agent-auth.exe"
+    Delete "$INSTDIR\agent-auth.exe"
     Delete "$INSTDIR\manage_agents.exe"
     Delete "$INSTDIR\ossec.conf"
     Delete "$INSTDIR\uninstall.exe"
@@ -495,6 +496,8 @@ Section "Uninstall"
     Delete "$INSTDIR\wodles\*"
     Delete "$INSTDIR\queue\syscollector\db\*"
     Delete "$INSTDIR\queue\syscollector\*"
+    Delete "$INSTDIR\queue\fim\db\*"
+    Delete "$INSTDIR\queue\fim\*"
     Delete "$INSTDIR\ruleset\sca\*"
     Delete "$INSTDIR\ruleset\*"
 
@@ -513,12 +516,13 @@ Section "Uninstall"
     RMDir "$INSTDIR\active-response\bin"
     RMDir "$INSTDIR\active-response"
     RMDir "$INSTDIR\tmp"
-	RMDir /r "$INSTDIR\queue\diff"
+    RMDir /r "$INSTDIR\queue\diff"
     RMDir /r "$INSTDIR\queue\logcollector"
     RMDir "$INSTDIR\incoming"
     RMDir /r "$INSTDIR\upgrade"
     RMDir /r "$INSTDIR\queue\syscollector"
-	RMDir "$INSTDIR\queue"
+    RMDir /r "$INSTDIR\queue\fim"
+    RMDir "$INSTDIR\queue"
     RMDir "$INSTDIR\wodles"
     RMDir "$INSTDIR\ruleset\sca"
     RMDir "$INSTDIR\ruleset"

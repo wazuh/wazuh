@@ -14,10 +14,12 @@
 
 #include <fstream>
 #include <istream>
+#include <regex>
 #include "stringHelper.h"
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "plist/plist.h"
+#include "filesystemHelper.h"
 
 static const std::string APP_INFO_PATH      { "Contents/Info.plist" };
 static const std::string PLIST_BINARY_START { "bplist00"            };
@@ -27,7 +29,17 @@ class PKGWrapper final : public IPackageWrapper
 {
     public:
         explicit PKGWrapper(const PackageContext& ctx)
-            : m_format{"pkg"}
+            : m_version{UNKNOWN_VALUE}
+            , m_groups{UNKNOWN_VALUE}
+            , m_description {UNKNOWN_VALUE}
+            , m_architecture{UNKNOWN_VALUE}
+            , m_format{"pkg"}
+            , m_source {UNKNOWN_VALUE}
+            , m_location {UNKNOWN_VALUE}
+            , m_priority {UNKNOWN_VALUE}
+            , m_size {0}
+            , m_vendor{UNKNOWN_VALUE}
+            , m_installTime {UNKNOWN_VALUE}
         {
             getPkgData(ctx.filePath + "/" + ctx.package + "/" + APP_INFO_PATH);
         }
@@ -70,6 +82,10 @@ class PKGWrapper final : public IPackageWrapper
         {
             return m_location;
         }
+        std::string vendor() const override
+        {
+            return m_vendor;
+        }
 
         std::string priority() const override
         {
@@ -79,11 +95,6 @@ class PKGWrapper final : public IPackageWrapper
         int size() const override
         {
             return m_size;
-        }
-
-        std::string vendor() const override
-        {
-            return m_vendor;
         }
 
         std::string install_time() const override
@@ -110,6 +121,8 @@ class PKGWrapper final : public IPackageWrapper
                 }
             };
             const auto isBinary { isBinaryFnc() };
+            constexpr auto BUNDLEID_PATTERN{R"(^[^.]+\.([^.]+).*$)"};
+            static std::regex bundleIdRegex{BUNDLEID_PATTERN};
 
             static const auto getValueFnc
             {
@@ -126,6 +139,8 @@ class PKGWrapper final : public IPackageWrapper
                 [this, &filePath](std::istream & data)
                 {
                     std::string line;
+                    std::string bundleShortVersionString;
+                    std::string bundleVersion;
 
                     while (std::getline(data, line))
                     {
@@ -139,17 +154,50 @@ class PKGWrapper final : public IPackageWrapper
                         else if (line == "<key>CFBundleShortVersionString</key>" &&
                                  std::getline(data, line))
                         {
-                            m_version = getValueFnc(line);
+                            bundleShortVersionString = getValueFnc(line);
+                        }
+                        else if (line == "<key>CFBundleVersion</key>" &&
+                                 std::getline(data, line))
+                        {
+                            bundleVersion = getValueFnc(line);
                         }
                         else if (line == "<key>LSApplicationCategoryType</key>" &&
                                  std::getline(data, line))
                         {
-                            m_groups = getValueFnc(line);
+                            auto groups = getValueFnc(line);
+
+                            if (!groups.empty())
+                            {
+                                m_groups = groups;
+                            }
                         }
                         else if (line == "<key>CFBundleIdentifier</key>" &&
                                  std::getline(data, line))
                         {
-                            m_description = getValueFnc(line);
+                            auto description = getValueFnc(line);
+
+                            if (!description.empty())
+                            {
+                                m_description = description;
+                                std::string vendor;
+
+                                if (Utils::findRegexInString(m_description, vendor, bundleIdRegex, 1))
+                                {
+                                    m_vendor = vendor;
+                                }
+                            }
+                        }
+                    }
+
+                    if (!bundleShortVersionString.empty())
+                    {
+                        if (Utils::startsWith(bundleVersion, bundleShortVersionString))
+                        {
+                            m_version = bundleVersion;
+                        }
+                        else
+                        {
+                            m_version = bundleShortVersionString;
                         }
                     }
 
@@ -157,7 +205,6 @@ class PKGWrapper final : public IPackageWrapper
                     m_multiarch = UNKNOWN_VALUE;
                     m_priority = UNKNOWN_VALUE;
                     m_size = 0;
-                    m_vendor = UNKNOWN_VALUE;
                     m_installTime = UNKNOWN_VALUE;
                     m_source = filePath.find(UTILITIES_FOLDER) ? "utilities" : "applications";
                     m_location = filePath;

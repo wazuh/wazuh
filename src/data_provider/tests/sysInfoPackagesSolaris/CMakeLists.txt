@@ -24,6 +24,7 @@ target_link_libraries(sysInfoSolarisPackage_unit_test
     optimized gtest_main
     optimized gmock_main
     pthread
+    sqlite3
 )
 
 add_test(NAME sysInfoSolarisPackage_unit_test

@@ -1,0 +1,10 @@
+- name: BRUTE_FORCE_BLOCKING_TIME
+  description: Check if the blocking time, for IP addresses detected as brute-force attack, works.
+  configuration_parameters:
+    BLOCK_TIME: 10
+    MAX_LOGIN_ATTEMPTS: 3
+    MAX_REQUEST_PER_MINUTE: 300
+  metadata:
+    expected_message: |
+      Limit of login attempts reached. The current IP has been blocked due to a high number of login attempts
+    expected_error: 6000

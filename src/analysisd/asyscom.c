@@ -8,159 +8,203 @@
  * Foundation.
  */
 
+#ifdef WAZUH_UNIT_TESTING
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 #include <shared.h>
 #include "os_net/os_net.h"
-#include "wazuh_modules/wmodules.h"
 #include "analysisd.h"
+#include "state.h"
 #include "config.h"
 
-size_t asyscom_dispatch(char * command, char ** output) {
+typedef enum _error_codes {
+    ERROR_OK = 0,
+    ERROR_DUE,
+    ERROR_INVALID_INPUT,
+    ERROR_EMPTY_COMMAND,
+    ERROR_UNRECOGNIZED_COMMAND,
+    ERROR_EMPTY_PARAMATERS,
+    ERROR_EMPTY_SECTION,
+    ERROR_UNRECOGNIZED_SECTION,
+    ERROR_INVALID_AGENTS,
+    ERROR_EMPTY_AGENTS,
+    ERROR_EMPTY_LASTID,
+    ERROR_TOO_MANY_AGENTS
+} error_codes;
 
-    const char *rcv_comm = command;
-    char *rcv_args = NULL;
+const char * error_messages[] = {
+    [ERROR_OK] = "ok",
+    [ERROR_DUE] = "due",
+    [ERROR_INVALID_INPUT] = "Invalid JSON input",
+    [ERROR_EMPTY_COMMAND] = "Empty command",
+    [ERROR_UNRECOGNIZED_COMMAND] = "Unrecognized command",
+    [ERROR_EMPTY_PARAMATERS] = "Empty parameters",
+    [ERROR_EMPTY_SECTION] = "Empty section",
+    [ERROR_UNRECOGNIZED_SECTION] = "Unrecognized or not configured section",
+    [ERROR_INVALID_AGENTS] = "Invalid agents parameter",
+    [ERROR_EMPTY_AGENTS] = "Error getting agents from DB",
+    [ERROR_EMPTY_LASTID] = "Empty last id",
+    [ERROR_TOO_MANY_AGENTS] = "Too many agents"
+};
 
-    if ((rcv_args = strchr(rcv_comm, ' '))){
-        *rcv_args = '\0';
-        rcv_args++;
-    }
+/**
+ * Format message into the response format
+ * @param error_code code error
+ * @param message string message of the error
+ * @param data_json data to return from request
+ * @return string meessage with the response format
+ * */
+STATIC char* asyscom_output_builder(int error_code, const char* message, cJSON* data_json);
 
-    if (strcmp(rcv_comm, "getconfig") == 0){
-        // getconfig section
-        if (!rcv_args){
-            mdebug1("ASYSCOM getconfig needs arguments.");
-            os_strdup("err ASYSCOM getconfig needs arguments", *output);
-            return strlen(*output);
-        }
-        return asyscom_getconfig(rcv_args, output);
+/**
+ * @brief Check that request is to get a configuration
+ * @param request message received from api
+ * @param output the configuration to send
+ * @return the size of the string "output" containing the configuration
+ */
+STATIC size_t asyscom_dispatch(char* request, char** output);
 
-    } else {
-        mdebug1("ASYSCOM Unrecognized command '%s'.", rcv_comm);
-        os_strdup("err Unrecognized command", *output);
-        return strlen(*output);
-    }
+/**
+ * @brief Process the message received to send the configuration requested
+ * @param section contains the name of configuration requested
+ * @return JSON string
+ */
+STATIC cJSON* asyscom_getconfig(const char* section);
+
+
+STATIC char* asyscom_output_builder(int error_code, const char* message, cJSON* data_json) {
+    cJSON* root = cJSON_CreateObject();
+
+    cJSON_AddNumberToObject(root, "error", error_code);
+    cJSON_AddStringToObject(root, "message", message);
+    cJSON_AddItemToObject(root, "data", data_json ? data_json : cJSON_CreateObject());
+
+    char *msg_string = cJSON_PrintUnformatted(root);
+    cJSON_Delete(root);
+
+    return msg_string;
 }
 
-size_t asyscom_getconfig(const char * section, char ** output) {
+STATIC size_t asyscom_dispatch(char* request, char** output) {
+    cJSON *request_json = NULL;
+    cJSON *command_json = NULL;
+    cJSON *parameters_json = NULL;
+    cJSON *section_json = NULL;
+    cJSON *config_json = NULL;
+    cJSON *agents_json = NULL;
+    cJSON *last_id_json = NULL;
+    const char *json_err;
+    int *agents_ids;
+    int count;
+    int sock = -1;
 
-    cJSON *cfg;
-    char *json_str;
+    if (request_json = cJSON_ParseWithOpts(request, &json_err, 0), !request_json) {
+        *output = asyscom_output_builder(ERROR_INVALID_INPUT, error_messages[ERROR_INVALID_INPUT], NULL);
+        return strlen(*output);
+    }
 
-    if (strcmp(section, "global") == 0){
-        if (cfg = getGlobalConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
+    if (command_json = cJSON_GetObjectItem(request_json, "command"), cJSON_IsString(command_json)) {
+        if (strcmp(command_json->valuestring, "getstats") == 0) {
+            *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], asys_create_state_json());
+        } else if (strcmp(command_json->valuestring, "getagentsstats") == 0) {
+            if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
+                agents_json = cJSON_GetObjectItem(parameters_json, "agents");
+                if (cJSON_IsArray(agents_json)) {
+                    if (cJSON_GetArraySize(agents_json) <  ASYS_MAX_NUM_AGENTS_STATS) {
+                        agents_ids = json_parse_agents(agents_json);
+                        if (agents_ids != NULL) {
+                            *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], asys_create_agents_state_json(agents_ids));
+                            os_free(agents_ids);
+                        } else {
+                            *output = asyscom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
+                        }
+                    } else {
+                        *output = asyscom_output_builder(ERROR_TOO_MANY_AGENTS, error_messages[ERROR_TOO_MANY_AGENTS], NULL);
+                    }
+                } else if ((cJSON_IsString(agents_json) && strcmp(agents_json->valuestring, "all") == 0)) {
+                    last_id_json = cJSON_GetObjectItem(parameters_json, "last_id");
+                    if (cJSON_IsNumber(last_id_json) && (last_id_json->valueint >= 0)) {
+                        agents_ids = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, &sock, last_id_json->valueint, ASYS_MAX_NUM_AGENTS_STATS);
+                        if (agents_ids != NULL) {
+                            for (count = 0; agents_ids[count] != -1; count++);
+                            if (count < ASYS_MAX_NUM_AGENTS_STATS) {
+                                *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], asys_create_agents_state_json(agents_ids));
+                            } else {
+                                *output = asyscom_output_builder(ERROR_DUE, error_messages[ERROR_DUE], asys_create_agents_state_json(agents_ids));
+                            }
+                            os_free(agents_ids);
+                        } else {
+                            *output = asyscom_output_builder(ERROR_EMPTY_AGENTS, error_messages[ERROR_EMPTY_AGENTS], NULL);
+                        }
+                    } else {
+                        *output = asyscom_output_builder(ERROR_EMPTY_LASTID, error_messages[ERROR_EMPTY_LASTID], NULL);
+                    }
+                } else {
+                    *output = asyscom_output_builder(ERROR_INVALID_AGENTS, error_messages[ERROR_INVALID_AGENTS], NULL);
+                }
+            } else {
+                *output = asyscom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);
+            }
+        } else if (strcmp(command_json->valuestring, "getconfig") == 0) {
+            if (parameters_json = cJSON_GetObjectItem(request_json, "parameters"), cJSON_IsObject(parameters_json)) {
+                if (section_json = cJSON_GetObjectItem(parameters_json, "section"), cJSON_IsString(section_json)) {
+                    if (config_json = asyscom_getconfig(section_json->valuestring), config_json) {
+                        *output = asyscom_output_builder(ERROR_OK, error_messages[ERROR_OK], config_json);
+                    } else {
+                        *output = asyscom_output_builder(ERROR_UNRECOGNIZED_SECTION, error_messages[ERROR_UNRECOGNIZED_SECTION], NULL);
+                    }
+                } else {
+                    *output = asyscom_output_builder(ERROR_EMPTY_SECTION, error_messages[ERROR_EMPTY_SECTION], NULL);
+                }
+            } else {
+                *output = asyscom_output_builder(ERROR_EMPTY_PARAMATERS, error_messages[ERROR_EMPTY_PARAMATERS], NULL);
+            }
         } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "active_response") == 0){
-        if (cfg = getARManagerConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "alerts") == 0){
-        if (cfg = getAlertsConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "decoders") == 0){
-        if (cfg = getDecodersConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "rules") == 0){
-        if (cfg = getRulesConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "internal") == 0){
-        if (cfg = getAnalysisInternalOptions(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "command") == 0){
-        if (cfg = getARCommandsConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "labels") == 0){
-        if (cfg = getManagerLabelsConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
-        }
-    }
-    else if (strcmp(section, "rule_test") == 0) {
-        if (cfg = getRuleTestConfig(), cfg) {
-            os_strdup("ok", *output);
-            json_str = cJSON_PrintUnformatted(cfg);
-            wm_strcat(output, json_str, ' ');
-            free(json_str);
-            cJSON_Delete(cfg);
-            return strlen(*output);
-        } else {
-            goto error;
+            *output = asyscom_output_builder(ERROR_UNRECOGNIZED_COMMAND, error_messages[ERROR_UNRECOGNIZED_COMMAND], NULL);
         }
     } else {
-        goto error;
+        *output = asyscom_output_builder(ERROR_EMPTY_COMMAND, error_messages[ERROR_EMPTY_COMMAND], NULL);
     }
-error:
-    mdebug1("At ASYSCOM getconfig: Could not get '%s' section", section);
-    os_strdup("err Could not get requested section", *output);
+
+    cJSON_Delete(request_json);
+
     return strlen(*output);
 }
 
+STATIC cJSON* asyscom_getconfig(const char* section) {
+    if (strcmp(section, "global") == 0) {
+        return getGlobalConfig();
+    }
+    else if (strcmp(section, "active_response") == 0) {
+        return getARManagerConfig();
+    }
+    else if (strcmp(section, "alerts") == 0) {
+        return getAlertsConfig();
+    }
+    else if (strcmp(section, "decoders") == 0) {
+        return getDecodersConfig();
+    }
+    else if (strcmp(section, "rules") == 0) {
+        return getRulesConfig();
+    }
+    else if (strcmp(section, "internal") == 0) {
+        return getAnalysisInternalOptions();
+    }
+    else if (strcmp(section, "command") == 0) {
+        return getARCommandsConfig();
+    }
+    else if (strcmp(section, "labels") == 0) {
+        return getManagerLabelsConfig();
+    }
+    else if (strcmp(section, "rule_test") == 0) {
+        return getRuleTestConfig();
+    }
+    return NULL;
+}
 
 void * asyscom_main(__attribute__((unused)) void * arg) {
     int sock;
@@ -173,7 +217,7 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
     mdebug1("Local requests thread ready");
 
     if (sock = OS_BindUnixDomain(ANLSYS_LOCAL_SOCK, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-        merror("Unable to bind to socket '%s': (%d) %s.", ANLSYS_LOCAL_SOCK, errno, strerror(errno));
+        merror("Unable to bind to socket '%s': (%d) '%s'", ANLSYS_LOCAL_SOCK, errno, strerror(errno));
         return NULL;
     }
 
@@ -186,53 +230,54 @@ void * asyscom_main(__attribute__((unused)) void * arg) {
         switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
         case -1:
             if (errno != EINTR) {
-                merror_exit("At asyscom_main(): select(): %s", strerror(errno));
+                merror_exit("At select(): '%s'", strerror(errno));
             }
-
             continue;
-
         case 0:
             continue;
         }
 
         if (peer = accept(sock, NULL, NULL), peer < 0) {
             if (errno != EINTR) {
-                merror("At asyscom_main(): accept(): %s", strerror(errno));
+                merror("At accept(): '%s'", strerror(errno));
             }
-
             continue;
         }
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
 
         switch (length = OS_RecvSecureTCP(peer, buffer,OS_MAXSTR), length) {
         case OS_SOCKTERR:
-            merror("At asyscom_main(): OS_RecvSecureTCP(): response size is bigger than expected");
+            merror("At OS_RecvSecureTCP(): response size is bigger than expected");
             break;
 
         case -1:
-            merror("At asyscom_main(): OS_RecvSecureTCP: %s", strerror(errno));
+            merror("At OS_RecvSecureTCP(): '%s'", strerror(errno));
             break;
 
         case 0:
-            mdebug1("Empty message from local client.");
+            mdebug1("Empty message from local client");
             close(peer);
             break;
 
         case OS_MAXLEN:
-            merror("Received message > %i", MAX_DYN_STR);
+            merror("Received message > '%i'", MAX_DYN_STR);
             close(peer);
             break;
 
         default:
             length = asyscom_dispatch(buffer, &response);
             OS_SendSecureTCP(peer, length, response);
-            free(response);
+            os_free(response);
             close(peer);
         }
-        free(buffer);
+        os_free(buffer);
+
+    #ifdef WAZUH_UNIT_TESTING
+        break;
+    #endif
     }
 
-    mdebug1("Local server thread finished.");
+    mdebug1("Local requests thread finished");
 
     close(sock);
     return NULL;
