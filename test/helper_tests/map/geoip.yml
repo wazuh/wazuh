@@ -1,0 +1,31 @@
+# Name of the helper function
+name: geoip
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string # Expected type is string
+    source: reference # Includes only references (their names start with $)
+    allowed_values: # this helper only receive public ips
+      - 1.2.3.4
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: True
+
+test:
+  - arguments:
+      1: 1.2.3.4
+    should_pass: true
+    expected:
+        city_name: Wazuh city
+        timezone: Wazuh/Timezone
+        country_name: Wazuh Country
+        continent_code: WC
+        continent_name: Wazuh Continent
+        country_iso_code: WCtry
+        postal_code: "7777"
+        location:
+            lon: 88.4293
+            lat: 41.7776
+
+    description: Get geo of public ip
