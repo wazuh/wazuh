@@ -901,7 +901,13 @@ def generate_test_cases_success(yaml_data):
             "value", convert_string_to_type(get_target_field_type(yaml_data))
         )
 
-        if input:
+        if not input:
+            normalize_list = [
+                {
+                    "map": [{"target_field": target_field_value}]
+                }
+            ]
+        else:
             normalize_list = [
                 {
                     "map": [
@@ -910,20 +916,18 @@ def generate_test_cases_success(yaml_data):
                     ]
                 }
             ]
-            new_test = {"input": input, "id": increase_id()}
+            new_test = {"input": input, "id": increase_id(), "should_pass": True}
 
-            normalize_list.append(
-                {
-                    "check": [{"target_field": helper}],
-                    "map": [
-                        {
-                            "verification_field": "It is used to verify if the check passed correctly"
-                        }
-                    ],
-                }
-            )
-        else:
-            normalize_list.append({"check": [{"target_field": helper}]})
+        normalize_list.append(
+            {
+                "check": [{"target_field": helper}],
+                "map": [
+                    {
+                        "verification_field": "It is used to verify if the check passed correctly"
+                    }
+                ],
+            }
+        )
 
         asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
         test_data["assets_definition"] = asset_definition
@@ -1164,6 +1168,7 @@ def main():
                     generate_test_cases_fail_at_buildtime(yaml_data)
                     generate_test_cases_fail_at_runtime(yaml_data)
                     generate_test_cases_success(yaml_data)
+                    generate_unit_test(yaml_data)
 
                     # Save results in YAML file
                     # Define the path to the output directory

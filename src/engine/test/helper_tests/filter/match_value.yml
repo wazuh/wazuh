@@ -4,7 +4,7 @@ name: match_value
 # Arguments expected by the helper function
 arguments:
   1:
-    type: array  # Expected type is integer
+    type: array  # Expected type is array
     source: both # includes values or references (their names start with $)
 
 target_field:

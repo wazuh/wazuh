@@ -59,7 +59,7 @@ my %address_for_test = (
         location  => {latitude => 41.7776, longitude => 88.4293, time_zone => 'Wazuh/Timezone'},
         postal  => {code => '7777'},
         autonomous_system_number => 1234,
-        autonomous_system_organization => ' Wazuh Organization',
+        autonomous_system_organization => 'Wazuh Organization',
     }
 );
 
