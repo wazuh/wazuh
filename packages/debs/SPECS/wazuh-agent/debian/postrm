@@ -28,6 +28,7 @@ case "$1" in
             rm -rf ${DIR}/ruleset
             rm -rf ${DIR}/var
             rm -rf ${DIR}/logs
+            rm -rf ${DIR}/queue
         fi
 
         # Delete old .save
