@@ -29,6 +29,7 @@ on:
 jobs:
   Filebeat-module-generation:
     runs-on: ubuntu-latest
+    timeout-minutes: 1
 
     steps:
       - name: Cancel previous runs
