@@ -623,7 +623,7 @@ void DeleteState() {
 }
 
 
-int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char ***unmerged_files)
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files)
 {
     int ret = 1;
     int state_ok;
