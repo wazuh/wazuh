@@ -1,4 +1,5 @@
-run-name: Build Filebeat module ${{ inputs.revision }} ${{ inputs.id }}
+run-name: Build Filebeat module ${{ inputs.revision }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.id }}
+name: Build Filebeat module
 
 on:
   workflow_dispatch:
@@ -10,6 +11,10 @@ on:
         required: false
         default: "0.0"
         type: string
+      checksum:
+        description: Generate package checksum.
+        required: false
+        type: boolean
       id:
         type: string
         description: |
@@ -22,6 +27,9 @@ on:
         required: false
         default: "0.0"
         type: string
+      checksum:
+        required: false
+        type: boolean
       id:
         type: string
         required: false
@@ -96,8 +104,24 @@ jobs:
           if [ $(diff -r wazuh wazuh2) ]; then exit 1; fi
           echo "MODULE_CHECKED=yes" >> $GITHUB_ENV
 
+      - name: Generate SHA512
+        if: ${{ inputs.checksum }}
+        working-directory: extensions/filebeat/7.x/wazuh-module
+        run: |
+          sha512sum "${{ env.FILEBEAT_TAR_NAME }}" > "${{ env.FILEBEAT_TAR_NAME }}.sha512"
+
       - name: Upload Filebeat module to S3
         if: env.MODULE_CHECKED == 'yes'
         working-directory: extensions/filebeat/7.x/wazuh-module
         run: |
           aws s3 cp ${{ env.FILEBEAT_TAR_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/${{ env.FILEBEAT_TAR_NAME }}"
+          echo "S3 URI: ${s3uri}"
+
+      - name: Upload Filebeat module SHA512 to S3
+        if: ${{ env.MODULE_CHECKED == 'yes' && inputs.checksum }}
+        working-directory: extensions/filebeat/7.x/wazuh-module
+        run: |
+          aws s3 cp ${{ env.FILEBEAT_TAR_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/secondary/filebeat/modules/${{ env.FILEBEAT_TAR_NAME }}.sha512"
+          echo "S3 sha512 URI: ${s3uri}"
