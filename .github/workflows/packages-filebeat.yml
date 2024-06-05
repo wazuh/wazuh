@@ -1,4 +1,5 @@
 run-name: Build Filebeat module ${{ inputs.revision }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.id }}
+name: Build Filebeat module
 
 on:
   workflow_dispatch:
