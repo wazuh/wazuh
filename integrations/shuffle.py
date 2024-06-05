@@ -226,7 +226,7 @@ def send_msg(msg: str, url: str) -> None:
         URL of the integration.
     """
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    res = requests.post(url, data=msg, headers=headers, timeout=10)
+    res = requests.post(url, data=msg, headers=headers, timeout=10, verify=False)
     debug('# Response received: %s' % res.json)
 
 
