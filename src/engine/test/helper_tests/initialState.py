@@ -4,16 +4,20 @@ import argparse
 import os
 import shutil
 import subprocess
+from pathlib import Path
+
+LEVELS_UP = 3
 
 
-def update_conf(script_dir, environment_dir):
-    serv_conf_file_src = os.path.join(script_dir, "configuration_files/general.conf")
-    serv_conf_file_dest = os.path.join(environment_dir, "engine", "general.conf")
+def update_conf(script_dir: Path, environment_dir: Path):
+    # Define source and destination paths using pathlib
+    serv_conf_file_src = script_dir / "configuration_files" / "general.conf"
+    serv_conf_file_dest = environment_dir / "engine" / "general.conf"
 
     # Copy the configuration file
     shutil.copy(serv_conf_file_src, serv_conf_file_dest)
 
-    # Update the path in the configuration file
+    # Read and update the path in the configuration file
     with open(serv_conf_file_dest, "r") as f:
         lines = f.readlines()
 
@@ -21,18 +25,23 @@ def update_conf(script_dir, environment_dir):
     with open(serv_conf_file_dest, "w") as f:
         for line in lines:
             # Replace the desired string
-            updated_line = line.replace("github_workspace", environment_dir)
+            updated_line = line.replace("github_workspace", environment_dir.as_posix())
             f.write(updated_line)
 
 
-def set_mmdb(engine_src_dir, environment_dir):
-    mmdbAsn = os.path.join(engine_src_dir, 'test', 'helper_tests', 'testdb-asn.mmdb')
-    shutil.copy(mmdbAsn, os.path.join(
-        environment_dir, 'engine', 'etc', 'testdb-asn.mmdb'))
+def set_mmdb(engine_src_dir: Path, environment_dir: Path):
+    # Define the source and destination paths using pathlib
+    mmdb_asn_src = engine_src_dir / 'test' / 'helper_tests' / 'testdb-asn.mmdb'
+    mmdb_asn_dest = environment_dir / 'engine' / 'etc' / 'testdb-asn.mmdb'
 
-    mmdbCity = os.path.join(engine_src_dir, 'test', 'helper_tests', 'testdb-city.mmdb')
-    shutil.copy(mmdbCity, os.path.join(
-        environment_dir, 'engine', 'etc', 'testdb-city.mmdb'))
+    # Copy the ASN database file
+    shutil.copy(mmdb_asn_src, mmdb_asn_dest)
+
+    mmdb_city_src = engine_src_dir / 'test' / 'helper_tests' / 'testdb-city.mmdb'
+    mmdb_city_dest = environment_dir / 'engine' / 'etc' / 'testdb-city.mmdb'
+
+    # Copy the City database file
+    shutil.copy(mmdb_city_src, mmdb_city_dest)
 
 
 def main():
@@ -45,35 +54,37 @@ def main():
 
     environment_directory = args.environment
     if environment_directory is None:
-        print(
-            "environment_directory is optional. For default is wazuh directory. Usage: python script.py -e <environment_directory>"
-        )
+        print("environment_directory is optional. For default is wazuh directory. Usage: python script.py", end=' ')
+        print("-e <environment_directory>")
 
-    SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-    WAZUH_DIR = os.path.realpath(os.path.join(SCRIPT_DIR, "../../../../"))
-    ENGINE_SRC_DIR = os.path.join(WAZUH_DIR, 'src', 'engine')
-    ENVIRONMENT_DIR = environment_directory or os.path.join(WAZUH_DIR, "environment")
-    ENVIRONMENT_DIR = ENVIRONMENT_DIR.replace("//", "/")
+    SCRIPT_DIR = Path(__file__).resolve().parent
+    WAZUH_DIR = SCRIPT_DIR.parents[LEVELS_UP]
+    ENGINE_SRC_DIR = WAZUH_DIR / 'src' / 'engine'
+    ENVIRONMENT_DIR = Path(environment_directory or (WAZUH_DIR / "environment"))
 
     update_conf(SCRIPT_DIR, ENVIRONMENT_DIR)
     set_mmdb(ENGINE_SRC_DIR, ENVIRONMENT_DIR)
 
-    os.environ['ENV_DIR'] = ENVIRONMENT_DIR
-    os.environ['WAZUH_DIR'] = WAZUH_DIR
-    os.environ['CONF_FILE'] = os.path.join(
-        ENVIRONMENT_DIR, 'engine', 'general.conf')
+    os.environ['ENV_DIR'] = ENVIRONMENT_DIR.as_posix()
+    os.environ['WAZUH_DIR'] = WAZUH_DIR.as_posix()
+    os.environ['CONF_FILE'] = str(ENVIRONMENT_DIR / 'engine' / 'general.conf')
 
     from handler_engine_instance import up_down
     up_down_engine = up_down.UpDownEngine()
     up_down_engine.send_start_command()
 
     # Add the mmdb to the engine
+    socket_path = str(ENVIRONMENT_DIR / "queue" / "sockets" / "engine-api")
+    asn_path = str(ENVIRONMENT_DIR / "engine" / "etc" / "testdb-asn.mmdb")
+    city_path = str(ENVIRONMENT_DIR / "engine" / "etc" / "testdb-city.mmdb")
+    binary_path = str(ENGINE_SRC_DIR / "build" / "main")
+
     print("Adding mmdb to the engine")
-    command = f'{os.path.join(ENGINE_SRC_DIR, "build", "main")} geo --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} add {os.path.join(ENVIRONMENT_DIR, "engine", "etc", "testdb-asn.mmdb")} asn'
+    command = f'{binary_path} geo --client_timeout 100000 --api_socket {socket_path} add {asn_path} asn'
     print(command)
     subprocess.run(command,
                    check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    command = f'{os.path.join(ENGINE_SRC_DIR, "build", "main")} geo --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} add {os.path.join(ENVIRONMENT_DIR, "engine", "etc", "testdb-city.mmdb")} city'
+    command = f'{binary_path} geo --client_timeout 100000 --api_socket {socket_path} add {city_path} city'
     print(command)
     subprocess.run(command,
                    check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
