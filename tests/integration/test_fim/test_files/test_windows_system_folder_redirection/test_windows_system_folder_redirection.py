@@ -68,7 +68,7 @@ pytestmark = [pytest.mark.agent, pytest.mark.win32, pytest.mark.tier(level=1)]
 
 # Test metadata, configuration and ids.
 cases_path = Path(TEST_CASES_PATH, 'cases_windows_system_folder_redirection.yaml')
-config_path = Path(CONFIGS_PATH, 'configuration_windows_system_folder_redirection.yaml')
+config_path = Path(CONFIGS_PATH, 'conf_win_system_folder_redir.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
 
