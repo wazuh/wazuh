@@ -1811,7 +1811,6 @@ cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* sta
     return result;
 }
 
-
 int wdb_global_agent_exists(wdb_t *wdb, int agent_id) {
     //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {
