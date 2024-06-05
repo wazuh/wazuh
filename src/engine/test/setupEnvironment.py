@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
+
 import os
 import shutil
 import argparse
+
 
 def setup_engine(engine_dir, engine_src_dir, environment_dir):
     schemas = ["wazuh-logpar-types", "wazuh-asset", "wazuh-policy", "engine-schema"]
@@ -22,6 +25,7 @@ def setup_engine(engine_dir, engine_src_dir, environment_dir):
     for directory in dirs_to_create:
         os.makedirs(directory, exist_ok=True)
 
+
 def main():
     parser = argparse.ArgumentParser(description='Setup engine directories.')
     parser.add_argument('-e', '--environment', help='Environment directory')
@@ -39,6 +43,7 @@ def main():
     ENGINE_DIR = os.path.join(ENVIRONMENT_DIR, 'engine')
 
     setup_engine(ENGINE_DIR, ENGINE_SRC_DIR, ENVIRONMENT_DIR)
+
 
 if __name__ == "__main__":
     main()
