@@ -221,7 +221,7 @@ def test_get_log_analytics_events(mock_get, mock_position, mock_iter, mock_updat
     headers = 'headers'
     tag = 'test'
     get_log_analytics_events(url=url, body=body, headers=headers, md5_hash='', query=la_query, tag=tag)
-    mock_get.assert_called_with(url, params=body, headers=headers)
+    mock_get.assert_called_with(url, params=body, headers=headers, timeout=10)
     if rows is None or (len(rows) > 0 and time_position is None):
         mock_logging.assert_called_once()
     elif len(rows) == 0:
