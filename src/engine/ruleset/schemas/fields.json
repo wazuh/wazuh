@@ -5,8 +5,12 @@
   "type": "object",
   "additionalProperties": false,
   "patternProperties": {
-    "^~.+": {
-      "description": "Custom field.",
+    "^_.+": {
+      "description": "Custom variable.",
+      "ecs_type": null
+    },
+    ".+": {
+      "description": "Custom field not present in the schema.",
       "ecs_type": null
     }
   },
@@ -65,7 +69,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "client.as.organization.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -79,7 +83,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "client.domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe domain name of the client system.\nThis value may be a host name, a fully qualified domain name, or another host naming format. The value may derive from the original event or be added from enrichment.",
@@ -177,7 +181,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "client.packets": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPackets sent from the client to the server.",
@@ -185,7 +189,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "client.port": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPort of the client.",
@@ -193,7 +197,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "client.registered_domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered client domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
@@ -273,7 +277,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -484,7 +488,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "container.disk.read.bytes": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total number of bytes (gauge) read successfully (aggregated from all disks) since the last metric collection.",
@@ -492,7 +496,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "container.disk.write.bytes": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total number of bytes (gauge) written successfully (aggregated from all disks) since the last metric collection.",
@@ -500,7 +504,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "container.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique container id.",
@@ -514,7 +518,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -533,7 +537,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -546,7 +550,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "container.memory.usage": {
       "description": "Module: ecs\nIndexerType: scaled_float\nArray: False\n\nMemory usage percentage and it ranges from 0 to 1. Scaling factor: 1000.",
@@ -554,7 +558,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "container.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nContainer name.",
@@ -568,7 +572,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "container.network.ingress.bytes": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of bytes received (gauge) on all network interfaces by the container since the last metric collection.",
@@ -576,7 +580,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "container.runtime": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nRuntime managing this container.",
@@ -590,7 +594,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "data_stream.dataset": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe field can contain anything that makes sense to signify the source of the data.\nExamples include `nginx.access`, `prometheus`, `endpoint` etc. For data streams that otherwise fit, but that do not have dataset set we use the value \"generic\" for the dataset value. `event.dataset` should have the same value as `data_stream.dataset`.\nBeyond the Elasticsearch data stream naming criteria noted above, the `dataset` value has additional restrictions:\n  * Must not contain `-`\n  * No longer than 100 characters",
@@ -622,7 +626,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "destination.as.organization.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -636,7 +640,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "destination.domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe domain name of the destination system.\nThis value may be a host name, a fully qualified domain name, or another host naming format. The value may derive from the original event or be added from enrichment.",
@@ -734,7 +738,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "destination.packets": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPackets sent from the destination to the source.",
@@ -742,7 +746,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "destination.port": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPort of the destination.",
@@ -750,7 +754,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "destination.registered_domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered destination domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
@@ -830,7 +834,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -873,7 +877,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -911,7 +915,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.code_signature.valid": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
@@ -919,7 +923,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
@@ -1011,7 +1015,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.pe.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -1019,7 +1023,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.pe.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -1027,7 +1031,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.pe.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -1035,7 +1039,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.pe.imphash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -1055,13 +1059,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "dll.pe.imports_names_entropy": {
@@ -1070,7 +1074,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.pe.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -1078,7 +1082,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "dll.pe.original_file_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -1104,13 +1108,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -1119,7 +1123,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -1133,7 +1137,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -1141,7 +1145,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
@@ -1149,7 +1153,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -1160,13 +1164,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "class": {
@@ -1193,7 +1197,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "type": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of data contained in this resource record.",
@@ -1210,7 +1214,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1271,7 +1275,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1302,13 +1306,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "file.extension": {
@@ -1377,7 +1381,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -1388,7 +1392,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1401,7 +1405,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1432,7 +1436,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1463,7 +1467,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1488,7 +1492,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1549,7 +1553,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1580,7 +1584,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "event.end": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\n`event.end` contains the date when the event ended or when the activity was last observed.",
@@ -1654,7 +1658,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "event.risk_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nNormalized risk score or priority of the event, on a scale of 0 to 100.\nThis is mainly useful if you use more than one system that assigns risk scores, and you want to see a normalized value across all systems.",
@@ -1662,7 +1666,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "event.sequence": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nSequence number of the event.\nThe sequence number is a value published by some event sources, to make the exact ordering of events unambiguous, regardless of the timestamp precision.",
@@ -1670,7 +1674,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "event.severity": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe numeric severity of the event according to your event source.\nWhat the different severity values mean can be different between sources and use cases. It's up to the implementer to make sure severities are consistent across events from the same source.\nThe Syslog severity belongs in `log.syslog.severity.code`. `event.severity` is meant to represent the severity according to the event source (e.g. firewall, IDS). If the event source does not publish its own severity, you may optionally copy the `log.syslog.severity.code` to `event.severity`.",
@@ -1678,7 +1682,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "event.start": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\n`event.start` contains the date when the event started or when the activity was first observed.",
@@ -1698,7 +1702,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1717,7 +1721,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "faas.execution": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe execution ID of the current function execution.",
@@ -1767,7 +1771,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -1786,7 +1790,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -1824,7 +1828,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.code_signature.valid": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
@@ -1832,7 +1836,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.created": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nFile creation time.\nNote that not all filesystems store the creation time.",
@@ -1894,13 +1898,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "file.elf.go_import_hash": {
@@ -1915,7 +1919,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.elf.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -1923,7 +1927,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.elf.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -1931,7 +1935,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.elf.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -1939,7 +1943,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.elf.header.abi_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
@@ -1965,7 +1969,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.elf.header.object_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\n\"0x1\" for original ELF files.",
@@ -2003,13 +2007,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "file.elf.imports_names_entropy": {
@@ -2018,7 +2022,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.elf.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -2026,7 +2030,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.elf.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -2034,13 +2038,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "chi2": {
@@ -2049,7 +2053,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
@@ -2057,7 +2061,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "flags": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List flags.",
@@ -2083,7 +2087,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "type": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List type.",
@@ -2097,7 +2101,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_address": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -2105,7 +2109,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual size.",
@@ -2113,7 +2117,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -2124,13 +2128,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "sections": {
@@ -2154,7 +2158,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2251,7 +2255,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.macho.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -2259,7 +2263,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.macho.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -2267,7 +2271,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.macho.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -2275,7 +2279,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.macho.import_hash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for symhash.",
@@ -2289,13 +2293,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "file.macho.imports_names_entropy": {
@@ -2304,7 +2308,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.macho.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -2312,7 +2316,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.macho.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the Mach-O file.\nThe keys that should be present in these objects are defined by sub-fields underneath `macho.sections.*`.",
@@ -2320,13 +2324,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -2335,7 +2339,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMach-O Section List name.",
@@ -2349,7 +2353,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -2357,7 +2361,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List virtual size. This is always the same as `physical_size`.",
@@ -2365,7 +2369,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -2448,7 +2452,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.pe.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -2456,7 +2460,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.pe.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -2464,7 +2468,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.pe.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -2472,7 +2476,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.pe.imphash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -2492,13 +2496,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "file.pe.imports_names_entropy": {
@@ -2507,7 +2511,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.pe.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -2515,7 +2519,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.pe.original_file_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -2541,13 +2545,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -2556,7 +2560,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -2570,7 +2574,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -2578,7 +2582,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
@@ -2586,7 +2590,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -2597,7 +2601,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.target_path": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nTarget path for symlinks.",
@@ -2623,7 +2627,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2636,7 +2640,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2649,7 +2653,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2668,7 +2672,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2681,7 +2685,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2694,7 +2698,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2707,7 +2711,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2744,7 +2748,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.x509.public_key_size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
@@ -2752,7 +2756,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "file.x509.serial_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
@@ -2772,7 +2776,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2785,7 +2789,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2804,7 +2808,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2817,7 +2821,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2830,7 +2834,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2843,7 +2847,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -2892,7 +2896,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.disk.read.bytes": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total number of bytes (gauge) read successfully (aggregated from all disks) since the last metric collection.",
@@ -2900,7 +2904,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.disk.write.bytes": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total number of bytes (gauge) written successfully (aggregated from all disks) since the last metric collection.",
@@ -2908,7 +2912,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the domain of which the host is a member.\nFor example, on Windows this could be the host's Active Directory domain or NetBIOS domain name. For Linux this could be the domain of the host's LDAP provider.",
@@ -3000,7 +3004,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3013,7 +3017,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3032,7 +3036,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.network.egress.packets": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of packets (gauge) sent out on all network interfaces by the host since the last metric collection.",
@@ -3040,7 +3044,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.network.ingress.bytes": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of bytes received (gauge) on all network interfaces by the host since the last metric collection.",
@@ -3048,7 +3052,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.network.ingress.packets": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of packets (gauge) received on all network interfaces by the host since the last metric collection.",
@@ -3056,7 +3060,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.os.family": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOS family (such as redhat, debian, freebsd, windows).",
@@ -3118,7 +3122,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.risk.calculated_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
@@ -3126,7 +3130,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.risk.static_level": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
@@ -3140,7 +3144,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.risk.static_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
@@ -3148,7 +3152,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "host.type": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nType of host.\nFor Cloud providers this can be the machine type like `t2.medium`. If vm, this could be the container, for example, or other information meaningful in your environment.",
@@ -3162,7 +3166,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "http.request.body.bytes": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nSize in bytes of the request body.",
@@ -3170,7 +3174,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "http.request.body.content": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe full HTTP request body.",
@@ -3184,7 +3188,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "http.request.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA unique identifier for each HTTP request to correlate logs between clients and servers in transactions.\nThe id may be contained in a non-standard HTTP header, such as `X-Request-ID` or `X-Correlation-ID`.",
@@ -3216,7 +3220,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "http.response.body.content": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe full HTTP response body.",
@@ -3230,7 +3234,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "http.response.mime_type": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMime type of the body of the response.\nThis value must only be populated based on the content of the response body, not on the `Content-Type` header. Comparing the mime type of a response with the response's Content-Type header can be helpful in detecting misconfigured servers.",
@@ -3244,7 +3248,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "http.version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nHTTP version.",
@@ -3258,7 +3262,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "log.file.path": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFull path to the log file this event came from, including the file name. It should include the drive letter, when appropriate.\nIf the event wasn't read from a log file, do not populate this field.",
@@ -3284,7 +3288,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "log.origin.file.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the file containing the source code which originated the log event.\nNote that this field is not meant to capture the log file. The correct field to capture the log file is `log.file.path`.",
@@ -3304,7 +3308,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "appname": {
@@ -3319,7 +3323,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "facility.name": {
           "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe Syslog text-based facility of the log event, if available.",
@@ -3345,7 +3349,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "procid": {
           "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe process name or ID that originated the Syslog message, if available.",
@@ -3359,7 +3363,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "severity.name": {
           "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe Syslog numeric severity of the log event, if available.\nIf the event source publishing via Syslog provides a different severity value (e.g. firewall, IDS), your source's text severity should go to `log.level`. If the event source does not specify a distinct severity, you can optionally copy the Syslog severity to `log.level`.",
@@ -3373,7 +3377,7 @@
             "object",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "version": {
           "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe version of the Syslog protocol specification. Only applicable for RFC 5424 messages.",
@@ -3401,7 +3405,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "network.community_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of source and destination IPs and ports, as well as the protocol used in a communication. This is a tool-agnostic standard to identify flows.\nLearn more at https://github.com/corelight/community-id-spec.",
@@ -3433,7 +3437,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "vlan.id": {
@@ -3462,7 +3466,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "network.protocol": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nIn the OSI Model this would be the Application Layer protocol. For example, `http`, `dns`, or `ssh`.\nThe field value must be normalized to lowercase for querying.",
@@ -3500,7 +3504,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "interface.alias": {
@@ -3619,7 +3623,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "interface.alias": {
@@ -3666,7 +3670,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3679,7 +3683,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3812,7 +3816,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3831,7 +3835,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3844,7 +3848,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3953,7 +3957,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "package.type": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nType of package.\nThis should contain the package file type, rather than the package manager name. Examples: rpm, dpkg, brew, npm, gem, nupkg, jar.",
@@ -3973,7 +3977,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -3986,7 +3990,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.code_signature.digest_algorithm": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hashing algorithm used to sign the process.\nThis value can distinguish signatures when a file is signed multiple times by the same signer but with a different digest algorithm.",
@@ -4000,7 +4004,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -4038,7 +4042,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.code_signature.valid": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
@@ -4046,7 +4050,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.command_line": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
@@ -4084,13 +4088,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.elf.go_import_hash": {
@@ -4105,7 +4109,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.elf.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -4113,7 +4117,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.elf.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -4121,7 +4125,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.elf.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -4129,7 +4133,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.elf.header.abi_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
@@ -4155,7 +4159,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.elf.header.object_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\n\"0x1\" for original ELF files.",
@@ -4193,13 +4197,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.elf.imports_names_entropy": {
@@ -4208,7 +4212,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.elf.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -4216,7 +4220,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.elf.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -4224,13 +4228,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "chi2": {
@@ -4239,7 +4243,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
@@ -4247,7 +4251,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "flags": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List flags.",
@@ -4273,7 +4277,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "type": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List type.",
@@ -4287,7 +4291,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_address": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -4295,7 +4299,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual size.",
@@ -4303,7 +4307,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -4314,13 +4318,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "sections": {
@@ -4344,7 +4348,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -4375,7 +4379,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -4388,7 +4392,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.attested_groups.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nName of the group.",
@@ -4456,7 +4460,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nProcess name.\nSometimes called program name or similar.",
@@ -4476,7 +4480,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.parent.session_leader.entity_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the process.\nThe implementation of this is specified by the data source, but some examples of what could be used here are a process-generated UUID, Sysmon Process GUIDs, or a hash of some uniquely identifying components of a process.\nConstructing a globally unique identifier is a common practice to mitigate PID reuse as well as to identify a specific process over time, across multiple monitored hosts.",
@@ -4490,7 +4494,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.parent.session_leader.start": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe time the process started.",
@@ -4504,7 +4508,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.parent.start": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe time the process started.",
@@ -4518,7 +4522,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.pid": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nProcess id.",
@@ -4526,7 +4530,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.real_group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -4558,7 +4562,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.saved_group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -4608,7 +4612,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "char_device.major": {
@@ -4617,7 +4621,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "char_device.minor": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
@@ -4625,7 +4629,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         }
       }
     },
@@ -4647,7 +4651,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.entry_leader.working_directory": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -4661,7 +4665,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -4680,7 +4684,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.group_leader.args": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of process arguments, starting with the absolute path to the executable.\nMay be filtered to protect sensitive information.",
@@ -4688,7 +4692,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -4701,7 +4705,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.group_leader.command_line": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
@@ -4739,7 +4743,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.group_leader.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nProcess name.\nSometimes called program name or similar.",
@@ -4753,7 +4757,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.group_leader.real_group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -4785,7 +4789,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.group_leader.saved_group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -4835,7 +4839,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "char_device.major": {
@@ -4844,7 +4848,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "char_device.minor": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
@@ -4852,7 +4856,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         }
       }
     },
@@ -4874,7 +4878,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.group_leader.working_directory": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -4930,7 +4934,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.io": {
       "description": "Module: ecs\nIndexerType: object\nArray: False\n\nA chunk of input or output (IO) from a single process.\nThis field only appears on the top level process object, which is the process that wrote the output or read the input.",
@@ -4938,7 +4942,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "bytes_skipped": {
@@ -4947,13 +4951,13 @@
             "string",
             "array"
           ],
-          "pattern": "^[\\+\\$].+",
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
           "items": {
             "type": [
               "object",
               "string"
             ],
-            "pattern": "^[\\+\\$].+",
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
             "additionalProperties": false,
             "properties": {
               "length": {
@@ -4962,7 +4966,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "offset": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe byte offset into this event's io.text (or io.bytes in the future) where length bytes were skipped.",
@@ -4970,7 +4974,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               }
             }
           }
@@ -4981,7 +4985,7 @@
             "boolean",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "text": {
           "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA chunk of output or input sanitized to UTF-8.\nBest efforts are made to ensure complete lines are captured in these events. Assumptions should NOT be made that multiple lines will appear in the same event. TTY output may contain terminal control codes such as for cursor movement, so some string queries may not match due to terminal codes inserted between characters of a word.",
@@ -4995,7 +4999,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "total_bytes_skipped": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe total number of bytes that were not captured due to implementation restrictions such as buffer size limits. Implementors should strive to ensure this value is always zero",
@@ -5003,7 +5007,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "type": {
           "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe type of object on which the IO action (read or write) was taken.\nCurrently only 'tty' is supported. Other types may be added in the future for 'file' and 'socket' support.",
@@ -5025,7 +5029,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.macho.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -5033,7 +5037,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.macho.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -5041,7 +5045,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.macho.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -5049,7 +5053,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.macho.import_hash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for symhash.",
@@ -5063,13 +5067,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.macho.imports_names_entropy": {
@@ -5078,7 +5082,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.macho.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -5086,7 +5090,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.macho.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the Mach-O file.\nThe keys that should be present in these objects are defined by sub-fields underneath `macho.sections.*`.",
@@ -5094,13 +5098,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -5109,7 +5113,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMach-O Section List name.",
@@ -5123,7 +5127,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -5131,7 +5135,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List virtual size. This is always the same as `physical_size`.",
@@ -5139,7 +5143,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -5162,7 +5166,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -5175,7 +5179,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.code_signature.digest_algorithm": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe hashing algorithm used to sign the process.\nThis value can distinguish signatures when a file is signed multiple times by the same signer but with a different digest algorithm.",
@@ -5189,7 +5193,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -5227,7 +5231,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.code_signature.valid": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
@@ -5235,7 +5239,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.command_line": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
@@ -5273,13 +5277,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.parent.elf.go_import_hash": {
@@ -5294,7 +5298,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.elf.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -5302,7 +5306,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.elf.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -5310,7 +5314,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.elf.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -5318,7 +5322,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.elf.header.abi_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
@@ -5344,7 +5348,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.elf.header.object_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\n\"0x1\" for original ELF files.",
@@ -5382,13 +5386,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.parent.elf.imports_names_entropy": {
@@ -5397,7 +5401,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.elf.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -5405,7 +5409,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.elf.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -5413,13 +5417,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "chi2": {
@@ -5428,7 +5432,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
@@ -5436,7 +5440,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "flags": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List flags.",
@@ -5462,7 +5466,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "type": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List type.",
@@ -5476,7 +5480,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_address": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -5484,7 +5488,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual size.",
@@ -5492,7 +5496,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -5503,13 +5507,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "sections": {
@@ -5533,7 +5537,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -5570,7 +5574,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -5596,7 +5600,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.group_leader.start": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe time the process started.",
@@ -5610,7 +5614,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.hash.md5": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMD5 hash.",
@@ -5660,7 +5664,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.macho.go_import_hash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the Go language imports in a Mach-O file excluding standard library imports. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThe algorithm used to calculate the Go symbol hash and a reference implementation are available [here](https://github.com/elastic/toutoumomoma).",
@@ -5674,7 +5678,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.macho.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -5682,7 +5686,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.macho.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -5690,7 +5694,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.macho.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -5698,7 +5702,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.macho.import_hash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a Mach-O file. An import hash can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nThis is a synonym for symhash.",
@@ -5712,13 +5716,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.parent.macho.imports_names_entropy": {
@@ -5727,7 +5731,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.macho.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -5735,7 +5739,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.macho.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the Mach-O file.\nThe keys that should be present in these objects are defined by sub-fields underneath `macho.sections.*`.",
@@ -5743,13 +5747,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -5758,7 +5762,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nMach-O Section List name.",
@@ -5772,7 +5776,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -5780,7 +5784,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nMach-O Section List virtual size. This is always the same as `physical_size`.",
@@ -5788,7 +5792,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -5841,7 +5845,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.pe.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -5849,7 +5853,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.pe.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -5857,7 +5861,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.pe.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -5865,7 +5869,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.pe.imphash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -5885,13 +5889,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.parent.pe.imports_names_entropy": {
@@ -5900,7 +5904,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.pe.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -5908,7 +5912,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.pe.original_file_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -5934,13 +5938,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -5949,7 +5953,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -5963,7 +5967,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -5971,7 +5975,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
@@ -5979,7 +5983,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -5990,7 +5994,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.pid": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nProcess id.",
@@ -5998,7 +6002,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.real_group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -6072,7 +6076,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6085,7 +6089,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6098,7 +6102,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.thread.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThread name.",
@@ -6118,7 +6122,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "char_device.major": {
@@ -6127,7 +6131,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "char_device.minor": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
@@ -6135,7 +6139,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         }
       }
     },
@@ -6145,7 +6149,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.user.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier of the user.",
@@ -6165,7 +6169,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.parent.working_directory": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -6209,7 +6213,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.pe.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -6217,7 +6221,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.pe.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -6225,7 +6229,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.pe.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -6233,7 +6237,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.pe.imphash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -6253,13 +6257,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "process.pe.imports_names_entropy": {
@@ -6268,7 +6272,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.pe.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -6276,7 +6280,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.pe.original_file_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -6302,13 +6306,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -6317,7 +6321,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -6331,7 +6335,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -6339,7 +6343,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
@@ -6347,7 +6351,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -6358,7 +6362,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.pid": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nProcess id.",
@@ -6366,7 +6370,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.previous.args": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of process arguments, starting with the absolute path to the executable.\nMay be filtered to protect sensitive information.",
@@ -6374,7 +6378,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6387,7 +6391,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.previous.executable": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nAbsolute path to the process executable.",
@@ -6449,7 +6453,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6462,7 +6466,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.command_line": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nFull command line that started the process, including the absolute path to the executable, and all arguments.\nSome arguments may be filtered to protect sensitive information.",
@@ -6500,7 +6504,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nProcess name.\nSometimes called program name or similar.",
@@ -6520,7 +6524,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.parent.session_leader.entity_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the process.\nThe implementation of this is specified by the data source, but some examples of what could be used here are a process-generated UUID, Sysmon Process GUIDs, or a hash of some uniquely identifying components of a process.\nConstructing a globally unique identifier is a common practice to mitigate PID reuse as well as to identify a specific process over time, across multiple monitored hosts.",
@@ -6534,7 +6538,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.parent.session_leader.start": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe time the process started.",
@@ -6548,7 +6552,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.parent.start": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nThe time the process started.",
@@ -6562,7 +6566,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.pid": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nProcess id.",
@@ -6570,7 +6574,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.real_group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -6602,7 +6606,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.saved_group.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier for the group on the system/platform.",
@@ -6652,7 +6656,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "char_device.major": {
@@ -6661,7 +6665,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "char_device.minor": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
@@ -6669,7 +6673,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         }
       }
     },
@@ -6691,7 +6695,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.session_leader.working_directory": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -6723,7 +6727,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6736,7 +6740,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6749,7 +6753,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.thread.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThread name.",
@@ -6769,7 +6773,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "char_device.major": {
@@ -6778,7 +6782,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "char_device.minor": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe minor number is used only by the driver specified by the major number; other parts of the kernel don\u2019t use it, and merely pass it along to the driver. It is common for a driver to control several devices; the minor number provides a way for the driver to differentiate among them.",
@@ -6786,7 +6790,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "columns": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of character columns per line. e.g terminal width\nTerminal sizes can change, so this value reflects the maximum value for a given IO event. i.e. where event.action = 'text_output'",
@@ -6794,7 +6798,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "rows": {
           "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe number of character rows in the terminal. e.g terminal height\nTerminal sizes can change, so this value reflects the maximum value for a given IO event. i.e. where event.action = 'text_output'",
@@ -6802,7 +6806,7 @@
             "number",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         }
       }
     },
@@ -6812,7 +6816,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.user.id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique identifier of the user.",
@@ -6832,7 +6836,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "process.working_directory": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe working directory of the process.",
@@ -6852,7 +6856,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6895,7 +6899,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6908,7 +6912,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6921,7 +6925,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6934,7 +6938,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -6947,7 +6951,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -7020,7 +7024,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "server.as.organization.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -7034,7 +7038,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "server.domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe domain name of the server system.\nThis value may be a host name, a fully qualified domain name, or another host naming format. The value may derive from the original event or be added from enrichment.",
@@ -7132,7 +7136,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "server.packets": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPackets sent from the server to the client.",
@@ -7140,7 +7144,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "server.port": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPort of the server.",
@@ -7148,7 +7152,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "server.registered_domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered server domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
@@ -7228,7 +7232,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -7283,7 +7287,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -7338,7 +7342,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -7417,7 +7421,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -7466,7 +7470,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "source.as.organization.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -7480,7 +7484,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "source.domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe domain name of the source system.\nThis value may be a host name, a fully qualified domain name, or another host naming format. The value may derive from the original event or be added from enrichment.",
@@ -7578,7 +7582,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "source.packets": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPackets sent from the source to the destination.",
@@ -7586,7 +7590,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "source.port": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPort of the source.",
@@ -7594,7 +7598,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "source.registered_domain": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe highest registered source domain, stripped of the subdomain.\nFor example, the registered domain for \"foo.example.com\" is \"example.com\".\nThis value can be determined precisely with a list like the public suffix list (http://publicsuffix.org). Trying to approximate this by simply taking the last two labels will not work well for TLDs such as \"co.uk\".",
@@ -7674,7 +7678,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -7693,7 +7697,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -7706,13 +7710,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "indicator": {
@@ -7721,7 +7725,7 @@
               "object",
               "string"
             ],
-            "pattern": "^[\\+\\$].+",
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
             "additionalProperties": false,
             "properties": {
               "as.number": {
@@ -7730,7 +7734,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "as.organization.name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -7768,7 +7772,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -7787,7 +7791,7 @@
                   "boolean",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.code_signature.signing_id": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -7825,7 +7829,7 @@
                   "boolean",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.code_signature.valid": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
@@ -7833,7 +7837,7 @@
                   "boolean",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.created": {
                 "description": "Module: ecs\nIndexerType: date\nArray: False\n\nFile creation time.\nNote that not all filesystems store the creation time.",
@@ -7895,13 +7899,13 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "object",
                     "string"
                   ],
-                  "pattern": "^[\\+\\$].+"
+                  "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                 }
               },
               "file.elf.go_import_hash": {
@@ -7916,7 +7920,7 @@
                   "object",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.elf.go_imports_names_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -7924,7 +7928,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.elf.go_imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -7932,7 +7936,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.elf.go_stripped": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -7940,7 +7944,7 @@
                   "boolean",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.elf.header.abi_version": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
@@ -7966,7 +7970,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.elf.header.object_version": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\n\"0x1\" for original ELF files.",
@@ -8004,13 +8008,13 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "object",
                     "string"
                   ],
-                  "pattern": "^[\\+\\$].+"
+                  "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                 }
               },
               "file.elf.imports_names_entropy": {
@@ -8019,7 +8023,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.elf.imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -8027,7 +8031,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.elf.sections": {
                 "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -8035,13 +8039,13 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "object",
                     "string"
                   ],
-                  "pattern": "^[\\+\\$].+",
+                  "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                   "additionalProperties": false,
                   "properties": {
                     "chi2": {
@@ -8050,7 +8054,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "entropy": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
@@ -8058,7 +8062,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "flags": {
                       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List flags.",
@@ -8084,7 +8088,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "type": {
                       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List type.",
@@ -8098,7 +8102,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "virtual_address": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -8106,7 +8110,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "virtual_size": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual size.",
@@ -8114,7 +8118,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     }
                   }
                 }
@@ -8125,13 +8129,13 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "object",
                     "string"
                   ],
-                  "pattern": "^[\\+\\$].+",
+                  "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                   "additionalProperties": false,
                   "properties": {
                     "sections": {
@@ -8155,7 +8159,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8312,7 +8316,7 @@
                   "object",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.pe.go_imports_names_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -8320,7 +8324,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.pe.go_imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -8328,7 +8332,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.pe.go_stripped": {
                 "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -8336,7 +8340,7 @@
                   "boolean",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.pe.imphash": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -8356,13 +8360,13 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "object",
                     "string"
                   ],
-                  "pattern": "^[\\+\\$].+"
+                  "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                 }
               },
               "file.pe.imports_names_entropy": {
@@ -8371,7 +8375,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.pe.imports_names_var_entropy": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -8379,7 +8383,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.pe.original_file_name": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -8405,13 +8409,13 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "object",
                     "string"
                   ],
-                  "pattern": "^[\\+\\$].+",
+                  "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                   "additionalProperties": false,
                   "properties": {
                     "entropy": {
@@ -8420,7 +8424,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "name": {
                       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -8434,7 +8438,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "var_entropy": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -8442,7 +8446,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     },
                     "virtual_size": {
                       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
@@ -8450,7 +8454,7 @@
                         "number",
                         "string"
                       ],
-                      "pattern": "^[\\+\\$].+"
+                      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
                     }
                   }
                 }
@@ -8461,7 +8465,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.target_path": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nTarget path for symlinks.",
@@ -8487,7 +8491,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8500,7 +8504,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8513,7 +8517,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8532,7 +8536,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8545,7 +8549,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8558,7 +8562,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8571,7 +8575,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8608,7 +8612,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.x509.public_key_size": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
@@ -8616,7 +8620,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "file.x509.serial_number": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
@@ -8636,7 +8640,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8649,7 +8653,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8668,7 +8672,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8681,7 +8685,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8694,7 +8698,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8707,7 +8711,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8834,7 +8838,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "provider": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the indicator's provider.",
@@ -8860,7 +8864,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -8903,7 +8907,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "sightings": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nNumber of times this indicator was observed conducting threat activity.",
@@ -8911,7 +8915,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "type": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nType of indicator as represented by Cyber Observable in STIX 2.0.",
@@ -8967,7 +8971,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "url.query": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe query field describes the query string of the request, such as \"q=elasticsearch\".\nThe `?` is excluded from the query string. If a URL contains no `?`, there is no query field. If there is a `?` but no query, the query field exists with an empty string. The `exists` query can be used to differentiate between the two cases.",
@@ -9011,7 +9015,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9024,7 +9028,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9037,7 +9041,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9056,7 +9060,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9069,7 +9073,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9082,7 +9086,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9095,7 +9099,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9132,7 +9136,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "x509.public_key_size": {
                 "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
@@ -9140,7 +9144,7 @@
                   "number",
                   "string"
                 ],
-                "pattern": "^[\\+\\$].+"
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
               },
               "x509.serial_number": {
                 "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
@@ -9160,7 +9164,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9173,7 +9177,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9192,7 +9196,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9205,7 +9209,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9218,7 +9222,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9231,7 +9235,7 @@
                   "string",
                   "array"
                 ],
-                "pattern": "^[\\+\\$].+",
+                "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
                 "items": {
                   "type": [
                     "string"
@@ -9321,7 +9325,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -9352,7 +9356,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.as.organization.name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nOrganization name.",
@@ -9390,7 +9394,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -9409,7 +9413,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.code_signature.signing_id": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe identifier used to sign the process.\nThis is used to identify the application manufactured by a software vendor. The field is relevant to Apple *OS only.",
@@ -9447,7 +9451,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.code_signature.valid": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nBoolean to capture if the digital signature is verified against the binary content.\nLeave unpopulated if a certificate was unchecked.",
@@ -9455,7 +9459,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.created": {
       "description": "Module: ecs\nIndexerType: date\nArray: False\n\nFile creation time.\nNote that not all filesystems store the creation time.",
@@ -9517,13 +9521,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "threat.indicator.file.elf.go_import_hash": {
@@ -9538,7 +9542,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.elf.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -9546,7 +9550,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.elf.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -9554,7 +9558,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.elf.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -9562,7 +9566,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.elf.header.abi_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nVersion of the ELF Application Binary Interface (ABI).",
@@ -9588,7 +9592,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.elf.header.object_version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\n\"0x1\" for original ELF files.",
@@ -9626,13 +9630,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "threat.indicator.file.elf.imports_names_entropy": {
@@ -9641,7 +9645,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.elf.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -9649,7 +9653,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.elf.sections": {
       "description": "Module: ecs\nIndexerType: nested\nArray: True\n\nAn array containing an object for each section of the ELF file.\nThe keys that should be present in these objects are defined by sub-fields underneath `elf.sections.*`.",
@@ -9657,13 +9661,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "chi2": {
@@ -9672,7 +9676,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the section.",
@@ -9680,7 +9684,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "flags": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List flags.",
@@ -9706,7 +9710,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "type": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nELF Section List type.",
@@ -9720,7 +9724,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_address": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual address.",
@@ -9728,7 +9732,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nELF Section List virtual size.",
@@ -9736,7 +9740,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -9747,13 +9751,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "sections": {
@@ -9777,7 +9781,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -9934,7 +9938,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.pe.go_imports_names_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nShannon entropy calculation from the list of Go imports.",
@@ -9942,7 +9946,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.pe.go_imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of Go imports.",
@@ -9950,7 +9954,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.pe.go_stripped": {
       "description": "Module: ecs\nIndexerType: boolean\nArray: False\n\nSet to true if the file is a Go executable that has had its symbols stripped or obfuscated and false if an unobfuscated Go executable.",
@@ -9958,7 +9962,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.pe.imphash": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA hash of the imports in a PE file. An imphash -- or import hash -- can be used to fingerprint binaries even after recompilation or other code-level transformations have occurred, which would change more traditional hash values.\nLearn more at https://www.fireeye.com/blog/threat-research/2014/01/tracking-malware-import-hashing.html.",
@@ -9978,13 +9982,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+"
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
       }
     },
     "threat.indicator.file.pe.imports_names_entropy": {
@@ -9993,7 +9997,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.pe.imports_names_var_entropy": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the list of imported element names and types.",
@@ -10001,7 +10005,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.pe.original_file_name": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nInternal name of the file, provided at compile-time.",
@@ -10027,13 +10031,13 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "object",
           "string"
         ],
-        "pattern": "^[\\+\\$].+",
+        "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
         "additionalProperties": false,
         "properties": {
           "entropy": {
@@ -10042,7 +10046,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "name": {
             "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPE Section List name.",
@@ -10056,7 +10060,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "var_entropy": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nVariance for Shannon entropy calculation from the section.",
@@ -10064,7 +10068,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           },
           "virtual_size": {
             "description": "Module: ecs\nIndexerType: long\nArray: False\n\nPE Section List virtual size. This is always the same as `physical_size`.",
@@ -10072,7 +10076,7 @@
               "number",
               "string"
             ],
-            "pattern": "^[\\+\\$].+"
+            "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
           }
         }
       }
@@ -10083,7 +10087,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.target_path": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nTarget path for symlinks.",
@@ -10109,7 +10113,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10122,7 +10126,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10135,7 +10139,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10154,7 +10158,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10167,7 +10171,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10180,7 +10184,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10193,7 +10197,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10230,7 +10234,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.x509.public_key_size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
@@ -10238,7 +10242,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.file.x509.serial_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
@@ -10258,7 +10262,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10271,7 +10275,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10290,7 +10294,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10303,7 +10307,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10316,7 +10320,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10329,7 +10333,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10456,7 +10460,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.provider": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe name of the indicator's provider.",
@@ -10482,7 +10486,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10525,7 +10529,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.sightings": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nNumber of times this indicator was observed conducting threat activity.",
@@ -10533,7 +10537,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.type": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nType of indicator as represented by Cyber Observable in STIX 2.0.",
@@ -10589,7 +10593,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.url.query": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe query field describes the query string of the request, such as \"q=elasticsearch\".\nThe `?` is excluded from the query string. If a URL contains no `?`, there is no query field. If there is a `?` but no query, the query field exists with an empty string. The `exists` query can be used to differentiate between the two cases.",
@@ -10633,7 +10637,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10646,7 +10650,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10659,7 +10663,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10678,7 +10682,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10691,7 +10695,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10704,7 +10708,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10717,7 +10721,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10754,7 +10758,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.x509.public_key_size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
@@ -10762,7 +10766,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "threat.indicator.x509.serial_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
@@ -10782,7 +10786,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10795,7 +10799,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10814,7 +10818,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10827,7 +10831,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10840,7 +10844,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10853,7 +10857,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10872,7 +10876,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10897,7 +10901,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10922,7 +10926,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10935,7 +10939,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10948,7 +10952,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10961,7 +10965,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10974,7 +10978,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -10987,7 +10991,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11000,7 +11004,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11013,7 +11017,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11026,7 +11030,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11051,7 +11055,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11118,7 +11122,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11131,7 +11135,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11144,7 +11148,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11157,7 +11161,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11176,7 +11180,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11189,7 +11193,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11202,7 +11206,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11215,7 +11219,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11252,7 +11256,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "tls.client.x509.public_key_size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
@@ -11260,7 +11264,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "tls.client.x509.serial_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
@@ -11280,7 +11284,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11293,7 +11297,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11312,7 +11316,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11325,7 +11329,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11338,7 +11342,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11351,7 +11355,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11376,7 +11380,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "tls.next_protocol": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nString indicating the protocol being tunneled. Per the values in the IANA registry (https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml#alpn-protocol-ids), this string should be lower case.",
@@ -11390,7 +11394,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "tls.server.certificate": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nPEM-encoded stand-alone certificate offered by the server. This is usually mutually-exclusive of `server.certificate_chain` since this value also exists in that list.",
@@ -11404,7 +11408,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11465,7 +11469,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11478,7 +11482,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11491,7 +11495,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11510,7 +11514,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11523,7 +11527,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11536,7 +11540,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11549,7 +11553,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11586,7 +11590,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "tls.server.x509.public_key_size": {
       "description": "Module: ecs\nIndexerType: long\nArray: False\n\nThe size of the public key space in bits.",
@@ -11594,7 +11598,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "tls.server.x509.serial_number": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nUnique serial number issued by the certificate authority. For consistency, if this value is alphanumeric, it should be formatted without colons and uppercase characters.",
@@ -11614,7 +11618,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11627,7 +11631,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11646,7 +11650,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11659,7 +11663,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11672,7 +11676,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11685,7 +11689,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11770,7 +11774,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "url.query": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe query field describes the query string of the request, such as \"q=elasticsearch\".\nThe `?` is excluded from the query string. If a URL contains no `?`, there is no query field. If there is a `?` but no query, the query field exists with an empty string. The `exists` query can be used to differentiate between the two cases.",
@@ -11868,7 +11872,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -11941,7 +11945,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -12008,7 +12012,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "user.risk.calculated_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score calculated by an internal system as part of entity analytics and entity risk scoring, and normalized to a range of 0 to 100.",
@@ -12016,7 +12020,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "user.risk.static_level": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nA risk classification level obtained from outside the system, such as from some external Threat Intelligence Platform.",
@@ -12030,7 +12034,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "user.risk.static_score_norm": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nA risk classification score obtained from outside the system, such as from some external Threat Intelligence Platform, and normalized to a range of 0 to 100.",
@@ -12038,7 +12042,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "user.roles": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: True\n\nArray of user roles at the time of the event.",
@@ -12046,7 +12050,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -12113,7 +12117,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -12192,7 +12196,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -12247,7 +12251,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "vulnerability.score.environmental": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nEnvironmental scores cover an assessment for any modified Base metrics, confidentiality, integrity, and availability requirements. For example (https://www.first.org/cvss/specification-document)",
@@ -12255,7 +12259,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "vulnerability.score.temporal": {
       "description": "Module: ecs\nIndexerType: float\nArray: False\n\nScores can range from 0.0 to 10.0, with 10.0 being the most severe.\nTemporal scores cover an assessment for code maturity, remediation level, and confidence. For example (https://www.first.org/cvss/specification-document)",
@@ -12263,7 +12267,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "vulnerability.score.version": {
       "description": "Module: ecs\nIndexerType: keyword\nArray: False\n\nThe National Vulnerability Database (NVD) provides qualitative severity rankings of \"Low\", \"Medium\", and \"High\" for CVSS v2.0 base score ranges in addition to the severity ratings for CVSS v3.0 as they are defined in the CVSS v3.0 specification.\nCVSS is owned and managed by FIRST.Org, Inc. (FIRST), a US-based non-profit organization, whose mission is to help computer security incident response teams across the world. For example (https://nvd.nist.gov/vuln-metrics/cvss)",
@@ -12283,7 +12287,7 @@
         "number",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.location": {
       "description": "Module: wazuh-core\nIndexerType: text\nArray: False\n\nLocation part of the OSSEC message format",
@@ -12315,7 +12319,7 @@
         "string",
         "array"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "items": {
         "type": [
           "string"
@@ -12334,7 +12338,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.hotfix": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the hotfix fields from a syscollector event",
@@ -12342,7 +12346,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.netinfo.addr": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the address fields from a syscollector event",
@@ -12350,7 +12354,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.netinfo.iface": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the network interface fields from a syscollector event",
@@ -12358,7 +12362,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.netinfo.proto": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the network protocol fields from a syscollector event",
@@ -12366,7 +12370,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.os": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the os fields from a syscollector event",
@@ -12374,7 +12378,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.port": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the port fields from a syscollector event",
@@ -12382,7 +12386,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.process": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the process fields from a syscollector event",
@@ -12390,7 +12394,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.syscollector.program": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the program fields from a syscollector event",
@@ -12398,7 +12402,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     },
     "wazuh.rootcheck": {
       "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the rootcheck fields from a rootcheck event",
@@ -12406,7 +12410,7 @@
         "object",
         "string"
       ],
-      "pattern": "^[\\+\\$].+",
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)",
       "additionalProperties": false,
       "properties": {
         "file": {
@@ -12421,7 +12425,7 @@
             "boolean",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "fts": {
           "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nFts status",
@@ -12429,7 +12433,7 @@
             "boolean",
             "string"
           ],
-          "pattern": "^[\\+\\$].+"
+          "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
         },
         "title": {
           "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nTitle of the rootcheck event",
@@ -12445,7 +12449,7 @@
         "boolean",
         "string"
       ],
-      "pattern": "^[\\+\\$].+"
+      "pattern": "^$[\\w\\.]+|^[\\w]+\\(.*\\)"
     }
   }
 }

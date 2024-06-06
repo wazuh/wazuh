@@ -3,7 +3,9 @@ from enum import Enum, auto
 
 
 # Pattern to allow mapping strings of helpers and refs
-HELPER_REF_STR_PATTERN = '^[\\+\\$].+'
+REF_STR_PATTERN = '^$[\\w\\.]+'
+HELPER_STR_PATTERN = '^[\\w]+\\(.*\\)'
+HELPER_REF_STR_PATTERN = f'{REF_STR_PATTERN}|{HELPER_STR_PATTERN}'
 
 
 class IndexerType(Enum):

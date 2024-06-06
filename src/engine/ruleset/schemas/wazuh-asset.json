@@ -85,7 +85,7 @@
         }
     ],
     "patternProperties": {
-        "parse|*": {
+        "parse\\|\\S+": {
             "$ref": "#/definitions/_parse"
         }
     },
@@ -97,10 +97,10 @@
         },
         "metadata": {
             "type": "object",
-            "description": "Metadata of this item",
+            "description": "Metadata of this asset",
             "additionalProperties": false,
             "required": [
-                "module",
+                "integration",
                 "title",
                 "description",
                 "compatibility",
@@ -109,21 +109,21 @@
                 "references"
             ],
             "properties": {
-                "module": {
+                "integration": {
                     "type": "string",
-                    "description": "The module this item belongs to"
+                    "description": "The integration this asset belongs to"
                 },
                 "title": {
                     "type": "string",
-                    "description": "Short and concise description of this item"
+                    "description": "Short and concise description of this asset"
                 },
                 "description": {
                     "type": "string",
-                    "description": "Long description of this item, explaining what it does and how it works"
+                    "description": "Long description of this asset, explaining what it does and how it works"
                 },
                 "compatibility": {
                     "type": "string",
-                    "description": "Description of the supported services and versions of the logs processed by this item"
+                    "description": "Description of the supported services and versions of the logs processed by this asset"
                 },
                 "versions": {
                     "type": "array",
@@ -193,7 +193,7 @@
         },
         "definitions": {
             "type": "object",
-            "description": "Variable definitions, used to define variables that can be reused in other parts of the item",
+            "description": "Variable definitions, used to define variables that can be reused in other parts of the asset",
             "minProperties": 1
         }
     },
