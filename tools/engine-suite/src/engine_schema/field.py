@@ -3,8 +3,8 @@ from enum import Enum, auto
 
 
 # Pattern to allow mapping strings of helpers and refs
-REF_STR_PATTERN = '^$[\\w\\.]+'
-HELPER_STR_PATTERN = '^[\\w]+\\(.*\\)'
+REF_STR_PATTERN = '^\\$[\\w\\.]+$'
+HELPER_STR_PATTERN = '^[\\w]+\\(.*\\)$'
 HELPER_REF_STR_PATTERN = f'{REF_STR_PATTERN}|{HELPER_STR_PATTERN}'
 
 
