@@ -128,7 +128,7 @@ public:
             }
         }
     }
-method 
+
     /**
      * @brief Clears the cache by removing all key-value pairs.
      */
