@@ -129,6 +129,15 @@ public:
         }
     }
 
+    /**
+     * @brief Clears the cache by removing all key-value pairs.
+     */
+    void clear() noexcept
+    {
+        m_map.clear();
+        m_list.clear();
+    }
+
 private:
     std::map<KeyType, ValueType> m_map; ///< The internal map storing key-value pairs.
     std::list<KeyType> m_list;          ///< The list to manage the order of keys (LRU order).
