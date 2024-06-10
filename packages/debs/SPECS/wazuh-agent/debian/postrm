@@ -29,6 +29,7 @@ case "$1" in
             rm -rf ${DIR}/var
             rm -rf ${DIR}/logs
             rm -rf ${DIR}/queue
+            rm -rf ${DIR}/etc/shared
         fi
 
         # Delete old .save

@@ -93,11 +93,7 @@ case "$1" in
       if [ -d ${DIR}/etc/shared ]; then
         cp -pr ${DIR}/etc/shared ${DIR}/tmp/conffiles
       fi
-
-      if [ -d ${DIR}/etc/shared/ ]; then
-        rm -rf ${DIR}/etc/shared/
-      fi
-
+      
     ;;
 
     failed-upgrade)
