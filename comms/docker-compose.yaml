@@ -1,0 +1,18 @@
+services:
+  agent_comms_api:
+    build:
+      context: .
+    hostname: agent_comms_api
+    ports:
+      - 5000:5000
+
+  indexer_mock:
+    build:
+      context: indexer_mock
+    restart: on-failure:10
+    command: |
+      --agent_ids=018fe477-31c8-7580-ae4a-e0b36713eb05,0190029c-610d-77d4-8dbf-9fe7c2c955fe
+      --url=http://agent_comms_api:5000
+      --loop=true
+    depends_on:
+      - agent_comms_api
