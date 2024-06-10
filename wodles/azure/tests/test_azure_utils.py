@@ -176,7 +176,7 @@ def test_get_token(mock_post):
     mock_post.return_value = m
     token = get_token(client_id, secret, domain, scope)
     auth_url = f'{URL_LOGGING}/{domain}/oauth2/v2.0/token'
-    mock_post.assert_called_with(auth_url, data=body)
+    mock_post.assert_called_with(auth_url, data=body, timeout=10)
     assert token == expected_token
 
 
