@@ -246,8 +246,7 @@ def get_ruleset_status(previous_status):
     final_items = {}
     cluster_items = get_cluster_items()
     user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.USER_DECODERS_PATH,
-                                                                                    common.USER_RULES_PATH,
-                                                                                    common.USER_LISTS_PATH]]
+                                                                                    common.USER_RULES_PATH]]
 
     for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files" or file_path == "excluded_extensions" or file_path not in user_ruleset:

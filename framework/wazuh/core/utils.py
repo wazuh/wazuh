@@ -1823,27 +1823,6 @@ def expand_decoders() -> set:
     return decoders
 
 
-@common.context_cached('system_lists')
-def expand_lists() -> set:
-    """Return all cdb list files in the system.
-
-    Returns
-    -------
-    set
-        CDB list files.
-    """
-    folders = [common.LISTS_PATH, common.USER_LISTS_PATH]
-    lists = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.LISTS_EXTENSION), files):
-                # List files do not have an extension at the moment
-                if '.' not in f:
-                    lists.add(f)
-
-    return lists
-
-
 def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
     """Add a detail with attributes (i.e. regex with negate or type).
 
