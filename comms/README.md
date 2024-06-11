@@ -3,11 +3,10 @@
 Run the API using
 
 ```
-docker compose build
 docker compose up
 ```
 
-The docker compose is configured to run on the port 5000 and generate an event every 10 seconds.
+The docker compose is configured to run on the port 5000 and generate a command for certain uuids every 10 seconds. If you would like to change these configurations, modify the `command` field flags.
 
 ### Run agent-comms-api manually
 
@@ -32,5 +31,5 @@ curl -H "Authorization: Bearer <TOKEN>" -X GET -k http://localhost:5000/api/v1/c
 ### Post stateless events
 
 ```
-curl -H "Authorization: Bearer <TOKEN>" -X POST -k http://localhost:5000/api/v1/events/stateless -d '[{"id": <ID>,"data": <DATA>, "timestamp": <TIMESTAMP>}]'
+curl -H "Authorization: Bearer <TOKEN>" -H "Content-type: application/json" -X POST -k http://localhost:5000/api/v1/events/stateless -d '[{"id": <ID>,"data": <DATA>, "timestamp": <TIMESTAMP>}]'
 ```
