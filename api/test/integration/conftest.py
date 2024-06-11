@@ -401,7 +401,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
     while retries < max_retries:
         managers_health = check_health(only_check_master_health=env_mode == standalone_env_mode)
         agents_health = check_health(node_type='agent', agents=list(range(1, 9)))
-        nginx_health = check_health(node_type='nginx-lb')
+        haproxy_health = check_health(node_type='haproxy-lb')
 
     while values['retries'] < values['max_retries']:
         managers_health = check_health(interval=values['interval'],
