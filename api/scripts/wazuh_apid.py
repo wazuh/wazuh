@@ -172,6 +172,9 @@ def start(params: dict):
                                                getattr(sys.modules[__name__], f'spawn_{name}'))
                           for name, pool in common.mp_pools.get().items()]))
 
+    # Create index
+    Agent.create_index()
+
     # Set up API
     app = AsyncApp(
         __name__,
@@ -331,7 +334,6 @@ if __name__ == '__main__':
     import logging.config
     import ssl
 
-    import jwt
     import uvicorn
     from connexion import AsyncApp
     from connexion.exceptions import HTTPException, ProblemException, Unauthorized
@@ -341,6 +343,7 @@ if __name__ == '__main__':
     from content_size_limit_asgi.errors import ContentSizeExceeded
     from starlette.middleware.cors import CORSMiddleware
     from wazuh.core import common, pyDaemonModule, utils
+    from wazuh.core.agent import Agent
     from wazuh.rbac.orm import check_database_integrity
 
     from api import __path__ as api_path
@@ -351,10 +354,10 @@ if __name__ == '__main__':
     from api.constants import API_LOG_PATH
     from api.middlewares import (
         CheckBlockedIP,
+        CheckExpectHeaderMiddleware,
         CheckRateLimitsMiddleware,
         SecureHeadersMiddleware,
         WazuhAccessLoggerMiddleware,
-        CheckExpectHeaderMiddleware,
     )
     from api.signals import lifespan_handler
     from api.uri_parser import APIUriParser

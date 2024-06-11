@@ -8,6 +8,11 @@ from typing import Union
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
+from wazuh import agent, stats
+from wazuh.core.cluster.control import get_system_nodes
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.common import DATABASE_LIMIT
+from wazuh.core.results import AffectedItemsWazuhResult
 
 from api.controllers.util import JSON_CONTENT_TYPE, json_response
 from api.models.agent_added_model import AgentAddedModel
@@ -16,11 +21,6 @@ from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
 from api.validator import check_component_configuration_pair
-from wazuh import agent, stats
-from wazuh.core.cluster.control import get_system_nodes
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.common import DATABASE_LIMIT
-from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -865,7 +865,7 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID for which the specified component's stats are got. All possible values 
+        Agent ID for which the specified component's stats are got. All possible values
         from 000 onwards.
     component : str
         Selected agent's component which stats are got.
@@ -1280,7 +1280,7 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
 
 
 async def get_group_files(group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, 
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None,
                           q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get the files placed under the group directory.
 

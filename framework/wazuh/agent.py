@@ -4,20 +4,40 @@
 
 import hashlib
 import operator
-from os import chmod, path, listdir
+from os import chmod, listdir, path
 from typing import Union
 
 from wazuh.core import common, configuration
-from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
-    WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
-    GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
+from wazuh.core.agent import (
+    GROUP_FIELDS,
+    GROUP_FILES_FIELDS,
+    GROUP_FILES_REQUIRED_FIELDS,
+    GROUP_REQUIRED_FIELDS,
+    Agent,
+    WazuhDBQueryAgents,
+    WazuhDBQueryGroup,
+    WazuhDBQueryGroupByAgents,
+    create_upgrade_tasks,
+    get_agents_info,
+    get_groups,
+    get_rbac_filters,
+    send_restart_command,
+)
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
-from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
-    full_copy
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+from wazuh.core.utils import (
+    chmod_r,
+    chown_r,
+    clear_temporary_caches,
+    full_copy,
+    get_hash,
+    md5,
+    mkdir_with_mode,
+    process_array,
+)
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
@@ -519,7 +539,7 @@ def delete_agents(agent_list: list = None, purge: bool = False, filters: dict = 
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str = 'any',
+def add_agent(name: str = None, uuid: str = None, key: str = None, ip: str = 'any',
               force: dict = None) -> WazuhResult:
     """Add a new Wazuh agent.
 
@@ -527,7 +547,7 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
     ----------
     name : str
         Name of the new agent.
-    agent_id : str
+    uuid : str
         ID of the new agent.
     key : str
         Key of the new agent.
@@ -550,9 +570,9 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
-    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
+    new_agent = Agent(name=name, ip=ip, uuid=uuid, key=key, force=force)
 
-    return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
+    return WazuhResult({'data': {'uuid': new_agent.uuid, 'key': new_agent.key}})
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],

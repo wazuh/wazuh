@@ -13,14 +13,25 @@ from json import dumps, loads
 from os import listdir, path
 from shutil import rmtree
 
+from opensearchpy import ConflictError, NotFoundError, OpenSearch
+from uuid6 import uuid7
 from wazuh.core import common, configuration, stats
-from wazuh.core.InputValidator import InputValidator
 from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
-    WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
-    get_date_from_timestamp
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.utils import (
+    WazuhDBBackend,
+    WazuhDBQuery,
+    WazuhDBQueryDistinct,
+    WazuhDBQueryGroupBy,
+    WazuhVersion,
+    get_date_from_timestamp,
+    get_fields_to_nest,
+    get_utc_now,
+    get_utc_strptime,
+    plain_dict_to_nested_dict,
+)
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
@@ -38,6 +49,21 @@ GROUP_FIELDS = ['name', 'mergedSum', 'configSum', 'count']
 GROUP_REQUIRED_FIELDS = ['name']
 GROUP_FILES_FIELDS = ['filename', 'hash']
 GROUP_FILES_REQUIRED_FIELDS = ['filename']
+
+INDEX_NAME = 'agents_list'
+
+host = 'wazuh-indexer'
+port = 9200
+auth = ('admin', 'SecretPassword1%')
+
+indexer_client = OpenSearch(
+    hosts = [{'host': host, 'port': port}],
+    http_auth = auth,
+    use_ssl = True,
+    verify_certs = False,
+    ssl_show_warn = False
+)
+
 
 
 class WazuhDBQueryAgents(WazuhDBQuery):
@@ -476,7 +502,7 @@ class Agent:
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
               'group_config_status': 'group_config_status', 'status_code': 'status_code'}
 
-    def __init__(self, id: str = None, name: str = None, ip: str = None, key: str = None, force: dict = None):
+    def __init__(self, uuid: uuid7, name: str = None, ip: str = None, key: str = None, force: dict = None):
         """Initialize an agent.
 
         `id` when the agent exists.
@@ -499,7 +525,7 @@ class Agent:
         force : dict
             Authd force parameters.
         """
-        self.id = id
+        self.uuid = uuid
         self.name = name
         self.ip = ip
         self.internal_key = key
@@ -522,13 +548,13 @@ class Agent:
         # If the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
         if name is not None and ip is not None:
-            self._add(name=name, ip=ip, id=id, key=key, force=force)
+            self._add(uuid=uuid, name=name, ip=ip, key=key, force=force)
 
     def __str__(self) -> str:
         return str(self.to_dict())
 
     def to_dict(self) -> dict:
-        dictionary = {'id': self.id, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
+        dictionary = {'uuid': self.uuid, 'name': self.name, 'ip': self.ip, 'internal_key': self.internal_key, 'os': self.os,
                       'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
                       'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
                       'group': self.group, 'manager': self.manager, 'node_name': self.node_name,
@@ -536,6 +562,23 @@ class Agent:
                       'status_code': self.status_code}
 
         return dictionary
+
+    @staticmethod
+    def create_index(index_name: str = INDEX_NAME):
+        index_body = {
+            'settings': {
+                'index': {
+                    'number_of_shards': 4
+                }
+            }
+        }
+
+        if not indexer_client.indices.exists(index=index_name):
+            indexer_client.indices.create(
+                index_name,
+                body=index_body
+            )
+
 
     def load_info_from_db(self, select: list = None):
         """Gets attributes of existing agent.
@@ -550,15 +593,14 @@ class Agent:
         WazuhResourceNotFound(1701)
             Agent does not exist.
         """
-        with WazuhDBQueryAgents(offset=0, limit=None, sort=None, search=None, select=select,
-                                query="id={}".format(self.id), count=False, get_data=True,
-                                remove_extra_fields=False) as db_query:
-            try:
-                data = db_query.run()['items'][0]
-            except IndexError:
-                raise WazuhResourceNotFound(1701)
 
-        list(map(lambda x: setattr(self, x[0], x[1]), data.items()))
+        try:
+            data = indexer_client.get(index=INDEX_NAME, id=self.uuid)
+        except NotFoundError:
+            raise WazuhResourceNotFound(1701)
+
+
+        list(map(lambda x: setattr(self, x[0], x[1]), data['_source'].items()))
 
     def get_basic_information(self, select: list = None):
         """Gets public attributes of existing agent.
@@ -581,7 +623,7 @@ class Agent:
         str
             Agent key.
         """
-        str_key = "{0} {1} {2} {3}".format(self.id, self.name, self.registerIP, self.internal_key)
+        str_key = "{0} {1} {2} {3}".format(self.uuid, self.name, self.registerIP, self.internal_key)
         return b64encode(str_key.encode()).decode()
 
     def get_key(self) -> str:
@@ -696,7 +738,7 @@ class Agent:
 
         return data
 
-    def _add(self, name: str, ip: str, id: str = None, key: str = None, force: bool = None):
+    def _add(self, uuid: uuid7, name: str, ip: str, key: str = None, force: bool = None):
         """Add an agent to Wazuh.
         2 uses:
             - name and ip [force]: Add an agent like manage_agents (generate id and key).
@@ -742,24 +784,27 @@ class Agent:
                 except Exception:
                     raise WazuhError(1706, extra_message=ip)
 
-        # Check that wazuh-authd is running
-        try:
-            manager_status = get_manager_status()
-        except WazuhInternalError as e:
-            # wazuh-authd is not running due to a problem with /proc availability
-            raise WazuhError(1726, extra_message=str(e))
-
-        if manager_status.get('wazuh-authd') != 'running':
-            # wazuh-authd is not running
-            raise WazuhError(1726)
-
         # Add agent
         try:
-            self._add_authd(name, ip, id, key, force)
+            indexer_client.index(
+                index=INDEX_NAME,
+                id=uuid,
+                body={
+                    'name': name,
+                    'ip': ip,
+                    'key': key or self.compute_key()
+                },
+                op_type='create'
+            )
+        except ConflictError:
+            raise WazuhError(1708, extra_message=uuid)
         except WazuhException as e:
             raise e
         except Exception as e:
             raise WazuhInternalError(1725, extra_message=str(e))
+        else:
+            self.load_info_from_db()
+
 
     def _add_authd(self, name: str, ip: str, id: str = None, key: str = None, force: bool = None):
         """Add an agent to Wazuh using authd.

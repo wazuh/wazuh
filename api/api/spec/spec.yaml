@@ -7496,6 +7496,8 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /register:
     post:
       tags:
         - Agents

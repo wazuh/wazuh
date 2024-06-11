@@ -7,7 +7,7 @@
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
-from typing import List, Dict  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from api.models.base_model_ import Body, Model
 
@@ -89,22 +89,40 @@ class AgentForce(Model):
 
 class AgentAddedModel(Body):
 
-    def __init__(self, name: str = None, ip: str = None):
+    def __init__(self, uuid: str = None, name: str = None, ip: str = None):
         self.swagger_types = {
+            'uuid': str,
             'name': str,
             'ip': str,
             'force': AgentForce
         }
 
         self.attribute_map = {
+            'uuid': 'uuid',
             'name': 'name',
             'ip': 'ip',
             'force': 'force'
         }
 
+        self._uuid = uuid
         self._name = name
         self._ip = ip
         self._force = AgentForce(enabled=False)
+
+    @property
+    def uuid(self) -> str:
+        """
+        :return: Agent uuid
+        :rtype: str
+        """
+        return self._uuid
+
+    @uuid.setter
+    def uuid(self, uuid):
+        """
+        :param uuid: Agent uuid
+        """
+        self._uuid = uuid
 
     @property
     def name(self) -> str:
