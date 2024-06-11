@@ -13,7 +13,7 @@ from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, \
      WazuhAsyncSocketJSON
 
 @pytest.fixture
-def oux_conn_patch():
+def aux_conn_patch():
     """Fixture with asyncio.open_unix_connection patched."""
     return patch('asyncio.open_unix_connection',
                  return_value=(StreamReader(),StreamWriter(protocol=BaseProtocol(),
@@ -21,11 +21,12 @@ def oux_conn_patch():
                                                            loop=BaseEventLoop(),
                                                            reader=None)))
 
+
 @pytest.mark.asyncio
 @pytest.fixture
-async def connected_wazuh_async_socket(oux_conn_patch):
+async def connected_wazuh_async_socket(aux_conn_patch):
     """Fixture to instantiate WazuhAsyncSocket."""
-    with oux_conn_patch:
+    with aux_conn_patch:
         s = WazuhAsyncSocket()
         await s.connect('/any/pipe')
         yield s
@@ -222,7 +223,7 @@ async def test_wazuh_async_socket_connect():
 async def test_wazuh_async_socket_connect_ko(exception):
     """Test socket connection errors."""
     s = WazuhAsyncSocket()
-    oux_conn_patch.side_effect = exception
+    aux_conn_patch.side_effect = exception
     with patch('asyncio.open_unix_connection', side_effect=exception):
         with pytest.raises(WazuhException) as exc_info:
             await s.connect(path_to_socket='/etc/socket/path')

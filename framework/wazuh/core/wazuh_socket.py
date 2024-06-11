@@ -193,7 +193,6 @@ class WazuhAsyncSocket:
             raise WazuhException(1014, str(exc)) from exc
 
 
-
 class WazuhAsyncSocketJSON(WazuhAsyncSocket):
     """Handler class to connect and operate asynchronously with a socket using
     messages in JSON format."""
