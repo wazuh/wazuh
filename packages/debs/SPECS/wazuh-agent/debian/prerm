@@ -89,15 +89,7 @@ case "$1" in
       if [ -f ${DIR}/etc/ossec.conf ]; then
         cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
       fi
-      # Save the shared configuration files
-      if [ -d ${DIR}/etc/shared ]; then
-        cp -pr ${DIR}/etc/shared ${DIR}/tmp/conffiles
-      fi
-
-      if [ -d ${DIR}/etc/shared/ ]; then
-        rm -rf ${DIR}/etc/shared/
-      fi
-
+      
     ;;
 
     failed-upgrade)
