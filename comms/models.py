@@ -4,7 +4,6 @@ from typing import List
 class Command(BaseModel):
     id: int
     type: str
-    agent_ids: list
 
 class Event(BaseModel):
     id: int
@@ -14,9 +13,6 @@ class Event(BaseModel):
 class Login(BaseModel):
     uuid: str
     password: str
-
-class PostCommandsBody(BaseModel):
-    commands: List[Command]
 
 class PostEventsBody(BaseModel):
     events: List[Event]

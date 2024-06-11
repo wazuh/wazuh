@@ -1,63 +1,62 @@
-from asyncio import sleep
-from fastapi import APIRouter, Depends, FastAPI, HTTPException
-from typing import Annotated, Dict, List
+from argparse import ArgumentParser, Namespace
+from fastapi import FastAPI
+from time import sleep
+import sys
+import threading
+from typing import List
+import uvicorn
 
-from auth import JWTBearer, generate_token, decode_token
-from models import Command, PostCommandsBody, PostEventsBody, Login
+from api import router
+from commands_manager import commands_manager
 
 app = FastAPI()
-router = APIRouter(prefix="/api/v1")
-timeout = 60
-
-class CommandsManager:
-    __commands: Dict[str, List[str]] = {}
-
-    def add_commands(self, uuid: str, commands: List[Command]) -> None:
-        if uuid in self.__commands:
-            self.__commands[uuid].extend(commands)
-        else:
-            self.__commands[uuid] = commands
-
-    async def get_commands(self, uuid: str) -> List[Command]:
-        for i in range(timeout):
-            if len(self.__commands[uuid]) > 0:
-                # TODO: these operations should be atomic and thread-safe
-                commands = self.__commands[uuid][:]
-                self.__commands[uuid][:] = []
-                return commands
-            else:
-                await sleep(1)
-
-        return None
-
-commands_manager = CommandsManager()
-
-@router.post("/login")
-async def login(login: Login):
-    # TODO: validate credentials with the indexer
-    token = generate_token(login.uuid)
-    return {"token": token}
-
-@router.post("/events/stateless", dependencies=[Depends(JWTBearer())])
-async def post_stateless_events(body: PostEventsBody):
-    # TODO: send event to the engine
-    _ = body.events
-    return {"message": "Events received"}
-
-@router.get("/commands")
-async def get_commands(token: Annotated[str, Depends(JWTBearer())]):
-    decoded_token = decode_token(token)
-    commands = await commands_manager.get_commands(decoded_token["uuid"])
-    if commands:
-        return {"commands": commands}
-    else:
-        raise HTTPException(502, {"message": "No commands found"})
-
-@router.post("/commands")
-async def post_commands(body: PostCommandsBody, token: Annotated[str, Depends(JWTBearer(check_send_commands=True))]):
-    decoded_token = decode_token(token)
-    commands_manager.add_commands(decoded_token["uuid"], body.commands)
-    return {"message": "Commands added"}
-
-
 app.include_router(router)
+
+def get_script_arguments() -> Namespace:
+    """Get script arguments.
+
+    Returns
+    -------
+    argparse.Namespace
+        Arguments passed to the script.
+    """
+    parser = ArgumentParser()
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="API host.")
+    parser.add_argument("-p", "--port", type=int, default=5000, help="API port.")
+    parser.add_argument("-a", "--agent_ids", type=str, help="List of agent IDs.")
+
+    return parser.parse_args()
+
+def commands_generator(agent_ids: List[str]):
+    try:
+        generate_commands(agent_ids)
+
+        while True:
+            sleep(10)
+            generate_commands(agent_ids)
+    except Exception as e:
+        print(f"Internal error: {e}")
+        exit(1)
+
+def generate_commands(agent_ids: List[str]):
+    print("Generating new command", file=sys.stderr)
+
+    if len(agent_ids) == 0:
+        ## Mock ID to send the command to at least one agent
+        agent_ids = ["018fe477-31c8-7580-ae4a-e0b36713eb05"]
+
+    command = {"id": "1", "type": "restart"}
+    for uuid in agent_ids:
+        commands_manager.add_command(uuid, command)
+
+if __name__ == "__main__":
+    args = get_script_arguments()
+
+    commands_generator = threading.Thread(target=commands_generator, args=[args.agent_ids.split(",")])
+    commands_generator.start()
+
+    try:
+        uvicorn.run(app, host=args.host, port=args.port)
+    except Exception as e:
+        print(f"Internal error: {e}")
+        exit(1)

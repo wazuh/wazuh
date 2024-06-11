@@ -17,8 +17,7 @@ EXPIRED_TOKEN = "Token expired"
 INVALID_TOKEN = "Invalid token"
 
 class JWTBearer(HTTPBearer):
-    def __init__(self, auto_error: bool = True, check_send_commands: bool = False):
-        self.check_send_commands = check_send_commands
+    def __init__(self, auto_error: bool = True):
         super(JWTBearer, self).__init__(auto_error=auto_error)
 
     async def __call__(self, request: Request):
@@ -38,9 +37,6 @@ class JWTBearer(HTTPBearer):
 
     def validate_token(self, token: str) -> None:
         payload = decode_token(token)
-
-        if self.check_send_commands and not payload["can_send_commands"]:
-            raise Exception("Agents are not allowed to send commands")
 
         if (payload["exp"] - payload["iat"]) != JWT_EXPIRATION:
             raise Exception(INVALID_TOKEN)
@@ -115,7 +111,6 @@ def generate_token(uuid: str = None) -> str:
         "iat": timestamp,
         "exp": timestamp + JWT_EXPIRATION,
         "uuid": uuid,
-        "can_send_commands": True # TODO: determine depending on whether it's a wazuh internal module or an agent
     }
 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
