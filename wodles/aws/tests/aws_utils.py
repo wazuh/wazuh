@@ -251,7 +251,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
 
 
 def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
-                               reparse: bool = False, access_key: str = None, secret_key: str = None,
+                               reparse: bool = False,
                                profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
                                only_logs_after: str = None, account_alias: str = None, region: str = None, aws_log_groups: str = None,
                                remove_log_streams: bool = None, discard_field: str = None,
@@ -264,10 +264,6 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
     ----------
     reparse : bool
         Whether to parse already parsed logs or not.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
     profile : str
         AWS profile.
     iam_role_arn : str
@@ -302,10 +298,10 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
     dict
         A dict containing the configuration parameters with their default values.
     """
-    return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse, 'access_key': access_key,
-            'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
-            'only_logs_after': only_logs_after, 'account_alias': account_alias, 'region': region, 'aws_log_groups': aws_log_groups,
-            'remove_log_streams': remove_log_streams, 'discard_field': discard_field,
+    return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse,
+            'profile': profile, 'iam_role_arn': iam_role_arn,
+            'only_logs_after': only_logs_after, 'account_alias': account_alias, 'region': region,
+            'aws_log_groups': aws_log_groups, 'remove_log_streams': remove_log_streams, 'discard_field': discard_field,
             'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
