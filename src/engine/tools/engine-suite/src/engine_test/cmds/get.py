@@ -1,3 +1,5 @@
+import json
+
 from engine_test.crud_integration import CrudIntegration
 from engine_test.command import Command
 
@@ -13,7 +15,7 @@ class GetCommand(Command):
             if result == None:
                 print ("Integration not found!")
             else:
-                print (result)
+                print(json.dumps(result, indent=4, sort_keys=True, separators=(',', ': ')) + "\n")
         except Exception as ex:
             print(ex)
 
