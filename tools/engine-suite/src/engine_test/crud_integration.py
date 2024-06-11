@@ -13,12 +13,15 @@ class CrudIntegration:
 
     def get_integrations(self):
         json_content = ""
-        with open(Config.get_config_file()) as fp:
-            try:
-                json_content = json.load(fp)
-            except Exception as ex:
-                print('Error while reading JSON file: {}'.format(ex))
-                exit(1)
+        try:
+            with open(Config.get_config_file()) as fp:
+                    json_content = json.load(fp)
+        except json.JSONDecodeError as ex:
+            print('Error while reading config as JSON file: {}'.format(ex))
+            exit(1)
+        except Exception as ex:
+            print('Error while reading config file: {}'.format(ex))
+            exit(1)
 
         return json_content
 
@@ -34,17 +37,20 @@ class CrudIntegration:
             print('To save the integration, the integration-name and format parameters cannot be empty.')
             return False
 
-        if self.get_integration(integration_name) != None:
-            print('The integration already exists!')
+        if exists(Config.get_config_file()) and self.get_integration(integration_name) != None:
+            print('The integration already exists.')
             return False
 
         if format not in self.formats:
-            print('The format is invalid!')
+            print('The format is invalid.')
             return False
 
         try:
             with open(Config.get_config_file()) as fp:
                 json_content = json.load(fp)
+        except FileNotFoundError:
+            print('Configuration file not found. Creating a new one.')
+            json_content = {}
         except Exception as ex:
             print('Error while reading configuration file: {}'.format(ex))
             return False
@@ -72,6 +78,7 @@ class CrudIntegration:
         try:
             with open(Config.get_config_file(), 'w') as json_file:
                 json.dump(json_content, json_file, indent=4, separators=(',', ': '))
+                json_file.write('\n')
         except Exception as ex:
             print('Error while writing configuration file: {}'.format(ex))
             return False
@@ -94,7 +101,7 @@ class CrudIntegration:
         try:
             del json_content[integration_name]
         except KeyError:
-            print('Integration not found!')
+            print('Integration not found.')
             return False
 
         try:
