@@ -44,6 +44,14 @@ def set_mmdb(engine_src_dir: Path, environment_dir: Path):
     shutil.copy(mmdb_city_src, mmdb_city_dest)
 
 
+def set_kvdb(environment_dir: Path):
+    kvdb_path = environment_dir / "engine" / "etc" / "kvdb" / "test.json"
+
+    os.makedirs(os.path.dirname(kvdb_path), exist_ok=True)
+    with open(kvdb_path, 'w') as file:
+        file.write('{"key": "value"}')
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Update configuration and create dummy integrations."
@@ -64,6 +72,7 @@ def main():
 
     update_conf(SCRIPT_DIR, ENVIRONMENT_DIR)
     set_mmdb(ENGINE_SRC_DIR, ENVIRONMENT_DIR)
+    set_kvdb(ENVIRONMENT_DIR)
 
     os.environ['ENV_DIR'] = ENVIRONMENT_DIR.as_posix()
     os.environ['WAZUH_DIR'] = WAZUH_DIR.as_posix()

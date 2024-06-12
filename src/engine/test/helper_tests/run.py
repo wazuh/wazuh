@@ -13,6 +13,7 @@ import yaml
 from google.protobuf.message import Message
 from api_communication.client import APIClient
 from api_communication.proto import catalog_pb2 as api_catalog
+from api_communication.proto import kvdb_pb2 as api_kvdb
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import tester_pb2 as api_tester
@@ -204,7 +205,7 @@ class Evaluator:
             response: The response received from the API call.
         """
         if json.loads(MessageToJson(response)).get("result"):
-            json_response = json.loads(MessageToJson(response))["result"]["output"][self.field_mapping]
+            json_response = json.loads(MessageToJson(response))["result"]["output"].get(self.field_mapping)
         else:
             json_response = None
         failure_test = {
@@ -322,12 +323,13 @@ class Evaluator:
         response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
-        if (self.should_pass and field_mapping in output) or (
-            not self.should_pass and field_mapping not in output
-        ) or (self.should_pass and field_mapping not in output):
-            self.create_success_test()
+        if self.should_pass != None:
+            if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
+                self.create_success_test()
+            else:
+                self.create_failure_test(response)
         else:
-            self.create_failure_test(response)
+            self.create_success_test()
 
     def tester_run_transform(self, api_client: APIClient, field_mapping: str):
         """
@@ -343,15 +345,18 @@ class Evaluator:
         output = extract_output_from_response(response)
         result = extract_transformation_result_from_response(response, self.helper_name)
 
-        if (self.should_pass and result == "Success") or (
-            not self.should_pass and result != "Success"
-        ):
-            if field_mapping in output:
-                self.handle_transform_event_with_field_mapping(response, output, field_mapping)
+        if self.should_pass != None:
+            if (self.should_pass and result == "Success") or (
+                not self.should_pass and result != "Success"
+            ):
+                if field_mapping in output:
+                    self.handle_transform_event_with_field_mapping(response, output, field_mapping)
+                else:
+                    self.create_success_test()
             else:
-                self.create_success_test()
+                self.create_failure_test(response)
         else:
-            self.create_failure_test(response)
+            self.create_success_test()
 
 
 def run_command(command: str):
@@ -445,6 +450,32 @@ def delete_session(api_client: APIClient):
     send_recv(api_client, request, api_engine.GenericStatus_Response())
 
 
+def delete_policy(api_client: APIClient):
+    request = api_policy.StoreDelete_Request()
+    request.policy = POLICY_NAME
+    send_recv(api_client, request, api_engine.GenericStatus_Response())
+
+
+def delete_asset(api_client: APIClient):
+    request = api_catalog.ResourceDelete_Request()
+    request.name = ASSET_NAME
+    request.namespaceid = NAMESPACE
+    send_recv(api_client, request, api_engine.GenericStatus_Response())
+
+
+def create_kvdb(api_client: APIClient, kvdb_path: str):
+    request = api_kvdb.managerPost_Request()
+    request.name = "testing"
+    request.path = kvdb_path
+    send_recv(api_client, request, api_engine.GenericStatus_Response())
+
+
+def delete_kvdb(api_client: APIClient):
+    request = api_kvdb.managerDelete_Request()
+    request.name = "testing"
+    send_recv(api_client, request, api_engine.GenericStatus_Response())
+
+
 def generate_report(successful_tests: list, failed_tests: list):
     """
     Generates a report of the test results.
@@ -532,6 +563,27 @@ def extract_output_from_response(response: dict) -> dict:
     return response["result"]["output"]
 
 
+def get_target_trace(traces: list, helper_name: str, count=1) -> Optional[str]:
+    """
+    Obtains the target trace containing the specified helper name from a list of traces.
+
+    Args:
+        traces (list): The list of trace strings to search through.
+        helper_name (str): The helper name to look for within each trace.
+        count (int, optional): The number of times to call next on the filtered iterator. Default is 1.
+
+    Returns:
+        str or None: The target trace containing the helper name if found, otherwise None.
+    """
+    iterator = (trace for trace in traces if helper_name in trace)
+    target_trace = None
+    for _ in range(count):
+        target_trace = next(iterator, None)
+        if target_trace is None:
+            break
+    return target_trace
+
+
 def extract_transformation_result_from_response(response: dict, helper_name: str) -> Optional[str]:
     """
     Extracts the transformation result from the response object.
@@ -546,7 +598,11 @@ def extract_transformation_result_from_response(response: dict, helper_name: str
     # Take the first asset trace as the asset is unique
     # TODO check name of the asset
     traces = response["result"]["assetTraces"][0]["traces"]
-    target_trace = next((trace for trace in traces if helper_name in trace), None)
+    if helper_name != "parse_json":
+        target_trace = get_target_trace(traces, helper_name)
+    else:
+        # Ignore the first parse_json of the event.original
+        target_trace = get_target_trace(traces, helper_name, count=2)
 
     if target_trace:
         regex = r"->\s*(Success|Failure)"
@@ -568,7 +624,8 @@ def create_asset_for_buildtime(api_client: APIClient, result_evaluator: Evaluato
     result_evaluator.check_response(response)
 
 
-def process_files_in_directory(directory: Path, api_client: APIClient, socket_path: str, result_evaluator: Evaluator):
+def process_files_in_directory(directory: Path, api_client: APIClient, socket_path: str, result_evaluator: Evaluator,
+                               kvdb_path: str):
     """
     Process all files in the given directory.
 
@@ -582,7 +639,7 @@ def process_files_in_directory(directory: Path, api_client: APIClient, socket_pa
     for element in directory.iterdir():
         if element.is_dir():
             for file in element.iterdir():
-                process_file(file, api_client, socket_path, result_evaluator)
+                process_file(file, api_client, socket_path, result_evaluator, kvdb_path)
 
 
 def execute_single_run_test(api_client: APIClient, run_test: dict, result_evaluator: Evaluator):
@@ -596,7 +653,7 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
     """
 
     result_evaluator.set_id(run_test["id"])
-    result_evaluator.set_should_pass(run_test["should_pass"])
+    result_evaluator.set_should_pass(run_test.get("should_pass", None))
     result_evaluator.set_expected(run_test.get("expected"))
     result_evaluator.set_description(run_test["description"])
     result_evaluator.set_input([])
@@ -649,7 +706,7 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
             sys.exit(f"Helper type '{result_evaluator.helper_type}' not is valid")
 
 
-def process_file(file: Path, api_client: APIClient, socket_path: str, result_evaluator: Evaluator):
+def process_file(file: Path, api_client: APIClient, socket_path: str, result_evaluator: Evaluator, kvdb_path: str):
     """
     Process a YAML file containing test configurations.
 
@@ -670,16 +727,25 @@ def process_file(file: Path, api_client: APIClient, socket_path: str, result_eva
         result_evaluator.set_description(build_test["description"])
 
         # Tear Down
-        run_command(f"engine-clear -f --api-sock {socket_path}")
+        delete_asset(api_client)
+        delete_kvdb(api_client)
 
+        # Setup
+        create_kvdb(api_client, kvdb_path)
         create_asset_for_buildtime(api_client, result_evaluator)
 
     for run_test in file_content.get("run_test", []):
         result_evaluator.set_helper_type(file_content["helper_type"])
         result_evaluator.set_asset_definition(run_test["assets_definition"])
 
-        run_command(f"engine-clear -f --api-sock {socket_path}")
+        # Tear Down
+        delete_asset(api_client)
+        delete_policy(api_client)
         delete_session(api_client)
+        delete_kvdb(api_client)
+
+        # Setup
+        create_kvdb(api_client, kvdb_path)
 
         if "test_cases" not in run_test:
             execute_single_run_test(api_client, run_test, result_evaluator)
@@ -709,7 +775,7 @@ def run_test_cases_generator():
                         sys.exit(1)
 
 
-def run_test_cases_executor(api_client: APIClient, socket_path: str):
+def run_test_cases_executor(api_client: APIClient, socket_path: str, kvdb_path: str):
     """
     Execute test cases found in YAML files in the current directory.
 
@@ -722,7 +788,7 @@ def run_test_cases_executor(api_client: APIClient, socket_path: str):
 
     for item in current_dir.iterdir():
         if item.is_dir():
-            process_files_in_directory(item, api_client, socket_path, result_evaluator)
+            process_files_in_directory(item, api_client, socket_path, result_evaluator, kvdb_path)
 
     generate_report(result_evaluator.successful, result_evaluator.failure)
 
@@ -734,6 +800,7 @@ def main():
     parse_arguments()
     serv_conf_file = check_config_file()
     environment_directory = Path(config.environment_directory)
+    kvdb_path = environment_directory / "engine" / "etc" / "kvdb" / "test.json"
 
     os.environ["ENV_DIR"] = config.environment_directory
     os.environ["WAZUH_DIR"] = str(WAZUH_DIR)
@@ -747,7 +814,7 @@ def main():
     up_down_engine = up_down.UpDownEngine()
     up_down_engine.send_start_command()
 
-    run_test_cases_executor(api_client, socket_path)
+    run_test_cases_executor(api_client, socket_path, str(kvdb_path))
 
     up_down_engine.send_stop_command()
 

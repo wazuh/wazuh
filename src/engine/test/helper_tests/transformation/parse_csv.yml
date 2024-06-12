@@ -1,0 +1,46 @@
+# Name of the helper function
+name: parse_csv
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    source: reference # includes only values
+  2:
+    type: string  # Accept only string
+    source: value # includes only values
+  3:
+    type: string  # Accept only string
+    source: value # includes only values
+  4:
+    type: string  # Accept only string
+    source: value # includes only values
+
+target_field:
+  type: object
+  is_array: false
+
+test:
+  - arguments:
+      1: value1,value2,value3
+      2: out1
+      3: out2
+      4: out3
+      target_field: any_value
+    should_pass: true
+    expected:
+      out1: value1
+      out2: value2
+      out3: value3
+    description: Success csv parse
+  - arguments:
+      1: valu1=1 value2=2
+      2: out1
+      3: out2
+      4: out3
+      target_field: any_value
+    should_pass: false
+    description: Failure csv parse
