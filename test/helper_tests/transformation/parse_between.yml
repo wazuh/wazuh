@@ -1,0 +1,46 @@
+# Name of the helper function
+name: parse_between
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    source: reference # includes only values
+  2:
+    type: string  # Accept only string
+    source: value # includes only values
+  3:
+    type: string  # Accept only string
+    source: value # includes only values
+
+target_field:
+  type: object
+  is_array: false
+
+test:
+  - arguments:
+      1: "[Hello, World!]"
+      2: "["
+      3: "]"
+      target_field: any_value
+    should_pass: true
+    expected: Hello, World!
+    description: Success between parse
+  - arguments:
+      1: (Start) Middle End
+      2: (
+      3: )
+      target_field: any_value
+    should_pass: false
+    description: Failure between parse
+  - arguments:
+      1: Start and End
+      2: Start
+      3: End
+      target_field: any_value
+    should_pass: true
+    expected: " and "
+    description: Success between parse

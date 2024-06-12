@@ -99,6 +99,34 @@ class IPAddress:
         return False
 
 
+class NotBool:
+    def __init__(self, value):
+        if isinstance(value, bool):
+            raise TypeError("Value cannot be of type boolean")
+        self.value = value
+
+
+class NotArray:
+    def __init__(self, value):
+        if isinstance(value, list):
+            raise TypeError("Value cannot be of type array")
+        self.value = value
+
+
+class NotObject:
+    def __init__(self, value):
+        if isinstance(value, json):
+            raise TypeError("Value cannot be of type object")
+        self.value = value
+
+
+class NotString:
+    def __init__(self, value):
+        if isinstance(value, str):
+            raise TypeError("Value cannot be of type string")
+        self.value = value
+
+
 def parse_arguments():
     global input_file
 
@@ -139,14 +167,22 @@ def convert_string_to_type(str_type: str):
         return int
     if str_type == "object":
         return json
+    if str_type == "not_object":
+        return NotObject
     if str_type == "array":
         return list
+    elif str_type == "not_array":
+        return NotArray
     elif str_type == "string":
         return str
+    elif str_type == "not_string":
+        return NotString
     elif str_type == "float":
         return float
     elif str_type == "boolean":
         return bool
+    elif str_type == "not_boolean":
+        return NotBool
     elif str_type == "ipv4":
         return IPAddress
     elif str_type == "mask":
@@ -227,9 +263,10 @@ def get_name(yaml_data):
 
 
 def get_allowed_values(yaml_data, argument_id):
-    for id, argument in yaml_data["arguments"].items():
-        if id == argument_id + 1:
-            return argument.get("allowed_values", [])
+    if "arguments" in yaml_data:
+        for id, argument in yaml_data["arguments"].items():
+            if id == argument_id + 1:
+                return argument.get("allowed_values", [])
     return []
 
 
@@ -260,7 +297,15 @@ def change_source(source):
 
 
 def change_type(type_):
-    data_types = [int, float, str, list, bool, Hexadecimal, IPAddress, SubnetMask, RE2]
+    if type_ == NotBool:
+        return bool
+    if type_ == NotArray:
+        return list
+    if type_ == NotString:
+        return str
+    if type_ == NotObject:
+        return dict
+    data_types = [int, float, str, list, bool, Hexadecimal, IPAddress, SubnetMask, RE2, json]
     data_types.remove(type_)
     selected_type = random.choice(data_types)
     return selected_type
@@ -276,6 +321,8 @@ def generate_random_value(type_, allowed_values):
             return True
         elif type_ == json:
             return json.dumps({"key": "value"})
+        elif type_ == dict:
+            return {"key": "value"}
         elif type_ == str:
             return "".join(
                 random.choice("abcdefghijklmnopqrstuvwxyz")
@@ -310,6 +357,13 @@ def generate_reference(type_, allowed_values):
 
 def get_target_field_type(yaml_data):
     return yaml_data["target_field"]["type"]
+
+
+def get_negate_target_field_type(yaml_data):
+    negate_type = False
+    if "negate_type" in yaml_data["target_field"]:
+        negate_type = yaml_data["target_field"]["negate_type"]
+    return negate_type
 
 
 def target_field_is_array(yaml_data):
@@ -503,50 +557,53 @@ def different_types_values(yaml_data):
     for case in template:
         if case.count("reference") == 0:
             for k in range(case.count("value")):
-                all_types.remove(convert_string_to_type(types[k]))
-                for all_type in all_types:
-                    test_data = {
-                        "assets_definition": {},
-                        "should_pass": False,
-                        "description": "",
-                    }
-                    all_arguments = []
-                    value = None
-                    for index, (argument, type_) in enumerate(zip(case, types)):
-                        if argument == "value":
-                            valid_type = convert_string_to_type(type_)
-                            if k == index:
-                                valid_type = all_type
-                            value = generate_specific_argument("value", valid_type)
-                            all_arguments.append(value)
-                        else:
-                            value = argument
-                            all_arguments.append(value)
-
-                    all_arguments = filter_invalid_arguments(
-                        all_arguments, reinterpret_type(types[k])
-                    )
-
-                    if all_arguments:
-                        helper = f"{get_name(yaml_data)}({', '.join(str(v) if v is not True else 'true' for v in all_arguments)})"
-
-                        normalize_list = [{"check": [{"target_field": helper}]}]
-
-                        asset_definition = {
-                            "name": "decoder/test/0",
-                            "normalize": normalize_list,
+                if types[k] != "all":
+                    all_types.remove(convert_string_to_type(types[k]))
+                    for all_type in all_types:
+                        test_data = {
+                            "assets_definition": {},
+                            "should_pass": False,
+                            "description": "",
                         }
+                        all_arguments = []
+                        value = None
+                        for index, (argument, type_) in enumerate(zip(case, types)):
+                            if argument == "value":
+                                valid_type = convert_string_to_type(type_)
+                                if k == index:
+                                    valid_type = all_type
+                                value = generate_specific_argument("value", valid_type)
+                                all_arguments.append(value)
+                            else:
+                                value = argument
+                                all_arguments.append(value)
 
-                        test_data["assets_definition"] = asset_definition
-                        test_data["should_pass"] = False
-                        test_data["description"] = (
-                            f"Generate types other than those allowed for the source 'value'"
+                        all_arguments = filter_invalid_arguments(
+                            all_arguments, reinterpret_type(types[k])
                         )
-                        test_data["id"] = increase_id()
 
-                        if len(test_data["assets_definition"]):
-                            tests["build_test"].append(test_data)
+                        if all_arguments:
+                            helper = f"{get_name(yaml_data)}({', '.join(str(v) if v is not True else 'true' for v in all_arguments)})"
 
+                            normalize_list = [{"check": [{"target_field": helper}]}]
+
+                            asset_definition = {
+                                "name": "decoder/test/0",
+                                "normalize": normalize_list,
+                            }
+
+                            test_data["assets_definition"] = asset_definition
+                            test_data["should_pass"] = False
+                            test_data["description"] = (
+                                f"Generate types other than those allowed for the source 'value'"
+                            )
+                            test_data["id"] = increase_id()
+
+                            if len(test_data["assets_definition"]):
+                                tests["build_test"].append(test_data)
+
+                else:
+                    continue
                 all_types.append(convert_string_to_type(types[k]))
 
 
@@ -569,6 +626,7 @@ def different_types_references(yaml_data):
     types = get_types(yaml_data)
     all_types = [
         str,
+        None,
         int,
         float,
         list,
@@ -652,6 +710,7 @@ def different_target_field_type(yaml_data):
     if get_target_field_type(yaml_data) == "all":
         return
 
+    negate_type = get_negate_target_field_type(yaml_data)
     test_data = {
         "assets_definition": {},
         "test_cases": [],
@@ -660,14 +719,22 @@ def different_target_field_type(yaml_data):
     normalize_list = []
     tc = []
     input = {}
+
+    allowed_values = get_allowed_values(yaml_data, 0)
+
     # Generate values for the target field
     all_arguments = []
     values = None
     for type_, source in zip(get_types(yaml_data), get_sources(yaml_data)):
         if source == "value":
-            values = generate_specific_argument(
-                "value", convert_string_to_type(get_types(yaml_data)[0])
-            )
+            if allowed_values:
+                values = generate_argument(
+                    convert_string_to_type(get_types(yaml_data)[0]),
+                    "value", allowed_values, False)
+            else:
+                values = generate_specific_argument(
+                    "value", convert_string_to_type(get_types(yaml_data)[0])
+                )
         elif source == "reference":
             values = generate_specific_argument(
                 "reference", convert_string_to_type(get_types(yaml_data)[0])
@@ -812,13 +879,20 @@ def target_field_not_exist(yaml_data):
         "test_cases": [{"should_pass": False, "id": increase_id()}],
         "description": "",
     }
-    # Generate values for the target field
-    values = [
-        generate_specific_argument(
-            "value", convert_string_to_type(get_types(yaml_data)[0])
-        )
-        for _ in range(get_minimum_arguments(yaml_data))
-    ]
+    allowed_values = get_allowed_values(yaml_data, 0)
+    if allowed_values:
+        # Generate values for the target field
+        values = [
+            generate_argument(convert_string_to_type(get_types(yaml_data)[0]), "value", allowed_values, False)
+            for _ in range(get_minimum_arguments(yaml_data))
+        ]
+    else:
+        values = [
+            generate_specific_argument(
+                "value", convert_string_to_type(get_types(yaml_data)[0])
+            )
+            for _ in range(get_minimum_arguments(yaml_data))
+        ]
 
     # Prepare normalization list for the test case
     normalize_list = [
@@ -916,7 +990,7 @@ def generate_test_cases_success(yaml_data):
                     ]
                 }
             ]
-            new_test = {"input": input, "id": increase_id(), "should_pass": True}
+            new_test = {"input": input, "id": increase_id()}
 
         normalize_list.append(
             {

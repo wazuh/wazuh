@@ -1,0 +1,35 @@
+# Name of the helper function
+name: parse_quoted
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    source: reference # includes only values
+
+target_field:
+  type: object
+  is_array: false
+
+test:
+  - arguments:
+      1: "\"Hello, my name is 'Wazuh'.\""
+      target_field: any_value
+    should_pass: true
+    expected: "Hello, my name is 'Wazuh'."
+    description: Success quoted parse
+  - arguments:
+      1: "'escaped\\' quotes'"
+      target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure quoted parse
+  - arguments:
+      1: "don't start with quotes \"here"
+      target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure quoted parse
