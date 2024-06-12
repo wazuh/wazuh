@@ -1,0 +1,61 @@
+# Name of the helper function
+name: parse_dsv
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    source: reference # includes only values
+  2:
+    type: string  # Accept only string
+    source: value # includes only values
+    allowed_values:
+      - "="
+  3:
+    type: string  # Accept only string
+    source: value # includes only values
+    allowed_values:
+      - "'"
+  4:
+    type: string  # Accept only string
+    source: value # includes only values
+    allowed_values:
+      - "\\"
+  5:
+    type: string  # Accept only string
+    source: value # includes only values
+  6:
+    type: string  # Accept only string
+    source: value # includes only values
+
+target_field:
+  type: object
+  is_array: false
+
+test:
+  - arguments:
+      1: value1|value2
+      2: "|"
+      3: "'"
+      4: "\\"
+      5: out1
+      6: out2
+      target_field: any_value
+    should_pass: true
+    expected:
+      out1: value1
+      out2: value2
+    description: Success dsv parse
+  - arguments:
+      1: "key1:value1"
+      2: "|"
+      3: "\\"
+      4: "'"
+      5: out1
+      6: out2
+      target_field: any_value
+    should_pass: false
+    description: Failure dsv parse

@@ -98,10 +98,13 @@ def get_name(yaml_data):
 
 
 def get_allowed_values(yaml_data, argument_id):
-    for id, argument in yaml_data["arguments"].items():
-        if id == argument_id + 1:
-            return argument.get("allowed_values", [])
-    return []
+    allowed_values = {}
+    for index, argument in enumerate(yaml_data["arguments"].items()):
+        if "allowed_values" in argument[1]:
+            if index not in allowed_values:
+                allowed_values[index] = []
+            allowed_values[index].append(argument[1]["allowed_values"])
+    return allowed_values
 
 
 def get_sources(yaml_data):
@@ -128,6 +131,17 @@ def change_source(source):
         return source
 
 
+def get_is_array(yaml_data):
+    is_array = []
+    if 0 < len(yaml_data["arguments"]):
+        for argument in yaml_data["arguments"].values():
+            if "is_array" in argument:
+                is_array.append(argument["is_array"])
+            else:
+                is_array.append(False)
+    return is_array
+
+
 def change_type(type_):
     data_types = [int, float, str, list, bool, json]
     data_types.remove(type_)
@@ -135,20 +149,35 @@ def change_type(type_):
     return selected_type
 
 
-def generate_random_value(type_, allowed_values):
-    if len(allowed_values) == 0:
+def generate_random_value(type_, allowed_values, is_array):
+    if not allowed_values:
         if type_ == int:
+            if is_array:
+                return [random.randint(1, 9)]
             return random.randint(1, 9)
         elif type_ == float:
+            if is_array:
+                return [random.uniform(1, 9)]
             return random.uniform(1, 9)
         elif type_ == bool:
+            if is_array:
+                return [True]
             return True
         elif type_ == str:
+            if is_array:
+                return [
+                    "".join(
+                        random.choice("abcdefghijklmnopqrstuvwxyz")
+                        for _ in range(random.randint(1, 10))
+                    )
+                ]
             return "".join(
                 random.choice("abcdefghijklmnopqrstuvwxyz")
                 for _ in range(random.randint(1, 10))
             )
         elif type_ == json:
+            if is_array:
+                json.dumps([{"key": "value"}])
             return json.dumps({"key": "value"})
         elif type_ == list:
             return [1, 23, 56, 7]
@@ -156,16 +185,16 @@ def generate_random_value(type_, allowed_values):
         return random.choice(allowed_values)
 
 
-def generate_value(type_, allowed_values):
-    return generate_random_value(type_, allowed_values)
+def generate_value(type_, allowed_values, is_array):
+    return generate_random_value(type_, allowed_values, is_array)
 
 
-def generate_reference(type_, allowed_values):
+def generate_reference(type_, allowed_values, is_array):
     global reference_counter
     reference_counter += 1
     return {
         "name": f"ref{reference_counter}",
-        "value": generate_random_value(type_, allowed_values),
+        "value": generate_random_value(type_, allowed_values, is_array),
     }
 
 
@@ -186,24 +215,24 @@ def generate_specif_reference(value):
     }
 
 
-def generate_argument(type_, source, allowed_values, only_values):
+def generate_argument(type_, source, is_array, allowed_values, only_values):
     if source == "value":
-        return generate_value(type_, allowed_values)
+        return generate_value(type_, allowed_values, is_array)
     elif source == "reference":
-        return generate_reference(type_, allowed_values)
+        return generate_reference(type_, allowed_values, is_array)
     else:
         if only_values:
-            argument = generate_value(type_, allowed_values)
+            argument = generate_value(type_, allowed_values, False)
         else:
-            argument = generate_reference(type_, allowed_values)
+            argument = generate_reference(type_, allowed_values, False)
         return argument
 
 
-def generate_specific_argument(source, type_):
+def generate_specific_argument(source, type_, is_array):
     if source == "value":
-        return generate_value(type_, [])
+        return generate_value(type_, [], is_array)
     elif source == "reference":
-        return generate_reference(type_, [])
+        return generate_reference(type_, [], is_array)
 
 
 def generate_raw_template(yaml_data):
@@ -224,16 +253,33 @@ def generate_raw_template(yaml_data):
 
 
 def generate_combination_template(yaml_data, allowed_values):
+    # Supongo que generate_raw_template está definida en alguna parte del código.
     combinations = generate_raw_template(yaml_data)
 
-    expected_combinations = [
-        replacement + combination[1:]
-        for replacement, combination in itertools.product(
-            itertools.product(allowed_values), combinations
-        )
-    ]
+    # Generar las combinaciones para cada argumento con sus valores permitidos.
+    expanded_combinations = []
 
-    return expected_combinations
+    for combination in combinations:
+        # Inicializar con la combinación base.
+        new_combinations = [list(combination)]
+
+        for arg_index, values in allowed_values.items():
+            temp_combinations = []
+
+            for combo in new_combinations:
+                for value in values:
+                    new_combo = combo[:]
+                    new_combo[arg_index] = value[0]
+                    temp_combinations.append(new_combo)
+
+            new_combinations = temp_combinations
+
+        expanded_combinations.extend(new_combinations)
+
+    # Convertir de nuevo a tuplas si es necesario.
+    expanded_combinations = [tuple(combo) for combo in expanded_combinations]
+
+    return expanded_combinations
 
 
 def fewer_arguments_than_the_minimum_required(yaml_data):
@@ -258,6 +304,8 @@ def fewer_arguments_than_the_minimum_required(yaml_data):
 def different_sources(yaml_data):
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
+    is_array = get_is_array(yaml_data)
+
     for i in range(len(types)):  # Iterating over the number of arguments
         test_data = {"assets_definition": {}}
         new_sources = sources[
@@ -272,26 +320,22 @@ def different_sources(yaml_data):
         new_sources[i] = new_source  # Updating the new list of sources
 
         # Fetching unique values allowed for the current argument
-        allowed_values = get_allowed_values(yaml_data, i)
-        allowed_values_index = None
-        if len(allowed_values) != 0:
-            allowed_values_index = i
-            allowed_values = []
+        all_allowed_values = get_allowed_values(yaml_data, i)
+        allowed_values = None
 
         # Generating the three arguments with the modified source for one in each iteration
         current_arguments = []
         for j in range(len(types)):
-            if type(allowed_values_index) != None:
-                if i != allowed_values_index:
-                    allowed_values = get_allowed_values(yaml_data, j)
+            if j in all_allowed_values:
+                allowed_values = all_allowed_values[j][0]
 
             argument = generate_argument(
-                convert_string_to_type(types[j]), new_sources[j], allowed_values, True
+                convert_string_to_type(types[j]), new_sources[j], is_array[j], allowed_values, True
             )
             if isinstance(argument, dict):
                 current_arguments.append(f"$eventJson.{argument['name']}")
             else:
-                current_arguments.append(argument)
+                current_arguments.append(json.dumps(argument))
 
         helper = (
             f"{get_name(yaml_data)}({', '.join(str(v) for v in current_arguments)})"
@@ -326,14 +370,14 @@ def different_types_values(yaml_data):
     types = get_types(yaml_data)
     if types.count("all") != 0:
         return
+
+    is_array = get_is_array(yaml_data)
     all_types = [str, int, float, list, bool]
 
-    for i in range(len(types)):
-        allowed_values = get_allowed_values(yaml_data, i)
-        break
+    all_allowed_values = get_allowed_values(yaml_data, 0)
 
-    if allowed_values:
-        template = generate_combination_template(yaml_data, allowed_values)
+    if all_allowed_values:
+        template = generate_combination_template(yaml_data, all_allowed_values)
     else:
         template = generate_raw_template(yaml_data)
 
@@ -354,7 +398,7 @@ def different_types_values(yaml_data):
                             if k == index:
                                 valid_type = all_type
                             all_arguments.append(
-                                generate_specific_argument("value", valid_type)
+                                generate_specific_argument("value", valid_type, is_array[index])
                             )
                         else:
                             all_arguments.append(argument)
@@ -392,9 +436,12 @@ def different_types_references(yaml_data):
     if "reference" not in get_sources(yaml_data):
         return
 
+    helper = None
     types = get_types(yaml_data)
     if types.count("all") != 0:
         return
+
+    is_array = get_is_array(yaml_data)
     all_types = [str, int, float, list, bool, json]
 
     for i in range(len(types)):
@@ -410,7 +457,11 @@ def different_types_references(yaml_data):
         if case.count("value") == 0:
             tc = []
             for k in range(case.count("reference")):
-                all_types.remove(convert_string_to_type(types[k]))
+                if convert_string_to_type(types[k]) == str:
+                    # all_types.remove(json)
+                    all_types.remove(str)
+                else:
+                    all_types.remove(convert_string_to_type(types[k]))
                 for all_type in all_types:
                     test_data = {
                         "assets_definition": {},
@@ -426,16 +477,16 @@ def different_types_references(yaml_data):
                                 valid_type = all_type
 
                             input[f"ref{index}"] = generate_specific_argument(
-                                "value", valid_type
+                                "value", valid_type, is_array[index]
                             )
 
                             all_arguments.append(f"$eventJson.ref{index}")
                         else:
-                            all_arguments.append(argument)
+                            all_arguments.append(json.dumps(argument))
 
                     if not same_value_types(input):
                         tc.append(
-                            {"input": input, "id": increase_id(), "should_pass": False}
+                            {"input": input, "id": increase_id()}
                         )
                     helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
                 all_types.append(convert_string_to_type(types[k]))
@@ -444,6 +495,7 @@ def different_types_references(yaml_data):
         value = generate_specific_argument(
             "value",
             convert_string_to_type(get_target_field_type(yaml_data)),
+            False
         )
         if type(value) == list:
             target_field_value = value
@@ -453,32 +505,35 @@ def different_types_references(yaml_data):
         target_field_value = value = generate_specific_argument(
             "value",
             convert_string_to_type(get_target_field_type(yaml_data)),
+            False
         )
 
-    stage_map = {"map": []}
-    normalize_list = []
-    stage_map["map"].append({"eventJson": "parse_json($event.original)"})
-    stage_map["map"].append({"target_field": target_field_value})
-    stage_map["map"].append({"target_field": helper})
+    if helper:
+        stage_map = {"map": []}
+        normalize_list = []
+        stage_map["map"].append({"eventJson": "parse_json($event.original)"})
+        stage_map["map"].append({"target_field": target_field_value})
+        stage_map["map"].append({"target_field": helper})
 
-    normalize_list.append(stage_map)
+        normalize_list.append(stage_map)
 
-    asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+        asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
 
-    test_data["assets_definition"] = asset_definition
-    test_data["test_cases"] = tc
-    test_data["description"] = (
-        f"Generate types other than those allowed for the source 'reference'"
-    )
+        test_data["assets_definition"] = asset_definition
+        test_data["test_cases"] = tc
+        test_data["description"] = (
+            f"Generate types other than those allowed for the source 'reference'"
+        )
 
-    if len(test_data["assets_definition"]):
-        tests["run_test"].append(test_data)
+        if len(test_data["assets_definition"]):
+            tests["run_test"].append(test_data)
 
 
 def different_target_field_type(yaml_data):
     if get_target_field_type(yaml_data) == "all":
         return
 
+    is_array = get_is_array(yaml_data)
     test_data = {
         "assets_definition": {},
         "test_cases": [],
@@ -490,24 +545,33 @@ def different_target_field_type(yaml_data):
     # Generate values for the target field
     all_arguments = []
     values = None
+    all_allowed_values = get_allowed_values(yaml_data, 0)
+    allowed_values = None
+    i = 0
+
     for type_, source in zip(get_types(yaml_data), get_sources(yaml_data)):
         if source == "value":
-            values = generate_specific_argument(
-                "value", convert_string_to_type(get_types(yaml_data)[0])
-            )
-            all_arguments.append(values)
+            if i in all_allowed_values:
+                allowed_values = all_allowed_values[i][0]
+            argument = json.dumps(generate_argument(convert_string_to_type(
+                get_types(yaml_data)[0]), "value", is_array[i], allowed_values, True))
+            all_arguments.append(argument)
         elif source == "reference":
             values = generate_specific_argument(
-                "reference", convert_string_to_type(get_types(yaml_data)[0])
+                "reference", convert_string_to_type(get_types(yaml_data)[0]),
+                is_array[i]
             )
             all_arguments.append(f"$eventJson.{values['name']}")
             input[values["name"]] = values["value"]
-            tc.append({"input": input, "id": increase_id(), "should_pass": False})
+            tc.append({"input": input, "id": increase_id()})
         else:
             values = generate_specific_argument(
-                "value", convert_string_to_type(get_types(yaml_data)[0])
+                "value", convert_string_to_type(get_types(yaml_data)[0]), is_array[i]
             )
+            if isinstance(values, list):
+                values = json.dumps(values)
             all_arguments.append(values)
+        i = i + 1
 
     stage_map = {"map": []}
     helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
@@ -516,6 +580,7 @@ def different_target_field_type(yaml_data):
         value = generate_specific_argument(
             "value",
             change_type(convert_string_to_type(get_target_field_type(yaml_data))),
+            False
         )
         if type(value) == list:
             target_field_value = value
@@ -525,6 +590,7 @@ def different_target_field_type(yaml_data):
         value = generate_specific_argument(
             "value",
             change_type(convert_string_to_type(get_target_field_type(yaml_data))),
+            False
         )
 
         if type(value) == list:
@@ -544,7 +610,7 @@ def different_target_field_type(yaml_data):
     if tc:
         test_data["test_cases"] = tc
     else:
-        test_data["test_cases"].append({"should_pass": False, "id": increase_id()})
+        test_data["test_cases"].append({"id": increase_id()})
     test_data["description"] = "Different target field type"
 
     if len(test_data["assets_definition"]):
@@ -565,7 +631,7 @@ def variadic(yaml_data):
     for i in range(number_of_arguments):
         j = i % get_minimum_arguments(yaml_data)
         argument = generate_argument(
-            convert_string_to_type(types[j]), sources[j], [], i % 2 == 0
+            convert_string_to_type(types[j]), sources[j], False, [], i % 2 == 0
         )
 
         if isinstance(argument, dict):
@@ -593,21 +659,26 @@ def reference_not_exist(yaml_data):
         return
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
+    is_array = get_is_array(yaml_data)
     test_data = {"assets_definition": {}, "test_cases": []}
     normalize_list = []
     all_arguments = []
+    # Fetching unique values allowed for the current argument
+    all_allowed_values = get_allowed_values(yaml_data, 0)
+    allowed_values = None
 
     for i in range(len(sources)):
-        allowed_values = get_allowed_values(yaml_data, i)
+        if i in all_allowed_values:
+            allowed_values = all_allowed_values[i][0]
 
         argument = generate_argument(
-            convert_string_to_type(types[i]), sources[i], allowed_values, False
+            convert_string_to_type(types[i]), sources[i], is_array[i], allowed_values, False
         )
 
         if isinstance(argument, dict):
             all_arguments.append(f"$eventJson.{argument['name']}")
         else:
-            all_arguments.append(argument)
+            all_arguments.append(json.dumps(argument))
 
     stage_map = {"map": []}
     helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
@@ -615,7 +686,7 @@ def reference_not_exist(yaml_data):
     if target_field_is_array(yaml_data):
         value = generate_specific_argument(
             "value",
-            convert_string_to_type(get_target_field_type(yaml_data)),
+            convert_string_to_type(get_target_field_type(yaml_data)), False
         )
         if type(value) == list:
             target_field_value = value
@@ -624,7 +695,7 @@ def reference_not_exist(yaml_data):
     else:
         value = generate_specific_argument(
             "value",
-            convert_string_to_type(get_target_field_type(yaml_data)),
+            convert_string_to_type(get_target_field_type(yaml_data)), False
         )
 
         if type(value) == list:
@@ -648,12 +719,13 @@ def reference_not_exist(yaml_data):
 
 def target_field_not_exist(yaml_data):
     test_data = {"assets_definition": {}, "test_cases": []}
+    is_array = get_is_array(yaml_data)
     # Generate values for the target field
     values = [
         generate_specific_argument(
-            "value", convert_string_to_type(get_target_field_type(yaml_data))
+            "value", convert_string_to_type(get_target_field_type(yaml_data)), is_array[i]
         )
-        for _ in range(get_minimum_arguments(yaml_data))
+        for i in range(get_minimum_arguments(yaml_data))
     ]
 
     # Prepare normalization list for the test case
@@ -695,7 +767,7 @@ def generate_test_cases_fail_at_runtime(yaml_data):
 def generate_test_cases_success_values(yaml_data):
     types = get_types(yaml_data)
     all_types = [str, int, float, list, bool]
-
+    is_array = get_is_array(yaml_data)
     for i, type_ in enumerate(types):
         allowed_values = get_allowed_values(yaml_data, i)
         break
@@ -709,12 +781,13 @@ def generate_test_cases_success_values(yaml_data):
         if case.count("reference") == get_minimum_arguments(yaml_data):
             continue
         all_arguments = []
+        indx = 0
         for argument, type_ in zip(case, types):
             if type_ == "all":
                 for all_type in all_types:
                     if argument == "value":
                         all_arguments.append(
-                            generate_specific_argument("value", all_type)
+                            generate_specific_argument("value", all_type, is_array[indx])
                         )
                     else:
                         all_arguments.append(argument)
@@ -722,18 +795,21 @@ def generate_test_cases_success_values(yaml_data):
                 if argument == "value":
                     all_arguments.append(
                         generate_specific_argument(
-                            "value", convert_string_to_type(type_)
+                            "value", convert_string_to_type(type_),
+                            is_array[indx]
                         )
                     )
                 elif argument == "reference":
                     reference = generate_specific_argument(
-                        "reference", convert_string_to_type(type_)
+                        "reference", convert_string_to_type(type_),
+                        is_array[indx]
                     )
                     all_arguments.append(f"$eventJson.{reference['name']}")
                 else:
                     all_arguments.append(argument)
+            indx = indx + 1
 
-        for argument in all_arguments:
+        for index, argument in enumerate(all_arguments):
             test_data = {"assets_definition": {}}
             normalize_list = []
             stage_map = {"map": []}
@@ -750,6 +826,7 @@ def generate_test_cases_success_values(yaml_data):
                 value = generate_specific_argument(
                     "value",
                     convert_string_to_type(get_target_field_type(yaml_data)),
+                    is_array[index]
                 )
                 if type(value) == list:
                     target_field_value = value
@@ -759,6 +836,7 @@ def generate_test_cases_success_values(yaml_data):
                 value = generate_specific_argument(
                     "value",
                     convert_string_to_type(get_target_field_type(yaml_data)),
+                    is_array[index]
                 )
 
                 if type(value) == list:
@@ -792,16 +870,11 @@ def generate_test_cases_success(yaml_data):
         return
 
     types = get_types(yaml_data)
-    allowed_values_index = None
+    is_array = get_is_array(yaml_data)
+    all_allowed_values = get_allowed_values(yaml_data, 0)
 
-    for i, type_ in enumerate(types):
-        allowed_values = get_allowed_values(yaml_data, i)
-        if allowed_values:
-            allowed_values_index = i
-            break
-
-    if allowed_values:
-        template = generate_combination_template(yaml_data, allowed_values)
+    if all_allowed_values:
+        template = generate_combination_template(yaml_data, all_allowed_values)
     else:
         template = generate_raw_template(yaml_data)
 
@@ -813,51 +886,19 @@ def generate_test_cases_success(yaml_data):
         indx = 0
         for argument, type_ in zip(case, types):
             if argument == "value":
-                if allowed_values_index:
-                    if allowed_values_index == indx:
-                        all_arguments.append(
-                            json.dumps(
-                                generate_argument(
-                                    convert_string_to_type(type_),
-                                    argument,
-                                    allowed_values,
-                                    False,
-                                )
-                            )
-                        )
-                    else:
-                        all_arguments.append(
-                            generate_specific_argument(
-                                "value", convert_string_to_type(type_)
-                            )
-                        )
-                else:
-                    all_arguments.append(
-                        generate_specific_argument(
-                            "value", convert_string_to_type(type_)
-                        )
-                    )
+                value = generate_specific_argument(
+                    "value", convert_string_to_type(type_), is_array[indx])
+                if isinstance(value, list):
+                    value = json.dumps(value)
+                all_arguments.append(value)
             elif argument == "reference":
-                if allowed_values_index != None:
-                    if allowed_values_index == indx:
-                        reference = generate_argument(
-                            convert_string_to_type(type_),
-                            argument,
-                            allowed_values,
-                            False,
-                        )
-                    else:
-                        reference = generate_specific_argument(
-                            "reference", convert_string_to_type(type_)
-                        )
-                else:
-                    reference = generate_specific_argument(
-                        "reference", convert_string_to_type(type_)
-                    )
+                reference = generate_specific_argument(
+                    "reference", convert_string_to_type(type_), is_array[indx]
+                )
                 all_arguments.append(f"$eventJson.{reference['name']}")
                 input[reference["name"]] = reference["value"]
             else:
-                all_arguments.append(argument)
+                all_arguments.append(json.dumps(argument))
             indx = indx + 1
 
         helper = f"{get_name(yaml_data)}({', '.join(str(v) for v in all_arguments)})"
@@ -866,6 +907,7 @@ def generate_test_cases_success(yaml_data):
             value = generate_specific_argument(
                 "value",
                 convert_string_to_type(get_target_field_type(yaml_data)),
+                False
             )
             if type(value) == list:
                 target_field_value = value
@@ -875,6 +917,7 @@ def generate_test_cases_success(yaml_data):
             value = generate_specific_argument(
                 "value",
                 convert_string_to_type(get_target_field_type(yaml_data)),
+                False
             )
 
             if type(value) == list:
