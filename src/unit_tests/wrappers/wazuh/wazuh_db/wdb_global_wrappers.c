@@ -255,6 +255,10 @@ cJSON* __wrap_wdb_global_get_all_agents(   __attribute__((unused)) wdb_t *wdb,
     return mock_ptr_type(cJSON*);
 }
 
+int __wrap_wdb_global_get_all_agents_context(   __attribute__((unused)) wdb_t *wdb) {
+    return mock();
+}
+
 cJSON* __wrap_wdb_global_get_agent_info(__attribute__((unused)) wdb_t *wdb,
                                         int id){
     check_expected(id);
