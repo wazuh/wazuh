@@ -85,7 +85,7 @@ list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_open_global -Wl,--wrap,wdb_leave -Wl
                              -Wl,--wrap,w_inc_global_agent_get_distinct_groups -Wl,--wrap,w_inc_global_agent_get_distinct_groups_time \
                              -Wl,--wrap,w_is_file -Wl,--wrap,wdb_close -Wl,--wrap,w_inc_global_open_time -Wl,--wrap,wdb_pool_leave \
                              -Wl,--wrap,w_inc_global_agent_recalculate_agent_group_hashes \ -Wl,--wrap,w_inc_global_agent_recalculate_agent_group_hashes_time \
-                             -Wl,--wrap,wdb_global_recalculate_all_agent_groups_hash ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,wdb_global_recalculate_all_agent_groups_hash -Wl,--wrap,wdb_global_get_all_agents_context ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND wdb_tests_names "test_wdb_global")
 list(APPEND wdb_tests_flags "-Wl,--wrap,wdb_exec -Wl,--wrap,sqlite3_errmsg -Wl,--wrap,wdb_begin2 -Wl,--wrap,wdb_stmt_cache -Wl,--wrap,sqlite3_bind_int \

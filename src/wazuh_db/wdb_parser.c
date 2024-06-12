@@ -6159,38 +6159,52 @@ int wdb_parse_global_get_all_agents(wdb_t* wdb, char* input, char* output) {
     const char delim[2] = " ";
     char *savedptr = NULL;
 
-    /* Get last_id*/
+    /* Check if is last_id or context */
     next = strtok_r(input, delim, &savedptr);
-    if (next == NULL || strcmp(next, "last_id") != 0) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
-        return OS_INVALID;
-    }
-    next = strtok_r(NULL, delim, &savedptr);
-    if (next == NULL) {
-        mdebug1("Invalid arguments 'last_id' not found.");
-        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
-        return OS_INVALID;
-    }
-    last_id = atoi(next);
-
-    // Execute command
-    wdbc_result status = WDBC_UNKNOWN;
-    cJSON* result = wdb_global_get_all_agents(wdb, last_id, &status);
-    if (!result) {
-        mdebug1("Error getting agents from global.db.");
-        snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
+    if (next == NULL || (strcmp(next, "last_id") != 0 && strcmp(next, "context") != 0)) {
+        mdebug1("Invalid arguments 'last_id' or 'context' not found.");
+        snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' or 'context' not found");
         return OS_INVALID;
     }
 
-    //Print response
-    char* out = cJSON_PrintUnformatted(result);
-    snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+    if (strcmp(next, "context") == 0) {
+        int status = wdb_global_get_all_agents_context(wdb);
+        if (status != OS_SUCCESS) {
+            snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
+        }
+        else {
+            snprintf(output, OS_MAXSTR + 1, "ok []");
+        }
+        return status;
+    }
+    else {
+        next = strtok_r(NULL, delim, &savedptr);
+        if (next == NULL) {
+            mdebug1("Invalid arguments 'last_id' not found.");
+            snprintf(output, OS_MAXSTR + 1, "err Invalid arguments 'last_id' not found");
+            return OS_INVALID;
+        }
+        last_id = atoi(next);
 
-    cJSON_Delete(result);
-    os_free(out)
+        // Execute command
+        wdbc_result status = WDBC_UNKNOWN;
+        cJSON* result = wdb_global_get_all_agents(wdb, last_id, &status);
 
-    return OS_SUCCESS;
+        if (!result) {
+            mdebug1("Error getting agents from global.db.");
+            snprintf(output, OS_MAXSTR + 1, "err Error getting agents from global.db.");
+            return OS_INVALID;
+        }
+
+        //Print response
+        char* out = cJSON_PrintUnformatted(result);
+        snprintf(output, OS_MAXSTR + 1, "%s %s",  WDBC_RESULT[status], out);
+
+        cJSON_Delete(result);
+        os_free(out);
+
+        return OS_SUCCESS;
+    }
 }
 
 int wdb_parse_global_get_distinct_agent_groups(wdb_t* wdb, char* input, char* output) {
