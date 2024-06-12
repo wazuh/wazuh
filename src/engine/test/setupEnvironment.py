@@ -3,6 +3,7 @@
 import os
 import shutil
 import argparse
+from pathlib import Path
 
 
 def setup_engine(engine_dir, engine_src_dir, environment_dir):
@@ -40,6 +41,7 @@ def main():
     ENGINE_SRC_DIR = os.path.join(SCRIPT_DIR, '../')
     WAZUH_DIR = os.path.realpath(os.path.join(SCRIPT_DIR, '../../../'))
     ENVIRONMENT_DIR = environment_directory or os.path.join(WAZUH_DIR, 'environment')
+    ENVIRONMENT_DIR = str(Path(ENVIRONMENT_DIR).resolve())
     ENGINE_DIR = os.path.join(ENVIRONMENT_DIR, 'engine')
 
     setup_engine(ENGINE_DIR, ENGINE_SRC_DIR, ENVIRONMENT_DIR)
