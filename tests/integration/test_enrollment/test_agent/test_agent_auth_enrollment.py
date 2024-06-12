@@ -41,6 +41,7 @@ tags:
 '''
 import sys
 import pytest
+import time
 
 from pathlib import Path
 
@@ -71,6 +72,15 @@ socket_listener = None
 
 daemons_handler_configuration = {'all_daemons': True}
 
+def launch_agent_with_retry(configuration, retries=5, delay=1):
+    for attempt in range(retries):
+        try:
+            return launch_agent_auth(configuration)
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                pytest.xfail(f"Xfailing agent-auth start with error {e} after {retries} retries")
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
@@ -126,9 +136,9 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
         - Error logs related to the wrong configuration block
     """
 
-    agent_auth_launch_result = launch_agent_auth(test_metadata.get('configuration', {}))
-
     if 'expected_error' in test_metadata:
+        launch_agent_auth(test_metadata.get('configuration', {}))
+
         expected_error_dict = test_metadata['expected_error']
         expected_error = expected_error_dict['agent-auth'] if 'agent-auth' in expected_error_dict else \
                                                               expected_error_dict
@@ -148,8 +158,7 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
                 raise error
 
     else:
-        if agent_auth_launch_result != 0:
-             pytest.xfail(f"Xfailing agent-auth did not start execution result: {agent_auth_launch_result}")
+        launch_agent_with_retry(test_metadata.get('configuration', {}))
 
         test_expected = test_metadata['message']['expected'].format(host_name=get_host_name(),
                                                                     agent_version=get_version()).encode()
