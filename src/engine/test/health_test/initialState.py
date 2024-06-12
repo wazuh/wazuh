@@ -6,9 +6,11 @@ import argparse
 import shutil
 import sys
 import yaml
+from pathlib import Path
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 WAZUH_DIR = os.path.realpath(os.path.join(SCRIPT_DIR, "../../../.."))
+ENGINE_BIN = ""
 
 
 def parse_args():
@@ -121,6 +123,7 @@ def load_policies():
 def main():
     global ENGINE_SRC_DIR
     global ENVIRONMENT_DIR
+    global ENGINE_BIN
 
     args = parse_args()
 
@@ -130,7 +133,7 @@ def main():
 
     ENGINE_SRC_DIR = os.path.join(WAZUH_DIR, 'src', 'engine')
     ENVIRONMENT_DIR = args.environment or WAZUH_DIR
-    ENVIRONMENT_DIR = ENVIRONMENT_DIR.replace('//', '/')
+    ENVIRONMENT_DIR = str(Path(ENVIRONMENT_DIR).resolve())
     ENGINE_BIN = args.binary or os.path.join(ENGINE_SRC_DIR, 'build', 'main')
     update_conf()
     set_mmdb()
@@ -141,9 +144,11 @@ def main():
         ENVIRONMENT_DIR, 'engine', 'general.conf')
     os.environ['ENGINE_BIN'] = ENGINE_BIN
 
-    from handler_engine_instance import up_down
-    up_down_engine = up_down.UpDownEngine()
-    up_down_engine.send_start_command()
+    engine_command = f"{ENGINE_BIN} --config {os.path.join(ENVIRONMENT_DIR, 'engine', 'general.conf')} server start"
+    print(engine_command)
+    engine_proccess = subprocess.Popen(
+        f"{engine_command}", shell=True)
+    time.sleep(5)
 
     # Add the mmdb to the engine
     print("Adding mmdb to the engine")
@@ -159,7 +164,8 @@ def main():
     load_integrations()
     load_policies()
 
-    up_down_engine.send_stop_command()
+    engine_proccess.terminate()
+    engine_proccess.wait(5)
 
 
 if __name__ == "__main__":
