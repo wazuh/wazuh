@@ -40,6 +40,10 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
     static const char *haproxy_password = "haproxy_password";
     static const char *haproxy_resolver = "haproxy_resolver";
     static const char *haproxy_backend = "haproxy_backend";
+    static const char *haproxy_cert = "haproxy_cert";
+    static const char *client_cert = "client_cert";
+    static const char *client_cert_key = "client_cert_key";
+    static const char *client_cert_password = "client_cert_password";
     static const char *api_port = "api_port";
     static const char *excluded_nodes = "excluded_nodes";
     static const char *frequency = "frequency";
@@ -150,6 +154,10 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                         merror("HAProxy password is missing in the configuration");
                         return OS_INVALID;
                     }
+                } else if (!strcmp(child[j]->element, haproxy_cert)) {
+                } else if (!strcmp(child[j]->element, client_cert)) {
+                } else if (!strcmp(child[j]->element, client_cert_key)) {
+                } else if (!strcmp(child[j]->element, client_cert_password)) {
                 } else if (!strcmp(child[j]->element, haproxy_backend)) {
                 } else if (!strcmp(child[j]->element, haproxy_resolver)) {
                 } else if (!strcmp(child[j]->element, excluded_nodes)) {
