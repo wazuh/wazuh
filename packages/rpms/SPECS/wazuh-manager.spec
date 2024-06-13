@@ -548,8 +548,8 @@ if [ $1 = 0 ];then
 
   # Backup agents centralized configuration (etc/shared)
   if [ -d %{_localstatedir}/etc/shared ]; then
-      rm -rf %{_localstatedir}/etc/shared.save/
-      mv %{_localstatedir}/etc/shared/ %{_localstatedir}/etc/shared.save/
+    find %{_localstatedir}/etc/ -type f  -name "*save" ! -name "*rpmsave" -exec rm -f {} \;
+    find %{_localstatedir}/etc/ -type f ! -name "*shared*" ! -name "*rpmsave" -exec mv {} {}.save \;
   fi
 
   # Backup registration service certificates (sslmanager.cert,sslmanager.key)
