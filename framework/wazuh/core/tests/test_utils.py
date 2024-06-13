@@ -8,6 +8,7 @@ import glob
 import os
 from collections.abc import KeysView
 from io import StringIO
+from requests import exceptions
 from shutil import copyfile, Error
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from unittest.mock import call, MagicMock, Mock, mock_open, patch, ANY
@@ -285,7 +286,6 @@ def test_cut_array_ko(limit, offset, expected_exception):
            {'item': 'value_1', 'component': 'framework'}],
          None, None, None, None, None, None, True,
          [{'item': 'value_1', 'component': 'framework'}, {'item': 'value_2', 'component': 'API'}], 2),
-         
          (['framework', 'API', 'API'],
          None, None, None, None, None, None, True,
          ['framework', 'API'], 2),
@@ -1855,9 +1855,11 @@ def test_add_dynamic_detail(detail, value, attribs, details):
 @patch('wazuh.core.utils.check_wazuh_limits_unchanged')
 @patch('wazuh.core.utils.check_remote_commands')
 @patch('wazuh.core.utils.check_agents_allow_higher_versions')
+@patch('wazuh.core.utils.check_virustotal_integration')
 @patch('wazuh.core.utils.check_indexer')
 @patch('wazuh.core.manager.common.WAZUH_PATH', new=test_files_path)
-def test_validate_wazuh_xml(mock_check_indexer, mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
+def test_validate_wazuh_xml(mock_check_indexer, mock_virus_total_integration,
+                            mock_agents_versions, mock_remote_commands, mock_unchanged_limits):
     """Test validate_wazuh_xml method works and methods inside are called with expected parameters"""
 
     with open(os.path.join(test_files_path, 'test_rules.xml')) as f:
@@ -1870,12 +1872,14 @@ def test_validate_wazuh_xml(mock_check_indexer, mock_agents_versions, mock_remot
     mock_remote_commands.assert_not_called()
     mock_agents_versions.assert_not_called()
     mock_check_indexer.assert_not_called()
+    mock_virus_total_integration.assert_not_called()
 
     with patch('builtins.open', m):
         utils.validate_wazuh_xml(xml_file, config_file=True)
     mock_remote_commands.assert_called_once()
     mock_agents_versions.assert_called_once()
     mock_check_indexer.assert_called_once()
+    mock_virus_total_integration.assert_called_once()
 
 
 @pytest.mark.parametrize('effect, expected_exception', [
@@ -2255,3 +2259,42 @@ def test_upload_file_ko(mock_uid, mock_gid, mock_chmod, mock_mks,
         with patch('wazuh.core.utils.safe_move', side_effect=sm_side_effect) as mock_safe_move:
             with pytest.raises(upload_error[0], match=rf'\b{upload_error[1]}\b'):
                 utils.upload_file("test", file_path=filename)
+
+
+@pytest.mark.parametrize("new_conf", [
+    ("<ossec_config><integration><name>virustotal</name><api_key>KEY</api_key>"
+     "<group>syscheck</group></integration></ossec_config>")])
+@pytest.mark.parametrize("integrations_conf", [
+    ({'virustotal': {'public_key': {'allow': False, 'minimum_quota': 240}}}),
+    ({'virustotal': {'public_key': {'allow': True, 'minimum_quota': 240}}})
+])
+def test_check_virustotal_integration(integrations_conf, new_conf):
+    """Check if the used Virus Total public API key is allowed by the API.
+
+     When 'public_key': {'allow': False} is set in the API configuration, the provided Virus Total API key
+    cannot be public. The default quota of the public API keys is 240 hourly requests.
+
+    Parameters
+    ----------
+    new_conf : str
+        New ossec.conf to be uploaded.
+
+    integrations_conf : dict
+        Virus Total integration configuration.
+    """
+    api_conf = utils.configuration.api_conf
+    api_conf['upload_configuration']['integrations'].update(integrations_conf)
+    virust_total_min_quouta = integrations_conf['virustotal']['public_key']['minimum_quota']
+
+    with patch('wazuh.core.utils.get') as mock_requests_get:
+        if not integrations_conf['virustotal']['public_key']['allow']:
+            with pytest.raises(exception.WazuhError, match=".* 1130 .*"):
+                mock_response = Mock()
+                mock_response.json.return_value = {
+                    'data': {'api_requests_hourly': {'user': {'allowed': virust_total_min_quouta}}}}
+                mock_requests_get.return_value = mock_response
+                utils.check_virustotal_integration(new_conf)
+
+            with pytest.raises(exception.WazuhError, match=".* 1131 .*"):
+                mock_requests_get.side_effect = exceptions.RequestException
+                utils.check_virustotal_integration(new_conf)

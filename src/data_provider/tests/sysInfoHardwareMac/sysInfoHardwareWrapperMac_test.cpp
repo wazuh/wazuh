@@ -25,21 +25,19 @@ using ::testing::Return;
 TEST_F(SysInfoHardwareWrapperMacTest, Test_CpuName_Succeed)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
-    EXPECT_CALL(*wrapper, sysctl(_, _, _, _, _, _))
-    .WillOnce([](int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    EXPECT_CALL(*wrapper, sysctlbyname(_, _, _, _, _))
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
         (void)name;
-        (void)namelen;
         (void)oldp;
         (void)newp;
         (void)newlen;
         *oldlenp = 8;
         return 0;
     })
-    .WillOnce([](int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
         (void)name;
-        (void)namelen;
         (void)newp;
         (void)newlen;
         strncpy(static_cast<char*>(oldp), "CpuName", 8);
@@ -54,11 +52,10 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_CpuName_Succeed)
 TEST_F(SysInfoHardwareWrapperMacTest, Test_CpuName_Failed_Sysctl1)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
-    EXPECT_CALL(*wrapper, sysctl(_, _, _, _, _, _))
-    .WillOnce([](int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    EXPECT_CALL(*wrapper, sysctlbyname(_, _, _, _, _))
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
         (void)name;
-        (void)namelen;
         (void)oldp;
         (void)newp;
         (void)newlen;
@@ -71,21 +68,19 @@ TEST_F(SysInfoHardwareWrapperMacTest, Test_CpuName_Failed_Sysctl1)
 TEST_F(SysInfoHardwareWrapperMacTest, Test_CpuName_Failed_Sysctl2)
 {
     auto wrapper { std::make_shared<OSHardwareWrapperMac<OsPrimitivesMacMock>>() };
-    EXPECT_CALL(*wrapper, sysctl(_, _, _, _, _, _))
-    .WillOnce([](int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    EXPECT_CALL(*wrapper, sysctlbyname(_, _, _, _, _))
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
         (void)name;
-        (void)namelen;
         (void)oldp;
         (void)newp;
         (void)newlen;
         *oldlenp = 8;
         return 0;
     })
-    .WillOnce([](int* name, u_int namelen, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
+    .WillOnce([](const char* name, void* oldp, size_t* oldlenp, void* newp, size_t newlen)
     {
         (void)name;
-        (void)namelen;
         (void)oldp;
         (void)newp;
         (void)newlen;
