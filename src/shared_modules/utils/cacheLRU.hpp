@@ -116,13 +116,19 @@ public:
     /**
      * @brief Iterates over the cache data and applies a function to each key-value pair.
      *
-     * @param handler The function to be applied to each key-value pair.
+     * This function iterates over all key-value pairs in the cache and applies the given handler function
+     * to each pair. The iteration stops if the handler function returns false.
+     *
+     * @tparam Handler The type of the handler function. It should be callable with (const KeyType&, const ValueType&).
+     * @param handler The function to be applied to each key-value pair. It should return a boolean value.
+     *                If the handler returns false, the iteration stops.
      */
-    void forEach(std::function<bool(const KeyType&, const ValueType&)> handler) const
+    template<typename Handler>
+    void forEach(Handler&& handler) const
     {
         for (const auto& [key, value] : m_map)
         {
-            if(!handler(key, value))
+            if (!handler(key, value))
             {
                 break;
             }
