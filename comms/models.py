@@ -14,5 +14,14 @@ class Login(BaseModel):
     uuid: str
     key: str
 
-class PostEventsBody(BaseModel):
+class StatelessEventsBody(BaseModel):
     events: List[Event]
+
+class GetCommandsResponse(BaseModel):
+    commands: List[Command]
+
+class TokenResponse(BaseModel):
+    token: str
+
+class Message(BaseModel):
+    message: str
