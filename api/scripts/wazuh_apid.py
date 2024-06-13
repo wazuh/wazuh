@@ -379,8 +379,8 @@ if __name__ == '__main__':
         uvicorn_params['log_config'] = set_logging(log_filepath=API_LOG_PATH,
                                                    log_level=api_conf['logs']['level'].upper(),
                                                    foreground_mode=args.foreground)
-    except APIError:
-        print(f"Configuration error in the API log format: {api_conf['logs']['format']}.")
+    except APIError as api_log_error:
+        print(f"Error when trying to start the Wazuh API. {api_log_error}")
         sys.exit(1)
 
     # set permission on log files
