@@ -31,5 +31,5 @@ curl -H "Authorization: Bearer <TOKEN>" -X GET -k http://localhost:5000/api/v1/c
 ### Post stateless events
 
 ```
-curl -H "Authorization: Bearer <TOKEN>" -H "Content-type: application/json" -X POST -k http://localhost:5000/api/v1/events/stateless -d '[{"id": <ID>,"data": <DATA>, "timestamp": <TIMESTAMP>}]'
+curl -H "Authorization: Bearer <TOKEN>" -H "Content-type: application/json" -X POST -k http://localhost:5000/api/v1/events/stateless -d '{"events": [{"id": <ID>,"data": <DATA>, "timestamp": <TIMESTAMP>}]}'
 ```

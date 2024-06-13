@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from hmac import compare_digest
+import opensearchpy
 from typing import Annotated
-import sys
 
 from auth import JWTBearer, generate_token, decode_token
 from commands_manager import commands_manager
@@ -15,11 +15,13 @@ indexer_client = create_indexer_client()
 
 @router.post("/login")
 async def login(login: Login):
-    # TODO: what does it return if the document doesn't exist?
-    data = indexer_client.get(index=INDEX_NAME, id=login.uuid)
-    print(f"data: {data}", file=sys.stderr)
+    try:
+        data = indexer_client.get(index=INDEX_NAME, id=login.uuid)
+    except opensearchpy.exceptions.NotFoundError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": "UUID not found"})
+        
     if not compare_digest(data["_source"]["key"], login.key):
-        raise HTTPException(401, {"message": "Invalid key"})
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, {"message": "Invalid key"})
 
     token = generate_token(login.uuid)
     return {"token": token}
@@ -37,4 +39,4 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())]):
     if commands:
         return {"commands": commands}
     else:
-        raise HTTPException(502, {"message": "No commands found"})
+        raise HTTPException(status.HTTP_504_GATEWAY_TIMEOUT, {"message": "No commands found"})
