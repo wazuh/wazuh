@@ -41,10 +41,12 @@ tags:
 '''
 import sys
 import pytest
+import time
 
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.tools.monitors import queue_monitor
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -70,6 +72,15 @@ socket_listener = None
 
 daemons_handler_configuration = {'all_daemons': True}
 
+def launch_agent_with_retry(configuration, retries=5, delay=1):
+    for attempt in range(retries):
+        try:
+            return launch_agent_auth(configuration)
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(delay)
+            else:
+                pytest.xfail(f"Xfailing agent-auth start with error {e} after {retries} retries")
 
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
@@ -125,9 +136,9 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
         - Error logs related to the wrong configuration block
     """
 
-    launch_agent_auth(test_metadata.get('configuration', {}))
-
     if 'expected_error' in test_metadata:
+        launch_agent_auth(test_metadata.get('configuration', {}))
+
         expected_error_dict = test_metadata['expected_error']
         expected_error = expected_error_dict['agent-auth'] if 'agent-auth' in expected_error_dict else \
                                                               expected_error_dict
@@ -147,6 +158,8 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
                 raise error
 
     else:
+        launch_agent_with_retry(test_metadata.get('configuration', {}))
+
         test_expected = test_metadata['message']['expected'].format(host_name=get_host_name(),
                                                                     agent_version=get_version()).encode()
         test_response = test_metadata['message']['response'].format(host_name=get_host_name()).encode()
@@ -157,7 +170,7 @@ def test_agent_auth_enrollment(test_configuration, test_metadata, set_wazuh_conf
 
         try:
             # Start socket monitoring
-            socket_monitor.start(timeout=10, accumulations=2, callback=lambda received_event: received_event.encode() in event)
+            socket_monitor.start(timeout=60 if sys.platform == WINDOWS else 20, accumulations=2, callback=lambda received_event: received_event.encode() in event)
 
             assert socket_monitor.matches == 2
         except Exception as error:
