@@ -701,10 +701,16 @@ class AWSLogsBucket(AWSBucket):
             aws_account_id=account_id,
             aws_service=self.service)
 
-    def get_full_prefix(self, account_id, account_region):
-        return '{service_prefix}{aws_region}/'.format(
-            service_prefix=self.get_service_prefix(account_id),
-            aws_region=account_region)
+    def get_full_prefix(self, account_id, account_region, acl_name=None):
+        if acl_name is not None:
+            return '{service_prefix}{aws_region}/{acl}/'.format(
+                service_prefix=self.get_service_prefix(account_id),
+                aws_region=account_region,
+                acl=acl_name)
+        else:
+            return '{service_prefix}{aws_region}/'.format(
+                service_prefix=self.get_service_prefix(account_id),
+                aws_region=account_region)
 
     def get_creation_date(self, log_file):
         # An example of cloudtrail filename would be
@@ -851,7 +857,7 @@ class AWSCustomBucket(AWSBucket):
         else:
             return int(name_regex.group(1).replace('/', '').replace('-', ''))
 
-    def get_full_prefix(self, account_id, account_region):
+    def get_full_prefix(self, account_id, account_region, acl_name=None):
         return self.prefix
 
     def reformat_msg(self, event):

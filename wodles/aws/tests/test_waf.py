@@ -21,8 +21,9 @@ logs_path = os.path.join(test_data_path, 'log_files')
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_aws_waf_bucket_initializes_properly(mock_custom_bucket):
     """Test if the instances of AWSWAFBucket are created properly."""
-    utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
-    mock_custom_bucket.assert_called_once()
+    with patch('waf.AWSWAFBucket.check_waf_type'):
+        utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+        mock_custom_bucket.assert_called_once()
 
 
 @pytest.mark.parametrize('log_file, skip_on_error', [
@@ -46,12 +47,13 @@ def test_aws_waf_bucket_load_information_from_file(mock_custom_bucket, mock_buck
     skip_on_error : bool
         If the skip_on_error is disabled or not.
     """
-    instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
-    instance.skip_on_error = skip_on_error
-    with open(log_file, 'rb') as f:
-        instance.client = MagicMock()
-        instance.client.get_object.return_value.__getitem__.return_value = f
-        instance.load_information_from_file(log_file)
+    with patch('waf.AWSWAFBucket.check_waf_type'):
+        instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+        instance.skip_on_error = skip_on_error
+        with open(log_file, 'rb') as f:
+            instance.client = MagicMock()
+            instance.client.get_object.return_value.__getitem__.return_value = f
+            instance.load_information_from_file(log_file)
 
 
 @pytest.mark.parametrize('log_file, skip_on_error, expected_exception', [
@@ -80,10 +82,109 @@ def test_aws_waf_bucket_load_information_from_file_handles_exception_on_invalid_
     expected_exception : Exception
         Exception that should be raised.
     """
-    instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
-    instance.skip_on_error = skip_on_error
-    with open(log_file, 'rb') as f, \
-            pytest.raises(expected_exception):
+    with patch('waf.AWSWAFBucket.check_waf_type'):
+        instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+        instance.skip_on_error = skip_on_error
+        with open(log_file, 'rb') as f, \
+                pytest.raises(expected_exception):
+            instance.client = MagicMock()
+            instance.client.get_object.return_value.__getitem__.return_value = f
+            instance.load_information_from_file(log_file)
+
+
+@pytest.mark.parametrize('object_list, result', [(utils.LIST_OBJECT_V2, True),
+                                                 (utils.LIST_OBJECT_V2_NO_PREFIXES, False)])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_waf_bucket_check_waf_type(mock_wazuh_aws_integration, mock_sts,
+                                                   object_list: dict, result: bool):
+    """Test 'check_waf_type' method defines if the bucket contains WAF Native logs or not.
+
+    Parameters
+    ----------
+    object_list: dict
+        Objects to be returned by list_objects_v2.
+    result: bool
+        Expected result.
+    """
+    with patch('waf.AWSWAFBucket.check_waf_type'):
+        instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+
+    instance.client = MagicMock()
+    instance.client.list_objects_v2.return_value = object_list
+
+    assert result == instance.check_waf_type()
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_waf_bucket_check_waf_type_handles_exceptions(mock_wazuh_aws_integration, mock_sts):
+    """Test 'check_waf_type' handles exceptions raised and exits with the expected exit code."""
+    with patch('waf.AWSWAFBucket.check_waf_type'):
+        instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+
+    with pytest.raises(SystemExit) as e:
         instance.client = MagicMock()
-        instance.client.get_object.return_value.__getitem__.return_value = f
-        instance.load_information_from_file(log_file)
+        instance.client.list_objects_v2.side_effect = Exception
+        instance.check_waf_type()
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+
+
+@patch('aws_bucket.AWSLogsBucket.get_base_prefix', return_value='base_prefix/')
+@patch('waf.AWSWAFBucket.check_waf_type')
+@patch('aws_bucket.AWSCustomBucket.__init__')
+def test_aws_waf_bucket_get_service_prefix(mock_custom_bucket, mock_type, mock_base_prefix):
+    """Test 'get_service_prefix' method returns the expected prefix with the format
+    <base_prefix>/<account_id>/<service>."""
+    instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+
+    expected_base_prefix = os.path.join('base_prefix', utils.TEST_ACCOUNT_ID, instance.service, '')
+    assert instance.get_service_prefix(utils.TEST_ACCOUNT_ID) == expected_base_prefix
+
+
+@pytest.mark.parametrize('waf_native', [True, False])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_waf_bucket_get_base_prefix(mock_wazuh_aws_integration, mock_sts, waf_native: bool):
+    """Test 'get_full_prefix' method the expected base prefix depending on the WAF bucket type.
+
+    Parameters
+    ----------
+    waf_native: bool
+        Result for the 'check_waf_type' call that determines the GuardDuty bucket type.
+    """
+    with patch('waf.AWSWAFBucket.check_waf_type', return_value=waf_native):
+        instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket, prefix='prefix/')
+
+        if instance.type == "WAFNative":
+            assert instance.get_base_prefix() == os.path.join(instance.prefix, 'AWSLogs', '')
+        else:
+            assert instance.get_base_prefix() == instance.prefix
+
+
+@pytest.mark.parametrize('waf_native', [True, False])
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_waf_bucket_iter_regions_and_accounts(mock_wazuh_aws_integration, mock_sts, waf_native: bool):
+    """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files
+    depending on the WAF bucket type.
+
+    Parameters
+    ----------
+    waf_native: bool
+        Result for the 'check_waf_type' call that determines the WAF bucket type.
+    """
+    account_ids = [utils.TEST_ACCOUNT_ID]
+    regions = [utils.TEST_REGION]
+    with patch('waf.AWSWAFBucket.check_waf_type', return_value=waf_native), \
+            patch('aws_bucket.AWSBucket.iter_regions_and_accounts') as mock_bucket_regions_and_accounts, \
+            patch('aws_bucket.AWSCustomBucket.iter_regions_and_accounts') as mock_custom_regions_and_accounts:
+        instance = utils.get_mocked_bucket(class_=waf.AWSWAFBucket)
+
+        if instance.type == "WAFNative":
+            instance.iter_regions_and_accounts(account_ids, regions)
+            mock_bucket_regions_and_accounts.assert_called_with(instance, account_ids, regions)
+        else:
+            instance.iter_regions_and_accounts(account_ids, regions)            
+            assert instance.check_prefix
+            mock_custom_regions_and_accounts.assert_called_with(instance, account_ids, regions)
