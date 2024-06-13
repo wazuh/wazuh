@@ -1,4 +1,5 @@
 run-name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
+name: Build Wazuh manager
 
 on:
   workflow_dispatch:
@@ -90,6 +91,7 @@ on:
 jobs:
   Build-manager-packages:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
@@ -126,12 +128,12 @@ jobs:
           # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
           echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+          echo "PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *manager*.${{ inputs.system }} -exec basename {} 2>/dev/null \;)" | tee -a $GITHUB_ENV
 
       - name: Test install built manager
         run: |
-          package_name=$(find /tmp -maxdepth 1 -type f -name "*manager*.${{ inputs.system }}" -exec basename {} 2>/dev/null \;)
-          if [ -z "$package_name" ]; then echo "No package found matching the pattern!"; exit 1; fi
-          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $package_name manager
+          if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
+          sudo docker run -v $GITHUB_WORKSPACE/.github/actions/test-install-components/:/tests -v /tmp/:/packages --entrypoint '/tests/install_component.sh' $CONTAINER_NAME:${{ env.TAG }} $PACKAGE_NAME manager
           # Check if Wazuh was installed. The /tmp/status.log file was generated in the previous step.
           if grep -iq " installed.*wazuh-manager" /tmp/status.log ; then
             echo "Installation successfully."
@@ -150,9 +152,13 @@ jobs:
       - name: Upload package to S3
         working-directory: packages
         run: |
-          aws s3 cp /tmp/*manager*.${{ inputs.system }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}"
+          echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
-        if: ${{ inputs.checksum == true }}
+        if: ${{ inputs.checksum }}
         run: |
-          aws s3 cp /tmp/*manager*.${{ inputs.system }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+          echo "S3 sha512 URI: ${s3uri}"

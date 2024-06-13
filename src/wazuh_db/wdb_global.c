@@ -1766,6 +1766,22 @@ cJSON* wdb_global_get_agents_to_disconnect(wdb_t *wdb, int last_agent_id, int ke
     return result;
 }
 
+int wdb_global_get_all_agents_context(wdb_t *wdb) {
+    //Prepare SQL query
+    if (!wdb->transaction && wdb_begin2(wdb) < 0) {
+        mdebug1("Cannot begin transaction");
+        return OS_INVALID;
+    }
+
+    if (wdb_stmt_cache(wdb, WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT) < 0) {
+        mdebug1("Cannot cache statement");
+        return OS_INVALID;
+    }
+    sqlite3_stmt* stmt = wdb->stmt[WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT];
+
+    return wdb_exec_stmt_send(stmt, wdb->peer);
+}
+
 cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status) {
     //Prepare SQL query
     if (!wdb->transaction && wdb_begin2(wdb) < 0) {

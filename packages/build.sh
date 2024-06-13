@@ -7,6 +7,7 @@
 # and/or modify it under the terms of the GNU General Public
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
+set -e
 
 build_directories() {
   local build_folder=$1

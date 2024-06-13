@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -ex
 # Program to build and package OSX wazuh-agent
 # Wazuh package generator
 # Copyright (C) 2015, Wazuh Inc.
@@ -130,11 +130,10 @@ function build_package() {
         SOURCES_DIRECTORY="${CURRENT_PATH}/repository"
         WAZUH_PATH="${SOURCES_DIRECTORY}/wazuh"
         git clone --depth=1 -b ${BRANCH_TAG} ${WAZUH_SOURCE_REPOSITORY} "${WAZUH_PATH}"
-        short_commit_hash="$(git rev-parse -C "${WAZUH_PATH}" --short HEAD)"
     else
         WAZUH_PATH="${CURRENT_PATH}/../.."
-        short_commit_hash="$(git rev-parse --short HEAD)"
     fi
+    short_commit_hash="$(cd "${WAZUH_PATH}" && git rev-parse --short HEAD)"
 
     export CONFIG="${WAZUH_PATH}/etc/preloaded-vars.conf"
     WAZUH_PACKAGES_PATH="${WAZUH_PATH}/packages/macos"

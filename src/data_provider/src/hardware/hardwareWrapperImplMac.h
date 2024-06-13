@@ -46,9 +46,8 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
 
         std::string cpuName() const
         {
-            const std::vector<int> mib{CTL_HW, HW_MODEL};
             size_t len{0};
-            auto ret{this->sysctl(const_cast<int*>(mib.data()), mib.size(), nullptr, &len, nullptr, 0)};
+            auto ret{this->sysctlbyname("machdep.cpu.brand_string", nullptr, &len, nullptr, 0)};
 
             if (ret)
             {
@@ -70,7 +69,7 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
                 };
             }
 
-            ret = this->sysctl(const_cast<int*>(mib.data()), mib.size(), spBuff.get(), &len, nullptr, 0);
+            ret = this->sysctlbyname("machdep.cpu.brand_string", spBuff.get(), &len, nullptr, 0);
 
             if (ret)
             {

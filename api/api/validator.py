@@ -214,6 +214,26 @@ api_config_schema = {
                             "type": "boolean"
                         }
                     }
+                },
+                "integrations": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "virustotal": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "public_key": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "properties": {
+                                        "allow": {"type": "boolean"},
+                                        "minimum_quota": {"type": "integer"}
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
