@@ -74,9 +74,9 @@ def main(argv):
                 bucket_type = buckets_s3.server_access.AWSServerAccess
             else:
                 raise Exception("Invalid type of bucket")
-            for region in options.regions:
-                if region not in aws_tools.ALL_REGIONS:
-                    aws_tools.debug(f"+++ WARNING: Invalid region '{region}'", 1)
+            for invalid_region in options.regions:
+                if invalid_region not in aws_tools.ALL_REGIONS:
+                    aws_tools.debug(f"+++ WARNING: Invalid region '{invalid_region}'", 1)
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
                                  secret_key=options.secret_key,
                                  profile=options.aws_profile,
