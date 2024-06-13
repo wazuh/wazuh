@@ -112,8 +112,6 @@ if __name__ == '__main__':
                                 default=False)
         arg_parser.add_argument('-m', '--missing', action='store_true',
                                 help='Show missing fields in the output, default: False', default=False)
-        arg_parser.add_argument('--csv', action='store_true', help='Generate a csv file with the results, default: False',
-                                default=False)
 
         args = arg_parser.parse_args()
 
@@ -123,7 +121,6 @@ if __name__ == '__main__':
         output_path = Path(args.output)
         show_extra = args.extra
         show_missing = args.missing
-        generate_csv = args.csv
 
         # Read the table
         df = pd.read_csv(table)
@@ -205,32 +202,11 @@ if __name__ == '__main__':
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(dumps(compare_results, indent=2))
 
-        # Write the csv results
-        # original, missmatches, missing neededs (Wazuh), missing neededs (other), Extra Wazuh, Extra other
-        if generate_csv:
-            csv_output_path = output_path.with_suffix('.csv')
-            csv_str = ''
-            csv_str += 'original, missmatches, missing neededs (Wazuh), missing neededs (other), Extra Wazuh, Extra other\n'
-            for result in compare_results:
-                original = dumps(result['original'])
-                missmatches = dumps([key for key in result['need_to_match']] if 'need_to_match' in result else '')
-                missing_waz = dumps(result['need_by_waz']
-                                    ) if 'need_by_waz' in result else ''
-                missing_oth = dumps(result['need_by_oth']
-                                    ) if 'need_by_oth' in result else ''
-                extra_waz = dumps(result['wazuh_extra']
-                                ) if 'wazuh_extra' in result else ''
-                extra_oth = dumps(result['other_extra']
-                                ) if 'other_extra' in result else ''
-
-                csv_str += f'{original}, {missmatches}, {missing_waz}, {missing_oth}, {extra_waz}, {extra_oth}\n'
-
-            csv_output_path.write_text(csv_str)
         # Notify the user
         print(
             f'{wazuh_output_path.name} and {other_output_path.name} -> {output_path}')
 
     except KeyboardInterrupt:
         print('Interrupted by the user')
-    # except Exception as e:
-    #     print(f'Unexpected error: {e}')
+    except Exception as e:
+        print(f'Unexpected error: {e}')
