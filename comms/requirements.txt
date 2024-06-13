@@ -1,5 +1,6 @@
 cryptography
 fastapi
+opensearch-py
 pydantic
 PyJWT
 uvicorn

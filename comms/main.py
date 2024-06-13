@@ -40,17 +40,16 @@ def commands_generator(agent_ids: List[str]):
 
 def generate_commands(agent_ids: List[str]):
     print("Generating new command", file=sys.stderr)
-
-    if len(agent_ids) == 0:
-        ## Mock ID to send the command to at least one agent
-        agent_ids = ["018fe477-31c8-7580-ae4a-e0b36713eb05"]
-
     command = {"id": "1", "type": "restart"}
     for uuid in agent_ids:
         commands_manager.add_command(uuid, command)
 
 if __name__ == "__main__":
     args = get_script_arguments()
+
+    if not args.agent_ids:
+        ## Mock ID to send the command to at least one agent
+        args.agent_ids = "018fe477-31c8-7580-ae4a-e0b36713eb05"
 
     commands_generator = threading.Thread(target=commands_generator, args=[args.agent_ids.split(",")])
     commands_generator.start()

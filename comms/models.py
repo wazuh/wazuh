@@ -12,7 +12,7 @@ class Event(BaseModel):
 
 class Login(BaseModel):
     uuid: str
-    password: str
+    key: str
 
 class PostEventsBody(BaseModel):
     events: List[Event]
