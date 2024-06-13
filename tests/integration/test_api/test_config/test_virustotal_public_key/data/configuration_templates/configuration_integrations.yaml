@@ -1,0 +1,18 @@
+- blocks:
+    upload_configuration:
+      integrations:
+        virustotal:
+          public_key:
+            allow: ALLOWED
+            minimum_quota: MIN_QUOTA
+  sections:
+    - section: integration
+      elements:
+        - name:
+            value: virustotal
+        - api_key:
+            value: expected_api_key
+        - group:
+            value: syscheck
+        - alert_format:
+            value: json

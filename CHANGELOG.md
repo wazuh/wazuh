@@ -62,6 +62,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed a buffer overflow hazard in HMAC internal library. ([#19794](https://github.com/wazuh/wazuh/pull/19794))
 
+## [v4.8.1]
 
 ## [v4.8.0]
 

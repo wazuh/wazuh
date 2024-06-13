@@ -22,7 +22,7 @@ on:
         required: false
         default: ''
   push:
-    branches: 
+    branches:
       - '[0-9]+.[0-9]+.[0-9]+'
       - 'master'
     paths:
@@ -31,6 +31,7 @@ on:
 jobs:
   Upload-package-building-images:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     name: Package - Retag Docker images
 
     steps:
@@ -59,7 +60,7 @@ jobs:
         run: |
           VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
           echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV;
-    
+
       - name: Run retag script
         run: |
           if [ "${{ inputs.old_version }}" != "none" ] && [ "${{ inputs.new_version }}" != "none" ]; then

@@ -1,5 +1,5 @@
 #! /bin/bash
-set -x
+set -ex
 
 BRANCH=""
 JOBS="4"

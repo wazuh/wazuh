@@ -257,6 +257,7 @@ typedef enum wdb_stmt {
     WDB_STMT_GLOBAL_UPDATE_AGENT_INFO,
     WDB_STMT_GLOBAL_GET_GROUPS,
     WDB_STMT_GLOBAL_GET_AGENTS,
+    WDB_STMT_GLOBAL_GET_AGENTS_CONTEXT,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS,
     WDB_STMT_GLOBAL_GET_AGENTS_BY_CONNECTION_STATUS_AND_NODE,
     WDB_STMT_GLOBAL_GET_AGENT_INFO,
@@ -2248,6 +2249,17 @@ cJSON* wdb_global_get_agent_info(wdb_t *wdb, int id);
  * @retval NULL on error.
  */
 cJSON* wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
+
+/**
+ * @brief Gets every agent ID with context.
+ *        Response is send by elements.
+ *        One call of this function send all agents.
+ *
+ * @param [in] wdb The Global struct database.
+ * @retval OS_SUCCESS on success.
+ * @retval OS_INVALID on error.
+ */
+int wdb_global_get_all_agents_context(wdb_t *wdb);
 
 /**
  * @brief Checks the given ID is in the agent table.

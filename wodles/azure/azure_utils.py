@@ -371,7 +371,7 @@ def get_token(client_id: str, secret: str, domain: str, scope: str):
     auth_url = f'{URL_LOGGING}/{domain}/oauth2/v2.0/token'
     token_response = {}
     try:
-        token_response = post(auth_url, data=body).json()
+        token_response = post(auth_url, data=body, timeout=10).json()
         return token_response['access_token']
     except (ValueError, KeyError):
         if token_response['error'] == 'unauthorized_client':

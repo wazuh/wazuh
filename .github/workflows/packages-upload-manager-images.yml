@@ -1,4 +1,6 @@
 run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ inputs.docker_image_tag }}
+name: Package - Upload manager images amd64
+
 on:
   workflow_dispatch:
     inputs:
@@ -26,6 +28,7 @@ on:
 jobs:
   Upload-package-building-images:
     runs-on: ubuntu-latest
+    timeout-minutes: 140
     name: Package - Upload pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ inputs.docker_image_tag }}
 
     steps:

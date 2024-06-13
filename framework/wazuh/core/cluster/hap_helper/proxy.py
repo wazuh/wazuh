@@ -103,7 +103,7 @@ class ProxyAPI:
             In case of errors communicating with the HAProxy REST API.
         """
         try:
-            async with httpx.AsyncClient(verify=False) as client:
+            async with httpx.AsyncClient() as client:
                 response = await client.get(
                     join(f'{self.protocol}://', f'{self.address}:{self.port}', self.HAP_ENDPOINT, 'health'),
                     auth=(self.username, self.password),
@@ -156,7 +156,7 @@ class ProxyAPI:
         query_parameters.update({'version': self.version})
 
         try:
-            async with httpx.AsyncClient(verify=False, follow_redirects=True) as client:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.request(
                     method=method.value,
                     url=uri,

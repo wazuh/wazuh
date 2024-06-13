@@ -441,8 +441,6 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
             if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
-            mdebug1("Running script with args: %s", exec_full_cmd);
-
             char **cmd = OS_StrBreak(' ', exec_full_cmd, 9);
 
             if (cmd) {

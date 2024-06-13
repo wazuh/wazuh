@@ -11,12 +11,16 @@ import re
 import subprocess
 import sys
 
+if sys.platform == 'win32':
+    import win32con
+
 from typing import Any
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.modules.fim.patterns import MONITORING_PATH
+from wazuh_testing.constants.platforms import WINDOWS, MACOS, CENTOS, UBUNTU, DEBIAN
+from wazuh_testing.modules.fim.patterns import MONITORING_PATH, EVENT_TYPE_SCAN_END
+from wazuh_testing.modules.fim.utils import create_registry, delete_registry
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.authd_simulator import AuthdSimulator
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
@@ -59,17 +63,31 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
     path = test_metadata.get('folder_to_monitor')
     amount = test_metadata.get('files_amount')
     amount = 2 if not amount else amount
+    max_retries = 3
+    retry_delay = 1
 
     if not file.exists(path):
         file.recursive_directory_creation(path)
 
     [file.write_file(Path(path, f'test{i}.log'), 'content') for i in range(amount)]
-        # file.write_file(Path(path, f'test{i}.log'), 'content')
 
     yield
 
-    [file.remove_file(Path(path, f'test{i}.log')) for i in range(amount)]
-
+    for i in range(amount):
+        retry_count = 0
+        while retry_count < max_retries:
+            try:
+                file.remove_file(Path(path, f'test{i}.log'))
+                break
+            except Exception as e:
+                print(f"Error deleting file {i}: {e}")
+                retry_count += 1
+                if retry_count == max_retries:
+                    print(f"Failed to delete file {i} after {max_retries} attempts.")
+                    break
+                else:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    sleep(retry_delay)
 
 @pytest.fixture()
 def start_monitoring() -> None:
@@ -97,19 +115,17 @@ def set_agent_config(request: pytest.FixtureRequest):
 @pytest.fixture(scope='session', autouse=True)
 def install_audit():
     """Automatically install auditd before test session on linux distros."""
-    if sys.platform == WINDOWS:
+    if sys.platform == WINDOWS or sys.platform == MACOS:
         return
 
     # Check distro
     linux_distro = distro.id()
 
-    if re.match(linux_distro, "darwin"):
-        return
-    elif re.match(linux_distro, "centos"):
+    if re.match(linux_distro, CENTOS):
         package_management = "yum"
         audit = "audit"
         option = "--assumeyes"
-    elif re.match(linux_distro, "ubuntu") or re.match(linux_distro, "debian"):
+    elif re.match(linux_distro, UBUNTU) or re.match(linux_distro, DEBIAN):
         package_management = "apt-get"
         audit = "auditd"
         option = "--yes"
@@ -139,3 +155,54 @@ def create_links_to_file(folder_to_monitor: str, file_to_monitor: str, test_meta
 
     [file.remove_file(f'test_h{i}') for i in range(hardlink_amount)]
     [file.remove_file(f'test_s{i}') for i in range(symlink_amount)]
+
+
+@pytest.fixture()
+def create_registry_key(test_metadata: dict) -> None:
+    key = win32con.HKEY_LOCAL_MACHINE
+    sub_key = test_metadata.get('sub_key')
+    arch = win32con.KEY_WOW64_64KEY if test_metadata.get('arch') == 'x64' else win32con.KEY_WOW64_32KEY
+
+    create_registry(key, sub_key, arch)
+
+    yield
+
+    delete_registry(key, sub_key, arch)
+
+
+@pytest.fixture()
+def detect_end_scan(test_metadata: dict) -> None:
+    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(timeout=60, callback=generate_callback(EVENT_TYPE_SCAN_END))
+    assert wazuh_log_monitor.callback_result
+
+
+@pytest.fixture()
+def create_paths_files(test_metadata: dict) -> str:
+    to_edit = test_metadata.get('path_or_files_to_create')
+
+    if not isinstance(to_edit, list):
+        raise TypeError(f"`files` should be a 'list', not a '{type(to_edit)}'")
+
+    created_files = []
+    for item in to_edit:
+        item_path = Path(item)
+        if item_path.exists():
+            raise FileExistsError(f"`{item_path}` already exists.")
+
+        # If file does not have suffixes, consider it a directory
+        if item_path.suffixes == []:
+            # Add a dummy file to the target directory to create the directory
+            created_files.extend(file.create_parent_directories(
+                Path(item_path).joinpath('dummy.file')))
+        else:
+            created_files.extend(file.create_parent_directories(item_path))
+
+            file.write_file(file_path=item_path, data='')
+            created_files.append(item_path)
+
+    yield to_edit
+
+    for item in to_edit:
+        item_path = Path(item)
+        file.delete_path_recursively(item_path)

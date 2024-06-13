@@ -41,10 +41,6 @@ case "$1" in
       if [ -f ${DIR}/etc/ossec.conf ]; then
         cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
       fi
-      # Save the local decoders
-      if [ -d ${DIR}/etc/decoders ]; then
-        cp -pr ${DIR}/etc/decoders ${DIR}/tmp/conffiles
-      fi
       # Save the lists
       if [ -d ${DIR}/etc/lists ]; then
         cp -pr ${DIR}/etc/lists ${DIR}/tmp/conffiles
@@ -53,18 +49,15 @@ case "$1" in
       if [ -d ${DIR}/etc/rootcheck ]; then
         cp -pr ${DIR}/etc/rootcheck ${DIR}/tmp/conffiles
       fi
-      # Save the local rules
-      if [ -d ${DIR}/etc/rules ]; then
-        cp -pr ${DIR}/etc/rules ${DIR}/tmp/conffiles
-      fi
       # Save the agent.conf from the group default
       mkdir -p ${DIR}/tmp/conffiles/shared/default
       if [ -f ${DIR}/etc/shared/default/agent.conf ]; then
         cp -p ${DIR}/etc/shared/default/agent.conf ${DIR}/tmp/conffiles/shared/default
       fi
-      # Save the client.keys
+      # Save the api.yaml
       if [ -f ${DIR}/api/configuration/api.yaml ]; then
         cp -p ${DIR}/api/configuration/api.yaml ${DIR}/tmp/conffiles
+        rm -rf ${DIR}/api/*
       fi
     ;;
 

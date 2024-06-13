@@ -38,7 +38,7 @@ LOCK_PID="${LOCK}/pid"
 # This number should be more than enough (even if it is
 # started multiple times together). It will try for up
 # to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="10"
+MAX_ITERATION="60"
 
 MAX_KILL_TRIES=600
 

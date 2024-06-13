@@ -206,7 +206,7 @@ def test_get_graph_events(mock_get, mock_update, mock_send):
 
     headers = 'headers'
     get_graph_events(url=url, headers=headers, md5_hash='', query='query', tag='tag')
-    mock_get.assert_called_with(url=url, headers=headers)
+    mock_get.assert_called_with(url=url, headers=headers, timeout=10)
     assert mock_update.call_count == num_events
     assert mock_send.call_count == num_events
 

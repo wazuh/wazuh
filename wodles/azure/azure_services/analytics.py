@@ -183,7 +183,7 @@ def get_log_analytics_events(
     """
     logging.info('Log Analytics: Sending a request to the Log Analytics API.')
     logging.debug(f"Log Analytics request - URL: {url} - Params: {body} - Headers: {headers}")
-    response = get(url, params=body, headers=headers)
+    response = get(url, params=body, headers=headers, timeout=10)
     if response.status_code == 200:
         try:
             columns = response.json()['tables'][0]['columns']

@@ -943,6 +943,11 @@ stages:
                       allow: !anybool
                   indexer:
                     allow: !anybool
+                  integrations:
+                       virustotal:
+                         public_key:
+                           allow: !anybool
+                           minimum_quota: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
