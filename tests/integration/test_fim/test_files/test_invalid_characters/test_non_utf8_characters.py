@@ -24,7 +24,6 @@ daemons:
 
 os_platform:
     - Linux
-    - macOS
     - Windows
 
 os_version:
@@ -61,14 +60,19 @@ import sys
 import pytest
 import os
 import subprocess
+import time
+
+if sys.platform == 'win32':
+    import win32con
+    from win32con import KEY_WOW64_64KEY
 
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import IGNORING_DUE_TO_INVALID_NAME, SYNC_INTEGRITY_MESSAGE
-from wazuh_testing.modules.fim.utils import get_fim_event_data
+from wazuh_testing.modules.fim.patterns import IGNORING_DUE_TO_INVALID_NAME, SYNC_INTEGRITY_MESSAGE, EVENT_TYPE_ADDED
+from wazuh_testing.modules.fim.utils import create_registry
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim import configuration
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -97,7 +101,7 @@ def test_nonUTF8(test_configuration, test_metadata, set_wazuh_configuration, con
                   truncate_monitored_files, folder_to_monitor, daemons_handler, start_monitoring):
     '''
     description: Check if the 'wazuh-syscheckd' is able to correctly detect a pathname containing an invalid
-                 character, preventing its processing and writing an error log warning of the problem.
+                 character, preventing its processing and writing a log warning.
 
     wazuh_min_version: 4.9.0
 
@@ -158,6 +162,74 @@ def test_nonUTF8(test_configuration, test_metadata, set_wazuh_configuration, con
     assert monitor.callback_result
 
     # Check Sync
+    time.sleep(5)
     file.truncate_file(WAZUH_LOG_PATH)
     monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
     assert monitor.callback_result
+
+if sys.platform == WINDOWS:
+    cases_path = Path(TEST_CASES_PATH, 'cases_registries.yaml')
+    config_path = Path(CONFIGS_PATH, 'configuration_registries.yaml')
+    test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
+    test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
+
+    @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
+    def test_invalid_registry(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
+                              set_wazuh_configuration, daemons_handler, detect_end_scan):
+        '''
+        description: Check if the 'wazuh-syscheckd' is able to correctly process a registry key name containing an invalid
+                     character.
+
+        wazuh_min_version: 4.9.0
+
+        tier: 1
+
+        parameters:
+            - test_configuration:
+                type: dict
+                brief: Configuration values for ossec.conf.
+            - test_metadata:
+                type: dict
+                brief: Test case data.
+            - configure_local_internal_options:
+                type: fixture
+                brief: Set local_internal_options.conf file.
+            - truncate_monitored_files:
+                type: fixture
+                brief: Truncate all the log files and json alerts files before and after the test execution.
+            - set_wazuh_configuration:
+                type: fixture
+                brief: Set ossec.conf configuration.
+            - daemons_handler:
+                type: fixture
+                brief: Handler of Wazuh daemons.
+            - detect_end_scan
+                type: fixture
+                brief: Check first scan end.
+
+        assertions:
+            - Verify that the FIM generate correctly an events with a new registry key.
+
+        input_description: The test cases are contained in external YAML file (cases_registries.yaml) which includes
+                           configuration parameters for the 'wazuh-syscheckd' daemon and testing directories to monitor.
+                           The configuration template is contained in another external YAML file
+                           (configuration_registries.yaml).
+
+        expected_output:
+            - r'.*Sending FIM event: (.+)$' ('added', 'modified', and 'deleted' events)
+
+        '''
+        monitor = FileMonitor(WAZUH_LOG_PATH)
+
+        # Create
+        sub_key = os.path.join(test_metadata['sub_key'], '§¨©ª«¬-®¯±²³¶¹º»¼½¾testáéíóú')
+        file.truncate_file(WAZUH_LOG_PATH)
+        create_registry(win32con.HKEY_LOCAL_MACHINE, sub_key, KEY_WOW64_64KEY)
+        monitor.start(generate_callback(EVENT_TYPE_ADDED))
+        assert monitor.callback_result
+
+        # Check Sync
+        time.sleep(5)
+        file.truncate_file(WAZUH_LOG_PATH)
+        monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
+        assert monitor.callback_result
