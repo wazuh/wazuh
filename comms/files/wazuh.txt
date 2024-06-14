@@ -1,0 +1,1 @@
+Wazuh delivers robust security monitoring and protection for your IT assets using its Security Information and Event Management (SIEM) and Extended Detection and Response (XDR) capabilities. Wazuh use cases are designed to safeguard your digital assets and enhance your organization's cybersecurity posture.
