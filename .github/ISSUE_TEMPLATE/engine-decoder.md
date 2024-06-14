@@ -1,6 +1,15 @@
-|  Integration name  | Integration type | Integration version |
-|--------------------|------------------|---------------------|
-| <integration_name> | new/update       | 1.0.0 - dev         |
+---
+name: Engine decoder issue
+about: Propose a new decoder or update an existing one.
+title: Engine - <Add/Update> <integration_name> decoder.
+labels: feed/engine-ruleset
+assignees: ''
+
+---
+
+| Wazuh version |  Integration name  | Integration type | Integration version |
+|---------------|--------------------|------------------|---------------------|
+|   X.Y.Z-rev   | <integration_name> | new/update       | 1.0.0 - dev         |
 
 
 ## Overview
