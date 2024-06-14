@@ -1176,7 +1176,6 @@ stages:
             - internal:
                 analysisd:
                   debug: !anyint
-                  decoder_order_size: !anyint
                   default_timeframe: !anyint
                   fts_list_size: !anyint
                   fts_min_size_for_str: !anyint

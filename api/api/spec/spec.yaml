@@ -73,8 +73,6 @@ x-rbac-catalog:
       description: "Reference agent groups via group ID (i.e. group:id:default)"
     'node:id':
       description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
-    'decoder:file':
-      description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
     'list:file':
       description: "Reference list files via its filename (i.e. list:file:audit-keys)"
     'rule:file':
@@ -287,30 +285,6 @@ x-rbac-catalog:
       example:
         actions: ['mitre:read']
         resources: ['*:*:*']
-        effect: "allow"
-    'decoders:read':
-      description: "Read decoders files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
-      example:
-        actions: ['decoders:read']
-        resources: ['decoder:file:*']
-        effect: "allow"
-    'decoders:update':
-      description: "Update or upload custom decoder files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['decoders:update']
-        resources: ['*:*:*']
-        effect: "allow"
-    'decoders:delete':
-      description: "Delete custom decoder files"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/decoder:file'
-      example:
-        actions: ['decoders:delete']
-        resources: ['decoder:file:local_decoder.xml']
         effect: "allow"
     'lists:read':
       description: "Read cdb lists files"
@@ -973,32 +947,6 @@ components:
               description: "Items that successfully applied the API call action"
               items:
                 $ref: '#/components/schemas/RuleFile'
-
-    AllItemsResponseDecoders:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/Decoder'
-
-    AllItemsResponseDecodersFiles:
-      allOf:
-        - $ref: '#/components/schemas/AllItemsResponse'
-        - type: object
-          required:
-            - affected_items
-          properties:
-            affected_items:
-              type: array
-              description: "Items that successfully applied the API call action"
-              items:
-                $ref: '#/components/schemas/DecoderFile'
 
     AllItemsResponseLists:
       allOf:
@@ -3877,9 +3825,7 @@ components:
         fts_written:
           type: number
           format: float
-          description: "Same as `alerts_written` but focusing in [FTS alerts]
-          (https://documentation.wazuh.com/4.4/user-manual/ruleset/ruleset-xml-syntax/decoders.html?highlight=fts
-          #fts)"
+          description: "Same as `alerts_written` but focusing in [FTS alerts]"
         hostinfo_queue_size:
           type: number
           format: float
@@ -4475,47 +4421,6 @@ components:
           type: string
           format: hash_or_empty
           description: "SHA256 checksum of the file"
-
-    # Decoders models
-    Decoder:
-      type: object
-      allOf:
-        - $ref: '#/components/schemas/DecoderFile'
-      properties:
-        name:
-          type: string
-          description: "Decoder name"
-        position:
-          type: integer
-          format: int32
-          minimum: 0
-          description: "Position of this decoder in the decoder file. The parent decoder will have position 0, the
-          following defined decoder will have position 1, and so on"
-        details:
-          type: object
-          description: "Decoder definition fields"
-          properties:
-            program_name:
-              type: object
-              nullable: true
-            parent:
-              type: string
-            prematch:
-              type: object
-            regex:
-              type: object
-              items:
-                type: string
-            order:
-              type: string
-            accumulate:
-              type: boolean
-              nullable: true
-
-    DecoderFile:
-      allOf:
-        - $ref: '#/components/schemas/RulesetFile'
-        - $ref: '#/components/schemas/RulesetStatus'
 
     # Syscollector models
     SyscollectorHardware:
@@ -5232,11 +5137,6 @@ components:
         </tr>
         <tr>
         <td>analysis</td>
-        <td>decoders</td>
-        <td><code>&lt;decoder&gt;</code></td>
-        </tr>
-        <tr>
-        <td>analysis</td>
         <td>internal</td>
         <td><code>&lt;analysisd&gt;</code></td>
         </tr>
@@ -5386,7 +5286,6 @@ components:
         - alerts
         - command
         - rules
-        - decoders
         - auth
         - logging
         - reports
@@ -5432,15 +5331,6 @@ components:
           enum:
             - wazuh-analysisd
             - wazuh-remoted
-    decoder_name:
-      in: query
-      name: decoder_names
-      description: "Decoder name"
-      schema:
-        type: array
-        items:
-          type: string
-          format: names
     description:
       in: query
       name: description
@@ -6283,7 +6173,7 @@ components:
     field:
       in: query
       name: field
-      description: "Indicate a section child. E.g, fields for *ruleset* section are: decoder_dir, rule_dir, etc"
+      description: "Indicate a section child. E.g, fields for *ruleset* section are: rule_dir, etc"
       schema:
         type: string
         format: names
@@ -6922,7 +6812,6 @@ components:
           - 'agent:id'
           - 'group:id'
           - 'node:id'
-          - 'decoder:file'
           - 'list:file'
           - 'rule:file'
           - 'policy:id'
@@ -6968,7 +6857,7 @@ components:
     xml_filename:
       in: query
       name: filename
-      description: "Filter by filename of one or more rule or decoder files."
+      description: "Filter by filename of one or more rule files."
       schema:
         type: array
         items:
@@ -6977,7 +6866,7 @@ components:
     xml_filename_path:
       in: path
       name: filename
-      description: "Filename (rule or decoder) to download/upload/edit file."
+      description: "Filename (rule) to download/upload/edit file."
       required: true
       schema:
         type: string
@@ -7003,8 +6892,6 @@ tags:
     description: "Retrieve information from CIS-CAT scans"
   - name: Cluster
     description: "Wazuh cluster and nodes management"
-  - name: Decoders
-    description: "Decoders management"
   - name: Experimental
     description: "Not ready for production endpoints. Use with caution"
   - name: Groups
@@ -7012,7 +6899,7 @@ tags:
   - name: Lists
     description: "CDB lists management"
   - name: Logtest
-    description: "Logtest: testing and verification tool for rules and decoders"
+    description: "Logtest: testing and verification tool for rules"
   - name: Manager
     description: "Wazuh manager management"
   - name: MITRE
@@ -10329,9 +10216,6 @@ paths:
                           command: "last -n 20"
                           frequency: 360
                       ruleset:
-                        decoder_dir:
-                          - ruleset/decoders
-                          - etc/decoders
                         rule_dir:
                           - ruleset/rules
                           - etc/rules
@@ -11634,7 +11518,6 @@ paths:
                       name: "wazuh"
                       node: "master-node"
                     full_log: "ERROR"
-                    decoder:
                     location: "/var/log/syslog"
                   alert: false
                   codemsg: 1
@@ -14608,455 +14491,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /decoders:
-    get:
-      tags:
-        - Decoders
-      summary: "List decoders"
-      description: "Return information about all decoders included in ossec.conf. This information include decoder's
-      route, decoder's name, decoder's file among others"
-      operationId: api.controllers.decoder_controller.get_decoders
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/decoder_name'
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/filename'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/statusRLDParam'
-      responses:
-        '200':
-          description: "List of decoders included in ossec.conf"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseDecoders'
-              example:
-                data:
-                  affected_items:
-                    - filename: "0005-wazuh_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: wazuh
-                      position: 0
-                      details:
-                        prematch:
-                          pattern: "^wazuh: "
-                    - filename: "0005-wazuh_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: agent-buffer
-                      position: 1
-                      details:
-                        parent: wazuh
-                        prematch:
-                          pattern: "^wazuh: "
-                          offset: after_parent
-                        regex:
-                          pattern: "^ '(\\S+)'."
-                          offset: after_prematch
-                        order: level
-                  total_affected_items: 1140
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected decoders were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /decoders/files:
-    get:
-      tags:
-        - Decoders
-      summary: "Get files"
-      description: "Return information about all decoders files used in Wazuh. This information include decoder's file,
-      decoder's route and decoder's status among others"
-      operationId: api.controllers.decoder_controller.get_decoders_files
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/xml_filename'
-        - $ref: '#/components/parameters/get_dirnames_path'
-        - $ref: '#/components/parameters/statusRLDParam'
-      responses:
-        '200':
-          description: "List of decoders files"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseDecodersFiles'
-              example:
-                data:
-                  affected_items:
-                    - filename: 0005-wazuh_decoders.xml
-                      relative_dirname: ruleset/decoders
-                      status: enabled
-                    - filename: 0006-json_decoders.xml
-                      relative_dirname: ruleset/decoders
-                      status: enabled
-                    - filename: 0010-active-response_decoders.xml
-                      relative_dirname: ruleset/decoders
-                      status: enabled
-                  total_affected_items: 3
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All decoder files were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /decoders/files/{filename}:
-    get:
-      tags:
-        - Decoders
-      summary: "Get decoders file content"
-      description: "Get the content of a specified decoder file"
-      operationId: api.controllers.decoder_controller.get_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/raw'
-        - $ref: '#/components/parameters/default_ruleset_path'
-      responses:
-        '200':
-          description: "Decoder content"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - decoder:
-                        - "@name": wazuh
-                          prematch: "^wazuh:"
-                        - "@name": agent-buffer
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^Agent buffer:"
-                          regex:
-                            "@offset": after_prematch
-                            "#text": "^ '(\\S+)'."
-                          order: level
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^Upgrade procedure |^Custom installation"
-                          regex:
-                            "@offset": after_prematch
-                            "#text": on agent (\d\d\d)\s\((\S+)\):\s(\w+)
-                          order: agent.id, agent.name, status
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          regex: aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$
-                          order: error
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          regex: started.\sCurrent\sversion:\sWazuh\s(\.+)$
-                          order: agent.cur_version
-                        - "@name": agent-upgrade
-                          parent: wazuh
-                          regex: succeeded.\sNew\sversion:\sWazuh\s(\.+)$
-                          order: agent.new_version
-                        - "@name": agent-restart
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^Invalid remote configuration:"
-                          regex:
-                            "@offset": after_prematch
-                            "#text": "^ '(\\S+)'."
-                          order: module
-                        - "@name": fim-state
-                          parent: wazuh
-                          prematch:
-                            "@offset": after_parent
-                            "#text": "^FIM DB:"
-                          plugin_decoder:
-                            "@offset": after_prematch
-                            "#text": JSON_Decoder
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Selected decoder was returned"
-                error: 0
-            application/xml:
-              schema:
-                type: string
-              example: |
-                <!--
-                  -  Wazuh decoders
-                  -  Created by Wazuh, Inc.
-                  -  Copyright (C) 2015, Wazuh Inc.
-                  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
-                -->
-                <decoder name="wazuh">
-                  <prematch>^wazuh: </prematch>
-                </decoder>
-                <decoder name="agent-buffer">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^Agent buffer:</prematch>
-                  <regex offset="after_prematch">^ '(\S+)'.</regex>
-                  <order>level</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^Upgrade procedure |^Custom installation </prematch>
-                  <regex offset="after_prematch">on agent (\d\d\d)\s\((\S+)\):\s(\w+)</regex>
-                  <order>agent.id, agent.name, status</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <regex>aborted:\s(\.+)$|failed:\s(\.+)$|lost:\s(\.+)$</regex>
-                  <order>error</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <regex>started.\sCurrent\sversion:\sWazuh\s(\.+)$</regex>
-                  <order>agent.cur_version</order>
-                </decoder>
-                <decoder name="agent-upgrade">
-                  <parent>wazuh</parent>
-                  <regex>succeeded.\sNew\sversion:\sWazuh\s(\.+)$</regex>
-                  <order>agent.new_version</order>
-                </decoder>
-                <decoder name="agent-restart">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^Invalid remote configuration:</prematch>
-                  <regex offset="after_prematch">^ '(\S+)'.</regex>
-                  <order>module</order>
-                </decoder>
-                <decoder name="fim-state">
-                  <parent>wazuh</parent>
-                  <prematch offset="after_parent">^FIM DB: </prematch>
-                  <plugin_decoder offset="after_prematch">JSON_Decoder</plugin_decoder>
-                </decoder>
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    put:
-      tags:
-        - Decoders
-      summary: "Update decoders file"
-      description: "Upload or replace a user decoder file content"
-      operationId: api.controllers.decoder_controller.put_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:update'
-        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-        - $ref: '#/components/parameters/overwrite'
-      requestBody:
-        description: "Content of the decoder to be uploaded"
-        required: true
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/decoders/new_decoder.xml"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Decoder was successfully uploaded"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-    delete:
-      tags:
-      - Decoders
-      summary: "Delete decoders file"
-      description: "Delete a specified decoder file"
-      operationId: api.controllers.decoder_controller.delete_file
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:delete'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/xml_filename_path'
-      responses:
-        '200':
-          description: "Confirmation message"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - "etc/decoders/new_decoder.xml"
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "Decoder file was successfully deleted"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /decoders/parents:
-    get:
-      tags:
-        - Decoders
-      summary: "Get parent decoders"
-      description: "Return information about all parent decoders. A parent decoder is a decoder used as base of other
-      decoders"
-      operationId: api.controllers.decoder_controller.get_decoders_parents
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/decoders:read'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-      responses:
-        '200':
-          description: "List of parent decoders"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponse'
-              example:
-                data:
-                  affected_items:
-                    - filename: "0005-wazuh_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: wazuh
-                      position: 0
-                      details:
-                        prematch:
-                          pattern: "^wazuh: "
-                    - filename: "0006-json_decoders.xml"
-                      relative_dirname: "ruleset/decoders"
-                      status: enabled
-                      name: json
-                      position: 0
-                      details:
-                        prematch:
-                          patten: ^{\\s*\"
-                        plugin_decoder: JSON_Decoder
-                  total_affected_items: 182
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All selected decoders were returned"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /experimental/rootcheck:
     delete:
       tags:
@@ -17233,8 +16667,6 @@ paths:
                     description: "Reference agent groups via group ID (i.e. group:id:default)"
                   "node:id":
                     description: "Reference cluster nodes via node ID (i.e. node:id:worker1)"
-                  "decoder:file":
-                    description: "Reference decoder files via its path (i.e. decoder:file:0005-wazuh_decoders.xml)"
                   "list:file":
                     description: "Reference list files via its filename (i.e. list:file:audit-keys)"
                   "rule:file":

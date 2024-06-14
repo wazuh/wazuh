@@ -829,7 +829,7 @@
       "path": ["etc/ossec.conf"]
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml"]},
     "allowed_resources": [["etc/ossec.conf"]]
   },
   {
@@ -851,8 +851,8 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml"]},
+    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml"]]
   },
   {
     "rbac": {
@@ -873,7 +873,7 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml"]},
     "allowed_resources": [["etc/rules/local_rules.xml"]]
   },
   {
@@ -895,8 +895,8 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
-    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]]
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml"]},
+    "allowed_resources": [["etc/ossec.conf", "etc/rules/local_rules.xml"]]
   },
   {
     "rbac": {
@@ -912,7 +912,7 @@
       "path": null
     },
     "fake_system_resources": {"node:id:*": ["master-node", "worker1", "worker2"],
-      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml", "etc/decoders/local_decoders.xml"]},
+      "file:path:*": ["etc/ossec.conf", "etc/rules/local_rules.xml"]},
     "allowed_resources": [[]]
   },
   {
