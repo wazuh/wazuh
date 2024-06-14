@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
 from argparse import ArgumentParser
 from typing import Callable
