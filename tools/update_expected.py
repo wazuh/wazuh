@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
 from argparse import ArgumentParser
 from typing import Callable
@@ -74,7 +76,8 @@ if __name__ == '__main__':
         config_path = environment / 'engine/general.conf'
 
         # Start the engine
-        engine_command = [binary, '--config', str(config_path), 'server', 'start']
+        engine_command = [binary, '--config',
+                          str(config_path), 'server', 'start']
         print(f'Starting engine with command: {" ".join(engine_command)}')
         engine = subprocess.Popen(
             engine_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
