@@ -96,6 +96,17 @@ INSTANTIATE_TEST_SUITE_P(
                12,
                getFloatParser,
                {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "-3.40282e38",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setFloat(float_t(-3.40282e+38), json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               11,
+               getFloatParser,
+               {NAME, TARGET, {}, {}}),
         ParseT(SUCCESS, "42    ", j(fmt::format(R"({{"{}": 42}})", TARGET.substr(1))), 2, getFloatParser, {NAME, TARGET, {}, {}}),
         ParseT(
             SUCCESS, "-42    ", j(fmt::format(R"({{"{}": -42}})", TARGET.substr(1))), 3, getFloatParser, {NAME, TARGET, {}, {}}),
@@ -156,6 +167,17 @@ INSTANTIATE_TEST_SUITE_P(
                    return expected;
                }(),
                5,
+               getDoubleParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "10E3",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setDouble(double_t(10000), json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               4,
                getDoubleParser,
                {NAME, TARGET, {}, {}}),
         ParseT(SUCCESS,
@@ -239,6 +261,17 @@ INSTANTIATE_TEST_SUITE_P(
                    return expected;
                }(),
                5,
+               getScaledFloatParser,
+               {NAME, TARGET, {}, {}}),
+        ParseT(SUCCESS,
+               "3e3",
+               []()
+               {
+                   json::Json expected {};
+                   expected.setDouble(double_t(3000), json::Json::formatJsonPath(TARGET.substr(1)));
+                   return expected;
+               }(),
+               3,
                getScaledFloatParser,
                {NAME, TARGET, {}, {}}),
         ParseT(SUCCESS,
