@@ -55,7 +55,7 @@ if __name__ == "__main__":
     commands_generator.start()
 
     try:
-        uvicorn.run(app, host=args.host, port=args.port)
+        uvicorn.run(app, host=args.host, port=args.port, workers=4)
     except Exception as e:
         print(f"Internal error: {e}")
         exit(1)
