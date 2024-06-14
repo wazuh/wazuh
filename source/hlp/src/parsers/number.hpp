@@ -80,7 +80,7 @@ syntax::Parser getSynParser()
     else
     {
         const auto synP = opt(char_('-')) & many1(digit()) & opt(char_('.')) & many(digit())
-                          & opt((char_('e') | char_('E')) & (char_('+') | char_('-')) & many1(digit()));
+                          & opt((char_('e') | char_('E')) & opt(char_('+') | char_('-')) & many1(digit()));
         return synP;
     }
 }
