@@ -6,6 +6,6 @@ services:
     command: |
       --host=0.0.0.0
       --port=5000
-      --agent_ids="018fe477-31c8-7580-ae4a-e0b36713eb05,0190029c-610d-77d4-8dbf-9fe7c2c955fe"
+      --agent_ids="018fe477-31c8-7580-ae4a-e0b36713eb05,019008d7-1575-7375-b54f-ef43e393517ef"
     ports:
       - 5000:5000

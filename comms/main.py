@@ -7,7 +7,7 @@ from typing import List
 import uvicorn
 
 from api import router
-from commands_manager import commands_manager
+from commands_manager import generate_commands
 
 app = FastAPI()
 app.include_router(router)
@@ -27,35 +27,13 @@ def get_script_arguments() -> Namespace:
 
     return parser.parse_args()
 
-def commands_generator(agent_ids: List[str]):
-    try:
-        generate_commands(agent_ids)
-
-        while True:
-            sleep(10)
-            generate_commands(agent_ids)
-    except Exception as e:
-        print(f"Internal error: {e}")
-        exit(1)
-
-def generate_commands(agent_ids: List[str]):
-    print("Generating new command", file=sys.stderr)
-    command = {"id": "1", "type": "restart"}
-    for uuid in agent_ids:
-        commands_manager.add_command(uuid, command)
-
 if __name__ == "__main__":
     args = get_script_arguments()
 
-    if not args.agent_ids:
-        ## Mock ID to send the command to at least one agent
-        args.agent_ids = "018fe477-31c8-7580-ae4a-e0b36713eb05"
-
-    commands_generator = threading.Thread(target=commands_generator, args=[args.agent_ids.split(",")])
-    commands_generator.start()
+    generate_commands(args.agent_ids)
 
     try:
-        uvicorn.run(app, host=args.host, port=args.port, workers=4)
+        uvicorn.run("main:app", host=args.host, port=args.port, workers=4)
     except Exception as e:
         print(f"Internal error: {e}")
         exit(1)
