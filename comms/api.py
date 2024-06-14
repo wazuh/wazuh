@@ -23,7 +23,7 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())]) -> GetComman
     if commands:
         return GetCommandsResponse(commands=commands)
     else:
-        raise HTTPException(status.HTTP_408_REQUEST_TIMEOUT, Message(message="No commands found"))
+        raise HTTPException(status.HTTP_408_REQUEST_TIMEOUT, {"message": "No commands found"})
 
 @router.get("/download", dependencies=[Depends(JWTBearer())])
 async def download(file_name: str):
@@ -41,10 +41,12 @@ async def login(login: Login):
     try:
         data = indexer_client.get(index=INDEX_NAME, id=login.uuid)
     except opensearchpy.exceptions.NotFoundError:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, Message(message="UUID not found"))
+        raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": "UUID not found"})
+    except opensearchpy.exceptions.ConnectionError as exc:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": f"Couldn't connect to the indexer: {exc}"})
 
     if not compare_digest(data["_source"]["key"], login.key):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, Message(message="Invalid Key"))
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, {"message": "Invalid Key"})
 
     token = generate_token(login.uuid)
     return TokenResponse(token=token)
