@@ -29,6 +29,11 @@ except ModuleNotFoundError:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(ERR_NO_REQUEST_MODULE)
 
+try:
+    requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
+except Exception as e:
+    print(f"Failed to disable SSL warnings: {e}")
+
 # ossec.conf configuration structure
 # <integration>
 #  <name>shuffle</name>
