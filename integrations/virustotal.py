@@ -223,33 +223,26 @@ def request_virustotal_info(alert: any, apikey: str):
     }
 
     # Check if VirusTotal has any info about the hash
-    if in_database(vt_response_data, hash):
+    if vt_response_data.get('attributes', {}).get('last_analysis_stats', {}).get('malicious') != None:
         alert_output['virustotal']['found'] = 1
 
     # Info about the file found in VirusTotal
     if alert_output['virustotal']['found'] == 1:
-        if vt_response_data['positives'] > 0:
+        if vt_response_data['attributes']['last_analysis_stats']['malicious'] > 0:
             alert_output['virustotal']['malicious'] = 1
 
         # Populate JSON Output object with VirusTotal request
         alert_output['virustotal'].update(
             {
-                'sha1': vt_response_data['sha1'],
-                'scan_date': vt_response_data['scan_date'],
-                'positives': vt_response_data['positives'],
-                'total': vt_response_data['total'],
-                'permalink': vt_response_data['permalink'],
+                'sha1': vt_response_data['attributes']['sha1'],
+                'scan_date': vt_response_data['attributes']['last_analysis_date'],
+                'positives': vt_response_data['attributes']['last_analysis_stats']['malicious'],
+                'total': vt_response_data['attributes']['last_analysis_stats']['malicious'],
+                'permalink': f"https://www.virustotal.com/gui/file/{alert['syscheck']['md5_after']}/detection",
             }
         )
 
     return alert_output
-
-
-def in_database(data, hash):
-    result = data['response_code']
-    if result == 0:
-        return False
-    return True
 
 
 def query_api(hash: str, apikey: str) -> any:
@@ -260,7 +253,7 @@ def query_api(hash: str, apikey: str) -> any:
     hash : str
         Hash need it for parameters
     apikey: str
-        Authentication API
+        Authentication API key
 
     Returns
     -------
@@ -272,29 +265,30 @@ def query_api(hash: str, apikey: str) -> any:
     Exception
         If the status code is different than 200.
     """
-    params = {'apikey': apikey, 'resource': hash}
-    headers = {'Accept-Encoding': 'gzip, deflate', 'User-Agent': 'gzip,  Python library-client-VirusTotal'}
+    headers = {
+        "accept": "application/json",
+        'x-apikey': apikey
+    }
 
     debug('# Querying VirusTotal API')
     response = requests.get(
-        'https://www.virustotal.com/vtapi/v2/file/report', params=params, headers=headers, timeout=timeout
+        f'https://www.virustotal.com/api/v3/files/{hash}', headers=headers, timeout=timeout
     )
 
     if response.status_code == 200:
         json_response = response.json()
-        vt_response_data = json_response
-        return vt_response_data
+        return json_response['data']
     else:
         alert_output = {}
         alert_output['virustotal'] = {}
         alert_output['integration'] = 'virustotal'
 
-        if response.status_code == 204:
+        if response.status_code == 429:
             alert_output['virustotal']['error'] = response.status_code
             alert_output['virustotal']['description'] = 'Error: Public API request rate limit reached'
             send_msg(alert_output)
             raise Exception('# Error: VirusTotal Public API request rate limit reached')
-        elif response.status_code == 403:
+        elif response.status_code == 401:
             alert_output['virustotal']['error'] = response.status_code
             alert_output['virustotal']['description'] = 'Error: Check credentials'
             send_msg(alert_output)
