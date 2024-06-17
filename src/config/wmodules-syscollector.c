@@ -114,7 +114,7 @@ int wm_syscollector_read(const OS_XML *xml, XML_NODE node, wmodule *module) {
             }
 
             if (syscollector->interval < W_MINUTE_SECONDS) {
-                mwarn("The scan interval value '%ld second/s' is too small. Option set to 60 seconds.");
+                mwarn("The scan interval value '%d seconds' is too small. Option set to 60 seconds.", syscollector->interval);
                 syscollector->interval = W_MINUTE_SECONDS;
             }
         } else if (!strcmp(node[i]->element, XML_SCAN_ON_START)) {
