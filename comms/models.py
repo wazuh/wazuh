@@ -1,20 +1,20 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Dict
 
 class Command(BaseModel):
     id: int
     type: str
+
+class Credentials(BaseModel):
+    uuid: str
+    key: str
 
 class Event(BaseModel):
     id: int
     data: str
     timestamp: int
 
-class Login(BaseModel):
-    uuid: str
-    key: str
-
-class StatelessEventsBody(BaseModel):
+class EventsBody(BaseModel):
     events: List[Event]
 
 class GetCommandsResponse(BaseModel):
@@ -22,6 +22,3 @@ class GetCommandsResponse(BaseModel):
 
 class TokenResponse(BaseModel):
     token: str
-
-class Message(BaseModel):
-    message: str

@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from hmac import compare_digest
 import json
 import opensearchpy
@@ -8,7 +8,7 @@ import os
 from typing import Annotated, List
 
 from auth import JWTBearer, generate_token, decode_token
-from models import Command, Login, GetCommandsResponse, Message, StatelessEventsBody, TokenResponse
+from models import Command, Credentials, GetCommandsResponse, EventsBody, TokenResponse
 from opensearch import create_indexer_client, INDEX_NAME
 from redis_client import create_redis_client
 
@@ -46,35 +46,41 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())]) -> GetComman
         uuid = decode_token(token)["uuid"]
     except Exception as exc:
         raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": str(exc)})
-    
+
     commands = await fetch_commands(uuid)
     if commands:
         return GetCommandsResponse(commands=commands)
     else:
         raise HTTPException(status.HTTP_408_REQUEST_TIMEOUT, {"message": "No commands found"})
 
-@router.get("/download", dependencies=[Depends(JWTBearer())])
-async def download(file_name: str):
+@router.get("/files", dependencies=[Depends(JWTBearer())])
+async def get_files(file_name: str):
     path = os.path.join(BASE_DIR, "files", file_name)
     return FileResponse(path, media_type="application/octet-stream", filename=file_name)
 
 @router.post("/events/stateless", dependencies=[Depends(JWTBearer())])
-async def post_stateless_events(body: StatelessEventsBody):
+async def post_stateless_events(body: EventsBody):
     # TODO: send event to the engine
     _ = body.events
-    return Message(message="Events received")
+    return Response(status_code=status.HTTP_200_OK)
 
-@router.post("/login")
-async def login(login: Login):
+@router.post("/events/stateful", dependencies=[Depends(JWTBearer())])
+async def post_stateful_events(body: EventsBody):
+    # TODO: send event to the indexer
+    _ = body.events
+    return Response(status_code=status.HTTP_200_OK)
+
+@router.post("/authentication")
+async def authentication(creds: Credentials):
     try:
-        data = indexer_client.get(index=INDEX_NAME, id=login.uuid)
+        data = indexer_client.get(index=INDEX_NAME, id=creds.uuid)
     except opensearchpy.exceptions.NotFoundError:
         raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": "UUID not found"})
     except opensearchpy.exceptions.ConnectionError as exc:
         raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": f"Couldn't connect to the indexer: {exc}"})
 
-    if not compare_digest(data["_source"]["key"], login.key):
+    if not compare_digest(data["_source"]["key"], creds.key):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, {"message": "Invalid Key"})
 
-    token = generate_token(login.uuid)
+    token = generate_token(creds.uuid)
     return TokenResponse(token=token)
