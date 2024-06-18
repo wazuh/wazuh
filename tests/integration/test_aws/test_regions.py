@@ -108,8 +108,10 @@ def test_regions(
     only_logs_after = metadata['only_logs_after']
     regions = metadata['regions']
     expected_results = metadata['expected_results']
-    pattern = f".*DEBUG: \+\+\+ No logs to process in bucket: {RANDOM_ACCOUNT_ID}/{regions}"
-
+    pattern = ( 
+        f".*DEBUG: \+\+\+ WARNING: Invalid region '{regions}'.*"
+        f"DEBUG: \+\+\+ No logs to process in bucket: {RANDOM_ACCOUNT_ID}/{regions}"
+    )
     parameters = [
         'wodles/aws/aws-s3',
         '--bucket', bucket_name,
