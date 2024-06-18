@@ -1,0 +1,23 @@
+# Name of the helper function
+name: rename
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    source: reference # includes only references (their names start with $)
+
+target_field:
+  type: object
+  is_array: false
+
+test:
+  - arguments:
+      1: 42
+      target_field: elapsed_time
+    should_pass: false
+    expected: elapsed_time
+    description: Target field 'target_field' already exists

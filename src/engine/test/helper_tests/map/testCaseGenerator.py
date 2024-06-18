@@ -62,6 +62,8 @@ def convert_string_to_type(str_type: str):
         return float
     elif str_type == "boolean":
         return bool
+    elif str_type == "object":
+        return json
 
 
 def load_yaml(file_path):
@@ -183,6 +185,8 @@ def generate_random_value(type_, allowed_values, is_array):
             )
         elif type_ == list:
             return [1, 23, 56, 7]
+        elif type_ == json:
+            return {"key": "value"}
     else:
         return random.choice(allowed_values)
 
@@ -322,7 +326,8 @@ def different_sources(yaml_data):
                 allowed_values,
                 True,
             )
-            if isinstance(argument, dict):
+
+            if isinstance(argument, dict) and "name" in argument:
                 current_arguments.append(f"$eventJson.{argument['name']}")
             else:
                 current_arguments.append(argument)
@@ -439,7 +444,7 @@ def different_types_references(yaml_data):
     helper = None
     types = get_types(yaml_data)
     is_array = get_is_array(yaml_data)
-    all_types = [str, int, float, list, bool]
+    all_types = [str, int, float, list, bool, json]
 
     for i in range(len(types)):
         allowed_values = get_allowed_values(yaml_data, i)
@@ -895,25 +900,89 @@ def generate_unit_test(yaml_data):
             input = {}
             new_test = {}
             test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
-            for (id, value), source in zip(arguments_list, case):
+            if not any(isinstance(item[1], dict) and ("source" in item[1]) for item in arguments_list):
+                combined = list(itertools.zip_longest(arguments_list, case, fillvalue=None))
+                for (id, value), source in combined:
+                    # Check allowed values
+                    if allowed_values:
+                        if id == index_allowes_value + 1:
+                            if value not in allowed_values:
+                                print(
+                                    f"Value {value} not allowed in the parameter number {index_allowes_value + 1}"
+                                )
+                                sys.exit(1)
 
-                # Check allowed values
-                if allowed_values:
-                    if id == index_allowes_value + 1:
-                        if value not in allowed_values:
-                            print(
-                                f"Value {value} not allowed in the parameter number {index_allowes_value + 1}"
-                            )
-                            sys.exit(1)
+                    if source == "value":
+                        all_arguments.append(json.dumps(value))
+                    else:
+                        reference_counter = reference_counter + 1
+                        reference = {"name": f"ref{reference_counter}", "value": value}
+                        input[reference["name"]] = reference["value"]
+                        all_arguments.append(f"$eventJson.{reference['name']}")
 
-                if source == "value":
-                    all_arguments.append(json.dumps(value))
+                helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
+
+                if not input:
+                    normalize_list = [{"map": [{"helper": helper}]}]
                 else:
-                    reference_counter = reference_counter + 1
-                    reference = {"name": f"ref{reference_counter}", "value": value}
-                    input[reference["name"]] = reference["value"]
-                    all_arguments.append(f"$eventJson.{reference['name']}")
+                    normalize_list = [
+                        {
+                            "map": [
+                                {"eventJson": "parse_json($event.original)"},
+                                {"helper": helper},
+                            ]
+                        }
+                    ]
+                    new_test = {
+                        "should_pass": test.get("should_pass", None),
+                        "expected": test.get("expected", False),
+                        "skipped": test.get("skipped", None),
+                        "input": input,
+                        "id": increase_id(),
+                    }
 
+                asset_definition = {
+                    "name": "decoder/test/0",
+                    "normalize": normalize_list,
+                }
+                test_data["assets_definition"] = asset_definition
+
+                if new_test:
+                    test_data["test_cases"].append(new_test)
+                else:
+                    test_data["should_pass"] = test.get("should_pass", None)
+                    test_data["id"] = increase_id()
+                    test_data["skipped"] = test.get("skipped", False)
+                    test_data["expected"] = test.get("expected", None)
+
+                test_data["description"] = test["description"]
+
+                if len(test_data["test_cases"]) == 0:
+                    del test_data["test_cases"]
+
+                tests["run_test"].append(test_data)
+
+    for test in yaml_data["test"]:
+        arguments_list = list(test["arguments"].items())
+        if any(isinstance(item[1], dict) for item in arguments_list):
+            all_arguments = []
+            normalize_list = []
+            input = {}
+            new_test = {}
+            test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
+            for id, data in arguments_list:
+                if isinstance(data, dict) and "source" in data:
+                    if data["source"] == "value":
+                        all_arguments.append(json.dumps(data["value"]))
+                    else:
+                        reference_counter = reference_counter + 1
+                        reference = {"name": f"ref{reference_counter}", "value": data["value"]}
+                        if data["value"] is not None:
+                            input[reference["name"]] = reference["value"]
+                        all_arguments.append(f"$eventJson.{reference['name']}")
+
+            if len(all_arguments) == 0:
+                break
             helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
 
             if not input:
@@ -928,8 +997,9 @@ def generate_unit_test(yaml_data):
                     }
                 ]
                 new_test = {
-                    "should_pass": test["should_pass"],
-                    "expected": test.get("expected", None),
+                    "should_pass": test.get("should_pass", None),
+                    "expected": test.get("expected", False),
+                    "skipped": test.get("skipped", None),
                     "input": input,
                     "id": increase_id(),
                 }
@@ -943,8 +1013,9 @@ def generate_unit_test(yaml_data):
             if new_test:
                 test_data["test_cases"].append(new_test)
             else:
-                test_data["should_pass"] = test["should_pass"]
+                test_data["should_pass"] = test.get("should_pass", None)
                 test_data["id"] = increase_id()
+                test_data["skipped"] = test.get("skipped", False)
                 test_data["expected"] = test.get("expected", None)
 
             test_data["description"] = test["description"]

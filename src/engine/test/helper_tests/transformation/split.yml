@@ -1,0 +1,32 @@
+# Name of the helper function
+name: split
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    source: reference # Includes only references (their names start with $)
+  2:
+    type: string  # Accept only string
+    source: value # includes only values
+    allowed_values:
+      - '|'
+
+target_field:
+  type: string
+  is_array: false
+
+test:
+  - arguments:
+      1: "val 1 | val 2 | val 3"
+      2: '|'
+      target_field: ""
+    should_pass: true
+    expected:
+      - "val 1 "
+      - " val 2 "
+      - " val 3"
+    description: Success split

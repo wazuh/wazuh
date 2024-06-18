@@ -1,0 +1,27 @@
+# Name of the helper function
+name: delete
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+target_field:
+  type: all
+  is_array: false
+
+test:
+  - arguments:
+      target_field: -- Hi wazuh! --
+    should_pass: true
+    expected: ""
+    description: Success delete
+  - arguments:
+      target_field:
+        key: value
+    should_pass: true
+    expected: ""
+    description: Success delete
+  - arguments:
+      target_field: [1,2,3,4]
+    should_pass: true
+    expected: ""
+    description: Success delete
