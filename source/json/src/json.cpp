@@ -595,15 +595,11 @@ bool Json::isInt64(std::string_view path) const
         {
             return value->IsInt64();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Cannot find path: '{}'", path));
-        }
+
+        return false;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Invalid json path: '{}'", path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isFloat(std::string_view path) const
@@ -617,15 +613,11 @@ bool Json::isFloat(std::string_view path) const
         {
             return value->IsFloat();
         }
-        else
-        {
-            throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Cannot find path: '{}'", path));
-        }
+        
+        return false;
     }
-    else
-    {
-        throw std::runtime_error(fmt::format("[Json::isInt(basePointerPath)] Invalid json path: '{}'", path));
-    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
 }
 
 bool Json::isDouble(std::string_view path) const

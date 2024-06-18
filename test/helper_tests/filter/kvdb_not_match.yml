@@ -19,7 +19,7 @@ variadic: false
 test:
   - arguments:
       1: testing
-      target_filed: key
+      target_filed: test
     should_pass: false
     description: Key found in kvdb
   - arguments:
