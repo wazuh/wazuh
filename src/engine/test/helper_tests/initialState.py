@@ -49,7 +49,7 @@ def set_kvdb(environment_dir: Path):
 
     os.makedirs(os.path.dirname(kvdb_path), exist_ok=True)
     with open(kvdb_path, 'w') as file:
-        file.write('{"key": "value"}')
+        file.write('{"test": {"key": "value"}, "test_bitmask": {"33": "some_data"}}')
 
 
 def main():

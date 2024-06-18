@@ -122,6 +122,7 @@ class Evaluator:
         self.description = ""
         self.field_mapping = ""
         self.should_pass = False
+        self.skipped = False
         self.expected = ""
         self.input = []
 
@@ -169,6 +170,15 @@ class Evaluator:
             should_pass (bool): True if the test case is expected to pass, False otherwise.
         """
         self.should_pass = should_pass
+
+    def set_skipped(self, skipped: bool):
+        """
+        Sets whether the test case is skipped.
+
+        Args:
+            skipped (bool): True whether the test should be skipped, False otherwise.
+        """
+        self.skipped = skipped
 
     def set_expected(self, expected: str):
         """
@@ -297,18 +307,22 @@ class Evaluator:
         response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
-        if (self.should_pass and field_mapping in output) or (
-            not self.should_pass and field_mapping not in output
-        ) or (not self.should_pass and field_mapping in output):
-            if field_mapping in output:
-                self.handle_map_event_with_field_mapping(response, output, field_mapping)
+        if not self.skipped:
+            if (self.should_pass and field_mapping in output) or (
+                not self.should_pass and field_mapping not in output
+            ) or (not self.should_pass and field_mapping in output):
+                if field_mapping in output:
+                    self.handle_map_event_with_field_mapping(response, output, field_mapping)
+                else:
+                    self.create_success_test()
             else:
-                self.create_success_test()
+                if self.expected is not None:
+                    self.create_failure_test(response)
+                else:
+                    # If I don't have an expected, I don't care that the field is not mapped in the output.
+                    self.create_success_test()
         else:
-            if self.expected is not None:
-                self.create_failure_test(response)
-            else:
-                self.create_success_test()
+            self.create_success_test()
 
     def tester_run_filter(self, api_client: APIClient, field_mapping: str):
         """
@@ -323,11 +337,14 @@ class Evaluator:
         response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
-        if self.should_pass != None:
-            if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
-                self.create_success_test()
+        if not self.skipped:
+            if self.should_pass != None:
+                if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
+                    self.create_success_test()
+                else:
+                    self.create_failure_test(response)
             else:
-                self.create_failure_test(response)
+                self.create_success_test()
         else:
             self.create_success_test()
 
@@ -345,16 +362,19 @@ class Evaluator:
         output = extract_output_from_response(response)
         result = extract_transformation_result_from_response(response, self.helper_name)
 
-        if self.should_pass != None:
-            if (self.should_pass and result == "Success") or (
-                not self.should_pass and result != "Success"
-            ):
-                if field_mapping in output:
-                    self.handle_transform_event_with_field_mapping(response, output, field_mapping)
+        if not self.skipped:
+            if self.should_pass != None:
+                if (self.should_pass and result == "Success") or (
+                    not self.should_pass and result != "Success"
+                ):
+                    if field_mapping in output:
+                        self.handle_transform_event_with_field_mapping(response, output, field_mapping)
+                    else:
+                        self.create_success_test()
                 else:
-                    self.create_success_test()
+                    self.create_failure_test(response)
             else:
-                self.create_failure_test(response)
+                self.create_success_test()
         else:
             self.create_success_test()
 
@@ -655,6 +675,7 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
     result_evaluator.set_id(run_test["id"])
     result_evaluator.set_should_pass(run_test.get("should_pass", None))
     result_evaluator.set_expected(run_test.get("expected"))
+    result_evaluator.set_skipped(run_test.get("skipped", False))
     result_evaluator.set_description(run_test["description"])
     result_evaluator.set_input([])
 
@@ -685,6 +706,7 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
     for j, test_case in enumerate(run_test["test_cases"]):
         result_evaluator.set_id(test_case.get("id"))
         result_evaluator.set_should_pass(test_case.get("should_pass", None))
+        result_evaluator.set_skipped(test_case.get("skipped"))
         result_evaluator.set_expected(test_case.get("expected", None))
         result_evaluator.set_description(run_test["description"])
         result_evaluator.set_input(test_case.get("input", []))
