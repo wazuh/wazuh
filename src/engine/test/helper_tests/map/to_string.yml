@@ -1,0 +1,28 @@
+# Name of the helper function
+name: to_string
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string # Expected type is string
+    source: reference # Includes values or references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+test:
+  - arguments:
+      1: 12345
+    should_pass: true
+    expected: "12345"
+    description: Success to_string
+  - arguments:
+      1: 23.565
+    should_pass: true
+    expected: "23.565000"
+    description: Success to_string
+  - arguments:
+      1: "12345"
+    should_pass: false
+    expected: "23.565000"
+    description: Failure to_string

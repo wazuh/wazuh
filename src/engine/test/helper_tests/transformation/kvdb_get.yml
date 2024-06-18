@@ -29,7 +29,7 @@ test:
     description: Try get non exist key
   - arguments:
       1: testing
-      2: key
+      2: test
       target_filed: true
     should_pass: true
     expected: false

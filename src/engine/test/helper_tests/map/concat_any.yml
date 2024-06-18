@@ -1,5 +1,5 @@
 # Name of the helper function
-name: concat
+name: concat_any
 
 # Arguments expected by the helper function
 arguments:
@@ -27,7 +27,18 @@ test:
         source: reference
         value: null
       2:
+        source: reference
+        value: "hello"
+    should_pass: true
+    expected: hello
+    description: Try to concatenate an existing reference with a non-existing reference
+  - arguments:
+      1:
+        source: reference
+        value: null
+      2:
         source: value
         value: "hello"
-    should_pass: false
+    should_pass: true
+    expected: hello
     description: Trying to concatenate a value with a reference does not exist

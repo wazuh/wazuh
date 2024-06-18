@@ -86,7 +86,9 @@ def load_yaml(file_path):
 
 
 def get_minimum_arguments(yaml_data):
-    return len(yaml_data["arguments"])
+    if "arguments" in yaml_data:
+        return len(yaml_data["arguments"])
+    return 0
 
 
 def is_variadic(yaml_data):
@@ -99,26 +101,29 @@ def get_name(yaml_data):
 
 def get_allowed_values(yaml_data, argument_id):
     allowed_values = {}
-    for index, argument in enumerate(yaml_data["arguments"].items()):
-        if "allowed_values" in argument[1]:
-            if index not in allowed_values:
-                allowed_values[index] = []
-            allowed_values[index].append(argument[1]["allowed_values"])
+    if get_minimum_arguments(yaml_data) != 0:
+        for index, argument in enumerate(yaml_data["arguments"].items()):
+            if "allowed_values" in argument[1]:
+                if index not in allowed_values:
+                    allowed_values[index] = []
+                allowed_values[index].append(argument[1]["allowed_values"])
     return allowed_values
 
 
 def get_sources(yaml_data):
     sources = []
-    for argument in yaml_data["arguments"].values():
-        if argument["source"]:
-            sources.append(argument["source"])
+    if get_minimum_arguments(yaml_data) != 0:
+        for argument in yaml_data["arguments"].values():
+            if argument["source"]:
+                sources.append(argument["source"])
     return sources
 
 
 def get_types(yaml_data):
     types = []
-    for argument in yaml_data["arguments"].values():
-        types.append(argument["type"])
+    if get_minimum_arguments(yaml_data) != 0:
+        for argument in yaml_data["arguments"].values():
+            types.append(argument["type"])
     return types
 
 
@@ -133,12 +138,13 @@ def change_source(source):
 
 def get_is_array(yaml_data):
     is_array = []
-    if 0 < len(yaml_data["arguments"]):
-        for argument in yaml_data["arguments"].values():
-            if "is_array" in argument:
-                is_array.append(argument["is_array"])
-            else:
-                is_array.append(False)
+    if get_minimum_arguments(yaml_data) != 0:
+        if 0 < len(yaml_data["arguments"]):
+            for argument in yaml_data["arguments"].values():
+                if "is_array" in argument:
+                    is_array.append(argument["is_array"])
+                else:
+                    is_array.append(False)
     return is_array
 
 
@@ -235,8 +241,12 @@ def generate_specific_argument(source, type_, is_array):
         return generate_reference(type_, [], is_array)
 
 
-def generate_raw_template(yaml_data):
-    sources = get_sources(yaml_data)
+def generate_raw_template(yaml_data, my_sources=[]):
+    sources = []
+    if not my_sources:
+        sources = get_sources(yaml_data)
+    else:
+        sources = my_sources
     sources_expanded = []
     for source in sources:
         if source == "both":
@@ -618,6 +628,9 @@ def different_target_field_type(yaml_data):
 
 
 def variadic(yaml_data):
+    if get_minimum_arguments(yaml_data) == 0:
+        return
+
     sources = get_sources(yaml_data)
     types = get_types(yaml_data)
     all_arguments = []
@@ -982,7 +995,7 @@ def generate_unit_test(yaml_data):
                 sys.exit(1)
 
         if get_minimum_arguments(yaml_data) + 1 < len(arguments_list):
-            diff = len(arguments_list) - get_minimum_arguments(yaml_data)
+            diff = len(arguments_list) - 1 - get_minimum_arguments(yaml_data)
             for _ in range(diff):
                 sources.append(sources[-1])
             template = generate_raw_template(yaml_data, sources)
@@ -994,19 +1007,97 @@ def generate_unit_test(yaml_data):
             input = {}
             new_test = {}
             test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
-            combined = list(itertools.zip_longest(arguments_list, case, fillvalue=None))
-            for (id, value), source in combined:
-                target_field_value = None
-                if source == "value":
-                    all_arguments.append(value)
-                elif source == "reference":
-                    reference_counter = reference_counter + 1
-                    reference = {"name": f"ref{reference_counter}", "value": value}
-                    input[reference["name"]] = reference["value"]
-                    all_arguments.append(f"$eventJson.{reference['name']}")
-                else:
-                    target_field_value = value
+            if not any(isinstance(item[1], dict) and ("source" in item[1]) for item in arguments_list):
+                combined = list(itertools.zip_longest(arguments_list, case, fillvalue=None))
+                for (id, value), source in combined:
+                    target_field_value = None
 
+                    if source == "value":
+                        all_arguments.append(value)
+                    elif source == "reference":
+                        reference_counter = reference_counter + 1
+                        reference = {"name": f"ref{reference_counter}", "value": value}
+                        input[reference["name"]] = reference["value"]
+                        all_arguments.append(f"$eventJson.{reference['name']}")
+                    else:
+                        if isinstance(value, list):
+                            target_field_value = list(value)
+                        else:
+                            target_field_value = value
+
+                helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
+
+                if not input:
+                    stage_map["map"].append({"target_field": target_field_value})
+                    stage_map["map"].append({"target_field": helper})
+                    normalize_list.append(stage_map)
+                else:
+                    stage_map["map"].append({"target_field": target_field_value})
+                    stage_map["map"].append({"target_field": helper})
+                    normalize_list.append(stage_map)
+                    normalize_list = [
+                        {
+                            "map": [
+                                {"eventJson": "parse_json($event.original)"},
+                                {"target_field": target_field_value},
+                                {"target_field": helper},
+                            ]
+                        }
+                    ]
+                    new_test = {
+                        "input": input,
+                        "id": increase_id(),
+                        "should_pass": test["should_pass"],
+                        "expected": test.get("expected", None),
+                    }
+
+                asset_definition = {
+                    "name": "decoder/test/0",
+                    "normalize": normalize_list,
+                }
+                test_data["assets_definition"] = asset_definition
+
+                if new_test:
+                    test_data["test_cases"].append(new_test)
+                else:
+                    test_data["should_pass"] = test["should_pass"]
+                    test_data["id"] = increase_id()
+                    test_data["expected"] = test["expected"]
+
+                test_data["description"] = test["description"]
+
+                if len(test_data["test_cases"]) == 0:
+                    del test_data["test_cases"]
+
+                tests["run_test"].append(test_data)
+
+    for test in yaml_data["test"]:
+        arguments_list = list(test["arguments"].items())
+        if any(isinstance(item[1], dict) for item in arguments_list):
+            all_arguments = []
+            normalize_list = []
+            stage_map = {"map": []}
+            input = {}
+            new_test = {}
+            test_data = {"assets_definition": {}, "test_cases": [], "description": ""}
+            for id, data in arguments_list:
+                if isinstance(data, dict) and "source" in data:
+                    if data["source"] == "value":
+                        all_arguments.append(data["value"])
+                    elif data["source"] == "reference":
+                        reference_counter = reference_counter + 1
+                        reference = {"name": f"ref{reference_counter}", "value": data["value"]}
+                        if data["value"] is not None:
+                            input[reference["name"]] = reference["value"]
+                        all_arguments.append(f"$eventJson.{reference['name']}")
+                else:
+                    if isinstance(data, list):
+                        target_field_value = list(data)
+                    else:
+                        target_field_value = data
+
+            if len(all_arguments) == 0:
+                break
             helper = f"{get_name(yaml_data)}({', '.join(format_argument(v) for v in all_arguments)})"
 
             if not input:
@@ -1030,7 +1121,7 @@ def generate_unit_test(yaml_data):
                     "input": input,
                     "id": increase_id(),
                     "should_pass": test["should_pass"],
-                    "expected": test.get("expected", None),
+                    "expected": test.get("expected", False),
                 }
 
             asset_definition = {
@@ -1044,7 +1135,7 @@ def generate_unit_test(yaml_data):
             else:
                 test_data["should_pass"] = test["should_pass"]
                 test_data["id"] = increase_id()
-                test_data["expected"] = test["expected"]
+                test_data["expected"] = test.get("expected", None)
 
             test_data["description"] = test["description"]
 
