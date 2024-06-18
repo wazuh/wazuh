@@ -83,7 +83,7 @@ static nlohmann::json getProcessInfo(const SysInfoProcess& process)
 {
     nlohmann::json jsProcessInfo{};
     // Current process information
-    jsProcessInfo["pid"]        = std::to_string(process->tid);
+    jsProcessInfo["pid"]        = process->tid;
     jsProcessInfo["name"]       = process->cmd;
     jsProcessInfo["state"]      = &process->state;
     jsProcessInfo["ppid"]       = process->ppid;

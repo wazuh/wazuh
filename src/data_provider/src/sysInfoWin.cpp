@@ -342,7 +342,7 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         jsProcessInfo["size"]       = process.pageFileUsage();
         jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
         jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
-        jsProcessInfo["pid"]        = std::to_string(pId);
+        jsProcessInfo["pid"]        = pId;
         jsProcessInfo["session"]    = process.sessionId();
         jsProcessInfo["nlwp"]       = processEntry.cntThreads;
         jsProcessInfo["utime"]      = process.userModeTime();

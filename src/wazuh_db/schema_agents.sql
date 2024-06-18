@@ -200,7 +200,7 @@ CREATE INDEX IF NOT EXISTS hotfix_id ON sys_hotfixes (scan_id);
 CREATE TABLE IF NOT EXISTS sys_processes (
     scan_id INTEGER,
     scan_time TEXT,
-    pid TEXT,
+    pid INTEGER,
     name TEXT,
     state TEXT,
     ppid INTEGER,

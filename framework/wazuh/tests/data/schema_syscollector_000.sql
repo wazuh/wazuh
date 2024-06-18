@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS sys_programs (
 CREATE TABLE IF NOT EXISTS sys_processes (
     scan_id INTEGER,
     scan_time TEXT,
-    pid TEXT,
+    pid INTEGER,
     name TEXT,
     state TEXT,
     ppid INTEGER,

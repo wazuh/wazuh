@@ -487,7 +487,7 @@ constexpr auto PROCESSES_SYNC_CONFIG_STATEMENT
 constexpr auto PROCESSES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_processes (
-    pid TEXT,
+    pid BIGINT,
     name TEXT,
     state TEXT,
     ppid BIGINT,

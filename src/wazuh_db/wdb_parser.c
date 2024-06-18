@@ -27,7 +27,7 @@ static struct column_list const TABLE_HOTFIXES[HOTFIXES_FIELD_COUNT+1] = {
 static struct column_list const TABLE_PROCESSES[PROCESSES_FIELD_COUNT+1] = {
     { .value = { FIELD_INTEGER, 1, true, false, NULL, "scan_id", {.integer = 0}, true}, .next = &TABLE_PROCESSES[1] },
     { .value = { FIELD_TEXT, 2, false, false, NULL,"scan_time", {.text = ""}, true}, .next = &TABLE_PROCESSES[2] },
-    { .value = { FIELD_TEXT, 3, false, true, NULL, "pid", {.text = ""}, true}, .next = &TABLE_PROCESSES[3] },
+    { .value = { FIELD_INTEGER, 3, false, true, NULL, "pid", {.integer = 0}, true}, .next = &TABLE_PROCESSES[3] },
     { .value = { FIELD_TEXT, 4, false, false, NULL, "name", {.text = ""}, true}, .next = &TABLE_PROCESSES[4] },
     { .value = { FIELD_TEXT, 5, false, false, NULL, "state", {.text = ""}, true}, .next = &TABLE_PROCESSES[5] },
     { .value = { FIELD_INTEGER, 6, false, false, NULL, "ppid", {.integer = 0}, true}, .next = &TABLE_PROCESSES[6] },
@@ -2144,7 +2144,7 @@ int wdb_parse_sca(wdb_t * wdb, char * input, char * output) {
         if (scan_id->valueint < 0) {
             mdebug1("Malformed JSON: field 'id' cannot be negative");
             snprintf(output, OS_MAXSTR + 1, "err Invalid Security Configuration Assessment query syntax, near '%.32s'", curr);
-            cJSON_Delete(event);            
+            cJSON_Delete(event);
             return OS_INVALID;
         }
 
