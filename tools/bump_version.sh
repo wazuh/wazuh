@@ -89,7 +89,7 @@ do
         shift 2
         ;;
     "-d")
-        if [[ $2 =~ ^[0-9]{4}-((0[1-9])|(1[0-2]))-(([0-2][1-9])|(3[01]))$ ]]
+        if [[ $2 =~ ^[0-9]{4}-((0[1-9])|(1[0-2]))-(([0-2][1-9])|([12]0)|(3[01]))$ ]]
         then
             bump_date=$2
         else
@@ -266,7 +266,7 @@ fi
 # Wazuh Packages
 if [ -z "$version" ]
 then
-    UPDATE_RELESE_DATE="yes"
+    UPDATE_RELEASE_DATE="yes"
     version=$(cat $VERSION_FILE)
 fi
 
@@ -286,8 +286,8 @@ bump_date=$(LC_ALL=en_US.UTF-8 TZ="UTC" date -d "$bump_date" +"%a, %d %b %Y %H:%
 # SPECS files
 spec_date=$(LC_ALL=en_US.UTF-8 TZ="UTC" date -d "$bump_date" +"%a %b %d %Y")
 for spec_file in $SPEC_FILES; do
-    echo "Bumping version in $spec_file"
-    if [ -z "$UPDATE_RELESE_DATE" ] ; then
+    echo "Updating the release date of $version in $spec_file"
+    if [ -z "$UPDATE_RELEASE_DATE" ] ; then
         sed -E -i'' "/%changelog/a * $spec_date support <info@wazuh.com> - ${VERSION}\n\
 - More info: https://documentation.wazuh.com/current/release-notes/release-$mayor-$minor-$patch.html" $spec_file
     else
@@ -297,9 +297,9 @@ done
 
 # Deb changelog files
 for changelog_file in $CHANGELOG_FILES; do
-    echo "Bumping version in $changelog_file"
+    echo "Updating the release date of $version in $changelog_file"
     install_type=$(sed -E 's/.*wazuh-(manager|agent).*/wazuh-\1/' <<< $changelog_file)
-    if [ -z "$UPDATE_RELESE_DATE" ] ; then
+    if [ -z "$UPDATE_RELEASE_DATE" ] ; then
         changelog_string="$install_type (${VERSION}-RELEASE) stable; urgency=low\n\n  * More info: https://documentation.wazuh.com/current/release-notes/release-$mayor-$minor-$patch.html\
 \n\n -- Wazuh, Inc <info@wazuh.com>  $bump_date\n"
         # Add new version to changelog
