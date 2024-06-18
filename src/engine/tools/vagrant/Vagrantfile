@@ -100,12 +100,12 @@ Vagrant.configure("2") do |config|
         echo "--- Setting up Wazuh in 127.0.0.1 ---"
         WAZUH_INSTALL=/home/vagrant/wazuh-install
         mkdir -p  $WAZUH_INSTALL && cd $WAZUH_INSTALL
-        curl -sO https://packages.wazuh.com/4.7/wazuh-install.sh
+        curl -sO https://packages.wazuh.com/4.8/wazuh-install.sh
         if [ $? -ne 0 ]; then
             echo "Failed to download wazuh-install.sh"
             exit 1
         fi
-        curl -sO https://packages.wazuh.com/4.7/config.yml
+        curl -sO https://packages.wazuh.com/4.8/config.yml
         if [ $? -ne 0 ]; then
             echo "Failed to download config.yml"
             exit 1
