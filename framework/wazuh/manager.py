@@ -395,11 +395,13 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     return result
 
 
-def get_update_information(update_information: dict) -> WazuhResult:
+def get_update_information(installation_uid: str, update_information: dict) -> WazuhResult:
     """Process update information into a wazuh result.
 
     Parameters
     ----------
+    installation_uid : str
+        Wazuh UID to include in the result.
     update_information : dict
         Data to process.
 
@@ -410,8 +412,8 @@ def get_update_information(update_information: dict) -> WazuhResult:
     """
 
     if not update_information:
-        # Return an empty response because the update_check is disabled
-        return WazuhResult({'data': get_update_information_template(update_check=False)})
+        # Return a response with minimal data because the update_check is disabled
+        return WazuhResult({'data': get_update_information_template(uuid=installation_uid, update_check=False)})
     status_code = update_information.pop('status_code')
     uuid = update_information.get('uuid')
     tag = update_information.get('current_version')
