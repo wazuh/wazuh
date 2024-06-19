@@ -117,9 +117,6 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
         <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
 
-        <CustomAction Id="SetPermissionsCustomActionDataValue" Return="check" Property="SetPermissions" Value="&quot;[APPLICATIONFOLDER]&quot;" />
-        <CustomAction Id="SetPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetPermissions" Return="check" Execute="deferred" Impersonate="no"/>
-
         <!-- Explicitely stopping and deleting the OSSEC service to install new Wazuh service -->
         <CustomAction Id="StopOssecService" Directory="APPLICATIONFOLDER" ExeCommand="NET STOP OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
         <CustomAction Id="DeleteOssecService" Directory="APPLICATIONFOLDER" ExeCommand="SC DELETE OssecSvc" Execute="deferred" Impersonate="no" Return="ignore" />
@@ -188,9 +185,6 @@
             <!-- Stop the service as soon as possible on uninstall, and only on uninstall, in order to unlock the files and folders that must be deleted. -->
 			<Custom Action="SetRemoveAllDataValue" Before="InstallFinalize">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
  		    <Custom Action="CustomAction_RemoveAllScript" After="SetRemoveAllDataValue">(NOT UPGRADINGPRODUCTCODE) AND (REMOVE="ALL")</Custom>
- 
-            <Custom Action="SetPermissionsCustomActionDataValue" Before="InstallFinalize"/>
-            <Custom Action="SetPermissions" After="SetPermissionsCustomActionDataValue"/>
         </InstallExecuteSequence>
 
         <Directory Id="TARGETDIR" Name="SourceDir">

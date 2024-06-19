@@ -437,26 +437,3 @@ Private Function GetUserSID()
         GetUserSID = oWMI.SID
     End If
 End Function
-
-Public Function SetPermissions()
-    On Error Resume Next
-
-    ' Custom Action parameters
-    strArgs = Session.Property("CustomActionData")
-    args = Split(strArgs, "/+/")
-
-    home_dir= Replace(args(0), Chr(34), "")
-
-    ' Remove last backslash from home_dir
-    install_dir = Left(home_dir, Len(home_dir) - 1)
-
-    Set WshShell = CreateObject("WScript.Shell")
-
-    setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:e /q"
-    nRet = WshShell.run(setPermsInherit, 0, True)
-
-    grantUserPerm = "icacls """ & install_dir & """ /grant *S-1-1-0:(RX) /t /c"
-    nRet = WshShell.run(grantUserPerm, 0, True)
-
-    SetPermissions = 0 
-End Function
