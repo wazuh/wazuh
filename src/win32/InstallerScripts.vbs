@@ -415,7 +415,7 @@ Public Function SetWazuhPermissions()
         WshShell.run grantSystemPerm, 0, True
 
         userSID = GetUserSID()
-        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(RX) /t"
+        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(OI)(CI)RX"
         WshShell.run grantUserPerm, 0, True
 
         ' Remove Everyone group for ossec.conf
