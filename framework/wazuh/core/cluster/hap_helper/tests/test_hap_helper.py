@@ -566,7 +566,7 @@ class TestHAPHelper:
         HAPROXY_PROTOCOL_VALUE = protocol
         HAPROXY_BACKEND_VALUE = 'wazuh_test'
         HAPROXY_RESOLVER_VALUE = 'resolver_test'
-        HAPROXY_CERT_VALUE = 'example_cert.pem'
+        HAPROXY_CERT_VALUE = 'example_cert.pem' if protocol == 'https' else True
         CLIENT_CERT_VALUE = None
         CLIENT_CERT_KEY_VALUE = None
         CLIENT_CERT_PASSWORD_VALUE = None

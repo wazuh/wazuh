@@ -21,6 +21,7 @@ from wazuh.core.cluster.utils import (
     CLIENT_CERT,
     CLIENT_CERT_KEY,
     CLIENT_CERT_PASSWORD,
+    HELPER_DEFAULTS,
     IMBALANCE_TOLERANCE,
     REMOVE_DISCONNECTED_NODE_AFTER,
     ClusterFilter,
@@ -487,6 +488,12 @@ class HAPHelper:
                                        helper_config[CLIENT_CERT_KEY] or helper_config[CLIENT_CERT_PASSWORD]):
                 logger.warning("HTTPS related parameters have been set but will be ignored since "
                                "HTTP is defined as protocol.")
+
+                # Set the certificate information to default values to avoid errors in the communication
+                helper_config[HAPROXY_CERT] = HELPER_DEFAULTS[HAPROXY_CERT]
+                helper_config[CLIENT_CERT] = HELPER_DEFAULTS[CLIENT_CERT]
+                helper_config[CLIENT_CERT_KEY] = HELPER_DEFAULTS[CLIENT_CERT_KEY]
+                helper_config[CLIENT_CERT_PASSWORD] = HELPER_DEFAULTS[CLIENT_CERT_PASSWORD]
 
             proxy_api = ProxyAPI(
                 username=helper_config[HAPROXY_USER],
