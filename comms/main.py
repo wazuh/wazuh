@@ -1,10 +1,7 @@
 from argparse import ArgumentParser, Namespace
 from fastapi import FastAPI
-from time import sleep
-import sys
-import threading
-from typing import List
-import uvicorn
+from gunicorn.app.base import BaseApplication
+from typing import Any, Callable, Dict
 
 from api import router
 from commands_manager import generate_commands
@@ -27,13 +24,37 @@ def get_script_arguments() -> Namespace:
 
     return parser.parse_args()
 
+class StandaloneApplication(BaseApplication):
+    def __init__(self, app: Callable, options: Dict[str, Any] = None):
+        self.options = options or {}
+        self.app = app
+        super().__init__()
+
+    def load_config(self):
+        config = {
+            key: value
+            for key, value in self.options.items()
+            if key in self.cfg.settings and value is not None
+        }
+        for key, value in config.items():
+            self.cfg.set(key.lower(), value)
+
+    def load(self):
+        return self.app
+
 if __name__ == "__main__":
     args = get_script_arguments()
 
     generate_commands(args.agent_ids)
 
     try:
-        uvicorn.run("main:app", host=args.host, port=args.port, workers=4)
+        options = {
+            "bind": f"{args.host}:{args.port}",
+            "workers": 4,
+            "worker_class": "uvicorn.workers.UvicornWorker",
+            "preload_app": True
+        }
+        StandaloneApplication(app, options).run()
     except Exception as e:
         print(f"Internal error: {e}")
         exit(1)

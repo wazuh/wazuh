@@ -1,44 +1,20 @@
-import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, Response
 from hmac import compare_digest
-import json
 import opensearchpy
 import os
-from typing import Annotated, List
+from typing import Annotated
 
 from auth import JWTBearer, generate_token, decode_token
-from models import Command, Credentials, GetCommandsResponse, EventsBody, TokenResponse
+from commands_manager import commands_manager
+from models import Credentials, GetCommandsResponse, EventsBody, TokenResponse
 from opensearch import create_indexer_client, INDEX_NAME
-from redis_client import create_redis_client
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 router = APIRouter(prefix="/api/v1")
 indexer_client = create_indexer_client()
-redis_cli = create_redis_client()
-timeout = 60
 
-
-async def fetch_commands(uuid: str) -> List[Command]:
-    for _ in range(timeout):
-        length = redis_cli.llen(uuid)
-        if length > 0:
-            commands: List[Command] = []
-
-            bulk = redis_cli.pipeline()
-            bulk.lrange(uuid, 0, -1)
-            bulk.delete(uuid)
-            (results, _) = bulk.execute()
-
-            for command in results:
-                commands.append(json.loads(command))
-
-            return commands
-        else:
-            await asyncio.sleep(1)
-
-    return None
 
 @router.get("/commands")
 async def get_commands(token: Annotated[str, Depends(JWTBearer())]) -> GetCommandsResponse:
@@ -47,7 +23,7 @@ async def get_commands(token: Annotated[str, Depends(JWTBearer())]) -> GetComman
     except Exception as exc:
         raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": str(exc)})
 
-    commands = await fetch_commands(uuid)
+    commands = await commands_manager.get_commands(uuid)
     if commands:
         return GetCommandsResponse(commands=commands)
     else:
