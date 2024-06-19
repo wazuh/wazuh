@@ -553,10 +553,9 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                        switch (jtype)
                         {
                             case json::Json::Type::String:
-                            case json::Json::Type::Number:  
+                            case json::Json::Type::Number:
                             case json::Json::Type::Object:
                                 break;
-    
                             default:
                                 throw std::runtime_error(fmt::format(
                                     "Expected 'string/number/object' reference but got reference '{}' of type '{}'",
@@ -634,12 +633,12 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                 {
                     if (std::static_pointer_cast<Value>(arg)->value().isString())
                     {
-                        const auto& value = std::static_pointer_cast<Value>(arg)->value().getString().value();
+                        const auto value = std::static_pointer_cast<Value>(arg)->value().getString().value();
                         result.append(value);
                     }
                     else
                     {
-                        const auto& value = std::static_pointer_cast<Value>(arg)->value().str();
+                        const auto value = std::static_pointer_cast<Value>(arg)->value().str();
                         result.append(value);
                     }
                 }
