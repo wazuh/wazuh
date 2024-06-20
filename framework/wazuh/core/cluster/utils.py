@@ -18,7 +18,7 @@ from operator import setitem
 
 from wazuh.core import common, pyDaemonModule
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhHAPHelperError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
@@ -36,6 +36,10 @@ HAPROXY_USER = 'haproxy_user'
 HAPROXY_PASSWORD = 'haproxy_password'
 HAPROXY_BACKEND = 'haproxy_backend'
 HAPROXY_RESOLVER = 'haproxy_resolver'
+HAPROXY_CERT = 'haproxy_cert'
+CLIENT_CERT = 'client_cert'
+CLIENT_CERT_KEY = 'client_cert_key'
+CLIENT_CERT_PASSWORD = 'client_cert_password'
 FREQUENCY = 'frequency'
 EXCLUDED_NODES = 'excluded_nodes'
 AGENT_CHUNK_SIZE = 'agent_chunk_size'
@@ -52,6 +56,10 @@ HELPER_DEFAULTS = {
     HAPROXY_PROTOCOL: 'http',
     HAPROXY_BACKEND: 'wazuh_reporting',
     HAPROXY_RESOLVER: None,
+    HAPROXY_CERT: True,
+    CLIENT_CERT: None,
+    CLIENT_CERT_KEY: None,
+    CLIENT_CERT_PASSWORD: None,
     EXCLUDED_NODES: [],
     FREQUENCY: 60,
     AGENT_CHUNK_SIZE: 300,
@@ -140,6 +148,8 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
     ------
     WazuhError (3004)
         If some value has an invalid type.
+    WazuhHAPHelperError (3042)
+        If the used protocol is HTTPS and the HAProxy certificate is not defined.
     """
     # If any value is missing from user's cluster configuration, add the default one.
     for value_name in set(HELPER_DEFAULTS.keys()) - set(helper_config.keys()):
@@ -152,6 +162,12 @@ def parse_haproxy_helper_config(helper_config: dict) -> dict:
 
     helper_config = _parse_haproxy_helper_integer_values(helper_config)
     helper_config = _parse_haproxy_helper_float_values(helper_config)
+
+    # When the used protocol is HTTPS and the HAProxy certificate is not defined, an error is raised.
+    # If the client certificate info is not declared and the tls_ca parameter in the Dataplane API configuration is set,
+    # the communication fails
+    if helper_config[HAPROXY_PROTOCOL].lower() == 'https' and type(helper_config[HAPROXY_CERT]) == bool:
+        raise WazuhHAPHelperError(3042, extra_message='HAProxy certificate file required in the haproxy_cert parameter')
 
     return helper_config
 
