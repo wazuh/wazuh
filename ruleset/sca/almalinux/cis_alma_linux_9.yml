@@ -1313,7 +1313,7 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "f:rpm -q gdm -> r:is not installed"
+      - "c:rpm -q gdm -> r:is not installed"
 
   # 1.8.2 Ensure GDM login banner is configured. (Automated)
 
