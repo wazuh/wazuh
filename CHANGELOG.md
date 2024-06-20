@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed compilation issue for local installation. ([#20505](https://github.com/wazuh/wazuh/pull/20505))
+- Fixed malformed JSON error in wazuh-analysisd. ([#16666](https://github.com/wazuh/wazuh/pull/16666))
 
 #### Changed
 
@@ -23,6 +24,7 @@ All notable changes to this project will be documented in this file.
 
 - Added debug logging in FIM to detect invalid report change registry values. Thanks to Zafer Balkan (@zbalkan). ([#21690](https://github.com/wazuh/wazuh/pull/21690))
 - Added Amazon Linux 1 and 2023 support for the installation script. ([#21287](https://github.com/wazuh/wazuh/pull/21287))
+- Added Journald support in Logcollector. ([#23137](https://github.com/wazuh/wazuh/pull/23137))
 
 #### Fixed
 
@@ -34,6 +36,16 @@ All notable changes to this project will be documented in this file.
 - Fixed a crash in the agent's Rootcheck component when using `<ignore>`. ([#22588](https://github.com/wazuh/wazuh/pull/22588))
 - Fixed command wodle to support UTF-8 characters on windows agent. ([#19146](https://github.com/wazuh/wazuh/pull/19146))
 - Fixed Windows agent to delete wazuh-agent.state file when stopped. ([#20425](https://github.com/wazuh/wazuh/pull/20425))
+- Fixed Windows Agent 4.8.0 permission errors on Windows 11 after upgrade. ([#20727](https://github.com/wazuh/wazuh/pull/20727))
+- Fixed Syscollector not checking if there's a scan in progress before starting a new one. ([#22440](https://github.com/wazuh/wazuh/pull/22440))
+- Fixed alerts are created when syscheck diff DB is full. ([#16487](https://github.com/wazuh/wazuh/pull/16487))
+- Fixed Wazuh deb uninstallation to remove non-config files. ([#2195](https://github.com/wazuh/wazuh/pull/2195))
+- Fixed Auditd issue on newer OSs caused by the default audit rule "-a never,task". ([#7283](https://github.com/wazuh/wazuh-documentation/issues/7283))
+- Fixed improper Windows agent ACL on non-default installation directory. ([#23273](https://github.com/wazuh/wazuh/pull/23273))
+- Fixed socket configuration of an agent is displayed. ([#17664](https://github.com/wazuh/wazuh/pull/17664))
+- Fixed wazuh-modulesd printing child process not found error. ([#18494](https://github.com/wazuh/wazuh/pull/18494))
+- Fixed issue with an agent starting automatically without reason. ([#23848](https://github.com/wazuh/wazuh/pull/23848))
+- Fixed GET /syscheck to properly report size for files larger than 2GB. ([#17415](https://github.com/wazuh/wazuh/pull/17415))
 
 #### Changed
 
@@ -54,6 +66,9 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Upgraded external OpenSSL library dependency version to 3.0. ([#20778](https://github.com/wazuh/wazuh/pull/20778))
+- Migrated QA framework. ([#17427](https://github.com/wazuh/wazuh/issues/17427))
+- Improved WPKs. ([#21152](https://github.com/wazuh/wazuh/issues/21152))
+- Migrated and adapted Wazuh subsystem repositories as part of Wazuh packages redesign. ([(#23508)](https://github.com/wazuh/wazuh/pull/23508))
 
 #### Fixed
 
