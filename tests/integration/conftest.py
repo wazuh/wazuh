@@ -34,6 +34,7 @@ from wazuh_testing.utils.services import control_service
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
+
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Add command-line options to the tests.
 
