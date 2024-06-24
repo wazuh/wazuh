@@ -49,7 +49,7 @@ async def post_stateful_events(body: EventsBody):
 @router.post("/authentication")
 async def authentication(creds: Credentials):
     try:
-        data = indexer_client.get(index=INDEX_NAME, id=creds.uuid)
+        data = await indexer_client.get(index=INDEX_NAME, id=creds.uuid)
     except opensearchpy.exceptions.NotFoundError:
         raise HTTPException(status.HTTP_403_FORBIDDEN, {"message": "UUID not found"})
     except opensearchpy.exceptions.ConnectionError as exc:

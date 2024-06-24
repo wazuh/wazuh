@@ -1,7 +1,7 @@
 cryptography
 fastapi
 gunicorn
-opensearch-py
+opensearch-py[async]
 pydantic
 PyJWT
 uvicorn
