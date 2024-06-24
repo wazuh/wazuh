@@ -24,7 +24,7 @@ parents:
 normalize:
   - map:
       - _time: system_epoch()
-      - _query: concat(agent , $agent.id,  'rootcheck save' , $_time, '', $event.original)
+      - _query: concat('agent ', $agent.id, ' rootcheck save ' , $_time, ' ', $event.original)
       - _result: wdb_query($_query)
       - wazuh.rootcheck.file: >-
           regex_extract($event.original, '(?:f|F)ile \'(.*?)\'')
@@ -68,3 +68,4 @@ normalize:
 
   - map:
       - wazuh.decoders: array_append(rootcheck)
+      - wazuh.isInternal: delete() # To index the event
