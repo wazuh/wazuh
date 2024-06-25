@@ -95,5 +95,6 @@ normalize:
       - json_event.cis.score: "NULL"
 
   - map:
-      - _query: concat(agent , $agent.id, 'ciscat save', $json_event.scan_id, |, $json_event.cis.timestamp, |, $json_event.cis.benchmark, |, $json_event.cis.profile, |, $json_event.cis.pass, |, $json_event.cis.fail, |, $json_event.cis.error, |, $json_event.cis.notchecked, |, $json_event.cis.unknown, |, $json_event.cis.score)
-      - _query_response: wdb_update($_query)
+      - query: concat('agent ', $agent.id, ' ciscat save ', $json_event.scan_id, ' | ', $json_event.cis.timestamp, ' | ', $json_event.cis.benchmark, ' | ', $json_event.cis.profile, ' | ', $json_event.cis.pass, ' | ', $json_event.cis.fail, ' | ', $json_event.cis.error, ' | ', $json_event.cis.notchecked, ' | ', $json_event.cis.unknown, ' | ', $json_event.cis.score)
+      - query_response: wdb_update($query)
+      - wazuh.noIndexing: delete()
