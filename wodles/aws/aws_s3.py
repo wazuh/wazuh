@@ -75,9 +75,13 @@ def main(argv):
             else:
                 raise Exception("Invalid type of bucket")
             if options.regions:
-                invalid_region = options.regions[0]
-                if invalid_region not in aws_tools.ALL_REGIONS:
-                    aws_tools.debug(f"+++ WARNING: Invalid region '{invalid_region}'", 1)
+                for invalid_region in options.regions:
+                    try:
+                        if invalid_region not in aws_tools.ALL_REGIONS:
+                            raise ValueError(f"Invalid region '{invalid_region}'")
+                    except ValueError as exc:
+                        aws_tools.debug(f"+++ ERROR: {exc}", 1)
+                        exit(22)
             bucket = bucket_type(reparse=options.reparse, access_key=options.access_key,
                                  secret_key=options.secret_key,
                                  profile=options.aws_profile,
