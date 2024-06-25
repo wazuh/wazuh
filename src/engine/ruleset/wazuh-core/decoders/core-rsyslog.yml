@@ -4,8 +4,8 @@ name: decoder/core-rsyslog/0
 metadata:
   title: Rsyslog queue decoder.
   description: >
-    Process events that have the Rsyslog queue in the standard OSSEC message format.
-  compatibility: Rsyslog log format.
+    Processes events that were received by the wazuh-remoted syslog server.
+  compatibility: Syslog log format.
   versions:
     - Wazuh 4.*
   author:
@@ -23,6 +23,6 @@ check:
 
 normalize:
   - map:
-      - wazuh.source: remote
+      - wazuh.source: wazuh-syslog-server
       - client.ip: $wazuh.origin
       - related.ip: array_append($client.ip)

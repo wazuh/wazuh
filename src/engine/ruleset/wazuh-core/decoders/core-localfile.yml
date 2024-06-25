@@ -44,7 +44,7 @@ normalize:
       - wazuh.source: not_exists()
     map:
       - wazuh.source: logcollector
-  
+
   # Disable json labeling for now, we dont replace the event.original with the json_event at this moment
   #- check:
   #    - wazuh.source: logcollector
@@ -55,4 +55,3 @@ normalize:
   #    - event.original: rename($_json_event.event.original)
   #    - event.module: rename($_json_event.event.module)
   #    - event.dataset: rename($_json_event.event.dataset)
-

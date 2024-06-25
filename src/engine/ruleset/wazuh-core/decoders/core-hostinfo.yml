@@ -4,7 +4,7 @@ name: decoder/core-hostinfo/0
 metadata:
   title: Hostinfo queue decoder.
   description: >
-    Process events that have the Hostinfo queue in the standard OSSEC message format.
+    Process events that were collected with wazuh-logcollector, log_format set in nmapg.
   compatibility: Any service being tagged with the queue 51.
   versions:
     - Wazuh 4.*
@@ -24,4 +24,4 @@ check:
 normalize:
   - map:
       - wazuh.decoders: array_append(core-hostinfo)
-      - wazuh.source: hostinfo
+      - wazuh.source: logcollector
