@@ -5,7 +5,7 @@
     SIZE: 5p
   metadata:
     expected_error_code: 2011
-    expected_message: "Configuration error in the API log format"
+    expected_message: "Error setting up API logger: Size value does not match the expected format: <number><unit> (Available units: K (kilobytes), M (megabytes)"
 
 - name: INVALID_VALUE_FOR_SIZE_OPTION
   description: Upload an invalid API configuration with a log size smaller than the min
@@ -14,7 +14,7 @@
     SIZE: 500k
   metadata:
     expected_error_code: 2011
-    expected_message: "Configuration error in the API log format"
+    expected_message: "Error setting up API logger: Minimum value for size is 1M"
 
 - name: VALID_UPPERCASE_VALUE_FOR_SIZE_OPTION_IN_MB
   description: Upload a valid API configuration with the log size value in uppercase in MB

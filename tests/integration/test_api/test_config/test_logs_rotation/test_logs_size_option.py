@@ -132,6 +132,11 @@ def test_logs_rotation_size_option_values(test_configuration, test_metadata, add
         # Captures the output printed by the subprocess
         stdout_error_message = capfd.readouterr().out
 
+        # Asserts the error was expected
+        assert expected_error_code != 0, f"Didn't expect error, but {stdout_error_message} was returned"
+        # Assert the error code is the expected one
+        assert str(expected_error_code) in stdout_error_message, f"Expected error code {expected_error_code} but " \
+                                                                 f"{stdout_error_message} was returned"
         # Assert the error message is the expected one
         assert expected_message in stdout_error_message, f"Expected error message {expected_message} but " \
                                                          f"{stdout_error_message} was returned"
@@ -149,5 +154,5 @@ def test_logs_rotation_size_option_values(test_configuration, test_metadata, add
             })
         )
 
-        if monitor_start_message.callback_result is None:
-            raise RuntimeError('The API was not started as expected.')
+        # Assert the API initialized without errors
+        assert expected_message in monitor_start_message.callback_result
