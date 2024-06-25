@@ -68,6 +68,10 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapBuilderTest,
     testing::Values(
+        /*** To String ***/
+        MapT({makeRef("ref")}, opBuilderHelperNumberToString, SUCCESS()),
+        MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperNumberToString, FAILURE()),
+        MapT({makeValue(R"("value")")}, opBuilderHelperNumberToString, FAILURE()),
         /*** To Upper ***/
         MapT({}, opBuilderHelperStringUP, FAILURE()),
         MapT({makeValue(R"("value")")}, opBuilderHelperStringUP, SUCCESS()),
@@ -194,6 +198,17 @@ INSTANTIATE_TEST_SUITE_P(
     Builders,
     MapOperationTest,
     testing::Values(
+        /*** To String ***/
+        MapT(R"({})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"notRef": "value"})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"ref": 1})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("1")"))),
+        MapT(R"({"ref": 2.33875648})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("2.338756")"))),
+        MapT(R"({"ref": 2.35})", opBuilderHelperNumberToString, {makeRef("ref")}, SUCCESS(json::Json(R"("2.350000")"))),
+        MapT(R"({"ref": "hello"})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"ref": true})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"ref": [1, 2, 3]})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"ref": {"a": 1, "b": 2}})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
+        MapT(R"({"ref": null})", opBuilderHelperNumberToString, {makeRef("ref")}, FAILURE()),
         /*** To Upper ***/
         MapT("{}", opBuilderHelperStringUP, {makeValue(R"("value")")}, SUCCESS(json::Json(R"("VALUE")"))),
         MapT("{}", opBuilderHelperStringUP, {makeValue(R"("VALUE")")}, SUCCESS(json::Json(R"("VALUE")"))),
