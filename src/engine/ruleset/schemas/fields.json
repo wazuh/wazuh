@@ -12443,7 +12443,7 @@
         }
       }
     },
-    "wazuh.isInternal": {
+    "wazuh.noIndexing": {
       "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nBoolean that indicates if the event is related with internal Wazuh functionality",
       "type": [
         "boolean",

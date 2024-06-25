@@ -68,4 +68,4 @@ normalize:
 
   - map:
       - wazuh.decoders: array_append(rootcheck)
-      - wazuh.isInternal: delete() # To index the event
+      - wazuh.noIndexing: delete() # To index the event

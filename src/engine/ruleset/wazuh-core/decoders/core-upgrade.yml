@@ -4,7 +4,7 @@ name: decoder/core-upgrade/0
 metadata:
   module: wazuh-agent/upgrade
   title: Upgrade queue events
-  description: Exclusive parent decoder for events from upgrade queue (UPGRADE_MQ)
+  description: Exclusive parent decoder for events from upgrade queue (WPK)
   compatibility: >
     This decoder has been tested on Wazuh version 4.4.0
   versions:
