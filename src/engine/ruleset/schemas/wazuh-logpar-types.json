@@ -1119,7 +1119,7 @@
     "wazuh.origin": "keyword",
     "wazuh.registered_ip": "keyword",
     "wazuh.source": "keyword",
-    "wazuh.isInternal": "boolean",
+    "wazuh.noIndexing": "boolean",
     "url": "url",
     "user_agent": "useragent"
   }

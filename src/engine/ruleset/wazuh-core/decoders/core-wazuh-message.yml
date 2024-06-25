@@ -21,7 +21,7 @@ definitions:
 
 normalize:
   - map:
-      - wazuh.isInternal: true
+      - wazuh.noIndexing: true
       # When the event is recived by wazuh syslog server
       - client.ip: parse_ip($wazuh.location)
 

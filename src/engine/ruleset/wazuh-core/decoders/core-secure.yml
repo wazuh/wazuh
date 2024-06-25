@@ -5,6 +5,7 @@ metadata:
   title: Secure queue decoder.
   description: >
     Process events that have the Secure queue in the standard OSSEC message format.
+    Currently no messages should be received through this queue.
   compatibility: Any service being tagged with the queue 52.
   versions:
     - Wazuh 4.*
@@ -24,4 +25,4 @@ check:
 normalize:
   - map:
       - wazuh.decoders: array_append(core-secure)
-      - wazuh.source: remote
+      - wazuh.source: wazuh-remoted-unknown
