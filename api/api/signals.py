@@ -100,9 +100,10 @@ async def register_background_tasks(app: web.Application) -> AsyncGenerator:
     """
     tasks: list[asyncio.Task] = []
 
-    if running_in_master_node() and update_check_is_enabled():
+    if running_in_master_node():
         tasks.append(asyncio.create_task(check_installation_uid(app)))
-        tasks.append(asyncio.create_task(get_update_information(app)))
+        if update_check_is_enabled():
+            tasks.append(asyncio.create_task(get_update_information(app)))
 
     yield
 

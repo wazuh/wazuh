@@ -510,19 +510,35 @@ def healthcheck_agent_restart(response, agents_list):
     check_agent_active_status(agents_list)
 
 
-def validate_update_check_response(response):
-    """Check if the last_available_* dicts have the correct keys and values.
+def validate_update_check_response(response, current_version, update_check):
+    """Check that the update check response contains the expected fields, and verify if the 'last_available_*'
+    dictionaries have the correct keys and values.
 
     Parameters
     ----------
     response : Request response
     """
+    error_code = response.json()['error']
+    if response.status_code == 500:
+        assert error_code == 2100
+        return
+
     available_update_keys = ["last_available_major", "last_available_minor", "last_available_patch"]
     keys_to_check = [
         ("tag", str), ("description", (str, type(None))), ("title", str), ("published_date", str), ("semver", dict)
     ]
 
     data = response.json()['data']
+
+    assert error_code == 0
+    assert data['current_version'] == current_version
+    assert data['update_check'] == update_check
+    assert data['uuid'] is not None
+    last_check_date = data['last_check_date']
+    if update_check:
+        assert last_check_date is not None
+    else:
+        assert last_check_date == ''
 
     for available_update in available_update_keys:
         available_update_data = data[available_update]

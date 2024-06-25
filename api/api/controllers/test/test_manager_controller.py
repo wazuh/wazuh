@@ -438,10 +438,12 @@ async def test_check_available_version(
     result = await check_available_version(request=mock_request, force_query=force_query)
     assert mock_dapi.call_count == dapi_call_count
 
+    installation_uid = app_context[INSTALLATION_UID_KEY]
+
     if force_query and update_check:
         mock_dapi.assert_any_call(
             f=query_update_check_service,
-            f_kwargs={INSTALLATION_UID_KEY: app_context[INSTALLATION_UID_KEY]},
+            f_kwargs={INSTALLATION_UID_KEY: installation_uid},
             request_type='local_master',
             is_async=True,
             logger=ANY,
@@ -450,7 +452,10 @@ async def test_check_available_version(
 
     mock_dapi.assert_called_with(
         f=manager.get_update_information,
-        f_kwargs={UPDATE_INFORMATION_KEY: app_context[UPDATE_INFORMATION_KEY]},
+        f_kwargs={
+            INSTALLATION_UID_KEY: installation_uid,
+            UPDATE_INFORMATION_KEY: app_context[UPDATE_INFORMATION_KEY]
+        },
         request_type='local_master',
         is_async=False,
         logger=ANY,
