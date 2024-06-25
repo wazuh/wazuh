@@ -10,7 +10,7 @@ metadata:
     date: 2022/11/08
 
 check:
-  - wazuh.isInternal: true
+  - wazuh.noIndexing: true
 
 outputs:
   - file:

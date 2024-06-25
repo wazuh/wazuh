@@ -6721,7 +6721,7 @@
       "type": "keyword",
       "array": false
     },
-    "wazuh.isInternal": {
+    "wazuh.noIndexing": {
       "type": "boolean",
       "array": false
     }

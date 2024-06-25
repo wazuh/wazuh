@@ -49,7 +49,7 @@
             ],
             "location": "1.2.3.4",
             "queue": 50.0,
-            "source": "remote"
+            "source": "wazuh-syslog-server"
         }
     }
 ]
