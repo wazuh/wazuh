@@ -33,12 +33,6 @@ normalize:
   - map:
       - wazuh.decoders: array_append(ciscat)
 
-#TODO: what is this check for?
-  - check:
-      - wazuh.origin: "wodle_cis-cat"
-      - json_event.cis: exists()
-      - json_event.type: string_equal(scan_info)
-
   - check:
       - json_event.scan_id: not_exists()
     map:
@@ -94,7 +88,25 @@ normalize:
     map:
       - json_event.cis.score: "NULL"
 
-  - map:
-      - query: concat('agent ', $agent.id, ' ciscat save ', $json_event.scan_id, ' | ', $json_event.cis.timestamp, ' | ', $json_event.cis.benchmark, ' | ', $json_event.cis.profile, ' | ', $json_event.cis.pass, ' | ', $json_event.cis.fail, ' | ', $json_event.cis.error, ' | ', $json_event.cis.notchecked, ' | ', $json_event.cis.unknown, ' | ', $json_event.cis.score)
-      - query_response: wdb_update($query)
+  - check:
+      - json_event.type: string_equal(scan_info)
+    map:
+      - _query: concat('agent ', $agent.id, ' ciscat save ', $json_event.scan_id, ' | ', $json_event.cis.timestamp, ' | ', $json_event.cis.benchmark, ' | ', $json_event.cis.profile, ' | ', $json_event.cis.pass, ' | ', $json_event.cis.fail, ' | ', $json_event.cis.error, ' | ', $json_event.cis.notchecked, ' | ', $json_event.cis.unknown, ' | ', $json_event.cis.score)
+      - _query_response: wdb_update($_query)
+
+      # Normalize the event to be indexed
+      - wazuh.ciscat.type: $json_event.type
+      - wazuh.ciscat.scan_id: $json_event.scan_id
+      - wazuh.ciscat.cis.timestamp: $json_event.cis.timestamp
+      - wazuh.ciscat.cis.benchmark: $json_event.cis.benchmark
+      - wazuh.ciscat.cis.profile: $json_event.cis.profile
+      - wazuh.ciscat.cis.pass: $json_event.cis.pass
+      - wazuh.ciscat.cis.fail: $json_event.cis.fail
+      - wazuh.ciscat.cis.error: $json_event.cis.error
+      - wazuh.ciscat.cis.notchecked: $json_event.cis.notchecked
+      - wazuh.ciscat.cis.unknown: $json_event.cis.unknown
+      - wazuh.ciscat.cis.score: $json_event.cis.score
+      - wazuh.ciscat.cis.hostname: $json_event.cis.hostname
+
       - wazuh.noIndexing: delete()
+      - json_event: delete()

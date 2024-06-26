@@ -6701,10 +6701,6 @@
       "type": "object",
       "array": false
     },
-    "wazuh.rootcheck": {
-      "type": "object",
-      "array": false
-    },
     "wazuh.rootcheck.file": {
       "type": "keyword",
       "array": false
@@ -6718,6 +6714,54 @@
       "array": false
     },
     "wazuh.rootcheck.title": {
+      "type": "keyword",
+      "array": false
+    },
+    "wazuh.ciscat.type": {
+      "type": "keyword",
+      "array": false
+    },
+    "wazuh.ciscat.scan_id": {
+      "type": "long",
+      "array": false
+    },
+    "wazuh.ciscat.cis.timestamp": {
+      "type": "date",
+      "array": false
+    },
+    "wazuh.ciscat.cis.benchmark": {
+      "type": "keyword",
+      "array": false
+    },
+    "wazuh.ciscat.cis.profile": {
+      "type": "keyword",
+      "array": false
+    },
+    "wazuh.ciscat.cis.pass": {
+      "type": "long",
+      "array": false
+    },
+    "wazuh.ciscat.cis.fail": {
+      "type": "long",
+      "array": false
+    },
+    "wazuh.ciscat.cis.error": {
+      "type": "long",
+      "array": false
+    },
+    "wazuh.ciscat.cis.notchecked": {
+      "type": "long",
+      "array": false
+    },
+    "wazuh.ciscat.cis.unknown": {
+      "type": "long",
+      "array": false
+    },
+    "wazuh.ciscat.cis.score": {
+      "type": "long",
+      "array": false
+    },
+    "wazuh.ciscat.cis.hostname": {
       "type": "keyword",
       "array": false
     },
