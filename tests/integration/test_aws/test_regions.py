@@ -139,8 +139,17 @@ def test_regions(
             callback=event_monitor.callback_detect_event_processed,
             accumulations=expected_results
         )
-
         assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
+        
+        assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
+
+        # Validate database updates
+        regions_list = regions.split(",")
+        for row in get_multiple_s3_db_row(table_name=bucket_type):
+            if hasattr(row, "aws_region"):
+                assert row.aws_region in regions_list
+            else:
+                assert row.log_key.split("/")[3] in regions_list
 
     else:
         log_monitor.start(
@@ -149,19 +158,8 @@ def test_regions(
                 fr".*\+\+\+ ERROR: Invalid region '{regions}'"
             ),
         )
-
         assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_no_region_found_message']
 
-    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
-
-    if expected_results:
-        regions_list = regions.split(",")
-        for row in get_multiple_s3_db_row(table_name=bucket_type):
-            if hasattr(row, "aws_region"):
-                assert row.aws_region in regions_list
-            else:
-                assert row.log_key.split("/")[3] in regions_list
-    else:
         assert not table_exists_or_has_values(table_name=bucket_type)
 
     # Detect any ERROR message
@@ -169,7 +167,6 @@ def test_regions(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
-
     assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 
