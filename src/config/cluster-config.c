@@ -173,6 +173,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 } else if (!strcmp(child[j]->element, remove_disconnected_node_after)) {
                 } else {
                     merror(XML_INVELEM, child[i]->element);
+                    OS_ClearNode(child);
                     return OS_INVALID;
                 }
 
