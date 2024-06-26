@@ -175,9 +175,11 @@ async def check_status(affected_agents: list, result_dict: dict, failed_agents: 
     """
     affected_agents = set(affected_agents)
     len(affected_agents) and print('\nUpgrading...')
+
     while len(affected_agents):
         task_results = await cluster_utils.forward_function(get_upgrade_result,
                                                             f_kwargs={'agent_list': list(affected_agents)})
+
         for task_result in task_results.affected_items.copy():
             if task_result['status'] == 'Updated' or 'Legacy upgrade' in task_result['status']:
                 result_dict[task_result['agent']]['new_version'] = args.version if args.version \
@@ -189,6 +191,13 @@ async def check_status(affected_agents: list, result_dict: dict, failed_agents: 
                     else task_result['status']
                 result_dict.pop(task_result['agent'])
                 affected_agents.discard(task_result['agent'])
+            
+        for failed_ids in task_results.failed_items.values():
+            for id in affected_agents.copy():
+                if id in failed_ids:
+                    failed_agents[id] = 'Agent disconnected during the upgrade'
+                    result_dict.pop(id)
+                    affected_agents.discard(id)
         sleep(3)
 
     not silent and print_result(agents_versions=result_dict, failed_agents=failed_agents)
