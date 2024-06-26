@@ -8199,7 +8199,53 @@
               }
             }
           },
-          "isInternal": {
+          "ciscat": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "keyword"
+              },
+              "scan_id": {
+                "type": "long"
+              },
+              "cis": {
+                "type": "object",
+                "properties": {
+                  "timestamp": {
+                    "type": "date"
+                  },
+                  "benchmark": {
+                    "type": "keyword"
+                  },
+                  "profile": {
+                    "type": "keyword"
+                  },
+                  "pass": {
+                    "type": "long"
+                  },
+                  "fail": {
+                    "type": "long"
+                  },
+                  "error": {
+                    "type": "long"
+                  },
+                  "notchecked": {
+                    "type": "long"
+                  },
+                  "unknown": {
+                    "type": "long"
+                  },
+                  "score": {
+                    "type": "long"
+                  },
+                  "hostname": {
+                    "type": "keyword"
+                  }
+                }
+              }
+            }
+          },
+          "noIndexing": {
             "type": "boolean"
           }
         }
