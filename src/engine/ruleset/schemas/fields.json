@@ -12404,47 +12404,122 @@
       ],
       "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
     },
-    "wazuh.rootcheck": {
-      "description": "Module: wazuh-core\nIndexerType: object\nArray: False\n\nObject that contains the rootcheck fields from a rootcheck event",
+    "wazuh.rootcheck.file": {
+      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nFile path",
       "type": [
-        "object",
+        "string"
+      ]
+    },
+    "wazuh.rootcheck.update": {
+      "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nUpdate status",
+      "type": [
+        "boolean",
         "string"
       ],
-      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$",
-      "additionalProperties": false,
-      "properties": {
-        "file": {
-          "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nFile path",
-          "type": [
-            "string"
-          ]
-        },
-        "update": {
-          "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nUpdate status",
-          "type": [
-            "boolean",
-            "string"
-          ],
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-        },
-        "fts": {
-          "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nFts status",
-          "type": [
-            "boolean",
-            "string"
-          ],
-          "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
-        },
-        "title": {
-          "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nTitle of the rootcheck event",
-          "type": [
-            "string"
-          ]
-        }
-      }
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.rootcheck.fts": {
+      "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nFts status",
+      "type": [
+        "boolean",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.rootcheck.title": {
+      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nTitle of the rootcheck event",
+      "type": [
+        "string"
+      ]
+    },
+    "wazuh.ciscat.type": {
+      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nType of the Ciscat event",
+      "type": [
+        "string"
+      ]
+    },
+    "wazuh.ciscat.scan_id": {
+      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nScan ID of the Ciscat event",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.ciscat.cis.timestamp": {
+      "description": "Module: wazuh-core\nIndexerType: date\nArray: False\n\nTimestamp of the CIS fields from a Ciscat event",
+      "type": [
+        "string"
+      ]
+    },
+    "wazuh.ciscat.cis.benchmark": {
+      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nBenchmark of the CIS fields from a Ciscat event",
+      "type": [
+        "string"
+      ]
+    },
+    "wazuh.ciscat.cis.profile": {
+      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nProfile of the CIS fields from a Ciscat event",
+      "type": [
+        "string"
+      ]
+    },
+    "wazuh.ciscat.cis.pass": {
+      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nPass of the CIS fields from a Ciscat event",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.ciscat.cis.fail": {
+      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nFail of the CIS fields from a Ciscat event",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.ciscat.cis.error": {
+      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nError of the CIS fields from a Ciscat event",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.ciscat.cis.notchecked": {
+      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nNot checked of the CIS fields from a Ciscat event",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.ciscat.cis.unknown": {
+      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nUnknown of the CIS fields from a Ciscat event",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.ciscat.cis.score": {
+      "description": "Module: wazuh-core\nIndexerType: long\nArray: False\n\nScore of the CIS fields from a Ciscat event",
+      "type": [
+        "number",
+        "string"
+      ],
+      "pattern": "^\\$[\\w\\.]+$|^[\\w]+\\(.*\\)$"
+    },
+    "wazuh.ciscat.cis.hostname": {
+      "description": "Module: wazuh-core\nIndexerType: keyword\nArray: False\n\nHostname of the CIS fields from a Ciscat event",
+      "type": [
+        "string"
+      ]
     },
     "wazuh.noIndexing": {
-      "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nBoolean that indicates if the event is related with internal Wazuh functionality",
+      "description": "Module: wazuh-core\nIndexerType: boolean\nArray: False\n\nBoolean that indicates if the event is related with internal Wazuh functionality and should not be indexed",
       "type": [
         "boolean",
         "string"
