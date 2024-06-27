@@ -550,19 +550,14 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                 if (buildCtx->validator().hasField(ref->dotPath()))
                 {
                     auto jtype = buildCtx->validator().getJsonType(ref->dotPath());
-                       switch (jtype)
-                        {
-                            case json::Json::Type::String:
-                            case json::Json::Type::Number:
-                            case json::Json::Type::Object:
-                                break;
-                            default:
-                                throw std::runtime_error(fmt::format(
-                                    "Expected 'string/number/object' reference but got reference '{}' of type '{}'",
-                                    ref->dotPath(),
-                                    json::Json::typeToStr(jtype))); // Assuming json::Json::typeToStr is a valid function in the json namespace
-                                break;
-                        }
+                    if (jtype != json::Json::Type::String && jtype != json::Json::Type::Number
+                        && jtype != json::Json::Type::Object)
+                    {
+                        throw std::runtime_error(
+                            fmt::format("Expected 'string/number/object' reference but got reference '{}' of type '{}'",
+                                        ref->dotPath(),
+                                        json::Json::typeToStr(jtype)));
+                    }
                 }
             }
         }
@@ -631,16 +626,10 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                 }
                 else
                 {
-                    if (std::static_pointer_cast<Value>(arg)->value().isString())
-                    {
-                        const auto value = std::static_pointer_cast<Value>(arg)->value().getString().value();
-                        result.append(value);
-                    }
-                    else
-                    {
-                        const auto value = std::static_pointer_cast<Value>(arg)->value().str();
-                        result.append(value);
-                    }
+                    const std::string value = std::static_pointer_cast<Value>(arg)->value().isString()
+                                                  ? std::static_pointer_cast<Value>(arg)->value().getString().value()
+                                                  : std::static_pointer_cast<Value>(arg)->value().str();
+                    result.append(value);
                 }
             }
             json::Json resultJson;

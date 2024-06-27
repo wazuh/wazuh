@@ -33,13 +33,13 @@ normalize:
       - json_event.type: starts_with(integrity_check_)
     map:
       - _query: concat(agent, ' ', $agent.id, ' ', $json_event.component, ' ', $json_event.type, ' ', $json_event.data)
-      - query_icheck_result: wdb_query($_query)
+      - _query_icheck_result: wdb_query($_query)
 
   - check:
-      - query_icheck_result: exists()
+      - _query_icheck_result: exists()
     map:
-      - ar_query: concat('(msg_to_agent) [] N!S ', $agent.id, ' ', $json_event.component, ' ', dbsync, ' ', $query_icheck_result, ' ', $json_event.data)
-      - ar_result: active_response_send($ar_query)
+      - _ar_query: concat('(msg_to_agent) [] N!S ', $agent.id, ' ', $json_event.component, ' ', dbsync, ' ', $_query_icheck_result, ' ', $json_event.data)
+      - ar_result: active_response_send($_ar_query)
 
   # State check
   - check:
