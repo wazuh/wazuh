@@ -10,6 +10,7 @@
  */
 
 #include "rocksDBWrapper_test.hpp"
+#include <fstream>
 
 /**
  * @brief Tests the put function
@@ -578,4 +579,38 @@ TEST_F(RocksDBWrapperTest, GetAllColumnFamiliesTest)
     EXPECT_EQ(columnFamilies[1], COLUMN_NAME_A);
     EXPECT_EQ(columnFamilies[2], COLUMN_NAME_B);
     EXPECT_EQ(columnFamilies[3], COLUMN_NAME_C);
+}
+
+TEST_F(RocksDBWrapperTest, CorruptAndRepairTest)
+{
+    db_wrapper.reset();
+
+    db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false);
+
+    for (int i = 0; i < 10; i++)
+    {
+        db_wrapper->put("key" + std::to_string(i), "value" + std::to_string(i));
+    }
+
+    db_wrapper.reset();
+
+    bool corrupted {false};
+    for (const auto& entry : std::filesystem::directory_iterator(m_databaseFolder))
+    {
+        if (entry.path().extension() == ".sst")
+        {
+            std::filesystem::remove(entry.path());
+            corrupted = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(corrupted);
+
+    bool repaired {false};
+    EXPECT_NO_THROW({
+        db_wrapper = std::make_unique<Utils::RocksDBWrapper>(
+            Utils::RocksDBWrapper::openAndRepairBuilder(m_databaseFolder, repaired, false));
+    });
+
+    EXPECT_TRUE(repaired);
 }

@@ -157,3 +157,52 @@ TEST_F(RocksDBSafeQueueTest, CreateFolderRecursively)
     std::error_code ec;
     std::filesystem::remove_all(DATABASE_NAME, ec);
 }
+
+TEST_F(RocksDBSafeQueueTest, CorruptionTest)
+{
+    const std::string DATABASE_NAME {"corrupted.db"};
+    std::unique_ptr<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>> testQueue;
+
+    testQueue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+        RocksDBQueue<std::string>(DATABASE_NAME));
+
+    for (int i = 0; i < 10; i++)
+    {
+        testQueue->push("test" + std::to_string(i));
+    }
+
+    testQueue->cancel();
+    EXPECT_TRUE(testQueue->cancelled());
+
+    testQueue.reset();
+
+    bool corrupted {false};
+    std::string prefix {DATABASE_NAME + "/MANIFEST"};
+    for (const auto& entry : std::filesystem::directory_iterator(DATABASE_NAME))
+    {
+        if (entry.path().string().substr(0, prefix.size()).compare(prefix) == 0)
+        {
+            std::filesystem::remove(entry.path());
+            corrupted = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(corrupted);
+
+    try
+    {
+        testQueue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
+            RocksDBQueue<std::string>(DATABASE_NAME));
+    }
+    catch (const std::system_error& e)
+    {
+        EXPECT_EQ(e.code(), std::errc::io_error);
+    }
+    catch (...)
+    {
+        FAIL() << "Expected std::system_error";
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all(DATABASE_NAME, ec);
+}
