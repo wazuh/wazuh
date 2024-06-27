@@ -38,8 +38,11 @@ public:
         rocksdb::Options options;
         options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));
         options.create_if_missing = true;
-        options.keep_log_file_num = 1;
-        options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+        // Setting INFO level for the info log. We'll have up to 10 files of 10MB each.
+        options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL;
+        options.keep_log_file_num = 10;
+        options.max_log_file_size = 10 * 1024 * 1024;
+        options.recycle_log_file_num = 10;
         options.max_open_files = 64;
         options.write_buffer_manager = m_writeManager;
         options.num_levels = 4;
@@ -54,7 +57,10 @@ public:
 
         if (const auto status = rocksdb::DB::Open(options, connectorName, &db); !status.ok())
         {
-            throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
+            throw std::system_error(status.IsCorruption() || status.IsIOError()
+                                        ? std::make_error_code(std::errc::io_error)
+                                        : std::make_error_code(std::errc::resource_unavailable_try_again),
+                                    "Failed to open RocksDB database. Reason: " + std::string {status.getState()});
         }
 
         m_db.reset(db);
