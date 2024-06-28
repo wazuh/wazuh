@@ -59,8 +59,8 @@ assignees: ''
 **Dashboard**
 - [ ] **Central components**: Add support for the new OS to the GitHub Actions package builder.
 - [ ] **Central components**: Smoke test that the package works, including installation and upgrade.
-- [ ] **Agent**: Make sure that the agent-related information in the agent list is correct.
-- [ ] **Agent**: Test the deployment one-liner for the new OS.
+- [ ] Make sure that the agent-related information in the agent list is correct.
+- [ ] Test the deployment one-liner for the new OS.
 -->
 
 <!-- Uncomment for THREATINTEL issue
