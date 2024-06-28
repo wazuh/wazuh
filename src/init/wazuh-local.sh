@@ -231,7 +231,7 @@ start_service()
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
-    find $TO_DELETE -mindepth 1 -name "*" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
+    find $TO_DELETE -mindepth 1 -type f -not -name "*.tar.xz" -not -name "*.tar" -delete
 
     # We actually start them now.
     for i in ${SDAEMONS}; do
