@@ -24,7 +24,7 @@ connexion==2.14.2
 cryptography==42.0.4
 Cython==0.29.21
 defusedxml==0.6.0
-docker==6.0.0
+docker==7.1.0
 docker-pycreds==0.4.0
 docutils==0.15.2
 envparse==0.2.0
@@ -82,7 +82,7 @@ SQLAlchemy==2.0.23
 tabulate==0.8.9
 typing-extensions==4.12.2
 typing-inspect==0.7.1
-urllib3==1.26.18
+urllib3==2.2.2
 uvloop==0.17.0
 websocket-client==0.57.0
 Werkzeug==2.2.3
