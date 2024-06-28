@@ -234,6 +234,21 @@ GenerateAuthCert()
     fi
 }
 
+#########################
+#GenerateKeystoreCert()
+#########################
+GenerateKeystoreCert()
+{
+  keystore_key=/etc/keystore.key
+  keystore_cert=/etc/keystore.cert
+  if [ ! -f "X${INSTALLDIR}${keystore_key}" ] && [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
+      echo "Generating RSA keys for Keystore."
+      ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}${keystore_key} -X ${INSTALLDIR}${keystore_cert} -S "/C=US/ST=California/CN=wazuh/"
+      chmod 600 ${INSTALLDIR}${keystore_key}
+      chmod 600 ${INSTALLDIR}${keystore_cert}
+  fi
+}
+
 ##########
 # WriteLogs()
 ##########
@@ -1290,6 +1305,8 @@ InstallServer()
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
+
+    GenerateKeystoreCert
 }
 
 InstallAgent()
