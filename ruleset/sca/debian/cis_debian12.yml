@@ -72,7 +72,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - "c:modprobe -n -v freevxfs -> r: install /bin/true"
+      - "c:modprobe -n -v freevxfs -> r:install /bin/true"
       - "not c:lsmod -> r:freevxfs"
 
   # 1.1.1.3 Ensure mounting of jffs2 filesystems is disabled (Automated)
@@ -557,7 +557,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:Defaults\s*\t*use_pty'
-      - 'd:/etc/sudoers.d/ -> r: \.* -> r:Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*use_pty'
 
   # 1.3.3 Ensure sudo log file exists (Automated)
   - id: 33027
@@ -575,7 +575,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:Defaults\s*\t*logfile=\S+'
-      - 'd:/etc/sudoers.d/ -> r: \.* -> r:Defaults\s*\t*logfile=\S+'
+      - 'd:/etc/sudoers.d -> r:\.* -> r:^\s*\t*Defaults\s*\t*logfile='
 
   ###############################################
   # 1.4 Filesystem Integrity Checking
@@ -971,7 +971,7 @@ checks:
       - pci_dss_v3.2.1: ["2.2"]
     condition: all
     rules:
-      - 'c:dpkg -s GDM -> r:install ok installed'
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' gdm3 -> r:unknown ok not-installed|dpkg-query: no packages found matching gdm3"
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:banner-message-enable=true'
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:banner-message-text=\S+'
       - 'f:/etc/gdm3/greeter.dconf-defaults -> r:disable-user-list=true'
@@ -3237,9 +3237,10 @@ checks:
       - iso_27001-2013: ["A.10.1.1"]
       - nist_sp_800-53: ["IA-5", "IA-5 (1)"]
       - pci_dss_v3.2.1: ["3.2", "8.2.1"]
-    condition: all
+    condition: any
     rules:
       - "f:/etc/pam.d/common-password -> r:sha512$"
+      - "f:/etc/pam.d/common-password -> r:yescrypt$"
 
  ###################################################
  # 5.4 User Accounts and Environment
