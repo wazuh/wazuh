@@ -34,7 +34,7 @@ RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
-
+USER_AGENT_KEY = 'user-agent'
 
 class LoggingFormat(Enum):
     plain = "plain"
@@ -318,7 +318,11 @@ async def query_update_check_service(installation_uid: str) -> dict:
         Updates information.
     """
     current_version = f'v{wazuh.__version__}'
-    headers = {WAZUH_UID_KEY: installation_uid, WAZUH_TAG_KEY: current_version}
+    headers = {
+        WAZUH_UID_KEY: installation_uid,
+        WAZUH_TAG_KEY: current_version,
+        USER_AGENT_KEY: f'Wazuh UpdateCheckService/{current_version}'
+    }
 
     update_information = get_update_information_template(
         update_check=True, current_version=current_version, last_check_date=get_utc_now()
