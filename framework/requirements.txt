@@ -75,7 +75,7 @@ pytz==2020.1
 PyYAML==5.4.1
 requests==2.32.2
 rsa==4.7.2
-s3transfer==0.4.2
+s3transfer==0.10.2
 secure==0.2.1
 six==1.16.0
 SQLAlchemy==2.0.23
