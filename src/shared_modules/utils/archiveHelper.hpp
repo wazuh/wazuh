@@ -65,8 +65,8 @@ namespace Utils
 
                 if (retVal != ARCHIVE_OK)
                 {
-                    auto errMsg = archive_error_string(archiveRead);
-                    throw std::runtime_error("Couldn't open file during copy data. Error: " + std::string(errMsg ? errMsg : "Unknown error"));
+                    const std::string errMsg = archive_error_string(archiveRead.get()) ? archive_error_string(archiveRead.get()) : "Unknown error";
+                    throw std::runtime_error("Error reading file during data copy. Error: " + errMsg);
                 }
 
                 if (archive_write_data_block(archiveWrite, buff, size, offset) != ARCHIVE_OK)
@@ -113,8 +113,8 @@ namespace Utils
 
             if (retVal != ARCHIVE_OK)
             {
-                auto errMsg = archive_error_string(archiveRead.get());
-                throw std::runtime_error("Couldn't open file during decompress. Error: " + std::string(errMsg ? errMsg : "Unknown error"));
+                const std::string errMsg = archive_error_string(archiveRead.get()) ? archive_error_string(archiveRead.get()) : "Unknown error";
+                throw std::runtime_error("Error opening file during decompression. Error: " + errMsg);
             }
 
             while (!forceStop.load())
@@ -127,8 +127,8 @@ namespace Utils
 
                 if (retVal != ARCHIVE_OK)
                 {
-                    auto errMsg = archive_error_string(archiveRead.get());
-                    throw std::runtime_error("Couldn't open file during reading next header. Error: " + std::string(errMsg ? errMsg : "Unknown error"));
+                    const std::string errMsg = archive_error_string(archiveRead.get()) ? archive_error_string(archiveRead.get()) : "Unknown error";
+                    throw std::runtime_error("Error reading next header during decompression. Error: " + errMsg);
                 }
 
                 std::filesystem::path outputDirPath(std::filesystem::current_path() / outputDir /
