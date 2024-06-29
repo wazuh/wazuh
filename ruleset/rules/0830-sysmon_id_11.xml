@@ -158,7 +158,7 @@
   <rule id="92214" level="15">
     <if_group>sysmon_event_11</if_group>
     <field name="win.eventdata.image" type="pcre2">(?i)(winword|excel|powerpnt|outlook)\.exe</field>
-    <field name="win.eventdata.targetFilename" type="pcre2">(?i)appdata\\\\.+\.lnk</field>
+    <field name="win.eventdata.targetFilename" type="pcre2">(?i)appdata\\\\(?!Roaming\\\\Microsoft\\\\Office\\\\Recent\\\\).+\.lnk$</field>
     <options>no_full_log</options>
     <description>Suspicious file created by Microsoft Office process: $(win.eventdata.image) created $(win.eventdata.targetFilename)</description>
     <mitre>
