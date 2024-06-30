@@ -46,18 +46,36 @@ public:
             logWarn(KS_NAME, "No certificate was found.");
             return;
         }
+
         // Encrypt value
-        TRSAPrimitive().rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
-
-        // Insert to DB
-        Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
-
-        if (!keystoreDB.columnExists(columnFamily))
+        try
         {
-            keystoreDB.createColumn(columnFamily);
+            TRSAPrimitive().rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
+            logDebug2(KS_NAME, "Encryption successful for key: %s", key.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            logError(KS_NAME, "Exception during encryption for key: %s, Error: %s", key.c_str(), e.what());
+            return;
         }
 
-        keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
+        // Insert to DB
+        try
+        {
+            Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+
+            if (!keystoreDB.columnExists(columnFamily))
+            {
+                keystoreDB.createColumn(columnFamily);
+            }
+
+            keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
+            logDebug2(KS_NAME, "Inserted encrypted value for key: %s into column family: %s", key.c_str(), columnFamily.c_str());
+        }
+        catch (const std::exception& e)
+        {
+            logError(KS_NAME, "Exception during database insertion for key: %s, Error: %s", key.c_str(), e.what());
+        }
     }
 
     /**
@@ -72,22 +90,38 @@ public:
         std::string encryptedValue;
 
         // Get from DB
-        Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
-
-        if (!keystoreDB.columnExists(columnFamily))
+        try
         {
-            keystoreDB.createColumn(columnFamily);
-        }
+            Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
-        if (keystoreDB.get(key, encryptedValue, columnFamily))
-        {
-            if (!std::filesystem::exists(PRIVATE_KEY_FILE))
+            if (!keystoreDB.columnExists(columnFamily))
             {
-                logWarn(KS_NAME, "No private key was found.");
-                return;
+                keystoreDB.createColumn(columnFamily);
             }
-            // Decrypt value
-            TRSAPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+
+            if (keystoreDB.get(key, encryptedValue, columnFamily))
+            {
+                if (!std::filesystem::exists(PRIVATE_KEY_FILE))
+                {
+                    logWarn(KS_NAME, "No private key was found.");
+                    return;
+                }
+
+                // Decrypt value
+                try
+                {
+                    TRSAPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+                    logDebug2(KS_NAME, "Decryption successful for key: %s", key.c_str());
+                }
+                catch (const std::exception& e)
+                {
+                    logError(KS_NAME, "Exception during decryption for key: %s, Error: %s", key.c_str(), e.what());
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logError(KS_NAME, "Exception during database retrieval for key: %s, Error: %s", key.c_str(), e.what());
         }
     }
 };
