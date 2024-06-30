@@ -82,7 +82,7 @@ nosyslog="远程机器syslog将不被接收"
 yessyslog="远程机器syslog将被接收"
 
 # Part 3.4/3.5
-readlogs="设置配置文件以分析一下日志:"
+readlogs="设置配置文件以分析以下日志:"
 
 # Part 3.7
 runauthd="你要运行Auth守护进程吗？"
