@@ -85,7 +85,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
     def __init__(self, db_table_name, bucket, reparse, profile, iam_role_arn,
                  only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
-                 region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
+                 region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None, external_id=None):
         # common SQL queries
         self.sql_already_processed = """
             SELECT
@@ -194,6 +194,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                                                     sts_endpoint=sts_endpoint,
                                                     service_endpoint=service_endpoint,
                                                     iam_role_duration=iam_role_duration,
+                                                    external_id=external_id,
                                                     skip_on_error=skip_on_error)
         self.retain_db_records = MAX_RECORD_RETENTION
         self.reparse = reparse
