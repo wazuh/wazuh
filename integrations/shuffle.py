@@ -58,6 +58,10 @@ SKIP_RULE_IDS = [
     '87928',
     '5710',
 ]
+SKIP_DESCRIPTIONS = [
+    "Custom Test Rule to ignore",
+    "Other test rule"
+]
 
 # Log path
 LOG_FILE = f'{pwd}/logs/integrations.log'
@@ -168,6 +172,11 @@ def filter_msg(alert) -> bool:
 
     return alert['rule']['id'] not in SKIP_RULE_IDS
 
+def filter_msg_by_description(alert) -> bool:
+    # SKIP_DESCRIPTIONS contains the descriptions that should be filtered
+
+    return not any(alert["rule"]["description"].startswith(description) for description in SKIP_DESCRIPTIONS)
+
 
 def generate_msg(alert: any, options: any) -> str:
     """Generate the JSON object with the message to be send
@@ -188,6 +197,10 @@ def generate_msg(alert: any, options: any) -> str:
     if not filter_msg(alert):
         print('Skipping rule %s' % alert['rule']['id'])
         return ''
+    
+    if not filter_msg_by_description(alert):
+        print("Skipping rule with this description: %s" % alert["rule"]["description"])
+        return ""
 
     level = alert['rule']['level']
 
