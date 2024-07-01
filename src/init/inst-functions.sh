@@ -241,7 +241,10 @@ GenerateKeystoreCert()
 {
   keystore_key=/etc/keystore.key
   keystore_cert=/etc/keystore.cert
-  if [ ! -f "X${INSTALLDIR}${keystore_key}" ] && [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
+  # Testing keys
+  ${INSTALLDIR}/bin/wazuh-keystore -f default -k username -v test_user
+  # Regenerate keys if they are not valid.
+  if [ $? -eq 1 ] || [ ! -f "${INSTALLDIR}${keystore_key}" ] || [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
       echo "Generating RSA keys for Keystore."
       ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}${keystore_key} -X ${INSTALLDIR}${keystore_cert} -S "/C=US/ST=California/CN=wazuh/"
       chmod 600 ${INSTALLDIR}${keystore_key}
@@ -1306,14 +1309,18 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
 
-    # Since the keystore previously used sslmanager keys for encryption
+    # Since the Keystore tool previously used sslmanager keys for encryption
     # we copy them to the new location to be able to recover the information.
     if [ "X${update_only}" = "Xyes" ]; then
-      cp -pn ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}/etc/keystore.cert
-      cp -pn ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}/etc/keystore.key
-    else
-      GenerateKeystoreCert
+      keystore_key=/etc/keystore.key
+      keystore_cert=/etc/keystore.cert
+      if [ ! -f "${INSTALLDIR}${keystore_key}" ] || [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
+        cp -p ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}${keystore_cert}
+        cp -p ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}${keystore_key}
+      fi
     fi
+    GenerateKeystoreCert
+
 }
 
 InstallAgent()
