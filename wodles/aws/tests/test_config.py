@@ -149,3 +149,30 @@ def test_aws_config_bucket_reformat_msg(mock_reformat,
     assert isinstance(formatted_event['aws']['configuration']['createdTime'], float)
     assert isinstance(formatted_event['aws']['configuration']['iamInstanceProfile'], dict)
     assert isinstance(formatted_event['aws']['configuration']['unnecesary_fields']['Content'], list)
+
+
+bucket_files = [
+    {"Key": "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/18/some_log_file_1", "LastModified": datetime(2024, 5, 18)},
+    {"Key": "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/19/some_log_file_2", "LastModified": datetime(2024, 5, 19)},
+    {"Key": "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/17/some_log_file_3", "LastModified": datetime(2024, 5, 17)},
+]
+
+@pytest.mark.parametrize("bucket_file", bucket_files)
+def test_filter_and_sort_bucket_files(bucket_file):
+    """Test to verify that the _filter_bucket_files function properly filters and sorts bucket files.
+
+    Parameters
+    ----------
+    bucket_file : dict
+        Dictionary representing a bucket file with keys "Key" (file name) and "LastModified" (last modification date).
+    """
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
+    instance.only_logs_after = datetime(2024, 5, 18)
+
+    filtered_sorted_files = list(instance._filter_bucket_files(bucket_files))
+
+    assert len(filtered_sorted_files) == 2  # Only files on or after 2024-05-18 should be included
+
+    # Check the order of the files
+    assert filtered_sorted_files[0]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/18/some_log_file_1"
+    assert filtered_sorted_files[1]["Key"] == "AWSLogs/xxxxxxx/Config/us-east-1/2024/05/19/some_log_file_2"

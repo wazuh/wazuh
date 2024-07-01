@@ -411,16 +411,23 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
         # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
-            filter_args['StartAfter'] = filter_marker
-            if self.only_logs_after:
-                only_logs_marker = self.marker_only_logs_after(aws_region, aws_account_id)
-                filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
+            if aws_tools.get_script_arguments().type.lower() == 'config':
+                # filter_marker route up to year
+                match = re.match(r'(.*?/\d{4}/)', filter_marker)
+                filter_marker_short = match.group(1)
+                filter_args['StartAfter'] = filter_marker_short
+                aws_tools.debug(f"+++ Marker: {filter_marker}", 2)
+            else: 
+                filter_args['StartAfter'] = filter_marker
+                if self.only_logs_after:
+                    only_logs_marker = self.marker_only_logs_after(aws_region, aws_account_id)
+                    filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
 
-            if custom_delimiter:
-                prefix_len = len(filter_args['Prefix'])
-                filter_args['StartAfter'] = filter_args['StartAfter'][:prefix_len] + \
-                                            filter_args['StartAfter'][prefix_len:].replace('/', custom_delimiter)
-            aws_tools.debug(f"+++ Marker: {filter_args['StartAfter']}", 2)
+                if custom_delimiter:
+                    prefix_len = len(filter_args['Prefix'])
+                    filter_args['StartAfter'] = filter_args['StartAfter'][:prefix_len] + \
+                                                filter_args['StartAfter'][prefix_len:].replace('/', custom_delimiter)
+                aws_tools.debug(f"+++ Marker: {filter_args['StartAfter']}", 2)
 
         return filter_args
 

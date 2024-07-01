@@ -373,10 +373,12 @@ def test_aws_bucket_find_regions_handles_exceptions_on_client_error(mock_prefix,
 @pytest.mark.parametrize('iterating', [True, False])
 @pytest.mark.parametrize('custom_delimiter', ['', '-'])
 @pytest.mark.parametrize('region', [utils.TEST_REGION, 'region_for_empty_db'])
+@pytest.mark.parametrize('config_type', ['config', 'other'])
 @patch('aws_bucket.AWSBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX)
-def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
+@patch('aws_tools.get_script_arguments')
+def test_aws_bucket_build_s3_filter_args(mock_get_script_arguments, mock_get_full_prefix, custom_database,
                                          region: str, custom_delimiter: str, iterating: bool,
-                                         only_logs_after: str or None, reparse: bool):
+                                         only_logs_after: str or None, reparse: bool, config_type: str):
     """Test 'build_s3_filter_args' method returns the expected filter arguments for the list_objects_v2 call.
 
     Parameters
@@ -391,6 +393,8 @@ def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
         Date after which obtain logs.
     reparse: bool
         Whether to parse already parsed logs or not.
+    config_type: str
+        Type of configuration to test for.
     """
     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
 
@@ -421,20 +425,28 @@ def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
         filter_marker = bucket.marker_only_logs_after(aws_region, aws_account_id) if bucket.only_logs_after \
             else bucket.marker_custom_date(aws_region, aws_account_id, bucket.default_date)
 
+    mock_get_script_arguments.return_value.type = config_type
+
     if not iterating:
-        expected_filter_args['StartAfter'] = filter_marker
-        if only_logs_after:
-            only_logs_marker = bucket.marker_only_logs_after(aws_region, aws_account_id)
-            expected_filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
+        if config_type == 'config':
+            filter_marker = re.match(r'(.*?/\d{4}/)', filter_marker).group(1)
+            expected_filter_args['StartAfter'] = filter_marker
+            
+            assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, iterating,
+                                                                custom_delimiter)
+        else:
+            expected_filter_args['StartAfter'] = filter_marker
+            if only_logs_after:
+                only_logs_marker = bucket.marker_only_logs_after(aws_region, aws_account_id)
+                expected_filter_args['StartAfter'] = only_logs_marker if only_logs_marker > filter_marker else filter_marker
 
-        if custom_delimiter:
-            prefix_len = len(expected_filter_args['Prefix'])
-            expected_filter_args['StartAfter'] = expected_filter_args['StartAfter'][:prefix_len] + \
-                                                 expected_filter_args['StartAfter'][prefix_len:]. \
-                                                     replace('/', custom_delimiter)
-
-    assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, iterating,
-                                                               custom_delimiter)
+            if custom_delimiter:
+                prefix_len = len(expected_filter_args['Prefix'])
+                expected_filter_args['StartAfter'] = expected_filter_args['StartAfter'][:prefix_len] + \
+                                                     expected_filter_args['StartAfter'][prefix_len:]. \
+                                                         replace('/', custom_delimiter)
+            assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, iterating,
+                                                                custom_delimiter)
 
 
 def test_aws_bucket_reformat_msg():
