@@ -239,17 +239,13 @@ GenerateAuthCert()
 #########################
 GenerateKeystoreCert()
 {
+  # Regenerate keys if they are not valid.
   keystore_key=/etc/keystore.key
   keystore_cert=/etc/keystore.cert
-  # Testing keys
-  ${INSTALLDIR}/bin/wazuh-keystore -f default -k username -v test_user
-  # Regenerate keys if they are not valid.
-  if [ $? -eq 1 ] || [ ! -f "${INSTALLDIR}${keystore_key}" ] || [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
-      echo "Generating RSA keys for Keystore."
-      ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}${keystore_key} -X ${INSTALLDIR}${keystore_cert} -S "/C=US/ST=California/CN=wazuh/"
-      chmod 600 ${INSTALLDIR}${keystore_key}
-      chmod 600 ${INSTALLDIR}${keystore_cert}
-  fi
+  echo "Generating RSA keys for Keystore."
+  ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}${keystore_key} -X ${INSTALLDIR}${keystore_cert} -S "/C=US/ST=California/CN=wazuh/"
+  chmod 600 ${INSTALLDIR}${keystore_key}
+  chmod 600 ${INSTALLDIR}${keystore_cert}
 }
 
 ##########
@@ -1311,16 +1307,16 @@ InstallServer()
 
     # Since the Keystore tool previously used sslmanager keys for encryption
     # we copy them to the new location to be able to recover the information.
-    if [ "X${update_only}" = "Xyes" ]; then
-      keystore_key=/etc/keystore.key
-      keystore_cert=/etc/keystore.cert
-      if [ ! -f "${INSTALLDIR}${keystore_key}" ] || [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
-        cp -p ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}${keystore_cert}
-        cp -p ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}${keystore_key}
+    keystore_key=/etc/keystore.key
+    keystore_cert=/etc/keystore.cert
+    if [ ! -f "${INSTALLDIR}${keystore_key}" ] || [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
+      cp -p ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}${keystore_cert}
+      cp -p ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}${keystore_key}
+      ${INSTALLDIR}/bin/wazuh-keystore -f default -k username -v test_user
+      if [ $? -eq 1 ]; then
+            GenerateKeystoreCert
       fi
     fi
-    GenerateKeystoreCert
-
 }
 
 InstallAgent()
