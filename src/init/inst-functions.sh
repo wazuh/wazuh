@@ -1305,17 +1305,21 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
 
-    # Since the Keystore tool previously used sslmanager keys for encryption
-    # we copy them to the new location to be able to recover the information.
     keystore_key=/etc/keystore.key
     keystore_cert=/etc/keystore.cert
-    if [ ! -f "${INSTALLDIR}${keystore_key}" ] || [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
+
+    # If we come from 4.8.0, no certificates will be found.
+    # Since the Keystore tool previously used sslmanager keys for encryption,
+    # We copy them to the new location to be able to recover the information.
+    if [ ! -f "${INSTALLDIR}${keystore_key}" ] && [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
       cp -p ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}${keystore_cert}
       cp -p ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}${keystore_key}
-      ${INSTALLDIR}/bin/wazuh-keystore -f default -k username -v test_user
-      if [ $? -eq 1 ]; then
-            GenerateKeystoreCert
-      fi
+    fi
+    
+    # Test if the certificates are valid. If don't, re-generate them
+    ${INSTALLDIR}/bin/wazuh-keystore -f default -k certificate_test -v test
+    if [ $? -eq 1 ]; then
+      GenerateKeystoreCert
     fi
 }
 
