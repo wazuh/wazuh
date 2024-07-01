@@ -1306,6 +1306,8 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
 
+    # Since the keystore previously used sslmanager keys for encryption
+    # we copy them to the new location to be able to recover the information.
     if [ "X${update_only}" = "Xyes" ]; then
       cp -pn ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}/etc/keystore.cert
       cp -pn ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}/etc/keystore.key
