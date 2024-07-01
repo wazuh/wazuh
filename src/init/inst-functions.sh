@@ -1306,7 +1306,12 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
 
-    GenerateKeystoreCert
+    if [ "X${update_only}" = "Xyes" ]; then
+      cp -pn ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}/etc/keystore.cert
+      cp -pn ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}/etc/keystore.key
+    else
+      GenerateKeystoreCert
+    fi
 }
 
 InstallAgent()
