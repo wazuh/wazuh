@@ -96,7 +96,10 @@ public:
 
         if (const auto status = rocksdb::DB::Open(options, path, &dbRawPtr); !status.ok())
         {
-            throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
+            throw std::system_error(status.IsCorruption() || status.IsIOError()
+                                        ? std::make_error_code(std::errc::io_error)
+                                        : std::make_error_code(std::errc::resource_unavailable_try_again),
+                                    "Failed to open RocksDB database. Reason: " + std::string {status.getState()});
         }
 
         // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete the

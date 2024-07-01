@@ -217,3 +217,50 @@ TEST_F(ThreadSafeMultiQueueTest, LoadAfterStop)
     EXPECT_EQ(0, queue.size("002"));
     EXPECT_TRUE(queue.empty());
 }
+
+TEST_F(ThreadSafeMultiQueueTest, CorruptionTest)
+{
+    Utils::
+        TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
+            testQueue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
+
+    for (int i = 0; i < 10; i++)
+    {
+        testQueue.push("test" + std::to_string(i), rocksdb::Slice("test" + std::to_string(i)));
+    }
+
+    testQueue.cancel();
+    EXPECT_TRUE(testQueue.cancelled());
+
+    bool corrupted {false};
+    std::string prefix {"corrupted.db/MANIFEST"};
+    for (const auto& entry : std::filesystem::directory_iterator("corrupted.db"))
+    {
+        if (entry.path().string().substr(0, prefix.size()).compare(prefix) == 0)
+        {
+            std::filesystem::remove(entry.path());
+            corrupted = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(corrupted);
+
+    try
+    {
+        Utils::TSafeMultiQueue<rocksdb::Slice,
+                               rocksdb::PinnableSlice,
+                               RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
+            testQueueAfterCorruption(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
+    }
+    catch (const std::system_error& e)
+    {
+        EXPECT_EQ(e.code(), std::errc::io_error);
+    }
+    catch (...)
+    {
+        FAIL() << "Expected std::system_error";
+    }
+
+    std::error_code ec;
+    std::filesystem::remove_all("corrupted.db", ec);
+}
