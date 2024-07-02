@@ -15,6 +15,7 @@
 #include "loggerHelper.h"
 #include <filesystem>
 #include <functional>
+#include <fstream>
 
 namespace Log
 {
@@ -28,6 +29,7 @@ int main(int argc, char* argv[])
     std::string family;
     std::string key;
     std::string value;
+    std::string valuePath;
 
     Log::assignLogFunction(
         [](const int logLevel,
@@ -63,8 +65,48 @@ int main(int argc, char* argv[])
         family = args.getColumnFamily();
         key = args.getKey();
         value = args.getValue();
+        valuePath = args.getValuePath();
 
-        Keystore::put(family, key, value);
+        if (value.empty() && valuePath.empty())
+        {
+            std::string valueFromStdin;
+            std::getline(std::cin, valueFromStdin);
+
+            if (!valueFromStdin.empty())
+            {
+                Keystore::put(family, key, valueFromStdin);
+            }
+            else
+            {
+                throw CmdLineArgsException("Error reading from stdin.");
+            }
+        }
+        else if (!value.empty() && valuePath.empty())
+        {
+            Keystore::put(family, key, value);
+        }
+        else if (!valuePath.empty() && value.empty())
+        {
+            std::ifstream file(valuePath);
+            if (!file.is_open())
+            {
+                throw CmdLineArgsException("Error opening file.");
+            }
+
+            std::string content;
+            if (std::getline(file, content))
+            {
+                Keystore::put(family, key, content);
+            }
+            else
+            {
+                throw CmdLineArgsException("Error reading file.");
+            }
+        }
+        else
+        {
+            throw CmdLineArgsException("Invalid arguments.");
+        }
     }
     catch (const CmdLineArgsException& e)
     {
