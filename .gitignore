@@ -70,6 +70,7 @@ src/wazuh-reportd
 src/wazuh-syscheckd
 src/wazuh-integratord
 src/wazuh-keystore
+src/wazuh-keystore-testtool
 
 # Active responses
 src/firewall-drop
