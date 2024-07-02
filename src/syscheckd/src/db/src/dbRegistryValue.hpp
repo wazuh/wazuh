@@ -84,7 +84,7 @@ class RegistryValue final : public DBItem
         };
 
     private:
-        unsigned long int                                   m_size;
+        unsigned long long int                              m_size;
         unsigned int                                        m_type;
         std::string                                         m_path;
         int                                                 m_arch;
