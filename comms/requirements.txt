@@ -5,3 +5,5 @@ opensearch-py[async]
 pydantic
 PyJWT
 uvicorn
+opentelemetry-instrumentation-fastapi
+opentelemetry-sdk
