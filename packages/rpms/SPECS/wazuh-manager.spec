@@ -316,10 +316,25 @@ if [ $1 = 2 ]; then
     cp -rp %{_localstatedir}/queue/ossec %{_localstatedir}/queue/sockets
   fi
 
-  # Ensure that the 'Indexer' is configured
-  CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
-  . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-indexer.sh
-  updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+  # Configure the "Indexer" only if the version to update is less than or equal to 4.7
+  if [ -f %{_sysconfdir}/ossec-init.conf ]; then
+    # Import the variables from ossec-init.conf file
+    . %{_sysconfdir}/ossec-init.conf
+  else
+    # Ask wazuh-control the version
+    VERSION=$(%{_localstatedir}/bin/wazuh-control info -v)
+  fi
+
+  # Get the major and minor version
+  MAJOR=$(echo $VERSION | cut -dv -f2 | cut -d. -f1)
+  MINOR=$(echo $VERSION | cut -d. -f2)
+
+  # Verify if the version is less than or equal to 4.7
+  if [ [ $MAJOR = 4 ] && [ $MINOR -le 7 ]; then
+    CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
+    . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-indexer.sh
+    updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+  fi
 fi
 
 %define _vdfilename vd_1.0.0_vd_4.8.0.tar.xz
