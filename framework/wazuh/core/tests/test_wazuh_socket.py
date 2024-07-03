@@ -2,42 +2,34 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, call
+from asyncio import BaseEventLoop, BaseProtocol, StreamWriter, StreamReader, BaseTransport
+from struct import pack
 
 import pytest
 from wazuh.core.exception import WazuhException
-from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, WazuhAsyncSocket, WazuhAsyncProtocol, \
-    SOCKET_COMMUNICATION_PROTOCOL_VERSION, create_wazuh_socket_message
+from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, \
+     SOCKET_COMMUNICATION_PROTOCOL_VERSION, create_wazuh_socket_message, WazuhAsyncSocket, \
+     WazuhAsyncSocketJSON
+
+@pytest.fixture
+def aux_conn_patch():
+    """Fixture with asyncio.open_unix_connection patched."""
+    return patch('asyncio.open_unix_connection',
+                 return_value=(StreamReader(),StreamWriter(protocol=BaseProtocol(),
+                                                           transport=BaseTransport(),
+                                                           loop=BaseEventLoop(),
+                                                           reader=None)))
 
 
-class LoopMock:
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    async def create_connection(protocol_factory, sock):
-        with patch('asyncio.transports.Transport') as transport:
-            return transport, WazuhAsyncProtocol(LoopMock())
-
-    def set_exception_handler(self, exc_handler):
-        pass
-
-    def create_future(self):
-        pass
-
-
-class ProtocolMock:
-        def __init__(self):
-            self.on_data_received = ProtocolMock.testing()
-
-        @staticmethod
-        async def testing():
-            return 'test'
-        
-        @staticmethod
-        def get_data():
-            return b'data'
+@pytest.mark.asyncio
+@pytest.fixture
+async def connected_wazuh_async_socket(aux_conn_patch):
+    """Fixture to instantiate WazuhAsyncSocket."""
+    with aux_conn_patch:
+        s = WazuhAsyncSocket()
+        await s.connect('/any/pipe')
+        yield s
 
 
 @patch('wazuh.core.wazuh_socket.WazuhSocket._connect')
@@ -212,109 +204,106 @@ def test_create_wazuh_socket_message(origin, command, parameters):
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.wazuh_socket.socket.socket.connect')
-async def test_WazuhAsyncSocket_connect(mock_conn):
-    """Tests WazuhAsyncSocket.connect function works."""
-    path = 'test_path'
-    socket =  WazuhAsyncSocket()
-    await socket.connect(path)
-    mock_conn.assert_called_once_with(path)
+async def test_wazuh_async_socket_connect():
+    """Test socket connection."""
+    s = WazuhAsyncSocket()
+    with patch('asyncio.open_unix_connection',
+               return_value=(StreamReader(),
+                             StreamWriter(protocol=BaseProtocol(),
+                                          transport=BaseTransport(),
+                                          loop=BaseEventLoop(),
+                                          reader=StreamReader()))) as mock_open:
+        await s.connect(path_to_socket='/etc/socket/path')
+        assert isinstance(s.reader, StreamReader, )
+        assert isinstance(s.writer, StreamWriter)
+        mock_open.assert_awaited_once_with('/etc/socket/path')
+
+
+@pytest.mark.parametrize('exception', [(ValueError()),(OSError),(FileNotFoundError),((AttributeError()))])
+async def test_wazuh_async_socket_connect_ko(exception):
+    """Test socket connection errors."""
+    s = WazuhAsyncSocket()
+    aux_conn_patch.side_effect = exception
+    with patch('asyncio.open_unix_connection', side_effect=exception):
+        with pytest.raises(WazuhException) as exc_info:
+            await s.connect(path_to_socket='/etc/socket/path')
+
+    assert exc_info.value.code == 1013
+    assert exc_info.errisinstance(WazuhException)
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.wazuh_socket.socket.socket.connect', side_effect=ValueError)
-async def test_WazuhAsyncSocket_connect_ko(mock_conn):
-    """Tests WazuhAsyncSocket.connect function exceptions works."""
-    with pytest.raises(WazuhException, match=".* 1013 .*"):
-        socket = WazuhAsyncSocket()
-        await socket.connect('test_path')
+async def test_wazuh_async_socket_receive(connected_wazuh_async_socket: WazuhAsyncSocket):
+    """Test receive function."""
+    with patch.object(connected_wazuh_async_socket.reader, 'read',
+                      side_effect=[b'\x05\x00\x00\x00', b'12345']) as read_patch:
+        data = await connected_wazuh_async_socket.receive()
+        assert data == b'12345'
+        read_patch.assert_has_awaits([call(4), call(5)])
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.wazuh_socket.socket.socket.connect')
-@patch('wazuh.core.wazuh_socket.socket.socket.close')
-async def test_WazuhAsyncSocket_close(mock_close, mock_conn):
-    """Tests WazuhAsyncSocket.close function works."""
-    socket = WazuhAsyncSocket()
-    await socket.connect('test_path')
-    await socket.close()
-    mock_close.assert_called_once()
+async def test_wazuh_async_socket_receive_ko(connected_wazuh_async_socket: WazuhAsyncSocket):
+    """Test receive function."""
+    with patch.object(connected_wazuh_async_socket.reader, 'read',
+                      side_effect=Exception()):
+        with pytest.raises(WazuhException) as exc_info:
+            await connected_wazuh_async_socket.receive()
+    assert exc_info.value.code == 1014
+    assert exc_info.errisinstance(WazuhException)
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('header_format, expected_response', [
-    (None, b'\x00\x01'),
-    ('?', b'\x01\x00\x01'),
-    ('h', b'\x02\x00\x00\x01'),
-    ('i', b'\x02\x00\x00\x00\x00\x01'),
-    ('l', b'\x02\x00\x00\x00\x00\x00\x00\x00\x00\x01'),
-    ('q', b'\x02\x00\x00\x00\x00\x00\x00\x00\x00\x01'),
-    ('f', b'\x00\x00\x00@\x00\x01'),
-])
-@patch('wazuh.core.wazuh_socket.socket.socket.connect')
-@patch('asyncio.Transport.write')
-@patch('wazuh.core.wazuh_socket.WazuhAsyncSocket.is_connection_lost', return_value=False)
-async def test_WazuhAsyncSocket_send(mock_conn_lost, mock_write, mock_conn, header_format, expected_response):
-    """Tests WazuhAsyncSocket.send function works."""
-    socket = WazuhAsyncSocket()
-    await socket.connect('test_path')
-
-    data = b'\x00\x01'
-    response = await socket.send(data, header_format)
-
-    assert response == expected_response
+async def test_wazuh_async_socket_send(connected_wazuh_async_socket: WazuhAsyncSocket):
+    """Test receive function."""
+    d_bytes = b'12345'
+    with patch.object(connected_wazuh_async_socket.writer, 'write') as write_patch,\
+         patch.object(connected_wazuh_async_socket.writer, 'drain') as drain_patch:
+        await connected_wazuh_async_socket.send(d_bytes)
+        bytes_sent = pack('<I', len(d_bytes)) + d_bytes
+        write_patch.assert_called_once_with(bytes_sent)
+        drain_patch.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('msg, effect, send_effect, expected_exception', [
-    ('text_msg', 'side_effect', None, 1105),
-    (b"\x00\x01", 'return_value', 0, 1014),
-    (b"\x00\x01", 'side_effect', Exception, 1014)
-])
-@patch('wazuh.core.wazuh_socket.socket.socket.connect')
-async def test_WazuhAsyncSocket_send_ko(mock_conn, msg, effect, send_effect, expected_exception):
-    """Tests WazuhAsyncSocket.send function exceptions works."""
-    socket = WazuhAsyncSocket()
-    await socket.connect('test_path')
+async def test_wazuh_async_socket_send_ko(connected_wazuh_async_socket: WazuhAsyncSocket):
+    """Test receive function."""
+    with patch.object(connected_wazuh_async_socket.writer, 'write',
+                      side_effect=OSError()):
+        with pytest.raises(WazuhException) as exc_info:
+            await connected_wazuh_async_socket.send(b'12345')
+    assert exc_info.value.code == 1014
+    assert exc_info.errisinstance(WazuhException)
 
-    if effect == 'return_value':
-        with patch('asyncio.transports.Transport.write', return_value=send_effect):
-            with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-                await socket.send(msg)
-    else:
-        with patch('asyncio.transports.Transport.write', side_effect=send_effect):
-            with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
-                await socket.send(msg)
 
-    mock_conn.assert_called_once_with('test_path')
+def test_wazuh_async_socket_close(connected_wazuh_async_socket: WazuhAsyncSocket):
+    """Test receive function."""
+
+    with patch.object(connected_wazuh_async_socket.writer, 'close') as close_patch:
+        connected_wazuh_async_socket.close()
+        close_patch.assert_called_once()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('header_size', [None, 0, 2, 4])
-@patch('wazuh.core.wazuh_socket.socket.socket.connect')
-async def test_WazuhAsyncSocket_receive(mock_conn, header_size):
-    """Tests WazuhAsyncSocket.receive function works."""
-    socket = WazuhAsyncSocket()
-    await socket.connect('test_path')
-    socket.protocol = ProtocolMock()
+async def test_wazuh_async_json_socket_receive_json():
+    """Test receive_json function."""
 
-    response = await socket.receive(header_size)
-    data = socket.protocol.get_data()
-    if header_size is None:
-        assert response == data
-        assert len(response) == len(data)
-    else:
-        assert response == data[header_size:]
-        assert len(response) == len(data) - header_size
+    s = WazuhAsyncSocketJSON()
+    with patch.object(WazuhAsyncSocket,
+                      'receive', return_value=b'{"data": {"field":"value"}}') as receive_patch:
+        msg = await s.receive_json()
+        receive_patch.assert_called_once()
+        assert msg['field'] == 'value'
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.wazuh_socket.socket.socket.connect')
-@patch('asyncio.get_running_loop', return_value=LoopMock)
-async def test_WazuhAsyncSocket_receive_ko(mock_running_loop, mock_conn):
-    """Tests WazuhAsyncSocket.receive function exception works."""
-    socket = WazuhAsyncSocket()
-    await socket.connect('test_path')
+async def test_wazuh_async_json_socket_receive_json_ko():
+    """Test receive_json function."""
 
-    with pytest.raises(WazuhException, match=".* 1014 .*"):
-        await socket.receive()
+    s = WazuhAsyncSocketJSON()
+    with patch.object(WazuhAsyncSocket, 'receive',
+                      return_value=b'{"error": 1000, "message": "error message"}'):
+        with pytest.raises(WazuhException) as exc_info:
+            await s.receive_json()
+        exc_info.errisinstance(WazuhException)
+        assert exc_info.value.code == 1000
