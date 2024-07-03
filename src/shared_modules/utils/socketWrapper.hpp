@@ -685,8 +685,7 @@ public:
                 if (ret <= 0)
                 {
                     m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, bufferSize - amountSent);
-                    throw std::runtime_error {"Error sending data to socket: " + std::string(std::strerror(errno)) + " " +
-                                              std::string(strerror(errno))};
+                    throw std::runtime_error {"Error sending data to socket: " + std::string(std::strerror(errno))};
                 }
                 else
                 {
