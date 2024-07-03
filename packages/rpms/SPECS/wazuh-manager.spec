@@ -316,10 +316,12 @@ if [ $1 = 2 ]; then
     cp -rp %{_localstatedir}/queue/ossec %{_localstatedir}/queue/sockets
   fi
 
-  # Ensure that the 'Indexer' is configured
-  CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
-  . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-indexer.sh
-  updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+  FILE_PATH="%{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-indexer.sh"
+  if [ -f "$FILE_PATH" ]; then
+    CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
+    . "$FILE_PATH"
+    updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+  fi
 fi
 
 %define _vdfilename vd_1.0.0_vd_4.8.0.tar.xz
