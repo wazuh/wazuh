@@ -1,17 +1,22 @@
 name: regex_match
 
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
 # Arguments expected by the helper function
 arguments:
   1:
-    type: re2  # Expected type is re2
+    type: string  # Expected type is re2
+    generate: regex
     source: value # includes values
 
-target_field:
-  type: string
-  is_array: false
+# regex not match
+skipped:
+  - success_cases
 
-# Indicates whether the helper function supports a variable number of arguments
-variadic: false
+target_field:
+  type: number
+  generate: integer
 
 test:
   - arguments:

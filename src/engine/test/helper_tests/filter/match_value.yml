@@ -1,27 +1,32 @@
 # Name of the helper function
 name: match_value
 
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
 # Arguments expected by the helper function
 arguments:
   1:
     type: array  # Expected type is array
+    generate: integer
     source: both # includes values or references (their names start with $)
 
-target_field:
-  type: all
-  is_array: false
+# Value not found
+skipped:
+  - success_cases
 
-# Indicates whether the helper function supports a variable number of arguments
-variadic: false
+target_field:
+  type: object
+  generate: object
 
 test:
   - arguments:
       1: [1,2,3,4]
-      target_filed: 10
+      target_field: 10
     should_pass: false
     description: Compare two different integers
   - arguments:
       1: [22]
-      target_filed: 22
+      target_field: 22
     should_pass: true
     description: Compare two equals integers
