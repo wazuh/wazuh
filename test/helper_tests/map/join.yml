@@ -4,16 +4,17 @@ name: join
 # Arguments expected by the helper function
 arguments:
   1:
-    type: string # Expected type is string
+    type: array # Expected type is string
+    generate: string
     source: reference # Includes values or references (their names start with $)
-    is_array: true
 
   2:
     type: string # Expected type is string
+    generate: string
     source: value # Includes values or references (their names start with $)
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
 
 test:
   - arguments:

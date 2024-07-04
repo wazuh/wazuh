@@ -5,10 +5,11 @@ name: upcase
 arguments:
   1:
     type: string # Expected type is string
+    generate: string
     source: both # Includes values or references (their names start with $)
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
 
 test:
   - arguments:
@@ -23,6 +24,6 @@ test:
     description: Change string to uppercase
   - arguments:
       1: aBcDECF
-    should_pass: false
-    expected: aBcDECF
+    should_pass: true
+    expected: ABCDECF
     description: Change string to uppercase
