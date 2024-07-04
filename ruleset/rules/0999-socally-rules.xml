@@ -1,0 +1,41 @@
+<!--
+  -  SocAlly default ruleset
+  -  Created by SocAlly.
+  -  Copyright (C) 2024, SocAlly.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+  
+<!-- ID: 99900 - 99960 -->
+<group name="socally,">
+  <rule id="99900" level="0">
+      <decoded_as>json</decoded_as>
+      <field name="timestamp">\.+</field>
+      <field name="socally_module">\.+</field>
+      <description>Socally events messages grouped.</description>
+  </rule>
+  <rule id="99901" level="3">
+      <if_sid>99900</if_sid>
+      <field name="validation">^pending$</field>
+      <description>Socally: Credential from User $(user) found.</description>
+      <mitre>
+          <id>T1087</id>
+      </mitre>
+  </rule>
+  <rule id="99902" level="12">
+    <if_sid>99900</if_sid>
+    <field name="validation">^valid$</field>
+    <description>Socally: Valid Credential from User $(user) found.</description>
+    <mitre>
+        <id>T1087</id>
+        <id>T1586</id>
+    </mitre>
+  </rule>
+  <rule id="99903" level="3">
+    <if_sid>99900</if_sid>
+    <field name="validation">^invalid$</field>
+    <description>Socally: Invalid Credential from User $(user) found.</description>
+    <mitre>
+        <id>T1087</id>
+    </mitre>
+  </rule>
+</group>
