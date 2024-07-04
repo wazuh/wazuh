@@ -1,12 +1,12 @@
 # Name of the helper function
 name: is_string
 
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
 target_field:
   type: string
-  is_array: false
-
-# Indicates whether the helper function supports a variable number of arguments
-variadic: false
+  generate: string
 
 test:
   - arguments:
@@ -15,10 +15,10 @@ test:
     should_pass: false
     description: Not is string
   - arguments:
-      target_filed: [1,2,3,4]
+      target_field: [1,2,3,4]
     should_pass: false
     description: Not is string
   - arguments:
-      target_filed: hello
+      target_field: hello
     should_pass: true
     description: Is string

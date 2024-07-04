@@ -1,15 +1,19 @@
 # Name of the helper function
 name: exists
 
-target_field:
-  type: all
-  is_array: false
-
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
 
 test:
   - arguments:
-      target_filed: 1234
+      target_field: 1234
     should_pass: true
     description: Target Field exist
