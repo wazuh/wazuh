@@ -247,12 +247,15 @@ class Evaluator:
         """
         Checks the response of an API request and creates a log entry based on the result.
         """
-        if (self.should_pass and response.status == api_engine.OK) or (
-            not self.should_pass and response.status == api_engine.ERROR
-        ):
-            self.create_success_test()
+        if not self.skipped:
+            if (self.should_pass and response.status == api_engine.OK) or (
+                not self.should_pass and response.status == api_engine.ERROR
+            ):
+                self.create_success_test()
+            else:
+                self.create_failure_test(response)
         else:
-            self.create_failure_test(response)
+            self.create_success_test()
 
     def handle_map_event_with_field_mapping(self, response, output: dict, field_mapping: str):
         """
@@ -303,24 +306,18 @@ class Evaluator:
             field_mapping (str): The field mapping to be checked in the output.
         """
         self.field_mapping = field_mapping
-        request = build_run_post_request(self.input, api_tester.NONE)
+        request = build_run_post_request(self.input, api_tester.ALL)
         response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
         if not self.skipped:
-            if (self.should_pass and field_mapping in output) or (
-                not self.should_pass and field_mapping not in output
-            ) or (not self.should_pass and field_mapping in output):
+            if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
                 if field_mapping in output:
                     self.handle_map_event_with_field_mapping(response, output, field_mapping)
                 else:
                     self.create_success_test()
             else:
-                if self.expected is not None:
-                    self.create_failure_test(response)
-                else:
-                    # If I don't have an expected, I don't care that the field is not mapped in the output.
-                    self.create_success_test()
+                self.create_failure_test(response)
         else:
             self.create_success_test()
 
@@ -333,18 +330,15 @@ class Evaluator:
             field_mapping (str): The field mapping to be checked in the output.
         """
         self.field_mapping = field_mapping
-        request = build_run_post_request(self.input, api_tester.NONE)
+        request = build_run_post_request(self.input, api_tester.ALL)
         response = send_recv(api_client, request, api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
         if not self.skipped:
-            if self.should_pass != None:
-                if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
-                    self.create_success_test()
-                else:
-                    self.create_failure_test(response)
-            else:
+            if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
                 self.create_success_test()
+            else:
+                self.create_failure_test(response)
         else:
             self.create_success_test()
 
@@ -363,18 +357,13 @@ class Evaluator:
         result = extract_transformation_result_from_response(response, self.helper_name)
 
         if not self.skipped:
-            if self.should_pass != None:
-                if (self.should_pass and result == "Success") or (
-                    not self.should_pass and result != "Success"
-                ):
-                    if field_mapping in output:
-                        self.handle_transform_event_with_field_mapping(response, output, field_mapping)
-                    else:
-                        self.create_success_test()
+            if (self.should_pass and result == "Success") or (not self.should_pass and result != "Success"):
+                if field_mapping in output:
+                    self.handle_transform_event_with_field_mapping(response, output, field_mapping)
                 else:
-                    self.create_failure_test(response)
+                    self.create_success_test()
             else:
-                self.create_success_test()
+                self.create_failure_test(response)
         else:
             self.create_success_test()
 
@@ -424,7 +413,10 @@ def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator)
     response = send_recv(api_client, request, api_engine.GenericStatus_Response())
     if response.status == api_engine.OK:
         return True
-    result_evaluator.create_failure_test(response)
+    if result_evaluator.skipped:
+        result_evaluator.create_success_test()
+    else:
+        result_evaluator.create_failure_test(response)
     return False
 
 
@@ -747,6 +739,7 @@ def process_file(file: Path, api_client: APIClient, socket_path: str, result_eva
         result_evaluator.set_asset_definition(build_test["assets_definition"])
         result_evaluator.set_should_pass(build_test["should_pass"])
         result_evaluator.set_description(build_test["description"])
+        result_evaluator.set_skipped(build_test.get("skipped", False))
 
         # Tear Down
         delete_asset(api_client)
@@ -777,40 +770,37 @@ def process_file(file: Path, api_client: APIClient, socket_path: str, result_eva
 
 def run_test_cases_generator():
     """
-    Generates test cases by iterating over Python files in subdirectories.
+    Generates test cases by iterating over Python files in specific subdirectories.
 
     If any script returns a non-zero exit code, the function exits with status code 1.
     """
     current_dir = Path(__file__).resolve().parent
-
-    for item in current_dir.iterdir():
-        if item.is_dir():
-            for file in item.iterdir():
-                if file.suffix == ".py":
-                    print(f"Running {file}")
-                    result = None
-                    if config.input_file:
-                        result = subprocess.run(["python3", str(file), "--input_file", config.input_file])
-                    else:
-                        result = subprocess.run(["python3", str(file)])
-                    if result.returncode == 1:
-                        sys.exit(1)
+    result = None
+    if config.input_file:
+        result = subprocess.run(["python3",  current_dir / "testCaseGenerator.py", "--input_file", config.input_file])
+    else:
+        result = subprocess.run(["python3", current_dir / "testCaseGenerator.py"])
+    if result.returncode == 1:
+        sys.exit(1)
 
 
 def run_test_cases_executor(api_client: APIClient, socket_path: str, kvdb_path: str):
     """
-    Execute test cases found in YAML files in the current directory.
+    Execute test cases found in Python files in specific directories.
 
     Args:
         api_client (APIClient): The API client used to make requests.
         socket_path (str): The path to the socket.
+        kvdb_path (str): The path to the key-value database.
     """
     current_dir = Path(__file__).resolve().parent
     result_evaluator = Evaluator()
+    specific_dirs = ["map", "filter", "transformation"]
 
-    for item in current_dir.iterdir():
-        if item.is_dir():
-            process_files_in_directory(item, api_client, socket_path, result_evaluator, kvdb_path)
+    for dir_name in specific_dirs:
+        dir_path = current_dir / dir_name
+        if dir_path.is_dir():
+            process_files_in_directory(dir_path, api_client, socket_path, result_evaluator, kvdb_path)
 
     generate_report(result_evaluator.successful, result_evaluator.failure)
 
