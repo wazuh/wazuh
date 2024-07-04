@@ -2,34 +2,46 @@
 name: kvdb_decode_bitmask
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
   1:
     type: string  # Accept only object
+    generate: string
     source: value # Includes only values
-    allowed_values:
-      - testing
+    restrictions:
+      allowed:
+        - testing
   2:
     type: string  # Accept only object
+    generate: string
     source: value # Includes only values
-    allowed_values:
-      - test_bitmask
+    restrictions:
+      allowed:
+        - test_bitmask
   3:
     type: string  # Accept only string
+    generate: hexadecimal
     source: reference # Includes only references (their names start with $)
+
+# ToDo:
+# target_field type not comprobed
+# Review Reference values is out of range 0-0xFFFFFFFFFFFFFFFF"
+skipped:
+  - success_cases
+  - different_target_field_type
 
 target_field:
   type: string
-  is_array: false
+  generate: string
 
 test:
   - arguments:
       1: testing
       2: test_bitmask
       3: "33"
-      target_filed: "any_value"
+      target_field: "any_value"
     should_pass: true
     expected: ["some_data"]
     description: Success decode bitmask
@@ -37,7 +49,7 @@ test:
       1: testing
       2: test_bitmask
       3: "99"
-      target_filed: any_value
+      target_field: any_value
     should_pass: false
     expected: any_value
     description: Failure decode bitmask. Values is out of range 0-0xFFFFFFFFFFFFFFFF

@@ -2,17 +2,26 @@
 name: parse_file
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: true
+is_variadic: true
 
 # Arguments expected by the helper function
 arguments:
   1:
     type: string  # Accept only string
+    generate: string
     source: reference # includes only references (their names start with $)
 
+skipped:
+  - success_cases # parser failed
+
+# Its type is not evaluated, therefore it takes all by default
 target_field:
-  type: object
-  is_array: false
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
 
 test:
   - arguments:

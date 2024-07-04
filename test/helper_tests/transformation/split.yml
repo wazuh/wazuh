@@ -2,22 +2,30 @@
 name: split
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
   1:
     type: string  # Accept only string
+    generate: string
     source: reference # Includes only references (their names start with $)
   2:
     type: string  # Accept only string
+    generate: string
     source: value # includes only values
-    allowed_values:
-      - '|'
+    restrictions:
+      allowed:
+        - '|'
 
+# the type of the target field is not verified
 target_field:
-  type: string
-  is_array: false
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
 
 test:
   - arguments:
