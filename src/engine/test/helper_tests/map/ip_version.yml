@@ -5,13 +5,11 @@ name: ip_version
 arguments:
   1:
     type: string # Expected type is string
+    generate: ip
     source: reference # Includes only references (their names start with $)
-    allowed_values: # this helper only receive ip
-      - 111.111.1.11
-      - 3002:0bd6:0000:0000:0000:ee00:0033:6778
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: False
+is_variadic: False
 
 test:
   - arguments:
