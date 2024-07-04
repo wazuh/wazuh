@@ -1,29 +1,34 @@
 # Name of the helper function
 name: exists_key_in
 
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
 # Arguments expected by the helper function
 arguments:
   1:
     type: object  # Expected type is object
+    generate: object
     source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
 
 target_field:
   type: string
-  is_array: false
-
-# Indicates whether the helper function supports a variable number of arguments
-variadic: false
+  generate: string
 
 test:
   - arguments:
       1:
         key: value
-      target_filed: key-not-exist
+      target_field: key-not-exist
     should_pass: false
     description: Compare two different integers
   - arguments:
       1:
         key: value
-      target_filed: key
+      target_field: key
     should_pass: true
     description: Compare two equals integers
