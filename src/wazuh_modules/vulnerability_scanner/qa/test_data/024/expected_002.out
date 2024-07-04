@@ -1,0 +1,6 @@
+[
+    "Initiating a vulnerability scan for package 'openssh-server' (deb) (ubuntu developers <ubuntu-devel-discuss@lists.ubuntu.com>) with CVE Numbering Authorities (CNA) 'canonical' on Agent '' (ID: '001', Version: '').",
+    "Scanning package - 'openssh-server' (Installed Version: 1:8.9p1-3ubuntu0.10, Security Vulnerability: CVE-2024-6387). Identified vulnerability: Version: 0. Required Version Threshold: 1:8.9p1-3ubuntu0.10. Required Version Threshold (or Equal): .",
+    "No match due to default status for Package: openssh-server, Version: 1:8.9p1-3ubuntu0.10 while scanning for Vulnerability: CVE-2024-6387",
+    "Vulnerability scan for package 'openssh-server' on Agent '001' has completed."
+]
