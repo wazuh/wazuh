@@ -2,35 +2,45 @@
 name: kvdb_get
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
   1:
     type: string  # Accept only object
+    generate: string
     source: value # Includes only values
-    allowed_values:
-      - testing
+    restrictions:
+      allowed:
+        - testing
   2:
     type: string  # Accept only string
+    generate: string
     source: both # Includes values or references (their names start with $)
+    restrictions:
+      allowed:
+        - test
+
+skipped:
+  - allowed
 
 target_field:
-  type: boolean
-  is_array: false
+  type:
+    - object
+    - array
 
 test:
   - arguments:
       1: testing
       2: NON-EXIST-KEY
-      target_filed: true
+      target_field: true
     should_pass: false
     expected: false
     description: Try get non exist key
   - arguments:
       1: testing
       2: test
-      target_filed: true
+      target_field: true
     should_pass: true
     expected: false
     description: Get an exist key

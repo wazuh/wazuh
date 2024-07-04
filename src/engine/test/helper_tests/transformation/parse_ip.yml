@@ -2,13 +2,17 @@
 name: parse_ip
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: true
+is_variadic: true
 
 # Arguments expected by the helper function
 arguments:
   1:
     type: string  # Accept only string
+    generate: string
     source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed
 
 target_field:
   type: object
