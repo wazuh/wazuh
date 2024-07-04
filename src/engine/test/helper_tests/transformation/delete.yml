@@ -2,11 +2,15 @@
 name: delete
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
 
 target_field:
-  type: all
-  is_array: false
+  type:
+    - number
+    - string
+    - object
+    - boolean
+    - array
 
 test:
   - arguments:
