@@ -1,16 +1,19 @@
 # Name of the helper function
 name: as
 
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: True
+
 # Arguments expected by the helper function
 arguments:
   1:
     type: string # Expected type is string
+    generate: ip
     source: reference # Includes only references (their names start with $)
-    allowed_values: # this helper only receive public ips
-      - 1.2.3.4
 
-# Indicates whether the helper function supports a variable number of arguments
-variadic: True
+# Empty wcs data
+skipped:
+  - success_cases
 
 test:
   - arguments:

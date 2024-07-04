@@ -4,11 +4,12 @@ name: date_from_epoch
 # Arguments expected by the helper function
 arguments:
   1:
-    type: integer # Expected type is string
+    type: number # Expected type is string
+    generate: integer
     source: reference # Includes only references (their names start with $)
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: False
+is_variadic: False
 
 test:
   - arguments:

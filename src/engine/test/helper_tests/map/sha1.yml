@@ -5,10 +5,11 @@ name: sha1
 arguments:
   1:
     type: string # Expected type is string
+    generate: string
     source: reference # Includes values or references (their names start with $)
 
 # Indicates whether the helper function supports a variable number of arguments
-variadic: false
+is_variadic: false
 
 test:
   - arguments:
