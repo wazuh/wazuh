@@ -1,6 +1,8 @@
 # Name of the helper function
 name: kvdb_not_match
 
+helper_type: filter
+
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 
