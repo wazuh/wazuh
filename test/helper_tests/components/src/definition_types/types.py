@@ -1,6 +1,10 @@
+#!/usr/bin/env python3
+
 from enum import Enum
 import random
 import re
+
+MAXIMUM_NUMBER_OF_ARGUMENTS = 40
 
 
 class Source(Enum):
@@ -10,8 +14,9 @@ class Source(Enum):
 
 
 class Number(type):
-    def __init__(self):
-        print("same")
+    pass
+    # def __init__(self):
+    #     print("same")
 
 
 class String(type):

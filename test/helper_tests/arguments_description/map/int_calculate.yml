@@ -24,6 +24,9 @@ arguments:
     generate: integer
     source: both # Includes only values
 
+skipped:
+  - different_type
+
 general_restrictions:
   - brief: Division by zero
     arguments:

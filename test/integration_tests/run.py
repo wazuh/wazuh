@@ -77,7 +77,7 @@ def main():
     # Set environment variables so the tests can use the paths
     os.environ['ENGINE_DIR'] = engine_path.as_posix()
     os.environ['ENV_DIR'] = env_path.as_posix()
-    os.environ['WAZUH_DIR'] = WAZUH_DIR.as_posix()
+    os.environ['BINARY_DIR'] = (engine_path / 'build' / 'main').as_posix()
     os.environ['CONF_FILE'] = conf_path.as_posix()
 
     print(f'Testing environment: {env_path}')

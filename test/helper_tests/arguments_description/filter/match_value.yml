@@ -18,8 +18,12 @@ skipped:
   - success_cases
 
 target_field:
-  type: object
-  generate: object
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
 
 test:
   - arguments:

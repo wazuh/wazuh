@@ -1,5 +1,7 @@
-from helper_test_generator.parser import Parser
-from helper_test_shared.utils import *
+#!/usr/bin/env python3
+
+from .parser import Parser
+from definition_types.utils import *
 from pathlib import Path
 
 

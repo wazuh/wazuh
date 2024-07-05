@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from .types import *
 from typing import Union
 import sys
