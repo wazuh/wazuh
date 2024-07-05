@@ -1,5 +1,7 @@
 name: int_calculate
 
+helper_type: map
+
 is_variadic: True
 
 arguments:

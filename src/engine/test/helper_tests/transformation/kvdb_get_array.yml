@@ -1,6 +1,8 @@
 # Name of the helper function
 name: kvdb_get_array
 
+helper_type: transformation
+
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 

@@ -1,6 +1,8 @@
 # Name of the helper function
 name: trim
 
+helper_type: transformation
+
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 
@@ -20,6 +22,9 @@ arguments:
     restrictions:
       allowed:
         - '-'
+
+skipped:
+  - allowed # sometimes a character comes and is valid
 
 target_field:
   type: string

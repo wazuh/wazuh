@@ -1,5 +1,7 @@
 name: concat_any
 
+helper_type: map
+
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: true
 
