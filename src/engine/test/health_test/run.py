@@ -6,8 +6,10 @@ import argparse
 
 environment_directory = ""
 input_file = ""
+binary_path = ""
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 WAZUH_DIR = os.path.realpath(os.path.join(SCRIPT_DIR, '../../../..'))
+
 
 def parse_arguments():
     global environment_directory
@@ -15,11 +17,14 @@ def parse_arguments():
 
     parser = argparse.ArgumentParser(description='Run Behave tests for Wazuh.')
     parser.add_argument('-e', '--environment', help='Environment directory')
+    parser.add_argument('-b', '--binary', help='Specify the path to the engine binary', default='')
     parser.add_argument('-i', '--input_file', help='Input file path')
 
     args = parser.parse_args()
     environment_directory = args.environment
     input_file = args.input_file
+    binary_path = args.binary
+
 
 def check_config_file():
     global environment_directory
@@ -40,6 +45,7 @@ def check_config_file():
 
     return serv_conf_file
 
+
 def run_test_health():
     global environment_directory
     global input_file
@@ -56,6 +62,7 @@ def run_test_health():
     process = subprocess.run(command)
     return process.returncode
 
+
 def main():
     global environment_directory
     global WAZUH_DIR
@@ -65,10 +72,11 @@ def main():
     serv_conf_file = check_config_file()
 
     engine_src_dir = os.path.join(WAZUH_DIR, 'src', 'engine')
+    ENGINE_BIN = binary_path or os.path.join(engine_src_dir, 'build', 'main')
 
     os.environ['ENGINE_DIR'] = engine_src_dir
     os.environ['ENV_DIR'] = environment_directory
-    os.environ['WAZUH_DIR'] = os.path.realpath(os.path.join(SCRIPT_DIR, '../../../..'))
+    os.environ['BINARY_DIR'] = ENGINE_BIN
     os.environ['CONF_FILE'] = serv_conf_file
 
     from handler_engine_instance import up_down
@@ -81,6 +89,7 @@ def main():
     up_down_engine.send_stop_command()
 
     sys.exit(exit_code)
+
 
 if __name__ == "__main__":
     main()

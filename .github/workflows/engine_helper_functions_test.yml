@@ -47,11 +47,11 @@ jobs:
         python-version: 3.8
 
     - name: Install dependencies
-      # Install behave
       run: |
         pip install ${{env.ENGINE_DIR}}/tools/api-communication/
         pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
+        pip install ${{env.ENGINE_DIR}}/test/helper_tests/components
 
     - name: Configure CMake
       # Configure the CMake build system with the specified build type
@@ -66,7 +66,7 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: python3 ${{env.ENGINE_DIR}}/test/helper_tests/initialState.py -e /tmp/actions
+      run: engine-helper-test-initial-state -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/
 
     - name: Healper Functions Test
-      run: python3 ${{env.ENGINE_DIR}}/test/helper_tests/run.py -e /tmp/actions --failure_cases
+      run: engine-helper-test-generate-runner -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main -i ${{env.ENGINE_DIR}}/test/helper_tests/arguments_description/ -o /tmp/output/

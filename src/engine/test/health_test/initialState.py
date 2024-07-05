@@ -48,9 +48,9 @@ def set_mmdb():
 
 
 def load_integrations():
-    subprocess.run(f'{ENGINE_BIN} catalog --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} -n system create filter < {os.path.join(ENGINE_SRC_DIR, "ruleset", "filters", "allow-all.yml")}',
-                   check=True,
-                   shell=True)
+    subprocess.run(
+        f'{ENGINE_BIN} catalog --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} -n system create filter < {os.path.join(ENGINE_SRC_DIR, "ruleset", "filters", "allow-all.yml")}',
+        check=True, shell=True)
 
     wazuh_core_dir = f"{ENGINE_SRC_DIR}/ruleset/wazuh-core"
     destination_dir = f"{ENVIRONMENT_DIR}/engine/wazuh-core"
@@ -95,29 +95,36 @@ def load_integrations():
 
 
 def load_policies():
-    subprocess.run(f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} add -p policy/wazuh/0 -f',
-                   check=True, shell=True)
+    subprocess.run(
+        f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} add -p policy/wazuh/0 -f',
+        check=True, shell=True)
 
-    subprocess.run(f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set decoder/integrations/0',
-                   check=True, shell=True)
+    subprocess.run(
+        f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set decoder/integrations/0',
+        check=True, shell=True)
 
-    subprocess.run(f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set -n wazuh decoder/integrations/0',
-                   check=True, shell=True)
+    subprocess.run(
+        f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set -n wazuh decoder/integrations/0',
+        check=True, shell=True)
 
-    subprocess.run(f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set -n wazuh rule/enrichment/0',
-                   check=True, shell=True)
+    subprocess.run(
+        f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} parent-set -n wazuh rule/enrichment/0',
+        check=True, shell=True)
 
-    subprocess.run(f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} asset-add -n system integration/wazuh-core/0',
-                   check=True, shell=True)
+    subprocess.run(
+        f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} asset-add -n system integration/wazuh-core/0',
+        check=True, shell=True)
 
     assets = ['syslog/0', 'system/0', 'windows/0', 'apache-http/0',
               'suricata/0', 'wazuh-dashboard/0', 'wazuh-indexer/0']
     for asset in assets:
-        subprocess.run(f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} asset-add -n wazuh integration/{asset}',
-                       check=True, shell=True)
+        subprocess.run(
+            f'{ENGINE_BIN} policy --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} asset-add -n wazuh integration/{asset}',
+            check=True, shell=True)
 
-    subprocess.run(f'{ENGINE_BIN} router --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} add default filter/allow-all/0 255 policy/wazuh/0',
-                   check=True, shell=True)
+    subprocess.run(
+        f'{ENGINE_BIN} router --client_timeout 100000 --api_socket {os.path.join(ENVIRONMENT_DIR, "queue", "sockets", "engine-api")} add default filter/allow-all/0 255 policy/wazuh/0',
+        check=True, shell=True)
 
 
 def main():
@@ -140,15 +147,12 @@ def main():
 
     os.environ['ENV_DIR'] = ENVIRONMENT_DIR
     os.environ['WAZUH_DIR'] = WAZUH_DIR
-    os.environ['CONF_FILE'] = os.path.join(
-        ENVIRONMENT_DIR, 'engine', 'general.conf')
-    os.environ['ENGINE_BIN'] = ENGINE_BIN
+    os.environ['CONF_FILE'] = os.path.join(ENVIRONMENT_DIR, 'engine', 'general.conf')
+    os.environ['BINARY_DIR'] = ENGINE_BIN
 
-    engine_command = f"{ENGINE_BIN} --config {os.path.join(ENVIRONMENT_DIR, 'engine', 'general.conf')} server start"
-    print(engine_command)
-    engine_proccess = subprocess.Popen(
-        f"{engine_command}", shell=True)
-    time.sleep(5)
+    from handler_engine_instance import up_down
+    up_down_engine = up_down.UpDownEngine()
+    up_down_engine.send_start_command()
 
     # Add the mmdb to the engine
     print("Adding mmdb to the engine")
@@ -164,8 +168,7 @@ def main():
     load_integrations()
     load_policies()
 
-    engine_proccess.terminate()
-    engine_proccess.wait(5)
+    up_down_engine.send_stop_command()
 
 
 if __name__ == "__main__":

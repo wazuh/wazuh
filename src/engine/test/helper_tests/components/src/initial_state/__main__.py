@@ -9,19 +9,19 @@ from pathlib import Path
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Update configuration and create dummy integrations."
+        description="Update configuration, create kvdbs and mmdbs"
     )
     parser.add_argument("-e", "--environment", required=True, help="Environment directory")
-    parser.add_argument("-b", "--binary", help="Path to the binary file")
-    parser.add_argument("-w", "--wazuh-dir", required=True, help="Path to the Wazuh installation directory")
+    parser.add_argument("-b", "--binary", required=True, help="Path to the binary file")
+    parser.add_argument("--mmdb", required=True, help="Directory path where the as and geo databases are located")
+    parser.add_argument("--conf", required=True, help="Directory path where the engine configuration file is")
     return parser.parse_args()
 
 
-def update_conf(engine_src_dir: Path, environment_dir: Path):
-    serv_conf_file_src = engine_src_dir / 'test' / 'helper_tests' / 'configuration_files' / 'general.conf'
+def update_conf(conf_dir: Path, environment_dir: Path):
     serv_conf_file_dest = environment_dir / 'engine' / 'general.conf'
 
-    shutil.copy(serv_conf_file_src, serv_conf_file_dest)
+    shutil.copy(conf_dir, serv_conf_file_dest)
 
     with open(serv_conf_file_dest, "r") as f:
         lines = f.readlines()
@@ -32,13 +32,13 @@ def update_conf(engine_src_dir: Path, environment_dir: Path):
             f.write(updated_line)
 
 
-def set_mmdb(engine_src_dir: Path, environment_dir: Path):
-    mmdb_asn_src = engine_src_dir / 'test' / 'helper_tests' / 'testdb-asn.mmdb'
+def set_mmdb(mmdb_dir: Path, environment_dir: Path):
+    mmdb_asn_src = mmdb_dir / 'testdb-asn.mmdb'
     mmdb_asn_dest = environment_dir / 'engine' / 'etc' / 'testdb-asn.mmdb'
 
     shutil.copy(mmdb_asn_src, mmdb_asn_dest)
 
-    mmdb_city_src = engine_src_dir / 'test' / 'helper_tests' / 'testdb-city.mmdb'
+    mmdb_city_src = mmdb_dir / 'testdb-city.mmdb'
     mmdb_city_dest = environment_dir / 'engine' / 'etc' / 'testdb-city.mmdb'
 
     shutil.copy(mmdb_city_src, mmdb_city_dest)
@@ -55,17 +55,18 @@ def set_kvdb(environment_dir: Path):
 def main():
     args = parse_arguments()
 
-    WAZUH_DIR = Path(args.wazuh_dir).resolve()
-    ENGINE_SRC_DIR = WAZUH_DIR / 'src' / 'engine'
     ENVIRONMENT_DIR = Path(args.environment).resolve()
+    CONF_DIR = Path(args.conf).resolve() / 'general.conf'
+    MMDB_DIR = Path(args.mmdb).resolve()
+    BINARY_DIR = Path(args.binary).resolve()
 
-    update_conf(ENGINE_SRC_DIR, ENVIRONMENT_DIR)
-    set_mmdb(ENGINE_SRC_DIR, ENVIRONMENT_DIR)
+    update_conf(CONF_DIR, ENVIRONMENT_DIR)
+    set_mmdb(MMDB_DIR, ENVIRONMENT_DIR)
     set_kvdb(ENVIRONMENT_DIR)
 
     os.environ['ENV_DIR'] = ENVIRONMENT_DIR.as_posix()
-    os.environ['WAZUH_DIR'] = WAZUH_DIR.as_posix()
-    os.environ['CONF_FILE'] = str(ENVIRONMENT_DIR / 'engine' / 'general.conf')
+    os.environ['BINARY_DIR'] = BINARY_DIR.as_posix()
+    os.environ['CONF_FILE'] = (ENVIRONMENT_DIR / 'engine' / 'general.conf').as_posix()
 
     # TODO: If a binary path is added per parameter, it will be out of sync with the binary used by up_down_engine
     from handler_engine_instance import up_down
@@ -75,14 +76,13 @@ def main():
     socket_path = str(ENVIRONMENT_DIR / "queue" / "sockets" / "engine-api")
     asn_path = str(ENVIRONMENT_DIR / "engine" / "etc" / "testdb-asn.mmdb")
     city_path = str(ENVIRONMENT_DIR / "engine" / "etc" / "testdb-city.mmdb")
-    binary_path = args.binary or str(ENGINE_SRC_DIR / "build" / "main")
 
     print("Adding mmdb to the engine")
-    command = f'{binary_path} geo --client_timeout 100000 --api_socket {socket_path} add {asn_path} asn'
+    command = f'{BINARY_DIR.as_posix()} geo --client_timeout 100000 --api_socket {socket_path} add {asn_path} asn'
     print(command)
     subprocess.run(command,
                    check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    command = f'{binary_path} geo --client_timeout 100000 --api_socket {socket_path} add {city_path} city'
+    command = f'{BINARY_DIR.as_posix()} geo --client_timeout 100000 --api_socket {socket_path} add {city_path} city'
     print(command)
     subprocess.run(command,
                    check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
