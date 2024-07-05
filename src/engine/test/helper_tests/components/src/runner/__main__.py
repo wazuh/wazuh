@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 import yaml
 from google.protobuf.message import Message
@@ -45,9 +45,9 @@ def parse_arguments():
     """
     Parses command-line arguments for configuring the environment and selecting test cases to display.
     """
-    parser = argparse.ArgumentParser(description="Run Helpers test for Engine.")
+    parser = argparse.ArgumentParser(description="Runs the generated test cases and validates their results")
     parser.add_argument("-e", "--environment", required=True, help="Environment directory")
-    parser.add_argument("-w", "--wazuh-dir", required=True, help="Path to the Wazuh installation directory")
+    parser.add_argument("-b", "--binary", required=True, help="Path to the binary file")
 
     parser.add_argument("--input_file_path", help="Absolute or relative path where the test cases were generated")
     parser.add_argument("--folder_path", help="Absolute or relative path where the test cases were generated")
@@ -60,7 +60,8 @@ def parse_arguments():
         args.error("Only one of --input_file_path or --folder_path can be specified.")
 
     config.environment_directory = args.environment
-    config.wazuh_dir = args.wazuh_dir
+    config.binary_path = args.binary
+
     config.input_file_path = args.input_file_path
     config.folder_path = args.folder_path
     config.only_success = args.success_cases
@@ -784,20 +785,17 @@ def run_test_cases_executor(api_client: APIClient, kvdb_path: str):
 def main():
     parse_arguments()
 
-    WAZUH_DIR = Path(config.wazuh_dir).resolve()
-
     serv_conf_file = check_config_file()
-    environment_directory = Path(config.environment_directory)
-    kvdb_path = environment_directory / "engine" / "etc" / "kvdb" / "test.json"
+    ENVIRONMENT_DIR = Path(config.environment_directory)
+    kvdb_path = ENVIRONMENT_DIR / "engine" / "etc" / "kvdb" / "test.json"
+    socket_path = str(ENVIRONMENT_DIR / "queue" / "sockets" / "engine-api")
 
-    os.environ['ENV_DIR'] = environment_directory.as_posix()
-    os.environ['WAZUH_DIR'] = WAZUH_DIR.as_posix()
+    os.environ['ENV_DIR'] = ENVIRONMENT_DIR.as_posix()
+    os.environ['BINARY_DIR'] = config.binary_path
     os.environ['CONF_FILE'] = serv_conf_file
 
-    socket_path = str(environment_directory / "queue" / "sockets" / "engine-api")
     api_client = APIClient(socket_path)
 
-    # TODO: If a binary path is added per parameter, it will be out of sync with the binary used by up_down_engine
     from handler_engine_instance import up_down
     up_down_engine = up_down.UpDownEngine()
     up_down_engine.send_start_command()

@@ -1,5 +1,4 @@
 import os
-import signal
 import subprocess
 import shlex
 import time
@@ -7,8 +6,7 @@ from api_communication.client import APIClient
 from api_communication.proto import router_pb2 as api_router
 from pathlib import Path
 
-BINARY_PATH = (Path(os.environ.get("WAZUH_DIR", "")) /
-               "src/engine/build/main").resolve().as_posix()
+BINARY_PATH = (Path(os.environ.get("BINARY_DIR", ""))).resolve().as_posix()
 CONF_FILE = os.environ.get("CONF_FILE", "")
 ENV_DIR = os.environ.get("ENV_DIR", "")
 SOCKET_PATH = (Path(ENV_DIR) / "queue/sockets/engine-api").resolve().as_posix()
