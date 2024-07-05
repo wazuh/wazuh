@@ -1,4 +1,6 @@
-from helper_test_shared.utils import *
+#!/usr/bin/env python3
+
+from definition_types.utils import *
 import json
 
 reference_counter = 0
