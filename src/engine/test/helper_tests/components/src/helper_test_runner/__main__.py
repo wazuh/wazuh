@@ -19,9 +19,6 @@ from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import tester_pb2 as api_tester
 from google.protobuf.json_format import MessageToJson, ParseDict
 
-LEVELS_UP = 3
-SCRIPT_DIR = Path(__file__).resolve().parent
-WAZUH_DIR = SCRIPT_DIR.parents[LEVELS_UP]
 POLICY_NAME = "policy/wazuh/0"
 ASSET_NAME = "decoder/test/0"
 SESSION_NAME = "test"
@@ -33,7 +30,10 @@ class Config:
     A class to store the configuration of the test runner.
     """
     environment_directory: str = ""
-    input_file: str = ""
+    wazuh_dir: str = ""
+    input_file_path: str = ""
+    folder_path: str = ""
+    binary_path: str = ""
     only_failure: bool = False
     only_success: bool = False
 
@@ -46,17 +46,25 @@ def parse_arguments():
     Parses command-line arguments for configuring the environment and selecting test cases to display.
     """
     parser = argparse.ArgumentParser(description="Run Helpers test for Engine.")
-    parser.add_argument("-e", "--environment", help="Environment directory")
-    parser.add_argument("-i", "--input_file",
-                        help="Absolute or relative path where the description of the helper function is located")
+    parser.add_argument("-e", "--environment", required=True, help="Environment directory")
+    parser.add_argument("-w", "--wazuh-dir", required=True, help="Path to the Wazuh installation directory")
+
+    parser.add_argument("--input_file_path", help="Absolute or relative path where the test cases were generated")
+    parser.add_argument("--folder_path", help="Absolute or relative path where the test cases were generated")
     parser.add_argument("--failure_cases", help="Shows only the failure test cases that occurred", action="store_true")
     parser.add_argument("--success_cases", help="Shows only the success test cases that occurred", action="store_true")
 
     args = parser.parse_args()
-    config.input_file = args.input_file
+
+    if args.input_file_path and args.folder_path:
+        args.error("Only one of --input_file_path or --folder_path can be specified.")
+
+    config.environment_directory = args.environment
+    config.wazuh_dir = args.wazuh_dir
+    config.input_file_path = args.input_file_path
+    config.folder_path = args.folder_path
     config.only_success = args.success_cases
     config.only_failure = args.failure_cases
-    config.environment_directory = args.environment or str(WAZUH_DIR / "environment")
 
 
 def check_config_file() -> str:
@@ -636,24 +644,6 @@ def create_asset_for_buildtime(api_client: APIClient, result_evaluator: Evaluato
     result_evaluator.check_response(response)
 
 
-def process_files_in_directory(directory: Path, api_client: APIClient, socket_path: str, result_evaluator: Evaluator,
-                               kvdb_path: str):
-    """
-    Process all files in the given directory.
-
-    Args:
-        directory (Path): The directory to process.
-        api_client (APIClient): The API client used to make requests.
-        socket_path (str): The path to the socket.
-        successful_tests (list): A list to store successful test cases.
-        failure_tests (list): A list to store failed test cases.
-    """
-    for element in directory.iterdir():
-        if element.is_dir():
-            for file in element.iterdir():
-                process_file(file, api_client, socket_path, result_evaluator, kvdb_path)
-
-
 def execute_single_run_test(api_client: APIClient, run_test: dict, result_evaluator: Evaluator):
     """
     Execute single run test.
@@ -720,14 +710,13 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
             sys.exit(f"Helper type '{result_evaluator.helper_type}' not is valid")
 
 
-def process_file(file: Path, api_client: APIClient, socket_path: str, result_evaluator: Evaluator, kvdb_path: str):
+def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator, kvdb_path: str):
     """
     Process a YAML file containing test configurations.
 
     Args:
         file (str): The YAML file to process.
         api_client (APIClient): The API client used to make requests.
-        socket_path (str): The path to the socket.
         successful_tests (list): A list to store successful test cases.
         failure_tests (list): A list to store failed test cases.
     """
@@ -768,39 +757,23 @@ def process_file(file: Path, api_client: APIClient, socket_path: str, result_eva
             execute_multiple_run_tests(api_client, run_test, result_evaluator)
 
 
-def run_test_cases_generator():
-    """
-    Generates test cases by iterating over Python files in specific subdirectories.
-
-    If any script returns a non-zero exit code, the function exits with status code 1.
-    """
-    current_dir = Path(__file__).resolve().parent
-    result = None
-    if config.input_file:
-        result = subprocess.run(["python3",  current_dir / "testCaseGenerator.py", "--input_file", config.input_file])
-    else:
-        result = subprocess.run(["python3", current_dir / "testCaseGenerator.py"])
-    if result.returncode == 1:
-        sys.exit(1)
-
-
-def run_test_cases_executor(api_client: APIClient, socket_path: str, kvdb_path: str):
+def run_test_cases_executor(api_client: APIClient, kvdb_path: str):
     """
     Execute test cases found in Python files in specific directories.
 
     Args:
         api_client (APIClient): The API client used to make requests.
-        socket_path (str): The path to the socket.
         kvdb_path (str): The path to the key-value database.
     """
-    current_dir = Path(__file__).resolve().parent
     result_evaluator = Evaluator()
-    specific_dirs = ["map", "filter", "transformation"]
-
-    for dir_name in specific_dirs:
-        dir_path = current_dir / dir_name
-        if dir_path.is_dir():
-            process_files_in_directory(dir_path, api_client, socket_path, result_evaluator, kvdb_path)
+    if config.input_file_path:
+        process_file(Path(config.input_file_path), api_client, result_evaluator, kvdb_path)
+    elif config.folder_path:
+        for file in Path(config.folder_path).iterdir():
+            if file.is_file() and (file.suffix in ['.yml', '.yaml']):
+                process_file(file, api_client, result_evaluator, kvdb_path)
+    else:
+        sys.exit("It is necessary to indicate a file or directory that contains a configuration yaml")
 
     generate_report(result_evaluator.successful, result_evaluator.failure)
 
@@ -810,23 +783,26 @@ def run_test_cases_executor(api_client: APIClient, socket_path: str, kvdb_path: 
 
 def main():
     parse_arguments()
+
+    WAZUH_DIR = Path(config.wazuh_dir).resolve()
+
     serv_conf_file = check_config_file()
     environment_directory = Path(config.environment_directory)
     kvdb_path = environment_directory / "engine" / "etc" / "kvdb" / "test.json"
 
-    os.environ["ENV_DIR"] = config.environment_directory
-    os.environ["WAZUH_DIR"] = str(WAZUH_DIR)
-    os.environ["CONF_FILE"] = serv_conf_file
+    os.environ['ENV_DIR'] = environment_directory.as_posix()
+    os.environ['WAZUH_DIR'] = WAZUH_DIR.as_posix()
+    os.environ['CONF_FILE'] = serv_conf_file
+
     socket_path = str(environment_directory / "queue" / "sockets" / "engine-api")
     api_client = APIClient(socket_path)
 
-    run_test_cases_generator()
-
+    # TODO: If a binary path is added per parameter, it will be out of sync with the binary used by up_down_engine
     from handler_engine_instance import up_down
     up_down_engine = up_down.UpDownEngine()
     up_down_engine.send_start_command()
 
-    run_test_cases_executor(api_client, socket_path, str(kvdb_path))
+    run_test_cases_executor(api_client, str(kvdb_path))
 
     up_down_engine.send_stop_command()
 

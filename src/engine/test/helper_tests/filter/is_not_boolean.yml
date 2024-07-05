@@ -1,6 +1,8 @@
 # Name of the helper function
 name: is_not_boolean
 
+helper_type: filter
+
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: false
 

@@ -1,6 +1,8 @@
 # Name of the helper function
 name: parse_ip
 
+helper_type: transformation
+
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: true
 
