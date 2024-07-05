@@ -1,6 +1,8 @@
 # Name of the helper function
 name: upcase
 
+helper_type: map
+
 # Arguments expected by the helper function
 arguments:
   1:

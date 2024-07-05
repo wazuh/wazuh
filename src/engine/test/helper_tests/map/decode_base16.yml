@@ -1,6 +1,8 @@
 # Name of the helper function
 name: decode_base16
 
+helper_type: map
+
 # Indicates whether the helper function supports a variable number of arguments
 is_variadic: False
 
