@@ -6,14 +6,26 @@ import itertools
 
 class Template:
     def __init__(self, parser: Parser):
+        """
+        Initializes the Template class with a Parser object.
+
+        :param parser: Instance of the Parser class to be used for template generation.
+        """
         self.parser = parser
 
     def generate_raw_template(self, my_sources=[]) -> list:
+        """
+        Generates all possible combinations of sources based on input sources or parser-provided sources.
+
+        :param my_sources: List of sources provided as input. If empty, sources will be fetched from the parser.
+        :return: List of tuples representing all possible combinations of sources.
+        """
         sources = []
         if not my_sources:
             sources = self.parser.get_sources()
         else:
             sources = my_sources
+
         sources_expanded = []
         for source in sources:
             if source == "both":
@@ -21,7 +33,7 @@ class Template:
             else:
                 sources_expanded.append(source)
 
-        # If an element is a list, we treat it as a single element
+        # If an element is a list, treat it as a single element
         data_processed = [x if isinstance(x, list) else [x] for x in sources_expanded]
 
         # Generate all possible combinations
@@ -29,10 +41,15 @@ class Template:
         return combinations
 
     def enrichment_template(self):
-        # Get the sources from the yaml configuration
-        raw_combinations = self.generate_raw_template()
+        """
+        Generates enriched combinations based on allowed arguments from the parser.
 
+        :return: List of tuples representing enriched combinations of sources.
+        """
+        # Get the sources from the YAML configuration
+        raw_combinations = self.generate_raw_template()
         allowed_args = self.parser.get_allowed_in_dict_format()
+
         # If no allowed restrictions are found, return the raw combinations
         if not allowed_args:
             return raw_combinations
@@ -54,6 +71,11 @@ class Template:
         return processed_combinations
 
     def generate_exception_arguments(self) -> list:
+        """
+        Generates combinations based on exception conditions from the parser.
+
+        :return: List of tuples representing combinations of sources with exception conditions applied.
+        """
         # Get the raw combinations from the sources
         raw_combinations = self.generate_raw_template()
         exception_conditions = self.parser.get_general_restrictions()
@@ -79,6 +101,11 @@ class Template:
         return processed_combinations
 
     def generate_template(self):
+        """
+        Generates the final template based on allowed arguments or raw template.
+
+        :return: List of tuples representing the final template.
+        """
         if self.parser.get_allowed():
             return self.enrichment_template()
         return self.generate_raw_template()
