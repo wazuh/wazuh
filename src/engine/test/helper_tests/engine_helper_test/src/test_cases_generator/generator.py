@@ -13,6 +13,10 @@ import shutil
 
 class Generator:
     def __init__(self):
+        """
+        Initializes the Generator class with instances of Parser, Validator, TestData,
+        BuildtimeCases, and RuntimeCases.
+        """
         self.parser = Parser()
         self.validator = Validator(self.parser)
         self.testData = TestData(self.parser, self.validator)
@@ -20,6 +24,11 @@ class Generator:
         self.runtimeCases = RuntimeCases(self.testData)
 
     def clean_output_directory(self, output_directory: Path):
+        """
+        Cleans the output directory by removing all files, symlinks, and directories.
+
+        :param output_directory: Path to the output directory to be cleaned.
+        """
         for item in output_directory.iterdir():
             if item.is_file() or item.is_symlink():
                 item.unlink()
@@ -27,6 +36,11 @@ class Generator:
                 shutil.rmtree(item)
 
     def scan_and_verify_all_files(self, input_file_path: Path):
+        """
+        Scans and verifies all files in the input file path.
+
+        :param input_file_path: Path to the input file to be scanned and verified.
+        """
         input_file_path = input_file_path.resolve()
         if input_file_path.exists():
             self.validator.evaluator(input_file_path)
@@ -34,6 +48,11 @@ class Generator:
             sys.exit(f"Input file {input_file_path} does not exist.")
 
     def generate_output_file(self, output_directory: Path):
+        """
+        Generates output files based on validated data and saves them in the output directory.
+
+        :param output_directory: Path to the directory where output files will be saved.
+        """
         for valid_data in self.validator.get_all_valid_data():
             self.parser.load_yaml_from_dict(valid_data)
             self.helper_type = self.parser.get_helper_type()
