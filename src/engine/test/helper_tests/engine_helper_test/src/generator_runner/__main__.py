@@ -67,7 +67,7 @@ def main():
         for file in output.iterdir():
             command = f'engine-helper-test-runner -e {environment} -b {binary} --input_file_path {file} --failure_cases'
             try:
+                print(f"Executing - {file.name}")
                 subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                print(f"Success execution - {file.name}")
             except subprocess.CalledProcessError as e:
                 sys.exit(e.stdout.decode())

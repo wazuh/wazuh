@@ -51,7 +51,7 @@ jobs:
         pip install ${{env.ENGINE_DIR}}/tools/api-communication/
         pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
-        pip install ${{env.ENGINE_DIR}}/test/helper_tests/components
+        pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine_helper_test
 
     - name: Configure CMake
       # Configure the CMake build system with the specified build type
@@ -66,7 +66,7 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: engine-helper-test-initial-state -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/
+      run: engine-helper-test-initial-state -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/general.conf
 
-    - name: Healper Functions Test
-      run: engine-helper-test-generate-runner -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main -i ${{env.ENGINE_DIR}}/test/helper_tests/arguments_description/ -o /tmp/output/
+    - name: Helper Functions Test
+      run: engine-helper-test-generate-runner -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main -i ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/output/

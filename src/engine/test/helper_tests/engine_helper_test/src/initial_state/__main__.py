@@ -14,7 +14,7 @@ def parse_arguments():
     parser.add_argument("-e", "--environment", required=True, help="Environment directory")
     parser.add_argument("-b", "--binary", required=True, help="Path to the binary file")
     parser.add_argument("--mmdb", required=True, help="Directory path where the as and geo databases are located")
-    parser.add_argument("--conf", required=True, help="Directory path where the engine configuration file is")
+    parser.add_argument("--conf", required=True, help="File path where the engine configuration file is")
     return parser.parse_args()
 
 
@@ -56,7 +56,7 @@ def main():
     args = parse_arguments()
 
     ENVIRONMENT_DIR = Path(args.environment).resolve()
-    CONF_DIR = Path(args.conf).resolve() / 'general.conf'
+    CONF_DIR = Path(args.conf).resolve()
     MMDB_DIR = Path(args.mmdb).resolve()
     BINARY_DIR = Path(args.binary).resolve()
 

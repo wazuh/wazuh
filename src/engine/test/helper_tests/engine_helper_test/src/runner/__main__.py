@@ -425,7 +425,10 @@ def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator)
     if result_evaluator.skipped:
         result_evaluator.create_success_test()
     else:
-        result_evaluator.create_failure_test(response)
+        if result_evaluator.should_pass:
+            result_evaluator.create_failure_test(response)
+        else:
+            result_evaluator.create_success_test()
     return False
 
 
