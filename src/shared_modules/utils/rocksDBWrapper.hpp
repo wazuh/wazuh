@@ -176,58 +176,66 @@ namespace Utils
          * fails or if the error is of another kind, it throws an exception.
          *
          * @param dbPath Database path.
-         * @param repaired Out parameter that indicates if the database was repaired.
          * @param enableWal Constructor parameter to enable or disable WAL.
-         * @return TRocksDBWrapper<rocksdb::DB> The instance of the RocksDB database in case of success.
+         * @return A tuple containing the opened DB and a bool variable to indicate if it was required to repair it or
+         * not.
          */
-        TRocksDBWrapper<rocksdb::DB> static openAndRepairBuilder(const std::string& dbPath,
-                                                                 bool& repaired,
-                                                                 bool enableWal = true)
+        std::tuple<TRocksDBWrapper<rocksdb::DB>, bool> static openAndRepairBuilder(const std::string& dbPath,
+                                                                                   bool enableWal = true)
         {
+            try
             {
-                try
+                return std::tuple(TRocksDBWrapper<rocksdb::DB>(dbPath, enableWal), false);
+            }
+            catch (const std::system_error& e)
+            {
+                if (e.code().value() == rocksdb::Status::kIOError || e.code().value() == rocksdb::Status::kCorruption)
                 {
-                    TRocksDBWrapper<rocksdb::DB> db {dbPath, enableWal};
-                    repaired = false;
-                    return db;
-                }
-                catch (const std::system_error& e)
-                {
-                    if (e.code().value() == rocksdb::Status::kIOError ||
-                        e.code().value() == rocksdb::Status::kCorruption)
+                    TRocksDBWrapper<T>::repairDB(dbPath);
+                    try
                     {
-                        TRocksDBWrapper<T>::repairDB(dbPath);
-                        repaired = true;
-                        try
-                        {
-                            TRocksDBWrapper<rocksdb::DB> db {dbPath, enableWal};
-                            return db;
-                        }
-                        catch (const std::system_error& e)
-                        {
-                            throw std::runtime_error("Failed open on RocksDB database after repair. Code: " +
-                                                     std::to_string(e.code().value()) + ". Reason: " + e.what());
-                        }
-                        catch (const std::exception& e)
-                        {
-                            throw std::runtime_error("Failed open on RocksDB database after repair. Reason: " +
-                                                     std::string(e.what()));
-                        }
+                        return std::tuple(TRocksDBWrapper<rocksdb::DB>(dbPath, enableWal), true);
                     }
-                    else
+                    catch (const std::system_error& e)
                     {
-                        throw std::runtime_error("Failed open on RocksDB database, repair not tried because the error "
-                                                 "wasn't corruption. Code: " +
-                                                 std::to_string(e.code().value()) + " Reason: " + e.what());
+                        throw std::runtime_error("Failed open on RocksDB database after repair. Code: " +
+                                                 std::to_string(e.code().value()) + ". Reason: " + e.what());
+                    }
+                    catch (const std::exception& e)
+                    {
+                        throw std::runtime_error("Failed open on RocksDB database after repair. Reason: " +
+                                                 std::string(e.what()));
                     }
                 }
-                catch (const std::exception& e)
+                else
                 {
-                    throw std::runtime_error("Failed open on RocksDB database, repair not tried because error code "
-                                             "wasn't available. Reason: " +
-                                             std::string(e.what()));
+                    throw std::runtime_error("Failed open on RocksDB database, repair not tried because the error "
+                                             "wasn't corruption. Code: " +
+                                             std::to_string(e.code().value()) + " Reason: " + e.what());
                 }
             }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error("Failed open on RocksDB database, repair not tried because error code "
+                                         "wasn't available. Reason: " +
+                                         std::string(e.what()));
+            }
+        }
+
+        /**
+         * @brief Wrapper for openAndRepairBuilder() that returns a tuple with a unique pointer to the opened DB and a
+         * bool variable that indicates if it was required to repair the DB or not.
+         *
+         * @param dbPath Database path.
+         * @param enableWal Constructor parameter to enable or disable WAL.
+         * @return A tuple containing an unique_ptr to the opened DB and a bool variable to indicate if it was required
+         * to repair it or not.
+         */
+        std::tuple<std::unique_ptr<TRocksDBWrapper<rocksdb::DB>>, bool> static openAndRepairBuilderSp(
+            const std::string& dbPath, bool enableWal = true)
+        {
+            auto [db, repaired] = openAndRepairBuilder(dbPath, enableWal);
+            return {std::make_unique<TRocksDBWrapper<rocksdb::DB>>(std::move(db)), std::move(repaired)};
         }
 
         /**

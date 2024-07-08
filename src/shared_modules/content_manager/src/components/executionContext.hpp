@@ -118,8 +118,8 @@ private:
 
         // Initialize RocksDB driver instance.
         bool repaired {false};
-        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(
-            Utils::RocksDBWrapper::openAndRepairBuilder(databasePath + databaseName, repaired));
+        std::tie(context.spRocksDB, repaired) =
+            Utils::RocksDBWrapper::openAndRepairBuilderSp(databasePath + databaseName);
         if (repaired)
         {
             logWarn(WM_CONTENTUPDATER,

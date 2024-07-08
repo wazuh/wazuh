@@ -342,8 +342,9 @@ IndexerConnector::IndexerConnector(
     }
 
     bool repaired {false};
-    m_db = std::make_unique<Utils::RocksDBWrapper>(
-        Utils::RocksDBWrapper::openAndRepairBuilder(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName, repaired));
+    std::tie(m_db, repaired) =
+        Utils::RocksDBWrapper::openAndRepairBuilderSp(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
+
     if (repaired)
     {
         logWarn(IC_NAME,
