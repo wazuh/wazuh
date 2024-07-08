@@ -1019,6 +1019,8 @@ void Syscollector::updateChanges(const std::string& table,
 
 Syscollector::Syscollector()
     : m_intervalValue { 0 }
+    , m_currentIntervalValue { 0 }
+    , m_lastSyncMsg { 0 }
     , m_scanOnStart { false }
     , m_hardware { false }
     , m_os { false }

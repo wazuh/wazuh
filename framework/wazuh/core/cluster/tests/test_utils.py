@@ -17,7 +17,7 @@ with patch('wazuh.core.common.getgrnam'):
 
                 from wazuh.core.cluster import utils
                 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhPermissionError, \
-                    WazuhResourceNotFound
+                    WazuhResourceNotFound, WazuhHAPHelperError
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
@@ -123,7 +123,8 @@ def test_parse_haproxy_helper_config(config: dict):
 
 
 @pytest.mark.parametrize(
-        'config',
+    'config, exception_type, expected_error_code',
+    [
         (
             {
                 utils.HAPROXY_DISABLED: 'no',
@@ -132,19 +133,37 @@ def test_parse_haproxy_helper_config(config: dict):
                 utils.HAPROXY_USER: 'test',
                 utils.FREQUENCY: 'bad',
             },
+            WazuhError,
+            '3004'
+        ),
+        (
             {
                 utils.HAPROXY_DISABLED: 'no',
                 utils.HAPROXY_ADDRESS: 'test',
                 utils.HAPROXY_PASSWORD: 'test',
                 utils.HAPROXY_USER: 'test',
                 utils.IMBALANCE_TOLERANCE: 'bad'
-            }
+            },
+            WazuhError,
+            '3004'
+        ),
+        (
+            {
+                utils.HAPROXY_DISABLED: 'no',
+                utils.HAPROXY_ADDRESS: 'test',
+                utils.HAPROXY_PASSWORD: 'test',
+                utils.HAPROXY_USER: 'test',
+                utils.HAPROXY_PROTOCOL: 'https'
+            },
+            WazuhHAPHelperError,
+            '3042'
         )
+    ]
 )
-def test_parse_haproxy_helper_config_ko(config: dict):
+def test_parse_haproxy_helper_config_ko(config: dict, exception_type: WazuhException, expected_error_code: str):
     """Verify that parse_haproxy_helper_config function raises when config has an invalid type."""
 
-    with pytest.raises(WazuhError, match='.* 3004 .*'):
+    with pytest.raises(exception_type, match=f'.* {expected_error_code} .*'):
         utils.parse_haproxy_helper_config(config)
 
 

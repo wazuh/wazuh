@@ -68,8 +68,6 @@ def configure_socket_listener(request, test_metadata):
     """
     Configures the socket listener to start listening on the socket.
     """
-    address_family = 'AF_INET6' if 'ipv6' in test_metadata else 'AF_INET'
-    manager_address = '::1' if 'ipv6' in test_metadata else MANAGER_ADDRESS
 
     address_family = 'AF_INET6' if 'ipv6' in test_metadata else 'AF_INET'
     manager_address = '::1' if 'ipv6' in test_metadata else MANAGER_ADDRESS
