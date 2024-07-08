@@ -1,8 +1,0 @@
----
-name: decoder/fim/0
-
-parents:
-  - decoder/json/0
-
-check:
-  - wazuh.queue: +i_eq/56
