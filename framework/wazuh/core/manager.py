@@ -274,6 +274,7 @@ def _get_ssl_context() -> ssl.SSLContext:
 
 
 def get_update_information_template(
+        uuid: str,
         update_check: bool,
         current_version: str = f"v{wazuh.__version__}",
         last_check_date: Optional[datetime] = None
@@ -282,6 +283,8 @@ def get_update_information_template(
 
     Parameters
     ----------
+    uuid : str
+        Wazuh UID to include in the result.
     update_check : bool
         Indicates if the check is enabled or not.
     current_version : str, optional
@@ -295,6 +298,7 @@ def get_update_information_template(
         Template with the given data.
     """
     return {
+        'uuid': uuid,
         'last_check_date': last_check_date if last_check_date is not None else '',
         'current_version': current_version,
         'update_check': update_check,
