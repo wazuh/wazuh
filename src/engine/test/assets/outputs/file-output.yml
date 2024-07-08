@@ -1,7 +1,0 @@
-name: output/file-output/0
-check:
-  - event.original: +ef_exists
-
-outputs:
-  - file:
-      path: /tmp/filepath.txt
