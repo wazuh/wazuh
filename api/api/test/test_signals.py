@@ -140,7 +140,7 @@ async def test_get_update_information_schedule(query_update_check_service_mock):
     'cluster_config,update_check_config,registered_tasks',
     [
         (True, True, 2),
-        (True, False, 0),
+        (True, False, 1),
         (False, True, 0),
         (False, False, 0),
     ],

@@ -608,11 +608,13 @@ async def check_available_version(pretty: bool = False, force_query: bool = Fals
     web.Response
         API response.
     """
+    installation_uid = request.app[INSTALLATION_UID_KEY]
+
     if force_query and configuration.update_check_is_enabled():
         logger.debug('Forcing query to the update check service...')
         dapi = DistributedAPI(f=query_update_check_service,
                               f_kwargs={
-                                  INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY]
+                                  INSTALLATION_UID_KEY: installation_uid
                               },
                               request_type='local_master',
                               is_async=True,
@@ -623,7 +625,8 @@ async def check_available_version(pretty: bool = False, force_query: bool = Fals
 
     dapi = DistributedAPI(f=manager.get_update_information,
                           f_kwargs={
-                              UPDATE_INFORMATION_KEY: cti_context.get(UPDATE_INFORMATION_KEY, {})
+                              INSTALLATION_UID_KEY: installation_uid,
+                              UPDATE_INFORMATION_KEY: request.app.get(UPDATE_INFORMATION_KEY, {})
                           },
                           request_type='local_master',
                           is_async=False,
