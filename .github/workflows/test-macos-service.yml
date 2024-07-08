@@ -1,0 +1,84 @@
+name: macOS service test
+
+on:
+  pull_request:
+  workflow_dispatch:  
+
+jobs:
+  build-ventura:
+    runs-on: macos-13
+    steps:
+      - name: Curl wazuh-agent pkg
+        run: |      
+          curl -sO https://packages.wazuh.com/4.x/macos/wazuh-agent-4.8.0-1.intel64.pkg
+
+      - name: Install .pkg
+        run: |
+          sudo installer -pkg wazuh-agent-4.8.0-1.intel64.pkg -target /
+      
+      - name: Set dummy IP
+        run: |
+          sudo sed -i '' 's/MANAGER_IP/1.1.1.1/g' /Library/Ossec/etc/ossec.conf
+
+      - name: Load service
+        run: |
+          sudo launchctl load /Library/LaunchDaemons/com.wazuh.agent.plist
+
+      - name: Print service after load
+        run: |
+          sudo launchctl print system/com.wazuh.agent
+
+      - name: Start service
+        run: |
+          sudo launchctl start com.wazuh.agent
+
+      - name: Print service after start
+        run: |
+          sudo launchctl print system/com.wazuh.agent
+
+      - name: Stop service
+        run: |
+          sudo launchctl stop com.wazuh.agent
+
+      - name: Print service after stop
+        run: |
+          sudo launchctl print system/com.wazuh.agent
+    
+  build-sonoma:
+    runs-on: macos-14
+    steps:
+      - name: Curl wazuh-agent pkg
+        run: |      
+          curl -sO https://packages.wazuh.com/4.x/macos/wazuh-agent-4.8.0-1.arm64.pkg
+  
+      - name: Install .pkg
+        run: |
+          sudo installer -pkg wazuh-agent-4.8.0-1.arm64.pkg -target /
+
+      - name: Set dummy IP
+        run: |
+          sudo sed -i '' 's/MANAGER_IP/1.1.1.1/g' /Library/Ossec/etc/ossec.conf
+
+      - name: Load service
+        run: |
+          sudo launchctl load /Library/LaunchDaemons/com.wazuh.agent.plist
+
+      - name: Print service after load
+        run: |
+          sudo launchctl print system/com.wazuh.agent
+
+      - name: Start service
+        run: |
+          sudo launchctl start com.wazuh.agent
+
+      - name: Print service after start
+        run: |
+          sudo launchctl print system/com.wazuh.agent
+
+      - name: Stop service
+        run: |
+          sudo launchctl stop com.wazuh.agent
+
+      - name: Print service after stop
+        run: |
+          sudo launchctl print system/com.wazuh.agent
