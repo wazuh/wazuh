@@ -1,0 +1,69 @@
+<!-- 
+  - DNSMasq rules
+  - Author: bytew0lf <bytewolf@web.de>.
+  - Date: 2024-07-07
+  - ID range: 99900 - 99909
+-->
+
+<group name="syslog,dnsmasq,">
+
+  <rule id="99900" level="0">
+    <decoded_as>dnsmasq</decoded_as>
+    <description>dnsmasq grouping.</description>
+  </rule>
+
+  <rule id="99901" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^query\[A\]</field>
+    <description>DNSMasq: DNS A request. Host $(srcip) requested IP of $(url)</description>
+  </rule>
+
+  <rule id="99902" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^query\[AAAA\]</field>
+    <description>DNSMasq: DNS AAAA request. Host $(srcip) requested IP of $(url)</description>
+  </rule>
+  
+  <rule id="99903" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^dnssec-query</field>
+    <description>DNSMasq: DNS-SEC request. IP of $(url) requested from DNS: $(dstip) via DNS-SEC.</description>
+  </rule>
+  
+  <rule id="99904" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^query\[HTTPS\]</field>
+    <description>DNSMasq: DNS request over HTTPS. IP of $(url) requested from DNS: $(srcip) via DNS-SEC.</description>
+  </rule>
+
+  <rule id="99905" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^query\[SVCB\]</field>
+    <description>DNSMasq: DNS request SVCB. IP of $(url) requested from DNS: $(srcip) via DNS-SEC.</description>
+  </rule>
+  
+  <rule id="99906" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^forwarded</field>
+    <description>DNSMasq: DNS request forwarded. Request for IP of $(url) fowarded to $(dstip).</description>
+  </rule>
+  
+  <rule id="99907" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^reply</field>
+    <description>DNSMasq: DNS reply. $(url) has IP $(dstip)</description>
+  </rule>
+  
+  <rule id="99908" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^cached</field>
+    <description>DNSMasq: DNS cached reply. $(url) has IP $(dstip)</description>
+  </rule>
+
+  <rule id="99909" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">^gravity</field>
+    <description>DNSMasq: DNS request blocked. $(url) has IP $(dstip)</description>
+  </rule>
+  
+</group>

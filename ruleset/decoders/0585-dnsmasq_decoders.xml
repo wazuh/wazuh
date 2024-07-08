@@ -1,0 +1,74 @@
+<!-- 
+  - DNSMasq decoder
+  - Author: bytew0lf <bytewolf@web.de>.
+  - Date: 2024-07-07
+-->
+
+<!--
+EXAMPLE LOGS
+
+Jul  7 19:39:41 dnsmasq[536]: query[AAAA] video-edge-b1fd44.muc01.abs.hls.ttvnw.net from 192.168.1.185
+Jul  7 19:39:44 dnsmasq[536]: query[A] video-edge-8b17e9.pdx01.abs.hls.ttvnw.net from 192.168.1.185
+Jul  7 19:39:44 dnsmasq[536]: forwarded video-edge-8b17e9.pdx01.abs.hls.ttvnw.net to 208.67.222.222
+Jul  7 19:39:44 dnsmasq[536]: dnssec-query[DS] ttvnw.net to 208.67.222.222
+Jul  7 19:39:44 dnsmasq[536]: reply science-edge-external-prod-73889260.us-west-2.elb.amazonaws.com is 35.162.12.228
+Jul  7 20:19:36 dnsmasq[536]: gravity blocked tags.tiqcdn.com is 0.0.0.0
+Jul  7 00:00:53 dnsmasq[553]: query[HTTPS] mask.icloud.com from 192.168.1.115
+Jul  7 00:02:38 dnsmasq[553]: cached a1ewuiz2p7wdvw-ats.iot.us-west-2.amazonaws.com is 2620:108:700f::340a:b2a4
+Jul  7 00:07:02 dnsmasq[553]: query[SVCB] _dns.resolver.arpa from 192.168.1.115
+-->
+
+<decoder name="dnsmasq">  
+  <!--<type>syslog</type>
+  <program_name>^dnsmasq</program_name>
+  <program_name type="pcre2">(?i)dnsmasq\[\d+\]</program_name>-->
+  <prematch type="pcre2">(?i)dnsmasq\[\d+\]\:</prematch>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(query\[A+\])\s+(\S+)\s+from\s+(\S+)</regex>
+  <order>type,url,srcip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(query\[HTTPS\])\s+(\S+)\s+from\s+(\S+)</regex>
+  <order>type,url,srcip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(query\[SVCB\])\s+(\S+)\s+from\s+(\S+)</regex>
+  <order>type,url,srcip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(forwarded)\s+(\S+)\s+to\s+(\S+)</regex>
+  <order>type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(dnssec-query\[DS\])\s+(\S+)\s+to\s+(\S+)</regex>
+  <order>type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(reply)\s+(\S+)\s+is\s+(\S+)</regex>
+  <order>type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(cached)\s+(\S+)\s+is\s+(\S+)</regex>
+  <order>type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">(gravity blocked)\s+(\S+)\s+is\s+(\S+)</regex>
+  <order>type,url,dstip</order>
+</decoder>
