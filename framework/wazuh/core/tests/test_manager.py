@@ -386,6 +386,7 @@ async def test_query_update_check_service_request(
             headers={
                 WAZUH_UID_KEY: installation_uid,
                 WAZUH_TAG_KEY: f'v{version}',
+                USER_AGENT_KEY: f'Wazuh UpdateCheckService/v{version}'
             },
             follow_redirects=True
         )

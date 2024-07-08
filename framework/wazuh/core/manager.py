@@ -325,10 +325,11 @@ async def query_update_check_service(installation_uid: str) -> dict:
     }
 
     update_information = get_update_information_template(
-        update_check=True, current_version=current_version, last_check_date=get_utc_now()
+        uuid=installation_uid,
+        update_check=True,
+        current_version=current_version,
+        last_check_date=get_utc_now()
     )
-
-    update_information['uuid'] = installation_uid
 
     async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
         try:

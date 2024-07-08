@@ -451,7 +451,6 @@ async def test_check_available_version(
     update_check_mock.return_value = update_check
 
     with patch('api.controllers.manager_controller.cti_context', new=cti_context):
-
         result = await check_available_version(force_query=force_query)
         assert mock_dapi.call_count == dapi_call_count
 
@@ -467,7 +466,8 @@ async def test_check_available_version(
 
         mock_dapi.assert_called_with(
             f=manager.get_update_information,
-            f_kwargs={UPDATE_INFORMATION_KEY: cti_context[UPDATE_INFORMATION_KEY]},
+            f_kwargs={INSTALLATION_UID_KEY: cti_context[INSTALLATION_UID_KEY],
+                      UPDATE_INFORMATION_KEY: cti_context[UPDATE_INFORMATION_KEY]},
             request_type='local_master',
             is_async=False,
             logger=ANY,
