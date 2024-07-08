@@ -1,8 +1,0 @@
-name: decoder/syscollector-port/0
-
-parents:
-  - decoder/syscollector-base/0
-
-check:
-  - _json.type: +s_starts/port
-  - _json.ID: +ef_exists

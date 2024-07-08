@@ -1,8 +1,0 @@
-name: decoder/syscollector-process/0
-
-parents:
-  - decoder/syscollector-base/0
-
-check:
-    - _json.type: +s_starts/process
-    - _json.ID: +ef_exists

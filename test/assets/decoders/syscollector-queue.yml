@@ -1,8 +1,0 @@
-name: decoder/syscollector-queue/0
-
-parents:
-  - decoder/json/0
-
-check:
-  - wazuh.queue: 100 #64 #+i_eq/64 #SYSCOLLECTOR_MQ 'd'
-  - wazuh.origin: +s_eq/syscollector
