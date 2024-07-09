@@ -19,9 +19,8 @@
 #include "rsaHelper.hpp"
 
 constexpr auto DATABASE_PATH {"queue/keystore"};
-constexpr auto PRIVATE_KEY_FILE {"etc/sslmanager.key"};
-constexpr auto CERTIFICATE_FILE {"etc/sslmanager.cert"};
-
+constexpr auto PRIVATE_KEY_FILE {"etc/keystore.key"};
+constexpr auto CERTIFICATE_FILE {"etc/keystore.cert"};
 constexpr auto KS_NAME {"keystore"};
 template<typename TRSAPrimitive = RSAHelper<>>
 class TKeystore final

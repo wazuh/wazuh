@@ -88,12 +88,10 @@ async def lifespan_handler(_: ConnexionMiddleware):
 
     tasks: list[asyncio.Task] = []
 
-    if running_in_master_node() and update_check_is_enabled():
-        tasks.append(asyncio.create_task(check_installation_uid()))
-        tasks.append(asyncio.create_task(get_update_information()))
-
-    # Log the initial server startup message.
-    logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')
+    if running_in_master_node():
+        tasks.append(asyncio.create_task(check_installation_uid(app)))
+        if update_check_is_enabled():
+            tasks.append(asyncio.create_task(get_update_information(app)))
 
     yield
 

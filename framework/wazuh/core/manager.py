@@ -274,6 +274,7 @@ def _get_ssl_context() -> ssl.SSLContext:
 
 
 def get_update_information_template(
+        uuid: str,
         update_check: bool,
         current_version: str = f"v{wazuh.__version__}",
         last_check_date: Optional[datetime] = None
@@ -282,6 +283,8 @@ def get_update_information_template(
 
     Parameters
     ----------
+    uuid : str
+        Wazuh UID to include in the result.
     update_check : bool
         Indicates if the check is enabled or not.
     current_version : str, optional
@@ -295,6 +298,7 @@ def get_update_information_template(
         Template with the given data.
     """
     return {
+        'uuid': uuid,
         'last_check_date': last_check_date if last_check_date is not None else '',
         'current_version': current_version,
         'update_check': update_check,
@@ -325,12 +329,13 @@ async def query_update_check_service(installation_uid: str) -> dict:
     }
 
     update_information = get_update_information_template(
-        update_check=True, current_version=current_version, last_check_date=get_utc_now()
+        uuid=installation_uid,
+        update_check=True,
+        current_version=current_version,
+        last_check_date=get_utc_now()
     )
 
-    update_information['uuid'] = installation_uid
-
-    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
+    async with aiohttp.ClientSession(connector=_get_connector()) as session:
         try:
             response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
             response_data = response.json()

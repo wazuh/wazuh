@@ -234,6 +234,20 @@ GenerateAuthCert()
     fi
 }
 
+#########################
+#GenerateKeystoreCert()
+#########################
+GenerateKeystoreCert()
+{
+  # Regenerate keys if they are not valid.
+  keystore_key=/etc/keystore.key
+  keystore_cert=/etc/keystore.cert
+  echo "Generating RSA keys for Keystore."
+  ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}${keystore_key} -X ${INSTALLDIR}${keystore_cert} -S "/C=US/ST=California/CN=wazuh/"
+  chmod 600 ${INSTALLDIR}${keystore_key}
+  chmod 600 ${INSTALLDIR}${keystore_cert}
+}
+
 ##########
 # WriteLogs()
 ##########
@@ -1334,6 +1348,23 @@ InstallServer()
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
+
+    keystore_key=/etc/keystore.key
+    keystore_cert=/etc/keystore.cert
+
+    # If we come from 4.8.0, no certificates will be found.
+    # Since the Keystore tool previously used sslmanager keys for encryption,
+    # We copy them to the new location to be able to recover the information.
+    if [ ! -f "${INSTALLDIR}${keystore_key}" ] && [ ! -f "${INSTALLDIR}${keystore_cert}" ]; then
+      cp -p ${INSTALLDIR}/etc/sslmanager.cert ${INSTALLDIR}${keystore_cert}
+      cp -p ${INSTALLDIR}/etc/sslmanager.key ${INSTALLDIR}${keystore_key}
+    fi
+    
+    # Test if the certificates are valid. If don't, re-generate them
+    ${INSTALLDIR}/bin/wazuh-keystore -f default -k certificate_test -v test
+    if [ $? -eq 1 ]; then
+      GenerateKeystoreCert
+    fi
 }
 
 InstallAgent()

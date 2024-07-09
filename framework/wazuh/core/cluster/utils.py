@@ -539,3 +539,19 @@ def running_in_master_node() -> bool:
     cluster_config = read_cluster_config()
 
     return cluster_config['disabled'] or cluster_config['node_type'] == 'master'
+
+
+def raise_if_exc(result: object) -> None:
+    """Check if a specified object is an exception and raise it.
+
+    Raises
+    ------
+    Exception
+
+    Parameters
+    ----------
+    result : object
+        Object to be checked.
+    """
+    if isinstance(result, Exception):
+        raise result
