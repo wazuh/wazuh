@@ -1,6 +1,8 @@
 FROM centos:7
 
 # Install all the necessary tools to build the packages
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 RUN yum install -y gcc make wget git \
     openssh-clients sudo gnupg file-devel\
     automake autoconf libtool policycoreutils-python \
@@ -21,7 +23,7 @@ RUN yum install -y gcc make wget git \
     redhat-rpm-config sqlite-devel gdb tar tcl-devel tix-devel tk-devel \
     valgrind-devel python-rpm-macros python3
 
-    # Install Perl 5.10
+# Install Perl 5.10
 RUN curl -OL http://packages.wazuh.com/utils/perl/perl-5.10.1.tar.gz && \
     gunzip perl-5.10.1.tar.gz && tar -xf perl*.tar && \
     cd /perl-5.10.1 && ./Configure -des -Dcc='gcc' -Dusethreads && \
