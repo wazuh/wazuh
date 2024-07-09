@@ -318,7 +318,7 @@ TEST_F(SysInfoPackagesLinuxHelperTest, parseDpkgInformation)
     EXPECT_FALSE(jsPackageInfo.empty());
     EXPECT_EQ("zlib1g-dev", jsPackageInfo["name"]);
     EXPECT_EQ("optional", jsPackageInfo["priority"]);
-    EXPECT_EQ(591, jsPackageInfo["size"]);
+    EXPECT_EQ(605184, jsPackageInfo["size"]);
     EXPECT_EQ("libdevel", jsPackageInfo["groups"]);
     EXPECT_EQ("same", jsPackageInfo["multiarch"]);
     EXPECT_EQ("1:1.2.11.dfsg-2ubuntu1.2", jsPackageInfo["version"]);
