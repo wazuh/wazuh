@@ -43,7 +43,6 @@ idna==3.7.0
 importlib-metadata==6.8.0
 inflection==0.3.1
 isodate==0.6.1
-itsdangerous==2.0.0
 Jinja2==3.1.4
 jmespath==0.9.5
 jsonschema==4.20.0
