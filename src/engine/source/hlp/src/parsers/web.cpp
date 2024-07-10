@@ -245,31 +245,13 @@ Parser getFQDNParser(const Params& params)
         throw std::runtime_error("FQDN parser do not accept arguments!");
     }
 
-    syntax::Parser toStopP;
-    bool stop = false;
-
-    if (!params.stop.empty())
-    {
-        toStopP = syntax::parsers::toEnd(params.stop);
-        stop = true;
-    }
-
     syntax::Parser synP = getFQDNSynParser();
     const auto semP =
         params.targetField.empty() ? noSemParser() : getStrSemParser(params.targetField);
 
-    return [name = params.name, stop, toStopP, synP, semP](std::string_view txt)
+    return [name = params.name, synP, semP](std::string_view txt)
     {
         std::string_view fqdnInput = txt;
-        if (stop)
-        {
-            auto toStopR = toStopP(txt);
-            if (toStopR.failure())
-            {
-                return abs::makeFailure<ResultT>(toStopR.remaining(), name);
-            }
-            fqdnInput = syntax::parsed(toStopR, txt);
-        }
 
         auto synR = synP(fqdnInput);
         const auto remaining = txt.substr(fqdnInput.size() - synR.remaining().size());
@@ -281,11 +263,6 @@ Parser getFQDNParser(const Params& params)
         }
 
         const auto parsed = syntax::parsed(synR, fqdnInput);
-
-        if (stop & !synR.remaining().empty())
-        {
-            return abs::makeFailure<ResultT>(remaining, name);
-        }
 
         return abs::makeSuccess<ResultT>(SemToken {parsed, semP}, remaining);
     };
