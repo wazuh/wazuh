@@ -15,12 +15,12 @@ Feature: Configuration API Management
 
   Scenario: Failed configuration save with directory path
     Given I have a valid configuration file called general.conf
-    When I send a request to save configuration file located in "./test/integration_test/configuration_files/"
-    Then I should receive a failed response indicating "Cannot open file './test/integration_test/configuration_files/': Is a directory"
+    When I send a request to save configuration file located in "./test/integration_tests/configuration_files/"
+    Then I should receive a failed response indicating "Cannot open file './test/integration_tests/configuration_files/': Is a directory"
 
   Scenario: Successful configuration save without specifying a path
     Given I have a valid configuration file called general.conf
-    When I send a request to save configuration file located in "./test/integration_test/configuration_files_tmp/general.conf"
+    When I send a request to save configuration file located in "./test/integration_tests/tmp-general.conf"
     Then I should receive a success response
 
   Scenario: Failed when trying to update a non-existent item in the configuration

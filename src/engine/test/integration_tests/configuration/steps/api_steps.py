@@ -103,7 +103,9 @@ def step_impl(context):
 @when('I send a request to save configuration file located in "{path}"')
 def step_impl(context, path):
     context.result = save_runtime_configuration(path)
-    shutil.rmtree(os.path.dirname((os.path.abspath(path))))
+    # Do not remove if is a directory
+    if not os.path.isdir(path):
+        os.remove(path)
 
 @when('I send a request to get configuration file')
 def step_impl(context):
