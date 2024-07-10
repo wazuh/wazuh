@@ -16,11 +16,10 @@ The `setupEnvironment.py` script is used to configure the environment necessary 
 
 ### Prerequisites
 
-- Python 3.8+
-- pip3
-- `tools/api-communication`: A Python package for communicating with the Wazuh API.
-- `engine-suite`: A Python package containing tools for the Wazuh Engine.
-
+- **Python 3.8+**
+- **pip3**
+- **engine-suite**: This package includes several tools that facilitate the use of the Wazuh-Engine ecosystem, these tools are used by the tests and the user to interact with the api in a simple way.
+- **api-communication**: This package facilitates communication with the Wazuh API, crucial for some components that interact directly with the Wazuh API.
 ### Installation
 
 First, ensure that you have Python and pip installed on your system. Then, install the required Python packages by navigating to the root directory of the Wazuh repository and running the following commands:

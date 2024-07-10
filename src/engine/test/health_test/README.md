@@ -14,10 +14,7 @@ This directory contains the necessary tools and scripts to run health tests for 
 
 Before running the health tests, ensure that the following requirements are met:
 
-- **engine-suite**: This package includes the `engine-test` tool which is essential for running the integration tests. It simulates the processing of events through the Wazuh-Engine based on specific configurations.
-- **api-communication**: This package facilitates communication with the Wazuh API, crucial for some components that interact directly with the Wazuh API.
-
-These components must be properly installed and configured in your environment. Installation instructions for these tools and packages can typically be found in the main Wazuh documentation or the repository's setup guides.
+- **Basic requirements for sandbox environment  ([described here](../README.md#prerequisites))**
 
 
 ## Configuration Files
@@ -41,7 +38,7 @@ First, set up an isolated environment to run the tests using the `setupEnvironme
 
 ### Initialize Test Environment
 
-Load all necessary configurations and integration tests:
+Load all necessary configurations and integration from ruleset tests:
 
 ```bash
 ./test/health_test/initialState.py -e /tmp/engine-test
@@ -49,7 +46,7 @@ Load all necessary configurations and integration tests:
 
 ### Execute Tests
 
-Run all tests for a specific integration or execute tests across all integrations:
+Run all tests for a specific integration or execute health tests across all integrations:
 
 ```bash
 ./test/health_test/run.py -e /tmp/engine-test

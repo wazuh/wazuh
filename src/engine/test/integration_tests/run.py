@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import os
 import sys
 import subprocess
@@ -72,7 +74,11 @@ def main():
     env_path = Path(env_dir).resolve()
     conf_path = get_config_file(env_path)
     it_path = engine_path / "test" / "integration_tests"
-    feature_path = it_path / specific_feature if specific_feature else None
+    feature_path = Path(specific_feature).resolve() if specific_feature else None
+
+    if feature_path and not feature_path.exists():
+        print(f"Error: Feature path {feature_path} not found.")
+        sys.exit(1)
 
     # Set environment variables so the tests can use the paths
     os.environ['ENGINE_DIR'] = engine_path.as_posix()
