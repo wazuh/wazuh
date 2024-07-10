@@ -45,6 +45,7 @@ typedef struct _agent {
     int buflength;
     int events_persec;
     int crypto_method;
+    int package_uninstallation;
     wlabel_t *labels; /* null-ended label set */
     agent_flags_t flags;
     w_enrollment_ctx *enrollment_cfg;

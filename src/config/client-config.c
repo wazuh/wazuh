@@ -556,6 +556,34 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     return 0;
 }
 
+int Read_AntiTampering(XML_NODE node, agent * logr){
+    /* XML definitions */
+    const char *xml_package_uninstallation = "package_uninstallation";
+
+    for (j = 0; node[j]; j++) {
+        if (!node[j]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[j]->content) {
+            merror(XML_VALUENULL, node[j]->element);
+            return (OS_INVALID);
+        } else if (!strcmp(node[j]->element, xml_package_uninstallation)) {
+            if (!strcmp(node[j]->content, "yes"))
+                logr->package_uninstallation = true;
+            else if (!strcmp(node[j]->content, "no")) {
+                logr->package_uninstallation = false;
+            } else {
+                merror("Invalid content for tag '%s'.", node[j]->element);
+                return OS_INVALID;
+            }
+        } else {
+            merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        }
+    }
+    return 0;
+}
+
 int Test_Client(const char * path){
     int fail = 0;
     agent test_client = { .server = NULL };
