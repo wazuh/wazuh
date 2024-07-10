@@ -96,7 +96,7 @@ normalize:
   - check:
       - message: contains(pam_)
     parse|message:
-      - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/>  user=<user.name>?<~/literal/>"
+      - "pam_unix\\(<~>:<~>\\): authentication <_system.auth.pam.session.action>; logname=<?_system.auth.pam.foruser.name> uid=<?user.id> euid=<?user.effective.id> tty=<?_system.auth.pam.tty> ruser=<?_system.auth.pam.remote.user> rhost=<?source.ip>  user=<?user.name>"
     map:
       - event.category: array_append(authentication)
 
@@ -119,7 +119,7 @@ normalize:
   - check:
       - message: contains(PAM)
     parse|message:
-      - PAM <~> more authentication <_system.auth.pam.session.action>; logname=<_system.auth.pam.foruser.name>?<~/literal/> uid=<user.id>?<~/literal/> euid=<user.effective.id>?<~/literal/> tty=<_system.auth.pam.tty>?<~/literal/> ruser=<_system.auth.pam.remote.user>?<~/literal/> rhost=<source.ip>?<~/literal/> user=<user.name>?<~/literal/>
+      - PAM <~> more authentication <_system.auth.pam.session.action>; logname=<?_system.auth.pam.foruser.name> uid=<?user.id> euid=<?user.effective.id> tty=<?_system.auth.pam.tty> ruser=<?_system.auth.pam.remote.user> rhost=<?source.ip> user=<?user.name>
     map:
       - event.category: array_append(authentication, session)
 
