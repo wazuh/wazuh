@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - ".github/workflows/macos-unit-tests.yml"
 
 jobs:
   build-ventura:
@@ -39,7 +40,7 @@ jobs:
       - name: Build wazuh agent for macOS 14 with tests flags
         run: |
           make deps -C src TARGET=agent -j3
-          LIBRARY_PATH=/usr/local/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
+          C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/opt/homebrew/lib make -C src TARGET=agent -j3 DEBUG=1 TEST=1
       - name: Run wazuh unit tests for macOS 14
         run: |
           cd src/data_provider/build
