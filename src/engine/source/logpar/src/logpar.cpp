@@ -441,7 +441,7 @@ Logpar::Hlp Logpar::buildFieldParser(const parser::Field& field, const std::vect
 
 Logpar::Hlp Logpar::buildChoiceParser(const parser::Choice& choice, const std::vector<std::string>& endTokens) const
 {
-    auto p1 = buildFieldParser(choice.left, endTokens);
+    auto p1 = buildFieldParser(choice.left, {});
     auto p2 = buildFieldParser(choice.right, endTokens);
 
     return hlp::parser::combinator::choice(p1, p2);
