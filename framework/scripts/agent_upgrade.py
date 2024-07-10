@@ -188,13 +188,6 @@ async def check_status(affected_agents: list, result_dict: dict, failed_agents: 
                     else task_result['status']
                 result_dict.pop(task_result['agent'])
                 affected_agents.discard(task_result['agent'])
-            
-        for failed_ids in task_results.failed_items.values():
-            for id in affected_agents.copy():
-                if id in failed_ids:
-                    failed_agents[id] = 'Agent disconnected during the upgrade'
-                    result_dict.pop(id)
-                    affected_agents.discard(id)
         sleep(3)
 
     not silent and print_result(agents_versions=result_dict, failed_agents=failed_agents)

@@ -11,7 +11,6 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed bug in `upgrade_agent` CLI where it would sometimes hang without showing a response. ([#24308](https://github.com/wazuh/wazuh/pull/24308))
 - Fixed bug in `upgrade_agent` CLI where it would sometimes raise an unhandled exception. ([#24341](https://github.com/wazuh/wazuh/pull/24341))
 
 ### Agent

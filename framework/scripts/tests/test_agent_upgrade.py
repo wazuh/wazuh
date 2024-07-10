@@ -174,30 +174,6 @@ async def test_check_status(mock_sleep, mock_print_result, silent):
             mock_print_result.assert_not_called()
 
 @pytest.mark.asyncio
-@patch('scripts.agent_upgrade.print_result')
-@patch('scripts.agent_upgrade.sleep')
-async def test_check_status_failed_items(mock_sleep, mock_print_result):
-    """Check if methods inside check_status work as expected when the agents response contains failed items"""
-
-    task_results = MagicMock()
-    task_results.failed_items = {}
-    task_results.failed_items[Exception()] = {'001', '002'}
-    agent_upgrade.args = MagicMock()
-    agent_upgrade.args.version = '4.2.0'
-    result_dict = {'001': {'new_version': '4.4.0'}, '002': {'new_version': '4.3.0'}}
-    with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=task_results) as mock_forward_func:
-        await agent_upgrade.check_status(affected_agents=['001', '002'], result_dict=result_dict, failed_agents={}, 
-                                         silent=False)
-
-        mock_forward_func.assert_called_once_with(agent_upgrade.get_upgrade_result, f_kwargs={'agent_list': ANY})
-        
-        mock_print_result.assert_called_once_with(agents_versions={}, failed_agents={
-            '001': 'Agent disconnected during the upgrade',
-            '002': 'Agent disconnected during the upgrade'
-            }
-        )
-
-@pytest.mark.asyncio
 @patch('scripts.agent_upgrade.signal')
 @patch('scripts.agent_upgrade.exit')
 @patch('scripts.agent_upgrade.list_outdated')
