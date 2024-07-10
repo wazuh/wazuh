@@ -63,29 +63,11 @@ Parser getKVParser(const Params& params)
         throw std::runtime_error(fmt::format("KV parser: separator and delimiter must be different"));
     }
 
-    syntax::Parser toStopP;
-    bool stop = false;
-
-    if (!params.stop.empty())
-    {
-        toStopP = syntax::parsers::toEnd(params.stop);
-        stop = true;
-    }
-
     const auto targetField = params.targetField.empty() ? "" : params.targetField;
 
-    return [stop, toStopP, sep, delim, quote, esc, name = params.name, targetField](std::string_view txt)
+    return [sep, delim, quote, esc, name = params.name, targetField](std::string_view txt)
     {
         std::string_view kvInput = txt;
-        if (stop)
-        {
-            auto toStopR = toStopP(txt);
-            if (toStopR.failure())
-            {
-                return abs::makeFailure<ResultT>(toStopR.remaining(), name);
-            }
-            kvInput = syntax::parsed(toStopR, txt);
-        }
 
         auto remaining = txt.substr(kvInput.size());
 
@@ -120,7 +102,7 @@ Parser getKVParser(const Params& params)
 
         if (kv.size() % 2 != 0)
         {
-            return abs::makeFailure<ResultT>(txt.substr(kv[kv.size()-2].end()), name);
+            return abs::makeFailure<ResultT>(txt.substr(kv[kv.size() - 2].end()), name);
             // return parsec::makeError<json::Json>(fmt::format("{}: Invalid number of key-value fields", name), index);
         }
 
@@ -148,7 +130,7 @@ Parser getKVParser(const Params& params)
             // return parsec::makeError<json::Json>(fmt::format("{}: Invalid key-value string", name), index);
         }
 
-        if (stop && kvInput.size() != end)
+        if (kvInput.size() != end)
         {
             return abs::makeFailure<ResultT>(txt.substr(end), name);
         }
