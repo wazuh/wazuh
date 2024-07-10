@@ -6,7 +6,6 @@
 
 import argparse
 import asyncio
-import logging
 from os.path import basename
 from signal import signal, SIGINT
 from sys import exit, argv
@@ -21,8 +20,6 @@ try:
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
-
-logger = logging.getLogger('wazuh')
 
 
 # Functions
@@ -53,8 +50,8 @@ async def show_groups():
     unassigned_agents = await cluster_utils.forward_function(func=agent.get_agents,
                                                              f_kwargs={'q': 'id!=000;group=null'})
 
-    check_if_exception(groups)
-    check_if_exception(unassigned_agents)
+    cluster_utils.raise_if_exc(groups)
+    cluster_utils.raise_if_exc(unassigned_agents)
 
     print(f"Groups ({groups.total_affected_items}):")
     for items in groups.affected_items:
@@ -73,7 +70,7 @@ async def show_group(agent_id: str):
     """
     agent_info = await cluster_utils.forward_function(func=agent.get_agents, f_kwargs={'agent_list': [agent_id]})
 
-    check_if_exception(agent_info)
+    cluster_utils.raise_if_exc(agent_info)
 
     if agent_info.total_affected_items == 0:
         msg = list(agent_info.failed_items.keys())[0]
@@ -94,7 +91,7 @@ async def show_synced_agent(agent_id: str):
         ID of the agent.
     """
     result = await cluster_utils.forward_function(func=agent.get_agents_sync_group, f_kwargs={'agent_list': [agent_id]})
-    check_if_exception(result)
+    cluster_utils.raise_if_exc(result)
 
     if result.total_affected_items == 0:
         msg = list(result.failed_items.keys())[0]
@@ -115,7 +112,7 @@ async def show_agents_with_group(group_id: str):
     result = await cluster_utils.forward_function(func=agent.get_agents_in_group,
                                                   f_kwargs={'group_list': [group_id], 'select': ['name'],
                                                             'limit': None})
-    check_if_exception(result)
+    cluster_utils.raise_if_exc(result)
 
     if result.total_affected_items == 0:
         print(f"No agents found in group '{group_id}'.")
@@ -134,7 +131,7 @@ async def show_group_files(group_id: str):
         ID of the group we want to check the configuration files from.
     """
     result = await cluster_utils.forward_function(func=agent.get_group_files, f_kwargs={'group_list': [group_id]})
-    check_if_exception(result)
+    cluster_utils.raise_if_exc(result)
 
     print("{0} files for '{1}' group:".format(result.total_affected_items, group_id))
 
@@ -171,7 +168,7 @@ async def unset_group(agent_id: str, group_id: str = None, quiet: bool = False):
     if ans.lower() == 'y':
         result = await cluster_utils.forward_function(func=agent.remove_agent_from_groups,
                                                       f_kwargs={'agent_list': [agent_id], 'group_list': [group_id]})
-        check_if_exception(result)
+        cluster_utils.raise_if_exc(result)
 
         if result.total_affected_items != 0:
             msg = f"Agent '{agent_id}' removed from {group_id}."
@@ -198,7 +195,7 @@ async def remove_group(group_id: str, quiet: bool = False):
     msg = ''
     if ans.lower() == 'y':
         result = await cluster_utils.forward_function(func=agent.delete_groups, f_kwargs={'group_list': [group_id]})
-        check_if_exception(result)
+        cluster_utils.raise_if_exc(result)
 
         if result.total_affected_items == 0:
             msg = list(result.failed_items.keys())[0]
@@ -232,7 +229,7 @@ async def set_group(agent_id: str, group_id: str, quiet: bool = False, replace: 
         result = await cluster_utils.forward_function(func=agent.assign_agents_to_group,
                                                       f_kwargs={'group_list': [group_id], 'agent_list': [agent_id],
                                                                 'replace': replace})
-        check_if_exception(result)
+        cluster_utils.raise_if_exc(result)
 
         if result.total_affected_items != 0:
             msg = f"Group '{group_id}' added to agent '{agent_id}'."
@@ -259,30 +256,13 @@ async def create_group(group_id: str, quiet: bool = False):
 
     if ans.lower() == 'y':
         result = await cluster_utils.forward_function(func=agent.create_group, f_kwargs={'group_id': group_id})
-        check_if_exception(result)
+        cluster_utils.raise_if_exc(result)
 
         msg = result.dikt['message']
     else:
         msg = "Cancelled."
 
     print(msg)
-
-
-def check_if_exception(result: object):
-    """Check if a specified object is an exception.
-    If the object is an exception, raise it.
-
-    Raises
-    ------
-    Exception
-
-    Parameters
-    ----------
-    result : object
-        Object to be checked.
-    """
-    if isinstance(result, Exception):
-        raise result
 
 
 def usage():

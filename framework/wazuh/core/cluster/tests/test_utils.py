@@ -15,9 +15,9 @@ with patch('wazuh.core.common.getgrnam'):
             with patch('wazuh.core.common.wazuh_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
-                from wazuh import WazuhError, WazuhException, WazuhInternalError
-                from wazuh.core.exception import WazuhHAPHelperError
                 from wazuh.core.cluster import utils
+                from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhPermissionError, \
+                    WazuhResourceNotFound, WazuhHAPHelperError
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
@@ -421,3 +421,21 @@ def test_running_on_master_node(read_cluster_config_mock, cluster_config, expect
     read_cluster_config_mock.return_value = cluster_config
 
     assert utils.running_in_master_node() == expected
+
+@pytest.mark.parametrize('result', [
+    WazuhError(6001),
+    WazuhInternalError(1000),
+    WazuhPermissionError(4000),
+    WazuhResourceNotFound(1710),
+    'value',
+    1,
+    False,
+    {'key': 'value'}
+])
+def test_raise_if_exc(result):
+    """Check that raise_if_exc raises an exception if the result is one."""
+    if isinstance(result, Exception):
+        with pytest.raises(Exception):
+            utils.raise_if_exc(result)
+    else:
+        utils.raise_if_exc(result)
