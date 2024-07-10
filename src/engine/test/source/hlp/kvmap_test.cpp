@@ -37,15 +37,15 @@ INSTANTIATE_TEST_SUITE_P(
 
         ParseT(SUCCESS,
                R"(f1=v1 f2=v2 f3=v3###)",
-               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3"}}}})", TARGET.substr(1))),
-               17,
+               j(fmt::format(R"({{"{}":{{"f1":"v1","f2":"v2","f3":"v3###"}}}})", TARGET.substr(1))),
+               20,
                getKVParser,
                {NAME, TARGET, {"###"}, {"=", " ", "'", "\\"}}),
 
         ParseT(SUCCESS,
                R"(key1=Value1 Key2=Value2-dummy)",
-               j(fmt::format(R"({{"{}":{{"key1":"Value1","Key2":"Value2"}}}})", TARGET.substr(1))),
-               23,
+               j(fmt::format(R"({{"{}":{{"key1":"Value1","Key2":"Value2-dummy"}}}})", TARGET.substr(1))),
+               29,
                getKVParser,
                {NAME, TARGET, {"-dummy"}, {"=", " ", "'", "\\"}}),
 
