@@ -77,15 +77,7 @@ Parser getIPParser(const Params& params)
         throw std::runtime_error("The IP parser does not accept any argument");
     }
 
-    syntax::Parser synP;
-    if (!params.stop.empty())
-    {
-        synP = syntax::parsers::toEnd(params.stop);
-    }
-    else
-    {
-        synP = getSynParser();
-    }
+    syntax::Parser synP = getSynParser();
 
     auto target = params.targetField.empty() ? "" : params.targetField;
     auto semP = getSemParser(target);
