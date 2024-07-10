@@ -24,7 +24,6 @@
 constexpr int RSA_PRIVATE {0};
 constexpr int RSA_PUBLIC {1};
 constexpr int RSA_CERT {2};
-constexpr int RSA_SIZE {256};
 
 template<typename T = OpenSSLPrimitives, typename U = OSPrimitives>
 class RSAHelper final
@@ -93,7 +92,7 @@ public:
         DEFER([&]() { T::RSA_free(rsa); });
 
         // Decrypt the ciphertext using RSA private key
-        const auto decryptedLen = T::RSA_private_decrypt(RSA_SIZE,
+        const auto decryptedLen = T::RSA_private_decrypt(input.size(),
                                                          reinterpret_cast<const unsigned char*>(input.data()),
                                                          reinterpret_cast<unsigned char*>(decryptedText.data()),
                                                          rsa,
