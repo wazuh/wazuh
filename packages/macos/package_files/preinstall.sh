@@ -11,38 +11,35 @@
 
 DIR="/Library/Ossec"
 
+function check_errm
+{
+    if  [[ ${?} != "0" ]]
+        then
+        echo "${1}";
+        exit ${2};
+        fi
+}
+
 if [ -d "${DIR}" ]; then
     echo "A Wazuh agent installation was found in ${DIR}. Will perform an upgrade."
+    upgrade="true"
+    touch "${DIR}/WAZUH_PKG_UPGRADE"
 
-    if [ -f "${DIR}/WAZUH_PKG_UPGRADE" ]; then
-        rm -f "${DIR}/WAZUH_PKG_UPGRADE"
-    fi
     if [ -f "${DIR}/WAZUH_RESTART" ]; then
         rm -f "${DIR}/WAZUH_RESTART"
     fi
 
-    touch "${DIR}/WAZUH_PKG_UPGRADE"
-    upgrade="true"
-
+    # Stops the agent before upgrading it
     if ${DIR}/bin/wazuh-control status | grep "is running" > /dev/null 2>&1; then
         touch "${DIR}/WAZUH_RESTART"
+        ${DIR}/bin/wazuh-control stop
         restart="true"
     elif ${DIR}/bin/ossec-control status | grep "is running" > /dev/null 2>&1; then
         touch "${DIR}/WAZUH_RESTART"
+        ${DIR}/bin/ossec-control stop
         restart="true"
     fi
-fi
 
-# Stops the agent before upgrading it
-echo "Stopping the agent before upgrading it."
-
-if [ -f ${DIR}/bin/wazuh-control ]; then
-    ${DIR}/bin/wazuh-control stop
-elif [ -f ${DIR}/bin/ossec-control ]; then
-    ${DIR}/bin/ossec-control stop
-fi
-
-if [ -n "${upgrade}" ]; then
     echo "Backing up configuration files to ${DIR}/config_files/"
     mkdir -p ${DIR}/config_files/
     cp -r ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/config_files/
@@ -56,31 +53,20 @@ if [ -n "${upgrade}" ]; then
         echo "Renaming ${DIR}/queue/ossec to ${DIR}/queue/sockets"
         mv ${DIR}/queue/ossec ${DIR}/queue/sockets
     fi
-fi
 
-if [ -n "${upgrade}" ]; then
     if pkgutil --pkgs | grep -i wazuh-agent-etc > /dev/null 2>&1 ; then
         echo "Removing previous package receipt for wazuh-agent-etc"
         pkgutil --forget com.wazuh.pkg.wazuh-agent-etc
     fi
 fi
 
-if [[ ! -f "/usr/bin/dscl" ]]
+DSCL="/usr/bin/dscl";
+if [[ ! -f "$DSCL" ]]
     then
     echo "Error: I couldn't find dscl, dying here";
     exit
 fi
 
-DSCL="/usr/bin/dscl";
-
-function check_errm
-{
-    if  [[ ${?} != "0" ]]
-        then
-        echo "${1}";
-        exit ${2};
-        fi
-}
 
 # get unique id numbers (uid, gid) that are greater than 100
 echo "Getting unique id numbers (uid, gid)"
@@ -88,13 +74,12 @@ unset -v i new_uid new_gid idvar;
 declare -i new_uid=0 new_gid=0 i=100 idvar=0;
 while [[ $idvar -eq 0 ]]; do
     i=$[i+1]
-    if [[ -z "$(/usr/bin/dscl . -search /Users uid ${i})" ]] && [[ -z "$(/usr/bin/dscl . -search /Groups gid ${i})" ]];
+    if [[ -z "$(${DSCL} . -search /Users uid ${i})" ]] && [[ -z "$(${DSCL} . -search /Groups gid ${i})" ]];
         then
         echo "Found available UID and GID: $i"
         new_uid=$i
         new_gid=$i
         idvar=1
-        #break
    fi
 done
 
@@ -111,13 +96,6 @@ if [[ ${new_uid} != ${new_gid} ]]
     then
     echo "I failed to find matching free uid and gid!";
     exit 5;
-fi
-
-# Stops the agent before upgrading it
-if [ -f ${DIR}/bin/wazuh-control ]; then
-    ${DIR}/bin/wazuh-control stop
-elif [ -f ${DIR}/bin/ossec-control ]; then
-    ${DIR}/bin/ossec-control stop
 fi
 
 # Creating the group
