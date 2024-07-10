@@ -42,6 +42,130 @@ static void help_agentd(char *home_path)
     exit(1);
 }
 
+#include <curl/curl.h>
+#include <cjson/cJSON.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define API_URL "https://localhost:55000"
+
+#define BUFFER_SIZE 8192
+
+static char buffer[BUFFER_SIZE];
+
+size_t write_callback(void *ptr, size_t size, size_t nmemb, void *stream) {
+    strncat(buffer, ptr, size * nmemb);
+    return size * nmemb;
+}
+
+/* Function to perform the token validation */
+int validate_token(const char *token) {
+    CURL *curl;
+    CURLcode res;
+    memset(buffer, 0, BUFFER_SIZE);
+
+    char url[256];
+    snprintf(url, sizeof(url), "%s/management_authorization", API_URL);
+
+    char auth_header[512];
+    snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", token);
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    if (curl) {
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, auth_header);
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "{\"action\":\"agent:uninstall\"}");
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, buffer);
+
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            curl_global_cleanup();
+            return 0;
+        }
+        curl_slist_free_all(headers);
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+
+    cJSON *json = cJSON_Parse(buffer);
+    if (!json) {
+        fprintf(stderr, "Error parsing JSON\n");
+        return 0;
+    }
+
+    cJSON *authorized = cJSON_GetObjectItemCaseSensitive(json, "authorized");
+    int result = cJSON_IsTrue(authorized);
+
+    cJSON_Delete(json);
+    return result;
+}
+
+/* Function to authenticate and get the token */
+char* authenticate_user(const char *user, const char *password) {
+    CURL *curl;
+    CURLcode res;
+    memset(buffer, 0, BUFFER_SIZE);
+
+    char url[256];
+    snprintf(url, sizeof(url), "%s/security/user/authenticate?raw=true", API_URL);
+
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    if (curl) {
+        char userpwd[256];
+        snprintf(userpwd, sizeof(userpwd), "%s:%s", user, password);
+
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_USERPWD, userpwd);
+        curl_easy_setopt(curl, CURLOPT_POST, 1L);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, buffer);
+
+        res = curl_easy_perform(curl);
+        if (res != CURLE_OK) {
+            fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+            curl_easy_cleanup(curl);
+            curl_global_cleanup();
+            return NULL;
+        }
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+
+    cJSON *json = cJSON_Parse(buffer);
+    if (!json) {
+        fprintf(stderr, "Error parsing JSON\n");
+        return NULL;
+    }
+
+    cJSON *data = cJSON_GetObjectItemCaseSensitive(json, "data");
+    if (!cJSON_IsObject(data)) {
+        fprintf(stderr, "Error retrieving data object\n");
+        cJSON_Delete(json);
+        return NULL;
+    }
+
+    cJSON *token = cJSON_GetObjectItemCaseSensitive(data, "token");
+    if (!cJSON_IsString(token) || (token->valuestring == NULL)) {
+        fprintf(stderr, "Error retrieving token\n");
+        cJSON_Delete(json);
+        return NULL;
+    }
+
+    char *token_str = strdup(token->valuestring);
+    cJSON_Delete(json);
+    return token_str;
+}
 
 int main(int argc, char **argv)
 {
@@ -74,8 +198,8 @@ int main(int argc, char **argv)
     agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
     struct option long_opts[] = {
-        {"uninstall-auth-login", required_argument, NULL, 1},
-        {"uninstall-auth-token", required_argument, NULL, 2}
+        {"uninstall-auth-login", 1, NULL, 1},
+        {"uninstall-auth-token", 1, NULL, 2}
     };
 
     while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
@@ -140,11 +264,22 @@ int main(int argc, char **argv)
 
     /* Anti tampering functionality */
     if (uninstall_auth_token) {
-        // TODO API request
-        exit(0);
+        if (validate_token(uninstall_auth_token)) {
+            exit(0);
+        } else {
+            exit(1);
+        }
     } else if (uninstall_auth_login) {
-        // TODO API request
-        exit(0);
+        char *user = strtok(strdup(uninstall_auth_login), ":");
+        char *password = strtok(NULL, ":");
+        char *token = authenticate_user(user, password);
+        if (token && validate_token(token)) {
+            free(token);
+            exit(0);
+        } else {
+            free(token);
+            exit(1);
+        }
     }
 
     agt = (agent *)calloc(1, sizeof(agent));
