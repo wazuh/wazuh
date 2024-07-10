@@ -79,7 +79,7 @@ lock()
         # Waiting 1 second before trying again
         sleep 1;
         i=`expr $i + 1`;
-        pid=`cat ${LOCK_PID}` 2>/dev/null
+        pid=$(cat ${LOCK_PID} 2>/dev/null)
 
         if [ $? = 0 ]
         then
