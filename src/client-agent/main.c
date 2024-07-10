@@ -53,6 +53,8 @@ int main(int argc, char **argv)
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;
+    const char *uninstall_auth_login = NULL;
+    const char *uninstall_auth_token = NULL;
 
     uid_t uid;
     gid_t gid;
@@ -71,7 +73,12 @@ int main(int argc, char **argv)
 
     agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
-    while ((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1) {
+    struct option long_opts[] = {
+        {"uninstall-auth-login", required_argument, NULL, 1},
+        {"uninstall-auth-token", required_argument, NULL, 2}
+    };
+
+    while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -113,10 +120,31 @@ int main(int argc, char **argv)
                 }
                 cfg = optarg;
                 break;
+            case 1:
+                if (!optarg) {
+                    merror_exit("--uninstall-auth-login needs an argument");
+                }
+                uninstall_auth_login = optarg;
+                break;
+            case 2:
+                if (!optarg) {
+                    merror_exit("--uninstall-auth-token needs an argument");
+                }
+                uninstall_auth_token = optarg;
+                break;
             default:
                 help_agentd(home_path);
                 break;
         }
+    }
+
+    /* Anti tampering functionality */
+    if (uninstall_auth_token) {
+        // TODO API request
+        exit(0);
+    } else if (uninstall_auth_login) {
+        // TODO API request
+        exit(0);
     }
 
     agt = (agent *)calloc(1, sizeof(agent));

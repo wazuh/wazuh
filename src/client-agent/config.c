@@ -45,6 +45,7 @@ int ClientConf(const char *cfgfile)
     agt->force_reconnect_interval = 0;
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
+    agt->package_uninstallation = 0;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
