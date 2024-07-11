@@ -311,6 +311,9 @@
 #define AG_INV_MNGIP    "(4112): Invalid server address found: '%s'"
 #define AG_ENROLL_FAIL  "(4113): Auto Enrollment configuration failed."
 #define AG_INV_INT      "(4114): All server addresses are IPv6 link-local and no interface to any <server> block has been configured."
+#define AG_TOKEN_FAIL   "(4115): Error trying to get API token with login: %s"
+#define AG_API_ERROR_CODE  "(4116): Unexpected status code in Wazuh agent package uninstallation request: %ld\n"
+#define AG_REQUEST_FAIL    "(4117): Failed validation request to uninstall Wazuh agent package."
 
 /* Rules reading errors */
 #define RL_INV_ROOT     "(5101): Invalid root element: '%s'."

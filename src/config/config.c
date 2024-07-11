@@ -150,7 +150,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 }
             }
         } else if (chld_node && (strcmp(node[i]->element, anti_tampering) == 0)) {
-            if ((modules & CCLIENT) && (Read_AntiTampering(xml, chld_node, d1, d2) < 0)) {
+            if ((modules & ATAMPERING) && (Read_AntiTampering(chld_node, d1) < 0)) {
                 goto fail;
             }
         } else if (strcmp(node[i]->element, osbuffer) == 0) {

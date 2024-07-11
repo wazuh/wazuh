@@ -427,7 +427,7 @@ if [ $1 = 0 ]; then
   get_package_uninstallation_value() {
     local file_path="$1"
     local value=$(sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' "$file_path" | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tr -d '\n')
-    return $value
+    echo "$value"
   }
 
   # Function to check anti-tampering configuration
@@ -446,38 +446,39 @@ if [ $1 = 0 ]; then
     fi
 
     if [ "$uninstall_validation_needed" = "yes" ]; then
-      return 1
-    else
       return 0
+    else
+      return 1
     fi
   }
 
-# Function to validate uninstallation
-validate_uninstall() {
-  local validation_command
+  # Function to validate uninstallation
+  validate_uninstall() {
+    local validation_command
 
-  # Validate uninstallation
-  if [ -n "$VALIDATION_TOKEN" ]; then
-    validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN}"
-  elif [ -n "$VALIDATION_LOGIN" ]; then
-    validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login ${VALIDATION_LOGIN}"
-  else
-    echo "Validation login or token not provided. Uninstallation cannot be continued."
-    exit 1
-  fi
+    # Validate uninstallation
+    if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN} --uninstall-auth-login ${VALIDATION_LOGIN}"
+    elif [ -n "$VALIDATION_TOKEN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN}"
+    elif [ -n "$VALIDATION_LOGIN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login ${VALIDATION_LOGIN}"
+    else
+      echo "Validation login or token not provided. Uninstallation cannot be continued."
+      exit 1
+    fi
 
-  $validation_command
-  if [ $? -eq 0 ]; then
-    echo "Uninstallation not authorized, aborting..."
-    exit 1
-  else
-    echo "Uninstallation authorized, continuing..."
-  fi
-}
+  if $validation_command; then
+      echo "Uninstallation authorized, continuing..."
+    else
+      echo "Uninstallation not authorized, aborting..."
+      exit 1
+    fi
+  }
 
   # Check if anti-tampering is enabled
   if check_anti_tampering; then
-    validation_command
+    validate_uninstall
   fi
 
   # Stop the services before uninstall the package

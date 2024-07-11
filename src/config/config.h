@@ -36,6 +36,7 @@
 #define CANDSOCKET    0020000000
 #define WAZUHDB       0040000000
 #define CLOGTEST      0100000000
+#define ATAMPERING    0200000000
 
 #define MAX_NEEDED_TAGS 4
 
@@ -182,5 +183,11 @@ int Test_WModule(const char * path);
 
 /* Verifies that the configuration for Labels is correct. Return 0 on success or -1 on error.  */
 int Test_Labels(const char * path);
+
+/**
+ * @brief Read the configuration for anti-tampering functionalities
+ * @param node anti_tampering block configuration
+ */
+int Read_AntiTampering(XML_NODE node, void *d1);
 
 #endif /* HCONFIG_H */
