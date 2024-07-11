@@ -13,6 +13,7 @@
 #include "homedirHelper.hpp"
 #include "keyStore.hpp"
 #include <filesystem>
+#include <functional>
 
 namespace Log
 {

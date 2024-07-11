@@ -31,12 +31,13 @@ public:
 
     /**
      * Encrypts the input vector with the provided key
+     * Basically we are using AES-256-CBC encryption and the key and iv are generated randomly
+     * The output will be the key + iv + ciphertext
      *
      * @param input     The entry to be encrypted
-     * @param output    The resulting encrypted value
-     * @return          The size of the encrypted output, -1 if error
+     * @param output    The resulting encrypted value (key + iv + ciphertext)
      */
-    void encrypt(const std::string& input, std::vector<char>& output)
+    void encryptAES256(const std::string& input, std::vector<char>& output)
     {
         EVP_CIPHER_CTX* ctx;
         int len;
@@ -85,22 +86,21 @@ public:
     /**
      * Decrypts the input vector with the provided key
      *
-     * @param input  The entry to be decrypted
+     * @param input  The entry to be decrypted (key + iv + ciphertext)
      * @param output The resulting decrypted value
-     * @return       The size of the decrypted output, -1 if error
      */
-    void decrypt(const std::vector<char>& input, std::string& output)
+    void decryptAES256(const std::vector<char>& input, std::string& output)
     {
         EVP_CIPHER_CTX* ctx;
 
         int len;
-        std::vector<unsigned char> plaintext(input.size() - CIPHER_KEY_SIZE - CIPHER_IV_SIZE - T::AES_BLOCK_LENGTH, 0);
 
         const auto* key = reinterpret_cast<const unsigned char*>(input.data());
         const unsigned char* iv = key + CIPHER_KEY_SIZE;
         const unsigned char* ciphertext = iv + CIPHER_IV_SIZE;
         const auto ciphertextLen = input.size() - CIPHER_KEY_SIZE - CIPHER_IV_SIZE;
-        plaintext.resize(ciphertextLen - T::AES_BLOCK_LENGTH);
+        std::vector<unsigned char> plaintext(ciphertextLen, 0);
+        int plaintextLen;
 
         if (!(ctx = T::EVP_CIPHER_CTX_new()))
         {
@@ -119,10 +119,16 @@ public:
             throw std::runtime_error("Error decrypting message");
         }
 
+        plaintextLen = len;
+
         if (1 != T::EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len))
         {
             throw std::runtime_error("Error finalizing decryption");
         }
+        plaintextLen += len;
+
+        plaintext.resize(plaintextLen);
+        output.assign(plaintext.begin(), plaintext.end());
     }
 };
 
