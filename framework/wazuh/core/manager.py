@@ -335,7 +335,7 @@ async def query_update_check_service(installation_uid: str) -> dict:
         last_check_date=get_utc_now()
     )
 
-    async with aiohttp.ClientSession(connector=_get_connector()) as session:
+    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
         try:
             response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
             response_data = response.json()
