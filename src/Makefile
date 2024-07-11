@@ -750,36 +750,18 @@ settings:
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
-BUILD_SERVER+=wazuh-maild -
-BUILD_SERVER+=wazuh-csyslogd -
-BUILD_SERVER+=wazuh-agentlessd -
-BUILD_SERVER+=wazuh-execd -
-BUILD_SERVER+=wazuh-logcollector -
-BUILD_SERVER+=wazuh-remoted
-BUILD_SERVER+=wazuh-agentd
 BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
 BUILD_SERVER+=wazuh-syscheckd
-BUILD_SERVER+=wazuh-monitord
-BUILD_SERVER+=wazuh-reportd
-BUILD_SERVER+=wazuh-authd
-BUILD_SERVER+=wazuh-analysisd
 BUILD_SERVER+=wazuh-logtest-legacy
-BUILD_SERVER+=wazuh-dbd -
-BUILD_SERVER+=wazuh-integratord
-BUILD_SERVER+=wazuh-modulesd
-BUILD_SERVER+=wazuh-db
 BUILD_SERVER+=wazuh-keystore
 
-BUILD_AGENT+=wazuh-agentd
 BUILD_AGENT+=agent-auth
-BUILD_AGENT+=wazuh-logcollector
 BUILD_AGENT+=wazuh-syscheckd
 BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
-BUILD_AGENT+=wazuh-modulesd
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
@@ -1755,24 +1737,6 @@ shared/debug_op_proc.o: shared/debug_op.c
 shared/file_op_proc.o: shared/file_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DCLIENT -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
-#### Wazuh DB ####
-
-wdb_sql := $(wildcard wazuh_db/*.sql)
-wdblib_c := $(wildcard wazuh_db/wdb*.c)
-wdbhelpers_c := $(wildcard wazuh_db/helpers/*.c)
-wdbshared_c := wazuh_db/wdb_shared.c
-wdblib_o := $(wdblib_c:.c=.o) $(wdb_sql:.sql=.o)
-wdb_o := wazuh_db/main.o $(wdblib_o:.c=.o) $(wdb_c:.c=.o) $(wdb_sql:.sql=.o) $(wdbshared_c:.c=.o)
-
-wazuh_db/schema_%.o: wazuh_db/schema_%.sql
-	${QUIET_CC}echo 'const char *'$(word 2, $(subst /, ,$(subst .,_,$<))) '= "'"`cat $< | tr -d \"\n\"`"'";' | ${MING_BASE}${CC} ${OSSEC_CFLAGS} -xc -c -o $@ -
-
-wazuh_db/%.o: wazuh_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-db\" -c $^ -o $@
-
-wazuh-db: ${wdb_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
-
 #### Config ##########
 
 config_c := $(wildcard config/*.c)
@@ -1971,101 +1935,6 @@ endif
 endif
 endif
 
-#### os_mail #########
-
-os_maild_c := $(wildcard os_maild/*.c)
-os_maild_o := $(os_maild_c:.c=.o)
-
-os_maild/%.o: os_maild/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-maild\" -c $^ -o $@
-
-wazuh-maild: ${os_maild_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### os_dbd ##########
-
-os_dbd_c := $(wildcard os_dbd/*.c)
-os_dbd_o := $(os_dbd_c:.c=.o)
-
-os_dbd/%.o: os_dbd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${MI} ${PI} -DARGV0=\"wazuh-dbd\" -c $^ -o $@
-
-wazuh-dbd: ${os_dbd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${MI} ${PI} $^  ${OSSEC_LIBS} -o $@
-
-
-#### os_csyslogd #####
-
-os_csyslogd_c := $(wildcard os_csyslogd/*.c)
-os_csyslogd_o := $(os_csyslogd_c:.c=.o)
-
-os_csyslogd/%.o: os_csyslogd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-csyslogd\" -c $^ -o $@
-
-wazuh-csyslogd: ${os_csyslogd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### agentlessd ####
-
-os_agentlessd_c := $(wildcard agentlessd/*.c)
-os_agentlessd_o := $(os_agentlessd_c:.c=.o)
-
-agentlessd/%.o: agentlessd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-agentlessd\" -c $^ -o $@
-
-wazuh-agentlessd: ${os_agentlessd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### os_execd #####
-
-os_execd_c := $(wildcard os_execd/*.c)
-os_execd_o := $(os_execd_c:.c=.o)
-
-os_execd/%.o: os_execd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-execd\" -c $^ -o $@
-
-wazuh-execd: ${os_execd_o} active-response/active_responses.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### logcollectord ####
-
-os_logcollector_c := $(wildcard logcollector/*.c)
-os_logcollector_o := $(os_logcollector_c:.c=.o)
-os_logcollector_eventchannel_o := $(os_logcollector_c:.c=-event.o)
-
-logcollector/%.o: logcollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
-
-logcollector/%-event.o: logcollector/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DEVENTCHANNEL_SUPPORT -DARGV0=\"wazuh-logcollector\" -c $^ -o $@
-
-wazuh-logcollector: ${os_logcollector_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### remoted #########
-
-remoted_c := $(wildcard remoted/*.c)
-remoted_o := $(remoted_c:.c=.o)
-
-remoted/%.o: remoted/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS}  -DPORTABLE_UNALIGNED_ACCESS=0 -I./remoted -DARGV0=\"wazuh-remoted\" -c $^ -o $@
-
-wazuh-remoted: ${remoted_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} ${WAZUH_LDFLAGS} $^ ${OSSEC_LIBS} ${WAZUH_LIBS} -o $@
-
-#### wazuh-agentd ####
-
-client_agent_c := $(wildcard client-agent/*.c)
-client_agent_o := $(client_agent_c:.c=.o)
-
-client-agent/%.o: client-agent/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./client-agent -DARGV0=\"wazuh-agentd\" -c $^ -o $@
-
-wazuh-agentd: ${client_agent_o} monitord/rotate_log.o monitord/compress_log.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 #### addagent ######
 
 addagent_c := $(wildcard addagent/*.c)
@@ -2231,173 +2100,6 @@ rootcheck/%.o: rootcheck/%.c
 librootcheck.a: ${rootcheck_o_lib}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
-
-
-#### FIM ######
-
-wazuh-syscheckd: librootcheck.a libwazuh.a ${WAZUHEXT_LIB} build_shared_modules
-	cd syscheckd && mkdir -p build && cd build && cmake ${CMAKE_OPTS} -DCMAKE_C_FLAGS="${DEFINES} -pipe -Wall -Wextra -std=gnu99" ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} .. && ${MAKE}
-
-#### Monitor #######
-
-monitor_c := $(wildcard monitord/*.c)
-monitor_o := $(monitor_c:.c=.o)
-
-monitord/%.o: monitord/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-monitord\" -c $< -o $@
-
-wazuh-monitord: ${monitor_o} os_maild/sendcustomemail.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### reportd #######
-
-report_c := reportd/report.c
-report_o := $(report_c:.c=.o)
-
-reportd/%.o: reportd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-reportd\" -c $^ -o $@
-
-wazuh-reportd: ${report_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-
-#### os_auth #######
-
-os_auth_c := ${wildcard os_auth/*.c}
-os_auth_o := $(os_auth_c:.c=.o)
-
-os_auth/%.o: os_auth/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./os_auth -DARGV0=\"wazuh-authd\" -c $^ -o $@
-
-agent-auth: addagent/validate.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-wazuh-authd: addagent/validate.o os_auth/main-server.o os_auth/local-server.o os_auth/ssl.o os_auth/check_cert.o os_auth/config.o os_auth/authcom.o os_auth/auth.o os_auth/key_request.o os_auth/generate_cert.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### integratord #####
-
-integrator_c := ${wildcard os_integrator/*.c}
-integrator_o := $(integrator_c:.c=.o)
-
-os_integrator/%.o: os_integrator/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS}  -I./os_integrator -DARGV0=\"wazuh-integratord\" -c $^ -o $@
-
-wazuh-integratord: ${integrator_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-#### analysisd #####
-
-cdb_c := ${wildcard analysisd/cdb/*.c}
-cdb_o := $(cdb_c:.c=.o)
-all_analysisd_o += ${cdb_o}
-all_analysisd_libs += cdb.a
-
-analysisd/cdb/%.o: analysisd/cdb/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/cdb -c $^ -o $@
-
-cdb.a: ${cdb_o}
-	${OSSEC_LINK} $@ $^
-	${OSSEC_RANLIB} $@
-
-
-alerts_c := ${wildcard analysisd/alerts/*.c}
-alerts_o := $(alerts_c:.c=.o)
-all_analysisd_o += ${alerts_o}
-all_analysisd_libs += alerts.a
-
-analysisd/alerts/%.o: analysisd/alerts/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/alerts -c $^ -o $@
-
-alerts.a: ${alerts_o}
-	${OSSEC_LINK} $@ $^
-
-decoders_c := ${wildcard analysisd/decoders/*.c} ${wildcard analysisd/decoders/plugins/*.c} ${wildcard analysisd/compiled_rules/*.c}
-decoders_o := $(decoders_c:.c=.o)
-## XXX Nasty hack
-decoders_test_o := $(decoders_c:.c=-test.o)
-decoders_live_o := $(decoders_c:.c=-live.o)
-
-all_analysisd_o += ${decoders_o} ${decoders_test_o} ${decoders_live_o}
-all_analysisd_libs += decoders.a decoders-test.a decoders-live.a
-
-
-analysisd/decoders/%-test.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/decoders/%-live.o: analysisd/decoders/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/decoders/plugins/%-test.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-
-analysisd/decoders/plugins/%-live.o: analysisd/decoders/plugins/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/compiled_rules/compiled_rules.h: analysisd/compiled_rules/.function_list analysisd/compiled_rules/register_rule.sh
-	./analysisd/compiled_rules/register_rule.sh build
-
-analysisd/compiled_rules/%-test.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd/compiled_rules/%-live.o: analysisd/compiled_rules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-decoders-live.a: ${decoders_live_o}
-	${OSSEC_LINK} $@ $^
-
-decoders-test.a: ${decoders_test_o}
-	${OSSEC_LINK} $@ $^
-
-format_c := ${wildcard analysisd/format/*.c}
-format_o := ${format_c:.c=.o}
-all_analysisd_o += ${format_o}
-
-analysisd/format/%.o: analysisd/format/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-output_c := ${wildcard analysisd/output/*c}
-output_o := ${output_c:.c=.o}
-all_analysisd_o += ${output_o}
-
-analysisd/output/%.o: analysisd/output/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -I./analysisd/decoders -c $^ -o $@
-
-analysisd_c := ${filter-out analysisd/logmsg.c, ${filter-out analysisd/analysisd.c, ${filter-out analysisd/testrule.c, ${filter-out analysisd/makelists.c, ${wildcard analysisd/*.c}}}}}
-analysisd_o := ${analysisd_c:.c=.o}
-all_analysisd_o += ${analysisd_o}
-
-analysisd_test_o := $(analysisd_o:.o=-test.o)
-analysisd_live_o := $(analysisd_o:.o=-live.o)
-all_analysisd_o += ${analysisd_test_o} ${analysisd_live_o} analysisd/testrule-test.o analysisd/analysisd-live.o analysisd/analysisd-test.o analysisd/makelists-live.o
-
-analysisd/%-live.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
-
-analysisd/%-test.o: analysisd/%.c analysisd/compiled_rules/compiled_rules.h
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DTESTRULE -DARGV0=\"wazuh-analysisd\" -I./analysisd -c $< -o $@
-
-wazuh-logtest-legacy: ${analysisd_test_o} ${output_o} ${format_o} analysisd/testrule-test.o analysisd/analysisd-test.o alerts.a cdb.a decoders-test.a
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-wazuh-analysisd: ${analysisd_live_o} analysisd/analysisd-live.o ${output_o} ${format_o} alerts.a cdb.a decoders-live.a analysisd/logmsg.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-### wazuh-modulesd ##
-
-wmodulesd_c := wazuh_modules/main.c
-wmodulesd_o := $(wmodulesd_c:.c=.o)
-
-ifeq (${TARGET},server)
-ifeq (,$(filter ${DISABLE_JEMALLOC},YES yes y Y 1))
-	MODULESD_LDFLAGS=-L${EXTERNAL_JEMALLOC}lib -ljemalloc
-endif
-endif
-
-wazuh-modulesd: ${wmodulesd_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${MODULESD_LDFLAGS} -o $@
 
 ### wazuh-gtest-gmock ###
 
@@ -2745,26 +2447,12 @@ clean-internals: clean-unit-tests
 	rm -f ${os_net_o}
 	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
 	rm -f ${config_o}
-	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
-	rm -f ${os_csyslogd_o}
-	rm -f ${os_dbd_o}
-	rm -f ${os_agentlessd_o}
-	rm -f ${os_execd_o}
-	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
-	rm -f ${remoted_o}
 	rm -f ${report_o}
-	rm -f ${client_agent_o}
 	rm -f ${addagent_o}
 	rm -f ${active_response_o} ${active_response_programs} firewall-drop
 	rm -f ${util_o} ${util_programs}
 	rm -f ${rootcheck_o} librootcheck.a
-	rm -f ${monitor_o}
-	rm -f ${os_auth_o}
-	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h analysisd/logmsg.o
-	rm -f ${integrator_o}
-	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
-	rm -f ${wdb_o}
 	rm -f wazuh_db/*.o
 	rm -f wazuh_db/helpers/*.o
 	rm -f ${SELINUX_MODULE}

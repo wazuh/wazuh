@@ -1,9 +1,0 @@
-{
-    "action": "StartTransaction",
-    "body":
-    {
-        "table": "registry_key",
-        "thread_number": 2,
-        "queue_size": 100
-    }
-}
