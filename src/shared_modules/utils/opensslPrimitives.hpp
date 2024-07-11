@@ -12,7 +12,9 @@
 #ifndef _OPENSSL_PRIMITIVES_HPP
 #define _OPENSSL_PRIMITIVES_HPP
 
+#include <openssl/aes.h>
 #include <openssl/pem.h>
+#include <openssl/rand.h>
 #include <openssl/rsa.h>
 
 class OpenSSLPrimitives
@@ -83,6 +85,60 @@ protected:
     {
         return ::EVP_PKEY_get_base_id(pkey);
     }
+
+    inline int RAND_bytes(unsigned char* buf, int num)
+    {
+        return ::RAND_bytes(buf, num);
+    }
+
+    inline EVP_CIPHER_CTX* EVP_CIPHER_CTX_new()
+    {
+        return ::EVP_CIPHER_CTX_new();
+    }
+
+    inline void EVP_CIPHER_CTX_free(EVP_CIPHER_CTX* ctx)
+    {
+        return ::EVP_CIPHER_CTX_free(ctx);
+    }
+
+    inline const EVP_CIPHER* EVP_aes_256_cbc()
+    {
+        return ::EVP_aes_256_cbc();
+    }
+
+    inline int EVP_EncryptInit_ex(
+        EVP_CIPHER_CTX* ctx, const EVP_CIPHER* type, ENGINE* impl, const unsigned char* key, const unsigned char* iv)
+    {
+        return ::EVP_EncryptInit_ex(ctx, type, impl, key, iv);
+    }
+
+    inline int EVP_EncryptUpdate(EVP_CIPHER_CTX* ctx, unsigned char* out, int* outl, const unsigned char* in, int inl)
+    {
+        return ::EVP_EncryptUpdate(ctx, out, outl, in, inl);
+    }
+
+    inline int EVP_EncryptFinal_ex(EVP_CIPHER_CTX* ctx, unsigned char* out, int* outl)
+    {
+        return ::EVP_EncryptFinal_ex(ctx, out, outl);
+    }
+
+    inline int EVP_DecryptInit_ex(
+        EVP_CIPHER_CTX* ctx, const EVP_CIPHER* type, ENGINE* impl, const unsigned char* key, const unsigned char* iv)
+    {
+        return ::EVP_DecryptInit_ex(ctx, type, impl, key, iv);
+    }
+
+    inline int EVP_DecryptUpdate(EVP_CIPHER_CTX* ctx, unsigned char* out, int* outl, const unsigned char* in, int inl)
+    {
+        return ::EVP_DecryptUpdate(ctx, out, outl, in, inl);
+    }
+
+    inline int EVP_DecryptFinal_ex(EVP_CIPHER_CTX* ctx, unsigned char* outm, int* outl)
+    {
+        return ::EVP_DecryptFinal_ex(ctx, outm, outl);
+    }
+
+    const int AES_BLOCK_LENGTH = AES_BLOCK_SIZE;
 #pragma GCC diagnostic pop
 };
 

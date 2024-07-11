@@ -14,6 +14,7 @@
 
 #include <string>
 
+#include "evpHelper.hpp"
 #include "loggerHelper.h"
 #include "rocksDBWrapper.hpp"
 #include "rsaHelper.hpp"
@@ -22,9 +23,45 @@ constexpr auto DATABASE_PATH {"queue/keystore"};
 constexpr auto PRIVATE_KEY_FILE {"etc/keystore.key"};
 constexpr auto CERTIFICATE_FILE {"etc/keystore.cert"};
 constexpr auto KS_NAME {"keystore"};
-template<typename TRSAPrimitive = RSAHelper<>>
+constexpr auto KS_VERSION {"2"};
+constexpr auto VERSION_FIELD {"version"};
+
+template<typename TRSAPrimitive = RSAHelper<>, typename TEVPHelper = EVPHelper<>>
 class TKeystore final
 {
+    static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& columnFamily)
+    {
+        std::string versionValue;
+        std::string rawValue;
+
+        if (!keystoreDB.get(VERSION_FIELD, versionValue, columnFamily))
+        {
+            for (const auto& [key, value] : keystoreDB.begin(columnFamily))
+            {
+                std::string encryptedRSAValue;
+                std::vector<char> encryptedValue;
+                // if the key exist, it means that the keystore needs to be upgraded.
+                if (keystoreDB.get(key, encryptedRSAValue, columnFamily))
+                {
+                    logInfo(KS_NAME, "Upgrading keystore to version: ", KS_VERSION);
+                }
+
+                if (!std::filesystem::exists(PRIVATE_KEY_FILE))
+                {
+                    logWarn(KS_NAME, "No private key was found.");
+                    return;
+                }
+
+                // Decrypt value
+                TRSAPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedRSAValue, rawValue);
+
+                TEVPHelper().encrypt(rawValue, encryptedValue);
+
+                keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
+            }
+            keystoreDB.put(VERSION_FIELD, KS_VERSION, columnFamily);
+        }
+    }
 
 public:
     TKeystore() = default;
@@ -38,25 +75,20 @@ public:
      */
     static void put(const std::string& columnFamily, const std::string& key, const std::string& value)
     {
-        std::string encryptedValue;
+        std::vector<char> encryptedValue;
 
-        if (!std::filesystem::exists(CERTIFICATE_FILE))
-        {
-            logWarn(KS_NAME, "No certificate was found.");
-            return;
-        }
         // Encrypt value
-        TRSAPrimitive().rsaEncrypt(CERTIFICATE_FILE, value, encryptedValue, true);
+        TEVPHelper().encrypt(value, encryptedValue);
 
         // Insert to DB
-        Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+        auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
         if (!keystoreDB.columnExists(columnFamily))
         {
             keystoreDB.createColumn(columnFamily);
         }
 
-        keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
+        keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
     }
 
     /**
@@ -71,22 +103,19 @@ public:
         std::string encryptedValue;
 
         // Get from DB
-        Utils::RocksDBWrapper keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+        auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
         if (!keystoreDB.columnExists(columnFamily))
         {
             keystoreDB.createColumn(columnFamily);
         }
 
+        upgrade(keystoreDB, columnFamily);
+
         if (keystoreDB.get(key, encryptedValue, columnFamily))
         {
-            if (!std::filesystem::exists(PRIVATE_KEY_FILE))
-            {
-                logWarn(KS_NAME, "No private key was found.");
-                return;
-            }
-            // Decrypt value
-            TRSAPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+            std::vector<char> encryptedValueVec(encryptedValue.begin(), encryptedValue.end());
+            TEVPHelper().decrypt(encryptedValueVec, value);
         }
     }
 };
