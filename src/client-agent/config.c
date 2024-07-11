@@ -20,6 +20,7 @@ time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
+anti_tampering *atc;
 int remote_conf;
 int min_eps;
 int rotate_log;
@@ -45,7 +46,8 @@ int ClientConf(const char *cfgfile)
     agt->force_reconnect_interval = 0;
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
-    agt->package_uninstallation = 0;
+
+    atc->package_uninstallation = false;
 
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
@@ -67,6 +69,9 @@ int ClientConf(const char *cfgfile)
         remote_conf = agt->flags.remote_conf;
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
+    }
+    if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
+        return OS_INVALID;
     }
 #endif
 
@@ -200,6 +205,21 @@ cJSON *getLabelsConfig(void) {
     return root;
 }
 
+cJSON *getAntiTamperingConfig(void) {
+
+    if (!atc) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *package_uninstallation = cJSON_CreateArray();
+
+    if (atc->package_uninstallation) cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","yes"); else cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","no");
+
+    cJSON_AddItemToObject(root, "package_uninstallation", package_uninstallation);
+
+    return root;
+}
 
 cJSON *getAgentInternalOptions(void) {
 

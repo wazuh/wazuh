@@ -51,6 +51,11 @@ typedef struct _agent {
     w_enrollment_ctx *enrollment_cfg;
 } agent;
 
+/* Anti tampering config */
+typedef struct _anti_tampering {
+    bool package_uninstallation;
+} anti_tampering;
+
 /* Frees the Client struct  */
 void Free_Client(agent * config);
 
