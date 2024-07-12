@@ -11,13 +11,13 @@ CPMAddPackage(
 
 CPMAddPackage(
         NAME date
-        # TODO: This is master, not a release.
-        # Using specific commit hash from master to avoid STDOFF errors,
-        # if a version (newer than 3.0.1) is released update this.
+        # Live at head
+        # https://github.com/HowardHinnant/date/issues/828#issuecomment-2184283807
         GITHUB_REPOSITORY HowardHinnant/date
-        GIT_TAG 22ceabf205d8d678710a43154da5a06b701c5830
+        GIT_TAG 1ead6715dec030d340a316c927c877a3c4e5a00c
         OPTIONS
-        "AUTO_DOWNLOAD 1"
+        "AUTO_DOWNLOAD 0"
+        "HAS_REMOTE_API 1"
 )
 
 CPMAddPackage(
@@ -74,3 +74,6 @@ PRIVATE
   include/hlp/
 )
 target_link_libraries(hlp PUBLIC base PRIVATE fast_float date::date pthread CURL::libcurl pugixml)
+
+# For the date library
+target_compile_definitions(hlp PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=1)
