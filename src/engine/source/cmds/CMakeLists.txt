@@ -34,7 +34,6 @@ target_link_libraries(cmds
     wdb
     sockiface
     rbac
-    date::date
     geo::igeo
 )
 

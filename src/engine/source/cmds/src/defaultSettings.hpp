@@ -49,6 +49,9 @@ constexpr auto ENGINE_KVDB_PATH_ENV = "WZE_KVDB_PATH";
 constexpr auto ENGINE_TZDB_PATH = "/var/ossec/engine/tzdb";
 constexpr auto ENGINE_TZDB_PATH_ENV = "WZE_TZDB_PATH";
 
+constexpr auto ENGINE_TZDB_AUTO_UPDATE = true;
+constexpr auto ENGINE_TZDB_AUTO_UPDATE_ENV = "WZE_TZDB_AUTO_UPDATE";
+
 constexpr auto ENGINE_KVDB_CLI_PAGE = 1;
 constexpr auto ENGINE_KVDB_CLI_RECORDS = 50;
 
