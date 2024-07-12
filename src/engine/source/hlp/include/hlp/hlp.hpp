@@ -19,6 +19,14 @@ struct Params
 
 using ParserBuilder = std::function<parser::Parser(const Params&)>;
 
+/**
+ * @brief Initializes the Timezone Database (TZDB) with the given path.
+ *
+ * @param path Store path of the timezone database
+ * @param autoUpdate If true, the timezone database will be updated if a new version is available
+ */
+void initTZDB(const std::string& path, const bool autoUpdate);
+
 namespace parsers
 {
 using namespace parser;

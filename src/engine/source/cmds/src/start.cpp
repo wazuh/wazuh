@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <csignal>
-#include <date/tz.h>
 #include <exception>
 #include <memory>
 #include <optional>
@@ -95,6 +94,7 @@ struct Options
     bool logTruncate;
     // TZ_DB
     std::string tzdbPath;
+    bool tzdbAutoUpdate;
 };
 
 } // namespace
@@ -155,6 +155,7 @@ void runStart(ConfHandler confManager)
 
     // TZDB config
     const auto tzdbPath = confManager->get<std::string>("server.tzdb_path");
+    const auto tzdbAutoUpdate = confManager->get<bool>("server.tzdb_automatic_update");
 
     // Set signal [SIGINT]: Crt+C handler
     {
@@ -251,8 +252,7 @@ void runStart(ConfHandler confManager)
 
         // HLP
         {
-            date::set_install(tzdbPath);
-            date::reload_tzdb();
+            hlp::initTZDB(tzdbPath, tzdbAutoUpdate);
 
             base::Name hlpConfigFileName({"schema", "wazuh-logpar-types", "0"});
             auto hlpParsers = store->readInternalDoc(hlpConfigFileName);
@@ -530,6 +530,13 @@ void configure(CLI::App_p app)
     serverApp->add_option("--tzdb_path", options->tzdbPath, "Sets the install path to the time zone database.")
         ->default_val(ENGINE_TZDB_PATH)
         ->envname(ENGINE_TZDB_PATH_ENV);
+
+     serverApp
+         ->add_flag("--tzdb_automatic_update,!--no-tzdb_automatic_update",
+                    options->tzdbAutoUpdate,
+                    "Enable automatic updates of the time zone database.")
+         ->default_val(ENGINE_TZDB_AUTO_UPDATE)
+         ->envname(ENGINE_TZDB_AUTO_UPDATE_ENV);
 
     // Router module
     serverApp

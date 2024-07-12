@@ -5,12 +5,15 @@
 #include <string_view>
 #include <vector>
 
+#include <curl/curl.h>
 #include <date/date.h>
 #include <date/tz.h>
-#include <fmt/format.h>
+
+#include <logging/logging.hpp>
 
 #include "hlp.hpp"
 #include "syntax.hpp"
+
 
 namespace
 {
@@ -155,7 +158,75 @@ std::string formatDateFromSample(const std::string& dateSample, const std::strin
 }
 } // namespace
 
-namespace hlp::parsers
+namespace hlp
+{
+
+namespace
+{
+/**
+ * @brief Load the timezone database and check if the version is the same as the provided.
+ *
+ * @param version The version to check
+ * @return true if the database is loaded and the version is the same as the provided
+ */
+bool loadTimeZoneDB(const std::string& version)
+{
+    try
+    {
+        const auto& db = date::get_tzdb();
+        LOG_INFO("Loaded timezone database version: '{}'", db.version);
+        return version == db.version;
+    }
+    catch (std::exception& e)
+    {
+        LOG_WARNING("Failed to load timezone database: '{}', try to download it", e.what());
+        return false;
+    }
+}
+
+/**
+ * @brief Download and install the timezone database.
+ *
+ * @param version The version to download
+ */
+void downloadAndInstallTimeZoneDB(const std::string& version)
+{
+    std::array<char, CURL_ERROR_SIZE> errorBuffer {};
+    LOG_TRACE("Downloading timezone database");
+
+    if (!date::remote_download(version, errorBuffer.data()))
+    {
+        LOG_WARNING("Failed to download timezone database: '{}'", errorBuffer.data());
+        return;
+    }
+
+    if (!date::remote_install(version))
+    {
+        LOG_WARNING("Failed to install timezone database.");
+        return;
+    }
+
+    date::reload_tzdb();
+
+}
+} // namespace
+
+void initTZDB(const std::string& path, const bool autoUpdate) {
+    date::set_install(path);
+
+    std::string rv = date::remote_version();
+    LOG_DEBUG("Remote timezone database version: '{}'", rv);
+
+    if (loadTimeZoneDB(rv) && !autoUpdate) {
+        return;
+    }
+
+    downloadAndInstallTimeZoneDB(rv);
+    const auto& db = date::get_tzdb(); // Check if the database is loaded correctly
+    LOG_INFO("Timezone database updated to version: '{}'", db.version);
+}
+
+namespace parsers
 {
 Parser getDateParser(const Params& params)
 {
@@ -222,4 +293,5 @@ Parser getDateParser(const Params& params)
     };
 }
 
-} // namespace hlp::parsers
+} // namespace parsers
+} // namespace hlp
