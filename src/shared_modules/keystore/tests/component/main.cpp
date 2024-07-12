@@ -9,6 +9,7 @@
  * Foundation.
  */
 
+#include "loggerHelper.h"
 #include "gtest/gtest.h"
 
 namespace Log
@@ -20,6 +21,28 @@ namespace Log
 
 int main(int argc, char** argv)
 {
+    Log::assignLogFunction(
+        [](const int logLevel,
+           const std::string&,
+           const std::string&,
+           const int,
+           const std::string&,
+           const std::string& str,
+           va_list args)
+        {
+            char formattedStr[MAXLEN] = {0};
+            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
+
+            if (logLevel == Log::LOGLEVEL_ERROR)
+            {
+                std::cerr << formattedStr << "\n";
+            }
+            else
+            {
+                std::cout << formattedStr << "\n";
+            }
+        });
+
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

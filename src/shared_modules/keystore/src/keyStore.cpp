@@ -44,7 +44,7 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
                 // Get the encrypted RSA value
                 if (keystoreDB.get(key, encryptedRSAValue, columnFamily))
                 {
-                    logInfo(KS_NAME, "Upgrading %s key pair.", key.c_str());
+                    logInfo(KS_NAME, "Upgrading '%s' key pair.", key.c_str());
                 }
 
                 // Decrypt the RSA value
@@ -55,13 +55,17 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
 
                 // Insert the key-value pair using AES encryption
                 keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
+
+                logInfo(KS_NAME, "Key pair '%s' upgraded.", key.c_str());
             }
         }
         catch (const std::exception& exception)
         {
             // If the upgrade fails, delete all keys and log the error.
             keystoreDB.deleteAll(columnFamily);
-            logWarn(KS_NAME, "Keystore upgrade failed, re-run this tool with all keys. Error: %s", exception.what());
+            logWarn(KS_NAME,
+                    "Keystore upgrade failed, re-run the tool again for all keys to save. Error: %s",
+                    exception.what());
         }
     }
 
@@ -72,7 +76,6 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
     if (versionValue != KS_VERSION)
     {
         keystoreDB.put(KS_VERSION_FIELD, KS_VERSION, columnFamily);
-        logInfo(KS_NAME, "Keystore version established: ", KS_VERSION);
     }
 }
 
