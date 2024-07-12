@@ -15,9 +15,6 @@ CPMAddPackage(
         # https://github.com/HowardHinnant/date/issues/828#issuecomment-2184283807
         GITHUB_REPOSITORY HowardHinnant/date
         GIT_TAG 1ead6715dec030d340a316c927c877a3c4e5a00c
-        OPTIONS
-        "AUTO_DOWNLOAD 0"
-        "HAS_REMOTE_API 1"
 )
 
 CPMAddPackage(
