@@ -21,13 +21,14 @@ constexpr auto KS_VERSION_FIELD {"version"};
 static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& columnFamily)
 {
     std::string versionValue;
-    std::string rawValue;
 
     // If the version field does not exist, it means that the keystore has not been upgraded yet.
     if (!keystoreDB.get(KS_VERSION_FIELD, versionValue, columnFamily))
     {
         try
         {
+            std::string rawValue;
+
             // Check if the private key file exists
             if (!std::filesystem::exists(PRIVATE_KEY_FILE))
             {

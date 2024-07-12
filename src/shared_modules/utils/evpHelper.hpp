@@ -21,6 +21,7 @@
 
 constexpr auto CIPHER_KEY_SIZE {32};
 constexpr auto CIPHER_IV_SIZE {16};
+constexpr auto OPENSSL_SUCCESS {1};
 
 template<typename T = OpenSSLPrimitives>
 class EVPHelper final : public T
@@ -46,8 +47,11 @@ public:
         std::array<unsigned char, CIPHER_KEY_SIZE> key {};
         std::array<unsigned char, CIPHER_IV_SIZE> iv {};
 
-        T::RAND_bytes(key.data(), key.size());
-        T::RAND_bytes(iv.data(), iv.size());
+        if (OPENSSL_SUCCESS != T::RAND_bytes(key.data(), key.size()) ||
+            OPENSSL_SUCCESS != T::RAND_bytes(iv.data(), iv.size()))
+        {
+            throw std::runtime_error("Error generating random bytes for key/iv");
+        }
 
         if (!(ctx = T::EVP_CIPHER_CTX_new()))
         {
@@ -57,20 +61,21 @@ public:
         // Defered Free
         DEFER([&]() { T::EVP_CIPHER_CTX_free(ctx); });
 
-        if (1 != T::EVP_EncryptInit_ex(ctx, T::EVP_aes_256_cbc(), NULL, key.data(), iv.data()))
+        if (OPENSSL_SUCCESS != T::EVP_EncryptInit_ex(ctx, T::EVP_aes_256_cbc(), NULL, key.data(), iv.data()))
         {
             throw std::runtime_error("Error initializing encryption operation");
         }
 
-        if (1 != T::EVP_EncryptUpdate(
-                     ctx, ciphertext.data(), &len, reinterpret_cast<const unsigned char*>(input.data()), input.size()))
+        if (OPENSSL_SUCCESS !=
+            T::EVP_EncryptUpdate(
+                ctx, ciphertext.data(), &len, reinterpret_cast<const unsigned char*>(input.data()), input.size()))
         {
             throw std::runtime_error("Error encrypting message");
         }
 
         ciphertextLen = len;
 
-        if (1 != T::EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len))
+        if (OPENSSL_SUCCESS != T::EVP_EncryptFinal_ex(ctx, ciphertext.data() + len, &len))
         {
             throw std::runtime_error("Error finalizing encryption");
         }
@@ -109,19 +114,19 @@ public:
 
         DEFER([&]() { T::EVP_CIPHER_CTX_free(ctx); });
 
-        if (1 != T::EVP_DecryptInit_ex(ctx, T::EVP_aes_256_cbc(), NULL, key, iv))
+        if (OPENSSL_SUCCESS != T::EVP_DecryptInit_ex(ctx, T::EVP_aes_256_cbc(), NULL, key, iv))
         {
             throw std::runtime_error("Error initializing decryption operation");
         }
 
-        if (1 != T::EVP_DecryptUpdate(ctx, plaintext.data(), &len, ciphertext, ciphertextLen))
+        if (OPENSSL_SUCCESS != T::EVP_DecryptUpdate(ctx, plaintext.data(), &len, ciphertext, ciphertextLen))
         {
             throw std::runtime_error("Error decrypting message");
         }
 
         plaintextLen = len;
 
-        if (1 != T::EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len))
+        if (OPENSSL_SUCCESS != T::EVP_DecryptFinal_ex(ctx, plaintext.data() + len, &len))
         {
             throw std::runtime_error("Error finalizing decryption");
         }
