@@ -64,7 +64,7 @@ def add_integration_to_policy(integration_name: str, policy_name: str, namespace
     request.policy = policy_name
     request.asset = f"integration/{integration_name}/0"
     request.namespace = namespace
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    error, response = send_recv(request, api_policy.AssetPost_Response())
     return response
 
 def remove_integration_to_policy(integration_name: str, policy_name: str, namespace: str):
@@ -72,7 +72,7 @@ def remove_integration_to_policy(integration_name: str, policy_name: str, namesp
     request.policy = policy_name
     request.asset = f"integration/{integration_name}/0"
     request.namespace = namespace
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    error, response = send_recv(request, api_policy.AssetDelete_Response())
     return response
 
 def add_default_parent(default_parent_name: str, namespace: str):
@@ -80,7 +80,7 @@ def add_default_parent(default_parent_name: str, namespace: str):
     request.policy = "policy/wazuh/0"
     request.namespace = namespace
     request.parent = default_parent_name
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    error, response = send_recv(request, api_policy.DefaultParentPost_Response())
     return response
 
 def get_default_parent(policy_name: str, namespace: str):
@@ -167,6 +167,11 @@ def step_impl(context, status: str, response: str):
         else:
             assert context.result.status == api_engine.ERROR, f"{context.result}"
             assert context.result.error == response, f"{context.result}"
+
+@then('I should receive a success response with a validation warning indicating "{response}"')
+def step_impl(context, response: str):
+    assert context.result.status == api_engine.OK, f"{context.result}"
+    assert context.result.warning == response, f"{context.result}"
 
 @then('I should receive a {status} response')
 def step_impl(context, status: str):

@@ -33,6 +33,7 @@ void runRemoveAsset(std::shared_ptr<apiclnt::Client> client,
 void runListAssets(std::shared_ptr<apiclnt::Client> client,
                    const std::string& policyName,
                    const std::string& namespaceId);
+void runCleanDeletedAssets(std::shared_ptr<apiclnt::Client> client, const std::string& policyName);
 
 void runGetDefaultParent(std::shared_ptr<apiclnt::Client> client,
                          const std::string& policyName,

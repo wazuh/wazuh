@@ -103,6 +103,8 @@ def get_command(message: Message) -> Tuple[Optional[str], str]:
         return None, 'policy.policies/get'
     elif isinstance(message, policy.NamespacesGet_Request):
         return None, 'policy.namespaces/get'
+    elif isinstance(message, policy.AssetCleanDeleted_Request):
+        return None, 'policy.asset/cleanDeleted'
 
     # Router
     elif isinstance(message, router.RoutePost_Request):
