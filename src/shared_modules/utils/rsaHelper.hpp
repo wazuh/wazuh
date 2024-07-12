@@ -55,12 +55,13 @@ public:
         // Defered free
         DEFER([&]() { T::RSA_free(rsa); });
 
+        // PKCS  #1  v1.5  padding.  This currently is the most widely used mode.  However, it is highly recommended to
+        // use RSA_PKCS1_OAEP_PADDING in new applications.
         const auto encryptedLen = T::RSA_public_encrypt(input.length(),
                                                         reinterpret_cast<const unsigned char*>(input.data()),
                                                         encryptedValue.data(),
                                                         rsa,
-                                                        RSA_PKCS1_PADDING);
-
+                                                        RSA_PKCS1_OAEP_PADDING);
         if (encryptedLen < 0)
         {
             throw std::runtime_error("RSA encryption failed");
@@ -81,7 +82,6 @@ public:
      */
     int rsaDecrypt(const std::string& filePath, const std::string& input, std::string& output)
     {
-
         RSA* rsa = nullptr;
 
         createRSA(rsa, filePath, RSA_PRIVATE);
@@ -91,12 +91,13 @@ public:
         // Defered free
         DEFER([&]() { T::RSA_free(rsa); });
 
-        // Decrypt the ciphertext using RSA private key
-        const auto decryptedLen = T::RSA_private_decrypt(input.size(),
+        // PKCS  #1  v1.5  padding.  This currently is the most widely used mode.  However, it is highly recommended to
+        // use RSA_PKCS1_OAEP_PADDING in new applications.
+        const auto decryptedLen = T::RSA_private_decrypt(input.length(),
                                                          reinterpret_cast<const unsigned char*>(input.data()),
                                                          reinterpret_cast<unsigned char*>(decryptedText.data()),
                                                          rsa,
-                                                         RSA_PKCS1_PADDING);
+                                                         RSA_PKCS1_OAEP_PADDING);
 
         if (decryptedLen < 0)
         {
