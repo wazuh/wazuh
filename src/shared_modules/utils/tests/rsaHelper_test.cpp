@@ -60,12 +60,12 @@ public:
 
 TEST_F(RSAHelperTest, TestInstance)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 }
 
 TEST_F(RSAHelperTest, getPubKeyFromCertMissingCertficate)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -85,7 +85,7 @@ TEST_F(RSAHelperTest, getPubKeyFromCertMissingCertficate)
 
 TEST_F(RSAHelperTest, getPubKeyFromCertMissingPublicKey)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -107,7 +107,7 @@ TEST_F(RSAHelperTest, getPubKeyFromCertMissingPublicKey)
 
 TEST_F(RSAHelperTest, createRSAInvalidRSAFile)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(ReturnNull());
 
@@ -125,7 +125,7 @@ TEST_F(RSAHelperTest, createRSAInvalidRSAFile)
 
 TEST_F(RSAHelperTest, createRSAInvalidPrivateKey)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -145,7 +145,7 @@ TEST_F(RSAHelperTest, createRSAInvalidPrivateKey)
 
 TEST_F(RSAHelperTest, createRSAInvalidPublicKey)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -165,7 +165,7 @@ TEST_F(RSAHelperTest, createRSAInvalidPublicKey)
 
 TEST_F(RSAHelperTest, rsaEncryptFailed)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -188,7 +188,7 @@ TEST_F(RSAHelperTest, rsaEncryptFailed)
 
 TEST_F(RSAHelperTest, rsaEncryptRSACertUnsuportedType)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -212,7 +212,7 @@ TEST_F(RSAHelperTest, rsaEncryptRSACertUnsuportedType)
 
 TEST_F(RSAHelperTest, rsaEncryptRSACertErrorExtracting)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -237,7 +237,7 @@ TEST_F(RSAHelperTest, rsaEncryptRSACertErrorExtracting)
 
 TEST_F(RSAHelperTest, rsaEncryptRSAPublicSucces)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -252,7 +252,7 @@ TEST_F(RSAHelperTest, rsaEncryptRSAPublicSucces)
 
 TEST_F(RSAHelperTest, rsaEncryptRSACertSucces)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -273,7 +273,7 @@ TEST_F(RSAHelperTest, rsaEncryptRSACertSucces)
 
 TEST_F(RSAHelperTest, rsaDecryptDecryptionFailed)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -297,7 +297,7 @@ TEST_F(RSAHelperTest, rsaDecryptDecryptionFailed)
 
 TEST_F(RSAHelperTest, rsaDecryptSuccess)
 {
-    RSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
+    TRSAHelper<RSAWrapper, OSPrimitivesWrapper> rsaHelper;
 
     EXPECT_CALL(rsaHelper, fopen(StrEq(KEYFILE), "r")).WillOnce(Return((FILE*)1));
     EXPECT_CALL(rsaHelper, fclose((FILE*)1)).WillOnce(Return(0));
@@ -309,3 +309,24 @@ TEST_F(RSAHelperTest, rsaDecryptSuccess)
     std::string output;
     EXPECT_NO_THROW({ rsaHelper.rsaDecrypt(KEYFILE, KEY, output); });
 }
+
+TEST_P(RSAHelperTest2, test)
+{
+    RSAHelper rsaHelper;
+    const std::string plainText {"plain-text"};
+
+    auto pair = GetParam();
+
+    std::string encryptedValue;
+    EXPECT_NO_THROW(rsaHelper.rsaEncrypt(pair.first.c_str(), plainText, encryptedValue, true));
+    std::string decryptedValue;
+    EXPECT_NO_THROW(rsaHelper.rsaDecrypt(pair.second.c_str(), encryptedValue, decryptedValue));
+
+    EXPECT_EQ(plainText, decryptedValue);
+}
+
+INSTANTIATE_TEST_SUITE_P(RSAHelperDifferentKeySize,
+                         RSAHelperTest2,
+                         ::testing::Values(std::make_pair("./1024.cert", "./1024.key"),
+                                           std::make_pair("./2048.cert", "./2048.key"),
+                                           std::make_pair("./4096.cert", "./4096.key")));

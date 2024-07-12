@@ -26,13 +26,13 @@ constexpr int RSA_PUBLIC {1};
 constexpr int RSA_CERT {2};
 
 template<typename T = OpenSSLPrimitives, typename U = OSPrimitives>
-class RSAHelper final
+class TRSAHelper final
     : public T
     , public U
 {
 public:
-    explicit RSAHelper() = default;
-    virtual ~RSAHelper() = default;
+    explicit TRSAHelper() = default;
+    virtual ~TRSAHelper() = default;
 
     /**
      * Encrypts the input vector with the provided key
@@ -199,5 +199,7 @@ private:
         }
     }
 };
+
+using RSAHelper = TRSAHelper<>;
 
 #endif // _RSAHELPER_HPP
