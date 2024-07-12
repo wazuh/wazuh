@@ -8,11 +8,18 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
+- Added missing functionality for vulnerability scanner translations. ([#23518](https://github.com/wazuh/wazuh/issues/23518))
+- Improved performance for vulnerability scanner translations. ([#23722](https://github.com/wazuh/wazuh/pull/23722))
+- Enhanced vulnerability scanner logging to be more expressive. ([#24536](https://github.com/wazuh/wazuh/pull/24536))
+- The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
+- Added the HAProxy helper to manage load balancer configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
 
 #### Fixed
 
 - Fixed compilation issue for local installation. ([#20505](https://github.com/wazuh/wazuh/pull/20505))
 - Fixed malformed JSON error in wazuh-analysisd. ([#16666](https://github.com/wazuh/wazuh/pull/16666))
+- Fixed a warning when uninstalling the Wazuh manager if the VD feed is missing. ([#24375](https://github.com/wazuh/wazuh/pull/24375))
+- Ensured vulnerability detection scanner log messages end with a period. ([#24393](https://github.com/wazuh/wazuh/pull/24393))
 
 #### Changed
 
@@ -25,6 +32,7 @@ All notable changes to this project will be documented in this file.
 - Added debug logging in FIM to detect invalid report change registry values. Thanks to Zafer Balkan (@zbalkan). ([#21690](https://github.com/wazuh/wazuh/pull/21690))
 - Added Amazon Linux 1 and 2023 support for the installation script. ([#21287](https://github.com/wazuh/wazuh/pull/21287))
 - Added Journald support in Logcollector. ([#23137](https://github.com/wazuh/wazuh/pull/23137))
+- Added support for Amazon Security Hub via AWS SQS. ([#23203](https://github.com/wazuh/wazuh/pull/23203))
 
 #### Fixed
 
@@ -40,16 +48,27 @@ All notable changes to this project will be documented in this file.
 - Fixed Syscollector not checking if there's a scan in progress before starting a new one. ([#22440](https://github.com/wazuh/wazuh/pull/22440))
 - Fixed alerts are created when syscheck diff DB is full. ([#16487](https://github.com/wazuh/wazuh/pull/16487))
 - Fixed Wazuh deb uninstallation to remove non-config files. ([#2195](https://github.com/wazuh/wazuh/pull/2195))
-- Fixed Auditd issue on newer OSs caused by the default audit rule "-a never,task". ([#7283](https://github.com/wazuh/wazuh-documentation/issues/7283))
 - Fixed improper Windows agent ACL on non-default installation directory. ([#23273](https://github.com/wazuh/wazuh/pull/23273))
 - Fixed socket configuration of an agent is displayed. ([#17664](https://github.com/wazuh/wazuh/pull/17664))
 - Fixed wazuh-modulesd printing child process not found error. ([#18494](https://github.com/wazuh/wazuh/pull/18494))
 - Fixed issue with an agent starting automatically without reason. ([#23848](https://github.com/wazuh/wazuh/pull/23848))
 - Fixed GET /syscheck to properly report size for files larger than 2GB. ([#17415](https://github.com/wazuh/wazuh/pull/17415))
+- Fixed error in packages generation centos 7. ([#24412](https://github.com/wazuh/wazuh/pull/24412))
+- Fixed Wazuh deb uninstallation to remove non-config files from the installation directory. ([#2195](https://github.com/wazuh/wazuh/issues/2195))
+- Fixed Azure auditLogs/signIns status parsing (thanks to @Jmnis for the contribution). ([#22392](https://github.com/wazuh/wazuh/pull/22392))
 
 #### Changed
 
 - The directory /boot has been removed from the default FIM settings for AIX. ([#19753](https://github.com/wazuh/wazuh/pull/19753))
+
+### RESTful API
+
+#### Changed
+
+- Replaced the used aiohttp server with uvicorn. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
+- Changed the `PUT /groups/{group_id}/configuration` endpoint response error code when uploading an empty file. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
+- Changed the `GET, PUT and DELETE /lists/files/{filename}` endpoints response status code when an invalid file is used. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
+- Changed the `PUT /manager/configuration` endpoint response status code when uploading a file with invalid content-type. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
 
 ### Ruleset
 
@@ -69,6 +88,7 @@ All notable changes to this project will be documented in this file.
 - Migrated QA framework. ([#17427](https://github.com/wazuh/wazuh/issues/17427))
 - Improved WPKs. ([#21152](https://github.com/wazuh/wazuh/issues/21152))
 - Migrated and adapted Wazuh subsystem repositories as part of Wazuh packages redesign. ([(#23508)](https://github.com/wazuh/wazuh/pull/23508))
+- Upgraded external connexion library dependency version to 3.0.5 and its related interdependencies. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
 
 #### Fixed
 
