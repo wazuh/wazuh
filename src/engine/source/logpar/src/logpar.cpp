@@ -346,12 +346,9 @@ Logpar::Logpar(const json::Json& ecsFieldTypes,
         // String types
         {SchemaType::KEYWORD, ParserType::P_TEXT},
         {SchemaType::TEXT, ParserType::P_TEXT},
-        // Other types
         {SchemaType::BOOLEAN, ParserType::P_BOOL},
         {SchemaType::IP, ParserType::P_IP},
-        {SchemaType::OBJECT, ParserType::P_TEXT},
         {SchemaType::GEO_POINT, ParserType::P_TEXT},
-        {SchemaType::NESTED, ParserType::P_TEXT},
         {SchemaType::DATE, ParserType::P_DATE},
         // Special types, not in schema
         {SchemaType::USER_AGENT, ParserType::P_USER_AGENT},

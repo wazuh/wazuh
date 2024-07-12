@@ -9,6 +9,10 @@ This directory contains the integration tests for the Wazuh Engine. These tests 
 Before running the integration tests, ensure that the following prerequisites are installed:
 
 - **Basic requirements for sandbox environment  ([described here](../README.md#prerequisites))**
+- **IT-Utils**: A set of utilities for integration tests. Install it using pip:
+  ```bash
+  pip3 install test/integration_tests/it-utils
+  ```
 - **Behave**: A behavior-driven development (BDD) Python framework. Install it using pip:
   ```bash
   pip3 install behave
