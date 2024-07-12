@@ -66,7 +66,12 @@ message AssetPost_Request
     optional string namespace = 3; // Namespace of the asset
 }
 
-// message AssetPost_Response -> Return a GenericStatus_Response
+message AssetPost_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string warning = 3; // Warning message if validation errors
+}
 
 /***************************************************
  * Delete an asset from a policy
@@ -80,7 +85,12 @@ message AssetDelete_Request
     optional string namespace = 3; // Namespace of the asset
 }
 
-// message AssetDelete_Response -> Return a GenericStatus_Response
+message AssetDelete_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string warning = 3; // Warning message if validation errors
+}
 
 /***************************************************
  * Get all assets of a namespace in a policy
@@ -98,6 +108,23 @@ message AssetGet_Response
     ReturnStatus status = 1;   // Status of the query
     optional string error = 2; // Error message if status is ERROR
     repeated string data = 3;  // List of assets
+}
+
+/***************************************************
+ * Delete assets from policy that are deleted from the catalog
+ *
+ * command: policy.asset/cleanDeleted
+ **************************************************/
+message AssetCleanDeleted_Request
+{
+    optional string policy = 1; // Policy name
+}
+
+message AssetCleanDeleted_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    optional string data = 3;  // Assets deleted and validation errors
 }
 
 /***************************************************
@@ -130,7 +157,12 @@ message DefaultParentPost_Request
     optional string parent = 3;    // Default parent of the namespace
 }
 
-// message DefaultParentPost_Response -> Return a GenericStatus_Response
+message DefaultParentPost_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string warning = 3; // Warning message if validation errors
+}
 
 /***************************************************
  * Delete default parent of a namespace in a policy
@@ -144,7 +176,12 @@ message DefaultParentDelete_Request
     optional string parent = 3;    // Default parent of the namespace
 }
 
-// message DefaultParentDelete_Response -> Return a GenericStatus_Response
+message DefaultParentDelete_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string warning = 3; // Warning message if validation errors
+}
 
 /***************************************************
  * Get all policies in the store

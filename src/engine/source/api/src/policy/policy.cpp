@@ -45,23 +45,37 @@ base::RespOrError<Policy::PolicyRep> Policy::read(const base::Name& policyName) 
     return PolicyRep::fromDoc(base::getResponse<store::Doc>(resp), m_store);
 }
 
-base::OptError Policy::upsert(const PolicyRep& policy)
+base::RespOrError<std::string> Policy::upsert(const PolicyRep& policy, bool ignoreValidation)
 {
 
     if (auto error = vaidateNsName(policy.name()); base::isError(error))
     {
-        return error;
+        return base::getError(error);
     }
 
     auto doc = policy.toDoc();
     auto error = m_validator->validatePolicy(doc);
+    std::string warning;
     if (base::isError(error))
     {
-        return error;
+        if (!ignoreValidation)
+        {
+            return base::getError(error);
+        }
+        else
+        {
+            warning = fmt::format("Saved invalid policy: {}", base::getError(error).message);
+        }
     }
 
-    auto resp = m_store->upsertInternalDoc(policy.name().fullName(), std::move(doc));
-    return resp;
+    auto resp = m_store->upsertInternalDoc(policy.name().fullName(), doc);
+
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+
+    return warning;
 }
 
 base::OptError Policy::create(const base::Name& policyName)
@@ -77,7 +91,14 @@ base::OptError Policy::create(const base::Name& policyName)
         return base::Error {fmt::format("Policy already exists: {}", policyName.fullName())};
     }
 
-    return upsert(PolicyRep {policyName});
+    auto upsertResp = upsert(PolicyRep {policyName});
+
+    if (base::isError(upsertResp))
+    {
+        return base::getError(upsertResp);
+    }
+
+    return base::noError();
 }
 
 base::OptError Policy::del(const base::Name& policyName)
@@ -130,7 +151,7 @@ base::RespOrError<std::vector<base::Name>> Policy::list() const
     return policies;
 }
 
-base::OptError
+base::RespOrError<std::string>
 Policy::addAsset(const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName)
 {
     auto resp = read(policyName);
@@ -150,13 +171,13 @@ Policy::addAsset(const base::Name& policyName, const store::NamespaceId& namespa
     auto error = policy.addAsset(namespaceId, assetName);
     if (base::isError(error))
     {
-        return error;
+        return base::getError(error);
     }
 
-    return upsert(policy);
+    return upsert(policy, true);
 }
 
-base::OptError
+base::RespOrError<std::string>
 Policy::delAsset(const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName)
 {
     auto resp = read(policyName);
@@ -169,10 +190,10 @@ Policy::delAsset(const base::Name& policyName, const store::NamespaceId& namespa
     auto error = policy.delAsset(namespaceId, assetName);
     if (base::isError(error))
     {
-        return error;
+        return base::getError(error);
     }
 
-    return upsert(policy);
+    return upsert(policy, true);
 }
 
 base::RespOrError<std::list<base::Name>> Policy::listAssets(const base::Name& policyName,
@@ -201,9 +222,9 @@ base::RespOrError<std::list<base::Name>> Policy::getDefaultParent(const base::Na
     return policy.getDefaultParent(namespaceId);
 }
 
-base::OptError Policy::setDefaultParent(const base::Name& policyName,
-                                        const store::NamespaceId& namespaceId,
-                                        const base::Name& parentName)
+base::RespOrError<std::string> Policy::setDefaultParent(const base::Name& policyName,
+                                                        const store::NamespaceId& namespaceId,
+                                                        const base::Name& parentName)
 {
     auto resp = read(policyName);
     if (base::isError(resp))
@@ -215,15 +236,15 @@ base::OptError Policy::setDefaultParent(const base::Name& policyName,
     auto error = policy.setDefaultParent(namespaceId, parentName);
     if (base::isError(error))
     {
-        return error;
+        return base::getError(error);
     }
 
-    return upsert(policy);
+    return upsert(policy, true);
 }
 
-base::OptError Policy::delDefaultParent(const base::Name& policyName,
-                                        const store::NamespaceId& namespaceId,
-                                        const base::Name& parentName)
+base::RespOrError<std::string> Policy::delDefaultParent(const base::Name& policyName,
+                                                        const store::NamespaceId& namespaceId,
+                                                        const base::Name& parentName)
 {
     auto resp = read(policyName);
     if (base::isError(resp))
@@ -235,10 +256,10 @@ base::OptError Policy::delDefaultParent(const base::Name& policyName,
     auto error = policy.delDefaultParent(namespaceId, parentName);
     if (base::isError(error))
     {
-        return error;
+        return base::getError(error);
     }
 
-    return upsert(policy);
+    return upsert(policy, true);
 }
 
 base::RespOrError<std::list<store::NamespaceId>> Policy::listNamespaces(const base::Name& policyName) const
@@ -281,7 +302,57 @@ base::OptError Policy::copy(const base::Name& policyName, const base::Name& newP
 
     auto policy = base::getResponse<PolicyRep>(resp);
     policy.setName(newPolicyName);
-    return upsert(policy);
+
+    auto upsertResp = upsert(policy);
+    if (base::isError(upsertResp))
+    {
+        return base::getError(upsertResp);
+    }
+
+    return base::noError();
+}
+
+base::RespOrError<std::string> Policy::cleanDeleted(const base::Name& policyName)
+{
+    // Check if policyName is valid
+    if (auto error = vaidateNsName(policyName); base::isError(error))
+    {
+        return *error;
+    }
+    auto resp = m_store->readInternalDoc(policyName.fullName());
+    if (base::isError(resp))
+    {
+        return base::getError(resp);
+    }
+    auto doc = base::getResponse<store::Doc>(resp);
+
+    auto deletedAssets = PolicyRep::getDeletedAssets(doc, m_store);
+
+    if (deletedAssets.empty())
+    {
+        return base::Error {"No deleted assets to clean"};
+    }
+
+    auto policyResp = PolicyRep::fromDoc(doc, m_store, true);
+    if (base::isError(policyResp))
+    {
+        return base::getError(policyResp);
+    }
+
+    auto policy = base::getResponse<PolicyRep>(policyResp);
+
+    // Save the policy
+    auto upsertResp = upsert(policy, true);
+
+    if (base::isError(upsertResp))
+    {
+        return base::getError(upsertResp);
+    }
+
+    auto response = base::getResponse(upsertResp);
+    response += fmt::format("\nDeleted assets: {}", fmt::join(deletedAssets, ", "));
+
+    return response;
 }
 
 } // namespace api::policy

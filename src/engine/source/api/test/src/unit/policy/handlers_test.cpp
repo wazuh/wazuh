@@ -3,8 +3,8 @@
  * @brief Unit tests for policy handlers.
  *
  * This file contains unit tests for the policy handlers, which are responsible for processing policy-related requests.
- * The tests cover various scenarios, including successful and failed requests, and different combinations of parameters.
- * The tests use a mock policy object to simulate policy data and behavior.
+ * The tests cover various scenarios, including successful and failed requests, and different combinations of
+ * parameters. The tests use a mock policy object to simulate policy data and behavior.
  *
  */
 #include <gtest/gtest.h>
@@ -16,19 +16,18 @@
 using namespace api::policy::mocks;
 using namespace api::policy::handlers;
 
-
 /***
  * @brief Represent the type signature of the all function to test
  *
  * The handlers is created with a function that return the handler to test.
-*/
+ */
 using GetHandlerToTest = std::function<api::HandlerSync(const std::shared_ptr<api::policy::IPolicy>&)>;
 
 /**
  * @brief Represent the type signature of the expected function
  *
  * The expected function return the response of the handler.
-*/
+ */
 using ExpectedFn = std::function<api::wpResponse(const std::shared_ptr<MockPolicy>&)>;
 
 /**
@@ -36,7 +35,7 @@ using ExpectedFn = std::function<api::wpResponse(const std::shared_ptr<MockPolic
  * @param getHandlerFn Function that return the handler to test.
  * @param params Parameters to pass to the handler.
  * @param expectedFn Function that return the expected response.
-*/
+ */
 using TestPolT = std::tuple<GetHandlerToTest, json::Json, ExpectedFn>;
 
 /**
@@ -51,7 +50,7 @@ using Behaviour = std::function<void(std::shared_ptr<MockPolicy>)>;
  * json::Json is the return type
  *
  * Its used for build a success or fail response
-*/
+ */
 using BehaviourWRet = std::function<json::Json(std::shared_ptr<MockPolicy>)>;
 
 const std::string STATUS_PATH = "/status";
@@ -235,7 +234,6 @@ struct JPayload
     operator std::string() const { return m_json.str(); }
 };
 
-
 class PolicyHandlerTest : public ::testing::TestWithParam<TestPolT>
 {
 protected:
@@ -402,14 +400,16 @@ INSTANTIATE_TEST_SUITE_P(
         // [policyAssetPost]: Ok
         TestPolT(policyAssetPost,
                  JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(ASSET_NAME_A),
-                 success(
+                 successWPayload(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
                                      addAsset(base::Name {POLICY_NAME},
                                               store::NamespaceId {NAMESPACE_U},
                                               base::Name {ASSET_NAME_A}))
-                             .WillOnce(::testing::Return(std::nullopt));
+                             .WillOnce(::testing::Return(std::string()));
+
+                         return JPayload().setString("", "/warning");
                      })),
         // [policyAssetDelete]: Fail
         TestPolT(policyAssetDelete, JParams(""), failure()),
@@ -443,14 +443,16 @@ INSTANTIATE_TEST_SUITE_P(
         // [policyAssetDelete]: Ok
         TestPolT(policyAssetDelete,
                  JParams(POLICY_NAME).namespace_(NAMESPACE_U).asset(ASSET_NAME_A),
-                 success(
+                 successWPayload(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
                                      delAsset(base::Name {POLICY_NAME},
                                               store::NamespaceId {NAMESPACE_U},
                                               base::Name {ASSET_NAME_A}))
-                             .WillOnce(::testing::Return(std::nullopt));
+                             .WillOnce(::testing::Return(std::string()));
+
+                         return JPayload().setString("", "/warning");
                      })),
         // [policyAssetGet]: Fail
         TestPolT(policyAssetGet, R"( { "name": "test" } )", failure()),
@@ -563,14 +565,16 @@ INSTANTIATE_TEST_SUITE_P(
         // [policyDefaultParentPost]: ok
         TestPolT(policyDefaultParentPost,
                  JParams(POLICY_NAME).namespace_(NAMESPACE_U).parent(ASSET_NAME_A),
-                 success(
+                 successWPayload(
                      [](auto policy)
                      {
                          EXPECT_CALL(*policy,
                                      setDefaultParent(base::Name {POLICY_NAME},
                                                       store::NamespaceId {NAMESPACE_U},
                                                       base::Name {ASSET_NAME_A}))
-                             .WillOnce(::testing::Return(std::nullopt));
+                             .WillOnce(::testing::Return(std::string()));
+
+                         return JPayload().setString("", "/warning");
                      })),
         // [policyDefaultParentDelete]: Fail
         TestPolT(policyDefaultParentDelete, R"( { "name": "test" } )", failure()),
@@ -589,19 +593,23 @@ INSTANTIATE_TEST_SUITE_P(
                  failure(
                      [](auto policy)
                      {
-                         EXPECT_CALL(*policy,
-                                     delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}, testing::_))
+                         EXPECT_CALL(
+                             *policy,
+                             delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}, testing::_))
                              .WillOnce(::testing::Return(base::Error {}));
                      })),
         // [policyDefaultParentDelete]: ok
         TestPolT(policyDefaultParentDelete,
                  JParams(POLICY_NAME).namespace_(NAMESPACE_U).parent(ASSET_NAME_B),
-                 success(
+                 successWPayload(
                      [](auto policy)
                      {
-                         EXPECT_CALL(*policy,
-                                     delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}, testing::_))
-                             .WillOnce(::testing::Return(std::nullopt));
+                         EXPECT_CALL(
+                             *policy,
+                             delDefaultParent(base::Name {POLICY_NAME}, store::NamespaceId {NAMESPACE_U}, testing::_))
+                             .WillOnce(::testing::Return(std::string()));
+
+                         return JPayload().setString("", "/warning");
                      })),
         // [policiesGet]: Fail
         TestPolT(policiesGet,

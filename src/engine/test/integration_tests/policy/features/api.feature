@@ -85,7 +85,7 @@ Feature: Policy API Management
   Scenario: Set the non-exist default parent of a namespace
     Given I have a policy called "policy/wazuh/0"
     When I send a request to set the default parent called "default" in the namespace "wazuh"
-    Then I should receive a failed response indicating "Default parent 'default' in namespace 'wazuh' is neither a decoder or a rule"
+    Then I should receive a success response with a validation warning indicating "Saved invalid policy: Default parent 'default' in namespace 'wazuh' is neither a decoder or a rule"
 
   @exclude
   Scenario: Set the default parent of a namespace
