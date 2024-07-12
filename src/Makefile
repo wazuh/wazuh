@@ -753,13 +753,8 @@ settings:
 BUILD_SERVER+=manage_agents
 BUILD_SERVER+=utils
 BUILD_SERVER+=active-responses
-BUILD_SERVER+=wazuh-syscheckd
-BUILD_SERVER+=wazuh-logtest-legacy
 BUILD_SERVER+=wazuh-keystore
 
-BUILD_AGENT+=agent-auth
-BUILD_AGENT+=wazuh-syscheckd
-BUILD_AGENT+=wazuh-execd
 BUILD_AGENT+=manage_agents
 BUILD_AGENT+=active-responses
 
@@ -1763,29 +1758,6 @@ endif
 build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
 
-#### Wazuh modules ##
-wmodules_c := $(wildcard wazuh_modules/wm*.c) $(wildcard wazuh_modules/agent_upgrade/*.c)
-
-ifeq (${TARGET},agent)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
-else ifeq (${TARGET},winagent)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/agent/*.c)
-else
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/task_manager/*.c)
-	wmodules_c := ${wmodules_c} $(wildcard wazuh_modules/agent_upgrade/manager/*.c)
-endif
-
-wmodules_o := $(wmodules_c:.c=.o)
-
-wazuh_modules/%.o: wazuh_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
-wmodules_dep := ${wmodules_o} ${wdbhelpers_c:.c=.o} wazuh_db/wdb_shared.o
-
-ifeq (${uname_S},HP-UX)
-	wmodules_dep := ${wmodules_dep} ${config_o}
-endif
-
 #### crypto ##########
 
 crypto_blowfish_c := os_crypto/blowfish/bf_op.c
@@ -2055,37 +2027,6 @@ endif
 endif
 endif
 
-
-#### Util ##########
-
-util_programs = clear_stats agent_control verify-agent-conf wazuh-regex parallel-regex
-
-$(util_programs): $(BUILD_LIBS)
-
-.PHONY: utils
-utils: ${util_programs}
-
-util_c := $(wildcard util/*.c)
-util_o := $(util_c:.c=.o)
-
-util/%.o: util/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./util -DARGV0=\"utils\" -c $^ -o $@
-
-clear_stats: util/clear_stats.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-verify-agent-conf: util/verify-agent-conf.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-agent_control: util/agent_control.o addagent/validate.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-wazuh-regex: util/wazuh-regex.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-parallel-regex: util/parallel-regex.o
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 #### rootcheck #####
 
 rootcheck_c := $(wildcard rootcheck/*.c)
@@ -2100,6 +2041,7 @@ rootcheck/%.o: rootcheck/%.c
 librootcheck.a: ${rootcheck_o_lib}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
+
 
 ### wazuh-gtest-gmock ###
 
