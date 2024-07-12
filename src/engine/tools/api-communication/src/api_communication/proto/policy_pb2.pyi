@@ -6,6 +6,22 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Optional as _Op
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class AssetCleanDeleted_Request(_message.Message):
+    __slots__ = ["policy"]
+    POLICY_FIELD_NUMBER: _ClassVar[int]
+    policy: str
+    def __init__(self, policy: _Optional[str] = ...) -> None: ...
+
+class AssetCleanDeleted_Response(_message.Message):
+    __slots__ = ["data", "error", "status"]
+    DATA_FIELD_NUMBER: _ClassVar[int]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    data: str
+    error: str
+    status: _engine_pb2.ReturnStatus
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., data: _Optional[str] = ...) -> None: ...
+
 class AssetDelete_Request(_message.Message):
     __slots__ = ["asset", "namespace", "policy"]
     ASSET_FIELD_NUMBER: _ClassVar[int]
@@ -15,6 +31,16 @@ class AssetDelete_Request(_message.Message):
     namespace: str
     policy: str
     def __init__(self, policy: _Optional[str] = ..., asset: _Optional[str] = ..., namespace: _Optional[str] = ...) -> None: ...
+
+class AssetDelete_Response(_message.Message):
+    __slots__ = ["error", "status", "warning"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    WARNING_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    status: _engine_pb2.ReturnStatus
+    warning: str
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., warning: _Optional[str] = ...) -> None: ...
 
 class AssetGet_Request(_message.Message):
     __slots__ = ["namespace", "policy"]
@@ -44,6 +70,16 @@ class AssetPost_Request(_message.Message):
     policy: str
     def __init__(self, policy: _Optional[str] = ..., asset: _Optional[str] = ..., namespace: _Optional[str] = ...) -> None: ...
 
+class AssetPost_Response(_message.Message):
+    __slots__ = ["error", "status", "warning"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    WARNING_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    status: _engine_pb2.ReturnStatus
+    warning: str
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., warning: _Optional[str] = ...) -> None: ...
+
 class DefaultParentDelete_Request(_message.Message):
     __slots__ = ["namespace", "parent", "policy"]
     NAMESPACE_FIELD_NUMBER: _ClassVar[int]
@@ -53,6 +89,16 @@ class DefaultParentDelete_Request(_message.Message):
     parent: str
     policy: str
     def __init__(self, policy: _Optional[str] = ..., namespace: _Optional[str] = ..., parent: _Optional[str] = ...) -> None: ...
+
+class DefaultParentDelete_Response(_message.Message):
+    __slots__ = ["error", "status", "warning"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    WARNING_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    status: _engine_pb2.ReturnStatus
+    warning: str
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., warning: _Optional[str] = ...) -> None: ...
 
 class DefaultParentGet_Request(_message.Message):
     __slots__ = ["namespace", "policy"]
@@ -81,6 +127,16 @@ class DefaultParentPost_Request(_message.Message):
     parent: str
     policy: str
     def __init__(self, policy: _Optional[str] = ..., namespace: _Optional[str] = ..., parent: _Optional[str] = ...) -> None: ...
+
+class DefaultParentPost_Response(_message.Message):
+    __slots__ = ["error", "status", "warning"]
+    ERROR_FIELD_NUMBER: _ClassVar[int]
+    STATUS_FIELD_NUMBER: _ClassVar[int]
+    WARNING_FIELD_NUMBER: _ClassVar[int]
+    error: str
+    status: _engine_pb2.ReturnStatus
+    warning: str
+    def __init__(self, status: _Optional[_Union[_engine_pb2.ReturnStatus, str]] = ..., error: _Optional[str] = ..., warning: _Optional[str] = ...) -> None: ...
 
 class NamespacesGet_Request(_message.Message):
     __slots__ = ["policy"]

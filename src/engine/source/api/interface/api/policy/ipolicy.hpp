@@ -52,9 +52,10 @@ public:
      * @param policyName Policy name
      * @param namespaceId Namespace of the asset
      * @param assetName Asset name
-     * @return base::OptError Error if cannot add the asset to the policy
+     * @return base::RespOrError<std::string> Error if cannot add the asset to the policy, warning message if validation
+     * errors on the policy, empty string if success
      */
-    virtual base::OptError
+    virtual base::RespOrError<std::string>
     addAsset(const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName) = 0;
 
     /**
@@ -63,9 +64,10 @@ public:
      * @param policyName Policy name to delete the asset from
      * @param namespaceId Namespace of the asset
      * @param assetName Asset name
-     * @return base::OptError Error if cannot remove the asset from the policy
+     * @return base::RespOrError<std::string> Error if cannot add the asset to the policy, warning message if validation
+     * errors on the policy, empty string if success
      */
-    virtual base::OptError
+    virtual base::RespOrError<std::string>
     delAsset(const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName) = 0;
 
     /**
@@ -94,22 +96,24 @@ public:
      * @param policyName Policy name to set the default parent to
      * @param namespaceId Namespace of the default parent
      * @param parentName Default parent name
-     * @return base::OptError Error if cannot set the default parent to the policy
+     * @return base::RespOrError<std::string> Error if cannot add the asset to the policy, warning message if validation
+     * errors on the policy, empty string if success
      */
-    virtual base::OptError setDefaultParent(const base::Name& policyName,
-                                            const store::NamespaceId& namespaceId,
-                                            const base::Name& parentName) = 0;
+    virtual base::RespOrError<std::string> setDefaultParent(const base::Name& policyName,
+                                                            const store::NamespaceId& namespaceId,
+                                                            const base::Name& parentName) = 0;
 
     /**
      * @brief Delete namespace default parent from a policy
      *
      * @param policyName Policy name to delete the default parent from
      * @param namespaceId Namespace of the default parent
-     * @return base::OptError Error if cannot delete the default parent from the policy
+     * @return base::RespOrError<std::string> Error if cannot add the asset to the policy, warning message if validation
+     * errors on the policy, empty string if success
      */
-    virtual base::OptError delDefaultParent(const base::Name& policyName,
-                                            const store::NamespaceId& namespaceId,
-                                            const base::Name& parentName) = 0;
+    virtual base::RespOrError<std::string> delDefaultParent(const base::Name& policyName,
+                                                            const store::NamespaceId& namespaceId,
+                                                            const base::Name& parentName) = 0;
 
     /**
      * @brief Get the list of namespaces from a policy
@@ -135,6 +139,14 @@ public:
      * @return base::OptError Error if cannot copy the policy
      */
     virtual base::OptError copy(const base::Name& policyName, const base::Name& newPolicyName) = 0;
+
+    /**
+     * @brief Delete all deleted assets from the policy, returning the deleted assets
+     *
+     * @param policyName Policy name to clean
+     * @return base::RespOrError<std::string> Deleted assets or an error
+     */
+    virtual base::RespOrError<std::string> cleanDeleted(const base::Name& policyName) = 0;
 };
 } // namespace api::policy
 

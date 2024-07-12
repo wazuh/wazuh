@@ -47,14 +47,14 @@ def create_policy(policy_name: str):
 def delete_policy(policy_name: str):
     request = api_policy.StoreDelete_Request()
     request.policy = policy_name
-    error, response = send_recv(request, api_policy.PoliciesGet_Response())
+    error, response = send_recv(request, api_engine.GenericStatus_Response())
 
 def add_integration_to_policy(integration_name: str, policy_name: str):
     request = api_policy.AssetPost_Request()
     request.policy = policy_name
     request.asset = f"integration/{integration_name}/0"
     request.namespace = "system"
-    error, response = send_recv(request, api_engine.GenericStatus_Response())
+    error, response = send_recv(request, api_policy.AssetPost_Response())
     assert error is None, f"{error}"
 
 def policy_tear_down(policy_name: str, integration_name: str):

@@ -207,9 +207,15 @@ public:
      *   <namespace_id>: <parent_name>
      *   ...
      * ---
+     *
+     * @param policyDoc Policy document
+     * @param store Store reader to get the namespace of the assets
+     * @param ignoreMissing Return the policy even if it contains deleted assets, default is false
+     *
+     * @return base::RespOrError<PolicyRep> Policy representation or an error
      */
-    static inline base::RespOrError<PolicyRep> fromDoc(const store::Doc& policyDoc,
-                                                       std::shared_ptr<store::IStoreReader> store)
+    static inline base::RespOrError<PolicyRep>
+    fromDoc(const store::Doc& policyDoc, std::shared_ptr<store::IStoreReader> store, bool ignoreMissing = false)
     {
         base::Name name {policyDoc.getString(NAME_PATH).value()};
         std::stringstream ss;
@@ -220,6 +226,7 @@ public:
         std::multimap<store::NamespaceId, base::Name> defaultParents;
 
         // Assets
+        std::vector<std::string> missingAssetsNames;
         auto assets = policyDoc.getArray(ASSETS_PATH);
         if (assets)
         {
@@ -229,11 +236,18 @@ public:
                 auto ns = store->getNamespace(assetName);
                 if (!ns)
                 {
-                    return base::Error {fmt::format("Asset not found: {}", assetName.fullName())};
+                    missingAssetsNames.emplace_back(assetName.fullName());
+                    continue;
                 }
 
                 nss.emplace(ns.value(), assetName);
             }
+        }
+
+        if (!ignoreMissing && !missingAssetsNames.empty())
+        {
+            return base::Error {
+                fmt::format("Clean the policy, it contains deleted assets: {}", fmt::join(missingAssetsNames, ", "))};
         }
 
         // Default parents
@@ -257,6 +271,37 @@ public:
         }
 
         return PolicyRep {std::move(name), std::move(nss), hash, std::move(defaultParents)};
+    }
+
+    /**
+     * @brief Get the Deleted Assets from a policy document
+     *
+     * @param policyDoc Policy document
+     * @param store Store reader to get the namespace of the assets
+     * @return std::vector<std::string> list of deleted assets
+     */
+    static inline std::vector<std::string> getDeletedAssets(const store::Doc& policyDoc,
+                                                            std::shared_ptr<store::IStoreReader> store)
+    {
+        base::Name name {policyDoc.getString(NAME_PATH).value()};
+
+        // Assets
+        std::vector<std::string> missingAssetsNames;
+        auto assets = policyDoc.getArray(ASSETS_PATH);
+        if (assets)
+        {
+            for (const auto& asset : assets.value())
+            {
+                auto assetName = base::Name {asset.getString().value()};
+                auto ns = store->getNamespace(assetName);
+                if (!ns)
+                {
+                    missingAssetsNames.emplace_back(assetName.fullName());
+                }
+            }
+        }
+
+        return missingAssetsNames;
     }
 
     /**

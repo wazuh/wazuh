@@ -15,6 +15,7 @@ api::HandlerSync storeGet(const std::shared_ptr<policy::IPolicy>& policyManager)
 api::HandlerSync policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyManager);
 api::HandlerSync policyAssetDelete(const std::shared_ptr<policy::IPolicy>& policyManager);
 api::HandlerSync policyAssetGet(const std::shared_ptr<policy::IPolicy>& policyManager);
+api::HandlerSync policyCleanDeleted(const std::shared_ptr<policy::IPolicy>& policyManager);
 
 /* Default parent policy handlers */
 api::HandlerSync policyDefaultParentGet(const std::shared_ptr<policy::IPolicy>& policyManager);
