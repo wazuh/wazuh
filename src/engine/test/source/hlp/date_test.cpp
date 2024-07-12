@@ -11,11 +11,11 @@ auto initAndGetDateParser() -> hlp::ParserBuilder
 {
     logging::testInit();
     static bool hasInitiated = false;
-       if (!hasInitiated)
-       {
-              hlp::initTZDB("data/tzdb", true);
-              hasInitiated = true;
-       }
+    if (!hasInitiated)
+    {
+        hlp::initTZDB("data/tzdb", false);
+        hasInitiated = true;
+    }
     return hlp::parsers::getDateParser;
 };
 
