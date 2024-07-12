@@ -188,6 +188,7 @@ bool loadTimeZoneDB(const std::string& version)
  * @brief Download and install the timezone database.
  *
  * @param version The version to download
+ * @note Date library is compiled with AUTO_DOWNLOAD=0 and HAS_REMOTE_API=1
  */
 void downloadAndInstallTimeZoneDB(const std::string& version)
 {
