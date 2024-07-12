@@ -64,7 +64,7 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
             // If the upgrade fails, delete all keys and log the error.
             keystoreDB.deleteAll(columnFamily);
             logWarn(KS_NAME,
-                    "Keystore upgrade failed, re-run the tool again for all keys to save. Error: %s",
+                    "Keystore upgrade failed, re-run the tool again for all keys to save them. Error: %s",
                     exception.what());
         }
     }

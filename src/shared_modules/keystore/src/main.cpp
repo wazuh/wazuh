@@ -41,7 +41,8 @@ int main(int argc, char* argv[])
             char formattedStr[MAXLEN] = {0};
             vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
 
-            if (logLevel == Log::LOGLEVEL_ERROR)
+            if (logLevel == Log::LOGLEVEL_ERROR || logLevel == Log::LOGLEVEL_CRITICAL ||
+                logLevel == Log::LOGLEVEL_WARNING)
             {
                 std::cerr << formattedStr << "\n";
             }
