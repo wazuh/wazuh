@@ -1,6 +1,6 @@
 import sys
 
-from opensearchpy import OpenSearch
+from opensearchpy import OpenSearch, exceptions
 from datetime import datetime
 
 AGENTS_INDEX_NAME = "agents_list"
@@ -59,21 +59,28 @@ class IndexerClient:
                 try:
                     self.indexer_client.index(
                         index=index_name,
-                        id=metric['name'] + current_time,
-                        # TODO: Enhance common metrics body
+                        id=metric['name'] + '-' + current_time,
+                        # TODO: Common metrics body could be enhanced
                         body={
                             'unit': metric['unit'],
                             'data': metric['data']
                         },
                         op_type='create'
                     )
-                    indexed_metric = self.get_document(index_name=index_name, doc_id=metric['name'])
-                    print(f"Obtained metric {indexed_metric}", file=sys.stderr)
-                except Exception as e:
-                    raise e
+                except exceptions.NotFoundError as e:
+                    print(f"Index not found")
 
-    def send_spans(self):
-        pass
+    def send_trace(self, trace, index_name: str = TRACES_INDEX_NAME):
+        try:
+            for span in trace:
+                self.indexer_client.index(
+                    index=index_name,
+                    id=span['context']['span_id'],
+                    body=span,
+                    op_type='create'
+                )
+        except exceptions.NotFoundError as e:
+            print(f"Index not found")
 
 
 indexer_client = IndexerClient()
