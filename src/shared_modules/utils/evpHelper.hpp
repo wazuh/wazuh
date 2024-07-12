@@ -31,7 +31,7 @@ public:
     ~EVPHelper() override = default;
 
     /**
-     * Encrypts the input vector with the provided key
+     * Encrypts the input string.
      * Basically we are using AES-256-CBC encryption and the key and iv are generated randomly
      * The output will be the key + iv + ciphertext
      *
@@ -89,7 +89,7 @@ public:
     }
 
     /**
-     * Decrypts the input vector with the provided key
+     * Decrypts the input vector.
      *
      * @param input  The entry to be decrypted (key + iv + ciphertext)
      * @param output The resulting decrypted value
