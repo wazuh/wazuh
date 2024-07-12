@@ -72,5 +72,5 @@ PRIVATE
 )
 target_link_libraries(hlp PUBLIC base PRIVATE fast_float date::date pthread CURL::libcurl pugixml)
 
-# For the date library
+# For the date library (https://howardhinnant.github.io/date/tz.html)
 target_compile_definitions(hlp PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=1)
