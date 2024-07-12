@@ -31,8 +31,8 @@ To capture Powershell and Sysmon events, modify the `ossec.conf` file in a monit
         <location>Microsoft-Windows-Powershell</location>
         <log_format>eventchannel</log_format>
     </localfile>
-</ossec_config> ```
-
+</ossec_config>
+```
 
 ## Schema
 
