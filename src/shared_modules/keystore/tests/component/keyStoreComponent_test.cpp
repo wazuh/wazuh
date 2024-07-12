@@ -92,17 +92,18 @@ TEST(KeyStoreComponentTest, TestPutGet)
 {
     std::filesystem::remove_all(DATABASE_PATH);
 
+    // Check that the keystore version is empty when the database is empty
     ASSERT_EQ(getKeystoreVersion(), "");
+
+    // Put a value in the keystore and check that the version is updated
     Keystore::put("default", "key1", "value1");
     ASSERT_EQ(getKeystoreVersion(), KS_VERSION);
-
     Keystore::put("default", "key2", "value2");
 
+    // Get the value from the keystore and check that it is the same as the one put
     std::string out;
-
     Keystore::get("default", "key1", out);
     ASSERT_EQ(out, "value1");
-
     Keystore::get("default", "key2", out);
     ASSERT_EQ(out, "value2");
 }
@@ -110,51 +111,90 @@ TEST(KeyStoreComponentTest, TestPutGet)
 TEST(KeyStoreComponentTest, TestUpgrade)
 {
     std::filesystem::remove_all(DATABASE_PATH);
-    {
-        std::string out;
-        std::filesystem::remove("etc/sslmanager.key");
-        std::filesystem::remove("etc/sslmanager.cert");
 
-        // create etc folder.
-        std::filesystem::create_directory("etc");
-        writeRSACertAndPk("etc/sslmanager.cert", "etc/sslmanager.key");
+    // Create a new RSA key pair using the path specified in the Keystore class.
+    std::filesystem::remove("etc/sslmanager.key");
+    std::filesystem::remove("etc/sslmanager.cert");
+    std::filesystem::create_directory("etc");
+    writeRSACertAndPk("etc/sslmanager.cert", "etc/sslmanager.key");
 
-        auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
-
-        RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value1", out, true);
-
-        keystoreDB.put("key1", out, "default");
-
-        RSAHelper().rsaDecrypt("etc/sslmanager.key", out, out);
-    }
-
+    // Encrypt the value and store it in the keystore. to simulate the previous algorithm
     std::string out;
-    Keystore::get("default", "key1", out);
+    RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value1", out, true);
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key1", out, "default");
+    RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value2", out, true);
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key2", out, "default");
 
+    // Get the value and decrypt it with the new algorithm
+    Keystore::get("default", "key1", out);
     ASSERT_EQ(out, "value1");
+    ASSERT_EQ(getKeystoreVersion(), KS_VERSION);
+
+    Keystore::get("default", "key2", out);
+    ASSERT_EQ(out, "value2");
     ASSERT_EQ(getKeystoreVersion(), KS_VERSION);
 }
 
 TEST(KeyStoreComponentTest, TestUpgradeFail)
 {
     std::filesystem::remove_all(DATABASE_PATH);
-    {
-        auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
-        keystoreDB.put("key1", "rawrawraw", "default");
-    }
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key1", "rawrawraw", "default");
 
+    // Check if in the case of an invalid value the keystore is upgraded and the values are deleted
     std::string out;
     Keystore::get("default", "key1", out);
-
     ASSERT_EQ(out, "");
     ASSERT_EQ(getKeystoreVersion(), KS_VERSION);
 
+    // Check if we can put a new value in the keystore after the failed upgrade.
     Keystore::put("default", "key1", "value1");
     Keystore::put("default", "key2", "value2");
 
+    // Get the value from the keystore and check that it is the same as the one put
     Keystore::get("default", "key1", out);
     ASSERT_EQ(out, "value1");
+    Keystore::get("default", "key2", out);
+    ASSERT_EQ(out, "value2");
+}
 
+TEST(KeyStoreComponentTest, TestUpgradeFailWithInvalidCerts)
+{
+    std::filesystem::remove_all(DATABASE_PATH);
+    // Create a new RSA key pair using the path specified in the Keystore class.
+    std::filesystem::remove("etc/sslmanager.key");
+    std::filesystem::remove("etc/sslmanager.cert");
+    std::filesystem::create_directory("etc");
+    writeRSACertAndPk("etc/sslmanager.cert", "etc/sslmanager.key");
+
+    // Encrypt the value and store it in the keystore. to simulate the previous algorithm
+    std::string out;
+    RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value1", out, true);
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key1", out, "default");
+    RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value2", out, true);
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key2", out, "default");
+
+    // Write invalid certificates
+    std::ofstream cert("etc/sslmanager.cert");
+    cert << "invalid";
+    cert.close();
+
+    std::ofstream pk("etc/sslmanager.key");
+    pk << "invalid";
+    pk.close();
+
+    // Check if in the case of an invalid value the keystore is upgraded and the values are deleted
+    out = "";
+    Keystore::get("default", "key1", out);
+    ASSERT_EQ(out, "");
+    ASSERT_EQ(getKeystoreVersion(), KS_VERSION);
+
+    // Check if we can put a new value in the keystore after the failed upgrade.
+    Keystore::put("default", "key1", "value1");
+    Keystore::put("default", "key2", "value2");
+
+    // Get the value from the keystore and check that it is the same as the one Put
+    Keystore::get("default", "key1", out);
+    ASSERT_EQ(out, "value1");
     Keystore::get("default", "key2", out);
     ASSERT_EQ(out, "value2");
 }
