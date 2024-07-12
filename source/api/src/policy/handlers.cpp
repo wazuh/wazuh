@@ -65,10 +65,12 @@ getTupleRequest(const api::wpRequest& wRequest, const std::weak_ptr<api::policy:
     {
         policy = base::Name(eRequest.policy());
         // Check parts
-        if (policy.parts().size() != 3) {
+        if (policy.parts().size() != 3)
+        {
             return ::api::adapter::genericError<ResponseT>("Error: Policy name (/policy) must have 3 parts");
         }
-        if (policy.parts()[0] != "policy") {
+        if (policy.parts()[0] != "policy")
+        {
             return ::api::adapter::genericError<ResponseT>("Error: Policy name (/policy) must start with 'policy'");
         }
     }
@@ -96,9 +98,9 @@ getTupleRequest(const api::wpRequest& wRequest, const std::weak_ptr<api::policy:
  * @tparam RequestT The type of the request object.
  * @tparam ResponseT The type of the response object.
  * @param request The request object.
- * @return std::variant<api::wpResponse, store::NamespaceId> Returns a variant containing either an error response or the namespace ID.
- * If the namespace is missing or empty, an error response is returned. If the namespace is invalid, an error response is returned.
- * Otherwise, the namespace ID is returned.
+ * @return std::variant<api::wpResponse, store::NamespaceId> Returns a variant containing either an error response or
+ * the namespace ID. If the namespace is missing or empty, an error response is returned. If the namespace is invalid,
+ * an error response is returned. Otherwise, the namespace ID is returned.
  */
 template<typename RequestT, typename ResponseT>
 std::variant<api::wpResponse, store::NamespaceId> getNamespace(const RequestT& request)
@@ -129,7 +131,6 @@ std::variant<api::wpResponse, store::NamespaceId> getNamespace(const RequestT& r
 
     return namespaceId;
 }
-
 
 /**
  * @brief This function retrieves the namespace and asset from a given request.
@@ -167,7 +168,8 @@ std::variant<api::wpResponse, std::pair<store::NamespaceId, base::Name>> getName
     try
     {
         asset = base::Name(request.asset());
-        if (asset.parts().size() != 3) {
+        if (asset.parts().size() != 3)
+        {
             return ::api::adapter::genericError<ResponseT>("Error: Asset name must have 3 parts");
         }
     }
@@ -187,7 +189,8 @@ std::variant<api::wpResponse, std::pair<store::NamespaceId, base::Name>> getName
  * @tparam RequestT Type of the request.
  * @tparam ResponseT Type of the response.
  * @param request The request to get the parent from.
- * @return std::variant<api::wpResponse, base::Name> The parent of the request or an error message if the parent is invalid.
+ * @return std::variant<api::wpResponse, base::Name> The parent of the request or an error message if the parent is
+ * invalid.
  */
 template<typename RequestT, typename ResponseT>
 std::variant<api::wpResponse, base::Name> getParent(const RequestT& request)
@@ -333,7 +336,7 @@ api::HandlerSync policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyM
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = ePolicy::AssetPost_Request;
-        using ResponseType = eEngine::GenericStatus_Response;
+        using ResponseType = ePolicy::AssetPost_Response;
 
         // Validate the eRequest
         auto res = getTupleRequest<RequestType, ResponseType>(wRequest, wpPolicyAPI);
@@ -351,14 +354,15 @@ api::HandlerSync policyAssetPost(const std::shared_ptr<policy::IPolicy>& policyM
         }
         auto& [namespaceId, asset] = std::get<std::pair<store::NamespaceId, base::Name>>(resNs);
 
-        auto err = spPolicyAPI->addAsset(policy, namespaceId, asset);
-        if (base::isError(err))
+        auto resp = spPolicyAPI->addAsset(policy, namespaceId, asset);
+        if (base::isError(resp))
         {
-            return ::api::adapter::genericError<ResponseType>(err.value().message);
+            return ::api::adapter::genericError<ResponseType>(base::getError(resp).message);
         }
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
+        eResponse.set_warning(base::getResponse(resp));
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
@@ -369,7 +373,7 @@ api::HandlerSync policyAssetDelete(const std::shared_ptr<policy::IPolicy>& polic
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = ePolicy::AssetDelete_Request;
-        using ResponseType = eEngine::GenericStatus_Response;
+        using ResponseType = ePolicy::AssetDelete_Response;
 
         // Validate the eRequest
         auto res = getTupleRequest<RequestType, ResponseType>(wRequest, wpPolicyAPI);
@@ -388,14 +392,44 @@ api::HandlerSync policyAssetDelete(const std::shared_ptr<policy::IPolicy>& polic
         }
         auto& [namespaceId, asset] = std::get<std::pair<store::NamespaceId, base::Name>>(resNs);
 
-        auto err = spPolicyAPI->delAsset(policy, namespaceId, asset);
-        if (base::isError(err))
+        auto resp = spPolicyAPI->delAsset(policy, namespaceId, asset);
+        if (base::isError(resp))
         {
-            return ::api::adapter::genericError<ResponseType>(err.value().message);
+            return ::api::adapter::genericError<ResponseType>(base::getError(resp).message);
         }
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
+        eResponse.set_warning(base::getResponse(resp));
+        return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
+    };
+}
+
+api::HandlerSync policyCleanDeleted(const std::shared_ptr<policy::IPolicy>& policyManager)
+{
+    return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
+    {
+        using RequestType = ePolicy::AssetCleanDeleted_Request;
+        using ResponseType = ePolicy::AssetCleanDeleted_Response;
+
+        // Validate the eRequest
+        auto res = getTupleRequest<RequestType, ResponseType>(wRequest, wpPolicyAPI);
+        if (std::holds_alternative<api::wpResponse>(res))
+        {
+            return std::move(std::get<api::wpResponse>(res));
+        }
+
+        auto& [eRequest, spPolicyAPI, policy] = std::get<TupleRequest<RequestType>>(res);
+
+        auto resp = spPolicyAPI->cleanDeleted(policy);
+        if (base::isError(resp))
+        {
+            return ::api::adapter::genericError<ResponseType>(base::getError(resp).message);
+        }
+
+        ResponseType eResponse;
+        eResponse.set_status(eEngine::ReturnStatus::OK);
+        eResponse.set_data(base::getResponse(resp));
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
@@ -490,7 +524,7 @@ api::HandlerSync policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>&
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = ePolicy::DefaultParentPost_Request;
-        using ResponseType = eEngine::GenericStatus_Response;
+        using ResponseType = ePolicy::DefaultParentPost_Response;
 
         // Validate the eRequest
         auto res = getTupleRequest<RequestType, ResponseType>(wRequest, wpPolicyAPI);
@@ -517,14 +551,15 @@ api::HandlerSync policyDefaultParentPost(const std::shared_ptr<policy::IPolicy>&
         }
         auto& parent = std::get<base::Name>(resParent);
 
-        auto err = spPolicyAPI->setDefaultParent(policy, namespaceId, parent);
-        if (base::isError(err))
+        auto resp = spPolicyAPI->setDefaultParent(policy, namespaceId, parent);
+        if (base::isError(resp))
         {
-            return ::api::adapter::genericError<ResponseType>(err.value().message);
+            return ::api::adapter::genericError<ResponseType>(base::getError(resp).message);
         }
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
+        eResponse.set_warning(base::getResponse(resp));
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
@@ -576,7 +611,7 @@ api::HandlerSync policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy
     return [wpPolicyAPI = std::weak_ptr(policyManager)](const api::wpRequest& wRequest) -> api::wpResponse
     {
         using RequestType = ePolicy::DefaultParentDelete_Request;
-        using ResponseType = eEngine::GenericStatus_Response;
+        using ResponseType = ePolicy::DefaultParentDelete_Response;
 
         // Validate the eRequest
         auto res = getTupleRequest<RequestType, ResponseType>(wRequest, wpPolicyAPI);
@@ -603,14 +638,15 @@ api::HandlerSync policyDefaultParentDelete(const std::shared_ptr<policy::IPolicy
         }
         auto& parent = std::get<base::Name>(resParent);
 
-        auto err = spPolicyAPI->delDefaultParent(policy, namespaceId, parent);
-        if (base::isError(err))
+        auto resp = spPolicyAPI->delDefaultParent(policy, namespaceId, parent);
+        if (base::isError(resp))
         {
-            return ::api::adapter::genericError<ResponseType>(err.value().message);
+            return ::api::adapter::genericError<ResponseType>(base::getError(resp).message);
         }
 
         ResponseType eResponse;
         eResponse.set_status(eEngine::ReturnStatus::OK);
+        eResponse.set_warning(base::getResponse(resp));
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
@@ -631,8 +667,6 @@ api::HandlerSync policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& pol
         }
         auto& [eRequest, spPolicyAPI, policy] = std::get<TupleRequest<RequestType>>(res);
 
-
-
         auto listRes = spPolicyAPI->listNamespaces(policy);
         if (base::isError(listRes))
         {
@@ -650,19 +684,24 @@ api::HandlerSync policyNamespacesGet(const std::shared_ptr<policy::IPolicy>& pol
         return ::api::adapter::toWazuhResponse<ResponseType>(eResponse);
     };
 }
+
 void registerHandlers(const std::shared_ptr<policy::IPolicy>& policy, std::shared_ptr<api::Api> api)
 {
-    auto resOk = api->registerHandler("policy.store/post", Api::convertToHandlerAsync(storePost(policy)))
-                 && api->registerHandler("policy.store/delete", Api::convertToHandlerAsync(storeDelete(policy)))
-                 && api->registerHandler("policy.store/get", Api::convertToHandlerAsync(storeGet(policy)))
-                 && api->registerHandler("policy.asset/post", Api::convertToHandlerAsync(policyAssetPost(policy)))
-                 && api->registerHandler("policy.asset/delete", Api::convertToHandlerAsync(policyAssetDelete(policy)))
-                 && api->registerHandler("policy.asset/get", Api::convertToHandlerAsync(policyAssetGet(policy)))
-                 && api->registerHandler("policy.defaultParent/get", Api::convertToHandlerAsync(policyDefaultParentGet(policy)))
-                 && api->registerHandler("policy.defaultParent/post", Api::convertToHandlerAsync(policyDefaultParentPost(policy)))
-                 && api->registerHandler("policy.defaultParent/delete", Api::convertToHandlerAsync(policyDefaultParentDelete(policy)))
-                 && api->registerHandler("policy.policies/get", Api::convertToHandlerAsync(policiesGet(policy)))
-                 && api->registerHandler("policy.namespaces/get", Api::convertToHandlerAsync(policyNamespacesGet(policy)));
+    auto resOk =
+        api->registerHandler("policy.store/post", Api::convertToHandlerAsync(storePost(policy)))
+        && api->registerHandler("policy.store/delete", Api::convertToHandlerAsync(storeDelete(policy)))
+        && api->registerHandler("policy.store/get", Api::convertToHandlerAsync(storeGet(policy)))
+        && api->registerHandler("policy.asset/post", Api::convertToHandlerAsync(policyAssetPost(policy)))
+        && api->registerHandler("policy.asset/delete", Api::convertToHandlerAsync(policyAssetDelete(policy)))
+        && api->registerHandler("policy.asset/get", Api::convertToHandlerAsync(policyAssetGet(policy)))
+        && api->registerHandler("policy.asset/cleanDeleted", Api::convertToHandlerAsync(policyCleanDeleted(policy)))
+        && api->registerHandler("policy.defaultParent/get", Api::convertToHandlerAsync(policyDefaultParentGet(policy)))
+        && api->registerHandler("policy.defaultParent/post",
+                                Api::convertToHandlerAsync(policyDefaultParentPost(policy)))
+        && api->registerHandler("policy.defaultParent/delete",
+                                Api::convertToHandlerAsync(policyDefaultParentDelete(policy)))
+        && api->registerHandler("policy.policies/get", Api::convertToHandlerAsync(policiesGet(policy)))
+        && api->registerHandler("policy.namespaces/get", Api::convertToHandlerAsync(policyNamespacesGet(policy)));
 
     if (!resOk)
     {

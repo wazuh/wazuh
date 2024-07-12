@@ -1,13 +1,12 @@
 #include <cmds/policy.hpp>
 
-#include <vector>
 #include <utility>
+#include <vector>
 
 #include <eMessages/policy.pb.h>
-#include <utils/stringUtils.hpp>
 #include <logging/logging.hpp>
+#include <utils/stringUtils.hpp>
 #include <ymlFormat.hpp>
-
 
 #include <cmds/apiExcept.hpp>
 #include <cmds/apiclnt/client.hpp>
@@ -45,7 +44,7 @@ const std::vector<std::pair<std::string, std::string>> DEFAULT_ASSETS = {{"integ
 const std::vector<std::pair<std::string, std::string>> DEFAULT_PARENTS = {{"user", "decoder/integrations/0"},
                                                                           {"wazuh", "decoder/integrations/0"}};
 
-#include <memory>  // for std::unique_ptr
+#include <memory> // for std::unique_ptr
 
 std::vector<std::pair<std::string, std::unique_ptr<google::protobuf::Message>>>
 getDefaultConfigRequest(const std::string& policyName)
@@ -72,7 +71,6 @@ getDefaultConfigRequest(const std::string& policyName)
 
     return defaultConfigPolicy;
 }
-
 
 } // namespace
 
@@ -183,7 +181,7 @@ void runAddAsset(std::shared_ptr<apiclnt::Client> client,
                  const std::string& assetName)
 {
     using RequestType = ePolicy::AssetPost_Request;
-    using ResponseType = eEngine::GenericStatus_Response;
+    using ResponseType = ePolicy::AssetPost_Response;
     const std::string command = "policy.asset/post";
 
     // Prepare request
@@ -196,6 +194,12 @@ void runAddAsset(std::shared_ptr<apiclnt::Client> client,
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print response
+    if (!eResponse.warning().empty())
+    {
+        std::cout << eResponse.warning() << std::endl;
+    }
 }
 
 void runRemoveAsset(std::shared_ptr<apiclnt::Client> client,
@@ -204,7 +208,7 @@ void runRemoveAsset(std::shared_ptr<apiclnt::Client> client,
                     const std::string& assetName)
 {
     using RequestType = ePolicy::AssetDelete_Request;
-    using ResponseType = eEngine::GenericStatus_Response;
+    using ResponseType = ePolicy::AssetDelete_Response;
     const std::string command = "policy.asset/delete";
 
     // Prepare request
@@ -217,6 +221,12 @@ void runRemoveAsset(std::shared_ptr<apiclnt::Client> client,
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print response
+    if (!eResponse.warning().empty())
+    {
+        std::cout << eResponse.warning() << std::endl;
+    }
 }
 
 void runListAssets(std::shared_ptr<apiclnt::Client> client,
@@ -241,6 +251,25 @@ void runListAssets(std::shared_ptr<apiclnt::Client> client,
     auto assets = std::vector(eResponse.data().begin(), eResponse.data().end());
 
     std::cout << base::ymlfmt::toYmlStr(assets) << std::endl;
+}
+
+void runCleanDeletedAssets(std::shared_ptr<apiclnt::Client> client, const std::string& policyName)
+{
+    using RequestType = ePolicy::AssetCleanDeleted_Request;
+    using ResponseType = ePolicy::AssetCleanDeleted_Response;
+    const std::string command = "policy.asset/cleanDeleted";
+
+    // Prepare request
+    RequestType eRequest;
+    eRequest.set_policy(policyName);
+
+    // Call API, any exception will be thrown
+    const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
+    const auto response = client->send(request);
+    const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print response
+    std::cout << eResponse.data() << std::endl;
 }
 
 void runGetDefaultParent(std::shared_ptr<apiclnt::Client> client,
@@ -274,7 +303,7 @@ void runSetDefaultParent(std::shared_ptr<apiclnt::Client> client,
                          const std::string& parentAssetName)
 {
     using RequestType = ePolicy::DefaultParentPost_Request;
-    using ResponseType = eEngine::GenericStatus_Response;
+    using ResponseType = ePolicy::DefaultParentPost_Response;
     const std::string command = "policy.defaultParent/post";
 
     // Prepare request
@@ -287,6 +316,12 @@ void runSetDefaultParent(std::shared_ptr<apiclnt::Client> client,
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print response
+    if (!eResponse.warning().empty())
+    {
+        std::cout << eResponse.warning() << std::endl;
+    }
 }
 
 void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
@@ -295,7 +330,7 @@ void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
                             const std::string& parentAssetName)
 {
     using RequestType = ePolicy::DefaultParentDelete_Request;
-    using ResponseType = eEngine::GenericStatus_Response;
+    using ResponseType = ePolicy::DefaultParentDelete_Response;
     const std::string command = "policy.defaultParent/delete";
 
     // Prepare request
@@ -308,6 +343,12 @@ void runRemoveDefaultParent(std::shared_ptr<apiclnt::Client> client,
     const auto request = utils::apiAdapter::toWazuhRequest<RequestType>(command, details::ORIGIN_NAME, eRequest);
     const auto response = client->send(request);
     const auto eResponse = utils::apiAdapter::fromWazuhResponse<ResponseType>(response);
+
+    // Print response
+    if (!eResponse.warning().empty())
+    {
+        std::cout << eResponse.warning() << std::endl;
+    }
 }
 
 void listNamespaces(std::shared_ptr<apiclnt::Client> client, const std::string& policyName)
@@ -442,6 +483,19 @@ void configure(CLI::App_p app)
         {
             const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
             runListAssets(client, options->policyName, options->namespaceId);
+        });
+
+    // Clean deleted assets
+    auto cleanDeletedAssetsSubcommand =
+        policyApp->add_subcommand("asset-clean-deleted", "Remove all deleted assets from a policy");
+    cleanDeletedAssetsSubcommand->add_option("-p, --policy", options->policyName, "Name of the policy to clean")
+        ->default_val(ENGINE_DEFAULT_POLICY);
+
+    cleanDeletedAssetsSubcommand->callback(
+        [options]()
+        {
+            const auto client = std::make_shared<apiclnt::Client>(options->serverApiSock, options->clientTimeout);
+            runCleanDeletedAssets(client, options->policyName);
         });
 
     // Get default parent

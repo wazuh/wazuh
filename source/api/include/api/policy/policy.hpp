@@ -30,9 +30,10 @@ private:
      * @brief Upsert a policy document to the store
      *
      * @param policy Policy representation
-     * @return base::OptError
+     * @param ignoreValidation Ignore validation errors
+     * @return base::RespOrError<std::string>
      */
-    base::OptError upsert(const PolicyRep& policy);
+    base::RespOrError<std::string> upsert(const PolicyRep& policy, bool ignoreValidation = false);
 
 public:
     Policy(std::shared_ptr<store::IStore> store, std::shared_ptr<builder::IValidator> validator)
@@ -77,13 +78,13 @@ public:
     /**
      * @copydoc IPolicy::addAsset
      */
-    base::OptError
+    base::RespOrError<std::string>
     addAsset(const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName) override;
 
     /**
      * @copydoc IPolicy::delAsset
      */
-    base::OptError
+    base::RespOrError<std::string>
     delAsset(const base::Name& policyName, const store::NamespaceId& namespaceId, const base::Name& assetName) override;
 
     /**
@@ -101,16 +102,16 @@ public:
     /**
      * @copydoc IPolicy::setDefaultParent
      */
-    base::OptError setDefaultParent(const base::Name& policyName,
-                                    const store::NamespaceId& namespaceId,
-                                    const base::Name& assetName) override;
+    base::RespOrError<std::string> setDefaultParent(const base::Name& policyName,
+                                                    const store::NamespaceId& namespaceId,
+                                                    const base::Name& parentName) override;
 
     /**
      * @copydoc IPolicy::delDefaultParent
      */
-    base::OptError delDefaultParent(const base::Name& policyName,
-                                    const store::NamespaceId& namespaceId,
-                                    const base::Name& assetName) override;
+    base::RespOrError<std::string> delDefaultParent(const base::Name& policyName,
+                                                    const store::NamespaceId& namespaceId,
+                                                    const base::Name& parentName) override;
 
     /**
      * @copydoc IPolicy::listNamespaces
@@ -126,6 +127,11 @@ public:
      * @copydoc IPolicy::copy
      */
     base::OptError copy(const base::Name& policyName, const base::Name& newPolicyName) override;
+
+    /**
+     * @copydoc IPolicy::cleanDeleted
+     */
+    base::RespOrError<std::string> cleanDeleted(const base::Name& policyName) override;
 };
 } // namespace api::policy
 

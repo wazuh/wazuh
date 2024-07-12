@@ -514,11 +514,11 @@ INSTANTIATE_TEST_SUITE_P(
                               .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                           expectNsPolicy(store);
                       })),
-        // Validation error
+        // Validation warning
         AddAssetT(POLICY_NAME,
                   "user",
                   "decoder/user/1",
-                  failure(
+                  success(
                       [](auto store, auto validator)
                       {
                           EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
@@ -625,11 +625,11 @@ INSTANTIATE_TEST_SUITE_P(PolicyTest,
                                                       .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                                   expectNsPolicy(store);
                                               })),
-                             // Validation error
+                             // Validation warning
                              DeleteAssetT(POLICY_NAME,
                                           "user",
                                           "decoder/user/0",
-                                          failure(
+                                          success(
                                               [](auto store, auto validator)
                                               {
                                                   EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
@@ -856,11 +856,11 @@ INSTANTIATE_TEST_SUITE_P(
                                       .WillOnce(::testing::Return(base::Error {"error"}));
                                   expectNsPolicy(store);
                               })),
-        // Validation error
+        // Validation warning
         SetDefaultParentT(POLICY_NAME,
                           "wazuh",
                           "decoder/system/0",
-                          failure(
+                          success(
                               [](auto store, auto validator)
                               {
                                   EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
@@ -964,11 +964,11 @@ INSTANTIATE_TEST_SUITE_P(
                                          .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
                                      expectNsPolicy(store);
                                  })),
-        // Validation error
+        // Validation warning
         DeleteDefaultParentT(POLICY_NAME,
                              "user",
                              "decoder/system/0",
-                             failure(
+                             success(
                                  [](auto store, auto validator)
                                  {
                                      EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
@@ -1200,3 +1200,97 @@ INSTANTIATE_TEST_SUITE_P(
                       EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME_2, EqualsJson(POLICY_DOC_2)))
                           .WillOnce(::testing::Return(storeOk()));
                   }))));
+
+/*******************************************************************************
+ * Clean deleted assets from policy
+ ******************************************************************************/
+using CleanDeletedT = std::tuple<base::Name, ExpectedFn<>>;
+using CleanDeleted = PolicyTest<CleanDeletedT>;
+
+TEST_P(CleanDeleted, Clean)
+{
+    auto [policy, expectedFn] = GetParam();
+
+    auto expected = expectedFn(m_store, m_validator);
+    auto res = m_policyManager->cleanDeleted(policy);
+    if (base::isError(expected))
+    {
+        ASSERT_TRUE(base::isError(res));
+    }
+    else
+    {
+        ASSERT_FALSE(base::isError(res)) << "Error: " << base::getError(res).message << std::endl;
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    PolicyTest,
+    CleanDeleted,
+    testing::Values(
+        // Use cases
+        CleanDeletedT("invalid_name", failure()),
+        CleanDeletedT(POLICY_NAME,
+                      failure(
+                          [](auto store, auto) {
+                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                  .WillOnce(::testing::Return(storeReadError<store::Doc>()));
+                          })),
+        CleanDeletedT(POLICY_NAME,
+                      success(
+                          [](auto store, auto validator)
+                          {
+                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                  .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                              EXPECT_CALL(*store, getNamespace({"decoder/system/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceResp("system")));
+                              EXPECT_CALL(*store, getNamespace({"decoder/wazuh/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceError()));
+                              EXPECT_CALL(*store, getNamespace({"decoder/user/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
+                              EXPECT_CALL(*validator, validatePolicy(testing::_))
+                                  .WillOnce(::testing::Return(validateOk()));
+                              EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME, testing::_))
+                                  .WillOnce(::testing::Return(storeOk()));
+                          })),
+        CleanDeletedT(POLICY_NAME,
+                      success(
+                          [](auto store, auto validator)
+                          {
+                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                  .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                              EXPECT_CALL(*store, getNamespace({"decoder/system/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceResp("system")));
+                              EXPECT_CALL(*store, getNamespace({"decoder/wazuh/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceError()));
+                              EXPECT_CALL(*store, getNamespace({"decoder/user/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
+                              EXPECT_CALL(*validator, validatePolicy(testing::_))
+                                  .WillOnce(::testing::Return(validateError()));
+                              EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME, testing::_))
+                                  .WillOnce(::testing::Return(storeOk()));
+                          })),
+        CleanDeletedT(POLICY_NAME,
+                      failure(
+                          [](auto store, auto validator)
+                          {
+                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                  .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                              EXPECT_CALL(*store, getNamespace({"decoder/system/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceResp("system")));
+                              EXPECT_CALL(*store, getNamespace({"decoder/wazuh/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceError()));
+                              EXPECT_CALL(*store, getNamespace({"decoder/user/0"}))
+                                  .WillRepeatedly(testing::Return(storeGetNamespaceResp("user")));
+                              EXPECT_CALL(*validator, validatePolicy(testing::_))
+                                  .WillOnce(::testing::Return(validateError()));
+                              EXPECT_CALL(*store, upsertInternalDoc(POLICY_NAME, testing::_))
+                                  .WillOnce(::testing::Return(storeError()));
+                          })),
+        CleanDeletedT(POLICY_NAME,
+                      failure(
+                          [](auto store, auto validator)
+                          {
+                              EXPECT_CALL(*store, readInternalDoc(POLICY_NAME))
+                                  .WillOnce(::testing::Return(storeReadDocResp(POLICY_DOC)));
+                              expectNsPolicy(store);
+                          }))));

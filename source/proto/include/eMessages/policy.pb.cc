@@ -100,6 +100,22 @@ struct AssetPost_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AssetPost_RequestDefaultTypeInternal _AssetPost_Request_default_instance_;
+PROTOBUF_CONSTEXPR AssetPost_Response::AssetPost_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.warning_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0} {}
+struct AssetPost_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR AssetPost_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~AssetPost_ResponseDefaultTypeInternal() {}
+  union {
+    AssetPost_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AssetPost_ResponseDefaultTypeInternal _AssetPost_Response_default_instance_;
 PROTOBUF_CONSTEXPR AssetDelete_Request::AssetDelete_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
@@ -116,6 +132,22 @@ struct AssetDelete_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AssetDelete_RequestDefaultTypeInternal _AssetDelete_Request_default_instance_;
+PROTOBUF_CONSTEXPR AssetDelete_Response::AssetDelete_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.warning_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0} {}
+struct AssetDelete_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR AssetDelete_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~AssetDelete_ResponseDefaultTypeInternal() {}
+  union {
+    AssetDelete_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AssetDelete_ResponseDefaultTypeInternal _AssetDelete_Response_default_instance_;
 PROTOBUF_CONSTEXPR AssetGet_Request::AssetGet_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
@@ -147,6 +179,36 @@ struct AssetGet_ResponseDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AssetGet_ResponseDefaultTypeInternal _AssetGet_Response_default_instance_;
+PROTOBUF_CONSTEXPR AssetCleanDeleted_Request::AssetCleanDeleted_Request(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.policy_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}} {}
+struct AssetCleanDeleted_RequestDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR AssetCleanDeleted_RequestDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~AssetCleanDeleted_RequestDefaultTypeInternal() {}
+  union {
+    AssetCleanDeleted_Request _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AssetCleanDeleted_RequestDefaultTypeInternal _AssetCleanDeleted_Request_default_instance_;
+PROTOBUF_CONSTEXPR AssetCleanDeleted_Response::AssetCleanDeleted_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.data_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0} {}
+struct AssetCleanDeleted_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR AssetCleanDeleted_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~AssetCleanDeleted_ResponseDefaultTypeInternal() {}
+  union {
+    AssetCleanDeleted_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 AssetCleanDeleted_ResponseDefaultTypeInternal _AssetCleanDeleted_Response_default_instance_;
 PROTOBUF_CONSTEXPR DefaultParentGet_Request::DefaultParentGet_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
@@ -194,6 +256,22 @@ struct DefaultParentPost_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DefaultParentPost_RequestDefaultTypeInternal _DefaultParentPost_Request_default_instance_;
+PROTOBUF_CONSTEXPR DefaultParentPost_Response::DefaultParentPost_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.warning_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0} {}
+struct DefaultParentPost_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DefaultParentPost_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~DefaultParentPost_ResponseDefaultTypeInternal() {}
+  union {
+    DefaultParentPost_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DefaultParentPost_ResponseDefaultTypeInternal _DefaultParentPost_Response_default_instance_;
 PROTOBUF_CONSTEXPR DefaultParentDelete_Request::DefaultParentDelete_Request(
     ::_pbi::ConstantInitialized): _impl_{
     /*decltype(_impl_._has_bits_)*/{}
@@ -210,6 +288,22 @@ struct DefaultParentDelete_RequestDefaultTypeInternal {
   };
 };
 PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DefaultParentDelete_RequestDefaultTypeInternal _DefaultParentDelete_Request_default_instance_;
+PROTOBUF_CONSTEXPR DefaultParentDelete_Response::DefaultParentDelete_Response(
+    ::_pbi::ConstantInitialized): _impl_{
+    /*decltype(_impl_._has_bits_)*/{}
+  , /*decltype(_impl_._cached_size_)*/{}
+  , /*decltype(_impl_.error_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.warning_)*/{&::_pbi::fixed_address_empty_string, ::_pbi::ConstantInitialized{}}
+  , /*decltype(_impl_.status_)*/0} {}
+struct DefaultParentDelete_ResponseDefaultTypeInternal {
+  PROTOBUF_CONSTEXPR DefaultParentDelete_ResponseDefaultTypeInternal()
+      : _instance(::_pbi::ConstantInitialized{}) {}
+  ~DefaultParentDelete_ResponseDefaultTypeInternal() {}
+  union {
+    DefaultParentDelete_Response _instance;
+  };
+};
+PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORITY1 DefaultParentDelete_ResponseDefaultTypeInternal _DefaultParentDelete_Response_default_instance_;
 PROTOBUF_CONSTEXPR PoliciesGet_Request::PoliciesGet_Request(
     ::_pbi::ConstantInitialized) {}
 struct PoliciesGet_RequestDefaultTypeInternal {
@@ -272,7 +366,7 @@ PROTOBUF_ATTRIBUTE_NO_DESTROY PROTOBUF_CONSTINIT PROTOBUF_ATTRIBUTE_INIT_PRIORIT
 }  // namespace api
 }  // namespace wazuh
 }  // namespace com
-static ::_pb::Metadata file_level_metadata_policy_2eproto[16];
+static ::_pb::Metadata file_level_metadata_policy_2eproto[22];
 static constexpr ::_pb::EnumDescriptor const** file_level_enum_descriptors_policy_2eproto = nullptr;
 static constexpr ::_pb::ServiceDescriptor const** file_level_service_descriptors_policy_2eproto = nullptr;
 
@@ -327,6 +421,18 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   0,
   1,
   2,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetPost_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetPost_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetPost_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetPost_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetPost_Response, _impl_.warning_),
+  ~0u,
+  0,
+  1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetDelete_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetDelete_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -339,6 +445,18 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   0,
   1,
   2,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetDelete_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetDelete_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetDelete_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetDelete_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetDelete_Response, _impl_.warning_),
+  ~0u,
+  0,
+  1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetGet_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -361,6 +479,26 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   ~0u,
   0,
   ~0u,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Request, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Request, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Request, _impl_.policy_),
+  0,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::AssetCleanDeleted_Response, _impl_.data_),
+  ~0u,
+  0,
+  1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentGet_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -395,6 +533,18 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   0,
   1,
   2,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentPost_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentPost_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentPost_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentPost_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentPost_Response, _impl_.warning_),
+  ~0u,
+  0,
+  1,
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Request, _impl_._has_bits_),
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -407,6 +557,18 @@ const uint32_t TableStruct_policy_2eproto::offsets[] PROTOBUF_SECTION_VARIABLE(p
   0,
   1,
   2,
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Response, _impl_._has_bits_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Response, _internal_metadata_),
+  ~0u,  // no _extensions_
+  ~0u,  // no _oneof_case_
+  ~0u,  // no _weak_field_map_
+  ~0u,  // no _inlined_string_donated_
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Response, _impl_.status_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Response, _impl_.error_),
+  PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::DefaultParentDelete_Response, _impl_.warning_),
+  ~0u,
+  0,
+  1,
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::com::wazuh::api::engine::policy::PoliciesGet_Request, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -452,17 +614,23 @@ static const ::_pbi::MigrationSchema schemas[] PROTOBUF_SECTION_VARIABLE(protode
   { 16, 24, -1, sizeof(::com::wazuh::api::engine::policy::StoreGet_Request)},
   { 26, 35, -1, sizeof(::com::wazuh::api::engine::policy::StoreGet_Response)},
   { 38, 47, -1, sizeof(::com::wazuh::api::engine::policy::AssetPost_Request)},
-  { 50, 59, -1, sizeof(::com::wazuh::api::engine::policy::AssetDelete_Request)},
-  { 62, 70, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Request)},
-  { 72, 81, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Response)},
-  { 84, 92, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Request)},
-  { 94, 103, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Response)},
-  { 106, 115, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentPost_Request)},
-  { 118, 127, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Request)},
-  { 130, -1, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Request)},
-  { 136, 145, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Response)},
-  { 148, 155, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Request)},
-  { 156, 165, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Response)},
+  { 50, 59, -1, sizeof(::com::wazuh::api::engine::policy::AssetPost_Response)},
+  { 62, 71, -1, sizeof(::com::wazuh::api::engine::policy::AssetDelete_Request)},
+  { 74, 83, -1, sizeof(::com::wazuh::api::engine::policy::AssetDelete_Response)},
+  { 86, 94, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Request)},
+  { 96, 105, -1, sizeof(::com::wazuh::api::engine::policy::AssetGet_Response)},
+  { 108, 115, -1, sizeof(::com::wazuh::api::engine::policy::AssetCleanDeleted_Request)},
+  { 116, 125, -1, sizeof(::com::wazuh::api::engine::policy::AssetCleanDeleted_Response)},
+  { 128, 136, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Request)},
+  { 138, 147, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentGet_Response)},
+  { 150, 159, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentPost_Request)},
+  { 162, 171, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentPost_Response)},
+  { 174, 183, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Request)},
+  { 186, 195, -1, sizeof(::com::wazuh::api::engine::policy::DefaultParentDelete_Response)},
+  { 198, -1, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Request)},
+  { 204, 213, -1, sizeof(::com::wazuh::api::engine::policy::PoliciesGet_Response)},
+  { 216, 223, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Request)},
+  { 224, 233, -1, sizeof(::com::wazuh::api::engine::policy::NamespacesGet_Response)},
 };
 
 static const ::_pb::Message* const file_default_instances[] = {
@@ -471,13 +639,19 @@ static const ::_pb::Message* const file_default_instances[] = {
   &::com::wazuh::api::engine::policy::_StoreGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_StoreGet_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_AssetPost_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_AssetPost_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_AssetDelete_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_AssetDelete_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_AssetGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_AssetGet_Response_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_AssetCleanDeleted_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_AssetCleanDeleted_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_DefaultParentGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_DefaultParentGet_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_DefaultParentPost_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_DefaultParentPost_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_DefaultParentDelete_Request_default_instance_._instance,
+  &::com::wazuh::api::engine::policy::_DefaultParentDelete_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_PoliciesGet_Request_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_PoliciesGet_Response_default_instance_._instance,
   &::com::wazuh::api::engine::policy::_NamespacesGet_Request_default_instance_._instance,
@@ -497,44 +671,64 @@ const char descriptor_table_protodef_policy_2eproto[] PROTOBUF_SECTION_VARIABLE(
   "B\007\n\005_data\"w\n\021AssetPost_Request\022\023\n\006policy"
   "\030\001 \001(\tH\000\210\001\001\022\022\n\005asset\030\002 \001(\tH\001\210\001\001\022\026\n\tnames"
   "pace\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\010\n\006_assetB\014\n\n"
-  "_namespace\"y\n\023AssetDelete_Request\022\023\n\006pol"
-  "icy\030\001 \001(\tH\000\210\001\001\022\022\n\005asset\030\002 \001(\tH\001\210\001\001\022\026\n\tna"
-  "mespace\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\010\n\006_assetB"
-  "\014\n\n_namespace\"X\n\020AssetGet_Request\022\023\n\006pol"
+  "_namespace\"\210\001\n\022AssetPost_Response\0222\n\006sta"
+  "tus\030\001 \001(\0162\".com.wazuh.api.engine.ReturnS"
+  "tatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\024\n\007warning\030\003 \001"
+  "(\tH\001\210\001\001B\010\n\006_errorB\n\n\010_warning\"y\n\023AssetDe"
+  "lete_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\022\n\005ass"
+  "et\030\002 \001(\tH\001\210\001\001\022\026\n\tnamespace\030\003 \001(\tH\002\210\001\001B\t\n"
+  "\007_policyB\010\n\006_assetB\014\n\n_namespace\"\212\001\n\024Ass"
+  "etDelete_Response\0222\n\006status\030\001 \001(\0162\".com."
+  "wazuh.api.engine.ReturnStatus\022\022\n\005error\030\002"
+  " \001(\tH\000\210\001\001\022\024\n\007warning\030\003 \001(\tH\001\210\001\001B\010\n\006_erro"
+  "rB\n\n\010_warning\"X\n\020AssetGet_Request\022\023\n\006pol"
   "icy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001B\t"
   "\n\007_policyB\014\n\n_namespace\"s\n\021AssetGet_Resp"
   "onse\0222\n\006status\030\001 \001(\0162\".com.wazuh.api.eng"
   "ine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004"
-  "data\030\003 \003(\tB\010\n\006_error\"`\n\030DefaultParentGet"
-  "_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespa"
-  "ce\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace\"{"
-  "\n\031DefaultParentGet_Response\0222\n\006status\030\001 "
-  "\001(\0162\".com.wazuh.api.engine.ReturnStatus\022"
-  "\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_er"
-  "ror\"\201\001\n\031DefaultParentPost_Request\022\023\n\006pol"
-  "icy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001\022\023"
-  "\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\014\n\n_names"
-  "paceB\t\n\007_parent\"\203\001\n\033DefaultParentDelete_"
-  "Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespac"
-  "e\030\002 \001(\tH\001\210\001\001\022\023\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_po"
-  "licyB\014\n\n_namespaceB\t\n\007_parent\"\025\n\023Policie"
-  "sGet_Request\"v\n\024PoliciesGet_Response\0222\n\006"
-  "status\030\001 \001(\0162\".com.wazuh.api.engine.Retu"
-  "rnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003"
-  "(\tB\010\n\006_error\"7\n\025NamespacesGet_Request\022\023\n"
-  "\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007_policy\"x\n\026Namespa"
-  "cesGet_Response\0222\n\006status\030\001 \001(\0162\".com.wa"
-  "zuh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001"
-  "(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_errorb\006proto3"
+  "data\030\003 \003(\tB\010\n\006_error\";\n\031AssetCleanDelete"
+  "d_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007_polic"
+  "y\"\212\001\n\032AssetCleanDeleted_Response\0222\n\006stat"
+  "us\030\001 \001(\0162\".com.wazuh.api.engine.ReturnSt"
+  "atus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\021\n\004data\030\003 \001(\tH\001"
+  "\210\001\001B\010\n\006_errorB\007\n\005_data\"`\n\030DefaultParentG"
+  "et_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnames"
+  "pace\030\002 \001(\tH\001\210\001\001B\t\n\007_policyB\014\n\n_namespace"
+  "\"{\n\031DefaultParentGet_Response\0222\n\006status\030"
+  "\001 \001(\0162\".com.wazuh.api.engine.ReturnStatu"
+  "s\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_"
+  "error\"\201\001\n\031DefaultParentPost_Request\022\023\n\006p"
+  "olicy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001\001"
+  "\022\023\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\014\n\n_nam"
+  "espaceB\t\n\007_parent\"\220\001\n\032DefaultParentPost_"
+  "Response\0222\n\006status\030\001 \001(\0162\".com.wazuh.api"
+  ".engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001"
+  "\022\024\n\007warning\030\003 \001(\tH\001\210\001\001B\010\n\006_errorB\n\n\010_war"
+  "ning\"\203\001\n\033DefaultParentDelete_Request\022\023\n\006"
+  "policy\030\001 \001(\tH\000\210\001\001\022\026\n\tnamespace\030\002 \001(\tH\001\210\001"
+  "\001\022\023\n\006parent\030\003 \001(\tH\002\210\001\001B\t\n\007_policyB\014\n\n_na"
+  "mespaceB\t\n\007_parent\"\222\001\n\034DefaultParentDele"
+  "te_Response\0222\n\006status\030\001 \001(\0162\".com.wazuh."
+  "api.engine.ReturnStatus\022\022\n\005error\030\002 \001(\tH\000"
+  "\210\001\001\022\024\n\007warning\030\003 \001(\tH\001\210\001\001B\010\n\006_errorB\n\n\010_"
+  "warning\"\025\n\023PoliciesGet_Request\"v\n\024Polici"
+  "esGet_Response\0222\n\006status\030\001 \001(\0162\".com.waz"
+  "uh.api.engine.ReturnStatus\022\022\n\005error\030\002 \001("
+  "\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB\010\n\006_error\"7\n\025Namesp"
+  "acesGet_Request\022\023\n\006policy\030\001 \001(\tH\000\210\001\001B\t\n\007"
+  "_policy\"x\n\026NamespacesGet_Response\0222\n\006sta"
+  "tus\030\001 \001(\0162\".com.wazuh.api.engine.ReturnS"
+  "tatus\022\022\n\005error\030\002 \001(\tH\000\210\001\001\022\014\n\004data\030\003 \003(\tB"
+  "\010\n\006_errorb\006proto3"
   ;
 static const ::_pbi::DescriptorTable* const descriptor_table_policy_2eproto_deps[1] = {
   &::descriptor_table_engine_2eproto,
 };
 static ::_pbi::once_flag descriptor_table_policy_2eproto_once;
 const ::_pbi::DescriptorTable descriptor_table_policy_2eproto = {
-    false, false, 1639, descriptor_table_protodef_policy_2eproto,
+    false, false, 2417, descriptor_table_protodef_policy_2eproto,
     "policy.proto",
-    &descriptor_table_policy_2eproto_once, descriptor_table_policy_2eproto_deps, 1, 16,
+    &descriptor_table_policy_2eproto_once, descriptor_table_policy_2eproto_deps, 1, 22,
     schemas, file_default_instances, TableStruct_policy_2eproto::offsets,
     file_level_metadata_policy_2eproto, file_level_enum_descriptors_policy_2eproto,
     file_level_service_descriptors_policy_2eproto,
@@ -1886,6 +2080,315 @@ void AssetPost_Request::InternalSwap(AssetPost_Request* other) {
 
 // ===================================================================
 
+class AssetPost_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<AssetPost_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_warning(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+AssetPost_Response::AssetPost_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.AssetPost_Response)
+}
+AssetPost_Response::AssetPost_Response(const AssetPost_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  AssetPost_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_warning()) {
+    _this->_impl_.warning_.Set(from._internal_warning(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.AssetPost_Response)
+}
+
+inline void AssetPost_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){0}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+AssetPost_Response::~AssetPost_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.AssetPost_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void AssetPost_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.error_.Destroy();
+  _impl_.warning_.Destroy();
+}
+
+void AssetPost_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void AssetPost_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.AssetPost_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.error_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.warning_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_.status_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* AssetPost_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.AssetPost_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string warning = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_warning();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.AssetPost_Response.warning"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* AssetPost_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.AssetPost_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.AssetPost_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // optional string warning = 3;
+  if (_internal_has_warning()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_warning().data(), static_cast<int>(this->_internal_warning().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.AssetPost_Response.warning");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_warning(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.AssetPost_Response)
+  return target;
+}
+
+size_t AssetPost_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.AssetPost_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional string error = 2;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_error());
+    }
+
+    // optional string warning = 3;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_warning());
+    }
+
+  }
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData AssetPost_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    AssetPost_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*AssetPost_Response::GetClassData() const { return &_class_data_; }
+
+
+void AssetPost_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<AssetPost_Response*>(&to_msg);
+  auto& from = static_cast<const AssetPost_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.AssetPost_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_error(from._internal_error());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_warning(from._internal_warning());
+    }
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void AssetPost_Response::CopyFrom(const AssetPost_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.AssetPost_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool AssetPost_Response::IsInitialized() const {
+  return true;
+}
+
+void AssetPost_Response::InternalSwap(AssetPost_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.warning_, lhs_arena,
+      &other->_impl_.warning_, rhs_arena
+  );
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata AssetPost_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[5]);
+}
+
+// ===================================================================
+
 class AssetDelete_Request::_Internal {
  public:
   using HasBits = decltype(std::declval<AssetDelete_Request>()._impl_._has_bits_);
@@ -2215,7 +2718,316 @@ void AssetDelete_Request::InternalSwap(AssetDelete_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AssetDelete_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[5]);
+      file_level_metadata_policy_2eproto[6]);
+}
+
+// ===================================================================
+
+class AssetDelete_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<AssetDelete_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_warning(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+AssetDelete_Response::AssetDelete_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.AssetDelete_Response)
+}
+AssetDelete_Response::AssetDelete_Response(const AssetDelete_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  AssetDelete_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_warning()) {
+    _this->_impl_.warning_.Set(from._internal_warning(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.AssetDelete_Response)
+}
+
+inline void AssetDelete_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){0}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+AssetDelete_Response::~AssetDelete_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.AssetDelete_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void AssetDelete_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.error_.Destroy();
+  _impl_.warning_.Destroy();
+}
+
+void AssetDelete_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void AssetDelete_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.AssetDelete_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.error_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.warning_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_.status_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* AssetDelete_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.AssetDelete_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string warning = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_warning();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.AssetDelete_Response.warning"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* AssetDelete_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.AssetDelete_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.AssetDelete_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // optional string warning = 3;
+  if (_internal_has_warning()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_warning().data(), static_cast<int>(this->_internal_warning().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.AssetDelete_Response.warning");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_warning(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.AssetDelete_Response)
+  return target;
+}
+
+size_t AssetDelete_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.AssetDelete_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional string error = 2;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_error());
+    }
+
+    // optional string warning = 3;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_warning());
+    }
+
+  }
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData AssetDelete_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    AssetDelete_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*AssetDelete_Response::GetClassData() const { return &_class_data_; }
+
+
+void AssetDelete_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<AssetDelete_Response*>(&to_msg);
+  auto& from = static_cast<const AssetDelete_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.AssetDelete_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_error(from._internal_error());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_warning(from._internal_warning());
+    }
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void AssetDelete_Response::CopyFrom(const AssetDelete_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.AssetDelete_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool AssetDelete_Response::IsInitialized() const {
+  return true;
+}
+
+void AssetDelete_Response::InternalSwap(AssetDelete_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.warning_, lhs_arena,
+      &other->_impl_.warning_, rhs_arena
+  );
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata AssetDelete_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[7]);
 }
 
 // ===================================================================
@@ -2494,7 +3306,7 @@ void AssetGet_Request::InternalSwap(AssetGet_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AssetGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[6]);
+      file_level_metadata_policy_2eproto[8]);
 }
 
 // ===================================================================
@@ -2780,7 +3592,533 @@ void AssetGet_Response::InternalSwap(AssetGet_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata AssetGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[7]);
+      file_level_metadata_policy_2eproto[9]);
+}
+
+// ===================================================================
+
+class AssetCleanDeleted_Request::_Internal {
+ public:
+  using HasBits = decltype(std::declval<AssetCleanDeleted_Request>()._impl_._has_bits_);
+  static void set_has_policy(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+};
+
+AssetCleanDeleted_Request::AssetCleanDeleted_Request(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+}
+AssetCleanDeleted_Request::AssetCleanDeleted_Request(const AssetCleanDeleted_Request& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  AssetCleanDeleted_Request* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.policy_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.policy_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_policy()) {
+    _this->_impl_.policy_.Set(from._internal_policy(), 
+      _this->GetArenaForAllocation());
+  }
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+}
+
+inline void AssetCleanDeleted_Request::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.policy_){}
+  };
+  _impl_.policy_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.policy_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+AssetCleanDeleted_Request::~AssetCleanDeleted_Request() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void AssetCleanDeleted_Request::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.policy_.Destroy();
+}
+
+void AssetCleanDeleted_Request::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void AssetCleanDeleted_Request::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    _impl_.policy_.ClearNonDefaultToEmpty();
+  }
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* AssetCleanDeleted_Request::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // optional string policy = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 10)) {
+          auto str = _internal_mutable_policy();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.AssetCleanDeleted_Request.policy"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* AssetCleanDeleted_Request::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // optional string policy = 1;
+  if (_internal_has_policy()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_policy().data(), static_cast<int>(this->_internal_policy().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.AssetCleanDeleted_Request.policy");
+    target = stream->WriteStringMaybeAliased(
+        1, this->_internal_policy(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+  return target;
+}
+
+size_t AssetCleanDeleted_Request::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  // optional string policy = 1;
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000001u) {
+    total_size += 1 +
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+        this->_internal_policy());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData AssetCleanDeleted_Request::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    AssetCleanDeleted_Request::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*AssetCleanDeleted_Request::GetClassData() const { return &_class_data_; }
+
+
+void AssetCleanDeleted_Request::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<AssetCleanDeleted_Request*>(&to_msg);
+  auto& from = static_cast<const AssetCleanDeleted_Request&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  if (from._internal_has_policy()) {
+    _this->_internal_set_policy(from._internal_policy());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void AssetCleanDeleted_Request::CopyFrom(const AssetCleanDeleted_Request& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Request)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool AssetCleanDeleted_Request::IsInitialized() const {
+  return true;
+}
+
+void AssetCleanDeleted_Request::InternalSwap(AssetCleanDeleted_Request* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.policy_, lhs_arena,
+      &other->_impl_.policy_, rhs_arena
+  );
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata AssetCleanDeleted_Request::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[10]);
+}
+
+// ===================================================================
+
+class AssetCleanDeleted_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<AssetCleanDeleted_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_data(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+AssetCleanDeleted_Response::AssetCleanDeleted_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+}
+AssetCleanDeleted_Response::AssetCleanDeleted_Response(const AssetCleanDeleted_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  AssetCleanDeleted_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.data_){}
+    , decltype(_impl_.status_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.data_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.data_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_data()) {
+    _this->_impl_.data_.Set(from._internal_data(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+}
+
+inline void AssetCleanDeleted_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.data_){}
+    , decltype(_impl_.status_){0}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.data_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.data_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+AssetCleanDeleted_Response::~AssetCleanDeleted_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void AssetCleanDeleted_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.error_.Destroy();
+  _impl_.data_.Destroy();
+}
+
+void AssetCleanDeleted_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void AssetCleanDeleted_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.error_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.data_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_.status_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* AssetCleanDeleted_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.AssetCleanDeleted_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string data = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_data();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.AssetCleanDeleted_Response.data"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* AssetCleanDeleted_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.AssetCleanDeleted_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // optional string data = 3;
+  if (_internal_has_data()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_data().data(), static_cast<int>(this->_internal_data().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.AssetCleanDeleted_Response.data");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_data(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+  return target;
+}
+
+size_t AssetCleanDeleted_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional string error = 2;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_error());
+    }
+
+    // optional string data = 3;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_data());
+    }
+
+  }
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData AssetCleanDeleted_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    AssetCleanDeleted_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*AssetCleanDeleted_Response::GetClassData() const { return &_class_data_; }
+
+
+void AssetCleanDeleted_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<AssetCleanDeleted_Response*>(&to_msg);
+  auto& from = static_cast<const AssetCleanDeleted_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_error(from._internal_error());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_data(from._internal_data());
+    }
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void AssetCleanDeleted_Response::CopyFrom(const AssetCleanDeleted_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.AssetCleanDeleted_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool AssetCleanDeleted_Response::IsInitialized() const {
+  return true;
+}
+
+void AssetCleanDeleted_Response::InternalSwap(AssetCleanDeleted_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.data_, lhs_arena,
+      &other->_impl_.data_, rhs_arena
+  );
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata AssetCleanDeleted_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[11]);
 }
 
 // ===================================================================
@@ -3059,7 +4397,7 @@ void DefaultParentGet_Request::InternalSwap(DefaultParentGet_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata DefaultParentGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[8]);
+      file_level_metadata_policy_2eproto[12]);
 }
 
 // ===================================================================
@@ -3345,7 +4683,7 @@ void DefaultParentGet_Response::InternalSwap(DefaultParentGet_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata DefaultParentGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[9]);
+      file_level_metadata_policy_2eproto[13]);
 }
 
 // ===================================================================
@@ -3679,7 +5017,316 @@ void DefaultParentPost_Request::InternalSwap(DefaultParentPost_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata DefaultParentPost_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[10]);
+      file_level_metadata_policy_2eproto[14]);
+}
+
+// ===================================================================
+
+class DefaultParentPost_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<DefaultParentPost_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_warning(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+DefaultParentPost_Response::DefaultParentPost_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+}
+DefaultParentPost_Response::DefaultParentPost_Response(const DefaultParentPost_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  DefaultParentPost_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_warning()) {
+    _this->_impl_.warning_.Set(from._internal_warning(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+}
+
+inline void DefaultParentPost_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){0}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+DefaultParentPost_Response::~DefaultParentPost_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void DefaultParentPost_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.error_.Destroy();
+  _impl_.warning_.Destroy();
+}
+
+void DefaultParentPost_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void DefaultParentPost_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.error_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.warning_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_.status_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* DefaultParentPost_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentPost_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string warning = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_warning();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentPost_Response.warning"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* DefaultParentPost_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.DefaultParentPost_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // optional string warning = 3;
+  if (_internal_has_warning()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_warning().data(), static_cast<int>(this->_internal_warning().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.DefaultParentPost_Response.warning");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_warning(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+  return target;
+}
+
+size_t DefaultParentPost_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional string error = 2;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_error());
+    }
+
+    // optional string warning = 3;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_warning());
+    }
+
+  }
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DefaultParentPost_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    DefaultParentPost_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DefaultParentPost_Response::GetClassData() const { return &_class_data_; }
+
+
+void DefaultParentPost_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DefaultParentPost_Response*>(&to_msg);
+  auto& from = static_cast<const DefaultParentPost_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_error(from._internal_error());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_warning(from._internal_warning());
+    }
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void DefaultParentPost_Response::CopyFrom(const DefaultParentPost_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.DefaultParentPost_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool DefaultParentPost_Response::IsInitialized() const {
+  return true;
+}
+
+void DefaultParentPost_Response::InternalSwap(DefaultParentPost_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.warning_, lhs_arena,
+      &other->_impl_.warning_, rhs_arena
+  );
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata DefaultParentPost_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[15]);
 }
 
 // ===================================================================
@@ -4013,7 +5660,316 @@ void DefaultParentDelete_Request::InternalSwap(DefaultParentDelete_Request* othe
 ::PROTOBUF_NAMESPACE_ID::Metadata DefaultParentDelete_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[11]);
+      file_level_metadata_policy_2eproto[16]);
+}
+
+// ===================================================================
+
+class DefaultParentDelete_Response::_Internal {
+ public:
+  using HasBits = decltype(std::declval<DefaultParentDelete_Response>()._impl_._has_bits_);
+  static void set_has_error(HasBits* has_bits) {
+    (*has_bits)[0] |= 1u;
+  }
+  static void set_has_warning(HasBits* has_bits) {
+    (*has_bits)[0] |= 2u;
+  }
+};
+
+DefaultParentDelete_Response::DefaultParentDelete_Response(::PROTOBUF_NAMESPACE_ID::Arena* arena,
+                         bool is_message_owned)
+  : ::PROTOBUF_NAMESPACE_ID::Message(arena, is_message_owned) {
+  SharedCtor(arena, is_message_owned);
+  // @@protoc_insertion_point(arena_constructor:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+}
+DefaultParentDelete_Response::DefaultParentDelete_Response(const DefaultParentDelete_Response& from)
+  : ::PROTOBUF_NAMESPACE_ID::Message() {
+  DefaultParentDelete_Response* const _this = this; (void)_this;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){from._impl_._has_bits_}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){}};
+
+  _internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_error()) {
+    _this->_impl_.error_.Set(from._internal_error(), 
+      _this->GetArenaForAllocation());
+  }
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  if (from._internal_has_warning()) {
+    _this->_impl_.warning_.Set(from._internal_warning(), 
+      _this->GetArenaForAllocation());
+  }
+  _this->_impl_.status_ = from._impl_.status_;
+  // @@protoc_insertion_point(copy_constructor:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+}
+
+inline void DefaultParentDelete_Response::SharedCtor(
+    ::_pb::Arena* arena, bool is_message_owned) {
+  (void)arena;
+  (void)is_message_owned;
+  new (&_impl_) Impl_{
+      decltype(_impl_._has_bits_){}
+    , /*decltype(_impl_._cached_size_)*/{}
+    , decltype(_impl_.error_){}
+    , decltype(_impl_.warning_){}
+    , decltype(_impl_.status_){0}
+  };
+  _impl_.error_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.error_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+  _impl_.warning_.InitDefault();
+  #ifdef PROTOBUF_FORCE_COPY_DEFAULT_STRING
+    _impl_.warning_.Set("", GetArenaForAllocation());
+  #endif // PROTOBUF_FORCE_COPY_DEFAULT_STRING
+}
+
+DefaultParentDelete_Response::~DefaultParentDelete_Response() {
+  // @@protoc_insertion_point(destructor:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+  if (auto *arena = _internal_metadata_.DeleteReturnArena<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>()) {
+  (void)arena;
+    return;
+  }
+  SharedDtor();
+}
+
+inline void DefaultParentDelete_Response::SharedDtor() {
+  GOOGLE_DCHECK(GetArenaForAllocation() == nullptr);
+  _impl_.error_.Destroy();
+  _impl_.warning_.Destroy();
+}
+
+void DefaultParentDelete_Response::SetCachedSize(int size) const {
+  _impl_._cached_size_.Set(size);
+}
+
+void DefaultParentDelete_Response::Clear() {
+// @@protoc_insertion_point(message_clear_start:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _impl_.error_.ClearNonDefaultToEmpty();
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _impl_.warning_.ClearNonDefaultToEmpty();
+    }
+  }
+  _impl_.status_ = 0;
+  _impl_._has_bits_.Clear();
+  _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
+}
+
+const char* DefaultParentDelete_Response::_InternalParse(const char* ptr, ::_pbi::ParseContext* ctx) {
+#define CHK_(x) if (PROTOBUF_PREDICT_FALSE(!(x))) goto failure
+  _Internal::HasBits has_bits{};
+  while (!ctx->Done(&ptr)) {
+    uint32_t tag;
+    ptr = ::_pbi::ReadTag(ptr, &tag);
+    switch (tag >> 3) {
+      // .com.wazuh.api.engine.ReturnStatus status = 1;
+      case 1:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 8)) {
+          uint64_t val = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          CHK_(ptr);
+          _internal_set_status(static_cast<::com::wazuh::api::engine::ReturnStatus>(val));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string error = 2;
+      case 2:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 18)) {
+          auto str = _internal_mutable_error();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentDelete_Response.error"));
+        } else
+          goto handle_unusual;
+        continue;
+      // optional string warning = 3;
+      case 3:
+        if (PROTOBUF_PREDICT_TRUE(static_cast<uint8_t>(tag) == 26)) {
+          auto str = _internal_mutable_warning();
+          ptr = ::_pbi::InlineGreedyStringParser(str, ptr, ctx);
+          CHK_(ptr);
+          CHK_(::_pbi::VerifyUTF8(str, "com.wazuh.api.engine.policy.DefaultParentDelete_Response.warning"));
+        } else
+          goto handle_unusual;
+        continue;
+      default:
+        goto handle_unusual;
+    }  // switch
+  handle_unusual:
+    if ((tag == 0) || ((tag & 7) == 4)) {
+      CHK_(ptr);
+      ctx->SetLastTag(tag);
+      goto message_done;
+    }
+    ptr = UnknownFieldParse(
+        tag,
+        _internal_metadata_.mutable_unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(),
+        ptr, ctx);
+    CHK_(ptr != nullptr);
+  }  // while
+message_done:
+  _impl_._has_bits_.Or(has_bits);
+  return ptr;
+failure:
+  ptr = nullptr;
+  goto message_done;
+#undef CHK_
+}
+
+uint8_t* DefaultParentDelete_Response::_InternalSerialize(
+    uint8_t* target, ::PROTOBUF_NAMESPACE_ID::io::EpsCopyOutputStream* stream) const {
+  // @@protoc_insertion_point(serialize_to_array_start:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    target = stream->EnsureSpace(target);
+    target = ::_pbi::WireFormatLite::WriteEnumToArray(
+      1, this->_internal_status(), target);
+  }
+
+  // optional string error = 2;
+  if (_internal_has_error()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_error().data(), static_cast<int>(this->_internal_error().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.DefaultParentDelete_Response.error");
+    target = stream->WriteStringMaybeAliased(
+        2, this->_internal_error(), target);
+  }
+
+  // optional string warning = 3;
+  if (_internal_has_warning()) {
+    ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::VerifyUtf8String(
+      this->_internal_warning().data(), static_cast<int>(this->_internal_warning().length()),
+      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::SERIALIZE,
+      "com.wazuh.api.engine.policy.DefaultParentDelete_Response.warning");
+    target = stream->WriteStringMaybeAliased(
+        3, this->_internal_warning(), target);
+  }
+
+  if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
+    target = ::_pbi::WireFormat::InternalSerializeUnknownFieldsToArray(
+        _internal_metadata_.unknown_fields<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(::PROTOBUF_NAMESPACE_ID::UnknownFieldSet::default_instance), target, stream);
+  }
+  // @@protoc_insertion_point(serialize_to_array_end:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+  return target;
+}
+
+size_t DefaultParentDelete_Response::ByteSizeLong() const {
+// @@protoc_insertion_point(message_byte_size_start:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+  size_t total_size = 0;
+
+  uint32_t cached_has_bits = 0;
+  // Prevent compiler warnings about cached_has_bits being unused
+  (void) cached_has_bits;
+
+  cached_has_bits = _impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    // optional string error = 2;
+    if (cached_has_bits & 0x00000001u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_error());
+    }
+
+    // optional string warning = 3;
+    if (cached_has_bits & 0x00000002u) {
+      total_size += 1 +
+        ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::StringSize(
+          this->_internal_warning());
+    }
+
+  }
+  // .com.wazuh.api.engine.ReturnStatus status = 1;
+  if (this->_internal_status() != 0) {
+    total_size += 1 +
+      ::_pbi::WireFormatLite::EnumSize(this->_internal_status());
+  }
+
+  return MaybeComputeUnknownFieldsSize(total_size, &_impl_._cached_size_);
+}
+
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData DefaultParentDelete_Response::_class_data_ = {
+    ::PROTOBUF_NAMESPACE_ID::Message::CopyWithSourceCheck,
+    DefaultParentDelete_Response::MergeImpl
+};
+const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*DefaultParentDelete_Response::GetClassData() const { return &_class_data_; }
+
+
+void DefaultParentDelete_Response::MergeImpl(::PROTOBUF_NAMESPACE_ID::Message& to_msg, const ::PROTOBUF_NAMESPACE_ID::Message& from_msg) {
+  auto* const _this = static_cast<DefaultParentDelete_Response*>(&to_msg);
+  auto& from = static_cast<const DefaultParentDelete_Response&>(from_msg);
+  // @@protoc_insertion_point(class_specific_merge_from_start:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+  GOOGLE_DCHECK_NE(&from, _this);
+  uint32_t cached_has_bits = 0;
+  (void) cached_has_bits;
+
+  cached_has_bits = from._impl_._has_bits_[0];
+  if (cached_has_bits & 0x00000003u) {
+    if (cached_has_bits & 0x00000001u) {
+      _this->_internal_set_error(from._internal_error());
+    }
+    if (cached_has_bits & 0x00000002u) {
+      _this->_internal_set_warning(from._internal_warning());
+    }
+  }
+  if (from._internal_status() != 0) {
+    _this->_internal_set_status(from._internal_status());
+  }
+  _this->_internal_metadata_.MergeFrom<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(from._internal_metadata_);
+}
+
+void DefaultParentDelete_Response::CopyFrom(const DefaultParentDelete_Response& from) {
+// @@protoc_insertion_point(class_specific_copy_from_start:com.wazuh.api.engine.policy.DefaultParentDelete_Response)
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool DefaultParentDelete_Response::IsInitialized() const {
+  return true;
+}
+
+void DefaultParentDelete_Response::InternalSwap(DefaultParentDelete_Response* other) {
+  using std::swap;
+  auto* lhs_arena = GetArenaForAllocation();
+  auto* rhs_arena = other->GetArenaForAllocation();
+  _internal_metadata_.InternalSwap(&other->_internal_metadata_);
+  swap(_impl_._has_bits_[0], other->_impl_._has_bits_[0]);
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.error_, lhs_arena,
+      &other->_impl_.error_, rhs_arena
+  );
+  ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr::InternalSwap(
+      &_impl_.warning_, lhs_arena,
+      &other->_impl_.warning_, rhs_arena
+  );
+  swap(_impl_.status_, other->_impl_.status_);
+}
+
+::PROTOBUF_NAMESPACE_ID::Metadata DefaultParentDelete_Response::GetMetadata() const {
+  return ::_pbi::AssignDescriptors(
+      &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
+      file_level_metadata_policy_2eproto[17]);
 }
 
 // ===================================================================
@@ -4053,7 +6009,7 @@ const ::PROTOBUF_NAMESPACE_ID::Message::ClassData*PoliciesGet_Request::GetClassD
 ::PROTOBUF_NAMESPACE_ID::Metadata PoliciesGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[12]);
+      file_level_metadata_policy_2eproto[18]);
 }
 
 // ===================================================================
@@ -4339,7 +6295,7 @@ void PoliciesGet_Response::InternalSwap(PoliciesGet_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata PoliciesGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[13]);
+      file_level_metadata_policy_2eproto[19]);
 }
 
 // ===================================================================
@@ -4556,7 +6512,7 @@ void NamespacesGet_Request::InternalSwap(NamespacesGet_Request* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata NamespacesGet_Request::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[14]);
+      file_level_metadata_policy_2eproto[20]);
 }
 
 // ===================================================================
@@ -4842,7 +6798,7 @@ void NamespacesGet_Response::InternalSwap(NamespacesGet_Response* other) {
 ::PROTOBUF_NAMESPACE_ID::Metadata NamespacesGet_Response::GetMetadata() const {
   return ::_pbi::AssignDescriptors(
       &descriptor_table_policy_2eproto_getter, &descriptor_table_policy_2eproto_once,
-      file_level_metadata_policy_2eproto[15]);
+      file_level_metadata_policy_2eproto[21]);
 }
 
 // @@protoc_insertion_point(namespace_scope)
@@ -4872,9 +6828,17 @@ template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetPost_Reques
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetPost_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::AssetPost_Request >(arena);
 }
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetPost_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetPost_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::AssetPost_Response >(arena);
+}
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetDelete_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetDelete_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::AssetDelete_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetDelete_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetDelete_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::AssetDelete_Response >(arena);
 }
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetGet_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetGet_Request >(Arena* arena) {
@@ -4883,6 +6847,14 @@ Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetGet_Request >
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetGet_Response*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetGet_Response >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::AssetGet_Response >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetCleanDeleted_Request*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetCleanDeleted_Request >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::AssetCleanDeleted_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::AssetCleanDeleted_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::AssetCleanDeleted_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::AssetCleanDeleted_Response >(arena);
 }
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::DefaultParentGet_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::DefaultParentGet_Request >(Arena* arena) {
@@ -4896,9 +6868,17 @@ template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::DefaultParentPos
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::DefaultParentPost_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::DefaultParentPost_Request >(arena);
 }
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::DefaultParentPost_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::DefaultParentPost_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::DefaultParentPost_Response >(arena);
+}
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::DefaultParentDelete_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::DefaultParentDelete_Request >(Arena* arena) {
   return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::DefaultParentDelete_Request >(arena);
+}
+template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::DefaultParentDelete_Response*
+Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::DefaultParentDelete_Response >(Arena* arena) {
+  return Arena::CreateMessageInternal< ::com::wazuh::api::engine::policy::DefaultParentDelete_Response >(arena);
 }
 template<> PROTOBUF_NOINLINE ::com::wazuh::api::engine::policy::PoliciesGet_Request*
 Arena::CreateMaybeMessage< ::com::wazuh::api::engine::policy::PoliciesGet_Request >(Arena* arena) {
