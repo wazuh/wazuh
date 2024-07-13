@@ -637,20 +637,35 @@ class RuntimeCases:
                                         self.test_data.push_test_data_for_runtime(
                                             input, description, should_pass=True, skip_tag="success_cases")
 
+    def order_argument_list(self, argument_list) -> list:
+        id_name_order = self.parser.get_name_id_arguments()
+
+        ordered_arguments_list = sorted(
+            [(k, v) for k, v in argument_list if k in id_name_order],
+            key=lambda x: id_name_order[x[0]]
+        )
+
+        remaining_arguments = [
+            (k, v) for k, v in argument_list if k not in id_name_order
+        ]
+        id_pattern = re.compile(r'_(\d+)$')
+        valid_remaining_arguments = sorted(
+            [(k, v, int(id_pattern.search(k).group(1))) for k, v in remaining_arguments if id_pattern.search(k)],
+            key=lambda x: x[2]
+        )
+
+        return ordered_arguments_list + [(k, v) for k, v, _ in valid_remaining_arguments]
+
     def generate_unit_test(self):
         if self.parser.get_tests() == None:
             return
 
         template = Template(self.parser)
 
-        for number_test, test in enumerate(self.parser.get_tests()):
-            arguments_list = list(test["arguments"].items())
+        for test in self.parser.get_tests():
+            arguments = list(test["arguments"].items())
+            arguments_list = self.order_argument_list(arguments)
             sources = self.parser.get_sources()
-            # Check variadic
-            if not self.parser.is_variadic():
-                if self.parser.get_minimum_arguments() + 1 < len(arguments_list):
-                    sys.exit(
-                        f"Helper {self.parser.get_name()} has an error in test number '{number_test + 1}': it is not a variadic function")
 
             if self.parser.get_minimum_arguments() < len(arguments_list):
                 diff = len(arguments_list) - self.parser.get_minimum_arguments()

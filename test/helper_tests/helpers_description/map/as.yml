@@ -1,6 +1,16 @@
 # Name of the helper function
 name: as
 
+metadata:
+  description: |
+    Performs a query to the maxmind GeoLite2-ASN database (provided by Maxmind Inc.   https://www.maxmind.com ).
+    In case of errors the target field will not be modified.
+    In case of success it will return an object with the following fields:
+      - number: mapping of the 'autonomous_system_number' field of the mmdb entry.
+      - organization.name: mapping of the 'autonomous_system_organization' field of the mmdb entry.
+  keywords:
+    - to define
+
 helper_type: map
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +18,7 @@ is_variadic: True
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  ip:
     type: string # Expected type is string
     generate: ip
     source: reference # Includes only references (their names start with $)
@@ -17,9 +27,12 @@ arguments:
 skipped:
   - success_cases
 
+output:
+  type: object
+
 test:
   - arguments:
-      1: 1.2.3.4
+      ip: 1.2.3.4
     should_pass: true
     expected:
         number: 1234

@@ -59,7 +59,10 @@ def main():
         output_directory.mkdir(parents=True, exist_ok=True)
         outputs.append(output_directory)
         command = f'engine-helper-test-generator --folder_path {subdir} -o {output_directory.as_posix()}'
-        subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.stderr.decode())
 
     environment = Path(config.environment_directory).as_posix()
     binary = Path(config.binary_path).resolve()
@@ -70,4 +73,4 @@ def main():
                 print(f"Executing - {file.name}")
                 subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             except subprocess.CalledProcessError as e:
-                sys.exit(e.stdout.decode())
+                sys.exit(e.stderr.decode())
