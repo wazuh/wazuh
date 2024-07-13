@@ -132,26 +132,27 @@ def check_restrictions(arguments: list, general_restrictions: list, input: dict 
         bool: True if the arguments meet the restrictions, False otherwise.
     """
     for general_restriction in general_restrictions:
-        for key, value in general_restriction.items():
-            if input:
-                # Check both input and arguments
-                input_values = input.values()
-                try:
-                    eval_argument = ast.literal_eval(arguments[key - 1])
-                except (ValueError, SyntaxError):
-                    eval_argument = arguments[key - 1]  # Use the raw string if eval fails
+        if general_restriction:
+            for index, (key, value) in enumerate(general_restriction.items()):
+                if input:
+                    # Check both input and arguments
+                    input_values = input.values()
+                    try:
+                        eval_argument = ast.literal_eval(arguments[index])
+                    except (ValueError, SyntaxError):
+                        eval_argument = arguments[index]  # Use the raw string if eval fails
 
-                if eval_argument != value and value not in input_values:
-                    break
+                    if eval_argument != value and value not in input_values:
+                        break
+                else:
+                    # Check only arguments
+                    try:
+                        eval_argument = ast.literal_eval(arguments[index])
+                    except (ValueError, SyntaxError):
+                        eval_argument = arguments[index]  # Use the raw string if eval fails
+
+                    if eval_argument != value:
+                        break
             else:
-                # Check only arguments
-                try:
-                    eval_argument = ast.literal_eval(arguments[key - 1])
-                except (ValueError, SyntaxError):
-                    eval_argument = arguments[key - 1]  # Use the raw string if eval fails
-
-                if eval_argument != value:
-                    break
-        else:
-            return True
+                return True
     return False

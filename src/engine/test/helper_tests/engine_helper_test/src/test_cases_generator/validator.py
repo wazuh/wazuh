@@ -104,6 +104,106 @@ class Validator:
                         sys.exit(
                             f"Helper {self.parser.get_name()}: There is no consistency between type '{type_}' and subset '{subset}'")
 
+    def verify_arguments_names_in_all_places(self):
+        restrictions = self.parser.get_general_restrictions()
+        for restiction in restrictions:
+            if restiction:
+                for name, value in restiction.items():
+                    if name not in self.parser.get_name_id_arguments():
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: Name {name} in 'general_restrictions' is not defined in arguments")
+
+        tests = self.parser.get_tests()
+        for test in tests:
+            count = 0
+            for argument in test["arguments"]:
+                if argument in self.parser.get_name_id_arguments():
+                    count += 1
+            if count < self.parser.get_minimum_arguments():
+                sys.exit(f"Helper {self.parser.get_name()}: There are arguments in 'test' that were not defined")
+
+    def verify_output(self):
+        output = self.parser.get_output()
+        if output:
+            if "type" not in output:
+                sys.exit(f"Helper {self.parser.get_name()}: Type attribute is required in output")
+            if not isinstance(output["type"], list) and not isinstance(output["type"], str):
+                sys.exit(f"Helper {self.parser.get_name()}: Type attribute only can only be a list or a value")
+        else:
+            if self.parser.get_helper_type() == "map":
+                sys.exit(f"Helper {self.parser.get_name()}: Is neccesary define output for helpers the map type")
+
+    def check_consistency_between_output_and_expected_type(self) -> None:
+        """
+        Checks consistency between output and expected type.
+        """
+        output = self.parser.get_output()
+        new_type_ = convert_string_to_type(output["type"])
+        new_subset = convert_string_to_subset(output.get("subset"))
+        if not isinstance(new_type_, list):
+            if new_type_ == Number:
+                if new_subset is not int and new_subset is not float and new_subset is not Double:
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
+            if new_type_ == String:
+                if new_subset is not Hexadecimal and new_subset is not Regex and new_subset is not Ip and new_subset is not str:
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
+            if new_type_ == bool:
+                if len(new_subset) != 0:
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
+
+        tests = self.parser.get_tests()
+        for test in tests:
+            if "expected" in test:
+                if new_subset == int:
+                    if not isinstance(test["expected"], int):
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' and output type '{new_subset}'")
+                if new_subset == str:
+                    if not isinstance(test["expected"], str):
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_subset}'")
+                if new_type_ == Object:
+                    if not isinstance(test["expected"], dict):
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
+                if new_type_ == list:
+                    if not isinstance(test["expected"], list):
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
+
+    def verify_variadic_in_test(self):
+        for number_test, test in enumerate(self.parser.get_tests()):
+            arguments_list = list(test["arguments"].items())
+            if not self.parser.is_variadic():
+                if self.parser.get_minimum_arguments() < len(arguments_list):
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: has an error in test number '{number_test + 1}': it is not a variadic function")
+
+            # Delete the keys that are in id_name_order
+            id_name_order = self.parser.get_name_id_arguments()
+            filtered_arguments_list = [(k, v) for k, v in arguments_list if k not in id_name_order]
+
+            # Verify that the remaining keys meet the criteria
+            if filtered_arguments_list:
+                last_id_name = sorted(id_name_order.items(), key=lambda x: x[1])[-1][0]
+                pattern = re.compile(rf'^{last_id_name}_\d+$')
+
+                for k, _ in filtered_arguments_list:
+                    if not pattern.match(k):
+                        sys.exit(f"Argument '{k}' does not match the required pattern '{last_id_name}_<number>'")
+
+    def verify_metadata(self):
+        metadata = self.parser.get_metadata()
+        if not metadata:
+            sys.exit(
+                f"Helper {self.parser.get_name()}: It is mandatory to define the 'metadata' property")
+        if "description" not in metadata:
+            sys.exit(
+                f"Helper {self.parser.get_name()}: It is mandatory to define the 'description' property in metadata")
+
     def verify_restrictions(self) -> None:
         """
         Verifies the restrictions in the parser.
@@ -139,11 +239,16 @@ class Validator:
         """
         self.parser.load_yaml_from_file(file_path)
         self.verify_name()
+        self.verify_metadata()
         self.verify_helper_type()
         self.verify_type()
         self.verify_subset()
         self.verify_source()
         self.check_consistency_between_type_and_subset()
+        self.verify_arguments_names_in_all_places()
+        self.verify_output()
+        self.check_consistency_between_output_and_expected_type()
+        self.verify_variadic_in_test()
         self.verify_restrictions()
         self.verify_skip()
         self.all_valid_data.append(self.parser.get_yaml_data())

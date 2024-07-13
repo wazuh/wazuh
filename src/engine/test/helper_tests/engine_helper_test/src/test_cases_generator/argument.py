@@ -163,7 +163,7 @@ class Argument:
             int: lambda: random.randint(0, 9),
             float: lambda: random.uniform(0, 9),
             Double: lambda: float(format(random.uniform(0, 9), '.2f')),
-            str: lambda: "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(1, 10))),
+            str: lambda: "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(2, 10))),
             Hexadecimal: lambda: Hexadecimal.random_hex().__str__(),
             Ip: lambda: Ip(random.choice(["111.111.1.11", "222.222.2.22"])).__str__(),
             Regex: lambda: json.dumps(Regex("^(bye pcre\\d)$").__str__()),

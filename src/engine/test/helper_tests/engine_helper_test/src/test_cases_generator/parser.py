@@ -165,9 +165,9 @@ class Parser:
         """
         allowed_args = {}
         if self.has_arguments():
-            for index, arg_info in self.yaml_data['arguments'].items():
+            for index, (arg_name, arg_info) in enumerate(self.yaml_data['arguments'].items()):
                 if 'restrictions' in arg_info and 'allowed' in arg_info['restrictions']:
-                    allowed_args[index - 1] = arg_info['restrictions']['allowed']  # convert 1-based to 0-based index
+                    allowed_args[index] = arg_info['restrictions']['allowed']
         return allowed_args
 
     def get_forbidden_in_dict_format(self) -> dict:
@@ -179,10 +179,9 @@ class Parser:
         """
         forbidden_args = {}
         if self.has_arguments():
-            for index, arg_info in self.yaml_data['arguments'].items():
+            for index, (arg_name, arg_info) in enumerate(self.yaml_data['arguments'].items()):
                 if 'restrictions' in arg_info and 'forbidden' in arg_info['restrictions']:
-                    # convert 1-based to 0-based index
-                    forbidden_args[index - 1] = arg_info['restrictions']['forbidden']
+                    forbidden_args[index] = arg_info['restrictions']['forbidden']
         return forbidden_args
 
     def get_allowed(self):
@@ -218,7 +217,17 @@ class Parser:
                 sys.exit("General restrictions are not allowed without defined arguments")
             else:
                 for restriction in self.yaml_data["general_restrictions"]:
-                    general_restrictions.append(restriction["arguments"])
+                    general_restrictions.append(restriction.get("arguments", {}))
+        return general_restrictions
+
+    def get_general_restrictions_details(self):
+        general_restrictions = []
+        if 'general_restrictions' in self.yaml_data:
+            if self.get_minimum_arguments() == 0:
+                sys.exit("General restrictions are not allowed without defined arguments")
+            else:
+                for restriction in self.yaml_data["general_restrictions"]:
+                    general_restrictions.append(restriction["details"])
         return general_restrictions
 
     def has_target_field(self):
@@ -282,3 +291,20 @@ class Parser:
         if self.has_helper_type():
             return self.yaml_data["helper_type"]
         return None
+
+    def get_metadata(self) -> dict:
+        return self.yaml_data.get("metadata", {})
+
+    def get_arguments(self) -> dict:
+        return self.yaml_data.get("arguments", {})
+
+    def get_name_id_arguments(self) -> dict:
+        name_id_arguments = {}
+        arguments = self.get_arguments()
+        if len(arguments) != 0:
+            for id, (key, value) in enumerate(self.get_arguments().items()):
+                name_id_arguments[key] = id
+        return name_id_arguments
+
+    def get_output(self):
+        return self.yaml_data.get("output", "")
