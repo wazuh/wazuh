@@ -128,7 +128,23 @@ jobs:
           # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
           echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
-          echo "PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *manager*.${{ inputs.system }} -exec basename {} 2>/dev/null \;)" | tee -a $GITHUB_ENV
+
+          if [ "${{ inputs.system}}" == "deb" ]; then 
+            SYMBOLS_TAG="dbg"
+          else
+            SYMBOLS_TAG="debuginfo"
+          fi
+          # Find all files starting with 'wazuh-manager' and ending with '.rpm or .deb'
+          for file in $(find /tmp -maxdepth 1 -type f -name 'wazuh-manager*.${{ inputs.system }}' -exec basename {} 2>/dev/null \;); do
+            if [[ "$file" == *"$SYMBOLS_TAG"* ]]; then
+              PACKAGE_SYMBOLS_NAME="$file"
+            else
+              PACKAGE_NAME="$file"
+            fi
+          done
+          
+          echo "PACKAGE_NAME=${PACKAGE_NAME}" | tee -a $GITHUB_ENV
+          echo "PACKAGE_SYMBOLS_NAME=${PACKAGE_SYMBOLS_NAME}" | tee -a $GITHUB_ENV
 
       - name: Test install built manager
         run: |
@@ -160,5 +176,12 @@ jobs:
         if: ${{ inputs.checksum }}
         run: |
           aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
           s3uri="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
           echo "S3 sha512 URI: ${s3uri}"
+
+      - name: Upload debug symbols to S3
+        run: |
+          aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/
+          symbols="s3://packages-dev.internal.wazuh.com/development/wazuh/4.x/main/packages/${symbols_name}"
+          echo "S3 symbols URI: ${symbols}"

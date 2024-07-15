@@ -14,6 +14,7 @@ BUILD_JOBS=$3
 DEBUG=$4
 MAKE_COMPILATION=$5
 INSTALLATION_SCRIPTS_DIR=${DESTINATION_PATH}/packages_files/agent_installation_scripts
+SEARCH_DIR=${SOURCES_PATH}/src
 
 function configure() {
     echo USER_LANGUAGE="en" > ${CONFIG}
@@ -42,6 +43,14 @@ function build() {
     echo "Generating Wazuh executables"
     make -j $BUILD_JOBS -C ${SOURCES_PATH}/src DYLD_FORCE_FLAT_NAMESPACE=1 DEBUG=$DEBUG TARGET=agent build
     fi
+
+    EXECUTABLE_FILES=$(find "${SEARCH_DIR}" -maxdepth 1 -type f ! -name "*.py" -exec file {} + | grep 'executable' | cut -d: -f1)
+    EXECUTABLE_FILES+=" $(find "${SEARCH_DIR}" -type f ! -name "*.py" ! -path "${SEARCH_DIR}/external/*" ! -path "${SEARCH_DIR}/symbols/*" -name "*.dylib" -print 2>/dev/null)"
+
+    for var in $EXECUTABLE_FILES; do
+        filename=$(basename "$var")
+        dsymutil -o "${SEARCH_DIR}/symbols/${filename}.dSYM" "$var" 2>/dev/null && strip -S "$var"
+    done
 
     echo "Running install script"
     ${SOURCES_PATH}/install.sh

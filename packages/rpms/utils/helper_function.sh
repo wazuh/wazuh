@@ -85,11 +85,17 @@ build_package(){
 
 get_package_and_checksum(){
     src="$3"
-    export RPM_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "\.rpm$")
-    export SRC_NAME=$(ls -R ${rpm_build_dir}/SRPMS | grep "\.src\.rpm$")
+
+    RPM_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "wazuh-${BUILD_TARGET}" | grep -v "debuginfo")
+    SYMBOLS_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "wazuh-${BUILD_TARGET}-debuginfo")
+    SRC_NAME=$(ls -R ${rpm_build_dir}/SRPMS | grep "\.src\.rpm$")
+
+    echo "RPM_NAME: ${RPM_NAME}"
+    echo "SYMBOLS_NAME:${SYMBOLS_NAME}"
 
     if [[ "${checksum}" == "yes" ]]; then
         cd "${rpm_build_dir}/RPMS" && sha512sum $RPM_NAME > /var/local/wazuh/$RPM_NAME.sha512
+        sha512sum $SYMBOLS_NAME > /var/local/wazuh/$SYMBOLS_NAME.sha512
         if [[ "${src}" == "yes" ]]; then
             cd "${rpm_build_dir}/SRPMS" && sha512sum $SRC_NAME > /var/local/wazuh/$SRC_NAME.sha512
         fi
@@ -99,5 +105,6 @@ get_package_and_checksum(){
         mv ${rpm_build_dir}/SRPMS/$SRC_NAME /var/local/wazuh
     else
         mv ${rpm_build_dir}/RPMS/$RPM_NAME /var/local/wazuh
+        mv ${rpm_build_dir}/RPMS/$SYMBOLS_NAME /var/local/wazuh
     fi
 }

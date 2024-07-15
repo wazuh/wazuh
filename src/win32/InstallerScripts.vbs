@@ -437,3 +437,54 @@ Private Function GetUserSID()
         GetUserSID = oWMI.SID
     End If
 End Function
+
+Public Function SetPermissions()
+    On Error Resume Next
+
+    ' Custom Action parameters
+    strArgs = Session.Property("CustomActionData")
+    args = Split(strArgs, "/+/")
+
+    home_dir= Replace(args(0), Chr(34), "")
+
+    ' Remove last backslash from home_dir
+    install_dir = Left(home_dir, Len(home_dir) - 1)
+
+    Set WshShell = CreateObject("WScript.Shell")
+
+    setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:e /q"
+    nRet = WshShell.run(setPermsInherit, 0, True)
+
+    grantUserPerm = "icacls """ & install_dir & """ /grant *S-1-1-0:(RX) /t /c"
+    nRet = WshShell.run(grantUserPerm, 0, True)
+
+    SetPermissions = 0 
+End Function
+
+Public Function CreateDumpRegistryKey()
+    On Error Resume Next
+    Dim strKeyPath, oReg
+    Dim objCtx, objLocator, objServices
+    Const HKEY_LOCAL_MACHINE = &H80000002
+
+    Set objCtx = CreateObject("WbemScripting.SWbemNamedValueSet")
+    objCtx.Add "__ProviderArchitecture", 64
+    objCtx.Add "__RequiredArchitecture", True
+
+    Set objLocator = CreateObject("WbemScripting.SWbemLocator")
+    Set objServices = objLocator.ConnectServer(".", "root\default", "", "", , , , objCtx)
+    Set oReg = objServices.Get("StdRegProv")
+
+    strKeyPath = "SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\wazuh-agent.exe"
+
+    oReg.CreateKey HKEY_LOCAL_MACHINE, strKeyPath
+    oReg.SetExpandedStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder",  "%LOCALAPPDATA%\WazuhCrashDumps"
+    oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpType", 2
+
+    Set objCtx = Nothing
+    Set objLocator = Nothing
+    Set objServices = Nothing
+    Set oReg = Nothing
+
+    CreateDumpRegistryKey = 0
+End Function

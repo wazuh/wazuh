@@ -17,7 +17,7 @@ INSTALLATION_PATH="/Library/Ossec"    # Installation path.
 VERSION=""                            # Default VERSION (branch/tag).
 REVISION="1"                          # Package revision.
 BRANCH_TAG=""                         # Branch that will be downloaded to build package.
-DESTINATION="${CURRENT_PATH}/output" # Where package will be stored.
+DESTINATION="${CURRENT_PATH}/output"  # Where package will be stored.
 JOBS="2"                              # Compilation jobs.
 VERBOSE="no"                          # Enables the full log by using `set -exf`.
 DEBUG="no"                            # Enables debug symbols while compiling.
@@ -167,7 +167,11 @@ function build_package() {
     # create package
     if packagesbuild ${AGENT_PKG_FILE} --build-folder "${DESTINATION}/" ; then
         echo "The wazuh agent package for macOS has been successfully built."
-        pkg_name+=".pkg"
+        symbols_pkg_name=$(echo "${pkg_name}" | tr '\n' ' ' | cut -d ' ' -f 1)
+        symbols_pkg_name="${symbols_pkg_name}_debug_symbols"
+        cp -R "${WAZUH_PATH}/src/symbols"  "${DESTINATION}"
+        zip -r "${DESTINATION}/${symbols_pkg_name}.zip" "${DESTINATION}/symbols"
+        rm -rf "${DESTINATION}/symbols"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
             shasum -a512 "${DESTINATION}/${pkg_name}" > "${DESTINATION}/${pkg_name}.sha512"
@@ -289,7 +293,7 @@ function main() {
             ;;
         "-s"|"--store-path")
             if [ -n "$2" ]; then
-                DESTINATION="$2"
+                DESTINATION=$(echo "$2" | sed 's:/*$::')
                 shift 2
             else
                 help 1

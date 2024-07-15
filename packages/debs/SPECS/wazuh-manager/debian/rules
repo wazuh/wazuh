@@ -240,6 +240,6 @@ override_dh_auto_clean:
 	$(MAKE) -C src clean
 
 override_dh_strip:
-	dh_strip --no-automatic-dbgsym --exclude=dh_strip --no-automatic-dbgsym --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
+	dh_strip --dbg-package=wazuh-manager-dbg --no-automatic-dbgsym --exclude=dh_strip --no-automatic-dbgsym --exclude=${PKG_DIR}${INSTALLATION_DIR}/framework/python
 
 .PHONY: override_dh_install override_dh_strip override_dh_auto_clean override_dh_auto_build override_dh_auto_configure override_dh_fixperms

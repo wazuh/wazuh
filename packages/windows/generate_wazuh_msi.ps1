@@ -98,8 +98,57 @@ function BuildWazuhMsi(){
     }
 }
 
+function ExtractDebugSymbols(){
+
+	#all executables in current folder
+	$exeFiles = Get-ChildItem -Filter "*.exe"
+	$exeFiles += Get-ChildItem -Filter "*.dll" 
+
+	#all executables in parent folder
+	cd .. #Get-ChildItem does not take "..\" so we have to do it manually
+	$exeFiles += Get-ChildItem -Filter "*.dll"
+
+	#plus a few more individual libraries
+	$exeFiles +=  Get-ChildItem -Filter "data_provider\build\bin\sysinfo.dll"
+	$exeFiles +=  Get-ChildItem -Filter "shared_modules\dbsync\build\bin\dbsync.dll"
+	$exeFiles +=  Get-ChildItem -Filter "shared_modules\rsync\build\bin\rsync.dll"
+	$exeFiles +=  Get-ChildItem -Filter "wazuh_modules\syscollector\build\bin\syscollector.dll"
+	$exeFiles +=  Get-ChildItem -Filter "syscheckd\build\bin\libfimdb.dll"
+	cd "win32"
+
+	#now loop
+	foreach ($file in $exeFiles)
+	{
+		Write-Host "Extracting dbg symbols from" $file.FullName
+		$args = $file.FullName #source (exe/dll with debug symbols)
+		$args += " "
+		$args += $file.FullName  #destination (same as source - exe/dll is stripped of debug symbols)
+		$args += " "
+		$args += $file.BaseName
+		$args += ".pdb"
+
+		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
+	}
+
+  Write-Host "Waiting for processes to finish"
+  Wait-Process -Name cv2pdb -Timeout 10
+
+  #compress every pdb file in current folder
+	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"
+
+  $ZIP_NAME = "$($MSI_NAME.Replace('.msi', '-debug-symbols.zip'))"
+
+	Write-Host "Compressing debug symbols to $ZIP_NAME"
+	Compress-Archive -Path $pdbFiles -Force -DestinationPath "$ZIP_NAME"
+
+  dir "*debug-symbols.zip"
+
+	Remove-Item -Path "*.pdb"
+}
+
 ############################
 # MAIN
 ############################
 
+ExtractDebugSymbols
 BuildWazuhMsi
