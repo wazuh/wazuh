@@ -46,6 +46,8 @@ public:
     MOCK_METHOD(void, EVP_PKEY_free, (EVP_PKEY * pkey));
     MOCK_METHOD(rsa_st*, EVP_PKEY_get1_RSA, (EVP_PKEY * pkey));
     MOCK_METHOD(int, EVP_PKEY_get_base_id, (const EVP_PKEY* pkey));
+    MOCK_METHOD(unsigned long, ERR_get_error, ());
+    MOCK_METHOD(const char*, ERR_reason_error_string, (unsigned long));
 };
 
 class OSPrimitivesWrapper
@@ -172,6 +174,8 @@ TEST_F(RSAHelperTest, rsaEncryptFailed)
     EXPECT_CALL(rsaHelper, PEM_read_RSA_PUBKEY((FILE*)1, NULL, NULL, NULL)).WillOnce(Return((RSA*)2));
     EXPECT_CALL(rsaHelper, RSA_size((RSA*)2)).WillOnce(Return(strlen(KEY)));
     EXPECT_CALL(rsaHelper, RSA_public_encrypt(strlen(KEY), _, _, (RSA*)2, RSA_PKCS1_OAEP_PADDING)).WillOnce(Return(-1));
+    EXPECT_CALL(rsaHelper, ERR_get_error()).WillOnce(Return(1));
+    EXPECT_CALL(rsaHelper, ERR_reason_error_string((unsigned long)1)).WillOnce(Return("Reported internal error"));
     EXPECT_CALL(rsaHelper, RSA_free((RSA*)2)).WillOnce(Return());
 
     try
@@ -182,7 +186,7 @@ TEST_F(RSAHelperTest, rsaEncryptFailed)
     }
     catch (const std::exception& e)
     {
-        EXPECT_STREQ(e.what(), "RSA encryption failed");
+        EXPECT_STREQ(e.what(), "RSA encryption failed: Reported internal error");
     }
 }
 
@@ -281,6 +285,8 @@ TEST_F(RSAHelperTest, rsaDecryptDecryptionFailed)
     EXPECT_CALL(rsaHelper, RSA_size((RSA*)2)).WillOnce(Return(strlen(KEY)));
     EXPECT_CALL(rsaHelper, RSA_private_decrypt(strlen(KEY), _, _, (RSA*)2, RSA_PKCS1_OAEP_PADDING))
         .WillOnce(Return(-1));
+    EXPECT_CALL(rsaHelper, ERR_get_error()).WillOnce(Return(1));
+    EXPECT_CALL(rsaHelper, ERR_reason_error_string((unsigned long)1)).WillOnce(Return("Reported internal error"));
     EXPECT_CALL(rsaHelper, RSA_free((RSA*)2)).WillOnce(Return());
 
     try
@@ -291,7 +297,7 @@ TEST_F(RSAHelperTest, rsaDecryptDecryptionFailed)
     }
     catch (const std::exception& e)
     {
-        EXPECT_STREQ(e.what(), "RSA decryption failed");
+        EXPECT_STREQ(e.what(), "RSA decryption failed: Reported internal error");
     }
 }
 

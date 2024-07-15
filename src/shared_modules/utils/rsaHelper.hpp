@@ -64,7 +64,8 @@ public:
                                                         RSA_PKCS1_OAEP_PADDING);
         if (encryptedLen < 0)
         {
-            throw std::runtime_error("RSA encryption failed");
+            throw std::runtime_error("RSA encryption failed: " +
+                                     std::string(T::ERR_reason_error_string(T::ERR_get_error())));
         }
 
         output = std::string(encryptedValue.begin(), encryptedValue.end());
@@ -101,7 +102,8 @@ public:
 
         if (decryptedLen < 0)
         {
-            throw std::runtime_error("RSA decryption failed");
+            throw std::runtime_error("RSA decryption failed: " +
+                                     std::string(T::ERR_reason_error_string(T::ERR_get_error())));
         }
 
         // Display the decrypted plaintext
