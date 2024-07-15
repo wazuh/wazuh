@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed bug in `upgrade_agent` CLI where it would sometimes raise an unhandled exception. ([#24341](https://github.com/wazuh/wazuh/pull/24341))
+- Changed keystore cipher algorithm to remove reuse of sslmanager.cert and sslmanager.key. ([#24509(https://github.com/wazuh/wazuh/pull/24509))
 
 ### Agent
 
