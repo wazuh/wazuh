@@ -456,8 +456,9 @@ def add_asset_to_policy(api_client: APIClient, asset: dict):
     request.policy = POLICY_NAME
     request.asset = asset["name"]
     request.namespace = NAMESPACE
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    response = send_recv(api_client, request, api_policy.AssetPost_Response())
     assert response.status == api_engine.OK, f"{response.error}, Asset: {asset}"
+    assert len(response.warning) == 0, f"{response.warning}"
 
 
 def create_session(api_client: APIClient):
@@ -800,9 +801,11 @@ def main():
     api_client = APIClient(socket_path)
 
     from handler_engine_instance import up_down
+    print("Starting up_down engine")
     up_down_engine = up_down.UpDownEngine()
     up_down_engine.send_start_command()
 
+    print("running test cases")
     run_test_cases_executor(api_client, str(kvdb_path))
 
     up_down_engine.send_stop_command()
