@@ -1513,3 +1513,8 @@ def get_full_overview() -> WazuhResult:
               'agent_version': stats_version, 'last_registered_agent': last_registered_agent}
 
     return WazuhResult({'data': result})
+
+
+@expose_resources(actions=["agent:uninstall"], resources=["*:*:*"], post_proc_func=None)
+def agent_check_uninstall_permission() -> WazuhResult:
+    return WazuhResult({'message': "Agent has permission to be uninstalled"})
