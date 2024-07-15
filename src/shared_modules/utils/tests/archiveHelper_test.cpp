@@ -46,7 +46,7 @@ TEST(ArchiveHelperTest, InvalidInputPath)
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_STREQ("Couldn't open file", e.what());
+        EXPECT_STREQ("Error opening file during decompression. Error: Failed to open './nonexistent_file'", e.what());
     }
     catch (...)
     {
@@ -63,7 +63,7 @@ TEST(ArchiveHelperTest, InvalidFormat)
     }
     catch (const std::runtime_error& e)
     {
-        EXPECT_STREQ("Couldn't open file", e.what());
+        EXPECT_STREQ("Error opening file during decompression. Error: Unrecognized archive format", e.what());
     }
     catch (...)
     {
