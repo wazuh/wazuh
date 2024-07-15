@@ -58,7 +58,50 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
         if (config.at("ssl").contains("certificate_authorities") &&
             !config.at("ssl").at("certificate_authorities").empty())
         {
-            caRootCertificate = config.at("ssl").at("certificate_authorities").front().get_ref<const std::string&>();
+            std::vector<std::string> filePaths =
+                config.at("ssl").at("certificate_authorities").get<std::vector<std::string>>();
+
+            if (filePaths.size() > 1)
+            {
+                std::string caRootCertificateContentMerged;
+
+                for (const auto& filePath : filePaths)
+                {
+                    if (!std::filesystem::exists(filePath))
+                    {
+                        throw std::runtime_error("The CA root certificate file: " + filePath +
+                                                 " does not exist. Did you check the path?");
+                    }
+
+                    std::ifstream file(filePath);
+                    if (!file.is_open())
+                    {
+                        throw std::runtime_error("Could not open CA root certificate file: " + filePath +
+                                                 ". Did you check the permissions?");
+                    }
+
+                    caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)),
+                                                          std::istreambuf_iterator<char>());
+                }
+
+                // Once all the files are read, we write the content into final file.
+                caRootCertificate = "/etc/wazuh-indexer/certs/root-ca-merged.pem";
+                std::ofstream outputFile(caRootCertificate);
+                if (outputFile.is_open())
+                {
+                    outputFile << caRootCertificateContentMerged;
+                    outputFile.close();
+                    logDebug2(IC_NAME, "All CA files merged into '%s' successfully.", caRootCertificate.c_str());
+                }
+                else
+                {
+                    throw std::runtime_error("Could not write the CA root merged file");
+                }
+            }
+            else
+            {
+                caRootCertificate = filePaths.at(0);
+            }
         }
 
         if (config.at("ssl").contains("certificate"))
