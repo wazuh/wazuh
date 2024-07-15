@@ -765,7 +765,7 @@ BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 endif
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 ifneq (${uname_S},HP-UX)
-BUILD_CMAKE_PROJECTS+=build_syscollector
+#BUILD_CMAKE_PROJECTS+=build_syscollector
 endif
 endif
 
@@ -824,8 +824,8 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-WINDOWS_LIBS:=win32/syscollector win32/syscheck
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-syscheck.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe
+WINDOWS_LIBS:=
+WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/setup-windows.exe win32/setup-iis.exe win32/os_win32ui.exe
 WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
 
 ifeq (${MAKECMDGOALS},winagent)
@@ -854,13 +854,6 @@ win32/shared_modules: $(WAZUHEXT_LIB)
 
 win32/sysinfo: $(WAZUHEXT_LIB) win32/version-dll.o
 	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-#### Syscollector ##
-win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-win32/syscheck: win32/shared_modules $(WAZUHEXT_LIB)
-	cd ${SYSCHECK} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCHECK_TEST} ${SYSCHECK_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
 
 win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
 	cp $< $@
@@ -1537,14 +1530,6 @@ os_regex_o := $(os_regex_c:.c=.o)
 os_regex/%.o: os_regex/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
-#### os_net ##########
-
-os_net_c := $(wildcard os_net/*.c)
-os_net_o := $(os_net_c:.c=.o)
-
-os_net/%.o: os_net/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
-
 #### Shared ##########
 # Unit tests wrappers
 
@@ -1604,9 +1589,6 @@ wrappers_wazuh_os_crypto_o := $(wrappers_wazuh_os_crypto_c:.c=.o)
 
 wrappers_wazuh_os_execd_c := $(wildcard unit_tests/wrappers/wazuh/os_execd/*.c)
 wrappers_wazuh_os_execd_o := $(wrappers_wazuh_os_execd_c:.c=.o)
-
-wrappers_wazuh_os_net_c := $(wildcard unit_tests/wrappers/wazuh/os_net/*.c)
-wrappers_wazuh_os_net_o := $(wrappers_wazuh_os_net_c:.c=.o)
 
 wrappers_wazuh_os_regex_c := $(wildcard unit_tests/wrappers/wazuh/os_regex/*.c)
 wrappers_wazuh_os_regex_o := $(wrappers_wazuh_os_regex_c:.c=.o)
@@ -1684,7 +1666,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_execd_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
@@ -1733,13 +1714,6 @@ shared/file_op_proc.o: shared/file_op.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -DCLIENT -DARGV0=\"wazuh-remoted\" -c $^ -o $@
 
 #### Config ##########
-
-config_c := $(wildcard config/*.c)
-config_o := $(config_c:.c=.o)
-
-config/%.o: config/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
-
 build_shared_modules: $(WAZUHEXT_LIB)
 	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
 	cd ${RSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SOLARIS_CMAKE_OPTS} ${SHARED_MODULES_RELEASE_TYPE} .. && ${MAKE}
@@ -1755,7 +1729,7 @@ build_syscollector: build_shared_modules build_sysinfo
 endif
 
 #### Wazuh cmake ###
-build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE) build_syscollector
+build_wazuh_cmake: $(WAZUHEXT_LIB) $(EXTERNAL_LIBS_NO_WHOLE)
 	mkdir -p build && cd build && cmake .. -DTARGET=${TARGET} ${CMAKE_OPTS} ${WAZUH_RELEASE_TYPE} ${WAZUH_TEST} && ${MAKE}
 
 #### crypto ##########
@@ -1814,26 +1788,15 @@ crypto_hmac_o := $(crypto_hmac_c:.c=.o)
 os_crypto/hmac/%.o: os_crypto/hmac/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $^ -o $@
 
-crypto_shared_c := $(wildcard os_crypto/shared/*.c)
-crypto_shared_o := $(crypto_shared_c:.c=.o)
-
-os_crypto/shared/%.o: os_crypto/shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
-
 crypto_signature_c := $(wildcard os_crypto/signature/*.c)
 crypto_signature_o := $(crypto_signature_c:.c=.o)
 
 os_crypto/signature/%.o: os_crypto/signature/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
 
-analysisd/logmsg.o: analysisd/logmsg.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -c $< -o $@
-
-
 crypto_o := ${crypto_blowfish_o} \
 					 ${crypto_md5_o} \
 					 ${crypto_sha1_o} \
-					 ${crypto_shared_o} \
 					 ${crypto_md5_sha1_o} \
 					 ${crypto_md5_sha1_sha256_o} \
 					 ${crypto_sha256_o} \
@@ -1907,18 +1870,6 @@ endif
 endif
 endif
 
-#### addagent ######
-
-addagent_c := $(wildcard addagent/*.c)
-addagent_o := $(addagent_c:.c=.o)
-
-addagent/%.o: addagent/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -I./addagent -DARGV0=\"manage_agents\" -c $^ -o $@
-
-
-manage_agents: ${addagent_o}
-	${OSSEC_CCBIN} ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 #### Active Response ####
 
 active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disable-account host-deny ip-customblock restart-wazuh route-null kaspersky wazuh-slack
@@ -1926,7 +1877,7 @@ active_response_programs = default-firewall-drop pf npf ipfw firewalld-drop disa
 $(active_response_programs): ${WAZUH_LIB} ${WAZUHEXT_LIB}
 
 # Minimal dependencies for building active responses programs
-AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o shared/binaries_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o os_net/os_net.o
+AR_PROGRAMS_DEPS = os_regex/os_regex.o os_regex/os_regex_compile.o os_regex/os_match_free_pattern.o os_regex/os_regex_maps.o os_regex/os_regex_execute.o os_regex/os_regex_free_pattern.o os_regex/os_match_execute.o os_regex/os_match_compile.o shared/expression.o shared/randombytes.o shared/validate_op.o shared/regex_op.o shared/string_op.o shared/exec_op.o shared/file_op_proc.o shared/debug_op_proc.o shared/time_op.o shared/privsep_op.o shared/version_op.o shared/binaries_op.o os_xml/os_xml.o os_xml/os_xml_access.o os_regex/os_regex_strbreak.o
 
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 AR_PROGRAMS_DEPS += unit_tests/wrappers/externals/pcre2/pcre2_wrappers.o
@@ -2166,49 +2117,13 @@ unit_tests/wrappers/wazuh/%.o: unit_tests/wrappers/wazuh/%.c
 unit_tests/wrappers/wazuh/os_crypto/%.o: unit_tests/wrappers/wazuh/os_crypto/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-unit_tests/wrappers/wazuh/os_execd/%.o: unit_tests/wrappers/wazuh/os_execd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_net/%.o: unit_tests/wrappers/wazuh/os_net/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_regex/%.o: unit_tests/wrappers/wazuh/os_regex/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
 unit_tests/wrappers/wazuh/shared/%.o: unit_tests/wrappers/wazuh/shared/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/syscheckd/%.o: unit_tests/wrappers/wazuh/syscheckd/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/wazuh_db/%.o: unit_tests/wrappers/wazuh/wazuh_db/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/wazuh_modules/%.o: unit_tests/wrappers/wazuh/wazuh_modules/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/monitord/%.o: unit_tests/wrappers/wazuh/monitord/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/os_auth/%.o: unit_tests/wrappers/wazuh/os_auth/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/addagent/%.o: unit_tests/wrappers/wazuh/addagent/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/wazuh/config/%.o: unit_tests/wrappers/wazuh/config/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
 unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/remoted/%.o: unit_tests/wrappers/wazuh/remoted/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/analysisd/%.o: unit_tests/wrappers/wazuh/analysisd/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 .PHONY: test
@@ -2281,14 +2196,8 @@ win32/wazuh-agent.exe: win32/wazuh_agent_resource.o win32/version-app.o win32/ic
 win32/wazuh-agent-eventchannel.exe: win32/wazuh_agent_eventchannel_resource.o win32/version-app.o win32/icon.o win32/win_agent.o win32/win_service.o win32/win_utils.o os_crypto/md5_sha1_sha256/md5_sha1_sha256_op.o ${rootcheck_o} $(filter-out wazuh_modules/main.o, ${wmodulesd_o}) $(filter-out client-agent/main.o, $(filter-out client-agent/agentd.o, $(filter-out client-agent/event-forward.o, ${client_agent_o}))) $(filter-out logcollector/main-event.o, ${os_logcollector_eventchannel_o}) $(filter-out os_execd/main.o, ${os_execd_o}) active-response/active_responses.o monitord/rotate_log.o monitord/compress_log.o
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-agent\" -DOSSECHIDS -DEVENTCHANNEL_SUPPORT ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} ${DBSYNC_LIB} ${RSYNC_LIB} -lwazuh-syscheckd-event -l:libfimdb.lib libwazuh.a -lwevtapi -o $@
 
-win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o ${addagent_o}
-	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
 win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-win32/setup-syscheck.exe: win32/win_service_rk.o win32/setup-syscheck.o win32/setup-shared.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-syscheck\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
 
 win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
 	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
@@ -2301,9 +2210,6 @@ win32/auth_resource.o: win32/agent-auth.rc
 
 win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
 	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -I./syscheckd/include -mwindows -o $@
-
-win32/agent-auth.exe: win32/auth_resource.o win32/version-app.o win32/win_service_rk.o os_auth/main-client.o os_auth/ssl.o os_auth/check_cert.o addagent/validate.o
-	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
 
 win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o shared/cryptography.o shared/dll_load_notify.o shared/debug_op_proc.o shared/time_op.o shared/file_op_proc.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
 	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
@@ -2386,7 +2292,6 @@ clean-internals: clean-unit-tests
 	rm -f ${os_zlib_o}
 	rm -f ${os_xml_o}
 	rm -f ${os_regex_o}
-	rm -f ${os_net_o}
 	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
 	rm -f ${config_o}
 	rm -f ${crypto_o}
@@ -2417,7 +2322,6 @@ clean-internals: clean-unit-tests
 
 
 clean-unit-tests:
-	rm -f ${wrappers_syscheck_o}
 	rm -f ${wrappers_shared_o}
 	rm -f ${wrappers_common_o}
 	rm -f ${wrappers_externals_o}
@@ -2438,7 +2342,6 @@ clean-unit-tests:
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}
 	rm -f ${wrappers_wazuh_os_execd_o}
-	rm -f ${wrappers_wazuh_os_net_o}
 	rm -f ${wrappers_wazuh_os_regex_o}
 	rm -f ${wrappers_wazuh_os_xml_o}
 	rm -f ${wrappers_wazuh_shared_o}
