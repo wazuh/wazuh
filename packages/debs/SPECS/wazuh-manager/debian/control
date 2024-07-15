@@ -17,3 +17,10 @@ Description: Wazuh manager
  hosts at an operating system and application level. It provides the following
  capabilities: log analysis, file integrity monitoring, intrusions detection
  and policy and compliance monitoring.
+
+Package: wazuh-manager-dbg
+Section: debug
+Priority: optional
+Architecture: any
+Depends: wazuh-manager
+Description: Debug symbols for wazuh-manager, this package contains debug symbols for debugging wazuh-manager.

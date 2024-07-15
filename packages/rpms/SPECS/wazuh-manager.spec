@@ -1,9 +1,4 @@
-%if %{_debugenabled} == yes
-  %global _enable_debug_package 0
-  %global debug_package %{nil}
-  %global __os_install_post %{nil}
-  %define __strip /bin/true
-%endif
+%define _debugenabled yes
 
 %if %{_isstage} == no
   %define _rpmfilename %%{NAME}_%%{VERSION}-%%{RELEASE}_%%{ARCH}_%{_hashcommit}.rpm
@@ -44,6 +39,13 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 # Don't generate build_id links to prevent conflicts with other
 # packages.
 %global _build_id_links none
+
+# Build debuginfo package
+%debug_package
+%package wazuh-manager-debuginfo
+Summary: Debug information for package %{name}.
+%description wazuh-manager-debuginfo
+This package provides debug information for package %{name}.
 
 %prep
 %setup -q
@@ -194,6 +196,8 @@ install -m 0640 src/init/*.sh ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/
 # Add installation scripts
 cp src/VERSION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/
 cp src/REVISION ${RPM_BUILD_ROOT}%{_localstatedir}/packages_files/manager_installation_scripts/src/
+
+%{_rpmconfigdir}/find-debuginfo.sh
 
 exit 0
 
