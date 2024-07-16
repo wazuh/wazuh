@@ -123,8 +123,9 @@ char* authenticate_and_get_token(const char *userpass);
  * Function with all the necessary functionality to process the uninstallation validation of the Wazuh agent package.
  * @param uninstall_auth_token API token used for the request
  * @param uninstall_auth_login API user and password separated by colon
+ * @return true if validation is granted, false if denied
  * */
-void package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login);
+bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login);
 
 /* Notify server */
 void run_notify(void);

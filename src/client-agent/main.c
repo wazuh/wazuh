@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 
     /* Anti tampering functionality */
     if (uninstall_auth_token || uninstall_auth_login) {
-        package_uninstall_validation(uninstall_auth_token, uninstall_auth_login);
+        exit(package_uninstall_validation(uninstall_auth_token, uninstall_auth_login));
     }
 
     agt = (agent *)calloc(1, sizeof(agent));

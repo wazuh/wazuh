@@ -89,6 +89,11 @@ else()
 list(APPEND client-agent_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 endif()
 
+if(${TARGET} STREQUAL "agent")
+list(APPEND client-agent_names "test_agentd")
+list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")
+endif()
+
 list(LENGTH client-agent_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})
