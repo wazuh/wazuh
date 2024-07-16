@@ -184,6 +184,18 @@ get_rbac_actions:
           - PUT /agents/group/{group_id}/restart
           - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
+      agent:uninstall:
+        description: Check user's permission to uninstall agents
+        example:
+          actions:
+            - agent:uninstall
+          resources:
+            - "*:*:*"
+          effect: allow
+        resources:
+          - "*:*"
+        related_endpoints:
+          - GET /agents/uninstall
       agent:upgrade:
         description: Upgrade the version of the agents
         resources:
