@@ -1,13 +1,18 @@
 import os
+import random
+from asyncio import sleep
+from logging import getLogger
 
-from core.exception import WazuhIndexerError
 from opensearchpy import AsyncOpenSearch
+from wazuh.core.exception import WazuhIndexerError
+
+logger = getLogger('wazuh')
 
 HOST_KEY = 'host'
 PORT_KEY = 'port'
 
 # This constants are temporary
-INDEXER_HOST = os.environ.get('WAZUH_INDEXER_HOST' 'wazuh-indexer')
+INDEXER_HOST = os.environ.get('WAZUH_INDEXER_HOST', 'wazuh-indexer')
 INDEXER_PORT = os.environ.get('WAZUH_INDEXER_PORT', 9200)
 INDEXER_USER = os.environ.get('WAZUH_INDEXER_USER', 'admin')
 INDEXER_PASSWORD = os.environ.get('WAZUH_INDEXER_PASSWORD', 'SecretPassword1%')
@@ -44,7 +49,7 @@ class Indexer:
         AsyncOpenSearch
             The created instance.
         """
-        self._client = AsyncOpenSearch(
+        return AsyncOpenSearch(
             hosts=[{HOST_KEY: self.host, PORT_KEY: self.port}],
             http_compress=True,
             http_auth=(self.user, self.password),
@@ -63,15 +68,21 @@ class Indexer:
         if not (await self._client.ping()):
             raise WazuhIndexerError(2200)
 
+    async def close(self):
+        """Close the Wazuh Indexer client."""
+        await self._client.close()
+
 
 async def create_indexer(
     host: str = INDEXER_HOST,
     user: str = INDEXER_USER,
     password: str = INDEXER_PASSWORD,
     port: int = INDEXER_PORT,
+    retries: int = 5,
+    backoff_in_seconds: int = 1,
     **kwargs,
 ) -> Indexer:
-    """Create and initialize the Indexer.
+    """Create and initialize the Indexer instance implementing a retry with backoff machanism.
 
     Parameters
     ----------
@@ -83,6 +94,10 @@ async def create_indexer(
         Password of the Wazuh Indexer to authenticate with, by default INDEXER_PASSWORD
     port : int, optional
         Port of the Wazuh Indexer to connect with, by default INDEXER_PORT
+    retries : int, optional
+        Number of retries, by default 5.
+    backoff_in_seconds : int, optional
+        Base seconds to wait, by default 1.
 
     Returns
     -------
@@ -91,6 +106,18 @@ async def create_indexer(
     """
 
     indexer = Indexer(host, user, password, port, **kwargs)
-    await indexer.initiazlize()
+    retries_count = 0
+    while True:
+        try:
+            await indexer.initiazlize()
+            return indexer
+        except WazuhIndexerError:
+            if retries_count == retries:
+                await indexer.close()
+                raise
 
-    return indexer
+            wait = backoff_in_seconds * 2**retries_count + random.uniform(0, 1)
+            logger.warning('Cannot initialize the indexer client.')
+            logger.info(f'Sleeping {wait}s until next try.')
+            await sleep(wait)
+            retries_count += 1
