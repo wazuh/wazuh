@@ -168,7 +168,7 @@ x-rbac-catalog:
         resources: ['agent:id:050', 'agent:id:049']
         effect: "deny"
     'agent:uninstall':
-      description: "Uninstall agents"
+      description: "Check user's permission to uninstall agents"
       resources:
         - $ref: '#/x-rbac-catalog/resources/*:*'
       example:
@@ -8274,8 +8274,8 @@ paths:
     get:
       tags:
         - Agents
-      summary: "Check if user can uninstall agents"
-      description: "Check if the user has the permissions to uninstall agents"
+      summary: "Check user's permission to uninstall agents"
+      description: "Verify if the user has the necessary permissions to uninstall agents."
       operationId: api.controllers.agent_controller.get_agent_uninstall_permission
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/agent:uninstall'
@@ -8284,7 +8284,7 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
       responses:
         '200':
-          description: "Checks uninstall permissions"
+          description: "User has the necessary permissions to uninstall agents"
           content:
             application/json:
               schema:
