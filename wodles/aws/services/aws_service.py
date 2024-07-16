@@ -13,9 +13,6 @@ from wodles.aws.constants import DEFAULT_AWS_SERVICE_TABLENAME, AWS_SERVICE_MSG_
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import aws_tools
-
 
 class AWSService(wazuh_integration.WazuhAWSDatabase):
     """
