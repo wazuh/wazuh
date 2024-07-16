@@ -71,6 +71,25 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
     return mock_type(curl_response*);
 }
 
+void expect_wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, curl_response* response) {
+    expect_string(__wrap_wurl_http_request, method, method);
+
+    char** ptr = headers;
+    for (char* header = *ptr; header; header=*++ptr) {
+        expect_string(__wrap_wurl_http_request, header, header);
+    }
+
+    expect_string(__wrap_wurl_http_request, url, url);
+
+    if (payload) {
+        expect_string(__wrap_wurl_http_request, payload, payload);
+    }
+
+    expect_value(__wrap_wurl_http_request, max_size, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, timeout);
+    will_return(__wrap_wurl_http_request, response);
+}
+
 CURL* __wrap_curl_easy_init() {
     return mock_type(CURL *);
 }

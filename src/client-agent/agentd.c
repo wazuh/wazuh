@@ -224,9 +224,6 @@ bool check_uninstall_permission(const char *token) {
             return true;
         } else if (response->status_code == 403) {
             minfo(AG_UNINSTALL_VALIDATION_DENIED);
-            wurl_free_response(response);
-            os_free(headers[0]);
-            return false;
         } else {
             merror(AG_API_ERROR_CODE, response->status_code);
         }
@@ -248,17 +245,17 @@ char* authenticate_and_get_token(const char *userpass) {
     curl_response *response = wurl_http_request(WURL_POST_METHOD, headers, url, userpass, OS_SIZE_8192, 30);
 
     if (response) {
-        cJSON *response_json = NULL;
-        if (response_json = cJSON_Parse(response->body), response_json) {
-            cJSON *token_json = cJSON_GetObjectItem(response_json, "token");
-            if (response->status_code == 200) {
+        if (response->status_code == 200) {
+            cJSON *response_json = NULL;
+            if (response_json = cJSON_Parse(response->body), response_json) {
+                cJSON *token_json = cJSON_GetObjectItem(cJSON_GetObjectItem(response_json, "data"), "token");
                 if (token_json && (token_json->type == cJSON_String)) {
                     os_strdup(token_json->valuestring, token);
                 }
-            } else {
-                merror(AG_API_ERROR_CODE, response->status_code);
+                cJSON_Delete(response_json);
             }
-            cJSON_Delete(response_json);
+        } else {
+            merror(AG_API_ERROR_CODE, response->status_code);
         }
         wurl_free_response(response);
     } else {
@@ -268,14 +265,14 @@ char* authenticate_and_get_token(const char *userpass) {
     return token;
 }
 
-void package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login) {
+bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login) {
     bool validate_result = false;
 
     minfo(AG_UNINSTALL_VALIDATION_START);
     if (uninstall_auth_token) {
         validate_result = check_uninstall_permission(uninstall_auth_token);
         if (validate_result) {
-            exit(validate_result);
+            return validate_result;
         }
     }
     if (uninstall_auth_login) {
@@ -287,5 +284,5 @@ void package_uninstall_validation(const char *uninstall_auth_token, const char *
             merror(AG_TOKEN_FAIL, uninstall_auth_login);
         }
     }
-    exit(validate_result);
+    return validate_result;
 }
