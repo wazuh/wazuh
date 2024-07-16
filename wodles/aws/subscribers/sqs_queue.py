@@ -48,7 +48,7 @@ class AWSSQSQueue(wazuh_integration.WazuhIntegration):
                                                     sts_endpoint=sts_endpoint, skip_on_error=skip_on_error,
                                                     iam_role_duration=iam_role_duration,
                                                     **kwargs)
-        self.sts_client = self.get_sts_client(None, None, profile)
+        self.sts_client = self.get_sts_client(profile)
         self.account_id = self.sts_client.get_caller_identity().get('Account')
         self.sqs_url = self._get_sqs_url()
         self.iam_role_arn = iam_role_arn
