@@ -6,6 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.9.0]
 
+### RESTful API
+
+#### Added
+
+- Added endpoint GET /agents/uninstall. ([#24621](https://github.com/wazuh/wazuh/pull/24621))
+
+
 ### Manager
 
 #### Added
