@@ -17,6 +17,8 @@ import botocore
 import pytest
 import zlib
 
+import wodles.aws.constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
@@ -77,9 +79,9 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
                                               iam_role_duration=kwargs["iam_role_duration"], external_id=None,
                                               skip_on_error=kwargs["skip_on_error"])
 
-    assert integration.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
+    assert integration.retain_db_records == wodles.aws.constants.MAX_AWS_BUCKET_RECORD_RETENTION
     assert integration.reparse == kwargs["reparse"]
-    assert integration.only_logs_after == datetime.strptime(only_logs_after, aws_bucket.DB_DATE_FORMAT) \
+    assert integration.only_logs_after == datetime.strptime(only_logs_after, wodles.aws.constants.AWS_BUCKET_DB_DATE_FORMAT) \
         if only_logs_after else integration.only_logs_after is None
     assert integration.skip_on_error == kwargs["skip_on_error"]
     assert integration.account_alias == kwargs["account_alias"]
@@ -253,7 +255,7 @@ def test_aws_bucket_get_alert_msg(event):
     """Test 'get_alert_msg' method returns messages with the valid format."""
     bucket = utils.get_mocked_aws_bucket(account_alias=utils.TEST_ACCOUNT_ALIAS)
     expected_error_message = "error message"
-    expected_msg = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    expected_msg = copy.deepcopy(wodles.aws.constants.AWS_BUCKET_MSG_TEMPLATE)
     expected_msg['aws']['log_info'].update({
         'aws_account_alias': bucket.account_alias,
         'log_file': utils.TEST_LOG_KEY,
@@ -307,7 +309,7 @@ def test_aws_bucket_find_account_ids(mock_prefix):
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    (wodles.aws.constants.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
     ('OtherClientException', utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=utils.TEST_PREFIX)
@@ -353,7 +355,7 @@ def test_aws_bucket_find_regions(mock_prefix, object_list: dict):
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    (wodles.aws.constants.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
     ('OtherClientException', utils.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.get_service_prefix', return_value=utils.TEST_PREFIX)
@@ -440,7 +442,7 @@ def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
 def test_aws_bucket_reformat_msg():
     """Test 'reformat_msg' method applies the expected format to a given event."""
     bucket = utils.get_mocked_aws_bucket()
-    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event = copy.deepcopy(wodles.aws.constants.AWS_BUCKET_MSG_TEMPLATE)
     event['aws'].update(
         {
             'sourceIPAddress': '255.255.255.255',
@@ -712,7 +714,7 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    (wodles.aws.constants.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
     ('OtherClientException', utils.UNKNOWN_ERROR_CODE),
 ])
 def test_aws_bucket_iter_files_in_bucket_handles_exceptions_on_error(error_code, exit_code):
@@ -767,9 +769,9 @@ def test_aws_bucket_check_bucket_exits_when_empty():
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (aws_bucket.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
-    (aws_bucket.INVALID_CREDENTIALS_ERROR_CODE, utils.INVALID_CREDENTIALS_ERROR_CODE),
-    (aws_bucket.INVALID_REQUEST_TIME_ERROR_CODE, utils.INVALID_REQUEST_TIME_ERROR_CODE),
+    (wodles.aws.constants.THROTTLING_EXCEPTION_ERROR_CODE, utils.THROTTLING_ERROR_CODE),
+    (wodles.aws.constants.INVALID_CREDENTIALS_ERROR_CODE, utils.INVALID_CREDENTIALS_ERROR_CODE),
+    (wodles.aws.constants.INVALID_REQUEST_TIME_ERROR_CODE, utils.INVALID_REQUEST_TIME_ERROR_CODE),
     ("OtherClientError", utils.UNKNOWN_ERROR_CODE)
 ])
 def test_aws_bucket_check_bucket_handles_exceptions_on_client_error(error_code: str, exit_code: int):
@@ -868,7 +870,7 @@ def test_aws_logs_bucket_get_alert_msg():
     with patch('wazuh_integration.WazuhAWSDatabase.__init__'):
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
         aws_account_id = utils.TEST_ACCOUNT_ID
-        expected_msg = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+        expected_msg = copy.deepcopy(wodles.aws.constants.AWS_BUCKET_MSG_TEMPLATE)
         expected_error_message = "error message"
 
         expected_alert_msg = bucket.get_alert_msg(aws_account_id, utils.TEST_LOG_KEY, expected_msg,
@@ -924,7 +926,7 @@ def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_data
                                        profile=profile)
     mock_bucket.assert_called_once()
 
-    assert instance.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
+    assert instance.retain_db_records == wodles.aws.constants.MAX_AWS_BUCKET_RECORD_RETENTION
     mock_sts.assert_called_with(profile=profile)
     mock_client.get_caller_identity.assert_called_once()
     assert instance.macie_location_pattern == re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
@@ -1019,7 +1021,7 @@ def test_aws_custom_bucket_reformat_msg(macie_field: str, source: str, event_fie
     event_field_name: str
         Field that may or may not be present in the event.
     """
-    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event = copy.deepcopy(wodles.aws.constants.AWS_BUCKET_MSG_TEMPLATE)
     event['aws'].update(
         {
             'source': source,

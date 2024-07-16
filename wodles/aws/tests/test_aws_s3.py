@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import wodles.aws.constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 import aws_tools
@@ -60,11 +62,11 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
         if args[2] == 'inspector':
-            assert mocked_class.call_count == len(services.inspector.SUPPORTED_REGIONS)
-            assert instance.get_alerts.call_count == len(services.inspector.SUPPORTED_REGIONS)
+            assert mocked_class.call_count == len(wodles.aws.constants.INSPECTOR_SUPPORTED_REGIONS)
+            assert instance.get_alerts.call_count == len(wodles.aws.constants.INSPECTOR_SUPPORTED_REGIONS)
         else:
-            assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
-            assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
+            assert mocked_class.call_count == len(wodles.aws.constants.ALL_REGIONS)
+            assert instance.get_alerts.call_count == len(wodles.aws.constants.ALL_REGIONS)
     elif 'subscriber' in args[1]:
         mocked_class.assert_called_once()
         instance.sync_events.assert_called_once()

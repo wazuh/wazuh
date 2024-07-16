@@ -9,6 +9,8 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 import pytest
 
+import wodles.aws.constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
@@ -86,6 +88,6 @@ def test_aws_service_format_message(mock_wazuh_integration, mock_wazuh_aws_datab
     output_msg = {'source': 'service_name', 'createdAt': TEST_DATETIME_STR, 'updatedAt': TEST_DATETIME_STR,
                   'key': 'value'}
     instance = utils.get_mocked_service(only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
-    expected_msg = copy.deepcopy(aws_service.AWS_SERVICE_MSG_TEMPLATE)
+    expected_msg = copy.deepcopy(wodles.aws.constants.AWS_SERVICE_MSG_TEMPLATE)
     expected_msg['aws'] = output_msg
     assert instance.format_message(input_msg) == expected_msg

@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 
 import botocore
 
+import wodles.aws.constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
@@ -121,7 +123,7 @@ def test_aws_config_bucket_reformat_msg(mock_reformat,
     security_groups: str or dict
         Security groups values for the securityGroups key.
     """
-    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event = copy.deepcopy(wodles.aws.constants.AWS_BUCKET_MSG_TEMPLATE)
     event['aws'].update(
         {
             'configuration': {

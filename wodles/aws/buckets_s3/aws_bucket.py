@@ -14,31 +14,14 @@ from typing import Iterator
 
 from datetime import datetime
 
+from wodles.aws.constants import MAX_AWS_BUCKET_RECORD_RETENTION, AWS_BUCKET_DB_DATE_FORMAT, DEFAULT_AWS_BUCKET_DATABASE_NAME, \
+    INVALID_CREDENTIALS_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_CODE, THROTTLING_EXCEPTION_ERROR_CODE, \
+    UNKNOWN_ERROR_MESSAGE, INVALID_CREDENTIALS_ERROR_MESSAGE, INVALID_REQUEST_TIME_ERROR_MESSAGE, \
+    THROTTLING_EXCEPTION_ERROR_MESSAGE, AWS_BUCKET_MSG_TEMPLATE
+
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
 import aws_tools
-
-MAX_RECORD_RETENTION = 500
-PATH_DATE_FORMAT = "%Y/%m/%d"
-DB_DATE_FORMAT = "%Y%m%d"
-DEFAULT_DATABASE_NAME = "s3_cloudtrail"
-
-RETRY_CONFIGURATION_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/' \
-                          'considerations.html#Connection-configuration-for-retries'
-
-INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
-INVALID_REQUEST_TIME_ERROR_CODE = "RequestTimeTooSkewed"
-THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
-
-UNKNOWN_ERROR_MESSAGE = "Unexpected error: '{error}'."
-INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
-INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
-THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. " \
-                                     "If the problem persists check the following link to learn how to use " \
-                                     f"the Retry configuration to avoid it: '{RETRY_CONFIGURATION_URL}'"
-
-AWS_BUCKET_MSG_TEMPLATE = {'integration': 'aws',
-                           'aws': {'log_info': {'aws_account_alias': '', 'log_file': '', 's3bucket': ''}}}
 
 
 class AWSBucket(wazuh_integration.WazuhAWSDatabase):
@@ -179,7 +162,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_region=:aws_region;"""
 
         # DB name
-        self.db_name = DEFAULT_DATABASE_NAME
+        self.db_name = DEFAULT_AWS_BUCKET_DATABASE_NAME
         # Table name
         self.db_table_name = db_table_name
 
@@ -195,9 +178,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                                                     service_endpoint=service_endpoint,
                                                     iam_role_duration=iam_role_duration,
                                                     skip_on_error=skip_on_error)
-        self.retain_db_records = MAX_RECORD_RETENTION
+        self.retain_db_records = MAX_AWS_BUCKET_RECORD_RETENTION
         self.reparse = reparse
-        self.only_logs_after = datetime.strptime(only_logs_after, DB_DATE_FORMAT) if only_logs_after else None
+        self.only_logs_after = datetime.strptime(only_logs_after, AWS_BUCKET_DB_DATE_FORMAT) if only_logs_after else None
         self.account_alias = account_alias
         self.prefix = prefix
         self.suffix = suffix
@@ -731,7 +714,7 @@ class AWSCustomBucket(AWSBucket):
     def __init__(self, db_table_name=None, **kwargs):
         # only special services have a different DB table
         AWSBucket.__init__(self, db_table_name=db_table_name if db_table_name else 'custom', **kwargs)
-        self.retain_db_records = MAX_RECORD_RETENTION
+        self.retain_db_records = MAX_AWS_BUCKET_RECORD_RETENTION
         # get STS client
         profile = kwargs.get('profile', None)
         self.sts_client = self.get_sts_client(profile=profile)

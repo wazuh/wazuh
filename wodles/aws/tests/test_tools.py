@@ -10,6 +10,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import wodles.aws.constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_tools
 
@@ -189,7 +191,7 @@ def test_get_aws_config_params(mock_config):
     config = MagicMock()
     mock_config.return_value = config
     assert aws_tools.get_aws_config_params() == config
-    config.read.assert_called_with(aws_tools.DEFAULT_AWS_CONFIG_PATH)
+    config.read.assert_called_with(wodles.aws.constants.DEFAULT_AWS_CONFIG_PATH)
 
 
 @pytest.mark.parametrize('mutually_exclusive_parameter', ['--bucket', '--service'])

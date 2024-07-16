@@ -6,6 +6,8 @@ import csv
 import sys
 from os import path
 from typing import Iterator
+
+import wodles.aws.constants
 from aws_bucket import AWSLogsBucket
 try:
     import boto3
@@ -152,7 +154,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         boto_session = boto3.Session(**conn_args)
 
-        if region not in aws_tools.ALL_REGIONS:
+        if region not in wodles.aws.constants.ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 
         try:
