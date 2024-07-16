@@ -15,7 +15,7 @@ from typing import Iterator
 from datetime import datetime
 
 from wodles.aws.constants import MAX_AWS_BUCKET_RECORD_RETENTION, AWS_BUCKET_DB_DATE_FORMAT, DEFAULT_AWS_BUCKET_DATABASE_NAME, \
-    INVALID_CREDENTIALS_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_CODE, THROTTLING_EXCEPTION_ERROR_CODE, \
+    INVALID_CREDENTIALS_ERROR_NAME, INVALID_REQUEST_TIME_ERROR_NAME, THROTTLING_EXCEPTION_ERROR_NAME, \
     UNKNOWN_ERROR_MESSAGE, INVALID_CREDENTIALS_ERROR_MESSAGE, INVALID_REQUEST_TIME_ERROR_MESSAGE, \
     THROTTLING_EXCEPTION_ERROR_MESSAGE, AWS_BUCKET_MSG_TEMPLATE
 
@@ -331,7 +331,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     accounts.append(account_id)
             return accounts
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
+            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_NAME:
                 aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_account_ids")}.', 2)
                 sys.exit(16)
             else:
@@ -355,7 +355,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_tools.debug(f"+++ No regions found for AWS Account {account_id}", 1)
                 return []
         except botocore.exceptions.ClientError as err:
-            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_CODE:
+            if err.response['Error']['Code'] == THROTTLING_EXCEPTION_ERROR_NAME:
                 aws_tools.debug(f'ERROR: {THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name="find_regions")}. ', 2)
                 sys.exit(16)
             else:
@@ -606,7 +606,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         except botocore.exceptions.ClientError as error:
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
+            if error_code == THROTTLING_EXCEPTION_ERROR_NAME:
                 error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='iter_files_in_bucket')}: {error}"
                 exit_number = 16
             else:
@@ -638,13 +638,13 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         except botocore.exceptions.ClientError as error:
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
+            if error_code == THROTTLING_EXCEPTION_ERROR_NAME:
                 error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
                 exit_number = 16
-            elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
+            elif error_code == INVALID_CREDENTIALS_ERROR_NAME:
                 error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
                 exit_number = 3
-            elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
+            elif error_code == INVALID_REQUEST_TIME_ERROR_NAME:
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
             else:

@@ -12,6 +12,7 @@ import json
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
+import wodles.aws.constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
@@ -20,7 +21,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 
 import s3_log_handler
 
 SAMPLE_PARQUET_KEY = 'aws/source/region=region/accountId=accountID/eventHour=YYYYMMDDHH/file.gz.parquet'
-SAMPLE_MESSAGE = {'bucket_path': utils.TEST_MESSAGE, 'log_path': SAMPLE_PARQUET_KEY}
+SAMPLE_MESSAGE = {'bucket_path': wodles.aws.constants.TEST_MESSAGE, 'log_path': SAMPLE_PARQUET_KEY}
 SAMPLE_PARQUET_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -42,10 +43,10 @@ def test_method_raises_not_implemented():
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effet=wazuh_integration.WazuhIntegration.__init__)
 def test_aws_sl_subscriber_bucket_initializes_properly(mock_wazuh_integration, mock_client, mock_sts_client):
     """Test if the instances of AWSSLSubscriberBucket are created properly."""
-    kwargs = utils.get_aws_s3_log_handler_parameters(iam_role_arn=utils.TEST_IAM_ROLE_ARN,
-                                                     iam_role_duration=utils.TEST_IAM_ROLE_DURATION,
-                                                     service_endpoint=utils.TEST_SERVICE_ENDPOINT,
-                                                     sts_endpoint=utils.TEST_STS_ENDPOINT)
+    kwargs = utils.get_aws_s3_log_handler_parameters(iam_role_arn=wodles.aws.constants.TEST_IAM_ROLE_ARN,
+                                                     iam_role_duration=wodles.aws.constants.TEST_IAM_ROLE_DURATION,
+                                                     service_endpoint=wodles.aws.constants.TEST_SERVICE_ENDPOINT,
+                                                     sts_endpoint=wodles.aws.constants.TEST_STS_ENDPOINT)
 
     integration = s3_log_handler.AWSSLSubscriberBucket(**kwargs)
 
@@ -68,10 +69,10 @@ def test_aws_sl_subscriber_bucket_obtain_logs(mock_wazuh_integration, mock_sts_c
     mock_get_object = instance.client.get_object
 
     with patch('io.BytesIO', return_value=(os.path.join(logs_path, 'AWSSecurityLake', 'test_file.parquet'))):
-        events = instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+        events = instance.obtain_logs(wodles.aws.constants.TEST_BUCKET, SAMPLE_PARQUET_KEY)
 
     assert events == [json.dumps(SAMPLE_PARQUET_EVENT_1)]
-    mock_get_object.assert_called_with(Bucket=utils.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
+    mock_get_object.assert_called_with(Bucket=wodles.aws.constants.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -84,8 +85,8 @@ def test_aws_sl_subscriber_bucket_obtain_logs_handles_exception(mock_wazuh_integ
     instance.client.get_object.side_effect = Exception
 
     with pytest.raises(SystemExit) as e:
-        instance.obtain_logs(utils.TEST_BUCKET, SAMPLE_PARQUET_KEY)
-    assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+        instance.obtain_logs(wodles.aws.constants.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+    assert e.value.code == wodles.aws.constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
 @patch('s3_log_handler.AWSSLSubscriberBucket.obtain_logs')
@@ -268,8 +269,8 @@ def test_obtain_logs_processes_security_hub_events(content, expected_logs):
         with patch('s3_log_handler.AWSSubscriberBucket.decompress_file', return_value=io.StringIO(content)):
             with patch("s3_log_handler.AWSSecurityHubSubscriberBucket._add_event_type_fields",
                        side_effect=lambda event, base: base.update(event)):
-                formatted_logs = s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=utils.TEST_BUCKET,
-                                                                                             log_path=utils.TEST_LOG_KEY
+                formatted_logs = s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=wodles.aws.constants.TEST_BUCKET,
+                                                                                             log_path=wodles.aws.constants.TEST_LOG_KEY
                                                                                              )
                 assert formatted_logs == expected_logs
                 assert formatted_logs is not None
@@ -283,9 +284,9 @@ def test_sec_hub_obtain_logs_handles_exception():
                                                                                                 ('test', 'test', 1),
                                                                                                 AttributeError]):
                 with pytest.raises(SystemExit) as e:
-                    s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=utils.TEST_BUCKET,
-                                                                                log_path=utils.TEST_LOG_KEY)
-                assert e.value.code == utils.PARSE_FILE_ERROR_CODE
+                    s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=wodles.aws.constants.TEST_BUCKET,
+                                                                                log_path=wodles.aws.constants.TEST_LOG_KEY)
+                assert e.value.code == wodles.aws.constants.PARSE_FILE_ERROR_CODE
 
 
 @pytest.mark.parametrize("discard_log", [True, False])
@@ -293,8 +294,8 @@ def test_sec_hub_obtain_logs_handles_exception():
 def test_sec_hub_process_file_sends_expected_messages(mock_debug, discard_log):
     """Test 'process_file' method of AWSSecurityHubSubscriberBucket the class sends the events inside the given
     message to AnalysisD."""
-    log_file = utils.TEST_LOG_KEY
-    bucket_path = utils.TEST_BUCKET
+    log_file = wodles.aws.constants.TEST_LOG_KEY
+    bucket_path = wodles.aws.constants.TEST_BUCKET
     message_body = {"log_path": log_file, "bucket_path": bucket_path}
 
     formatted_logs = [{"field": "value"}]

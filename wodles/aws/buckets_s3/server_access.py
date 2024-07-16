@@ -7,8 +7,8 @@ from os import path
 import botocore
 import re
 
-from wodles.aws.constants import INVALID_CREDENTIALS_ERROR_CODE, INVALID_REQUEST_TIME_ERROR_CODE, \
-    THROTTLING_EXCEPTION_ERROR_CODE, UNKNOWN_ERROR_MESSAGE, INVALID_CREDENTIALS_ERROR_MESSAGE, \
+from wodles.aws.constants import INVALID_CREDENTIALS_ERROR_NAME, INVALID_REQUEST_TIME_ERROR_NAME, \
+    THROTTLING_EXCEPTION_ERROR_NAME, UNKNOWN_ERROR_MESSAGE, INVALID_CREDENTIALS_ERROR_MESSAGE, \
     INVALID_REQUEST_TIME_ERROR_MESSAGE, THROTTLING_EXCEPTION_ERROR_MESSAGE
 from aws_bucket import AWSCustomBucket
 
@@ -128,13 +128,13 @@ class AWSServerAccess(AWSCustomBucket):
         except botocore.exceptions.ClientError as error:
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
+            if error_code == THROTTLING_EXCEPTION_ERROR_NAME:
                 error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
                 exit_number = 16
-            elif error_code == INVALID_CREDENTIALS_ERROR_CODE:
+            elif error_code == INVALID_CREDENTIALS_ERROR_NAME:
                 error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
                 exit_number = 3
-            elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
+            elif error_code == INVALID_REQUEST_TIME_ERROR_NAME:
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
             else:
