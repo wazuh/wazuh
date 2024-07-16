@@ -686,13 +686,24 @@ DBSync::~DBSync()
 {
     if (m_shouldBeRemoved)
     {
-        DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
+        try
+        {
+            DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
+        }
+        // LCOV_EXCL_START
+        catch (const DbSync::dbsync_error& ex)
+        {
+            log_message(ex.what());
+        }
+
+        // LCOV_EXCL_STOP
     }
 }
 
 
 void DBSync::teardown()
 {
+
     PipelineFactory::instance().release();
     DBSyncImplementation::instance().release();
 }
