@@ -8,6 +8,7 @@ default_policies:
         actions:
           - agent:create
           - group:create
+          - agent:uninstall
         resources:
           - '*:*:*'
         effect: allow
