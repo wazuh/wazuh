@@ -18,11 +18,34 @@ PRIVATE
 )
 target_link_libraries(defs defs::idefinitions json base)
 
+if(ENGINE_BUILD_TEST)
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+
 # Testing mocks
 add_library(defs_mocks INTERFACE)
-target_include_directories(defs_mocks INTERFACE
-  ${CMAKE_CURRENT_LIST_DIR}/mocks
-  ${CMAKE_CURRENT_LIST_DIR}/test/mocks
+target_include_directories(defs_mocks INTERFACE ${TEST_MOCK_DIR}
 )
 target_link_libraries(defs_mocks INTERFACE defs::idefinitions)
 add_library(defs::mocks ALIAS defs_mocks)
+
+add_executable(defs_utest
+  ${UNIT_SRC_DIR}/defs_test.cpp
+)
+target_include_directories(defs_utest
+  PRIVATE
+  ${TEST_SRC_DIR}
+  ${CMAKE_CURRENT_LIST_DIR}/src
+  ${CMAKE_CURRENT_LIST_DIR}/include/defs
+)
+
+target_link_libraries(defs_utest
+  PRIVATE
+  defs::mocks
+  defs
+  gtest_main
+)
+
+endif(ENGINE_BUILD_TEST)

@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 
 #include <baseTypes.hpp>
-#include <defs/mocks/failDef.hpp>
+#include <defs/failDef.hpp>
 #include <logging/logging.hpp>
 #include <sockiface/mockSockFactory.hpp>
 #include <sockiface/mockSockHandler.hpp>

@@ -1,47 +1,7 @@
 # FIXME: Base should be refactored to be an OBJECT library so other modules can simply include what they need.
 ####################################################################################################
-# Profiler
-####################################################################################################
-if(ENGINE_PROFILE_BUILD)
-    if( CMAKE_BUILD_TYPE STREQUAL "Release")
-        message(WARNING "Prefer 'RelWithDebInfo' build config when trying to profile")
-    elseif(NOT CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-        message(FATAL_ERROR "Trying to profile a non-release build")
-    endif()
-
-    CPMAddPackage(
-        NAME tracy
-        GITHUB_REPOSITORY wolfpld/tracy
-        GIT_TAG "v0.8"
-        OPTIONS
-        )
-
-    add_library(profile
-        OBJECT
-        profile/profile.hpp
-        )
-
-    if(ENGINE_PROFILE_MEMORY)
-        target_sources(profile
-            PRIVATE
-            profile/profile.cpp
-            )
-    endif()
-
-    target_include_directories(profile
-        PUBLIC
-        ${tracy_SOURCE_DIR}/
-        )
-
-    target_link_libraries(profile PUBLIC TracyClient dl pthread)
-
-    target_compile_definitions(profile PUBLIC WAZUH_PROFILING_ENABLED TRACY_ENABLE)
-endif()
-
-####################################################################################################
 # logging
 ####################################################################################################
-# TODO: spdlog includes fmt, but its headers cannot be included as, for example, "fmt/xxx.h" but "fmt/bundled/xxx.h"
 CPMAddPackage(
   NAME fmt
   GITHUB_REPOSITORY fmtlib/fmt
@@ -116,3 +76,50 @@ target_include_directories(base
     ${ENGINE_SOURCE_DIR}/base
     ${ENGINE_SOURCE_DIR} # TODO remove when BUILDER is updated (#include <builder/builder.hpp)
 )
+
+# Tests
+if(ENGINE_BUILD_TEST)
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+
+add_executable(base_utest
+    ${UNIT_SRC_DIR}/stringUtils_test.cpp
+    ${UNIT_SRC_DIR}/ipUtils_test.cpp
+    ${UNIT_SRC_DIR}/result_test.cpp
+    ${UNIT_SRC_DIR}/graph_test.cpp
+    ${UNIT_SRC_DIR}/name_test.cpp
+    ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhRequest_test.cpp
+    ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhResponse_test.cpp
+    ${UNIT_SRC_DIR}/parseEvent_test.cpp
+    ${UNIT_SRC_DIR}/dotPath_test.cpp
+)
+target_include_directories(base_utest
+    PRIVATE
+    ${TEST_SRC_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}
+)
+target_link_libraries(base_utest
+    PRIVATE
+    base
+    gtest_main
+)
+gtest_discover_tests(base_utest)
+
+# TODO this test needs to be instantiated alone because the logger is initialized on tests
+add_executable(base_logger_utest
+    ${UNIT_SRC_DIR}/logger_test.cpp
+)
+target_include_directories(base_logger_utest
+    PRIVATE
+    ${TEST_SRC_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}
+)
+target_link_libraries(base_logger_utest
+    PRIVATE
+    base
+    gtest_main
+)
+gtest_discover_tests(base_logger_utest)
+
+endif(ENGINE_BUILD_TEST)

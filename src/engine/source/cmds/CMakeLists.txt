@@ -45,3 +45,29 @@ target_include_directories(cmds
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CLI11_SOURCE_DIR}/include
 )
+
+# Tests
+if(ENGINE_BUILD_TEST)
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+
+add_executable(cmds_utest
+    ${UNIT_SRC_DIR}/stackExecutor_test.cpp
+    ${UNIT_SRC_DIR}/cli11_test.cpp
+)
+target_include_directories(cmds_utest
+    PRIVATE
+    ${TEST_SRC_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CLI11_SOURCE_DIR}/include
+)
+target_link_libraries(cmds_utest
+    PRIVATE
+    gtest_main
+    cmds
+    base
+)
+gtest_discover_tests(cmds_utest)
+
+endif(ENGINE_BUILD_TEST)
