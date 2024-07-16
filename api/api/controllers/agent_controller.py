@@ -1681,6 +1681,20 @@ async def get_agent_summary_os(pretty: bool = False, wait_for_complete: bool = F
 
 
 async def get_agent_uninstall_permission(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+    """Check user's permission to uninstall agents
+
+    Parameters
+    ----------
+    pretty : bool
+        Show results in human-readable format
+    wait_for_complete : bool
+        Disable timeout response
+
+    Returns
+    -------
+    ConnexionResponse
+        API response.
+    """
     f_kwargs = {}
 
     dapi = DistributedAPI(f=agent.agent_check_uninstall_permission,

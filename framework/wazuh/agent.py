@@ -1517,4 +1517,15 @@ def get_full_overview() -> WazuhResult:
 
 @expose_resources(actions=["agent:uninstall"], resources=["*:*:*"], post_proc_func=None)
 def agent_check_uninstall_permission() -> WazuhResult:
+    """Check if the user has permission to uninstall agents.
+
+    This function verifies whether the user has the necessary permissions
+    to uninstall agents by checking the assigned RBAC actions and resources.
+
+    Returns
+    -------
+    WazuhResult
+        WazuhResult object containing a message indicating if the
+        user has the permission to uninstall agents.
+    """
     return WazuhResult({'message': "Agent has permission to be uninstalled"})
