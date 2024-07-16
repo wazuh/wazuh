@@ -49,3 +49,26 @@ target_include_directories(server
     ${ENGINE_SERVER_INCLUDE_DIR}
     ${uvw_SOURCE_DIR}/src/
 )
+
+# Tests
+if(ENGINE_BUILD_TEST)
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+
+add_executable(server_utest
+    ${UNIT_SRC_DIR}/engineServer_test.cpp
+    ${UNIT_SRC_DIR}/unixDatagram_test.cpp
+    ${UNIT_SRC_DIR}/unixStream_test.cpp
+    ${UNIT_SRC_DIR}/protocolHandlerStream_test.cpp
+)
+
+target_include_directories(server_utest
+    PRIVATE
+    ${uvw_SOURCE_DIR}/src/
+)
+
+target_link_libraries(server_utest PRIVATE gtest_main server uv_a)
+gtest_discover_tests(server_utest)
+
+endif(ENGINE_BUILD_TEST)

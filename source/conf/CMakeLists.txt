@@ -15,3 +15,17 @@ add_library(conf::cliconf ALIAS conf_cliconf)
 
 add_library(conf INTERFACE)
 target_link_directories(conf INTERFACE conf::iconf conf::cliconf)
+
+# Tests
+if(ENGINE_BUILD_TEST)
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+
+add_executable(cliconf_utest
+    ${UNIT_SRC_DIR}/cliconf_test.cpp
+)
+target_link_libraries(cliconf_utest gtest_main conf::cliconf)
+gtest_discover_tests(cliconf_utest)
+
+endif(ENGINE_BUILD_TEST)

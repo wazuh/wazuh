@@ -191,7 +191,18 @@ target_link_libraries(main base cmds api)
 
 # Build test
 if(ENGINE_BUILD_TEST)
-add_subdirectory(${ENGINE_TEST_DIR})
+# Add googletest as CPM dependency
+CPMAddPackage(
+    NAME googletest
+    GITHUB_REPOSITORY google/googletest
+    GIT_TAG release-1.11.0
+    VERSION 1.11.0
+    OPTIONS
+    "INSTALL_GTEST OFF"
+    EXCLUDE_FROM_ALL YES
+)
+
+include(GoogleTest)
 endif(ENGINE_BUILD_TEST)
 
 # Build benchmark
