@@ -33,14 +33,7 @@ jobs:
       
       - name: Download integration tests framework
         run: |
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
-          else
-              QA_BRANCH="main"
-          fi
-          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
+          git clone -b main --single-branch https://github.com/wazuh/qa-integration-framework.git
 
       - name: Install dependencies
         run: |
