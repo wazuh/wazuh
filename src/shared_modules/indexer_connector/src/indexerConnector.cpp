@@ -272,8 +272,7 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     }
 }
 
-void IndexerConnector::initialize(const nlohmann::json& templateData,
-                                  const std::shared_ptr<ServerSelector>& selector,
+void IndexerConnector::initialize(const std::shared_ptr<ServerSelector>& selector,
                                   const SecureCommunication& secureCommunication)
 {
     // Define the error callback
@@ -292,28 +291,29 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     };
 
     // Define the success callback
-    auto onSuccess = [](const std::string&)
+    nlohmann::json templateData {};
+    auto onSuccess = [&templateData](const std::string& response)
     {
-        // Not used
+        nlohmann::json jsonResponse = nlohmann::json::parse(response);
+        templateData = jsonResponse.at("index_templates").front().at("index_template").at("template");
     };
 
-    // Initialize template.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
-                                templateData,
+    // Initialize Index.
+    HTTPRequest::instance().get(HttpURL(selector->getNext() + "/_index_template/" + m_indexName),
                                 onSuccess,
                                 onError,
                                 "",
                                 DEFAULT_HEADERS,
                                 secureCommunication);
 
-    // Initialize Index.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/" + m_indexName),
-                                templateData.at("template"),
-                                onSuccess,
-                                onError,
-                                "",
-                                DEFAULT_HEADERS,
-                                secureCommunication);
+    HTTPRequest::instance().put(
+        HttpURL(selector->getNext() + "/" + m_indexName),
+        templateData,
+        [](const std::string&) { /* Not used */ },
+        onError,
+        "",
+        DEFAULT_HEADERS,
+        secureCommunication);
 
     m_initialized = true;
     logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
@@ -321,7 +321,6 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
 
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
-    const std::string& templatePath,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
@@ -344,14 +343,6 @@ IndexerConnector::IndexerConnector(
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
-
-    // Read template file.
-    std::ifstream templateFile(templatePath);
-    if (!templateFile.is_open())
-    {
-        throw std::runtime_error("Could not open template file: " + templatePath);
-    }
-    nlohmann::json templateData = nlohmann::json::parse(templateFile);
 
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
@@ -452,7 +443,7 @@ IndexerConnector::IndexerConnector(
 
     m_initializeThread = std::thread(
         // coverity[copy_constructor_call]
-        [this, templateData, selector, secureCommunication]()
+        [this, selector, secureCommunication]()
         {
             auto sleepTime = std::chrono::seconds(START_TIME);
             std::unique_lock lock(m_mutex);
@@ -467,7 +458,7 @@ IndexerConnector::IndexerConnector(
                         sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
                     }
 
-                    initialize(templateData, selector, secureCommunication);
+                    initialize(selector, secureCommunication);
                 }
                 catch (const std::exception& e)
                 {

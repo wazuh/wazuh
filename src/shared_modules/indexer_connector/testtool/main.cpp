@@ -118,7 +118,6 @@ int main(const int argc, const char* argv[])
         // Create indexer connector.
         IndexerConnector indexerConnector(
             configuration,
-            cmdArgParser.getTemplateFilePath(),
             [&logFile](const int logLevel,
                        const std::string& tag,
                        const std::string& file,
@@ -159,7 +158,6 @@ int main(const int argc, const char* argv[])
         }
         else
         {
-
             // Read events file.
             // If the events file path is empty, then the events are generated
             // automatically.

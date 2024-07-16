@@ -54,16 +54,12 @@ class EXPORTED IndexerConnector final
     std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
 
     /**
-     * @brief Intialize method used to load template data and initialize the index.
+     * @brief Intialize method used to initialize the index.
      *
-     * @param templateData Template data.
-     * @param indexName Index name.
      * @param selector Server selector.
      * @param secureCommunication Secure communication.
      */
-    void initialize(const nlohmann::json& templateData,
-                    const std::shared_ptr<ServerSelector>& selector,
-                    const SecureCommunication& secureCommunication);
+    void initialize(const std::shared_ptr<ServerSelector>& selector, const SecureCommunication& secureCommunication);
 
     /**
      * @brief This method is used to calculate the diff between the inventory database and the indexer.
@@ -100,12 +96,10 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
-     * @param templatePath Path to the template file.
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      */
     explicit IndexerConnector(const nlohmann::json& config,
-                              const std::string& templatePath,
                               const std::function<void(const int,
                                                        const std::string&,
                                                        const std::string&,
