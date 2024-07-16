@@ -69,15 +69,15 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
                 {
                     if (!std::filesystem::exists(filePath))
                     {
-                        throw std::runtime_error("The CA root certificate file: " + filePath +
-                                                 " does not exist. Did you check the path?");
+                        throw std::runtime_error("The CA root certificate file: '" + filePath +
+                                                 "' does not exist.");
                     }
 
                     std::ifstream file(filePath);
                     if (!file.is_open())
                     {
-                        throw std::runtime_error("Could not open CA root certificate file: " + filePath +
-                                                 ". Did you check the permissions?");
+                        throw std::runtime_error("Could not open CA root certificate file: '" + filePath +
+                                                 "'.");
                     }
 
                     caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)),
@@ -85,7 +85,7 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
                 }
 
                 // Once all the files are read, we write the content into final file.
-                caRootCertificate = "/etc/wazuh-indexer/certs/root-ca-merged.pem";
+                caRootCertificate = "/var/ossec/etc/certs/root-ca-merged.pem";
                 std::ofstream outputFile(caRootCertificate);
                 if (outputFile.is_open())
                 {
