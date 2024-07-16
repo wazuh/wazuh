@@ -25,3 +25,17 @@ target_include_directories(json PUBLIC
     ${CMAKE_CURRENT_LIST_DIR}/include
     ${rapidjson_SOURCE_DIR}/include
 )
+
+# Tests
+if(ENGINE_BUILD_TEST)
+
+set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+
+add_executable(json_utest
+    ${UNIT_SRC_DIR}/json_test.cpp
+)
+target_link_libraries(json_utest PRIVATE json gtest_main)
+gtest_discover_tests(json_utest)
+
+endif(ENGINE_BUILD_TEST)

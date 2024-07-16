@@ -96,7 +96,6 @@ if(ENGINE_BUILD_TEST)
     base
     api
     schemf::mocks
-    test_mocks
     store::mocks
     rbac::mocks
     api::mocks
