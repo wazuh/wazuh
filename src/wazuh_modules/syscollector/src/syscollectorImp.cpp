@@ -1019,7 +1019,10 @@ void Syscollector::updateChanges(const std::string& table,
 
 Syscollector::Syscollector()
     : m_intervalValue { 0 }
+<<<<<<< HEAD
     , m_currentIntervalValue { 0 }
+=======
+>>>>>>> f11f250d11 (fix: compilation for server and cleaned additional code)
     , m_scanOnStart { false }
     , m_hardware { false }
     , m_os { false }
@@ -1031,7 +1034,10 @@ Syscollector::Syscollector()
     , m_hotfixes { false }
     , m_stopping { true }
     , m_notify { false }
+<<<<<<< HEAD
     , m_lastSyncMsg { 0 }
+=======
+>>>>>>> f11f250d11 (fix: compilation for server and cleaned additional code)
 {}
 
 std::string Syscollector::getCreateStatement() const
