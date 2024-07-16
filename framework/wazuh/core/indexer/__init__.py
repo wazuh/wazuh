@@ -11,22 +11,16 @@ logger = getLogger('wazuh')
 HOST_KEY = 'host'
 PORT_KEY = 'port'
 
-# This constants are temporary
-INDEXER_HOST = os.environ.get('WAZUH_INDEXER_HOST', 'wazuh-indexer')
-INDEXER_PORT = os.environ.get('WAZUH_INDEXER_PORT', 9200)
-INDEXER_USER = os.environ.get('WAZUH_INDEXER_USER', 'admin')
-INDEXER_PASSWORD = os.environ.get('WAZUH_INDEXER_PASSWORD', 'SecretPassword1%')
-
 
 class Indexer:
     """Interface to connect with Wazuh Indexer."""
 
     def __init__(
         self,
-        host: str = INDEXER_HOST,
-        user: str = INDEXER_USER,
-        password: str = INDEXER_PASSWORD,
-        port: int = INDEXER_PORT,
+        host: str,
+        user: str,
+        password: str,
+        port: int = 9200,
         use_ssl: bool = True,
         verify_certs: bool = True,
     ) -> None:
@@ -74,10 +68,10 @@ class Indexer:
 
 
 async def create_indexer(
-    host: str = INDEXER_HOST,
-    user: str = INDEXER_USER,
-    password: str = INDEXER_PASSWORD,
-    port: int = INDEXER_PORT,
+    host: str,
+    user: str,
+    password: str,
+    port: int = 9200,
     retries: int = 5,
     backoff_in_seconds: int = 1,
     **kwargs,
@@ -87,13 +81,13 @@ async def create_indexer(
     Parameters
     ----------
     host : str, optional
-        Location of the Wazuh Indexer, by default INDEXER_HOST
+        Location of the Wazuh Indexer.
     user : str, optional
-        User of the Wazuh Indexer to authenticate with, by default INDEXER_USER
+        User of the Wazuh Indexer to authenticate with.
     password : str, optional
-        Password of the Wazuh Indexer to authenticate with, by default INDEXER_PASSWORD
+        Password of the Wazuh Indexer to authenticate with.
     port : int, optional
-        Port of the Wazuh Indexer to connect with, by default INDEXER_PORT
+        Port of the Wazuh Indexer to connect with, by default 9200
     retries : int, optional
         Number of retries, by default 5.
     backoff_in_seconds : int, optional
