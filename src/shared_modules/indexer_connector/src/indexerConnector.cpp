@@ -69,15 +69,13 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
                 {
                     if (!std::filesystem::exists(filePath))
                     {
-                        throw std::runtime_error("The CA root certificate file: '" + filePath +
-                                                 "' does not exist.");
+                        throw std::runtime_error("The CA root certificate file: '" + filePath + "' does not exist.");
                     }
 
                     std::ifstream file(filePath);
                     if (!file.is_open())
                     {
-                        throw std::runtime_error("Could not open CA root certificate file: '" + filePath +
-                                                 "'.");
+                        throw std::runtime_error("Could not open CA root certificate file: '" + filePath + "'.");
                     }
 
                     caRootCertificateContentMerged.append((std::istreambuf_iterator<char>(file)),
