@@ -6,13 +6,12 @@ import os
 import sys
 from unittest.mock import patch
 
-from wodles.aws.constants import TEST_TABLE_NAME, TEST_SERVICE_NAME, TEST_AWS_PROFILE, TEST_IAM_ROLE_ARN, TEST_BUCKET, \
-    TEST_SQS_NAME, TEST_EXTERNAL_ID, TEST_HARDCODED_WAZUH_VERSION, TEST_WAZUH_PATH, TEST_DATABASE
-
 data_path = os.path.join(os.path.dirname(__file__), 'data')
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
+from wodles.aws.constants import TEST_TABLE_NAME, TEST_SERVICE_NAME, TEST_AWS_PROFILE, TEST_IAM_ROLE_ARN, TEST_BUCKET, \
+    TEST_SQS_NAME, TEST_EXTERNAL_ID, TEST_HARDCODED_WAZUH_VERSION, TEST_WAZUH_PATH, TEST_DATABASE
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
 import aws_bucket
