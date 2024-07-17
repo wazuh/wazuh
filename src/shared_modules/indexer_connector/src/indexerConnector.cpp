@@ -16,7 +16,11 @@
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
+#include <grp.h>
+#include <pwd.h>
+#include <unistd.h>
 
+constexpr auto USER_GRUOUP {"wazuh"};
 constexpr auto NOT_USED {-1};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
@@ -83,12 +87,26 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
                 }
 
                 // Once all the files are read, we write the content into final file.
-                caRootCertificate = "/var/ossec/etc/certs/root-ca-merged.pem";
+                caRootCertificate = "/var/ossec/var/certs/root-ca-merged.pem";
                 std::ofstream outputFile(caRootCertificate);
                 if (outputFile.is_open())
                 {
                     outputFile << caRootCertificateContentMerged;
                     outputFile.close();
+
+                    struct passwd* pwd = getpwnam(USER_GRUOUP);
+                    struct group* grp = getgrnam(USER_GRUOUP);
+
+                    if (pwd == nullptr || grp == nullptr)
+                    {
+                        throw std::runtime_error("Could not get the user and group information.");
+                    }
+
+                    if (chown(caRootCertificate.c_str(), pwd->pw_uid, grp->gr_gid) != 0)
+                    {
+                        throw std::runtime_error("Could not change the ownership of the CA root merged file");
+                    }
+
                     logDebug2(IC_NAME, "All CA files merged into '%s' successfully.", caRootCertificate.c_str());
                 }
                 else
