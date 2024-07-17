@@ -12,10 +12,8 @@ from hashlib import md5
 from json import JSONDecodeError, dumps, loads
 from os.path import abspath, dirname
 
-from azure.common import AzureException, AzureHttpError
-from azure.storage.blob import BlockBlobService
-from azure.storage.common._error import AzureSigningError
-from azure.storage.common.retry import no_retry
+from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError
+from azure.storage.blob import BlobServiceClient
 from dateutil.parser import parse
 
 sys.path.insert(0, dirname(dirname(abspath(__file__))))
@@ -55,23 +53,23 @@ def start_storage(args):
         logging.error('Storage: No parameters have been provided for authentication.')
         sys.exit(1)
 
-    block_blob_service = BlockBlobService(account_name=name, account_key=key)
-
-    # Disable max retry value before attempting to validate the credentials
-    old_retry_value = block_blob_service.retry
-    block_blob_service.retry = no_retry
+    service_client = BlobServiceClient(
+        account_url=f"https://{name}.blob.core.windows.net/",
+        credential={"account_name": name, "account_key": key}
+    )
 
     # Verify if the credentials grant access to the specified container
     if args.container != '*':
         try:
-            if not block_blob_service.exists(args.container):
+            container_client = service_client.get_container_client(container=args.container)
+            if not container_client.exists():
                 logging.error(
                     f'Storage: The "{args.container}" container does not exists.'
                 )
                 sys.exit(1)
             logging.info(f"Storage: Getting the specified containers: {args.container}")
             containers = [args.container]
-        except AzureException:
+        except ClientAuthenticationError:
             logging.error(
                 f'Storage: Invalid credentials for accessing the "{args.container}" container.'
             )
@@ -79,20 +77,14 @@ def start_storage(args):
     else:
         try:
             logging.info("Storage: Getting all containers.")
-            containers = [
-                container.name for container in block_blob_service.list_containers()
-            ]
-        except AzureSigningError:
-            logging.error(
-                'Storage: Unable to list the containers. Invalid credentials.'
-            )
+            containers = [container.name for container in service_client.list_containers()]
+        except ClientAuthenticationError:
+            logging.error("Storage: Unable to list the containers. Invalid credentials.")
             sys.exit(1)
-        except AzureException as e:
-            logging.error(f'Storage: The containers could not be listed: "{e}".')
+        except AzureError as e:
+            logging.error(f"Storage: The containers could not be listed: '{e}'.")
             sys.exit(1)
 
-    # Restore the default max retry value
-    block_blob_service.retry = old_retry_value
     logging.info('Storage: Authenticated.')
 
     # Get the blobs
@@ -117,7 +109,7 @@ def start_storage(args):
         get_blobs(
             container_name=container,
             prefix=args.prefix,
-            blob_service=block_blob_service,
+            service_client=service_client,
             md5_hash=md5_hash,
             min_datetime=min_datetime,
             max_datetime=max_datetime,
@@ -133,7 +125,7 @@ def start_storage(args):
 
 def get_blobs(
     container_name: str,
-    blob_service: BlockBlobService,
+    service_client: BlobServiceClient,
     md5_hash: str,
     min_datetime: datetime,
     max_datetime: datetime,
@@ -152,7 +144,7 @@ def get_blobs(
     ----------
     container_name : str
         Name of container to read the blobs from.
-    blob_service : BlockBlobService
+    service_client : BlobServiceClient
         Client used to obtain the blobs.
     min_datetime : datetime
         Value to compare with the blobs last modified times.
@@ -169,16 +161,15 @@ def get_blobs(
 
     Raises
     ------
-    AzureException
+    AzureError
         If it was not possible to list the blobs for the given container.
     """
     try:
         # Get the blob list
         logging.info(f"Storage: Getting blobs from container {container_name}.")
-        blobs = blob_service.list_blobs(
-            container_name, prefix=prefix, marker=next_marker
-        )
-    except AzureException as e:
+        container_client = service_client.get_container_client(container_name)
+        blobs = container_client.list_blobs(name_starts_with=prefix)
+    except AzureError as e:
         logging.error(f'Storage: Error getting blobs from "{container_name}": "{e}".')
         raise e
     else:
@@ -189,7 +180,7 @@ def get_blobs(
         )
         for blob in blobs:
             # Skip if the blob is empty
-            if blob.properties.content_length == 0:
+            if blob.size == 0:
                 logging.debug(f'Empty blob {blob.name}, skipping')
                 continue
             # Skip the blob if nested under the set prefix
@@ -206,7 +197,7 @@ def get_blobs(
                 continue
 
             # Skip the blob if already processed
-            last_modified = blob.properties.last_modified
+            last_modified = blob.last_modified
             if not reparse and (
                 last_modified < desired_datetime
                 or (min_datetime <= last_modified <= max_datetime)
@@ -217,15 +208,15 @@ def get_blobs(
             # Get the blob data
             try:
                 logging.info(f"Getting data from blob {blob.name}")
-                data = blob_service.get_blob_to_text(container_name, blob.name)
-            except (ValueError, AzureException, AzureHttpError) as e:
+                data = container_client.download_blob(blob, encoding="UTF-8", max_concurrency=2)
+            except (ValueError, AzureError, HttpResponseError) as e:
                 logging.error(f'Storage: Error reading the blob data: "{e}".')
                 continue
             else:
                 # Process the data as a JSON
                 if json_file:
                     try:
-                        content_list = loads(data.content)
+                        content_list = loads(data.readall())
                         records = content_list['records']
                     except (JSONDecodeError, TypeError) as e:
                         logging.error(
@@ -247,7 +238,7 @@ def get_blobs(
                             send_message(dumps(log_record))
                 # Process the data as plain text
                 else:
-                    for line in [s for s in str(data.content).splitlines() if s]:
+                    for line in [s for s in str(data.readall()).splitlines() if s]:
                         if json_inline:
                             msg = '{"azure_tag": "azure-storage"'
                             if tag:
@@ -266,22 +257,4 @@ def get_blobs(
                 query=container_name,
                 new_min=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
                 new_max=last_modified.strftime('%Y-%m-%dT%H:%M:%S.%fZ'),
-            )
-
-        # Continue until no marker is returned
-        if blobs.next_marker:
-            logging.debug(f"Iteration to next marker: {blobs.next_marker}")
-            get_blobs(
-                container_name=container_name,
-                blob_service=blob_service,
-                next_marker=blobs.next_marker,
-                min_datetime=min_datetime,
-                max_datetime=max_datetime,
-                desired_datetime=desired_datetime,
-                md5_hash=md5_hash,
-                tag=tag,
-                reparse=reparse,
-                json_file=json_file,
-                json_inline=json_inline,
-                blob_extension=blob_extension,
             )
