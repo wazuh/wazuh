@@ -9,10 +9,10 @@ from datetime import datetime
 from time import mktime
 
 import aws_bucket
-import wodles.aws.constants
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
+import wodles.aws.constants
 
 
 class AWSConfigBucket(aws_bucket.AWSLogsBucket):

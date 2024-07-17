@@ -6,10 +6,10 @@ import sys
 from os import path
 import json
 from aws_bucket import AWSBucket, AWSCustomBucket, AWSLogsBucket
-from wodles.aws.constants import GUARDDUTY_URL, GUARDDUTY_DEPRECATED_MESSAGE
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
+from wodles.aws.constants import GUARDDUTY_URL, GUARDDUTY_DEPRECATED_MESSAGE
 
 
 class AWSGuardDutyBucket(AWSCustomBucket):

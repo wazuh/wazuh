@@ -14,14 +14,13 @@ from typing import Iterator
 
 from datetime import datetime
 
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+import wazuh_integration
+import aws_tools
 from wodles.aws.constants import MAX_AWS_BUCKET_RECORD_RETENTION, AWS_BUCKET_DB_DATE_FORMAT, \
     DEFAULT_AWS_BUCKET_DATABASE_NAME, INVALID_CREDENTIALS_ERROR_NAME, INVALID_REQUEST_TIME_ERROR_NAME, \
     THROTTLING_EXCEPTION_ERROR_NAME, UNKNOWN_ERROR_MESSAGE, INVALID_CREDENTIALS_ERROR_MESSAGE, \
     INVALID_REQUEST_TIME_ERROR_MESSAGE, THROTTLING_EXCEPTION_ERROR_MESSAGE, AWS_BUCKET_MSG_TEMPLATE
-
-sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
-import wazuh_integration
-import aws_tools
 
 
 class AWSBucket(wazuh_integration.WazuhAWSDatabase):

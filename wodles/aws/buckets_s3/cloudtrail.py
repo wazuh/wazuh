@@ -5,10 +5,9 @@
 import os
 import sys
 
-from wodles.aws.constants import AWS_CLOUDTRAIL_DYNAMIC_FIELDS
-
 sys.path.append(os.path.dirname(os.path.realpath(__file__)))
 import aws_bucket
+from wodles.aws.constants import AWS_CLOUDTRAIL_DYNAMIC_FIELDS
 
 
 class AWSCloudTrailBucket(aws_bucket.AWSLogsBucket):

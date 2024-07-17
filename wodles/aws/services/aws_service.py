@@ -8,10 +8,10 @@ from os import path
 from datetime import datetime
 
 import wodles.aws.constants
-from wodles.aws.constants import DEFAULT_AWS_SERVICE_TABLENAME, AWS_SERVICE_MSG_TEMPLATE
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import wazuh_integration
+from wodles.aws.constants import DEFAULT_AWS_SERVICE_TABLENAME, AWS_SERVICE_MSG_TEMPLATE
 
 
 class AWSService(wazuh_integration.WazuhAWSDatabase):

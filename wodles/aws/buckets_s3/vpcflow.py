@@ -7,7 +7,6 @@ import sys
 from os import path
 from typing import Iterator
 
-import wodles.aws.constants
 from aws_bucket import AWSLogsBucket
 try:
     import boto3
@@ -20,6 +19,7 @@ from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
+import wodles.aws.constants
 
 
 class AWSVPCFlowBucket(AWSLogsBucket):

@@ -7,13 +7,13 @@ from os import path
 from datetime import datetime
 
 import wodles.aws.constants
-from wodles.aws.constants import INSPECTOR_SUPPORTED_REGIONS
 
 sys.path.append(path.dirname(path.realpath(__file__)))
 import aws_service
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
+from wodles.aws.constants import INSPECTOR_SUPPORTED_REGIONS
 
 
 class AWSInspector(aws_service.AWSService):
