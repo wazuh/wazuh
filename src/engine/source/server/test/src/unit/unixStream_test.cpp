@@ -11,7 +11,6 @@
 
 #include <condition_variable>
 #include <gtest/gtest.h>
-#include <logging/logging.hpp>
 #include <uvw.hpp>
 
 #include "fakeMetric.hpp"
