@@ -1599,7 +1599,6 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	AR_LDFLAGS+=${CFLAGS_TEST}
 	OSSEC_LIBS+=${LIBS_TEST}
 
-	UNIT_TEST_WRAPPERS:=${wrappers_common_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_bzip2_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_zlib_o}
@@ -1611,23 +1610,9 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_posix_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_crypto_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_execd_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_net_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_syscheckd_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_db_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_wazuh_modules_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_monitord_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_auth_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_addagent_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_config_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_client_agent_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_remoted_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_analysisd_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
-	UNIT_TEST_WRAPPERS+=${wrappers_logcollector_o}
 
 	ifeq (${TARGET},winagent)
 		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
@@ -1708,7 +1693,7 @@ crypto_o := ${crypto_blowfish_o} \
 
 #### libwazuh #########
 
-libwazuh.a: ${crypto_o} ${shared_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} ${manage_agents}
+libwazuh.a: ${crypto_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} ${manage_agents}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
 
@@ -2115,31 +2100,7 @@ clean-internals: clean-unit-tests
 	rm -f ${os_zlib_o}
 	rm -f ${os_xml_o}
 	rm -f ${os_regex_o}
-	rm -f ${os_net_o}
-	rm -f ${shared_o} shared/debug_op_proc.o shared/file_op_proc.o
-	rm -f ${config_o}
-	rm -f ${os_maild_o}
 	rm -f ${crypto_o}
-	rm -f ${os_csyslogd_o}
-	rm -f ${os_dbd_o}
-	rm -f ${os_agentlessd_o}
-	rm -f ${os_execd_o}
-	rm -f ${os_logcollector_o} ${os_logcollector_eventchannel_o}
-	rm -f ${remoted_o}
-	rm -f ${report_o}
-	rm -f ${client_agent_o}
-	rm -f ${addagent_o}
-	rm -f ${active_response_o} ${active_response_programs} firewall-drop
-	rm -f ${util_o} ${util_programs}
-	rm -f ${rootcheck_o} librootcheck.a
-	rm -f ${monitor_o}
-	rm -f ${os_auth_o}
-	rm -f ${all_analysisd_o} ${all_analysisd_libs} analysisd/compiled_rules/compiled_rules.h analysisd/logmsg.o
-	rm -f ${integrator_o}
-	rm -f ${wmodulesd_o} ${wmodules_o} $(wildcard wazuh_modules/agent_upgrade/agent/*.o)
-	rm -f ${wdb_o}
-	rm -f wazuh_db/*.o
-	rm -f wazuh_db/helpers/*.o
 	rm -f ${SELINUX_MODULE}
 	rm -f ${SELINUX_POLICY}
 	rm -f $(WAZUH_LIB)
@@ -2149,20 +2110,15 @@ clean-internals: clean-unit-tests
 	rm -rf $(SHARED_MODULES)utils/flatbuffers/include/
 	rm -rf $(wildcard $(VULNERABILITY_SCANNER)include/*_generated.h)
 	rm -rf $(SYSINFO)build
-	rm -rf $(SYSCHECK)build
 	rm -rf ${SHARED_MODULES}http-request/build
 	rm -rf build
 	rm -rf libwazuhext
 	rm -rf libstdc++.so.6
 	rm -rf libgcc_s.so.1
 	rm -f libwazuh.a
-	rm -f shared/*.o
 
 
 clean-unit-tests:
-	rm -f ${wrappers_syscheck_o}
-	rm -f ${wrappers_shared_o}
-	rm -f ${wrappers_common_o}
 	rm -f ${wrappers_externals_o}
 	rm -f ${wrappers_externals_audit_o}
 	rm -f ${wrappers_externals_bzip2_o}
@@ -2180,25 +2136,11 @@ clean-unit-tests:
 	rm -f ${wrappers_posix_o}
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}
-	rm -f ${wrappers_wazuh_os_execd_o}
-	rm -f ${wrappers_wazuh_os_net_o}
 	rm -f ${wrappers_wazuh_os_regex_o}
 	rm -f ${wrappers_wazuh_os_xml_o}
-	rm -f ${wrappers_wazuh_shared_o}
-	rm -f ${wrappers_wazuh_syscheckd_o}
-	rm -f ${wrappers_wazuh_wazuh_db_o}
-	rm -f ${wrappers_wazuh_wazuh_modules_o}
-	rm -f ${wrappers_wazuh_monitord_o}
-	rm -f ${wrappers_wazuh_os_auth_o}
-	rm -f ${wrappers_wazuh_addagent_o}
-	rm -f ${wrappers_wazuh_config_o}
 	rm -f ${wrappers_windows_o}
 	rm -f ${wrappers_windows_lib_o}
 	rm -f ${wrappers_windows_posix_o}
-	rm -f ${wrappers_client_agent_o}
-	rm -f ${wrappers_wazuh_remoted_o}
-	rm -f ${wrappers_wazuh_analysisd_o}
-	rm -f ${wrappers_logcollector_o}
 	rm -f ${wrappers_macos_o}
 	rm -f ${wrappers_data_provider_o}
 
