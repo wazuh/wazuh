@@ -1,6 +1,9 @@
+#include <gtest/gtest.h>
+
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <filesystem>
 #include <mutex>
 #include <thread>
 
@@ -8,16 +11,11 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <gtest/gtest.h>
-
-#include <filesystem>
-
-#include <logging/logging.hpp>
 #include <uvw.hpp>
 
 #include "fakeMetric.hpp"
-#include <server/endpoints/unixDatagram.hpp>
 #include <logging/logging.hpp>
+#include <server/endpoints/unixDatagram.hpp>
 
 using namespace engineserver::endpoint;
 
