@@ -17,7 +17,7 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
-import wodles.aws.constants
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
@@ -29,7 +29,7 @@ DB_TABLENAME = "test_table"
 
 
 @patch('wazuh_integration.WazuhIntegration.get_client')
-@patch('wazuh_integration.utils.find_wazuh_path', return_value=wodles.aws.constants.TEST_WAZUH_PATH)
+@patch('wazuh_integration.utils.find_wazuh_path', return_value=constants.TEST_WAZUH_PATH)
 @patch('wazuh_integration.utils.get_wazuh_version')
 def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_client):
     """Test if the instances of WazuhIntegration are created properly."""
@@ -38,9 +38,9 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
     integration = wazuh_integration.WazuhIntegration(**args)
     mock_path.assert_called_once()
     mock_version.assert_called_once()
-    assert integration.wazuh_path == wodles.aws.constants.TEST_WAZUH_PATH
-    assert integration.wazuh_queue == os.path.join(integration.wazuh_path, wodles.aws.constants.QUEUE_PATH)
-    assert integration.wazuh_wodle == os.path.join(integration.wazuh_path, wodles.aws.constants.WODLE_PATH)
+    assert integration.wazuh_path == constants.TEST_WAZUH_PATH
+    assert integration.wazuh_queue == os.path.join(integration.wazuh_path, constants.QUEUE_PATH)
+    assert integration.wazuh_wodle == os.path.join(integration.wazuh_path, constants.WODLE_PATH)
     mock_client.assert_called_with(profile=args["profile"], iam_role_arn=args["iam_role_arn"],
                                    service_name=args["service_name"], region=args["region"],
                                    sts_endpoint=args["sts_endpoint"], service_endpoint=args["service_endpoint"],
@@ -51,7 +51,7 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
 
 
 @pytest.mark.parametrize('file_exists, options, retry_attempts, retry_mode',
-                         [(True, [wodles.aws.constants.RETRY_ATTEMPTS_KEY, wodles.aws.constants.RETRY_MODE_BOTO_KEY], 5, 'standard'),
+                         [(True, [constants.RETRY_ATTEMPTS_KEY, constants.RETRY_MODE_BOTO_KEY], 5, 'standard'),
                           (True, ['other_option'], None, None),
                           (False, None, None, None)]
                          )
@@ -72,36 +72,36 @@ def test_default_config(file_exists, options, retry_attempts, retry_mode):
         Mode to set in the retries' configuration. None for when the retry_mode option is not declared in
         the AWS config file.
     """
-    profile = wodles.aws.constants.TEST_AWS_PROFILE
+    profile = constants.TEST_AWS_PROFILE
     with patch('wazuh_integration.path.exists', return_value=file_exists):
         if file_exists:
             with patch('aws_tools.get_aws_config_params') as mock_config:
                 mock_config.options(profile).return_value = options
                 profile_config = {option: mock_config.get(profile, option) for option in mock_config.options(profile)}
 
-                config = wazuh_integration.WazuhIntegration.default_config(profile=wodles.aws.constants.TEST_AWS_PROFILE)
+                config = wazuh_integration.WazuhIntegration.default_config(profile=constants.TEST_AWS_PROFILE)
 
-            if wodles.aws.constants.RETRY_ATTEMPTS_KEY in profile_config or wodles.aws.constants.RETRY_MODE_CONFIG_KEY in profile_config:
+            if constants.RETRY_ATTEMPTS_KEY in profile_config or constants.RETRY_MODE_CONFIG_KEY in profile_config:
                 retries = {
-                    wodles.aws.constants.RETRY_ATTEMPTS_KEY: retry_attempts,
-                    wodles.aws.constants.RETRY_MODE_BOTO_KEY: retry_mode
+                    constants.RETRY_ATTEMPTS_KEY: retry_attempts,
+                    constants.RETRY_MODE_BOTO_KEY: retry_mode
                 }
             else:
-                retries = wodles.aws.constants.WAZUH_DEFAULT_RETRY_CONFIGURATION
+                retries = constants.WAZUH_DEFAULT_RETRY_CONFIGURATION
 
             assert config['config'].retries == retries
         else:
-            config = wazuh_integration.WazuhIntegration.default_config(profile=wodles.aws.constants.TEST_AWS_PROFILE)
+            config = wazuh_integration.WazuhIntegration.default_config(profile=constants.TEST_AWS_PROFILE)
             assert 'config' in config
-            assert config['config'].retries == wodles.aws.constants.WAZUH_DEFAULT_RETRY_CONFIGURATION
+            assert config['config'].retries == constants.WAZUH_DEFAULT_RETRY_CONFIGURATION
 
 
 @pytest.mark.parametrize('profile', [
     None,
-    wodles.aws.constants.TEST_AWS_PROFILE,
+    constants.TEST_AWS_PROFILE,
 ])
-@pytest.mark.parametrize('region', list(wodles.aws.constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS) + ['us-east-1', None])
-@pytest.mark.parametrize('service_name', list(wodles.aws.constants.SERVICES_REQUIRING_REGION) + ['other'])
+@pytest.mark.parametrize('region', list(constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS) + ['us-east-1', None])
+@pytest.mark.parametrize('service_name', list(constants.SERVICES_REQUIRING_REGION) + ['other'])
 def test_wazuh_integration_get_client_authentication(profile, region, service_name):
     """Test `get_client` function uses the different authentication parameters properly.
 
@@ -123,20 +123,20 @@ def test_wazuh_integration_get_client_authentication(profile, region, service_na
         expected_conn_args['profile_name'] = profile
     expected_conn_args['region_name'] = None
 
-    if region and service_name in wodles.aws.constants.SERVICES_REQUIRING_REGION:
+    if region and service_name in constants.SERVICES_REQUIRING_REGION:
         expected_conn_args['region_name'] = region
     else:
-        expected_conn_args['region_name'] = region if region in wodles.aws.constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS else None
+        expected_conn_args['region_name'] = region if region in constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS else None
 
-    with patch('wazuh_integration.utils.find_wazuh_path', return_value=wodles.aws.constants.TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=wodles.aws.constants.TEST_HARDCODED_WAZUH_VERSION), \
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=constants.TEST_HARDCODED_WAZUH_VERSION), \
             patch('wazuh_integration.boto3.Session') as mock_boto:
         wazuh_integration.WazuhIntegration(**kwargs)
         mock_boto.assert_called_with(**expected_conn_args)
 
 
-@pytest.mark.parametrize('external_id', [wodles.aws.constants.TEST_EXTERNAL_ID, None])
-@pytest.mark.parametrize('iam_role_arn', [wodles.aws.constants.TEST_IAM_ROLE_ARN, None])
+@pytest.mark.parametrize('external_id', [constants.TEST_EXTERNAL_ID, None])
+@pytest.mark.parametrize('iam_role_arn', [constants.TEST_IAM_ROLE_ARN, None])
 @pytest.mark.parametrize('service_name', ["cloudTrail", "cloudwatchlogs"])
 def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
     """Test `get_client` function creates a valid client object both when an IAM Role is provided and when it's not.
@@ -151,22 +151,22 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
         External ID primarily used for Security Lake.
     """
     kwargs = utils.get_wazuh_integration_parameters(profile=None,
-                                                    sts_endpoint=wodles.aws.constants.TEST_SERVICE_ENDPOINT,
-                                                    service_endpoint=wodles.aws.constants.TEST_SERVICE_ENDPOINT,
+                                                    sts_endpoint=constants.TEST_SERVICE_ENDPOINT,
+                                                    service_endpoint=constants.TEST_SERVICE_ENDPOINT,
                                                     service_name=service_name, iam_role_arn=iam_role_arn,
-                                                    iam_role_duration=wodles.aws.constants.TEST_IAM_ROLE_DURATION,
+                                                    iam_role_duration=constants.TEST_IAM_ROLE_DURATION,
                                                     external_id=external_id)
     service_name = "logs" if service_name == "cloudwatchlogs" else service_name
     conn_kwargs = {'region_name': None}
-    sts_kwargs = {'aws_access_key_id': None, 'aws_secret_access_key': None, 'aws_session_token': wodles.aws.constants.TEST_TOKEN,
+    sts_kwargs = {'aws_access_key_id': None, 'aws_secret_access_key': None, 'aws_session_token': constants.TEST_TOKEN,
                   'region_name': None}
     assume_role_kwargs = {'RoleArn': iam_role_arn, 'RoleSessionName': 'WazuhLogParsing',
-                          'DurationSeconds': wodles.aws.constants.TEST_IAM_ROLE_DURATION}
+                          'DurationSeconds': constants.TEST_IAM_ROLE_DURATION}
     if external_id:
         assume_role_kwargs['ExternalId'] = external_id
 
     sts_role_assumption = {
-        'Credentials': {'AccessKeyId': None, 'SecretAccessKey': None, 'SessionToken': wodles.aws.constants.TEST_TOKEN}}
+        'Credentials': {'AccessKeyId': None, 'SecretAccessKey': None, 'SessionToken': constants.TEST_TOKEN}}
 
     mock_boto_session = MagicMock()
     mock_sts_session = MagicMock()
@@ -174,23 +174,23 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
     mock_boto_session.client.return_value = mock_sts_client
     mock_sts_client.assume_role.return_value = sts_role_assumption
 
-    with patch('wazuh_integration.utils.find_wazuh_path', return_value=wodles.aws.constants.TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=wodles.aws.constants.TEST_HARDCODED_WAZUH_VERSION), \
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=constants.TEST_HARDCODED_WAZUH_VERSION), \
             patch('wazuh_integration.boto3.Session', side_effect=[mock_boto_session, mock_sts_session]) as mock_session:
         instance = wazuh_integration.WazuhIntegration(**kwargs)
 
         if iam_role_arn:
             mock_session.assert_has_calls([call(**conn_kwargs), call(**sts_kwargs)])
-            mock_boto_session.client.assert_called_with(service_name='sts', endpoint_url=wodles.aws.constants.TEST_SERVICE_ENDPOINT,
+            mock_boto_session.client.assert_called_with(service_name='sts', endpoint_url=constants.TEST_SERVICE_ENDPOINT,
                                                         **instance.connection_config)
             mock_sts_client.assume_role.assert_called_with(**assume_role_kwargs)
             mock_sts_session.client.assert_called_with(service_name=service_name,
-                                                       endpoint_url=wodles.aws.constants.TEST_SERVICE_ENDPOINT,
+                                                       endpoint_url=constants.TEST_SERVICE_ENDPOINT,
                                                        **instance.connection_config)
         else:
             mock_session.assert_called_with(**conn_kwargs)
             mock_boto_session.client.assert_called_with(service_name=service_name,
-                                                        endpoint_url=wodles.aws.constants.TEST_SERVICE_ENDPOINT,
+                                                        endpoint_url=constants.TEST_SERVICE_ENDPOINT,
                                                         **instance.connection_config)
 
 
@@ -200,17 +200,17 @@ def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
     mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
                                                                                              'operation')
 
-    with patch('wazuh_integration.utils.find_wazuh_path', return_value=wodles.aws.constants.TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=wodles.aws.constants.TEST_HARDCODED_WAZUH_VERSION), \
+    with patch('wazuh_integration.utils.find_wazuh_path', return_value=constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=constants.TEST_HARDCODED_WAZUH_VERSION), \
             patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
             wazuh_integration.WazuhIntegration(**utils.get_wazuh_integration_parameters())
-        assert e.value.code == wodles.aws.constants.INVALID_CREDENTIALS_ERROR_CODE
+        assert e.value.code == constants.INVALID_CREDENTIALS_ERROR_CODE
 
 
 @pytest.mark.parametrize('profile', [
     None,
-    wodles.aws.constants.TEST_AWS_PROFILE,
+    constants.TEST_AWS_PROFILE,
 ])
 def test_wazuh_integration_get_sts_client(profile):
     """Test `get_sts_client` function uses the expected configuration for the session and the client while returning a
@@ -246,7 +246,7 @@ def test_wazuh_integration_get_sts_client_handles_exceptions_when_invalid_creds_
     with patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
             instance.get_sts_client(profile=None)
-        assert e.value.code == wodles.aws.constants.INVALID_CREDENTIALS_ERROR_CODE
+        assert e.value.code == constants.INVALID_CREDENTIALS_ERROR_CODE
 
 
 @pytest.mark.parametrize("dump_json", [True, False])
@@ -259,19 +259,19 @@ def test_wazuh_integration_send_msg(dump_json):
         Determine if the message should be dumped first.
     """
     instance = utils.get_mocked_wazuh_integration()
-    msg = dumps(wodles.aws.constants.TEST_MESSAGE) if dump_json else wodles.aws.constants.TEST_MESSAGE
+    msg = dumps(constants.TEST_MESSAGE) if dump_json else constants.TEST_MESSAGE
     with patch('wazuh_integration.socket.socket') as mock_socket:
         m = MagicMock()
         mock_socket.return_value = m
-        instance.send_msg(wodles.aws.constants.TEST_MESSAGE, dump_json=dump_json)
+        instance.send_msg(constants.TEST_MESSAGE, dump_json=dump_json)
         mock_socket.assert_called_once()
-        m.send.assert_called_with(f"{wodles.aws.constants.WAZUH_AWS_MESSAGE_HEADER}{msg}".encode())
+        m.send.assert_called_with(f"{constants.WAZUH_AWS_MESSAGE_HEADER}{msg}".encode())
         m.close.assert_called_once()
 
 
 @pytest.mark.parametrize("error_code, expected_exit_code", [
-    (111, wodles.aws.constants.UNABLE_TO_CONNECT_SOCKET_ERROR_CODE),
-    (1, wodles.aws.constants.SENDING_MESSAGE_SOCKET_ERROR_CODE),
+    (111, constants.UNABLE_TO_CONNECT_SOCKET_ERROR_CODE),
+    (1, constants.SENDING_MESSAGE_SOCKET_ERROR_CODE),
     (90, None)
 ])
 def test_wazuh_integration_send_msg_socket_error(error_code, expected_exit_code):
@@ -292,10 +292,10 @@ def test_wazuh_integration_send_msg_socket_error(error_code, expected_exit_code)
         mock_socket.side_effect = error
         if expected_exit_code:
             with pytest.raises(SystemExit) as e:
-                instance.send_msg(wodles.aws.constants.TEST_MESSAGE)
+                instance.send_msg(constants.TEST_MESSAGE)
             assert e.value.code == expected_exit_code
         else:
-            instance.send_msg(wodles.aws.constants.TEST_MESSAGE)
+            instance.send_msg(constants.TEST_MESSAGE)
 
 
 @patch('io.BytesIO')
@@ -304,7 +304,7 @@ def test_wazuh_integration_decompress_file(mock_io):
     integration = utils.get_mocked_wazuh_integration()
     integration.client = MagicMock()
     # Instance that inherits from WazuhIntegration sets the attribute bucket in its constructor
-    integration.bucket = wodles.aws.constants.TEST_BUCKET
+    integration.bucket = constants.TEST_BUCKET
 
     with patch('gzip.open', return_value=MagicMock()) as mock_gzip_open:
         gzip_mock = mock_gzip_open.return_value
@@ -339,21 +339,21 @@ def test_aws_wazuh_integration_decompress_file_handles_exceptions_when_decompres
     integration.client = MagicMock()
 
     # Instance that inherits from WazuhIntegration sets the attribute bucket in its constructor
-    integration.bucket = wodles.aws.constants.TEST_BUCKET
+    integration.bucket = constants.TEST_BUCKET
 
     with patch('gzip.open', side_effect=[gzip.BadGzipFile, zlib.error, TypeError]), \
             pytest.raises(SystemExit) as e:
         integration.decompress_file(integration.bucket, 'test.gz')
-    assert e.value.code == wodles.aws.constants.DECOMPRESS_FILE_ERROR_CODE
+    assert e.value.code == constants.DECOMPRESS_FILE_ERROR_CODE
 
     with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), \
             pytest.raises(SystemExit) as e:
         integration.decompress_file(integration.bucket, 'test.zip')
-    assert e.value.code == wodles.aws.constants.DECOMPRESS_FILE_ERROR_CODE
+    assert e.value.code == constants.DECOMPRESS_FILE_ERROR_CODE
 
     with pytest.raises(SystemExit) as e:
         integration.decompress_file(integration.bucket, 'test.snappy')
-    assert e.value.code == wodles.aws.constants.DECOMPRESS_FILE_ERROR_CODE
+    assert e.value.code == constants.DECOMPRESS_FILE_ERROR_CODE
 
 
 def test_wazuh_integration_send_msg_handles_exceptions():
@@ -363,11 +363,11 @@ def test_wazuh_integration_send_msg_handles_exceptions():
     with patch('wazuh_integration.socket.socket') as mock_socket:
         mock_socket.side_effect = TypeError
         with pytest.raises(SystemExit) as e:
-            instance.send_msg(wodles.aws.constants.TEST_MESSAGE)
-        assert e.value.code == wodles.aws.constants.SENDING_MESSAGE_SOCKET_ERROR_CODE
+            instance.send_msg(constants.TEST_MESSAGE)
+        assert e.value.code == constants.SENDING_MESSAGE_SOCKET_ERROR_CODE
 
 
-@patch('wazuh_integration.utils.find_wazuh_path', return_value=wodles.aws.constants.TEST_WAZUH_PATH)
+@patch('wazuh_integration.utils.find_wazuh_path', return_value=constants.TEST_WAZUH_PATH)
 @patch('wazuh_integration.utils.get_wazuh_version')
 @patch('wazuh_integration.WazuhIntegration.get_client')
 @patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version')
@@ -378,7 +378,7 @@ def test_wazuh_aws_database_initializes_properly(mock_connect, mock_metadata, mo
     args = utils.get_wazuh_aws_database_parameters()
     wazuh_aws_db = wazuh_integration.WazuhAWSDatabase(**args)
 
-    assert wazuh_aws_db.db_path == os.path.join(wazuh_aws_db.wazuh_wodle, f"{wodles.aws.constants.TEST_DATABASE}.db")
+    assert wazuh_aws_db.db_path == os.path.join(wazuh_aws_db.wazuh_wodle, f"{constants.TEST_DATABASE}.db")
     mock_connect.assert_called_once()
     wazuh_aws_db.db_connector.cursor.assert_called_once()
     mock_metadata.assert_called_once()
@@ -403,7 +403,7 @@ def test_wazuh_aws_database_create_table_handles_exceptions_when_table_not_creat
 
     with pytest.raises(SystemExit) as e:
         instance.create_table("")
-    assert e.value.code == wodles.aws.constants.UNABLE_TO_CREATE_DB
+    assert e.value.code == constants.UNABLE_TO_CREATE_DB
 
 
 @pytest.mark.parametrize("table_list", [
@@ -442,7 +442,7 @@ def test_wazuh_aws_database_db_initialization_handles_exceptions():
 
     with pytest.raises(SystemExit) as e:
         instance.init_db("")
-    assert e.value.code == wodles.aws.constants.METADATA_ERROR_CODE
+    assert e.value.code == constants.METADATA_ERROR_CODE
 
 
 def test_wazuh_aws_database_close_db():
@@ -463,25 +463,25 @@ def test_wazuh_aws_database_check_metadata_version_existing_table(custom_databas
     # Populate the database
     utils.database_execute_script(custom_database, TEST_METADATA_SCHEMA)
 
-    instance = utils.get_mocked_wazuh_aws_database(db_name=wodles.aws.constants.TEST_DATABASE)
+    instance = utils.get_mocked_wazuh_aws_database(db_name=constants.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
     old_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
-    assert old_metadata_value != wodles.aws.constants.TEST_HARDCODED_WAZUH_VERSION
+    assert old_metadata_value != constants.TEST_HARDCODED_WAZUH_VERSION
 
     instance.check_metadata_version()
     new_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
-    assert new_metadata_value == wodles.aws.constants.TEST_HARDCODED_WAZUH_VERSION
+    assert new_metadata_value == constants.TEST_HARDCODED_WAZUH_VERSION
 
 
 def test_wazuh_aws_database_check_metadata_version_no_table(custom_database):
     """Test if `check_metadata_version` function updates the metadata value when the table does not exist."""
-    instance = utils.get_mocked_wazuh_aws_database(db_name=wodles.aws.constants.TEST_DATABASE)
+    instance = utils.get_mocked_wazuh_aws_database(db_name=constants.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
     instance.check_metadata_version()
     new_metadata_value = utils.database_execute_query(custom_database, instance.sql_get_metadata_version)
-    assert new_metadata_value == wodles.aws.constants.TEST_HARDCODED_WAZUH_VERSION
+    assert new_metadata_value == constants.TEST_HARDCODED_WAZUH_VERSION
 
 
 @pytest.mark.parametrize('table_exists', [True, False, sqlite3.Error])
@@ -501,13 +501,13 @@ def test_wazuh_aws_database_check_metadata_version_handles_exceptions(custom_dat
     mocked_cursor = MagicMock()
     mocked_cursor.execute.side_effect = [mocked_table_exists, sqlite3.OperationalError]
 
-    instance = utils.get_mocked_wazuh_aws_database(db_name=wodles.aws.constants.TEST_DATABASE)
+    instance = utils.get_mocked_wazuh_aws_database(db_name=constants.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = mocked_cursor
 
     with pytest.raises(SystemExit) as e:
         instance.check_metadata_version()
-    assert e.value.code == wodles.aws.constants.METADATA_ERROR_CODE
+    assert e.value.code == constants.METADATA_ERROR_CODE
 
 
 def test_wazuh_aws_database_delete_deprecated_tables(custom_database):
@@ -515,18 +515,18 @@ def test_wazuh_aws_database_delete_deprecated_tables(custom_database):
     # Populate the database
     utils.database_execute_script(custom_database, TEST_METADATA_DEPRECATED_TABLES_SCHEMA)
 
-    instance = utils.get_mocked_wazuh_aws_database(db_name=wodles.aws.constants.TEST_DATABASE)
+    instance = utils.get_mocked_wazuh_aws_database(db_name=constants.TEST_DATABASE)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
 
-    for table in wodles.aws.constants.DEPRECATED_AWS_INTEGRATION_TABLES:
+    for table in constants.DEPRECATED_AWS_INTEGRATION_TABLES:
         assert instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()[0]
     assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]
 
     instance.delete_deprecated_tables()
 
     # The deprecated tables were deleted
-    for table in wodles.aws.constants.DEPRECATED_AWS_INTEGRATION_TABLES:
+    for table in constants.DEPRECATED_AWS_INTEGRATION_TABLES:
         assert not instance.db_cursor.execute(instance.sql_find_table, {'name': table}).fetchone()
     # The metadata table is still present
     assert instance.db_cursor.execute(instance.sql_find_table, {'name': METADATA_TABLE_NAME}).fetchone()[0]

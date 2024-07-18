@@ -11,7 +11,7 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
-import wodles.aws.constants
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'services'))
 import aws_service
@@ -60,7 +60,7 @@ def test_aws_inspector_send_describe_findings(mock_sts_client):
 
 
 @pytest.mark.parametrize('reparse', [True, False])
-@pytest.mark.parametrize('only_logs_after', [wodles.aws.constants.TEST_ONLY_LOGS_AFTER, None])
+@pytest.mark.parametrize('only_logs_after', [constants.TEST_ONLY_LOGS_AFTER, None])
 @patch('wazuh_integration.WazuhAWSDatabase.init_db')
 @patch('wazuh_integration.WazuhAWSDatabase.close_db')
 @patch('inspector.AWSInspector.send_describe_findings')
@@ -80,9 +80,9 @@ def test_aws_inspector_get_alerts(mock_sts_client, mock_debug, mock_send_describ
     utils.database_execute_script(custom_database, TEST_SERVICES_SCHEMA)
 
     instance = utils.get_mocked_service(class_=inspector.AWSInspector,
-                                        reparse=reparse, only_logs_after=only_logs_after, region=wodles.aws.constants.TEST_REGION)
+                                        reparse=reparse, only_logs_after=only_logs_after, region=constants.TEST_REGION)
 
-    instance.account_id = wodles.aws.constants.TEST_ACCOUNT_ID
+    instance.account_id = constants.TEST_ACCOUNT_ID
 
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()

@@ -12,7 +12,7 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
-import wodles.aws.constants
+import constants
 import guardduty
 
 SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
@@ -34,8 +34,8 @@ def test_aws_guardduty_bucket_initializes_properly(mock_custom_bucket, guardduty
             assert instance.type == "GuardDutyKinesis"
 
 
-@pytest.mark.parametrize('object_list, result', [(wodles.aws.constants.LIST_OBJECT_V2, True),
-                                                 (wodles.aws.constants.LIST_OBJECT_V2_NO_PREFIXES, False)])
+@pytest.mark.parametrize('object_list, result', [(constants.LIST_OBJECT_V2, True),
+                                                 (constants.LIST_OBJECT_V2_NO_PREFIXES, False)])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_guardduty_bucket_check_guardduty_type(mock_wazuh_aws_integration, mock_sts,
@@ -69,7 +69,7 @@ def test_aws_guardduty_bucket_check_guardduty_type_handles_exceptions(mock_wazuh
         instance.client = MagicMock()
         instance.client.list_objects_v2.side_effect = Exception
         instance.check_guardduty_type()
-    assert e.value.code == wodles.aws.constants.UNEXPECTED_ERROR_WORKING_WITH_S3
+    assert e.value.code == constants.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
 @patch('aws_bucket.AWSLogsBucket.get_base_prefix', return_value='base_prefix/')
@@ -80,8 +80,8 @@ def test_aws_guardduty_bucket_get_service_prefix(mock_custom_bucket, mock_type, 
     <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
 
-    expected_base_prefix = os.path.join('base_prefix', wodles.aws.constants.TEST_ACCOUNT_ID, instance.service, '')
-    assert instance.get_service_prefix(wodles.aws.constants.TEST_ACCOUNT_ID) == expected_base_prefix
+    expected_base_prefix = os.path.join('base_prefix', constants.TEST_ACCOUNT_ID, instance.service, '')
+    assert instance.get_service_prefix(constants.TEST_ACCOUNT_ID) == expected_base_prefix
 
 
 @pytest.mark.parametrize('guardduty_native', [True, False])
@@ -101,12 +101,12 @@ def test_aws_guardduty_bucket_get_full_prefix(mock_wazuh_aws_integration, mock_s
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
         if instance.type == "GuardDutyNative":
-            assert os.path.join(instance.get_service_prefix(wodles.aws.constants.TEST_ACCOUNT_ID),
-                                wodles.aws.constants.TEST_REGION, '') == \
-                   instance.get_full_prefix(wodles.aws.constants.TEST_ACCOUNT_ID, wodles.aws.constants.TEST_REGION)
+            assert os.path.join(instance.get_service_prefix(constants.TEST_ACCOUNT_ID),
+                                constants.TEST_REGION, '') == \
+                   instance.get_full_prefix(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
         else:
-            assert instance.prefix == instance.get_full_prefix(wodles.aws.constants.TEST_ACCOUNT_ID,
-                                                               wodles.aws.constants.TEST_REGION)
+            assert instance.prefix == instance.get_full_prefix(constants.TEST_ACCOUNT_ID,
+                                                               constants.TEST_REGION)
 
 
 @pytest.mark.parametrize('guardduty_native', [True, False])
@@ -141,8 +141,8 @@ def test_aws_guardduty_bucket_iter_regions_and_accounts(mock_wazuh_aws_integrati
     guardduty_native: bool
         Result for the 'check_guardduty_type' call that determines the GuardDuty bucket type.
     """
-    account_ids = [wodles.aws.constants.TEST_ACCOUNT_ID]
-    regions = [wodles.aws.constants.TEST_REGION]
+    account_ids = [constants.TEST_ACCOUNT_ID]
+    regions = [constants.TEST_REGION]
     with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native), \
             patch('aws_bucket.AWSBucket.iter_regions_and_accounts') as mock_bucket_regions_and_accounts, \
             patch('aws_bucket.AWSCustomBucket.iter_regions_and_accounts') as mock_custom_regions_and_accounts:
@@ -163,7 +163,7 @@ def test_aws_guardduty_bucket_iter_regions_and_accounts(mock_wazuh_aws_integrati
 @patch('aws_bucket.AWSCustomBucket.__init__')
 def test_aws_guardduty_bucket_send_event(mock_custom_bucket, mock_type, mock_reformat, mock_send):
     """Test 'send_event' method makes the necessary calls in order to send the event to Analysisd."""
-    event = copy.deepcopy(wodles.aws.constants.AWS_BUCKET_MSG_TEMPLATE)
+    event = copy.deepcopy(constants.AWS_BUCKET_MSG_TEMPLATE)
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
     instance.send_event(event)
     mock_reformat.assert_called_with(event)
@@ -209,7 +209,7 @@ def test_aws_guardduty_bucket_reformat_msg(mock_custom_bucket, mock_type, mock_r
     fields: dict
         Dictionary part of the event to be reformatted.
     """
-    event = copy.deepcopy(wodles.aws.constants.AWS_BUCKET_MSG_TEMPLATE)
+    event = copy.deepcopy(constants.AWS_BUCKET_MSG_TEMPLATE)
     event['aws'].update({'source': 'guardduty'})
     event['aws'].update(fields)
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)

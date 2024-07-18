@@ -6,9 +6,6 @@ import socket
 import sqlite3
 import sys
 
-import wodles.aws.constants
-from wodles.aws.constants import DEPRECATED_AWS_INTEGRATION_TABLES, DEFAULT_AWS_INTEGRATION_GOV_REGIONS, \
-    SERVICES_REQUIRING_REGION, WAZUH_AWS_MESSAGE_HEADER
 
 try:
     import boto3
@@ -16,6 +13,7 @@ except ImportError:
     print('ERROR: boto3 module is required.')
     sys.exit(4)
 
+import constants
 import aws_tools
 import botocore
 import configparser
@@ -107,9 +105,9 @@ class WazuhIntegration:
             configparser error when given profile does not exist in user config file.
         """
         args = {}
-        args['config'] = botocore.config.Config(retries=wodles.aws.constants.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+        args['config'] = botocore.config.Config(retries=constants.WAZUH_DEFAULT_RETRY_CONFIGURATION)
 
-        if path.exists(wodles.aws.constants.DEFAULT_AWS_CONFIG_PATH):
+        if path.exists(constants.DEFAULT_AWS_CONFIG_PATH):
             # Get User Aws Config
             aws_config = aws_tools.get_aws_config_params()
 
@@ -142,9 +140,9 @@ class WazuhIntegration:
 
         else:
             aws_tools.debug(
-                f"Generating default configuration for retries: {wodles.aws.constants.RETRY_MODE_BOTO_KEY} "
-                f"{args['config'].retries[wodles.aws.constants.RETRY_MODE_BOTO_KEY]} - "
-                f"{wodles.aws.constants.RETRY_ATTEMPTS_KEY} {args['config'].retries[wodles.aws.constants.RETRY_ATTEMPTS_KEY]}",
+                f"Generating default configuration for retries: {constants.RETRY_MODE_BOTO_KEY} "
+                f"{args['config'].retries[constants.RETRY_MODE_BOTO_KEY]} - "
+                f"{constants.RETRY_ATTEMPTS_KEY} {args['config'].retries[constants.RETRY_ATTEMPTS_KEY]}",
                 2)
 
         return args
@@ -157,11 +155,11 @@ class WazuhIntegration:
             conn_args['profile_name'] = profile
 
             # set region name
-        if region and service_name in SERVICES_REQUIRING_REGION:
+        if region and service_name in constants.SERVICES_REQUIRING_REGION:
             conn_args['region_name'] = region
         else:
             # it is necessary to set region_name for GovCloud regions
-            conn_args['region_name'] = region if region in DEFAULT_AWS_INTEGRATION_GOV_REGIONS else None
+            conn_args['region_name'] = region if region in constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS else None
 
         boto_session = boto3.Session(**conn_args)
         service_name = "logs" if service_name == "cloudwatchlogs" else service_name
@@ -247,7 +245,7 @@ class WazuhIntegration:
             aws_tools.debug(json_msg, 3)
             s = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
             s.connect(self.wazuh_queue)
-            encoded_msg = f"{WAZUH_AWS_MESSAGE_HEADER}{json_msg if dump_json else msg}".encode()
+            encoded_msg = f"{constants.WAZUH_AWS_MESSAGE_HEADER}{json_msg if dump_json else msg}".encode()
             # Logs warning if event is bigger than max size
             if len(encoded_msg) > utils.MAX_EVENT_SIZE:
                 aws_tools.debug(f"Event size exceeds the maximum allowed limit of {utils.MAX_EVENT_SIZE} bytes.", 1)
@@ -478,6 +476,6 @@ class WazuhAWSDatabase(WazuhIntegration):
 
     def delete_deprecated_tables(self):
         tables = set([t[0] for t in self.db_cursor.execute(self.sql_find_table_names).fetchall()])
-        for table in tables.intersection(DEPRECATED_AWS_INTEGRATION_TABLES):
+        for table in tables.intersection(constants.DEPRECATED_AWS_INTEGRATION_TABLES):
             aws_tools.debug(f"Removing deprecated '{table} 'table from {self.db_path}", 2)
             self.db_cursor.execute(self.sql_drop_table.format(table_name=table))

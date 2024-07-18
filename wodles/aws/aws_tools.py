@@ -14,7 +14,7 @@ from typing import Optional
 import sys
 import re
 
-from wodles.aws.constants import DEFAULT_AWS_CONFIG_PATH, RETRY_ATTEMPTS_KEY, RETRY_MODE_CONFIG_KEY, RETRY_MODE_BOTO_KEY
+import constants
 
 # Enable/disable debug mode
 debug_level = 0
@@ -77,10 +77,10 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
         boto_config['config'].proxies_config = proxies_config
     
     # Checks for retries config in profile config and sets it if not found to avoid throttling exception
-    if RETRY_ATTEMPTS_KEY in profile_config or RETRY_MODE_CONFIG_KEY in profile_config:
+    if constants.RETRY_ATTEMPTS_KEY in profile_config or constants.RETRY_MODE_CONFIG_KEY in profile_config:
         retries = {
-            RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
-            RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
+            constants.RETRY_ATTEMPTS_KEY: int(profile_config.get(constants.RETRY_ATTEMPTS_KEY, 10)),
+            constants.RETRY_MODE_BOTO_KEY: profile_config.get(constants.RETRY_MODE_CONFIG_KEY, 'standard')
         }
         debug(f"Retries parameters found in user profile. Using profile '{profile}' retries configuration", 2)
         boto_config['config'].retries = retries
@@ -325,7 +325,7 @@ def get_aws_config_params() -> configparser.RawConfigParser:
         The parsed configuration.
     """
     config = configparser.RawConfigParser()
-    config.read(DEFAULT_AWS_CONFIG_PATH)
+    config.read(constants.DEFAULT_AWS_CONFIG_PATH)
 
     return config
 

@@ -13,7 +13,7 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
-import wodles.aws.constants
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'services'))
 import aws_service
@@ -28,7 +28,7 @@ TEST_TOKEN = 'f/12345678123456781234567812345678123456781234567812345678/s'
 TEST_CLOUDWATCH_SCHEMA = "schema_cloudwatchlogs_test.sql"
 
 
-@pytest.mark.parametrize('only_logs_after', [wodles.aws.constants.TEST_ONLY_LOGS_AFTER, None])
+@pytest.mark.parametrize('only_logs_after', [constants.TEST_ONLY_LOGS_AFTER, None])
 @pytest.mark.parametrize('aws_log_groups', [TEST_LOG_GROUP, None])
 @pytest.mark.parametrize('remove_log_streams', [True, False])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -62,7 +62,7 @@ def test_aws_cloudwatchlogs_initializes_properly(mock_aws_service, mock_sts_clie
 
 
 @pytest.mark.parametrize('remove_log_streams', [True, False])
-@pytest.mark.parametrize('only_logs_after', [wodles.aws.constants.TEST_ONLY_LOGS_AFTER, None])
+@pytest.mark.parametrize('only_logs_after', [constants.TEST_ONLY_LOGS_AFTER, None])
 @pytest.mark.parametrize('reparse', [True, False])
 @patch('wazuh_integration.WazuhAWSDatabase.init_db')
 @patch('wazuh_integration.WazuhAWSDatabase.close_db')
@@ -154,10 +154,10 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug,
         'ERROR: Error trying to remove "{}" log stream from "{}" log group.'.format(TEST_LOG_STREAM, TEST_LOG_GROUP), 0)
 
     mock_delete_log_stream.side_effect = botocore.exceptions.ClientError(
-        {'Error': {'Code': wodles.aws.constants.THROTTLING_ERROR_CODE}}, "name")
+        {'Error': {'Code': constants.THROTTLING_ERROR_CODE}}, "name")
     with pytest.raises(SystemExit) as e:
         instance.remove_aws_log_stream(TEST_LOG_GROUP, TEST_LOG_STREAM)
-    assert e.value.code == wodles.aws.constants.THROTTLING_ERROR_CODE
+    assert e.value.code == constants.THROTTLING_ERROR_CODE
 
 
 @pytest.mark.parametrize('end_time', [None, TEST_END_TIME - 1])
@@ -245,10 +245,10 @@ def test_aws_cloudwatchlogs_get_alerts_within_range_handles_exceptions_on_client
     mock_client_get_log_events = instance.client.get_log_events
 
     mock_client_get_log_events.side_effect = botocore.exceptions.ClientError(
-        {'Error': {'Code': wodles.aws.constants.THROTTLING_ERROR_CODE}}, "name")
+        {'Error': {'Code': constants.THROTTLING_ERROR_CODE}}, "name")
     with pytest.raises(SystemExit) as e:
         instance.get_alerts_within_range(TEST_LOG_GROUP, TEST_LOG_STREAM, 'token', TEST_START_TIME, TEST_END_TIME)
-    assert e.value.code == wodles.aws.constants.THROTTLING_ERROR_CODE
+    assert e.value.code == constants.THROTTLING_ERROR_CODE
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -257,7 +257,7 @@ def test_aws_cloudwatchlogs_get_data_from_db(mock_sts_client, custom_database):
     """
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
-    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=wodles.aws.constants.TEST_REGION)
+    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=constants.TEST_REGION)
 
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
@@ -335,7 +335,7 @@ def test_aws_cloudwatchlogs_save_data_db(mock_debug, mock_sts_client, custom_dat
     """
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
-    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=wodles.aws.constants.TEST_REGION)
+    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=constants.TEST_REGION)
 
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
@@ -428,10 +428,10 @@ def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_
             TEST_LOG_GROUP), 0)
 
     mock_describe_log_streams.side_effect = botocore.exceptions.ClientError(
-        {'Error': {'Code': wodles.aws.constants.THROTTLING_ERROR_CODE}}, "name")
+        {'Error': {'Code': constants.THROTTLING_ERROR_CODE}}, "name")
     with pytest.raises(SystemExit) as e:
         instance.get_log_streams(TEST_LOG_GROUP)
-    assert e.value.code == wodles.aws.constants.THROTTLING_ERROR_CODE
+    assert e.value.code == constants.THROTTLING_ERROR_CODE
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -440,7 +440,7 @@ def test_aws_cloudwatchlogs_purge_db(mock_get_log_streams, mock_sts_client, cust
     """Test 'purge_db' method removes the records for log streams when they no longer exist on AWS CloudWatch Logs."""
     utils.database_execute_script(custom_database, TEST_CLOUDWATCH_SCHEMA)
 
-    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=wodles.aws.constants.TEST_REGION)
+    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs, region=constants.TEST_REGION)
 
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
@@ -448,9 +448,9 @@ def test_aws_cloudwatchlogs_purge_db(mock_get_log_streams, mock_sts_client, cust
     instance.db_table_name = 'cloudwatch_logs'
 
     assert utils.database_execute_query(instance.db_connector,
-                                        wodles.aws.constants.SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 1
+                                        constants.SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 1
 
     instance.purge_db(TEST_LOG_GROUP)
 
     assert utils.database_execute_query(instance.db_connector,
-                                        wodles.aws.constants.SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 0
+                                        constants.SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 0

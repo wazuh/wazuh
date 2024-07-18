@@ -11,9 +11,7 @@ from aws_bucket import AWSCustomBucket
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
-from wodles.aws.constants import INVALID_CREDENTIALS_ERROR_NAME, INVALID_REQUEST_TIME_ERROR_NAME, \
-    THROTTLING_EXCEPTION_ERROR_NAME, UNKNOWN_ERROR_MESSAGE, INVALID_CREDENTIALS_ERROR_MESSAGE, \
-    INVALID_REQUEST_TIME_ERROR_MESSAGE, THROTTLING_EXCEPTION_ERROR_MESSAGE
+import constants
 
 
 class AWSServerAccess(AWSCustomBucket):
@@ -128,17 +126,17 @@ class AWSServerAccess(AWSCustomBucket):
         except botocore.exceptions.ClientError as error:
             error_code = error.response.get("Error", {}).get("Code")
 
-            if error_code == THROTTLING_EXCEPTION_ERROR_NAME:
-                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
+            if error_code == constants.THROTTLING_EXCEPTION_ERROR_NAME:
+                error_message = f"{constants.THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='check_bucket')}: {error}"
                 exit_number = 16
-            elif error_code == INVALID_CREDENTIALS_ERROR_NAME:
-                error_message = INVALID_CREDENTIALS_ERROR_MESSAGE
+            elif error_code == constants.INVALID_CREDENTIALS_ERROR_NAME:
+                error_message = constants.INVALID_CREDENTIALS_ERROR_MESSAGE
                 exit_number = 3
-            elif error_code == INVALID_REQUEST_TIME_ERROR_NAME:
-                error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
+            elif error_code == constants.INVALID_REQUEST_TIME_ERROR_NAME:
+                error_message = constants.INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
             else:
-                error_message = UNKNOWN_ERROR_MESSAGE.format(error=error)
+                error_message = constants.UNKNOWN_ERROR_MESSAGE.format(error=error)
                 exit_number = 1
 
             aws_tools.error(error_message)
