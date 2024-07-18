@@ -13,7 +13,6 @@ except ImportError:
     sys.exit(4)
 
 import aws_tools
-import botocore
 import configparser
 import copy
 import gzip
@@ -24,6 +23,7 @@ import re
 import zipfile
 import zlib
 
+from botocore import config, exceptions
 from datetime import datetime
 from datetime import timezone
 from os import path
@@ -117,7 +117,7 @@ class WazuhIntegration:
 
         if path.exists(aws_tools.DEFAULT_AWS_CONFIG_PATH):
             # Create boto Config object
-            args['config'] = botocore.config.Config()
+            args['config'] = config.Config()
 
             # Get User Aws Config
             aws_config = aws_tools.get_aws_config_params()
@@ -177,7 +177,7 @@ class WazuhIntegration:
 
         else:
             # Set retries parameters to avoid a throttling exception
-            args['config'] = botocore.config.Config(retries=copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION))
+            args['config'] = config.Config(retries=copy.deepcopy(WAZUH_DEFAULT_RETRY_CONFIGURATION))
             aws_tools.debug(
                 f"Generating default configuration for retries: {aws_tools.RETRY_MODE_BOTO_KEY} "
                 f"{args['config'].retries[aws_tools.RETRY_MODE_BOTO_KEY]} - "
@@ -234,7 +234,7 @@ class WazuhIntegration:
                 client = boto_session.client(service_name=service_name, endpoint_url=service_endpoint,
                                              **self.connection_config)
 
-        except (botocore.exceptions.ClientError, botocore.exceptions.NoCredentialsError) as e:
+        except (exceptions.ClientError, exceptions.NoCredentialsError) as e:
             aws_tools.error("Access error: {}".format(e))
             sys.exit(3)
         return client
