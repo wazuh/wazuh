@@ -36,12 +36,22 @@ void FIMDB::sync()
     if (!m_stopping)
     {
         m_loggingFunction(LOG_DEBUG, "Executing FIM sync.");
-        FIMDBCreator<OS_TYPE>::sync(m_rsyncHandler,
-                                    m_dbsyncHandler->handle(),
-                                    m_syncFileMessageFunction,
-                                    m_syncRegistryMessageFunction,
-                                    m_syncRegistryEnabled);
-        m_loggingFunction(LOG_DEBUG, "Finished FIM sync.");
+
+        try
+        {
+            FIMDBCreator<OS_TYPE>::sync(m_rsyncHandler,
+                                        m_dbsyncHandler->handle(),
+                                        m_syncFileMessageFunction,
+                                        m_syncRegistryMessageFunction,
+                                        m_syncRegistryEnabled);
+
+            m_loggingFunction(LOG_DEBUG, "Finished FIM sync.");
+        }
+        catch (const std::exception& e)
+        {
+            auto message = std::string("Cannot sync database:") + e.what();
+            m_loggingFunction(LOG_ERROR, message);
+        }
     }
 }
 
