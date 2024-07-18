@@ -100,18 +100,18 @@ All notable changes to this project will be documented in this file.
 
 #### Added
 
-- Added dedicated RSA keys for keystore encryption ([#24357](https://github.com/wazuh/wazuh/pull/24357))
+- Added dedicated RSA keys for keystore encryption. ([#24357](https://github.com/wazuh/wazuh/pull/24357))
 
 #### Fixed
 
-- Fixed bug in `upgrade_agent` CLI where it would sometimes hang without showing a response. ([#24308](https://github.com/wazuh/wazuh/pull/24308))
 - Fixed bug in `upgrade_agent` CLI where it would sometimes raise an unhandled exception. ([#24341](https://github.com/wazuh/wazuh/pull/24341))
+- Changed keystore cipher algorithm to remove reuse of sslmanager.cert and sslmanager.key. ([#24509](https://github.com/wazuh/wazuh/pull/24509))
 
 ### Agent
 
 #### Fixed
 
-- Fixed incorrect macOS agent name retrieval ([#23989](https://github.com/wazuh/wazuh/pull/23989))
+- Fixed incorrect macOS agent name retrieval. ([#23989](https://github.com/wazuh/wazuh/pull/23989))
 
 ### RESTful API
 
@@ -121,16 +121,10 @@ All notable changes to this project will be documented in this file.
 
 ### Other
 
-#### Added
-
-- Added external azure-core and isodate library dependencies. ([#24292](https://github.com/wazuh/wazuh/pull/24292))
-
 #### Changed
 
 - Upgraded external Jinja2 library dependency version to 3.1.4. ([#24108](https://github.com/wazuh/wazuh/pull/24108))
 - Upgraded external requests library dependency version to 2.32.2. ([#23925](https://github.com/wazuh/wazuh/pull/23925))
-- Upgraded external azure-storage-blob library dependency version to 12.19.1. ([#24292](https://github.com/wazuh/wazuh/pull/24292))
-- Upgraded external typing-extensions library dependency version to 4.12.2. ([#24292](https://github.com/wazuh/wazuh/pull/24292))
 
 
 ## [v4.8.0]
