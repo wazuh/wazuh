@@ -22,6 +22,7 @@ namespace Log
     std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
+    const char* GLOBAL_TAG;
 };
 
 // Folder containing all the input files.

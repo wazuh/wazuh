@@ -5,9 +5,17 @@
 #include <iostream>
 #include <random>
 
-auto constexpr MAXLEN {65536};
+auto constexpr MAX_LEN {65536};
 static std::random_device RD;
 static std::mt19937 ENG(RD());
+
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+        GLOBAL_LOG_FUNCTION;
+    const char* GLOBAL_TAG;
+}; // namespace Log
 
 std::string generateRandomString(size_t length)
 {
@@ -133,8 +141,8 @@ int main(const int argc, const char* argv[])
                     pos++;
                 }
                 std::string fileName = file.substr(pos, file.size() - pos);
-                char formattedStr[MAXLEN] = {0};
-                vsnprintf(formattedStr, MAXLEN, message.c_str(), args);
+                char formattedStr[MAX_LEN] = {0};
+                vsnprintf(formattedStr, MAX_LEN, message.c_str(), args);
 
                 if (logLevel != LOG_ERROR)
                 {
