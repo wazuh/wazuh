@@ -58,6 +58,10 @@ public:
         }
 
         keystoreDB.put(key, rocksdb::Slice(encryptedValue), columnFamily);
+        logDebug2(KS_NAME,
+                  "Encryption successful: value for key '%s', inserted into column family: '%s'",
+                  key.c_str(),
+                  columnFamily.c_str());
     }
 
     /**
@@ -88,6 +92,7 @@ public:
             }
             // Decrypt value
             TRSAPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+            logDebug2(KS_NAME, "Decryption successful for key: '%s'", key.c_str());
         }
     }
 };
