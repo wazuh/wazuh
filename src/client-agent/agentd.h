@@ -40,7 +40,9 @@ cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);
 cJSON *getAgentInternalOptions(void);
+#ifndef WIN32
 cJSON *getAntiTamperingConfig(void);
+#endif
 
 /* Agentd init function */
 void AgentdStart(int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
