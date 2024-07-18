@@ -149,10 +149,12 @@ static int read_main_elements(const OS_XML *xml, int modules,
                     }
                 }
             }
+#ifndef WIN32
         } else if (chld_node && (strcmp(node[i]->element, anti_tampering) == 0)) {
             if ((modules & ATAMPERING) && (Read_AntiTampering(chld_node, d1) < 0)) {
                 goto fail;
             }
+#endif
         } else if (strcmp(node[i]->element, osbuffer) == 0) {
             if ((modules & CBUFFER) && (Read_ClientBuffer(chld_node, d1, d2) < 0)) {
                 goto fail;

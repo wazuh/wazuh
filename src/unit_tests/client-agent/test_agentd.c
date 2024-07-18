@@ -38,6 +38,23 @@ static int teardown_group(void **state) {
     return 0;
 }
 
+static int setup_config(void **state) {
+    anti_tampering *atc;
+    os_calloc(1, sizeof(anti_tampering), atc);
+    atc->package_uninstallation = false;
+    *state = atc;
+
+    return 0;
+}
+
+static int teardown_config(void **state) {
+    anti_tampering *atc = *state;
+
+    os_free(atc);
+
+    return 0;
+}
+
 // ----------------------------------------------------------------------------------------------------------------------------------------------
 // check_uninstall_permission
 
@@ -278,6 +295,36 @@ static void test_package_uninstall_validation_login_no_token(void **state) {
     assert_false(ret);
 }
 
+// ----------------------------------------------------------------------------------------------------------------------------------------------
+// config Read_AntiTampering
+
+void test_read_configuration_yes(void** state) {
+    char *test_path = "test_anti_tampering.conf";
+    anti_tampering *atc = *state;
+
+    assert_int_equal(ReadConfig(ATAMPERING, test_path, atc, NULL), 0);
+    assert_true(atc->package_uninstallation);
+}
+
+void test_read_configuration_no(void** state) {
+    char *test_path = "test_anti_tampering_no.conf";
+    anti_tampering *atc = *state;
+
+    assert_int_equal(ReadConfig(ATAMPERING, test_path, atc, NULL), 0);
+    assert_false(atc->package_uninstallation);
+}
+
+void test_read_configuration_invalid(void** state) {
+    char *test_path = "test_anti_tampering_invalid.conf";
+    anti_tampering *atc = *state;
+
+    expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'package_uninstallation'.");
+    expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_anti_tampering_invalid.conf'.");
+
+    assert_int_equal(ReadConfig(ATAMPERING, test_path, atc, NULL), -1);
+    assert_false(atc->package_uninstallation);
+}
+
 #endif // TEST_AGENT
 
 int main(void) {
@@ -300,6 +347,11 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_package_uninstall_validation_login_success, setup_group, teardown_group),
         cmocka_unit_test_setup_teardown(test_package_uninstall_validation_login_denied, setup_group, teardown_group),
         cmocka_unit_test(test_package_uninstall_validation_login_no_token),
+
+        // config
+        cmocka_unit_test_setup_teardown(test_read_configuration_yes, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_read_configuration_no, setup_config, teardown_config),
+        cmocka_unit_test_setup_teardown(test_read_configuration_invalid, setup_config, teardown_config),
 
 #endif // TEST_AGENT
     };

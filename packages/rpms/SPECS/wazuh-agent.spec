@@ -468,11 +468,11 @@ if [ $1 = 0 ]; then
       exit 1
     fi
 
-  if $validation_command; then
-      echo "Uninstallation authorized, continuing..."
-    else
+    if $validation_command; then
       echo "Uninstallation not authorized, aborting..."
       exit 1
+    else
+      echo "Uninstallation authorized, continuing..."
     fi
   }
 

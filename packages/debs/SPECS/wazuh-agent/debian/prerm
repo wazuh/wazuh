@@ -53,10 +53,10 @@ validate_uninstall() {
   fi
 
   if $validation_command; then
-    echo "Uninstallation authorized, continuing..."
-  else
     echo "Uninstallation not authorized, aborting..."
     exit 1
+  else
+    echo "Uninstallation authorized, continuing..."
   fi
 }
 
