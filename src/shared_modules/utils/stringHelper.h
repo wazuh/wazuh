@@ -75,7 +75,7 @@ namespace Utils
         while (std::string::npos != pos)
         {
             data.replace(pos, toSearch.size(), toReplace);
-            pos = data.find(toSearch, pos);
+            pos = data.find(toSearch, pos + toReplace.size());
         }
 
         return ret;
