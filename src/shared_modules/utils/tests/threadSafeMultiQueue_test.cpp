@@ -220,17 +220,19 @@ TEST_F(ThreadSafeMultiQueueTest, LoadAfterStop)
 
 TEST_F(ThreadSafeMultiQueueTest, CorruptionTest)
 {
-    Utils::
-        TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            testQueue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
+    auto spTestQueue = std::make_unique<Utils::TSafeMultiQueue<rocksdb::Slice,
+                                                               rocksdb::PinnableSlice,
+                                                               RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>(
+        RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
 
     for (int i = 0; i < 10; i++)
     {
-        testQueue.push("test" + std::to_string(i), rocksdb::Slice("test" + std::to_string(i)));
+        spTestQueue->push("test" + std::to_string(i), rocksdb::Slice("test" + std::to_string(i)));
     }
 
-    testQueue.cancel();
-    EXPECT_TRUE(testQueue.cancelled());
+    spTestQueue->cancel();
+    EXPECT_TRUE(spTestQueue->cancelled());
+    spTestQueue.reset();
 
     bool corrupted {false};
     std::string prefix {"corrupted.db/MANIFEST"};
@@ -247,19 +249,18 @@ TEST_F(ThreadSafeMultiQueueTest, CorruptionTest)
 
     try
     {
-        Utils::TSafeMultiQueue<rocksdb::Slice,
-                               rocksdb::PinnableSlice,
-                               RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            testQueueAfterCorruption(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
+        spTestQueue = std::make_unique<Utils::TSafeMultiQueue<rocksdb::Slice,
+                                                              rocksdb::PinnableSlice,
+                                                              RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>(
+            RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
     }
-    catch (const std::system_error& e)
+    catch (const std::exception& e)
     {
-        EXPECT_EQ(e.code(), std::errc::io_error);
+        FAIL() << "No exception should be thrown, the DB should be repaired: " << e.what();
     }
-    catch (...)
-    {
-        FAIL() << "Expected std::system_error";
-    }
+    spTestQueue->cancel();
+    EXPECT_TRUE(spTestQueue->cancelled());
+    spTestQueue.reset();
 
     std::error_code ec;
     std::filesystem::remove_all("corrupted.db", ec);

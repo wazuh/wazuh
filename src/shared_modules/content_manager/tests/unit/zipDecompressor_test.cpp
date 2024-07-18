@@ -23,7 +23,7 @@ namespace Log
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
     const char* GLOBAL_TAG;
-};
+}; // namespace Log
 
 // Folder containing all the input files.
 const auto INPUT_FILES_DIR {std::filesystem::current_path() / "input_files" / "zipDecompressor"};

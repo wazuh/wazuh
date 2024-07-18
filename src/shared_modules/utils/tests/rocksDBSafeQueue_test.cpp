@@ -194,14 +194,14 @@ TEST_F(RocksDBSafeQueueTest, CorruptionTest)
         testQueue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
             RocksDBQueue<std::string>(DATABASE_NAME));
     }
-    catch (const std::system_error& e)
+    catch (const std::exception& e)
     {
-        EXPECT_EQ(e.code(), std::errc::io_error);
+        FAIL() << "No exception should be thrown, the DB should be repaired: " << e.what();
     }
-    catch (...)
-    {
-        FAIL() << "Expected std::system_error";
-    }
+
+    testQueue->cancel();
+    EXPECT_TRUE(testQueue->cancelled());
+    testQueue.reset();
 
     std::error_code ec;
     std::filesystem::remove_all(DATABASE_NAME, ec);

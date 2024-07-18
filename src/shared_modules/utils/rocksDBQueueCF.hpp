@@ -12,6 +12,7 @@
 #ifndef _ROCKSDB_QUEUE_CF_HPP
 #define _ROCKSDB_QUEUE_CF_HPP
 
+#include "loggerHelper.h"
 #include "rocksDBOptions.hpp"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
@@ -94,12 +95,32 @@ public:
         // Create directories recursively if they do not exist
         std::filesystem::create_directories(databasePath);
 
-        if (const auto status = rocksdb::DB::Open(options, path, &dbRawPtr); !status.ok())
+        if (auto status = rocksdb::DB::Open(options, path, &dbRawPtr); !status.ok())
         {
-            throw std::system_error(status.IsCorruption() || status.IsIOError()
-                                        ? std::make_error_code(std::errc::io_error)
-                                        : std::make_error_code(std::errc::resource_unavailable_try_again),
-                                    "Failed to open RocksDB database. Reason: " + std::string {status.getState()});
+            if (status.IsCorruption() || status.IsIOError())
+            {
+                rocksdb::Options repairOptions;
+                if (const auto repairStatus {rocksdb::RepairDB(path, repairOptions)}; !repairStatus.ok())
+                {
+                    throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
+                                             std::string {repairStatus.getState()});
+                }
+                else
+                {
+                    status = rocksdb::DB::Open(options, path, &dbRawPtr);
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
+                                                 std::string {status.getState()});
+                    }
+                    logWarn(LOGGER_GLOBAL_TAG, "Database '%s' was repaired because it was corrupt.", path.c_str());
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Failed to open RocksDB database, not repairable. Reason: " +
+                                         std::string {status.getState()});
+            }
         }
 
         // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete the

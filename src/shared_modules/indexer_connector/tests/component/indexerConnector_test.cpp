@@ -25,6 +25,14 @@
 #include <thread>
 #include <utility>
 
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+        GLOBAL_LOG_FUNCTION;
+    const char* GLOBAL_TAG;
+}; // namespace Log
+
 // Template.
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
 static const auto TEMPLATE_DATA = R"(
@@ -616,7 +624,7 @@ TEST_F(IndexerConnectorTest, QueueCorruptionTest)
 
         if (logLevel == 2) // Warning messages
         {
-            if (logMessage.compare("Database '%s%s' was repaired because it was corrupt.") == 0)
+            if (logMessage.compare("Database '%s' was repaired because it was corrupt.") == 0)
             {
                 dbRepaired = true;
             }

@@ -606,9 +606,5 @@ TEST_F(RocksDBWrapperTest, CorruptAndRepairTest)
     }
     EXPECT_TRUE(corrupted);
 
-    bool repaired {false};
-    EXPECT_NO_THROW(
-        { std::tie(db_wrapper, repaired) = Utils::RocksDBWrapper::openAndRepairBuilderSp(m_databaseFolder, false); });
-
-    EXPECT_TRUE(repaired);
+    EXPECT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false); });
 }

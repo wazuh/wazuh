@@ -13,7 +13,6 @@
 #include "HTTPRequest.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
-#include "rocksDBWrapper.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
@@ -29,7 +28,8 @@ namespace Log
     std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
-};
+    const char* GLOBAL_TAG;
+}; // namespace Log
 constexpr auto IC_NAME {"indexer-connector"};
 constexpr auto MAX_WAIT_TIME {60};
 constexpr auto START_TIME {1};
@@ -341,18 +341,7 @@ IndexerConnector::IndexerConnector(
         throw std::runtime_error("Index name must be lowercase.");
     }
 
-    bool repaired {false};
-    std::tie(m_db, repaired) =
-        Utils::RocksDBWrapper::openAndRepairBuilderSp(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
-
-    if (repaired)
-    {
-        logWarn(IC_NAME,
-                "Database '%s%s%s' was repaired because it was corrupt.",
-                DATABASE_BASE_PATH,
-                "db/",
-                m_indexName.c_str());
-    }
+    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -368,44 +357,18 @@ IndexerConnector::IndexerConnector(
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
-    auto functor = [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
-    {
-        std::scoped_lock lock(m_syncMutex);
-
-        if (!m_initialized && m_initializeThread.joinable())
+    m_dispatcher = std::make_unique<ThreadDispatchQueue>(
+        [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
         {
-            logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-            m_initializeThread.join();
-        }
+            std::scoped_lock lock(m_syncMutex);
 
-        if (m_stopping.load())
-        {
-            logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
-            throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
-        }
-
-        auto url = selector->getNext();
-        std::string bulkData;
-        url.append("/_bulk?refresh=wait_for");
-
-        while (!dataQueue.empty())
-        {
-            auto data = dataQueue.front();
-            dataQueue.pop();
-            auto parsedData = nlohmann::json::parse(data);
-            const auto& id = parsedData.at("id").get_ref<const std::string&>();
-            // If the element should not be indexed, only delete it from the sync database.
-            const bool noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
-
-            if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
+            if (!m_initialized && m_initializeThread.joinable())
             {
-                if (!noIndex)
-                {
-                    builderBulkDelete(bulkData, id, m_indexName);
-                }
-                m_db->delete_(id);
+                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
+                m_initializeThread.join();
             }
-            else
+
+            if (m_stopping.load())
             {
                 // Process data.
                 HTTPRequest::instance().post(
@@ -421,51 +384,58 @@ IndexerConnector::IndexerConnector(
                     DEFAULT_HEADERS,
                     secureCommunication);
             }
-        }
 
-        if (!bulkData.empty())
-        {
-            // Process data.
-            HTTPRequest::instance().post(
-                HttpURL(url),
-                bulkData,
-                [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                [](const std::string& error, const long statusCode)
+            auto url = selector->getNext();
+            std::string bulkData;
+            url.append("/_bulk?refresh=wait_for");
+
+            while (!dataQueue.empty())
+            {
+                auto data = dataQueue.front();
+                dataQueue.pop();
+                auto parsedData = nlohmann::json::parse(data);
+                const auto& id = parsedData.at("id").get_ref<const std::string&>();
+                // If the element should not be indexed, only delete it from the sync database.
+                const bool noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
+
+                if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
-                    throw std::runtime_error(error);
-                },
-                "",
-                DEFAULT_HEADERS,
-                secureCommunication);
-        }
-    };
+                    if (!noIndex)
+                    {
+                        builderBulkDelete(bulkData, id, m_indexName);
+                    }
+                    m_db->delete_(id);
+                }
+                else
+                {
+                    const auto dataString = parsedData.at("data").dump();
+                    if (!noIndex)
+                    {
+                        builderBulkIndex(bulkData, id, m_indexName, dataString);
+                    }
+                    m_db->put(id, dataString);
+                }
+            }
 
-    try
-    {
-        m_dispatcher =
-            std::make_unique<ThreadDispatchQueue>(functor, DATABASE_BASE_PATH + m_indexName, ELEMENTS_PER_BULK);
-    }
-    catch (const std::system_error& e)
-    {
-        // Only try to repair IO and Corruption errors
-        if (e.code() == std::errc::io_error)
-        {
-            Utils::RocksDBWrapper::repairDB(DATABASE_BASE_PATH + m_indexName);
-            m_dispatcher =
-                std::make_unique<ThreadDispatchQueue>(functor, DATABASE_BASE_PATH + m_indexName, ELEMENTS_PER_BULK);
-            logWarn(IC_NAME,
-                    "Database '%s%s' was repaired because it was corrupt.",
-                    DATABASE_BASE_PATH,
-                    m_indexName.c_str());
-        }
-        else
-        {
-            auto path = DATABASE_BASE_PATH + m_indexName;
-            logDebug1(IC_NAME, "Can't handle error for '%s'.", path.c_str());
-            throw;
-        }
-    }
+            if (!bulkData.empty())
+            {
+                // Process data.
+                HTTPRequest::instance().post(
+                    HttpURL(url),
+                    bulkData,
+                    [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
+                    [](const std::string& error, const long statusCode)
+                    {
+                        logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
+                        throw std::runtime_error(error);
+                    },
+                    "",
+                    DEFAULT_HEADERS,
+                    secureCommunication);
+            }
+        },
+        DATABASE_BASE_PATH + m_indexName,
+        ELEMENTS_PER_BULK);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
