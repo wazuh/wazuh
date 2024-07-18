@@ -15,8 +15,7 @@ from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pytest
 import pytz
-from azure.common import AzureException, AzureHttpError
-from azure.storage.common._error import AzureSigningError
+from azure.core.exceptions import AzureError, ClientAuthenticationError, HttpResponseError
 from dateutil.parser import parse
 
 sys.path.insert(0, dirname(dirname(dirname(abspath(__file__)))))
@@ -50,11 +49,11 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_l
     """
     blob = MagicMock()
     blob.name = blob_name
-    blob.properties.last_modified = (last_modified if last_modified else datetime.now()).replace(tzinfo=pytz.UTC)
+    blob.last_modified = (last_modified if last_modified else datetime.now()).replace(tzinfo=pytz.UTC)
 
     # Add Blob length property
     if content_length is not None:
-        type(blob.properties).content_length = PropertyMock(return_value=content_length)
+        blob.size = content_length
 
     return blob
 
@@ -69,7 +68,7 @@ def create_mocked_blob(blob_name: str, last_modified: datetime = None, content_l
 @patch('azure_services.storage.get_blobs')
 @patch('azure_services.storage.create_new_row')
 @patch('azure_services.storage.orm.get_row', return_value=None)
-@patch('azure_services.storage.BlockBlobService')
+@patch('azure_services.storage.BlobServiceClient')
 @patch('azure_services.storage.read_auth_file')
 def test_start_storage(
     mock_auth,
@@ -104,7 +103,10 @@ def test_start_storage(
         mock_auth.assert_not_called()
 
     md5_hash = md5(name.encode()).hexdigest()
-    mock_blob.assert_called_with(account_name=name, account_key=key)
+    mock_blob.assert_called_with(
+        account_url=f'https://{name}.blob.core.windows.net/',
+        credential={'account_name': name, 'account_key': key}
+    )
     mock_get_row.assert_called_with(orm.Storage, md5=md5_hash)
     mock_create.assert_called_with(table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
     mock_get_blobs.assert_called_once()
@@ -114,16 +116,16 @@ def test_start_storage(
     'container_name, exception',
     [
         ('', None),
-        ('', AzureException),
-        ('*', AzureSigningError),
-        ('*', AzureException),
+        ('', AzureError('')),
+        ('*', ClientAuthenticationError),
+        ('*', AzureError('')),
         ('*', None),
     ],
 )
 @patch('azure_utils.logging.error')
 @patch('azure_services.storage.create_new_row', side_effect=orm.AzureORMError)
 @patch('db.orm.get_row', return_value=None)
-@patch('azure_services.storage.BlockBlobService')
+@patch('azure_services.storage.BlobServiceClient')
 def test_start_storage_ko(mock_blob, mock_get, mock_create, mock_logging, container_name, exception):
     """Test start_log_analytics shows error message if get_log_analytics_events returns an HTTP error."""
     args = MagicMock(
@@ -302,13 +304,8 @@ def test_get_blobs(
         create_mocked_blob(blob_name=f'blob_{i}{extension}', last_modified=blob_date_str) for i in range(5)
     ]
 
-    # The first iteration will contain a full blob list and a next_marker value
-    blob_service_iter_1 = MagicMock(next_marker='marker')
-    blob_service_iter_1.__iter__ = MagicMock(return_value=iter(blob_list))
-    # The second and last iteration won't contain blob list nor next_marker
-    blob_service_iter_2 = MagicMock(next_marker=None)
-    blob_service = MagicMock()
-    blob_service.list_blobs.side_effect = [blob_service_iter_1, blob_service_iter_2]
+    container_client = MagicMock(name='container_client_mock')
+    container_client.list_blobs.return_value = iter(blob_list)
 
     if json_file:
         test_file = 'storage_events_json'
@@ -319,7 +316,12 @@ def test_get_blobs(
 
     with open(join(TEST_DATA_PATH, test_file)) as f:
         contents = f.read()
-        blob_service.get_blob_to_text.return_value = MagicMock(content=contents)
+        data_mock = MagicMock(name='data_mock')
+        data_mock.readall.return_value = contents
+        container_client.download_blob.return_value = data_mock
+
+    service_client = MagicMock(name='service_client_mock')
+    service_client.get_container_client.return_value = container_client
 
     container_name = 'container'
     marker = 'marker'
@@ -327,7 +329,7 @@ def test_get_blobs(
     tag = 'tag'
     get_blobs(
         container_name=container_name,
-        blob_service=blob_service,
+        service_client=service_client,
         md5_hash=md5_hash,
         next_marker=marker,
         min_datetime=parse(min_date),
@@ -340,9 +342,10 @@ def test_get_blobs(
         blob_extension=extension,
     )
 
-    blob_service.list_blobs.assert_called_with(container_name, prefix=None, marker=marker)
-    blob_service.get_blob_to_text.assert_has_calls(
-        [call(container_name, blob.name) for blob in blob_list if extension and extension in blob.name]
+    service_client.get_container_client.assert_called_with(container_name)
+    container_client.list_blobs.assert_called_with(name_starts_with=None)
+    container_client.download_blob.assert_has_calls(
+        [call(blob, encoding='UTF-8', max_concurrency=2) for blob in blob_list if extension and extension in blob.name]
     )
     if send_events:
         calls = list()
@@ -379,19 +382,19 @@ def test_that_empty_blobs_are_omitted(mock_logging):
         create_mocked_blob('Example2', content_length=0),
     ]
 
-    iterator_with_marker = MagicMock(next_marker=None)
-    iterator_with_marker.__iter__.return_value = list_of_empty_blobs
+    container_client = MagicMock(name='container_client_mock')
+    container_client.list_blobs.return_value = iter(list_of_empty_blobs)
 
-    # Mock for the blob service
-    blob_service = MagicMock()
-    blob_service.list_blobs.return_value = iterator_with_marker
+    # Mock for the service client
+    service_client = MagicMock(name='service_client_mock')
+    service_client.get_container_client.return_value = container_client
 
     container_name = 'container'
     marker = 'marker'
     md5_hash = 'hash'
     get_blobs(
         container_name=container_name,
-        blob_service=blob_service,
+        service_client=service_client,
         md5_hash=md5_hash,
         next_marker=marker,
         min_datetime=parse(PRESENT_DATE),
@@ -404,14 +407,12 @@ def test_that_empty_blobs_are_omitted(mock_logging):
         blob_extension=None,
     )
 
-    # for blob in list_of_empty_blobs:
-    #     blob.properties.content_length.assert_called()
     expected_calls = [
         call('Empty blob Example1, skipping'),
         call('Empty blob Example2, skipping'),
     ]
     mock_logging.assert_has_calls(expected_calls, any_order=False)
-    blob_service.get_blob_to_text.assert_not_called()
+    container_client.download_blob.assert_not_called()
 
 
 @patch('azure_services.storage.update_row_object')
@@ -429,19 +430,23 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
         + [create_mocked_blob(blob_name=f'other_prefix/blob_{i}', last_modified=blob_date_str) for i in range(5)]
     )
 
-    # The first iteration will contain a full blob list and a none next_marker
-    blob_service_iter_1 = MagicMock(next_marker=None)
-    blob_service_iter_1.__iter__ = MagicMock(return_value=iter(blob_list))
-    blob_service = MagicMock()
-    blob_service.list_blobs.return_value = blob_service_iter_1
-    blob_service.get_blob_to_text.return_value = MagicMock(content='')
+    container_client = MagicMock(name='container_client_mock')
+    container_client.list_blobs.return_value = iter(blob_list)
+
+    data_mock = MagicMock(name='data_mock')
+    data_mock.readall.return_value = ''
+    container_client.download_blob.return_value = data_mock
+
+    # Mock for the service client
+    service_client = MagicMock(name='service_client_mock')
+    service_client.get_container_client.return_value = container_client
 
     container_name = 'container'
     md5_hash = 'hash'
 
     get_blobs(
         container_name=container_name,
-        blob_service=blob_service,
+        service_client=service_client,
         md5_hash=md5_hash,
         min_datetime=parse(PAST_DATE),
         max_datetime=parse(PRESENT_DATE),
@@ -454,22 +459,24 @@ def test_get_blobs_only_with_prefix(mock_send, mock_update):
         blob_extension=None,
     )
 
-    blob_service.list_blobs.assert_called_with(container_name, prefix=prefix, marker=None)
-    blob_service.get_blob_to_text.assert_has_calls(
-        [call(container_name, blob.name) for blob in blob_list if prefix in blob.name]
+    container_client.list_blobs.assert_called_with(name_starts_with=prefix)
+    container_client.download_blob.assert_has_calls(
+        [call(blob, encoding='UTF-8', max_concurrency=2) for blob in blob_list if prefix in blob.name]
     )
 
 
 @patch('azure_utils.logging.error')
 def test_get_blobs_list_blobs_ko(mock_logging):
     """Test get_blobs_list_blobs handles exceptions from 'list_blobs'."""
-    m = MagicMock()
-    m.list_blobs.side_effect = AzureException
+    container_client = MagicMock(name='container_client_mock')
+    container_client.list_blobs.side_effect = AzureError('')
+    service_client = MagicMock(name='service_client_mock')
+    service_client.get_container_client.return_value = container_client
 
-    with pytest.raises(AzureException):
+    with pytest.raises(AzureError):
         get_blobs(
             container_name=None,
-            blob_service=m,
+            service_client=service_client,
             md5_hash=None,
             min_datetime=None,
             max_datetime=None,
@@ -487,8 +494,8 @@ def test_get_blobs_list_blobs_ko(mock_logging):
     'exception',
     [
         ValueError,
-        AzureException,
-        AzureHttpError(message='', status_code=''),
+        AzureError(''),
+        HttpResponseError,
     ],
 )
 @patch('azure_services.storage.logging.error')
@@ -497,15 +504,20 @@ def test_get_blobs_blob_data_ko(mock_update, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'get_blob_to_text'."""
     num_blobs = 5
     blob_list = [create_mocked_blob(blob_name=f'blob_{i}') for i in range(num_blobs)]
-    blob_service_iter = MagicMock(next_marker=None)
-    blob_service_iter.__iter__ = MagicMock(return_value=iter(blob_list))
-    blob_service = MagicMock()
-    blob_service.list_blobs.return_value = blob_service_iter
-    blob_service.get_blob_to_text.side_effect = exception
+
+    container_client = MagicMock(name='container_client_mock')
+    container_client.list_blobs.return_value = iter(blob_list)
+
+    container_client.download_blob.side_effect = exception
+
+    # Mock for the service client
+    service_client = MagicMock(name='service_client_mock')
+    service_client.get_container_client.return_value = container_client
+
 
     get_blobs(
         container_name=None,
-        blob_service=blob_service,
+        service_client=service_client,
         md5_hash=None,
         min_datetime=None,
         max_datetime=None,
@@ -528,16 +540,23 @@ def test_get_blobs_json_ko(mock_update, mock_loads, mock_logging, exception):
     """Test get_blobs_list_blobs handles exceptions from 'json.loads'."""
     num_blobs = 5
     blob_list = [create_mocked_blob(blob_name=f'blob_{i}') for i in range(num_blobs)]
-    blob_service_iter = MagicMock(next_marker=None)
-    blob_service_iter.__iter__ = MagicMock(return_value=iter(blob_list))
-    blob_service = MagicMock()
-    blob_service.list_blobs.return_value = blob_service_iter
-    blob_service.get_blob_to_text.return_value = MagicMock(content='invalid')
+
+    container_client = MagicMock(name='container_client_mock')
+    container_client.list_blobs.return_value = iter(blob_list)
+
+    data_mock = MagicMock(name='data_mock')
+    data_mock.readall.return_value = 'invalid'
+    container_client.download_blob.return_value = data_mock
+
+    # Mock for the service client
+    service_client = MagicMock(name='service_client_mock')
+    service_client.get_container_client.return_value = container_client
+
     mock_loads.side_effect = exception
 
     get_blobs(
         container_name=None,
-        blob_service=blob_service,
+        service_client=service_client,
         md5_hash=None,
         min_datetime=None,
         max_datetime=None,
