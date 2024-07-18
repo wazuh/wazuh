@@ -15,6 +15,7 @@
 #include "loggerHelper.h"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
+#include <filesystem>
 #include <fstream>
 #include <grp.h>
 #include <pwd.h>
@@ -87,7 +88,19 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
                 }
 
                 // Once all the files are read, we write the content into final file.
-                caRootCertificate = "/var/ossec/var/certs/root-ca-merged.pem";
+                caRootCertificate = "var/certs/root-ca-merged.pem";
+
+                // Create the directory if it does not exist.
+                std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
+
+                if (!std::filesystem::exists(dirPath))
+                {
+                    if (!std::filesystem::create_directories(dirPath))
+                    {
+                        throw std::runtime_error("Could not create the directory for the CA root merged file");
+                    }
+                }
+
                 std::ofstream outputFile(caRootCertificate);
                 if (outputFile.is_open())
                 {
