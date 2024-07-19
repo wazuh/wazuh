@@ -31,6 +31,7 @@ private:
     std::string m_host;
     std::string m_health;
     std::string m_indexName;
+    std::string m_templateData;
     bool m_indexerInitialized = false;
     std::function<void(const std::string&)> m_initTemplateCallback = {};
     std::function<void(const std::string&)> m_initIndexCallback = {};
@@ -45,12 +46,13 @@ public:
      * @param health Health status of the server.
      * @param indexName Name of the index.
      */
-    FakeIndexer(std::string host, int port, std::string health, std::string indexName)
+    FakeIndexer(std::string host, int port, std::string health, std::string indexName, std::string templateData = "")
         : m_thread(&FakeIndexer::run, this)
         , m_port(port)
         , m_host(std::move(host))
         , m_health(std::move(health))
         , m_indexName(std::move(indexName))
+        , m_templateData(std::move(templateData))
     {
         // Wait until server is ready.
         while (!m_server.is_running())
@@ -99,16 +101,6 @@ public:
     }
 
     /**
-     * @brief Sets the init template callback.
-     *
-     * @param callback New callback.
-     */
-    void setInitTemplateCallback(std::function<void(const std::string&)> callback)
-    {
-        m_initTemplateCallback = std::move(callback);
-    }
-
-    /**
      * @brief Returns the indexer initialized flag.
      *
      * @return True if initialized, false otherwise.
@@ -140,6 +132,13 @@ public:
                 res.set_content(ss.str(), "text/plain");
             });
 
+        m_server.Get("/_index_template/" + m_indexName,
+                     [this](const httplib::Request& req, httplib::Response& res)
+                     {
+                         std::ignore = req;
+                         res.set_content(m_templateData, "text/plain");
+                     });
+
         // Endpoint where the index is initialized.
         m_server.Put("/" + m_indexName,
                      [this](const httplib::Request& req, httplib::Response& res)
@@ -153,26 +152,6 @@ public:
                              m_indexerInitialized = true;
                              res.status = 200;
                              res.set_content("Index initialized", "text/plain");
-                         }
-                         catch (const std::exception& e)
-                         {
-                             res.status = 500;
-                             res.set_content(e.what(), "text/plain");
-                         }
-                     });
-
-        // Endpoint where the template is initialized.
-        m_server.Put("/_index_template/" + m_indexName + "_template",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         try
-                         {
-                             if (m_initTemplateCallback)
-                             {
-                                 m_initTemplateCallback(req.body);
-                             }
-                             res.status = 200;
-                             res.set_content("Template initialized", "text/plain");
                          }
                          catch (const std::exception& e)
                          {

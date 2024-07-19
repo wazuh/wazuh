@@ -29,29 +29,33 @@
 static const auto TEMPLATE_FILE_PATH {std::filesystem::temp_directory_path() / "template.json"};
 static const auto TEMPLATE_DATA = R"(
     {
-        "index_patterns": [
-            "logs-2020-01-*"
-        ],
-        "template": {
-            "aliases": {
-                "my_logs": {}
-            },
-            "settings": {
-                "number_of_shards": 2,
-                "number_of_replicas": 1
-            },
-            "mappings": {
-                "properties": {
-                    "timestamp": {
-                        "type": "date",
-                        "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+        "index_templates": [{
+            "index_template": {
+                "index_patterns": [
+                    "logs-2020-01-*"
+                ],
+                "template": {
+                    "aliases": {
+                        "my_logs": {}
                     },
-                    "value": {
-                        "type": "double"
+                    "settings": {
+                        "number_of_shards": 2,
+                        "number_of_replicas": 1
+                    },
+                    "mappings": {
+                        "properties": {
+                            "timestamp": {
+                                "type": "date",
+                                "format": "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis"
+                            },
+                            "value": {
+                                "type": "double"
+                            }
+                        }
                     }
                 }
             }
-        }
+        }]
     }
 )"_json; // Real template example.
 
@@ -105,9 +109,12 @@ void IndexerConnectorTest::SetUp()
     outputFile.close();
 
     // Initialize fake indexers.
-    m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, A_PORT, "green", INDEXER_NAME));
-    m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, B_PORT, "red", INDEXER_NAME));
-    m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, C_PORT, "red", INDEXER_NAME));
+    m_indexerServers.push_back(
+        std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, A_PORT, "green", INDEXER_NAME, TEMPLATE_DATA.dump()));
+    m_indexerServers.push_back(
+        std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, B_PORT, "red", INDEXER_NAME, TEMPLATE_DATA.dump()));
+    m_indexerServers.push_back(
+        std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, C_PORT, "red", INDEXER_NAME, TEMPLATE_DATA.dump()));
 }
 
 void IndexerConnectorTest::TearDown()
@@ -145,7 +152,6 @@ void IndexerConnectorTest::waitUntil(const std::function<bool()>& stopCondition,
     } while (!stopCondition());
 }
 
-#if 0
 /**
  * @brief Test the connection to an available server. The initialization is checked by reading the index and template
  * data.
@@ -172,7 +178,6 @@ TEST_F(IndexerConnectorTest, Connection)
 
                                           indexData = std::move(responseData);
                                       }};
-    m_indexerServers[A_IDX]->setInitTemplateCallback(checkInitDataCallback);
     m_indexerServers[A_IDX]->setInitIndexCallback(checkInitDataCallback);
 
     // Create connector and wait until the connection is established.
@@ -183,10 +188,9 @@ TEST_F(IndexerConnectorTest, Connection)
     ASSERT_NO_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS));
 
     // Check init data.
-    constexpr auto EXPECTED_CALLBACK_CALLED_TIMES {2};
+    constexpr auto EXPECTED_CALLBACK_CALLED_TIMES {1};
     ASSERT_EQ(callbackCalled, EXPECTED_CALLBACK_CALLED_TIMES);
-    ASSERT_EQ(templateData, TEMPLATE_DATA);
-    ASSERT_EQ(indexData, TEMPLATE_DATA.at("template"));
+    ASSERT_EQ(templateData, TEMPLATE_DATA.at("index_templates").front().at("index_template").at("template"));
 }
 
 /**
@@ -276,31 +280,6 @@ TEST_F(IndexerConnectorTest, ConnectionInvalidServer)
     nlohmann::json indexerConfig;
     indexerConfig["name"] = INDEXER_NAME;
     indexerConfig["hosts"] = nlohmann::json::array({INEXISTANT_SERVER});
-    auto indexerConnector {IndexerConnector(indexerConfig, logFunction, INDEXER_TIMEOUT)};
-    ASSERT_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS),
-                 std::runtime_error);
-}
-
-/**
- * @brief Test the connection to a server that responds the template initialization with an error.
- *
- */
-TEST_F(IndexerConnectorTest, ConnectionInitTemplateErrorFromServer)
-{
-    // Callback function that checks if the callback was executed or not.
-    auto callbackCalled {false};
-    const auto forceErrorCallback {[&callbackCalled](const std::string& data)
-                                   {
-                                       std::ignore = data;
-                                       callbackCalled = true;
-                                       throw std::runtime_error {"Forced server error"};
-                                   }};
-    m_indexerServers[A_IDX]->setInitTemplateCallback(forceErrorCallback);
-
-    // Create connector and wait until the connection is established.
-    nlohmann::json indexerConfig;
-    indexerConfig["name"] = INDEXER_NAME;
-    indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
     auto indexerConnector {IndexerConnector(indexerConfig, logFunction, INDEXER_TIMEOUT)};
     ASSERT_THROW(waitUntil([this]() { return m_indexerServers[A_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS),
                  std::runtime_error);
@@ -575,4 +554,3 @@ TEST_F(IndexerConnectorTest, UpperCaseCharactersIndexName)
     indexerConfig["hosts"] = nlohmann::json::array({A_ADDRESS});
     EXPECT_THROW(IndexerConnector(indexerConfig, logFunction, INDEXER_TIMEOUT), std::runtime_error);
 }
-#endif
