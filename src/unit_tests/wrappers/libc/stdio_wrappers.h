@@ -28,6 +28,8 @@ void expect_fopen(const char* path, const char* mode, FILE *fp);
 int __wrap_fprintf (FILE *__stream, const char *__format, ...);
 void expect_fprintf(FILE *__stream, const char *formatted_msg, int ret);
 
+int __wrap_snprintf(char *__s, size_t __maxlen, const char *__format, ...);
+
 size_t __wrap_fread(void *ptr, size_t size, size_t n, FILE *stream);
 void expect_fread(char *file, int ret);
 
@@ -54,11 +56,14 @@ int __wrap_fgetc(FILE * stream);
 int __wrap__fseeki64(FILE *stream, long offset, int whence);
 
 FILE *__wrap_popen(const char *command, const char *type);
+void expect_popen(const char *command, const char *type, FILE *ret);
 
 int __wrap_pclose(FILE *stream);
 
 int __wrap_fputc(char character, FILE *stream);
 
 FILE *__wrap_open_memstream(char **__bufloc, size_t *__sizeloc);
+
+ssize_t __wrap_getline(char ** lineptr, size_t * n, FILE * stream);
 
 #endif

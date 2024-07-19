@@ -48,7 +48,7 @@ class PYPI final : public TFileSystem, public TFileIO
             packageInfo["size"] = 0;
             packageInfo["vendor"] = UNKNOWN_VALUE;
             packageInfo["install_time"] = UNKNOWN_VALUE;
-            packageInfo["multiarch"] = UNKNOWN_VALUE;
+            // The multiarch field won't have a default value
 
             TFileIO::readLineByLine(path,
                                     [&packageInfo](const std::string & line) -> bool

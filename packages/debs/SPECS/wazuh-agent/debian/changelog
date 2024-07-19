@@ -1,0 +1,673 @@
+wazuh-agent (4.9.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-9-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 10 Jul 2024 00:00:00 +0000
+
+wazuh-agent (4.8.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-8-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 26 Jun 2024 00:00:00 +0000
+
+wazuh-agent (4.8.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-8-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 12 Jun 2024 00:00:00 +0000
+
+wazuh-agent (4.7.5-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-7-5.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 30 May 2024 00:00:00 +0000
+
+wazuh-agent (4.7.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-7-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 25 Apr 2024 00:00:00 +0000
+
+wazuh-agent (4.7.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-7-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 27 Feb 2024 00:00:00 +0000
+
+wazuh-agent (4.7.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-7-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 09 Jan 2024 00:00:00 +0000
+
+wazuh-agent (4.7.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-7-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 19 Dec 2023 00:00:00 +0000
+
+wazuh-agent (4.7.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-7-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 27 Nov 2023 00:00:00 +0000
+
+wazuh-agent (4.6.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-6-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 31 Oct 2023 00:00:00 +0000
+
+wazuh-agent (4.5.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-5-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 24 Oct 2023 00:00:00 +0000
+
+wazuh-agent (4.5.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-5-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 10 Oct 2023 00:00:00 +0000
+
+wazuh-agent (4.5.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-5-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 31 Aug 2023 00:00:00 +0000
+
+wazuh-agent (4.5.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-5-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 24 Aug 2023 15:56:43 +0000
+
+wazuh-agent (4.5.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-5-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 10 Aug 2023 15:56:43 +0000
+
+wazuh-agent (4.4.5-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-4-5.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 10 Jul 2023 15:56:43 +0000
+
+wazuh-agent (4.4.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-4-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 13 Jun 2023 12:31:50 +0000
+
+wazuh-agent (4.4.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-4-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 25 May 2023 12:31:50 +0000
+
+wazuh-agent (4.4.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-4-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 08 May 2023 12:31:50 +0000
+
+wazuh-agent (4.3.11-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-11.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 24 Apr 2023 15:00:00 +0000
+
+wazuh-agent (4.4.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-4-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 17 Apr 2023 12:31:50 +0000
+
+wazuh-agent (4.4.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-4-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 18 Jan 2023 12:31:50 +0000
+
+wazuh-agent (4.3.10-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-10.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 10 Nov 2022 15:00:00 +0000
+
+wazuh-agent (4.3.9-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-9.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 03 Oct 2022 15:00:00 +0000
+
+wazuh-agent (4.3.8-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-8.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 19 Sep 2022 15:00:00 +0000
+
+wazuh-agent (4.3.7-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-7.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 08 Aug 2022 15:00:00 +0000
+
+wazuh-agent (4.3.6-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-6.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 07 Jul 2022 15:00:00 +0000
+
+wazuh-agent (4.3.5-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-5.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 29 Jun 2022 15:00:00 +0000
+
+wazuh-agent (4.3.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 07 Jun 2022 15:41:39 +0000
+
+wazuh-agent (4.3.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 31 May 2022 15:41:39 +0000
+
+wazuh-agent (4.3.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 30 May 2022 15:41:39 +0000
+
+wazuh-agent (4.2.7-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-7.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Sun, 29 May 2022 08:51:00 +0000
+
+wazuh-agent (4.3.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 18 May 2022 12:14:41 +0000
+
+wazuh-agent (4.3.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-3-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 05 May 2022 12:15:57 +0000
+
+wazuh-agent (4.2.6-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-6.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Fri, 25 Mar 2022 16:47:07 +0000
+
+wazuh-agent (4.2.5-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-5.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 15 Nov 2021 16:47:07 +0000
+
+wazuh-agent (4.2.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 21 Oct 2021 15:57:51 +0000
+
+wazuh-agent (4.2.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 06 Oct 2021 15:07:13 +0000
+
+wazuh-agent (4.2.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 28 Sep 2021 08:58:38 +0000
+
+wazuh-agent (4.2.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Sat, 25 Sep 2021 07:04:22 +0000
+
+wazuh-agent (4.2.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-2-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 26 Apr 2021 11:51:55 +0000
+
+wazuh-agent (4.1.5-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-1-5.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 22 Apr 2021 16:50:05 +0000
+
+wazuh-agent (4.1.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-1-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 29 Mar 2021 16:23:09 +0000
+
+wazuh-agent (4.1.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-1-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Sat, 20 Mar 2021 13:41:26 +0000
+
+wazuh-agent (4.1.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-1-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 08 Mar 2021 14:00:25 +0000
+
+wazuh-agent (4.1.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-1-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Fri, 05 Mar 2021 13:24:41 +0000
+
+wazuh-agent (4.1.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-1-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 19 Jan 2021 06:25:59 +0000
+
+ wazuh-agent (4.0.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-0-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 12 Jan 2021 09:30:15 +0000
+
+wazuh-agent (4.0.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-0-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 30 Nov 2020 10:00:15 +0000
+
+wazuh-agent (4.0.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-0-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 23 Nov 2020 12:16:36 +0000
+
+wazuh-agent (4.0.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-0-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Sat, 31 Oct 2020 12:16:36 +0000
+
+wazuh-agent (4.0.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-4-0-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 19 Oct 2020 06:59:39 +0000
+
+ wazuh-manager (3.13.6-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-13-6.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 21 Sep 2022 15:00:00 +0000
+
+ wazuh-manager (3.13.5-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-13-5.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 24 Aug 2022 15:00:00 +0000
+
+ wazuh-manager (3.13.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-13-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 30 May 2022 15:00:00 +0000
+
+wazuh-agent (3.13.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-13-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Sat, 24 Apr 2021 07:01:55 +0000
+
+wazuh-agent (3.13.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-13-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Fri, 21 Aug 2020 10:05:02 +0000
+
+wazuh-agent (3.13.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-13-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 14 Jul 2020 10:05:02 +0000
+
+wazuh-agent (3.13.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-13-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 29 Jun 2020 10:05:02 +0000
+
+wazuh-agent (3.12.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-12-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 9 Apr 2020 08:47:14 +0000
+
+wazuh-agent (3.12.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-12-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 8 Apr 2020 16:12:28 +0000
+
+wazuh-agent (3.12.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-12-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 25 Mar 2020 10:20:48 +0000
+
+wazuh-agent (3.11.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-11-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 24 Feb 2020 10:01:00 +0000
+
+wazuh-agent (3.11.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-11-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 22 Jan 2020 10:01:00 +0000
+
+wazuh-agent (3.11.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-11-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 7 Jan 2020 10:01:00 +0000
+
+wazuh-agent (3.11.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-11-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 26 Dec 2019 13:33:00 +0000
+
+wazuh-agent (3.11.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-11-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 7 Oct 2019 13:33:00 +0000
+
+wazuh-agent (3.10.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-10-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 23 Sep 2019 10:19:00 +0000
+
+wazuh-agent (3.10.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-10-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 19 Sep 2019 13:33:00 +0000
+
+wazuh-agent (3.10.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-10-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 26 Aug 2019 13:33:00 +0000
+
+wazuh-agent (3.9.5-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-9-5.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 8 Aug 2019 16:31:00 +0000
+
+wazuh-agent (3.9.4-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-9-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 12 Jul 2019 16:31:00 +0000
+
+wazuh-agent (3.9.3-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-9-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 11 Jun 2019 16:31:00 +0000
+
+wazuh-agent (3.9.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-9-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 6 Jun 2019 13:33:00 +0000
+
+wazuh-agent (3.9.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-9-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 6 May 2019 13:33:00 +0000
+
+wazuh-agent (3.9.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-9-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 25 Feb 2019 11:00:00 +0000
+
+wazuh-agent (3.8.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-8-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 30 Jan 2019 11:00:00 +0000
+
+wazuh-agent (3.8.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-8-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 24 Jan 2019 09:28:34 +0000
+
+wazuh-agent (3.8.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-8-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 16 Jan 2019 11:00:00 +0000
+
+wazuh-agent (3.7.2-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-7-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 10 Dec 2018 11:00:00 +0000
+
+wazuh-agent (3.7.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-7-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 12 Nov 2018 11:00:00 +0000
+
+wazuh-agent (3.7.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-7-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Sat, 10 Nov 2018 11:00:00 +0000
+
+wazuh-agent (3.6.1-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-6-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 3 Sep 2018 11:00:00 +0000
+
+wazuh-agent (3.6.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-6-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Fri, 24 Aug 2018 11:00:00 +0000
+
+wazuh-agent (3.5.0-RELEASE) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-5-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 25 Jul 2018 20:12:41 +0000
+
+wazuh-agent (3.4.0-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-4-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 28 Jun 2018 20:12:41 +0000
+
+wazuh-agent (3.3.1-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-3-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 14 Jun 2018 9:29:41 +0000
+
+wazuh-agent (3.3.0-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-3-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 07 Jun 2018 10:00:31 +0000
+
+wazuh-agent (3.2.4-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-2-4.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 30 May 2018 12:44:31 +0000
+
+wazuh-agent (3.2.3-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-2-3.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 15 May 2018 12:35:30 +0000
+
+wazuh-agent (3.2.2-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-2-2.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Tue, 13 Mar 2018 12:35:30 +0000
+
+wazuh-agent (3.2.1-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-2-1.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Wed, 21 Feb 2018 15:26:30 +0000
+
+wazuh-agent (3.2.0-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-2-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 11 Dec 2017 15:19:24 +0000
+
+
+wazuh-agent (3.1.0-1) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-1-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 19 Dec 2017 08:00:10 +0000
+
+
+wazuh-agent (3.0.0-2) stable; urgency=low
+
+  * More info: https://documentation.wazuh.com/current/release-notes/release-3-0-0.html
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 01 Nov 2017 08:00:10 +0000
+
+wazuh-agent (2.1.1-1) stable; urgency=low
+
+  * Labels configuration for agents to show data on alerts.
+  * Added group property for agents to customize shared files set.
+  * Send shared files to multiple agents in parallel.
+  * New decoder plugin for logs in JSON format with dynamic fields definition.
+  * Brought framework from API to Wazuh project.
+  * Show merged files MD5 checksum by agent_control and framework.
+  * New reliable request protocol for manager-agent communication.
+  * Remote agent upgrades with signed WPK packages.
+  * Added option for Remoted to prevent it from writing shared merged file.
+  * Added state for Agentd and Windows agent to notify connection state and metrics.
+  * Added new json log format for local file monitoring.
+  * Added OpenSCAP SSG datastream content for Ubuntu Trusty Tahr.
+  * Increased shared file delivery speed when using TCP.
+  * Increased TCP listening socket backlog.
+  * Changed Windows agent UI panel to show revision number instead of installation date.
+  * Group every decoded field (static and dynamic fields-1) into a data object for JSON alerts.
+  * Reload shared files by Remoted every 10 minutes.
+  * Increased string size limit for XML reader to 4096 bytes.
+  * Updated Logstash configuration and Elasticsearch mappings.
+  * Changed template fields structure for Kibana dashboards.
+  * Increased dynamic field limit to 1024, and default to 256.
+  * Changed agent buffer 'length' parameter to 'queue_size'.
+  * Changed some Rootcheck error messages to verbose logs.
+  * Removed unnecessary message by manage_agents advising to restart Wazuh manager.
+  * Fixed wrong queries to get last Syscheck and Rootcheck date.
+  * Prevent Logcollector keep-alives from being stored on archives.json.
+  * Fixed length of random message within keep-alives.
+  * Fixed Windows version detection for Windows 8 and newer.
+  * Fixed incorrect CIDR writing on client.keys by Authd.
+  * Fixed missing buffer flush by Analysisd when updating Rootcheck database.
+  * Stop Wazuh service before removing folder to reinstall.
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 01 Aug 2016 08:00:10 +0000
+
+wazuh-agent (2.1.0-1) stable; urgency=low
+
+  * Rotate and compress log feature.
+  * Labeling data for agents to be shown in alerts.
+  * New 'auth' configuration template.
+  * Make manage_agents capable of add and remove agents via Authd.
+  * Implemented XML configuration for Authd.
+  * Option -F for Authd to force insertion if it finds duplicated name.
+  * Local auth client to manage agent keys.
+  * Added OS name and version into global.db.
+  * Option for logging in JSON format.
+  * Allow maild to send through a sendmail-like executable (by James Le Cuirot).
+  * Leaky bucket-like buffer for agents to prevent network flooding.
+  * Allow Syslog client to read JSON alerts.
+  * Allow Mail reporter to read JSON alerts.
+  * Added internal option to tune Rootcheck sleep time.
+  * Added route-null Active Response script for Windows 2012 (by @CrazyLlama).
+  * Updated SQLite library to 3.19.2.
+  * Updated zlib to 1.2.11.
+  * Updated cJSON library to 1.4.7.
+  * Change some manage_agents option parameters.
+  * Run Auth in background by default.
+  * Log classification as debug, info, warning, error and critical.
+  * Limit number of reads per cycle by Logcollector to prevent log starvation.
+  * Limit OpenSCAP module's event forwarding speed.
+  * Increased debug level of repeated Rootcheck messages.
+  * Send events when OpenSCAP starts and finishes scans.
+  * Delete PID files when a process exits not due to a signal.
+  * Change error messages due to SSL handshake failure to debug messages.
+  * Force group addition on installation for compatibility with LDAP (thanks to Gary Feltham).
+  * Fixed compiling error on systems with no OpenSSL.
+  * Fixed compiling warning at manage_agents.
+  * Fixed ossec-control enable/disable help message.
+  * Fixed unique aperture of random device on Unix.
+  * Fixed file sum comparison bug at Syscheck realtime engine. (Thanks to Arshad Khan)
+  * Close analysisd if alert outputs are disabled for all formats.
+  * Read Windows version name for versions newer than Windows 8 / Windows Server 2012.
+  * Fixed error in Analysisd that wrote Syscheck and Rootcheck databases of re-added agents on deleted files.
+  * Fixed internal option to configure the maximum labels' cache time.
+  * Fixed Auth password parsing on client side.
+  * Fix bad agent ID assignation in Authd on i686 architecture.
+  * Fixed Logcollector misconfiguration in Windows agents.
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 01 Jul 2016 08:43:10 +0000
+
+wazuh-agent (2.0.1-1) stable; urgency=low
+
+  * Changed random data generator for a secure OS-provided generator.
+  * Changed Windows installer file name (depending on version).
+  * Linux distro detection using standard os-release file.
+  * Changed some URLs to documentation.
+  * Disable synchronization with SQLite databases for Syscheck by default.
+  * Minor changes at Rootcheck formatter for JSON alerts.
+  * Added debugging messages to Integrator logs.
+  * Show agent ID when possible on logs about incorrectly formatted messages.
+  * Use default maximum inotify event queue size.
+  * Show remote IP on encoding format errors when unencrypting messages.
+
+ -- Wazuh, Inc <info@wazuh.com>  Thu, 06 Jun 2017 08:43:10 +0000
+
+wazuh-agent (2.0-1) stable; urgency=low
+
+  * Wazuh-agent - base 2.0
+
+ -- Wazuh, Inc <info@wazuh.com>  Mon, 30 Sep 2016 08:43:10 +0000

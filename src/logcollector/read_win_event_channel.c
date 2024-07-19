@@ -42,6 +42,18 @@
 #include <winerror.h>
 #include <sddl.h>
 
+#ifdef WAZUH_UNIT_TESTING
+#include "../unit_tests/wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../unit_tests/wrappers/windows/errhandlingapi_wrappers.h"
+#include "../unit_tests/wrappers/windows/winbase_wrappers.h"
+#include "../unit_tests/wrappers/windows/winevt_wrappers.h"
+
+// Remove static qualifier when unit testing
+#define STATIC
+#else
+#define STATIC static
+#endif
+
 typedef struct _os_event {
     char *name;
     unsigned int id;
@@ -68,8 +80,8 @@ typedef struct _os_channel {
     EVT_HANDLE subscription;
 } os_channel;
 
-static char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
-static EVT_HANDLE read_bookmark(os_channel *channel);
+STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags);
+STATIC EVT_HANDLE read_bookmark(os_channel *channel);
 
 wchar_t *convert_unix_string(char *string)
 {
@@ -122,7 +134,7 @@ wchar_t *convert_unix_string(char *string)
     return (dest);
 }
 
-char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
+STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
 {
     char *message = NULL;
     EVT_HANDLE publisher = NULL;
@@ -138,7 +150,7 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
     if (publisher == NULL) {
         LSTATUS err = GetLastError();
         char error_msg[OS_SIZE_1024];
-        error_msg[OS_SIZE_1024 - 1] = '\0';
+        memset(error_msg, 0, OS_SIZE_1024);
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS
                 | FORMAT_MESSAGE_MAX_WIDTH_MASK,
                 NULL, err, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
@@ -170,6 +182,9 @@ char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
         goto cleanup;
     }
 
+    /* Increase buffer size by one due to the difference in the size count between EvtFormatMessage() and
+       WideCharToMultiByte() */
+    size += 1;
     if ((buffer = calloc(size, sizeof(wchar_t))) == NULL) {
         merror(
             "Could not calloc() memory which returned [(%d)-(%s)]",
@@ -216,13 +231,13 @@ EVT_HANDLE read_bookmark(os_channel *channel)
     wchar_t bookmark_xml[OS_MAXSTR];
 
     /* If we have a stored bookmark, start from it */
-    if ((fp = fopen(channel->bookmark_filename, "r")) == NULL) {
+    if ((fp = wfopen(channel->bookmark_filename, "r")) == NULL) {
         /* Check if the error was not because the
          * file did not exist which should be logged
          */
         if (errno != ENOENT) {
             merror(
-                "Could not fopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+                "Could not wfopen() existing bookmark (%s) for (%s) which returned [(%d)-(%s)]",
                 channel->bookmark_filename,
                 channel->evt_log,
                 errno,
@@ -336,9 +351,9 @@ int update_bookmark(EVT_HANDLE evt, os_channel *channel)
         goto cleanup;
     }
 
-    if ((fp = fopen(channel->bookmark_filename, "w")) == NULL) {
+    if ((fp = wfopen(channel->bookmark_filename, "w")) == NULL) {
         mwarn(
-            "Could not fopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
+            "Could not wfopen() bookmark (%s) for (%s) which returned [(%d)-(%s)]",
             channel->bookmark_filename,
             channel->evt_log,
             errno,

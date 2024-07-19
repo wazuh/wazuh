@@ -24,10 +24,11 @@ static char* build_json_keys_message(const char *ar_name, char **keys);
  * */
 static cJSON* get_srcip_from_win_eventdata(const cJSON *data);
 
+
 void write_debug_file(const char *ar_name, const char *msg) {
     char *timestamp = w_get_timestamp(time(NULL));
 
-    FILE *ar_log_file = fopen(LOG_FILE, "a");
+    FILE *ar_log_file = wfopen(LOG_FILE, "a");
 
     if (ar_log_file) {
         fprintf(ar_log_file, "%s %s: %s\n", timestamp, ar_name, msg);
@@ -499,7 +500,7 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         if (mkdir(lock_path, S_IRWXG) == 0) {
             // Lock acquired (setting the pid)
             pid_t pid = getpid();
-            if (pid_file = fopen(lock_pid_path, "w"), !pid_file) {
+            if (pid_file = wfopen(lock_pid_path, "w"), !pid_file) {
                 write_debug_file(log_path, "Cannot write pid file");
                 return OS_INVALID;
             } else {
@@ -510,7 +511,7 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         }
 
         // Getting currently/saved PID locking the file
-        if (pid_file = fopen(lock_pid_path, "r"), !pid_file) {
+        if (pid_file = wfopen(lock_pid_path, "r"), !pid_file) {
             write_debug_file(log_path, "Cannot read pid file");
         } else {
             read = fscanf(pid_file, "%d", &current_pid);
@@ -539,7 +540,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
         // by one and fail after MAX_ITERACTION
         if (i >= max_iteration) {
             bool kill = false;
-            char *command_ex_1[4] = { "pgrep", "-f", (char *)proc_name, NULL };
+            char *pgrep_path = NULL;
+
+            if (get_binary_path("pgrep", &pgrep_path) < 0) {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", pgrep_path);
+                write_debug_file(log_path, log_msg);
+            }
+            char *command_ex_1[4] = { pgrep_path, "-f", (char *)proc_name, NULL };
 
             wfd_t *wfd = wpopenv(*command_ex_1, command_ex_1, W_BIND_STDOUT);
             if (!wfd) {
@@ -550,9 +558,16 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                     int pid = atoi(output_buf);
                     if (pid == current_pid) {
                         char pid_str[10];
+                        char *kill_path = NULL;
                         memset(pid_str, '\0', 10);
                         snprintf(pid_str, 9, "%d", pid);
-                        char *command_ex_2[4] = { "kill", "-9", pid_str, NULL };
+
+                        if (get_binary_path("kill", &kill_path) < 0) {
+                            memset(log_msg, '\0', OS_MAXSTR);
+                            snprintf(log_msg, OS_MAXSTR -1, "Binary '%s' not found in default paths, the full path will not be used.", kill_path);
+                            write_debug_file(log_path, log_msg);
+                        }
+                        char *command_ex_2[4] = { kill_path, "-9", pid_str, NULL };
 
                         wfd_t *wfd2 = wpopenv(*command_ex_2, command_ex_2, W_BIND_STDOUT);
                         if (!wfd2) {
@@ -567,11 +582,14 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                             i = 0;
                             saved_pid = -1;
                         }
+                        os_free(kill_path);
                         break;
                     }
                 }
                 wpclose(wfd);
             }
+
+            os_free(pgrep_path);
 
             if (!kill) {
                 memset(log_msg, '\0', OS_MAXSTR);
@@ -585,7 +603,7 @@ int lock(const char *lock_path, const char *lock_pid_path, const char *log_path,
                 if (mkdir(lock_path, S_IRWXG) == 0) {
                     // Lock acquired (setting the pid)
                     pid_t pid = getpid();
-                    pid_file = fopen(lock_pid_path, "w");
+                    pid_file = wfopen(lock_pid_path, "w");
                     fprintf(pid_file, "%d", (int)pid);
                     fclose(pid_file);
 
@@ -630,5 +648,4 @@ int get_ip_version(const char *ip) {
     freeaddrinfo(res);
     return OS_INVALID;
 }
-
 #endif

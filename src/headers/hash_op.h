@@ -74,6 +74,7 @@ void *OSHash_Delete_ins(OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Get(const OSHash *self, const char *key) __attribute__((nonnull));
 void *OSHash_Numeric_Get_ex(const OSHash *self, int key) __attribute__((nonnull(1)));
 void *OSHash_Get_ex(const OSHash *self, const char *key) __attribute__((nonnull));
+void *OSHash_Get_ex_dup(const OSHash *self, const char *key, void*(*duplicator)(void*)) __attribute__((nonnull));
 void *OSHash_Get_ins(const OSHash *self, const char *key) __attribute__((nonnull));
 
 unsigned int OSHash_Get_Elem_ex(OSHash *self) __attribute__((nonnull));
@@ -85,6 +86,8 @@ OSHash *OSHash_Duplicate(const OSHash *hash) __attribute__((nonnull));
 OSHash *OSHash_Duplicate_ex(const OSHash *hash) __attribute__((nonnull));
 
 OSHashNode *OSHash_Begin(const OSHash *self, unsigned int *i);
+OSHashNode *OSHash_Begin_ex(const OSHash *self, unsigned int *i);
+
 OSHashNode *OSHash_Next(const OSHash *self, unsigned int *i, OSHashNode *current);
 void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
 

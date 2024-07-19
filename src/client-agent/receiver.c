@@ -243,7 +243,7 @@ int receive_msg()
                          SHAREDCFG_DIR,
                          tmp_msg);
 
-                fp = fopen(file, "w");
+                fp = wfopen(file, "w");
                 if (!fp) {
                     merror(FOPEN_ERROR, file, errno, strerror(errno));
                 }
@@ -284,7 +284,7 @@ int receive_msg()
                                     send_msg(msg_output, -1);
                                 }
                                 else {
-                                    if (cldir_ex_ignore(SHAREDCFG_DIR, ignore_list)) {
+                                    if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
                                         mwarn("Could not clean up shared directory.");
                                     }
                                     clear_merged_hash_cache();
@@ -331,7 +331,7 @@ int receive_msg()
 
 #ifdef WIN32
 /* Receive events from the server */
-DWORD WINAPI receiver_thread(__attribute__((unused)) LPVOID none)
+int receiver_messages()
 {
     int rc = 0;
 

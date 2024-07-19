@@ -202,43 +202,27 @@
     <group>aws_macie,</group>
   </rule>
 
-  <rule id="80351" level="3">
-    <if_sid>80350</if_sid>
-    <field name="aws.severity.description">INFO</field>
-    <options>no_full_log</options>
-    <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description).</description>
-    <group>aws_macie,</group>
-  </rule>
-
-  <rule id="80352" level="4">
+  <rule id="80351" level="4">
     <if_sid>80350</if_sid>
     <field name="aws.severity.description">LOW</field>
     <options>no_full_log</options>
-    <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description).</description>
+    <description>AWS Macie $(aws.severity.description): $(aws.type) - $(aws.title)</description>
     <group>aws_macie,</group>
   </rule>
 
-  <rule id="80353" level="6">
+  <rule id="80352" level="6">
     <if_sid>80350</if_sid>
     <field name="aws.severity.description">MEDIUM</field>
     <options>no_full_log</options>
-    <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description).</description>
+    <description>AWS Macie $(aws.severity.description): $(aws.type) - $(aws.title)</description>
     <group>aws_macie,</group>
   </rule>
 
-  <rule id="80354" level="8">
+  <rule id="80353" level="8">
     <if_sid>80350</if_sid>
     <field name="aws.severity.description">HIGH</field>
     <options>no_full_log</options>
-    <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description).</description>
-    <group>aws_macie,</group>
-  </rule>
-
-  <rule id="80355" level="12">
-    <if_sid>80350</if_sid>
-    <field name="aws.severity.description">CRITICAL</field>
-    <options>no_full_log</options>
-    <description>AWS Macie $(aws.severity.description): $(aws.name) - $(aws.summary.description).</description>
+    <description>AWS Macie $(aws.severity.description): $(aws.type) - $(aws.title)</description>
     <group>aws_macie,</group>
   </rule>
 

@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import json
 import os
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -170,22 +171,6 @@ RULES_EXTENSION = '.xml'
 DECODERS_EXTENSION = '.xml'
 LISTS_EXTENSION = ''
 COMPILED_LISTS_EXTENSION = '.cdb'
-
-
-# ============================================ Wazuh constants - Metadata  =============================================
-try:
-    here = os.path.abspath(os.path.dirname(__file__))
-    with open(os.path.join(here, 'wazuh.json'), 'r') as f:
-        metadata = json.load(f)
-except (FileNotFoundError, PermissionError):
-    metadata = {
-        'install_type': 'server',
-        'installation_date': '',
-        'wazuh_version': ''
-    }
-WAZUH_INSTALL_TYPE = metadata['install_type']
-WAZUH_VERSION = metadata['wazuh_version']
-WAZUH_INSTALLATION_DATE = metadata['installation_date']
 
 
 # ========================================= Wazuh constants - Size and limits ==========================================

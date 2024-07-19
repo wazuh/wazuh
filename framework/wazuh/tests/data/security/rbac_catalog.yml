@@ -98,12 +98,12 @@ get_rbac_actions:
           - GET /agents/{agent_id}/key
           - GET /agents/{agent_id}/daemons/stats
           - GET /agents/{agent_id}/stats/{component}
-          - GET /groups/{group_id}/agents
           - GET /agents/no_group
           - GET /agents/outdated
           - GET /agents/stats/distinct
           - GET /agents/summary/os
           - GET /agents/summary/status
+          - GET /groups/{group_id}/agents
           - GET /overview/agents
       agent:create:
         description: Create new agents
@@ -227,8 +227,7 @@ get_rbac_actions:
           - GET /groups/{group_id}/agents
           - GET /groups/{group_id}/configuration
           - GET /groups/{group_id}/files
-          - GET /groups/{group_id}/files/{file_name}/json
-          - GET /groups/{group_id}/files/{file_name}/xml
+          - GET /groups/{group_id}/files/{file_name}
           - GET /overview/agents
       group:create:
         description: Create new agent groups
@@ -268,10 +267,10 @@ get_rbac_actions:
         related_endpoints:
           - PUT /agents/node/{node_id}/restart
           - GET /cluster/local/info
+          - GET /cluster/local/config
           - GET /cluster/nodes
           - GET /cluster/healthcheck
           - GET /cluster/ruleset/synchronization
-          - GET /cluster/local/config
           - GET /cluster/{node_id}/status
           - GET /cluster/{node_id}/info
           - GET /cluster/{node_id}/configuration
@@ -352,7 +351,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /cluster/restart
       lists:read:
-        description: Read cdb lists files
+        description: Read CDB lists files
         resources:
           - list:file
         example:
@@ -366,7 +365,7 @@ get_rbac_actions:
           - GET /lists/files/{filename}
           - GET /lists/files
       lists:update:
-        description: Update or upload cdb lists files
+        description: Update or upload CDB lists files
         resources:
           - "*:*"
         example:
@@ -378,7 +377,7 @@ get_rbac_actions:
         related_endpoints:
           - PUT /lists/files/{filename}
       lists:delete:
-        description: Delete cdb lists files
+        description: Delete CDB lists files
         resources:
           - list:file
         example:
@@ -834,34 +833,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - GET /tasks/status
-      vulnerability:read:
-        description: Allow reading agents' vulnerabilities information
-        resources:
-          - agent:id
-          - agent:group
-        example:
-          actions:
-            - vulnerability:read
-          resources:
-            - agent:id:011
-            - agent:group:us-west
-          effect: allow
-        related_endpoints:
-          - GET /vulnerability/{agent_id}
-          - GET /vulnerability/{agent_id}/last_scan
-          - GET /vulnerability/{agent_id}/summary/{field}
-      vulnerability:run:
-        description: Allow running a vulnerability detector scan
-        resources:
-          - "*:*"
-        example:
-          actions:
-            - vulnerability:run
-          resources:
-            - "*:*:*"
-          effect: allow
-        related_endpoints:
-          - PUT /vulnerability
       event:ingest:
         description: "Ingest events"
         resources:

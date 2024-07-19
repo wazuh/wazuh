@@ -72,9 +72,9 @@ void syscollector_start(const unsigned int inverval,
     try
     {
         Syscollector::instance().init(std::make_shared<SysInfo>(),
-                                      callbackDiffWrapper,
-                                      callbackSyncWrapper,
-                                      callbackLogWrapper,
+                                      std::move(callbackDiffWrapper),
+                                      std::move(callbackSyncWrapper),
+                                      std::move(callbackLogWrapper),
                                       dbPath,
                                       normalizerConfigPath,
                                       normalizerType,

@@ -1,5 +1,5 @@
 """
-copyright: Copyright (C) 2015-2023, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -173,6 +173,9 @@ def test_agent_statistics_format(test_metadata, daemons_handler, simulate_agent)
         - daemons_handler:
             type: fixture
             brief: Wrapper of a helper function to handle Wazuh daemons.
+        - simulate_agent:
+            type: fixture
+            brief: Simulate an agent
 
     assertions:
         - Check if the statistics returned by the API have the expected format.

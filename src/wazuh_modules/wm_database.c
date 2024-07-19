@@ -119,17 +119,21 @@ void* wm_database_main(wm_database *data) {
     // agents synchronization with the database using the keys. In advance,
     // the agent addition and removal from the database will be held by authd
     // in the master.
+#ifndef LOCAL
     wm_sync_agents();
+#endif
 
     // Groups synchronization with the database
     wdb_update_groups(SHAREDCFG_DIR, &wdb_wmdb_sock);
 
     // Legacy agent-group files need to be synchronized with the database
     // and then removed in case an upgrade has just been performed.
+#ifndef LOCAL
     wm_sync_legacy_groups_files();
 
     // Remove dangling agent databases
     wm_clean_dangling_wdb_dbs();
+#endif
 
 #ifdef INOTIFY_ENABLED
     if (data->real_time) {
@@ -468,7 +472,7 @@ int wm_sync_group_file(const char* group_file, const char* group_file_path) {
         return OS_INVALID;
     }
 
-    FILE *fp = fopen(group_file_path, "r");
+    FILE *fp = wfopen(group_file_path, "r");
 
     if (!fp) {
         mtdebug1(WM_DATABASE_LOGTAG, "Groups file '%s' could not be opened for syncronization.", group_file_path);
@@ -615,7 +619,7 @@ int get_max_queued_events() {
     int n;
     FILE *fp;
 
-    if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "r"))) {
+    if (!(fp = wfopen(MAX_QUEUED_EVENTS_PATH, "r"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
         return -1;
     }
@@ -634,7 +638,7 @@ int get_max_queued_events() {
 int set_max_queued_events(int size) {
     FILE *fp;
 
-    if (!(fp = fopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
+    if (!(fp = wfopen(MAX_QUEUED_EVENTS_PATH, "w"))) {
         mterror(WM_DATABASE_LOGTAG, FOPEN_ERROR, MAX_QUEUED_EVENTS_PATH, errno, strerror(errno));
         return -1;
     }

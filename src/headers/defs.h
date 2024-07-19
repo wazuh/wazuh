@@ -41,6 +41,7 @@
 #define OS_SIZE_16      16
 
 /* Level of log messages */
+#define LOGLEVEL_DEBUG_VERBOSE 5
 #define LOGLEVEL_CRITICAL 4
 #define LOGLEVEL_ERROR 3
 #define LOGLEVEL_WARNING 2
@@ -68,7 +69,7 @@
 
 /* Some global names */
 #define __ossec_name    "Wazuh"
-#define __ossec_version "v4.8.0"
+#define __ossec_version "v5.0.0"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"
@@ -228,6 +229,7 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WDB_GLOB_NAME          "global"
 #define WDB_MITRE_NAME         "mitre"
 #define WDB_PROF_NAME          ".template.db"
+#define WDB_PROF_PATH          WDB2_DIR "/" WDB_PROF_NAME
 #define WDB_TASK_DIR           "queue/tasks"
 #define WDB_TASK_NAME          "tasks"
 #define WDB_BACKUP_FOLDER      "backup/db"

@@ -18,7 +18,9 @@ from datetime import datetime, timedelta, timezone
 from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, walk, path
+import psutil
 from pyexpat import ExpatError
+from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 
@@ -29,7 +31,6 @@ from defusedxml.minidom import parseString
 import wazuh.core.results as results
 from api import configuration
 from wazuh.core import common
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhError, WazuhInternalError
 from wazuh.core.wdb import WazuhDBConnection
 
@@ -41,7 +42,7 @@ if sys.version_info[0] == 3:
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
-def clean_pid_files(daemon: str):
+def clean_pid_files(daemon: str) -> None:
     """Check the existence of '.pid' files for a specified daemon.
 
     Parameters
@@ -53,10 +54,18 @@ def clean_pid_files(daemon: str):
     for pid_file in os.listdir(common.OSSEC_PIDFILE_PATH):
         if match := re.match(regex, pid_file):
             try:
-                os.kill(int(match.group(1)), SIGKILL)
-                print(f"{daemon}: Orphan child process {match.group(1)} was terminated.")
-            except OSError:
-                print(f'{daemon}: Non existent process {match.group(1)}, removing from {common.WAZUH_PATH}/var/run...')
+                pid = int(match.group(1))
+                process = psutil.Process(pid)
+                command = process.cmdline()[-1]
+
+                if daemon.replace('-', '_') in command:
+                    os.kill(pid, SIGKILL)
+                    print(f"{daemon}: Orphan child process {pid} was terminated.")
+                else:
+                    print(f"{daemon}: Process {pid} does not belong to {daemon}, removing from {common.WAZUH_PATH}/var/run...")
+
+            except (OSError, psutil.NoSuchProcess):
+                print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
 
@@ -968,6 +977,128 @@ def check_agents_allow_higher_versions(data: str):
         check_section(auth_section, split_section='</auth>')
 
 
+def check_indexer(new_conf: str, original_conf: str):
+    """Check if modifying the indexer configuration is allowed.
+
+    Parameters
+    ----------
+    new_conf : str
+        New configuration file.
+    original_conf : str
+        Original configuration file.
+
+    Raises
+    -------
+    WazuhError(1127)
+        Raised if the indexer section is modified in the configuration to upload.
+    """
+
+    def update_dict(section_dict: dict, section):
+        """Updates a dictionary with the values of a section recursively.
+
+        Parameters
+        ----------
+        section_dict : dict
+            Section dictionary.
+        section : Element
+            XML section to get the values from.
+        """
+        for value in section:
+            if value.text is None:
+                # The value contains more tags, iterate over them
+                update_dict(section_dict, value)
+                return
+
+            section_dict.update({value.tag: {'attrib': value.attrib, 'value': value.text.strip()}})
+
+    def xml_to_dict(conf: str) -> list:
+        """Convert XML to a list of dictionaries.
+
+        Parameters
+        ----------
+        conf : str
+            XML configuration file.
+
+        Returns
+        -------
+        matched_configurations : list
+            Dictionaries with the configuration.
+        """
+        matched_configurations = []
+
+        for str_conf in re.findall(r'<indexer>.*?</indexer>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
+            indexer_section = fromstring(str_conf)
+
+            for section in indexer_section.iter():
+                section_dict = {section.tag: {}}
+                update_dict(section_dict[section.tag], section)
+                matched_configurations.append(section_dict)
+
+        return matched_configurations
+
+    upload_configuration = configuration.api_conf['upload_configuration']
+
+    if not upload_configuration['indexer']['allow']:
+        new_indexer = xml_to_dict(new_conf)
+        original_indexer = xml_to_dict(original_conf)
+        if len(new_indexer) != len(original_indexer) or any(x != y for x, y in zip(new_indexer, original_indexer)):
+            raise WazuhError(1127, extra_message='indexer')
+
+
+def check_virustotal_integration(new_conf: str):
+    """Check if the configuration VirusTotal API Key corresponds to Public or Premium API.
+
+    Parameters
+    ----------
+    new_conf : str
+        New configuration file.
+
+    Raises
+    -------
+    WazuhError(1127)
+        Raised if the integrations section is modified in the configuration to upload.
+    """
+
+    def obtain_vt_api_keys(conf: str) -> list[str]:
+        """Obtain Virus Total API keys from the configuration.
+
+        Parameters
+        ----------
+        conf : str
+            XML configuration file.
+
+        Returns
+        -------
+        keys: list[str]
+            Virus Total API keys.
+        """
+        keys = []
+        for str_conf in re.findall(r'<integration>.*?</integration>', conf, re.MULTILINE | re.DOTALL | re.IGNORECASE):
+            integrations_section = fromstring(str_conf)
+            for name_section in integrations_section.iter('name'):
+                if name_section.text.strip() == 'virustotal':
+                    for api_key_section in integrations_section.iter('api_key'):
+                        keys.append(api_key_section.text.strip())
+        return keys
+
+    blocked_configurations = configuration.api_conf['upload_configuration']['integrations']['virustotal']
+
+    if not blocked_configurations['public_key']['allow']:
+        minimum_quota = blocked_configurations['public_key']['minimum_quota']
+        api_keys = obtain_vt_api_keys(new_conf)
+        for api_key in api_keys:
+            headers = {'x-apikey': f'{api_key}'}
+            url = f"https://www.virustotal.com/api/v3/users/{api_key}/overall_quotas"
+            try:
+                virustotal_response = get(url=url, headers=headers, timeout=10).json()
+                response_minimum_quota = virustotal_response["data"]["api_requests_hourly"]["user"]["allowed"]
+            except (exceptions.RequestException, KeyError) as e:
+                extra_msg = "Unexpected VirusTotal response" if type(e) == KeyError else str(e)
+                raise WazuhError(1131, extra_message=f'{extra_msg}')
+            if response_minimum_quota == minimum_quota:
+                raise WazuhError(1130, extra_message='integrations > virustotal')
+
+
 def load_wazuh_xml(xml_path, data=None):
     if not data:
         with open(xml_path) as f:
@@ -997,7 +1128,7 @@ def load_wazuh_xml(xml_path, data=None):
     data = re.sub(r"<(?!/?\w+.+>|!--)", "&lt;", data)
 
     # replace \< by &lt, only outside xml tags;
-    data = re.sub(r'^&backslash;<(.*[^>])$', '&backslash;&lt;\g<1>', data)
+    data = re.sub(r'^&backslash;<(.*[^>])$', r'&backslash;&lt;\g<1>', data)
 
     # replace \> by &gt;
     data = re.sub(r'&backslash;>', '&backslash;&gt;', data)
@@ -1241,7 +1372,22 @@ def filter_array_by_query(q: str, input_array: typing.List) -> typing.List:
 
     # compile regular expression only one time when function is called
     # get elements in a clause
-    re_get_elements = re.compile(r'([\w\-]+)(?:\.?)((?:[\w\-](?:\.[\w\-])*)*)(=|!=|<|>|~)([\w\-./: @]+)')
+    operators = ['=', '!=', '<', '>', '~']
+    re_get_elements = re.compile(
+        r"\(?" +
+        # Field name: name of the field to look on DB.
+        r"([\w]+)" +
+        # New capturing group for text after the first dot.
+        r"\.?([\w.]*)?" +
+        # Operator: looks for '=', '!=', '<', '>' or '~'.
+        rf"([{''.join(operators)}]{{1,2}})" +
+        # Value: A string.
+        r"((?:(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]*)\))*"
+        r"(?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]+)"
+        r"(?:\((?:\[[\[\]\w _\-.,:?\\/'\"=@%<>{}]*]|[\[\]\w _\-.:?\\/'\"=@%<>{}]*)\))*)+)" +
+        r"\)?"
+    )
+
     # get a list with OR clauses
     or_clauses = q.split(',')
     output_array = []
@@ -1990,10 +2136,12 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         # Check if remote commands are allowed if it is a configuration file
         if config_file:
             check_remote_commands(final_xml)
+            check_agents_allow_higher_versions(final_xml)
+            check_virustotal_integration(final_xml)
             with open(common.OSSEC_CONF, 'r') as f:
                 current_xml = f.read()
+            check_indexer(final_xml, current_xml)
             check_wazuh_limits_unchanged(final_xml, current_xml)
-            check_agents_allow_higher_versions(final_xml)
         # Check xml format
         load_wazuh_xml(xml_path='', data=final_xml)
     except ExpatError:

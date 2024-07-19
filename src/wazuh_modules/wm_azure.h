@@ -40,8 +40,6 @@ typedef struct wm_azure_request_t {
 
 typedef struct wm_azure_api_t {
     unsigned int type:1;        // Type of API defined (Log analytics or graph)
-    char * application_id;      // Application ID
-    char * application_key;     // Application key
     char * auth_path;           // Authentication file with application ID and key
     char * tenantdomain;        // Domain
     wm_azure_request_t *request;  // Requests (linked list)
@@ -59,8 +57,6 @@ typedef struct wm_azure_container_t {
 } wm_azure_container_t;
 
 typedef struct wm_azure_storage_t {
-    char * account_name;    // Storage account name
-    char * account_key;     // Storage account key
     char * auth_path;       // Authentication file with account name and key
     char * tag;             // Storage tag
     wm_azure_container_t *container;  // Storage container

@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.8.0"
-REVISION="40800"
+VERSION="v5.0.0"
+REVISION="50000"
 TYPE="server"
 
 ###  Do not modify below here ###
@@ -42,7 +42,7 @@ LOCK_PID="${LOCK}/pid"
 # This number should be more than enough (even if it is
 # started multiple times together). It will try for up
 # to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="10"
+MAX_ITERATION="60"
 
 MAX_KILL_TRIES=600
 
@@ -277,8 +277,8 @@ start_service()
     checkpid;
 
     # Delete all files in temporary folder
-    TO_DELETE="$DIR/tmp/*"
-    rm -rf $TO_DELETE
+    TO_DELETE="$DIR/tmp"
+    find $TO_DELETE -mindepth 1 -name "*" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
 
     # Stop deprecated daemons that could keep alive on updates
     for i in ${DEPRECATED_DAEMONS}; do

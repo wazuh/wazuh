@@ -11,9 +11,6 @@
 #ifndef INFO_MESSAGES_H
 #define INFO_MESSAGES_H
 
-/* Vulnerability-Detector info messages*/
-#define VU_NO_OSINFO_AG       "(5700): Unable to get the OS information for agent '%.3d'. Inventory data may not yet be synchronized."
-
 /* File integrity monitoring info messages*/
 #define FIM_DAEMON_STARTED                  "(6000): Starting daemon..."
 #define FIM_DISABLED                        "(6001): File integrity monitoring disabled."
@@ -64,6 +61,7 @@
 #define FIM_DISK_QUOTA_LIMIT_DISABLED       "(6043): Disk quota limit disabled."
 #define FIM_NO_DIFF_REGISTRY                "(6044): Option nodiff enabled for %s '%s'."
 #define FIM_AUDIT_CREATED_RULE_FILE         "(6045): Created audit rules file, due to audit immutable mode rules will be loaded in the next reboot."
+#define FIM_AUDIT_QUEUE_SIZE                "(6046): Internal audit queue size set to '%d'."
 
 /* wazuh-logtest information messages */
 #define LOGTEST_INITIALIZED                 "(7200): Logtest started"
@@ -77,5 +75,8 @@
 /* Logcollector info messages */
 #define LOGCOLLECTOR_INVALID_HANDLE_VALUE   "(9200): File '%s' can not be handled."
 #define LOGCOLLECTOR_ONLY_MACOS             "(9201): 'macos' log format is only supported on macOS."
+#define LOGCOLLECTOR_JOURNALD_ONLY_LINUX    "(9202): 'Journald' log format is only available on Linux."
+#define LOGCOLLECTOR_JOURNALD_MONITORING    "(9203): Monitoring journal entries."
+
 
 #endif /* INFO_MESSAGES_H */

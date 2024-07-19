@@ -34,8 +34,6 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         kwargs['db_table_name'] = 'vpcflow'
         AWSLogsBucket.__init__(self, **kwargs)
         self.service = 'vpcflowlogs'
-        self.access_key = kwargs['access_key']
-        self.secret_key = kwargs['secret_key']
         self.profile_name = kwargs['profile']
         # SQL queries for VPC must be after constructor call
         self.sql_already_processed = """
@@ -145,14 +143,11 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
             return result
 
-    def get_ec2_client(self, access_key, secret_key, region, profile_name=None):
+    def get_ec2_client(self, region, profile_name=None):
         conn_args = {}
         conn_args['region_name'] = region
 
-        if access_key is not None and secret_key is not None:
-            conn_args['aws_access_key_id'] = access_key
-            conn_args['aws_secret_access_key'] = secret_key
-        elif profile_name is not None:
+        if profile_name is not None:
             conn_args['profile_name'] = profile_name
 
         boto_session = boto3.Session(**conn_args)
@@ -163,14 +158,14 @@ class AWSVPCFlowBucket(AWSLogsBucket):
         try:
             ec2_client = boto_session.client(service_name='ec2', **self.connection_config)
         except Exception as e:
-            print("Error getting EC2 client: {}".format(e))
+            aws_tools.error("Error getting EC2 client: {}".format(e))
             sys.exit(3)
 
         return ec2_client
 
-    def get_flow_logs_ids(self, access_key, secret_key, region, account_id, profile_name=None):
+    def get_flow_logs_ids(self, region, account_id, profile_name=None):
         try:
-            ec2_client = self.get_ec2_client(access_key, secret_key, region, profile_name=profile_name)
+            ec2_client = self.get_ec2_client(region, profile_name=profile_name)
             return list(map(operator.itemgetter('FlowLogId'), ec2_client.describe_flow_logs()['FlowLogs']))
         except ValueError:
             aws_tools.debug(
@@ -205,7 +200,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                 aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
                 # get flow log ids for the current region
                 flow_logs_ids = self.get_flow_logs_ids(
-                    self.access_key, self.secret_key, aws_region, aws_account_id, profile_name=self.profile_name
+                    aws_region, aws_account_id, profile_name=self.profile_name
                 )
                 # for each flow log id
                 for flow_log_id in flow_logs_ids:
@@ -242,7 +237,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
                     'flow_log_id': flow_log_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
+            aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def _filter_bucket_files(self, bucket_files: list, **kwargs) -> Iterator[dict]:
         """Filter bucket files that contain the flow_log_id in the filename.

@@ -312,15 +312,9 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
     cJSON* changed_attributes = NULL;
     cJSON* old_data = NULL;
     cJSON *attributes = NULL;
-    cJSON *aux = NULL;
     cJSON* timestamp = NULL;
     directory_t *configuration = NULL;
     fim_txn_context_t *txn_context = (fim_txn_context_t *) user_data;
-
-    // Do not process if it's the first scan
-    if (_base_line == 0) {
-        return; // LCOV_EXCL_LINE
-    }
 
     // In case of deletions, latest_entry is NULL, so we need to get the path from the json event
     if (resultType == DELETED) {
@@ -341,6 +335,11 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
 
     if (configuration->options & CHECK_SEECHANGES && resultType != DELETED) {
         diff = fim_file_diff(path, configuration);
+    }
+
+    // Do not process if it's the first scan
+    if (_base_line == 0) {
+        goto end; // LCOV_EXCL_LINE
     }
 
     switch (resultType) {
@@ -416,7 +415,7 @@ static void transaction_callback(ReturnTypeCallback resultType, const cJSON* res
         }
     }
 
-    if (diff != NULL) {
+    if (diff != NULL && resultType == MODIFIED) {
         cJSON_AddStringToObject(data, "content_changes", diff);
     }
 
@@ -617,6 +616,8 @@ time_t fim_scan() {
     if (isDebug()) {
         fim_print_info(start, end, cputime_start); // LCOV_EXCL_LINE
     }
+    audit_queue_full_reported = 0;
+
     return end_of_scan;
 }
 
@@ -627,6 +628,11 @@ void fim_checker(const char *path,
                  fim_txn_context_t *ctx) {
     directory_t *configuration;
     int depth;
+
+    if (!w_utf8_valid(path)) {
+        mwarn(FIM_INVALID_FILE_NAME, path);
+        return;
+    }
 
 #ifdef WIN32
     // Ignore the recycle bin.
@@ -789,6 +795,17 @@ int fim_directory(const char *dir,
         }
         *(s_name) = '\0';
         path_size = strlen(f_name);
+
+#ifdef WIN32
+        // Check if the full path is too long if it is, skip this file
+        // and log a warning, PATH_MAX is 260 on windows, but reserves 1 char
+        // for the null terminator.
+        if (path_size + strlen(entry->d_name) >= PATH_MAX) {
+            mwarn(FIM_ERROR_PATH_TOO_LONG, f_name, entry->d_name, PATH_MAX);
+            continue;
+        }
+#endif
+
         snprintf(s_name, PATH_MAX + 2 - path_size, "%s", entry->d_name);
 
 #ifdef WIN32
@@ -824,7 +841,7 @@ void fim_event_callback(void* data, void * ctx)
             char* diff;
 
             diff = fim_file_diff(path, ctx_data->config);
-            if (diff != NULL) {
+            if (diff != NULL && ctx_data->event->type == FIM_MODIFICATION) {
                 cJSON_AddStringToObject(data_json, "content_changes", diff);
             }
             os_free(diff);

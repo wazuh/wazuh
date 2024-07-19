@@ -154,64 +154,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /vulnerability/{agent_id}
-
-stages:
-  - name: Try to get agent 001 vulnerabilities
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/vulnerability/001"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /vulnerability/{agent_id}/last_scan
-
-stages:
-  - name: Try to get when the last full and partial scans for agent 001 ended
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/vulnerability/001"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /vulnerability/{agent_id}/summary/severity
-
-stages:
-
-  - name: Try to get a summary of the vulnerabilities' severity of a given agent
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/vulnerability/001/summary/severity"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /vulnerability
-
-stages:
-
-  - name: Try to run vulnerability detector scans
-    request:
-      verify: False
-      method: PUT
-      url: "{protocol:s}://{host:s}:{port:d}/vulnerability"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: DELETE /agents/{agent_id}/group
 
 stages:
@@ -1544,27 +1486,13 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_id}/files/{filename}
 
 stages:
   - name: Try to get one file of a group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf/json"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /groups/{group_id}/files/{filename}/xml
-
-stages:
-  - name: Try to get one file of a group
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files/agent.conf/xml"
+      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

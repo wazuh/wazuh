@@ -218,9 +218,21 @@ WazuhUpgrade()
         fi
     fi
     ./src/init/delete-oldusers.sh $OSSEC_GROUP
-
+    
+    # Set merged.mg permissions to new ones
+    find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
+    
     # Remove unnecessary `execa` socket
     if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
         rm -f $DIRECTORY/queue/alerts/execa
+    fi
+
+    # Ensure that the 'Indexer' is configured
+    if [ "X$1" = "Xserver" ]; then
+        local OSSEC_CONF_PATH="$PREINSTALLEDDIR/etc/ossec.conf"
+        local INDEXER_TEMPLATE_PATH="./etc/templates/config/generic/wodle-indexer.manager.template"
+
+        . ./src/init/update-indexer.sh
+        updateIndexerTemplate "$OSSEC_CONF_PATH" "$INDEXER_TEMPLATE_PATH"
     fi
 }

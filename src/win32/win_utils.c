@@ -40,8 +40,22 @@ DWORD WINAPI skthread(__attribute__((unused)) LPVOID arg)
 void *skthread()
 #endif
 {
-
     Start_win32_Syscheck();
+#ifdef WIN32
+    return 0;
+#else
+    return (NULL);
+#endif
+}
+
+/* logcollector main thread */
+#ifdef WIN32
+DWORD WINAPI logcollector_thread(__attribute__((unused)) LPVOID arg)
+#else
+void *logcollector_thread()
+#endif
+{
+    LogCollectorStart();
 #ifdef WIN32
     return 0;
 #else
@@ -88,6 +102,11 @@ int local_start()
     /* Initialize logging module*/
     w_logging_init();
 
+    /* Start Winsock */
+    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
+        merror_exit("WSAStartup() failed");
+    }
+
     /* Start agent */
     os_calloc(1, sizeof(agent), agt);
 
@@ -96,14 +115,14 @@ int local_start()
         merror_exit("Configuration file '%s' not found", cfg);
     }
 
-    /* Start Winsock */
-    if (WSAStartup(MAKEWORD(2, 0), &wsaData) != 0) {
-        merror_exit("WSAStartup() failed");
-    }
-
     /* Read agent config */
     mdebug1("Reading agent configuration.");
     if (ClientConf(cfg) < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
+    }
+
+    if (!(agt->server && agt->server[0].rip)) {
+        merror(AG_INV_IP);
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
 
@@ -127,21 +146,9 @@ int local_start()
         agt->max_time_reconnect_try = (agt->notify_time * 3);
         minfo("Max time to reconnect can't be less than notify_time(%d), using notify_time*3 (%d)", agt->notify_time, agt->max_time_reconnect_try);
     }
-    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
-    if (agt->force_reconnect_interval) {
-        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", \
-               w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
-    }
 
-    /* Read logcollector config file */
-    mdebug1("Reading logcollector configuration.");
-
-    /* Init message queue */
-    w_msg_hash_queues_init();
-
-    if (LogCollectorConfig(cfg) < 0) {
-        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
-    }
+    /* Initialize sender */
+    sender_init();
 
     if(agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
         // If autoenrollment is enabled, we will avoid exit if there is no valid key
@@ -152,13 +159,49 @@ int local_start()
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-    /* Read keys */
+
+    /* Read private keys */
     minfo(ENC_READ);
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
-    /* If there is no file to monitor, create a clean entry
-     * for the mark messages.
-     */
+    minfo("Using notify time: %d and max time to reconnect: %d", agt->notify_time, agt->max_time_reconnect_try);
+    if (agt->force_reconnect_interval) {
+        minfo("Using force reconnect interval, Wazuh Agent will reconnect every %ld %s", \
+               w_seconds_to_time_value(agt->force_reconnect_interval), w_seconds_to_time_unit(agt->force_reconnect_interval, TRUE));
+    }
+
+    /* Start execd thread */
+    if (!WinExecdStart()) {
+        agt->execdq = -1;
+    }
+
+    /* Start mutex */
+    mdebug1("Creating thread mutex.");
+    hMutex = CreateMutex(NULL, FALSE, NULL);
+    if (hMutex == NULL) {
+        merror_exit("Error creating mutex.");
+    }
+
+    /* Start syscheck thread */
+    w_create_thread(NULL,
+                     0,
+                     skthread,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID);
+
+    /* Read logcollector config file */
+    mdebug1("Reading logcollector configuration.");
+
+    /* Init message queue */
+    w_msg_hash_queues_init();
+
+    /* Read config file */
+    if (LogCollectorConfig(cfg) < 0) {
+        mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
+    }
+
+    /* No file available to monitor -- continue */
     if (logff == NULL) {
         os_calloc(2, sizeof(logreader), logff);
         logff[0].file = NULL;
@@ -173,7 +216,7 @@ int local_start()
 
     /* No sockets defined */
     if (logsk == NULL) {
-        os_calloc(2, sizeof(logsocket), logsk);
+        os_calloc(2, sizeof(socket_forwarder), logsk);
         logsk[0].name = NULL;
         logsk[0].location = NULL;
         logsk[0].mode = 0;
@@ -184,108 +227,23 @@ int local_start()
         logsk[1].prefix = NULL;
     }
 
-    /* Read execd config */
-    if (!WinExecdStart()) {
-        agt->execdq = -1;
-    }
+    /* Start logcollector thread */
+    w_create_thread(NULL,
+                     0,
+                     logcollector_thread,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID);
 
-    /* Initialize sender */
-    sender_init();
-
-    /* Initialize random numbers */
-    srandom(time(0));
-    os_random();
-
-    // Initialize children pool
+    /* Initialize children pool */
     wm_children_pool_init();
 
-    /* Start buffer thread */
-    if (agt->buffer){
-        buffer_init();
-        w_create_thread(NULL,
-                        0,
-                        update_limits_thread,
-                        NULL,
-                        0,
-                        (LPDWORD)&threadID);
-
-        w_create_thread(NULL,
-                        0,
-                        dispatch_buffer,
-                        NULL,
-                        0,
-                        (LPDWORD)&threadID);
-    }else{
-        minfo(DISABLED_BUFFER);
-    }
-
-    /* state_main thread */
-    w_agentd_state_init();
-    w_create_thread(NULL,
-                     0,
-                     state_main,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID);
-
-    /* Socket connection */
-    agt->sock = -1;
-
-    /* Start mutex */
-    mdebug1("Creating thread mutex.");
-    hMutex = CreateMutex(NULL, FALSE, NULL);
-    if (hMutex == NULL) {
-        merror_exit("Error creating mutex.");
-    }
-    /* Start syscheck thread */
-    w_create_thread(NULL,
-                     0,
-                     skthread,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID);
-
-    /* Launch rotation thread */
-    int rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
-    if (rotate_log) {
-        w_create_thread(NULL,
-                        0,
-                        w_rotate_log_thread,
-                        NULL,
-                        0,
-                        (LPDWORD)&threadID);
-    }
-
-    /* Check if server is connected */
-    os_setwait();
-    start_agent(1);
-    os_delwait();
-    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
-
-    req_init();
-
-    /* Start receiver thread */
-    w_create_thread(NULL,
-                     0,
-                     receiver_thread,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID2);
-
-    /* Start request receiver thread */
-    w_create_thread(NULL,
-                     0,
-                     req_receiver,
-                     NULL,
-                     0,
-                     (LPDWORD)&threadID2);
-
-    // Read wodle configuration and start modules
-
+    /* Read wodle configuration */
     if (wm_config() < 0) {
         mlerror_exit(LOGLEVEL_ERROR, CONFIG_ERROR, cfg);
     }
 
+    /* Start modules */
     if (!wm_check()) {
         wmodule * cur_module;
 
@@ -299,11 +257,71 @@ int local_start()
         }
     }
 
+    /* Try to connect to server */
+    os_setwait();
+
+    /* Socket connection */
+    agt->sock = -1;
+
+    /* Initialize random numbers */
+    srandom(time(0));
+    os_random();
+
+    /* Launch rotation thread */
+    int rotate_log = getDefine_Int("monitord", "rotate_log", 0, 1);
+    if (rotate_log) {
+        w_create_thread(NULL,
+                        0,
+                        w_rotate_log_thread,
+                        NULL,
+                        0,
+                        (LPDWORD)&threadID);
+    }
+
+    /* Launch dispatch thread */
+    if (agt->buffer){
+        buffer_init();
+        w_create_thread(NULL,
+                         0,
+                         dispatch_buffer,
+                         NULL,
+                         0,
+                         (LPDWORD)&threadID);
+    } else {
+        minfo(DISABLED_BUFFER);
+    }
+
+    /* Configure and start statistics */
+    w_agentd_state_init();
+    w_create_thread(NULL,
+                     0,
+                     state_main,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID);
+
+    start_agent(1);
+
+    os_delwait();
+    w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
+
+    /* Start request module */
+    req_init();
+    w_create_thread(NULL,
+                     0,
+                     req_receiver,
+                     NULL,
+                     0,
+                     (LPDWORD)&threadID2);
+
+    /* Delete agent state file at exit */
+    atexit(DeleteState);
+
     /* Send agent stopped message at exit */
     atexit(send_agent_stopped_message);
 
-    /* Start logcollector -- main process here */
-    LogCollectorStart();
+    /* Start receiver -- main process here */
+    receiver_messages();
 
     if (sysinfo_module){
         so_free_library(sysinfo_module);

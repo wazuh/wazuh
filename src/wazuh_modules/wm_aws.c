@@ -228,8 +228,6 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
         for (iter = aws_config->buckets; iter; iter = iter->next) {
             cJSON *buck = cJSON_CreateObject();
             if (iter->bucket) cJSON_AddStringToObject(buck,"name",iter->bucket);
-            if (iter->access_key) cJSON_AddStringToObject(buck,"access_key",iter->access_key);
-            if (iter->secret_key) cJSON_AddStringToObject(buck,"secret_key",iter->secret_key);
             if (iter->aws_profile) cJSON_AddStringToObject(buck,"aws_profile",iter->aws_profile);
             if (iter->iam_role_arn) cJSON_AddStringToObject(buck,"iam_role_arn",iter->iam_role_arn);
             if (iter->iam_role_duration) cJSON_AddStringToObject(buck, "iam_role_duration",iter->iam_role_duration);
@@ -259,8 +257,6 @@ cJSON *wm_aws_dump(const wm_aws *aws_config) {
         for (iter = aws_config->services; iter; iter = iter->next) {
             cJSON *service = cJSON_CreateObject();
             if (iter->type) cJSON_AddStringToObject(service,"type",iter->type); // type is the name of the service
-            if (iter->access_key) cJSON_AddStringToObject(service,"access_key",iter->access_key);
-            if (iter->secret_key) cJSON_AddStringToObject(service,"secret_key",iter->secret_key);
             if (iter->aws_profile) cJSON_AddStringToObject(service,"aws_profile",iter->aws_profile);
             if (iter->iam_role_arn) cJSON_AddStringToObject(service,"iam_role_arn",iter->iam_role_arn);
             if (iter->iam_role_duration) cJSON_AddStringToObject(service, "iam_role_duration",iter->iam_role_duration);
@@ -394,14 +390,6 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     // bucket arguments
     if (exec_bucket->remove_from_bucket) {
         wm_strcat(&command, "--remove", ' ');
-    }
-    if (exec_bucket->access_key) {
-        wm_strcat(&command, "--access_key", ' ');
-        wm_strcat(&command, exec_bucket->access_key, ' ');
-    }
-    if (exec_bucket->secret_key) {
-        wm_strcat(&command, "--secret_key", ' ');
-        wm_strcat(&command, exec_bucket->secret_key, ' ');
     }
     if (exec_bucket->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
@@ -571,14 +559,6 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     wm_strcat(&command, exec_service->type, ' ');
 
     // service arguments
-    if (exec_service->access_key) {
-        wm_strcat(&command, "--access_key", ' ');
-        wm_strcat(&command, exec_service->access_key, ' ');
-    }
-    if (exec_service->secret_key) {
-        wm_strcat(&command, "--secret_key", ' ');
-        wm_strcat(&command, exec_service->secret_key, ' ');
-    }
     if (exec_service->aws_profile) {
         wm_strcat(&command, "--aws_profile", ' ');
         wm_strcat(&command, exec_service->aws_profile, ' ');

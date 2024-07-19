@@ -184,7 +184,8 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_library(sysinfo SHARED
     ${SYSINFO_SRC}
-    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp )
+    ${CMAKE_SOURCE_DIR}/src/sysInfo.cpp
+    ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   target_link_libraries(sysinfo psapi iphlpapi ws2_32)
@@ -220,7 +221,8 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 target_link_libraries(sysinfo wazuhext)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-  target_link_libraries(sysinfo urlrequest)
+  set(CURL_DEP "wazuhext")
+  target_link_libraries(sysinfo urlrequest db)
   if(CMAKE_CHECK_CENTOS5)
       set(USE_HTTP 1)
   endif(CMAKE_CHECK_CENTOS5)

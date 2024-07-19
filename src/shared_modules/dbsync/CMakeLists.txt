@@ -60,7 +60,8 @@ file(GLOB DBSYNC_SRC
     "${CMAKE_SOURCE_DIR}/src/sqlite/*.cpp")
 
 add_library(dbsync SHARED
-    ${DBSYNC_SRC} )
+    ${DBSYNC_SRC}
+    ${SRC_FOLDER}/${RESOURCE_OBJ})
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_definitions(-DWIN_EXPORT)

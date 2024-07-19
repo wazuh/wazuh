@@ -17,8 +17,8 @@ jobs:
     strategy:
           fail-fast: false
           matrix:
-              module: [wazuh_modules/syscollector, shared_modules/dbsync, shared_modules/rsync, shared_modules/utils, data_provider]
-              target: [agent, winagent]
+              module: [wazuh_modules/syscollector, shared_modules/dbsync, shared_modules/rsync, data_provider]
+              target: [server, agent, winagent]
     # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
     runs-on: ubuntu-22.04
     steps:

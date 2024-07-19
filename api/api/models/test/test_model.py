@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import importlib.util
 import inspect
 import sys
@@ -12,11 +13,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from connexion import ProblemException
 
+from api.controllers.util import JSON_CONTENT_TYPE
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
         from api.models import base_model_ as bm
-        from api.models import events_ingest_model
+        from api.models import event_ingest_model
         from api.util import deserialize_model
         from wazuh import WazuhError
 
@@ -27,7 +29,8 @@ models_path = dirname(dirname(abspath(__file__)))
 
 class TestModel(bm.Body):
     """Test class for custom Model. Body inherits from Model and has all the attributes required for testing."""
-
+    __test__ = False
+    
     def __init__(self, *args):
 
         self.swagger_types = {f"arg_{i + 1}": type(arg) for i, arg in enumerate(args)}
@@ -49,7 +52,7 @@ class RequestMock:
         self._content_type = content_type
 
     @property
-    def content_type(self):
+    def mimetype(self):
         return self._content_type
 
 
@@ -246,7 +249,7 @@ def test_body_decode_body_ko():
 
 def test_body_validate_content_type():
     """Test class Body `validate_content_type` method."""
-    content_type = 'application/json'
+    content_type = JSON_CONTENT_TYPE
     request = RequestMock(content_type)
 
     TestModel.validate_content_type(request, content_type)
@@ -254,7 +257,7 @@ def test_body_validate_content_type():
 
 def test_body_validate_content_type_ko():
     """Test class Body `validate_content_type` method exceptions."""
-    request = RequestMock('application/json')
+    request = RequestMock(JSON_CONTENT_TYPE)
 
     with pytest.raises(ProblemException) as exc:
         TestModel.validate_content_type(request, 'application/xml')
@@ -288,14 +291,14 @@ def test_all_models(deserialize_mock, module_name):
 
 
 @pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
-async def test_events_ingest_model_validation(size, raises):
+async def test_event_ingest_model_validation(size, raises):
     request = {'events': [{"foo": 1}, {"bar": 2}]}
-    events_ingest_model.MAX_EVENTS_PER_REQUEST = size
+    event_ingest_model.MAX_EVENTS_PER_REQUEST = size
 
     if raises:
         with pytest.raises(ProblemException) as exc:
-            await events_ingest_model.EventsIngestModel.get_kwargs(request)
+            await event_ingest_model.EventIngestModel.get_kwargs(request)
 
         assert exc.value.title == 'Events bulk size exceeded'
     else:
-        await events_ingest_model.EventsIngestModel.get_kwargs(request)
+        await event_ingest_model.EventIngestModel.get_kwargs(request)

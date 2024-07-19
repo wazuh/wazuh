@@ -10,7 +10,7 @@ from wazuh.core import exception
 from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhException, WazuhResourceNotFound
+from wazuh.core.exception import WazuhException
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.stats import get_daemons_stats_, get_daemons_stats_socket, hourly_, totals_, weekly_
 from wazuh.rbac.decorators import expose_resources
@@ -87,10 +87,11 @@ def weekly() -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
-def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None):
+async def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None):
     """Get agents statistical information from the specified daemons.
     If the daemons list is empty, the stats from all daemons will be retrieved.
-    If the `all` keyword is included in the agents list, the stats from all the agents will be retrieved.
+    If the `all` keyword is included in the agents list, the stats from all the agents
+    will be retrieved.
 
     Parameters
     ----------
@@ -150,13 +151,14 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
                     try:
                         for partial_daemon_result in daemon_results:
                             if partial_daemon_result['name'] == daemon:
-                                partial_daemon_result['agents'].extend(
-                                    get_daemons_stats_socket(daemon_socket_mapping[daemon],
-                                                             agents_list=chunk)['agents'])
+                                res = await get_daemons_stats_socket(daemon_socket_mapping[daemon],
+                                                                     agents_list=chunk)
+                                partial_daemon_result['agents'].extend(res['agents'])
                                 break
                         else:
-                            daemon_results.append(
-                                get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list=chunk))
+                            res = await get_daemons_stats_socket(daemon_socket_mapping[daemon],
+                                                                 agents_list=chunk)
+                            daemon_results.append(res)
                     except exception.WazuhException as e:
                         result.add_failed_item(id_=daemon, error=e)
                 result.affected_items.extend(daemon_results)
@@ -171,8 +173,10 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
                 try:
                     last_id = 0
                     while True:
-                        stats = get_daemons_stats_socket(daemon_socket_mapping[daemon], agents_list='all',
-                                                         last_id=last_id)
+                        stats = await get_daemons_stats_socket(
+                                        daemon_socket_mapping[daemon],
+                                        agents_list='all',
+                                        last_id=last_id)
                         for partial_daemon_result in daemon_results:
                             if partial_daemon_result['name'] == daemon:
                                 partial_daemon_result['agents'].extend(stats['data']['agents'])
@@ -196,7 +200,7 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
+async def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
     """Get statistical information from the specified daemons.
     If the list is empty, the stats from all daemons will be retrieved.
 
@@ -219,7 +223,8 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
 
     for daemon in daemons_list or daemon_socket_mapping.keys():
         try:
-            result.affected_items.append(get_daemons_stats_socket(daemon_socket_mapping[daemon]))
+            res = await get_daemons_stats_socket(daemon_socket_mapping[daemon])
+            result.affected_items.append(res)
         except WazuhException as e:
             result.add_failed_item(id_=daemon, error=e)
 

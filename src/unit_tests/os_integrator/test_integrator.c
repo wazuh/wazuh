@@ -119,9 +119,9 @@ void test_OS_IntegratorD(void **state) {
 
     will_return(__wrap_os_random, 2222);
 
-    expect_string(__wrap_fopen, path, virustotal_file);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, path, virustotal_file);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_fprintf((FILE *)1, alert_to_virustotal, 0);
 
@@ -131,8 +131,6 @@ void test_OS_IntegratorD(void **state) {
 
     will_return(__wrap_time, 1111);
     will_return(__wrap_os_random, 2222);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Running script with args: integrations /tmp/virustotal-1111-2222.alert 123456    0 0 > /dev/null 2>&1");
 
     will_return(__wrap_wpopenv, wfd);
 
@@ -154,9 +152,9 @@ void test_OS_IntegratorD(void **state) {
     will_return(__wrap_time, 1111);
     will_return(__wrap_os_random, 2222);
 
-    expect_string(__wrap_fopen, path, pagerduty_file);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, path, pagerduty_file);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_fprintf((FILE *)1, alert_to_pagerduty, 0);
 
@@ -164,17 +162,15 @@ void test_OS_IntegratorD(void **state) {
 
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap_fopen, path, pd_options);
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, path, pd_options);
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_fprintf((FILE *)1, options_to_pd, 0);
 
     expect_string(__wrap__mdebug2, formatted_msg, "File /tmp/pagerduty-1111-2222.options was written.");
 
     expect_fclose((FILE *)1, 0);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Running script with args: integrations /tmp/pagerduty-1111-2222.alert 123456   /tmp/pagerduty-1111-2222.options 0 0 > /dev/null 2>&1");
 
     will_return(__wrap_wpopenv, wfd);
 

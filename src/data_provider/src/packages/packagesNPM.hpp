@@ -57,7 +57,7 @@ class NPM final
                     packageInfo["size"] = 0;
                     packageInfo["vendor"] = UNKNOWN_VALUE;
                     packageInfo["install_time"] = UNKNOWN_VALUE;
-                    packageInfo["multiarch"] = UNKNOWN_VALUE;
+                    // The multiarch field won't have a default value
 
                     // Iterate over fields
                     for (const auto& [key, value] : NPM_FIELDS)

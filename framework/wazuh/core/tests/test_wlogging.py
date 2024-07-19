@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import calendar
 import gzip
 import re
@@ -218,3 +219,25 @@ def test_customfilter():
     # Return False
     cf = wlogging.CustomFilter('testA')
     assert not cf.filter(MockedRecord('testB'))
+
+
+@pytest.mark.parametrize('value, expected', [
+    ('Example log', True),
+    ('Wazuh Internal Error', False),
+    ('WazuhInternalError', False),
+    ('WazuhError', True),
+    ('InternalError', True)
+])
+def test_cli_custom_filter(value, expected):
+    """
+    Test if CLIFilter class works properly.
+    """
+    class MockedRecord:
+        def __init__(self, msg):
+            self.msg = msg
+
+        def getMessage(self):
+            return self.msg
+
+    cf = wlogging.CLIFilter()
+    assert cf.filter(MockedRecord(value)) == expected

@@ -1,0 +1,15 @@
+- sections:
+    - section: syscheck
+      elements:
+      - disabled:
+          value: 'no'
+      - frequency:
+            value: 3
+      - directories:
+          value: TEST_DIRECTORIES
+          attributes: ATTRIBUTES
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'

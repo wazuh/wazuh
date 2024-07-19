@@ -28,16 +28,19 @@
 
 const char* upgrade_values[] = {
     [WM_UPGRADE_SUCCESSFUL] = "0",
+    [WM_UPGRADE_FAILED_DEPENDENCY] = "1",
     [WM_UPGRADE_FAILED] = "2"
 };
 
 const char* upgrade_messages[] = {
     [WM_UPGRADE_SUCCESSFUL] = "Upgrade was successful",
+    [WM_UPGRADE_FAILED_DEPENDENCY] = "Upgrade failed due missing dependency",
     [WM_UPGRADE_FAILED] = "Upgrade failed"
 };
 
 static const char *task_statuses_map[] = {
     [WM_UPGRADE_SUCCESSFUL] = WM_TASK_STATUS_DONE,
+    [WM_UPGRADE_FAILED_DEPENDENCY] = WM_TASK_STATUS_FAILED,
     [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED
 };
 
@@ -233,7 +236,7 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
     char buffer[20];
     const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
 
-    FILE *result_file = fopen(PATH, "r");
+    FILE *result_file = wfopen(PATH, "r");
     if (result_file) {
         if (fgets(buffer, 20, result_file) == NULL) {
             fclose(result_file);
@@ -243,7 +246,7 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
 
         wm_upgrade_agent_state state;
         for (state = 0; state < WM_UPGRADE_MAX_STATE; state++) {
-            // File can either be "0\n" or "2\n", so we are expecting a positive match
+            // File can either be "0\n", "1\n" or "2\n", so we are expecting a positive match
             if (strstr(buffer, upgrade_values[state]) != NULL) {
                 // Matched value, send message
                 wm_upgrade_agent_send_ack_message(queue_fd, state);

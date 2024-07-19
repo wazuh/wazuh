@@ -22,43 +22,45 @@ static int read_main_elements(const OS_XML *xml, int modules,
                               void *d2)
 {
     int i = 0;
-    const char *osglobal = "global";                    /* Server Config */
+    const char *osglobal = "global";                            /* Server Config */
 #ifndef WIN32
-    const char *osrules = "ruleset";                    /* Server Config */
+    const char *osrules = "ruleset";                            /* Server Config */
 #endif
-    const char *ossyscheck = "syscheck";                /* Agent Config  */
-    const char *osrootcheck = "rootcheck";              /* Agent Config  */
-    const char *osalerts = "alerts";                    /* Server Config */
-    const char *osemailalerts = "email_alerts";         /* Server Config */
-    const char *osdbd = "database_output";              /* Server Config */
-    const char *oscsyslogd = "syslog_output";           /* Server Config */
-    const char *oscagentless = "agentless";             /* Server Config */
-    const char *oslocalfile = "localfile";              /* Agent Config  */
-    const char *osremote = "remote";                    /* Agent Config  */
-    const char *osclient = "client";                    /* Agent Config  */
-    const char *osbuffer = "client_buffer";             /* Agent Buffer Config  */
-    const char *oscommand = "command";                  /* ? Config      */
-    const char *osintegratord = "integration";          /* Server Config */
-    const char *osactive_response = "active-response";  /* Agent Config  */
-    const char *oswmodule = "wodle";                    /* Wodle - Wazuh Module  */
-    const char *oslabels = "labels";                    /* Labels Config */
-    const char *oslogging = "logging";                  /* Logging Config */
-    const char *oscluster = "cluster";                  /* Cluster Config */
-    const char *ossocket = "socket";                    /* Socket Config */
-    const char *ossca = "sca";                          /* Security Configuration Assessment */
-    const char *osvulndet = "vulnerability-detector";   /* Vulnerability Detector Config */
-    const char *osgcp_pub = "gcp-pubsub";               /* Google Cloud PubSub - Wazuh Module */
-    const char *osgcp_bucket = "gcp-bucket";            /* Google Cloud Bucket - Wazuh Module */
-    const char *wlogtest = "rule_test";                 /* Wazuh Logtest */
-    const char *agent_upgrade = "agent-upgrade";        /* Agent Upgrade Module */
-    const char *task_manager = "task-manager";          /* Task Manager Module */
-    const char *wazuh_db = "wdb";                       /* Wazuh-DB Daemon */
+    const char *ossyscheck = "syscheck";                        /* Agent Config  */
+    const char *osrootcheck = "rootcheck";                      /* Agent Config  */
+    const char *osalerts = "alerts";                            /* Server Config */
+    const char *osemailalerts = "email_alerts";                 /* Server Config */
+    const char *osdbd = "database_output";                      /* Server Config */
+    const char *oscsyslogd = "syslog_output";                   /* Server Config */
+    const char *oscagentless = "agentless";                     /* Server Config */
+    const char *oslocalfile = "localfile";                      /* Agent Config  */
+    const char *osremote = "remote";                            /* Agent Config  */
+    const char *osclient = "client";                            /* Agent Config  */
+    const char *osbuffer = "client_buffer";                     /* Agent Buffer Config  */
+    const char *oscommand = "command";                          /* ? Config      */
+    const char *osintegratord = "integration";                  /* Server Config */
+    const char *osactive_response = "active-response";          /* Agent Config  */
+    const char *oswmodule = "wodle";                            /* Wodle - Wazuh Module  */
+    const char *oslabels = "labels";                            /* Labels Config */
+    const char *oslogging = "logging";                          /* Logging Config */
+    const char *oscluster = "cluster";                          /* Cluster Config */
+    const char *ossocket = "socket";                            /* Socket Config */
+    const char *ossca = "sca";                                  /* Security Configuration Assessment */
+    const char *osvulndetection = "vulnerability-detection";    /* Vulnerability Detection Config */
+    const char *osvulndetector = "vulnerability-detector";      /* Old Vulnerability Detector Config */
+    const char *osindexer = "indexer";                          /* Indexer Config */
+    const char *osgcp_pub = "gcp-pubsub";                       /* Google Cloud PubSub - Wazuh Module */
+    const char *osgcp_bucket = "gcp-bucket";                    /* Google Cloud Bucket - Wazuh Module */
+    const char *wlogtest = "rule_test";                         /* Wazuh Logtest */
+    const char *agent_upgrade = "agent-upgrade";                /* Agent Upgrade Module */
+    const char *task_manager = "task-manager";                  /* Task Manager Module */
+    const char *wazuh_db = "wdb";                               /* Wazuh-DB Daemon */
 #ifndef WIN32
-    const char *osfluent_forward = "fluent-forward";    /* Fluent forwarder */
-    const char *osauthd = "auth";                       /* Authd Config */
-    const char *osreports = "reports";                  /* Server Config */
+    const char *osfluent_forward = "fluent-forward";            /* Fluent forwarder */
+    const char *osauthd = "auth";                               /* Authd Config */
+    const char *osreports = "reports";                          /* Server Config */
 #ifndef CLIENT
-    const char *key_polling = "agent-key-polling";      /* Deprecated Agent Key Polling module */
+    const char *key_polling = "agent-key-polling";              /* Deprecated Agent Key Polling module */
 #endif
 #endif
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
@@ -182,9 +184,33 @@ static int read_main_elements(const OS_XML *xml, int modules,
             if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
                 goto fail;
             }
-        } else if (strcmp(node[i]->element, osvulndet) == 0) {
+        } else if (strcmp(node[i]->element, osvulndetection) == 0) {
 #if !defined(WIN32) && !defined(CLIENT)
-            if ((modules & CWMODULE) && (Read_Vuln(xml, chld_node, d1, 1) < 0)) {
+            if ((modules & CWMODULE) && (Read_Vulnerability_Detection(xml, chld_node, d1, false) < 0)) {
+                goto fail;
+            }
+#else
+            mwarn("%s configuration is only set in the manager.", node[i]->element);
+#endif
+        } else if (strcmp(node[i]->element, osvulndetector) == 0) {
+#if !defined(WIN32) && !defined(CLIENT)
+            if ((modules & CWMODULE)) {
+                mwarn(
+                    "The '%s' configuration is deprecated, please update your settings to use the new '%s' instead "
+                    "(default values will be used based on your previous configurations). "
+                    "See https://documentation.wazuh.com",
+                    osvulndetector,
+                    osvulndetection);
+                if (Read_Vulnerability_Detection(xml, chld_node, d1, true) < 0) {
+                    goto fail;
+                }
+            }
+#else
+            mwarn("%s configuration is only set in the manager.", node[i]->element);
+#endif
+        } else if (strcmp(node[i]->element, osindexer) == 0) {
+#if !defined(WIN32) && !defined(CLIENT)
+            if ((modules & CWMODULE) && (Read_Indexer(xml, chld_node) < 0)) {
                 goto fail;
             }
 #else
@@ -215,11 +241,14 @@ static int read_main_elements(const OS_XML *xml, int modules,
             }
         } else if (strcmp(node[i]->element, oslogging) == 0) {
         } else if (chld_node && (strcmp(node[i]->element, oscluster) == 0)) {
-            if ((modules & CCLUSTER) && (Read_Cluster(chld_node, d1, d2) < 0)) {
+            if ((modules & CCLUSTER) && (Read_Cluster(xml, chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ossocket) == 0)) {
-            if ((modules & CSOCKET) && (Read_Socket(chld_node, d1, d2) < 0)) {
+            if ((modules & CLGCSOCKET) && (Read_LogCollecSocket(chld_node, d1, d2) < 0)) {
+                goto fail;
+            }
+            if ((modules & CANDSOCKET) && (Read_AnalysisdSocket(chld_node, d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, wlogtest) == 0)) {

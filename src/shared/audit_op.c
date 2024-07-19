@@ -215,10 +215,16 @@ int audit_restart(void) {
     wfd_t * wfd;
     int status;
     char buffer[4096];
-    char * command[] = { "service", "auditd", "restart", NULL };
+    char *service_path = NULL;
+
+    if (get_binary_path("service", &service_path) < 0) {
+        mdebug1("Binary '%s' not found in default paths, the full path will not be used.", service_path);
+    }
+    char * command[] = { service_path, "auditd", "restart", NULL };
 
     if (wfd = wpopenv(*command, command, W_BIND_STDERR), !wfd) {
         merror("Could not launch command to restart Auditd: %s (%d)", strerror(errno), errno);
+        os_free(service_path);
         return -1;
     }
 
@@ -229,13 +235,16 @@ int audit_restart(void) {
 
     switch (status = wpclose(wfd), WEXITSTATUS(status)) {
     case 0:
+        os_free(service_path);
         return 0;
     case 127:
         // exec error
         merror("Could not launch command to restart Auditd.");
+        os_free(service_path);
         return -1;
     default:
         merror("Could not restart Auditd service.");
+        os_free(service_path);
         return -1;
     }
 }

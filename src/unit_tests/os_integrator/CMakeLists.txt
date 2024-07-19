@@ -25,7 +25,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND os_integrator_names "test_integrator")
 list(APPEND os_integrator_flags "-Wl,--wrap,jqueue_open -Wl,--wrap,jqueue_next -Wl,--wrap,FOREVER -Wl,--wrap,time ${DEBUG_OP_WRAPPERS} \
                                  -Wl,--wrap,os_random -Wl,--wrap,wpopenv -Wl,--wrap,wpclose -Wl,--wrap,fprintf -Wl,--wrap,unlink,--wrap,getpid \
-                                 -Wl,--wrap,File_DateofChange ${STDIO_OP_WRAPPERS}")
+                                 -Wl,--wrap,File_DateofChange -Wl,--wrap,wfopen -Wl,--wrap,popen ${STDIO_OP_WRAPPERS}")
 
 list(LENGTH os_integrator_names count)
 math(EXPR count "${count} - 1")

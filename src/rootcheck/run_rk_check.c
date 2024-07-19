@@ -113,7 +113,7 @@ void run_rk_check()
             mterror(ARGV0, "No rootcheck_files file configured.");
 #endif
         } else {
-            fp = fopen(rootcheck.rootkit_files, "r");
+            fp = wfopen(rootcheck.rootkit_files, "r");
             if (!fp) {
                 mterror(ARGV0, "No rootcheck_files file: '%s'", rootcheck.rootkit_files);
             }
@@ -132,7 +132,7 @@ void run_rk_check()
             mterror(ARGV0, "No rootcheck_trojans file configured.");
 #endif
         } else {
-            fp = fopen(rootcheck.rootkit_trojans, "r");
+            fp = wfopen(rootcheck.rootkit_trojans, "r");
             if (!fp) {
                 mterror(ARGV0, "No rootcheck_trojans file: '%s'", rootcheck.rootkit_trojans);
             } else {
@@ -153,7 +153,7 @@ void run_rk_check()
         if (!rootcheck.winaudit) {
             mtinfo(ARGV0, "No winaudit file configured.");
         } else {
-            fp = fopen(rootcheck.winaudit, "r");
+            fp = wfopen(rootcheck.winaudit, "r");
             if (!fp) {
                 mterror(ARGV0, "No winaudit file: '%s'", rootcheck.winaudit);
             } else {
@@ -168,7 +168,7 @@ void run_rk_check()
         if (!rootcheck.winmalware) {
             mtinfo(ARGV0, "No winmalware file configured.");
         } else {
-            fp = fopen(rootcheck.winmalware, "r");
+            fp = wfopen(rootcheck.winmalware, "r");
             if (!fp) {
                 mterror(ARGV0, "No winmalware file: '%s'", rootcheck.winmalware);
             } else {
@@ -183,7 +183,7 @@ void run_rk_check()
         if (!rootcheck.winapps) {
             mtinfo(ARGV0, "No winapps file configured.");
         } else {
-            fp = fopen(rootcheck.winapps, "r");
+            fp = wfopen(rootcheck.winapps, "r");
             if (!fp) {
                 mterror(ARGV0, "No winapps file: '%s'", rootcheck.winapps);
             } else {
@@ -208,7 +208,7 @@ void run_rk_check()
 
             i = 0;
             while (rootcheck.unixaudit[i]) {
-                fp = fopen(rootcheck.unixaudit[i], "r");
+                fp = wfopen(rootcheck.unixaudit[i], "r");
                 if (!fp) {
                     mterror(ARGV0, "No unixaudit file: '%s'", rootcheck.unixaudit[i]);
                 } else {

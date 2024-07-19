@@ -151,7 +151,7 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug,
     instance.remove_aws_log_stream(TEST_LOG_GROUP, TEST_LOG_STREAM)
 
     mock_debug.assert_any_call(
-        'Error trying to remove "{}" log stream from "{}" log group.'.format(TEST_LOG_STREAM, TEST_LOG_GROUP), 0)
+        'ERROR: Error trying to remove "{}" log stream from "{}" log group.'.format(TEST_LOG_STREAM, TEST_LOG_GROUP), 0)
 
     mock_delete_log_stream.side_effect = botocore.exceptions.ClientError(
         {'Error': {'Code': utils.THROTTLING_ERROR_CODE}}, "name")

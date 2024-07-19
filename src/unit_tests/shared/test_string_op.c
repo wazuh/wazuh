@@ -1036,6 +1036,52 @@ void test_wstr_chr_str_with_escaped_colons(void ** state) {
     assert_int_equal(*ret, str[28]);
 }
 
+void test_print_hex_string_ok(void ** state) {
+    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+    char hex[OS_SIZE_2048 + 1] = {0};
+    int ret = print_hex_string(str, 40, hex, sizeof(hex));
+    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d41444a466a333230396461732e3b6131325b27322e7a");
+}
+
+void test_print_hex_string_partial_ok(void ** state) {
+    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+    char hex[OS_SIZE_2048 + 1] = {0};
+    int ret = print_hex_string(str, 20, hex, sizeof(hex));
+    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d4144");
+}
+
+void test_print_hex_string_equal_dest_ok(void ** state) {
+    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+    char hex[80 + 1] = {0};
+    int ret = print_hex_string(str, 40, hex, sizeof(hex));
+    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d41444a466a333230396461732e3b6131325b27322e7a");
+}
+
+void test_print_hex_string_miss_last_dest_ok(void ** state) {
+    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+    char hex[80] = {0};
+    int ret = print_hex_string(str, 40, hex, sizeof(hex));
+    assert_int_equal(ret, OS_SUCCESS);
+    assert_string_equal(hex, "706a3031572d393233726a7771646f4f533d41444a466a333230396461732e3b6131325b27322e");
+}
+
+void test_print_hex_string_null_src_err(void ** state) {
+    char *str = NULL;
+    char hex[OS_SIZE_2048 + 1] = {0};
+    int ret = print_hex_string(str, 40, hex, sizeof(hex));
+    assert_int_equal(ret, OS_INVALID);
+}
+
+void test_print_hex_string_null_dst_err(void ** state) {
+    char *str = "pj01W-923rjwqdoOS=ADJFj3209das.;a12['2.z";
+    char *hex = NULL;
+    int ret = print_hex_string(str, 40, hex, sizeof(hex));
+    assert_int_equal(ret, OS_INVALID);
+}
+
 /* Tests */
 
 int main(void) {
@@ -1147,6 +1193,13 @@ int main(void) {
         cmocka_unit_test(test_wstr_chr_str_without_character),
         cmocka_unit_test(test_wstr_chr_str_without_escaped_colons),
         cmocka_unit_test(test_wstr_chr_str_with_escaped_colons),
+        // Test print_hex_string
+        cmocka_unit_test(test_print_hex_string_ok),
+        cmocka_unit_test(test_print_hex_string_partial_ok),
+        cmocka_unit_test(test_print_hex_string_equal_dest_ok),
+        cmocka_unit_test(test_print_hex_string_miss_last_dest_ok),
+        cmocka_unit_test(test_print_hex_string_null_src_err),
+        cmocka_unit_test(test_print_hex_string_null_dst_err),
 
     };
 

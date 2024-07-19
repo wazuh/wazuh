@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import contextlib
 import errno
@@ -8,6 +9,7 @@ import json
 import logging
 import os
 import shutil
+from collections import defaultdict
 from datetime import datetime, timezone
 from time import perf_counter
 from typing import Tuple, Dict, Callable, List
@@ -15,6 +17,7 @@ from typing import Union
 
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
+from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -466,7 +469,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         error_command = b'syn_wgc_err'
         timeout = self.cluster_items['intervals']['worker']['timeout_agent_groups']
 
-        return await self.recv_agent_groups_information(task_id, info_type, logger, command, error_command, timeout)
+        master_groups_info = await self.recv_agent_groups_information(task_id, info_type, logger,
+                                                                      command, error_command, timeout)
+        await self.recalculate_group_hash(logger)
+
+        return master_groups_info
 
     async def recv_agent_groups_information(self, task_id: bytes, info_type: str, logger: logging.Logger,
                                             command: bytes, error_command: bytes, timeout: int):
@@ -495,7 +502,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         logger.info('Starting.')
         start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
         data = await super().get_chunks_in_task_id(task_id, error_command)
-        result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
+        result = await super().update_chunks_wdb(data, info_type, logger, error_command)
         response = await self.send_request(command=command, data=json.dumps(result).encode())
         await self.check_agent_groups_checksums(data, logger)
 
@@ -525,9 +532,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     if self.check_integrity_free and await integrity_check.request_permission():
                         logger.info("Starting.")
                         self.integrity_check_status['date_start'] = start_time
-                        self.server.integrity_control = await cluster.run_in_pool(self.loop, self.server.task_pool,
-                                                                           cluster.get_files_status,
-                                                                           self.server.integrity_control)
+                        self.server.integrity_control, logs = await cluster.run_in_pool(
+                                                                                    self.loop, self.server.task_pool,
+                                                                                    cluster.get_files_status,
+                                                                                    self.server.integrity_control)
+                        log_subprocess_execution(logger, logs)
                         await integrity_check.sync(files={}, files_metadata=self.server.integrity_control,
                                                    metadata_len=len(self.server.integrity_control),
                                                    task_pool=self.server.task_pool)
@@ -662,8 +671,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 # Update or remove files in this worker node according to their status (missing, extra or shared).
                 logger.debug("Worker does not meet integrity checks. Actions required.")
                 logger.debug("Updating local files: Start.")
-                await cluster.run_in_pool(self.loop, self.server.task_pool, self.update_master_files_in_worker,
-                                          ko_files, zip_path, self.cluster_items, self.task_loggers['Integrity sync'])
+                logs = await cluster.run_in_pool(self.loop, self.server.task_pool, self.update_master_files_in_worker,
+                                                 ko_files, zip_path, self.cluster_items)
+                log_subprocess_execution(self.task_loggers['Integrity sync'], logs)
                 logger.debug("Updating local files: End.")
 
             logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
@@ -679,7 +689,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             zip_path and shutil.rmtree(zip_path)
 
     @staticmethod
-    def update_master_files_in_worker(ko_files: Dict, zip_path: str, cluster_items: Dict, logger):
+    def update_master_files_in_worker(ko_files: Dict, zip_path: str, cluster_items: Dict):
         """Iterate over received files and updates them locally.
 
         Parameters
@@ -690,8 +700,11 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Pathname of the unzipped directory received from master and containing the files to update.
         cluster_items : dict
             Object containing cluster internal variables from the cluster.json file.
-        logger : Logger object
-            Logger to use.
+
+        Returns
+        -------
+        result_logs : dict
+            Dict containing debug or any error messages emitted in the process.
         """
 
         def overwrite_or_create_files(filename_: str, data_: Dict):
@@ -735,36 +748,39 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                           )
 
         errors = {'shared': 0, 'missing': 0, 'extra': 0}
+        result_logs = {'debug2': defaultdict(list), 'error': defaultdict(list), 'generic_errors': []}
 
         for filetype, files in ko_files.items():
             # Overwrite local files marked as shared or missing.
             if filetype == 'shared' or filetype == 'missing':
-                logger.debug(f"Received {len(ko_files[filetype])} {filetype} files to update from master.")
                 for filename, data in files.items():
                     try:
-                        logger.debug2(f"Processing file {filename}")
+                        result_logs['debug2'][filename].append(f"Processing file {filename}")
                         overwrite_or_create_files(filename, data)
                     except Exception as e:
                         errors[filetype] += 1
-                        logger.error(f"Error processing {filetype} file '{filename}': {e}")
+                        result_logs['error'][filetype].append(f"Error processing {filetype} "
+                                                              f"file '{filename}': {e}")
                         continue
             # Remove local files marked as extra.
             elif filetype == 'extra':
                 for file_to_remove in files:
                     try:
-                        logger.debug2(f"Remove file: '{file_to_remove}'")
+                        result_logs['debug2'][file_to_remove].append(f"Remove file: '{file_to_remove}'")
                         file_path = os.path.join(common.WAZUH_PATH, file_to_remove)
                         try:
                             os.remove(file_path)
                         except OSError as e:
                             if e.errno == errno.ENOENT:
-                                logger.debug2(f"File {file_to_remove} doesn't exist.")
+                                result_logs['debug2'][file_to_remove].append(f"File {file_to_remove} "
+                                                                             f"doesn't exist.")
                                 continue
                             else:
                                 raise e
                     except Exception as e:
                         errors['extra'] += 1
-                        logger.debug2(f"Error removing file '{file_to_remove}': {e}")
+                        result_logs["debug2"][file_to_remove].append(f"Error removing file "
+                                                                     f"'{file_to_remove}': {e}")
                         continue
 
         # Once files are deleted, check and remove subdirectories which are now empty, as specified in cluster.json.
@@ -778,12 +794,14 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     shutil.rmtree(full_path)
             except Exception as e:
                 errors['extra'] += 1
-                logger.debug2(f"Error removing directory '{directory}': {e}")
+                result_logs["debug2"][directory].append(f"Error removing directory '{directory}': {e}")
                 continue
 
         if sum(errors.values()) > 0:
-            logger.error(f"Found errors: {errors['shared']} overwriting, {errors['missing']} creating and "
-                         f"{errors['extra']} removing", exc_info=False)
+            result_logs['generic_errors'].append(f"Found errors: {errors['shared']} overwriting, "
+                                                 f"{errors['missing']} creating and "
+                                                 f"{errors['extra']} removing")
+        return result_logs
 
     def get_logger(self, logger_tag: str = ''):
         """Get current logger. In workers it will always return the main logger.

@@ -163,7 +163,7 @@ int rem_write_state() {
     snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
-    if (fp = fopen(path_temp, "w"), !fp) {
+    if (fp = wfopen(path_temp, "w"), !fp) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         return -1;
     }
@@ -238,7 +238,7 @@ STATIC void w_remoted_clean_agents_state(int *sock) {
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
 
-    hash_node = OSHash_Begin(remoted_agents_state, &inode_it);
+    hash_node = OSHash_Begin_ex(remoted_agents_state, &inode_it);
 
     if (hash_node == NULL) {
         return;

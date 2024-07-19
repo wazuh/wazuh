@@ -7,17 +7,15 @@ import functools
 import json
 import os
 import random
-from datetime import datetime
 from typing import Tuple, Union
 
 import uvloop
-
 from wazuh.core import common
-from wazuh.core.cluster import common as c_common, server, client, cluster
+from wazuh.core.cluster import client, cluster, server
+from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag
 from wazuh.core.exception import WazuhClusterError
-from wazuh.core.utils import get_date_from_timestamp
 
 
 class LocalServerHandler(server.AbstractServerHandler):
@@ -166,7 +164,7 @@ class LocalServerHandler(server.AbstractServerHandler):
             Request result.
         """
         result = future.result()
-        send_res = asyncio.create_task(self.log_exceptions(self.send_request(command=b'send_f_res', data=result)))
+        send_res = asyncio.create_task(self.send_request(command=b'send_f_res', data=result))
         send_res.add_done_callback(self.send_res_callback)
 
     def send_res_callback(self, future):
@@ -352,6 +350,7 @@ class LocalServerMaster(LocalServer):
         self.handler_class = LocalServerHandlerMaster
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
+
         self.tasks.extend([self.dapi.run, self.sendsync.run])
 
 

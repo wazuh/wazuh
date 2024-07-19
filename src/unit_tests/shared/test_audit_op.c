@@ -22,6 +22,7 @@
 #include "../wrappers/posix/select_wrappers.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/exec_op_wrappers.h"
+#include "../wrappers/wazuh/shared/binaries_op_wrappers.h"
 #include "../wrappers/common.h"
 #include "../headers/audit_op.h"
 #include "../headers/defs.h"
@@ -241,6 +242,12 @@ static void test_audit_restart(void **state) {
     wfd_t * wfd = *state;
     wfd->file_out = (FILE*) 1234;
 
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
+    expect_string(__wrap_get_binary_path, command, "service");
+    will_return(__wrap_get_binary_path, service_path);
+    will_return(__wrap_get_binary_path, 0);
+
     will_return(__wrap_wpopenv, wfd);
 
     expect_value(__wrap_fgets, __stream, wfd->file_out);
@@ -259,6 +266,12 @@ static void test_audit_restart(void **state) {
 }
 
 static void test_audit_restart_open_error(void **state) {
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
+    expect_string(__wrap_get_binary_path, command, "service");
+    will_return(__wrap_get_binary_path, service_path);
+    will_return(__wrap_get_binary_path, 0);
+
     will_return(__wrap_wpopenv, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Could not launch command to restart Auditd: Success (0)");
@@ -271,6 +284,12 @@ static void test_audit_restart_open_error(void **state) {
 static void test_audit_restart_close_exec_error(void **state) {
     wfd_t * wfd = *state;
     wfd->file_out = (FILE*) 1234;
+
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
+    expect_string(__wrap_get_binary_path, command, "service");
+    will_return(__wrap_get_binary_path, service_path);
+    will_return(__wrap_get_binary_path, 0);
 
     will_return(__wrap_wpopenv, wfd);
 
@@ -294,6 +313,12 @@ static void test_audit_restart_close_exec_error(void **state) {
 static void test_audit_restart_close_error(void **state) {
     wfd_t * wfd = *state;
     wfd->file_out = (FILE*) 1234;
+
+    char *service_path = NULL;
+    service_path = strdup("/path/to/service");
+    expect_string(__wrap_get_binary_path, command, "service");
+    will_return(__wrap_get_binary_path, service_path);
+    will_return(__wrap_get_binary_path, 0);
 
     will_return(__wrap_wpopenv, wfd);
 

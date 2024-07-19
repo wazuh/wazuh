@@ -89,6 +89,18 @@ ino_t File_Inode(const char *file) __attribute__((nonnull));
 wino_t get_fp_inode(FILE * fp);
 
 
+#ifdef WIN32
+/**
+ * @brief Get the file information of the specified file pointer.
+ *
+ * @param fp File pointer.
+ * @param fileInfo Pointer to file information.
+ * @return 0 in case of error, not 0 in success.
+ */
+int get_fp_file_information(FILE * fp, LPBY_HANDLE_FILE_INFORMATION fileInfo);
+#endif
+
+
 /**
  * @brief Get the size of the specified file.
  *
@@ -218,7 +230,7 @@ int MergeAppendFile(FILE *finalfp, const char *files, int path_offset) __attribu
  * @param mode Indicates if the merged file must be readed as a binary file  or not. Use `#OS_TEXT`, `#OS_BINARY`.
  * @return 1 if the file was unmerged, 0 on error.
  */
-int UnmergeFiles(const char *finalpath, const char *optdir, int mode, const char ***unmerged_files) __attribute__((nonnull(1)));
+int UnmergeFiles(const char *finalpath, const char *optdir, int mode, char ***unmerged_files) __attribute__((nonnull(1)));
 
 
 /**
@@ -587,7 +599,7 @@ char * abspath(const char * path, char * buffer, size_t size);
  * @return The content of the file
  * @retval NULL The file doesn't exist or its size exceeds the maximum allowed
  */
-char * w_get_file_content(const char * path, long max_size);
+char * w_get_file_content(const char * path, unsigned long max_size);
 
 
 /**

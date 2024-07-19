@@ -47,7 +47,7 @@
     error_type: 'Invalid'
     module: 'github'
 
-    
+
 - name: Invalid_Curl_Max_Size
   description: Check github integration does not start with Invalid Curl Max Size
   configuration_parameters:

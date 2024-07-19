@@ -1,19 +1,23 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 from datetime import datetime, date
-from unittest.mock import patch, ANY
+from unittest.mock import patch, ANY, call
 
 import pytest
 from connexion import ProblemException
 
 from api import util
-from api.api_exception import APIError
-from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResourceNotFound, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhPermissionError, WazuhResourceNotFound, \
+    WazuhInternalError
 
 
 class TestClass:
+    """Mock swagger type."""
+    __test__ = False
+
     def __init__(self, origin=None):
         self.swagger_types = {
             'api_response': 'test_api_response',
@@ -25,37 +29,6 @@ class TestClass:
         }
         self.__args__ = ['arg0', 'arg1', 'arg2']
         self.__origin__ = origin
-
-
-@pytest.mark.parametrize("size_input, expected_size", [
-    ("1m", 1024 * 1024),
-    ("1M", 1024 * 1024),
-    ("1024k", 1024 * 1024),
-    ("1024K", 1024 * 1024),
-    ("5m", 5 * 1024 * 1024)
-])
-def test_APILoggerSize(size_input, expected_size):
-    """Assert `APILoggerSize` class returns the correct number of bytes depending on the given unit.
-
-    Parameters
-    ----------
-    size_input : str
-        Input for the class constructor.
-    expected_size : int
-        Expected number of bytes after translating the input.
-    """
-    assert util.APILoggerSize(size_input).size == expected_size
-
-
-def test_APILoggerSize_exceptions():
-    """Assert `APILoggerSize` class returns the correct exceptions when the given size is not valid."""
-    # Test invalid units
-    with pytest.raises(APIError, match="2011.*expected format.*"):
-        util.APILoggerSize("3435j")
-
-    # Test min value
-    with pytest.raises(APIError, match="2011.*Minimum value.*"):
-        util.APILoggerSize("1k")
 
 
 @pytest.mark.parametrize('item, is_transformed', [
@@ -302,3 +275,21 @@ async def test_deprecate_endpoint(link):
         assert response.headers.pop('Link') == f'<{link}>; rel="Deprecated"', 'No link was found'
 
     assert response.headers == {}, f'Unexpected deprecation headers were found: {response.headers}'
+
+
+@patch('api.util.raise_if_exc')
+@pytest.mark.asyncio
+async def test_only_master_endpoint(mock_exc):
+    """Test that only_master_endpoint decorator raise the correct exception when running_in_master_node is False."""
+
+    @util.only_master_endpoint
+    async def func_():
+        return ret_val
+
+    ret_val = 'foo'
+
+    with patch('api.util.running_in_master_node', return_value=False):
+        await func_()
+        mock_exc.assert_called_once_with(WazuhResourceNotFound(902))
+    with patch('api.util.running_in_master_node', return_value=True):
+        assert await func_() == ret_val

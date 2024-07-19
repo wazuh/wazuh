@@ -7,7 +7,7 @@
 -->
 
 <decoder name="auditd">
-  <prematch>^type=</prematch>
+  <prematch>^node=\S+ type=|^type=</prematch>
 </decoder>
 
 <!--

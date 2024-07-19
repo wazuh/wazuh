@@ -24,6 +24,13 @@ typedef struct test_struct {
     cJSON * configuration_dump;
 } test_struct_t;
 
+#define SOCKET_PATH "/tmp/socket-tmp"
+
+time_t __wrap_time(int time) {
+    check_expected(time);
+    return mock();
+}
+
 // Setup / Teardown
 
 static int test_setup(void **state) {
@@ -224,6 +231,9 @@ void test_check_send(void **state) {
     expect_any(__wrap__mtdebug2, tag);
     expect_any(__wrap__mtdebug2, formatted_msg);
 
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 165884);
+
     expect_any(__wrap_OS_ConnectTCP, _port);
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
@@ -234,6 +244,379 @@ void test_check_send(void **state) {
 
     char *msg = "{\"json\":\"message\"}";
     assert_int_ge(wm_fluent_send(data->fluent, msg, strlen(msg)), 0);
+}
+
+void test_send_json_message_success_udp(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = -1;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SOCKET_PATH);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, fdsock);
+
+    expect_value(__wrap_OS_SendUnix, socket, fdsock);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, 1);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 165884);
+    expect_string_count(__wrap__mdebug1, formatted_msg, "Connected to socket 'fluentd_test' (/tmp/socket-tmp)",1);
+
+    expect_string_count(__wrap__mdebug2, formatted_msg, "Message send to socket 'fluentd_test' (/tmp/socket-tmp) successfully.",1);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_success_udp_again(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = -1;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 165884);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SOCKET_PATH);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, fdsock);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Connected to socket 'fluentd_test' (/tmp/socket-tmp)");
+
+    expect_value(__wrap_OS_SendUnix, socket, fdsock);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 165884);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SOCKET_PATH);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, fdsock);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Connected to socket 'fluentd_test' (/tmp/socket-tmp)");
+
+    expect_value(__wrap_OS_SendUnix, socket, fdsock);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, 1);
+
+    expect_string_count(__wrap__mdebug2, formatted_msg, "Message send to socket 'fluentd_test' (/tmp/socket-tmp) successfully.",1);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_success_tcp(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_TCP;
+    socket_info->socket = -1;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_STREAM, OS_MAXSTR);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SOCKET_PATH);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, fdsock);
+
+    expect_value(__wrap_OS_SendUnix, socket, fdsock);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, 1);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 165884);
+
+    expect_string_count(__wrap__mdebug1, formatted_msg, "Connected to socket 'fluentd_test' (/tmp/socket-tmp)",1);
+
+    expect_string_count(__wrap__mdebug2, formatted_msg, "Message send to socket 'fluentd_test' (/tmp/socket-tmp) successfully.",1);
+
+    int ret = SendJSONtoSCK(json_msg,socket_info);
+
+    assert_return_code(ret,1);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_invalid_socket(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = 0;
+    socket_info->socket = -1;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_any(__wrap__merror,formatted_msg);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_null(void **state) {
+
+    socket_forwarder* socket_info = NULL;
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_any(__wrap__merror,formatted_msg);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(json_msg);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = fdsock;
+
+    errno=ENOBUFS;
+
+    expect_value(__wrap_OS_SendUnix, socket, fdsock);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, OS_SOCKBUSY);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Cannot send message to socket 'fluentd_test' due No buffer space available. (Abort).");
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error_connect(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = 0;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_value(__wrap_OS_SendUnix, socket, 0);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1655884);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SOCKET_PATH);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, fdsock);
+
+    expect_value(__wrap_OS_SendUnix, socket, fdsock);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Connected to socket 'fluentd_test' (/tmp/socket-tmp)");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Cannot send message to socket 'fluentd_test' due No such file or directory. (Abort).");
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error_time(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = -1;
+    socket_info->last_attempt = 208354995;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "Discarding event '{\"info\":\"test\"}' due to connection issue with 'fluentd_test'");
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error_time_again(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = 0;
+    socket_info->last_attempt = 208354995;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_value(__wrap_OS_SendUnix, socket, 0);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1);
+    expect_string(__wrap__mdebug2, formatted_msg, "Discarding event from analysisd due to connection issue with 'fluentd_test', No such file or directory. (Abort).");
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error_unable_connect(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = -1;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SOCKET_PATH);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 1);
+    expect_any(__wrap__merror,formatted_msg);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
+}
+
+void test_send_json_message_socket_error_unable_connect_again(void **state) {
+
+    socket_forwarder* socket_info;
+
+    os_calloc(1,sizeof(socket_forwarder),socket_info);
+
+    static const int fdsock = 65555;
+    char* json_msg = strdup("{\"info\":\"test\"}");
+
+    socket_info->name = "fluentd_test";
+    socket_info->location = SOCKET_PATH;
+    socket_info->mode = IPPROTO_UDP;
+    socket_info->socket = 0;
+
+    OS_BindUnixDomain(SOCKET_PATH, SOCK_DGRAM, OS_MAXSTR);
+
+    expect_value(__wrap_OS_SendUnix, socket, 0);
+    expect_string(__wrap_OS_SendUnix, msg, json_msg);
+    expect_value(__wrap_OS_SendUnix, size, strlen(json_msg));
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_value(__wrap_time, time, 0);
+    will_return(__wrap_time, 165884);
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, SOCKET_PATH);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+
+    expect_any(__wrap__merror,formatted_msg);
+
+    SendJSONtoSCK(json_msg,socket_info);
+
+    os_free(socket_info);
+    unlink(SOCKET_PATH);
 }
 
 int main(void) {
@@ -268,6 +651,29 @@ int main(void) {
 
     /* Test configuration dump*/
     cmocka_unit_test_setup_teardown(test_check_config_dump, test_setup, test_teardown),
+
+    /* Test send JSON using unix socket UDP*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_success_udp, test_setup, test_teardown),
+    /* Test send in second try JSON using unix socket UDP*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_success_udp_again, test_setup, test_teardown),
+    /* Test send JSON using unix socket TCP*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_success_tcp, test_setup, test_teardown),
+    /* Test send JSON using NULL socket*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_invalid_socket, test_setup, test_teardown),
+    /* Test send NULL object*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_null, test_setup, test_teardown),
+    /* Test no listener*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error, test_setup, test_teardown),
+    /* Test wrong socket*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_connect, test_setup, test_teardown),
+    /* Test time out */
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_time, test_setup, test_teardown),
+    /* Test time out second time*/
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_time_again, test_setup, test_teardown),
+    /* Test unable to connect with socket */
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_unable_connect, test_setup, test_teardown),
+    /* Test unable to connect with socket in second try */
+    cmocka_unit_test_setup_teardown(test_send_json_message_socket_error_unable_connect_again, test_setup, test_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -464,14 +464,14 @@ stages:
          failed_items: []
 
 ---
-test_name: GET /groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_id}/files/{filename}
 
 stages:
 
  - name: Try get one file of a group (Denied)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/agent.conf"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
@@ -481,39 +481,12 @@ stages:
  - name: Try get one file of a group (Allowed)
    request:
      verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf/json"
+     url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
      method: GET
      headers:
        Authorization: "Bearer {test_login_token}"
    response:
      status_code: 200
-
----
-test_name: GET /groups/{group_id}/files/{filename}/xml
-
-stages:
-
- - name: Try get one file of a group (Denied)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group3/files/agent.conf/xml"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-      <<: *permission_denied
-
- - name: Try get one file of a group (Allowed)
-   request:
-     verify: False
-     url: "{protocol:s}://{host:s}:{port:d}/groups/group2/files/agent.conf/xml"
-     method: GET
-     headers:
-       Authorization: "Bearer {test_login_token}"
-   response:
-     status_code: 200
-     headers:
-       content-type: "application/xml; charset=utf-8"
 
 ---
 test_name: GET /agents?name=agent_name

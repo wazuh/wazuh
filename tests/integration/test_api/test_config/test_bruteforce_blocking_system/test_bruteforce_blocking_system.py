@@ -1,5 +1,5 @@
 """
-copyright: Copyright (C) 2015-2023, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -158,8 +158,9 @@ def test_bruteforce_blocking_system(test_configuration, test_metadata, add_confi
     expected_error = test_metadata['expected_error']
 
     # Provoke a block from an unknown IP (N attempts (N=max_login_attempts) with incorrect credentials).
-    with pytest.raises(RuntimeError):
-        login(user='wrong', password='wrong', login_attempts=max_login_attempts)
+    for _ in range(max_login_attempts):
+        with pytest.raises(RuntimeError):
+            login(user='wrong', password='wrong')
 
     # Verify that the IP address is still blocked even when using the correct credentials within the "block time"
     with pytest.raises(RuntimeError) as login_exception:

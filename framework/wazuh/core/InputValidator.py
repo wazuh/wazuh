@@ -22,7 +22,7 @@ class InputValidator:
         name : str
             Name to check.
         regex_str : str
-            Regular expression to do the matching. Default: r"\w+"
+            Regular expression to do the matching. Default: r"\\w+"
 
         Returns
         -------

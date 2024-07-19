@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import os
 from importlib import reload
 from unittest.mock import patch
@@ -5,6 +9,7 @@ from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy import orm as sqlalchemy_orm
+from sqlalchemy.sql import text
 
 
 def create_memory_db(sql_file, session, test_data_path):
@@ -12,7 +17,7 @@ def create_memory_db(sql_file, session, test_data_path):
         for line in f.readlines():
             line = line.strip()
             if '* ' not in line and '/*' not in line and '*/' not in line and line != '':
-                session.execute(line)
+                session.execute(text(line))
                 session.commit()
 
 
@@ -26,6 +31,7 @@ def init_db(schema, test_data_path):
                     # Clear mappers
                     sqlalchemy_orm.clear_mappers()
                     # Invalidate in-memory database
+                    orm.db_manager.close_sessions()
                     orm.db_manager.connect(orm.DB_FILE)
                     orm.db_manager.sessions[orm.DB_FILE].close()
                     orm.db_manager.engines[orm.DB_FILE].dispose()

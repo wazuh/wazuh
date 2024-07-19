@@ -9,6 +9,7 @@
  */
 
 #include <stdio.h>
+#include "file_op.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -16,7 +17,6 @@
 #include <dirent.h>
 #include <time.h>
 #include <windows.h>
-
 #include "os_regex/os_regex.h"
 
 #define OSSECCONF   "ossec.conf"
@@ -29,7 +29,7 @@ int fileexist(char *file)
     FILE *fp;
 
     /* Open file */
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         return (0);
     }
@@ -45,7 +45,7 @@ int dogrep(char *file, char *str)
     FILE *fp;
 
     /* Open file */
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         return (0);
     }

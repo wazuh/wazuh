@@ -11,8 +11,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "file_op.h"
 #include "md5_sha1_op.h"
-#include <openssl/md5.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 #include "headers/defs.h"
 
@@ -24,9 +25,6 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
     unsigned char sha1_digest[SHA_DIGEST_LENGTH];
     unsigned char md5_digest[16];
 
-    SHA_CTX sha1_ctx;
-    MD5_CTX md5_ctx;
-
     /* Clear the memory */
     md5output[0] = '\0';
     sha1output[0] = '\0';
@@ -34,7 +32,7 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
 
     /* Use prefilter_cmd if set */
     if (prefilter_cmd == NULL) {
-        fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+        fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
         if (!fp) {
             return (-1);
         }
@@ -52,18 +50,39 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
     }
 
     /* Initialize both hashes */
-    MD5_Init(&md5_ctx);
-    SHA1_Init(&sha1_ctx);
+    EVP_MD_CTX *md5_ctx = EVP_MD_CTX_new();
+    if (!md5_ctx) {
+        if (prefilter_cmd == NULL) {
+            fclose(fp);
+        } else {
+            pclose(fp);
+        }
+        return (-1);
+    }
+
+    EVP_MD_CTX *sha1_ctx = EVP_MD_CTX_new();
+    if (!sha1_ctx) {
+        EVP_MD_CTX_free(md5_ctx);
+        if (prefilter_cmd == NULL) {
+           fclose(fp);
+        } else {
+           pclose(fp);
+        }
+        return (-1);
+    }
+
+    EVP_DigestInit(md5_ctx, EVP_md5());
+    EVP_DigestInit(sha1_ctx, EVP_sha1());
 
     /* Update for each one */
     while ((n = fread(buf, 1, 2048, fp)) > 0) {
         buf[n] = '\0';
-        SHA1_Update(&sha1_ctx, buf, n);
-        MD5_Update(&md5_ctx, buf, (unsigned)n);
+        EVP_DigestUpdate(md5_ctx, buf, n);
+        EVP_DigestUpdate(sha1_ctx, buf, n);
     }
 
-    SHA1_Final(&(sha1_digest[0]), &sha1_ctx);
-    MD5_Final(md5_digest, &md5_ctx);
+    EVP_DigestFinal(md5_ctx, md5_digest, NULL);
+    EVP_DigestFinal(sha1_ctx, sha1_digest, NULL);
 
     /* Set output for MD5 */
     for (n = 0; n < 16; n++) {
@@ -76,6 +95,9 @@ int OS_MD5_SHA1_File(const char *fname, const char *prefilter_cmd, os_md5 md5out
         snprintf(sha1output, 3, "%02x", sha1_digest[n]);
         sha1output += 2;
     }
+
+    EVP_MD_CTX_free(md5_ctx);
+    EVP_MD_CTX_free(sha1_ctx);
 
     /* Close it */
     if (prefilter_cmd == NULL) {

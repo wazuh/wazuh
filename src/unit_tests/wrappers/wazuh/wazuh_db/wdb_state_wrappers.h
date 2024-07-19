@@ -24,6 +24,8 @@ void __wrap_w_inc_queries_total();
 
 void __wrap_w_inc_global();
 
+void __wrap_w_inc_global_open_time();
+
 void __wrap_w_inc_global_sql();
 
 void __wrap_w_inc_global_sql_time();
@@ -125,6 +127,10 @@ void __wrap_w_inc_global_agent_get_groups_integrity_time(__attribute__((unused))
 void __wrap_w_inc_global_agent_get_distinct_groups();
 
 void __wrap_w_inc_global_agent_get_distinct_groups_time(__attribute__((unused))struct timeval diff);
+
+void __wrap_w_inc_global_agent_recalculate_agent_group_hashes();
+
+void __wrap_w_inc_global_agent_recalculate_agent_group_hashes_time(__attribute__((unused))struct timeval diff);
 
 // Global group counters
 

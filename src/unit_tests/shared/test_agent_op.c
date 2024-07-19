@@ -187,10 +187,7 @@ void test_w_send_clustered_message_connection_error(void **state) {
     char response[OS_MAXSTR + 1];
 
     for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
-        expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-        will_return(__wrap_OS_ConnectUnixDomain, -1);
+        will_return(__wrap_external_socket_connect, -1);
 
         will_return(__wrap_strerror, "ERROR");
         expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
@@ -210,10 +207,7 @@ void test_w_send_clustered_message_send_error(void **state) {
     int sock_num = 3;
 
     for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
-        expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-        will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+        will_return(__wrap_external_socket_connect, sock_num);
 
         expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
         expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -240,10 +234,7 @@ void test_w_send_clustered_message_recv_cluster_error_detected(void **state) {
     int sock_num = 3;
 
     for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
-        expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-        will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+        will_return(__wrap_external_socket_connect, sock_num);
 
         expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
         expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -274,10 +265,7 @@ void test_w_send_clustered_message_recv_error(void **state) {
     int sock_num = 3;
 
     for (int i=0; i < CLUSTER_SEND_MESSAGE_ATTEMPTS; ++i) {
-        expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-        expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-        expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-        will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+        will_return(__wrap_external_socket_connect, sock_num);
 
         expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
         expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -308,10 +296,7 @@ void test_w_send_clustered_message_recv_empty_message(void **state) {
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -337,10 +322,7 @@ void test_w_send_clustered_message_recv_max_len(void **state) {
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -366,10 +348,7 @@ void test_w_send_clustered_message_success(void **state) {
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -394,19 +373,13 @@ void test_w_send_clustered_message_success_after_connection_error(void **state) 
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, -1);
+    will_return(__wrap_external_socket_connect, -1);
 
     will_return(__wrap_strerror, "ERROR");
     expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
     expect_value(__wrap_sleep, seconds, 1);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -431,10 +404,7 @@ void test_w_send_clustered_message_success_after_send_error(void **state) {
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -447,10 +417,7 @@ void test_w_send_clustered_message_success_after_send_error(void **state) {
 
     expect_value(__wrap_sleep, seconds, 1);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -475,10 +442,7 @@ void test_w_send_clustered_message_success_after_cluster_error(void **state) {
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -494,10 +458,7 @@ void test_w_send_clustered_message_success_after_cluster_error(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "Cluster error detected");
     expect_value(__wrap_sleep, seconds, 1);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -522,10 +483,7 @@ void test_w_send_clustered_message_success_after_recv_error(void **state) {
     size_t payload_size = strlen(payload);
     int sock_num = 3;
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);
@@ -542,10 +500,7 @@ void test_w_send_clustered_message_success_after_recv_error(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
     expect_value(__wrap_sleep, seconds, 1);
 
-    expect_string(__wrap_OS_ConnectUnixDomain, path, CLUSTER_SOCK);
-    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_STREAM);
-    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR);
-    will_return(__wrap_OS_ConnectUnixDomain, sock_num);
+    will_return(__wrap_external_socket_connect, sock_num);
 
     expect_value(__wrap_OS_SendSecureTCPCluster, sock, sock_num);
     expect_value(__wrap_OS_SendSecureTCPCluster, command, command);

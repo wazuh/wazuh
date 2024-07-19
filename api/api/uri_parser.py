@@ -1,50 +1,22 @@
-import functools
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import connexion
+from connexion.uri_parsing import OpenAPIURIParser
 
-from api.api_exception import APIError
-from api.util import parse_api_param, raise_if_exc
+LOWER_FIELDS = ('component', 'configuration', 'hash', 'requirement', 'status', 'type',
+                'section', 'tag', 'level', 'resource')
 
+class APIUriParser(OpenAPIURIParser):
+    """Sanitize parameters class."""
 
-class APIUriParser(connexion.decorators.uri_parsing.OpenAPIURIParser):
-    def __call__(self, function):
-        """
-        :type function: types.FunctionType
-        :rtype: types.FunctionType
-        """
+    def resolve_params(self, params, _in):
+        """Sanitizes the lower_fields parameters converting keys and values to lowercase."""
 
-        @functools.wraps(function)
-        def wrapper(request):
-            def coerce_dict(md):
-                """ MultiDict -> dict of lists
-                """
-                try:
-                    return md.to_dict(flat=False)
-                except AttributeError:
-                    return dict(md.items())
+        # Transform to lowercase the values for query parameter's spec.yaml enums
+        params.update(
+            {k.lower(): [list_item.lower() for list_item in v] if isinstance(v, list) else v.lower()
+                for k, v in params.items() if k in LOWER_FIELDS}
+        )
 
-            # Raise exception if semicolon is used in q parameter
-            if 'q' in request.query.keys():
-                q = parse_api_param(request.url, 'q')
-                if q:
-                    if ';' in q:
-                        raise_if_exc(APIError(2009))
-
-            # Transform to lowercase the values for query parameter's spec.yaml enums
-            lower_fields = ['component', 'configuration', 'hash', 'requirement', 'status', 'type', 'section', 'tag',
-                            'level', 'resource']
-            request.query.update(
-                {k.lower(): [list_item.lower() for list_item in v] if isinstance(v, list) else v.lower()
-                 for k, v in request.query.items() if k in lower_fields})
-
-            query = coerce_dict(request.query)
-            path_params = coerce_dict(request.path_params)
-            form = coerce_dict(request.form)
-
-            request.query = self.resolve_query(query)
-            request.path_params = self.resolve_path(path_params)
-            request.form = self.resolve_form(form)
-            response = function(request)
-            return response
-
-        return wrapper
+        return super().resolve_params(params, _in)

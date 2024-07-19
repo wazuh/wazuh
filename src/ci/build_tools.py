@@ -19,7 +19,6 @@ DELETE_FOLDER_DIC = {
     'shared_modules/dbsync':        ['build', 'smokeTests/output'],
     'shared_modules/rsync':         ['build', 'smokeTests/output'],
     'data_provider':                ['build', 'smokeTests/output'],
-    'shared_modules/utils':         ['build'],
     'syscheckd':                    ['build', 'src/db/smokeTests/output',
                                      'coverage_report'],
 }
@@ -254,6 +253,7 @@ def configureCMake(moduleName, debugMode, testMode, withAsan):
 
     if withAsan:
         configureCMakeCommand += " -DFSANITIZE=1"
+
     out = subprocess.run(configureCMakeCommand,
                          stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE,

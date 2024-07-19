@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import errno
 import itertools
 import json
@@ -9,27 +10,77 @@ import os.path
 import shutil
 import zlib
 from asyncio import wait_for
+from collections import defaultdict
 from functools import partial
 from operator import eq
 from os import listdir, path, remove, stat, walk
 from uuid import uuid4
 
+from jsonschema import ValidationError, validate, validators
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
+from wazuh.core.cluster.utils import (
+    AGENT_CHUNK_SIZE,
+    AGENT_RECONNECTION_STABILITY_TIME,
+    AGENT_RECONNECTION_TIME,
+    FREQUENCY,
+    HAPROXY_HELPER,
+    HAPROXY_PORT,
+    HAPROXY_PROTOCOL,
+    IMBALANCE_TOLERANCE,
+    REMOVE_DISCONNECTED_NODE_AFTER,
+    get_cluster_items,
+    read_config,
+)
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.cluster.utils import get_cluster_items, read_config
-from wazuh.core.utils import blake2b, mkdir_with_mode, get_utc_now, get_date_from_timestamp, to_relative_path
+from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode, to_relative_path
 
 logger = logging.getLogger('wazuh')
 
 # Separators used in compression/decompression functions to delimit files.
 FILE_SEP = '|@@//@@|'
 PATH_SEP = '|//@@//|'
+MIN_PORT = 1024
+MAX_PORT = 65535
 
+HAPROXY_HELPER_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        HAPROXY_PORT: {'type': 'integer', 'minimum': MIN_PORT, 'maximum': MAX_PORT},
+        HAPROXY_PROTOCOL: {'type': 'string', 'enum': ['http', 'https']},
+        FREQUENCY: {'type': 'integer', 'minimum': 10},
+        AGENT_RECONNECTION_STABILITY_TIME: {'type': 'integer', 'minimum': 10},
+        AGENT_CHUNK_SIZE: {'type': 'integer', 'minimum': 100},
+        AGENT_RECONNECTION_TIME: {'type': 'integer', 'minimum': 0},
+        IMBALANCE_TOLERANCE: {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1},
+        REMOVE_DISCONNECTED_NODE_AFTER: {'type': 'integer', 'minimum': 0},
+    },
+}
 
 #
 # Cluster
 #
+
+def validate_haproxy_helper_config(config: dict):
+    """Validate the values of the give HAProxy helper configuration.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration to validate.
+
+    Raises
+    ------
+    WazuhError(3004)
+        If there any invalid value.
+    """
+    try:
+        validate(config, HAPROXY_HELPER_SCHEMA, cls=validators.Draft202012Validator)
+    except ValidationError as error:
+        raise WazuhError(
+            3004,
+            f'Invalid value for {error.path.pop()}. {error.message}'
+        )
 
 
 def check_cluster_config(config):
@@ -69,8 +120,8 @@ def check_cluster_config(config):
     elif not isinstance(config['port'], int):
         raise WazuhError(3004, "Port has to be an integer.")
 
-    elif not 1024 < config['port'] < 65535:
-        raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
+    elif not MIN_PORT < config['port'] < MAX_PORT:
+        raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
 
     if len(config['nodes']) > 1:
         logger.warning(
@@ -81,6 +132,8 @@ def check_cluster_config(config):
 
     if len(invalid_elements) != 0:
         raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
+
+    validate_haproxy_helper_config(config.get(HAPROXY_HELPER, {}))
 
 
 def get_node():
@@ -144,11 +197,13 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
     -------
     walk_files : dict
         Paths (keys) and metadata (values) of the requested files found inside 'dirname'.
+    result_logs: dict
+        Dict containing debug or any error messages emitted in the process.
     """
     if previous_status is None:
         previous_status = {}
     walk_files = {}
-
+    result_logs = {'debug': defaultdict(list), 'error': defaultdict(list)}
     full_dirname = path.join(common.WAZUH_PATH, dirname)
     # Get list of all files and directories inside 'full_dirname'.
     try:
@@ -186,14 +241,14 @@ def walk_dir(dirname, recursive, files, excluded_files, excluded_extensions, get
                             # Use the relative file path as a key to save its metadata dictionary.
                             walk_files[relative_file_path] = file_metadata
                     except FileNotFoundError as e:
-                        logger.debug(f"File {file_} was deleted in previous iteration: {e}")
+                        result_logs['debug'][root_].append(f"File {file_} was deleted in previous iteration: {e}")
                     except PermissionError as e:
-                        logger.error(f"Can't read metadata from file {file_}: {e}")
+                        result_logs['error'][root_].append(f"Can't read metadata from file {file_}: {e}")
             else:
                 break
     except OSError as e:
         raise WazuhInternalError(3015, e)
-    return walk_files
+    return walk_files, result_logs
 
 
 def get_files_status(previous_status=None, get_hash=True):
@@ -210,6 +265,8 @@ def get_files_status(previous_status=None, get_hash=True):
     -------
     final_items : dict
         Paths (keys) and metadata (values) of all the files requested in cluster.json['files'].
+    result_logs: dict
+        Dict containing debug or any error messages emitted in the process.
     """
     if previous_status is None:
         previous_status = {}
@@ -217,17 +274,24 @@ def get_files_status(previous_status=None, get_hash=True):
     cluster_items = get_cluster_items()
 
     final_items = {}
+    result_logs = {'debug': defaultdict(dict), 'warning': defaultdict(list), 'error': defaultdict(dict)}
     for file_path, item in cluster_items['files'].items():
         if file_path == "excluded_files" or file_path == "excluded_extensions":
             continue
         try:
-            final_items.update(
-                walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, previous_status, get_hash))
+            items, logs = walk_dir(file_path, item['recursive'], item['files'],
+                                   cluster_items['files']['excluded_files'],
+                                   cluster_items['files']['excluded_extensions'],
+                                   file_path, previous_status, get_hash)
+            if 'debug' in logs and logs['debug']:
+                result_logs['debug'][file_path].update(dict(logs['debug']))
+            if 'error' in logs and logs['error']:
+                result_logs['error'][file_path].update(dict(logs['error']))
+            final_items.update(items)
         except Exception as e:
-            logger.warning(f"Error getting file status: {e}.")
+            result_logs['warning'][file_path].append(f"Error getting file status: {e}.")
 
-    return final_items
+    return final_items, result_logs
 
 
 def get_ruleset_status(previous_status):
@@ -253,9 +317,9 @@ def get_ruleset_status(previous_status):
         if file_path == "excluded_files" or file_path == "excluded_extensions" or file_path not in user_ruleset:
             continue
         try:
-            final_items.update(
-                walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                         cluster_items['files']['excluded_extensions'], file_path, previous_status, True))
+            items, _ = walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
+                                cluster_items['files']['excluded_extensions'], file_path, previous_status, True)
+            final_items.update(items)
         except Exception as e:
             logger.warning(f"Error getting file status: {e}.")
 
@@ -315,9 +379,12 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
     -------
     compress_file_path : str
         Path where the compress file has been saved.
+    result_logs: dict
+        Dict containing warning and debug messages emitted in the process.
     """
     zip_size = 0
     exceeded_size = False
+    result_logs = {'warning': defaultdict(list), 'debug': defaultdict(list)}
     compress_level = get_cluster_items()['intervals']['communication']['compress_level']
     if max_zip_size is None:
         max_zip_size = get_cluster_items()['intervals']['communication']['max_zip_size']
@@ -337,7 +404,8 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                 with open(path.join(common.WAZUH_PATH, file), 'rb') as rf:
                     new_file = rf.read()
                     if len(new_file) > max_zip_size:
-                        logger.warning(f'File too large to be synced: {path.join(common.WAZUH_PATH, file)}')
+                        result_logs['warning'][file].append(f'File too large to be synced: '
+                                                            f'{path.join(common.WAZUH_PATH, file)}')
                         update_cluster_control(file, cluster_control_json)
                         continue
                     # Compress the content of each file and surrounds it with separators.
@@ -350,13 +418,14 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
                     wf.write(new_file)
                 else:
                     # Otherwise, remove it from cluster_control_json.
-                    logger.warning('Maximum zip size exceeded. Not all files will be compressed during this sync.')
+                    result_logs['warning'][file].append('Maximum zip size exceeded. '
+                                                        'Not all files will be compressed during this sync.')
                     exceeded_size = True
                     update_cluster_control(file, cluster_control_json)
             except zlib.error as e:
                 raise WazuhError(3001, str(e))
             except Exception as e:
-                logger.debug(str(WazuhException(3001, str(e))))
+                result_logs['debug'][file].append("Exception raised: " + str(WazuhException(3001, str(e))))
                 update_cluster_control(file, cluster_control_json, exists=False)
 
         try:
@@ -366,7 +435,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
         except Exception as e:
             raise WazuhError(3001, str(e))
 
-    return zip_file_path
+    return zip_file_path, result_logs
 
 
 async def async_decompress_files(zip_path, ko_files_name="files_metadata.json"):

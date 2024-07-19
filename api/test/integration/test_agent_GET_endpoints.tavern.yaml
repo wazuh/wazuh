@@ -72,6 +72,19 @@ stages:
           extra_kwargs:
             key: "status"
       status_code: 200
+  
+  - name: Get all agents sorted by status_code
+    request:
+      verify: False
+      <<: *get_agents
+      params:
+        sort: status_code
+    response:
+      verify_response_with:
+        - function: tavern_utils:test_sort_response
+          extra_kwargs:
+            key: "status_code"
+      status_code: 200
 
   - name: Pagination with offset 0 and limit 2
     request:
@@ -1187,6 +1200,7 @@ stages:
               registerIP: !anystr
               status: !anystr
               version: !anystr
+              status_code: !anyint
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -3260,6 +3274,7 @@ marks:
         - registerIP
         - status
         - version
+        - status_code
 
 stages:
 
@@ -3770,14 +3785,14 @@ stages:
           failed_items: []
 
 ---
-test_name: GET /groups/{group_id}/files/{filename}/json
+test_name: GET /groups/{group_id}/files/{filename}
 
 stages:
 
-  - name: Try get one file of a group
+  - name: Get one file of a group (JSON)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf/json"
+      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3787,50 +3802,38 @@ stages:
         error: 0
         data: !anything
 
-  - name: Try get one file of a group, bad group
+  - name: Get one file of a group (XML)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/files/agent.conf/json"
+      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *resource_not_found_group
-
-  - name: Try get one file of a group, bad group (not aplhanumeric)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_%_group/files/agent.conf/json"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
-
----
-test_name: GET /groups/{group_id}/files/{filename}/xml
-
-stages:
-
-  - name: Try get one file of a group
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.conf/xml"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
+      params:
+        raw: true
     response:
       status_code: 200
       headers:
         content-type: application/xml; charset=utf-8
-
+  
+  - name: Get one file of a group (plain text)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/merged.mg"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        raw: true
+    response:
+      status_code: 200
+      headers:
+        content-type: text/plain; charset=utf-8
 
   - name: Try get one file of a group, bad group
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/files/agent.conf/xml"
+      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_group/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3840,7 +3843,7 @@ stages:
   - name: Try get one file of a group, bad group (not aplhanumeric)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_%_group/files/agent.conf/xml"
+      url: "{protocol:s}://{host:s}:{port:d}/groups/wrong_%_group/files/agent.conf"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -3848,6 +3851,18 @@ stages:
       status_code: 400
       json:
         <<: *error_spec
+
+  - name: Try get one file of a group, non existent file
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/groups/default/files/agent.mg"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 400
+      json:
+        error: 1006
 
 ---
 test_name: GET /agents?name=agent_name
@@ -4155,6 +4170,7 @@ marks:
         - node_name
         - registerIP
         - status
+        - status_code
 
 stages:
 
@@ -4215,6 +4231,54 @@ stages:
             reverse: true
       status_code: 200
 
+  - name: Get the outdated agents fields
+    request:
+      verify: False
+      <<: *agents_outdated_request
+      params:
+        limit: 1
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '005'
+              status: active
+              name: wazuh-agent5
+              version: 'Wazuh v3.13.2'
+              status_code: 0
+              group:
+                - default
+                - group1
+                - group2
+              registerIP: any
+              configSum: 6ca315e21ec25eab4bcb2a29218c6ae8
+              mergedSum: 0b4cbf98821ce6e4059269ac8969a8e6
+              dateAdd: '1970-01-01T00:00:00+00:00'
+              group_config_status: synced
+          failed_items: []
+          total_affected_items: 6
+          total_failed_items: 0
+
+  - name: Select
+    request:
+      verify: False
+      <<: *agents_outdated_request
+      params:
+        limit: 1
+        select: name
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - name: wazuh-agent5
+          failed_items: []
+          total_affected_items: !anyint
+          total_failed_items: 0
+
   - name: Pagination
     request:
       verify: False
@@ -4230,7 +4294,7 @@ stages:
         data:
           affected_items:
             - id: '009'
-          failed_items: [ ]
+          failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
 
@@ -4402,7 +4466,7 @@ stages:
                 platform: !anystr
             - count: !anyint
               os:
-                platform: unknown
+                platform: N/A
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -4432,7 +4496,7 @@ stages:
             - count: !anyint
               status: never_connected
               os:
-                name: unknown
+                name: N/A
 
           failed_items: []
           total_affected_items: !anyint
@@ -4679,6 +4743,7 @@ marks:
         - registerIP
         - status
         - version
+        - status_code
 
 stages:
 

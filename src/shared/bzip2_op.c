@@ -21,13 +21,13 @@ int bzip2_compress(const char *file, const char *filebz2) {
         return -1;
     }
 
-    input = fopen(file, "rb");
+    input = wfopen(file, "rb");
     if (!input) {
         mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
         return -1;
     }
 
-    output = fopen(filebz2, "wb");
+    output = wfopen(filebz2, "wb");
     if (!output) {
         mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
         fclose(input);
@@ -80,13 +80,13 @@ int bzip2_uncompress(const char *filebz2, const char *file) {
         return -1;
     }
 
-    input = fopen(filebz2, "rb");
+    input = wfopen(filebz2, "rb");
     if (!input) {
         mdebug2(FOPEN_ERROR, filebz2, errno, strerror(errno));
         return -1;
     }
 
-     output = fopen(file, "wb");
+     output = wfopen(file, "wb");
     if (!output) {
         mdebug2(FOPEN_ERROR, file, errno, strerror(errno));
         fclose(input);

@@ -14,6 +14,8 @@
 #include <cmocka.h>
 #include <string.h>
 #include <errno.h>
+#include "file_op.h"
+#include "../../common.h"
 
 int __wrap_abspath(const char *path, char *buffer, size_t size) {
     check_expected(path);
@@ -97,15 +99,20 @@ void expect_w_uncompress_gzfile(const char * gzfilesrc, const char * gzfiledst, 
     will_return(__wrap_w_uncompress_gzfile, ret);
 }
 
-FILE *__wrap_wfopen(const char * __filename, const char * __modes) {
-    check_expected(__filename);
-    check_expected(__modes);
-    return mock_type(FILE *);
+FILE *__real_wfopen(const char * path, const char * mode);
+FILE *__wrap_wfopen(const char * path, const char * mode) {
+    if(test_mode) {
+        check_expected(path);
+        check_expected(mode);
+        return mock_type(FILE *);
+    } else {
+        return __real_wfopen(path, mode);
+    }
 }
 
-void expect_wfopen(const char * __filename, const char * __modes, FILE *ret) {
-    expect_string(__wrap_wfopen, __filename, __filename);
-    expect_string(__wrap_wfopen, __modes, __modes);
+void expect_wfopen(const char * path, const char * mode, FILE *ret) {
+    expect_string(__wrap_wfopen, path, path);
+    expect_string(__wrap_wfopen, mode, mode);
     will_return(__wrap_wfopen, ret);
 }
 

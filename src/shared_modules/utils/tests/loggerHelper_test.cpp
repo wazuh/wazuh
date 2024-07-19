@@ -9,11 +9,17 @@
  * Foundation.
  */
 
-#include "loggerHelper.h"
 #include "loggerHelper_test.h"
-#include <sstream>
-#include <regex>
 #include <chrono>
+#include <regex>
+#include <sstream>
+
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+        GLOBAL_LOG_FUNCTION;
+};
 
 constexpr auto INFO_REGEX = "info Tag .+\\.cpp \\d+ TestBody Testing Info log\\n";
 constexpr auto ERROR_REGEX = "error Tag .+\\.cpp \\d+ TestBody Testing Error log\\n";
@@ -21,165 +27,130 @@ constexpr auto DEBUG_REGEX = "debug Tag .+\\.cpp \\d+ TestBody Testing Debug log
 constexpr auto DEBUG_VERBOSE_REGEX = "debug_verbose Tag .+\\.cpp \\d+ TestBody Testing Debug Verbose log\\n";
 constexpr auto WARNING_REGEX = "warning Tag .+\\.cpp \\d+ TestBody Testing Warning log\\n";
 
-constexpr auto INFO_REGEX_STDENDL = "info Tag .+\\.h \\d+ operator<< Testing Info log\\n";
-constexpr auto ERROR_REGEX_STDENDL = "error Tag .+\\.h \\d+ operator<< Testing Error log\\n";
-constexpr auto DEBUG_REGEX_STDENDL = "debug Tag .+\\.h \\d+ operator<< Testing Debug log\\n";
-constexpr auto DEBUG_VERBOSE_REGEX_STDENDL = "debug_verbose Tag .+\\.h \\d+ operator<< Testing Debug Verbose log\\n";
-constexpr auto WARNING_REGEX_STDENDL = "warning Tag .+\\.h \\d+ operator<< Testing Warning log\\n";
-
 constexpr auto INFO_REGEX_THREAD = "info Tag .+\\.cpp \\d+ operator\\(\\) Testing Info log";
 constexpr auto ERROR_REGEX_THREAD = "error Tag .+\\.cpp \\d+ operator\\(\\) Testing Error log";
 constexpr auto DEBUG_REGEX_THREAD = "debug Tag .+\\.cpp \\d+ operator\\(\\) Testing Debug log";
 constexpr auto DEBUG_VERBOSE_REGEX_THREAD = "debug_verbose Tag .+\\.cpp \\d+ operator\\(\\) Testing Debug Verbose log";
 constexpr auto WARNING_REGEX_THREAD = "warning Tag .+\\.cpp \\d+ operator\\(\\) Testing Warning log";
 
-void debugVerboseTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+constexpr auto TAG = "Tag";
+
+void debugVerboseTestFunction(
+    const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
-    ssOutput << "debug_verbose" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
+    ssOutput << "debug_verbose"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void debugTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
-    ssOutput << "debug" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
+    ssOutput << "debug"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void infoTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
-    ssOutput << "info" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
+    ssOutput << "info"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void warningTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
-    ssOutput << "warning" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
+    ssOutput << "warning"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
 }
 
-void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, ...)
+void errorTestFunction(const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
 {
-    ssOutput << "error" << " " << tag << " " << file << " " << line << " " << func << " " << msg << std::endl;
+    char buffer[MAXLEN];
+    vsnprintf(buffer, MAXLEN, msg, args);
+
+    ssOutput << "error"
+             << " " << tag << " " << file << " " << line << " " << func << " " << buffer << std::endl;
+}
+
+void logFunctionWrapper(
+    int level, const char* tag, const char* file, int line, const char* func, const char* msg, va_list args)
+{
+    switch (level)
+    {
+        case (Log::LOGLEVEL_DEBUG): debugTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_DEBUG_VERBOSE): debugVerboseTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_INFO): infoTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_WARNING): warningTestFunction(tag, file, line, func, msg, args); break;
+        case (Log::LOGLEVEL_ERROR): errorTestFunction(tag, file, line, func, msg, args); break;
+        default: break;
+    }
 }
 
 TEST_F(LoggerHelperTest, simpleInfoTest)
 {
-    Log::info << "Testing Info log" << LogEndl;
+    logInfo(TAG, "Testing Info log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(INFO_REGEX)));
-}
-
-TEST_F(LoggerHelperTest, simpleInfoTestWithStdEndl)
-{
-    Log::info << "Testing Info log" << std::endl;
-    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(INFO_REGEX_STDENDL)));
 }
 
 TEST_F(LoggerHelperTest, simpleErrorTest)
 {
-    Log::error << "Testing Error log" << LogEndl;
+    logError(TAG, "Testing Error log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(ERROR_REGEX)));
-}
-
-TEST_F(LoggerHelperTest, simpleErrorTestWithStdEndl)
-{
-    Log::error << "Testing Error log" << std::endl;
-    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(ERROR_REGEX_STDENDL)));
 }
 
 TEST_F(LoggerHelperTest, simpleDebugTest)
 {
-    Log::debug << "Testing Debug log" << LogEndl;
+    logDebug1(TAG, "Testing Debug log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_REGEX)));
-}
-
-TEST_F(LoggerHelperTest, simpleDebugTestWithStdEndl)
-{
-    Log::debug << "Testing Debug log" << std::endl;
-    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_REGEX_STDENDL)));
 }
 
 TEST_F(LoggerHelperTest, simpleDebugVerboseTest)
 {
-    Log::debugVerbose << "Testing Debug Verbose log" << LogEndl;
+    logDebug2(TAG, "Testing Debug Verbose log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_VERBOSE_REGEX)));
-}
-
-TEST_F(LoggerHelperTest, simpleDebugVerboseTestWithStdEndl)
-{
-    Log::debugVerbose << "Testing Debug Verbose log" << std::endl;
-    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_VERBOSE_REGEX_STDENDL)));
 }
 
 TEST_F(LoggerHelperTest, simpleWarningTest)
 {
-    Log::warning << "Testing Warning log" << LogEndl;
+    logWarn(TAG, "%s", "Testing Warning log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(WARNING_REGEX)));
 }
 
-TEST_F(LoggerHelperTest, simpleWarningTestWithStdEndl)
+TEST_F(LoggerHelperTest, simpleInfoFormattedTest)
 {
-    Log::warning << "Testing Warning log" << std::endl;
-    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(WARNING_REGEX_STDENDL)));
+    logInfo(TAG, "%s", "Testing Info log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(INFO_REGEX)));
 }
 
-TEST_F(LoggerHelperTest, multiThreadTest)
+TEST_F(LoggerHelperTest, simpleErrorFormattedTest)
 {
-    std::thread t1([]()
-    {
-        for (int i = 0; i < 10; i++)
-        {
-            Log::info << "Testing Info log" << LogEndl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
-    });
-    std::thread t2([]()
-    {
-        for (int i = 0; i < 10; i++)
-        {
-            Log::error << "Testing Error log" << LogEndl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(4));
-        }
-    });
-    std::thread t3([]()
-    {
-        for (int i = 0; i < 10; i++)
-        {
-            Log::debug << "Testing Debug log" << LogEndl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(3));
-        }
-    });
-    std::thread t4([]()
-    {
-        for (int i = 0; i < 10; i++)
-        {
-            Log::debugVerbose << "Testing Debug Verbose log" << LogEndl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(2));
-        }
-    });
-    std::thread t5([]()
-    {
-        for (int i = 0; i < 10; i++)
-        {
-            Log::warning << "Testing Warning log" << LogEndl;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-    t5.join();
+    logError(TAG, "%s", "Testing Error log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(ERROR_REGEX)));
+}
 
-    // We make sure that all lines are valid
-    std::string newLine;
+TEST_F(LoggerHelperTest, simpleDebugFormattedTest)
+{
+    logDebug1(TAG, "%s", "Testing Debug log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_REGEX)));
+}
 
-    while (std::getline(ssOutput, newLine))
-    {
-        if (! (std::regex_match(newLine, std::regex(INFO_REGEX_THREAD)) ||
-                std::regex_match(newLine, std::regex(ERROR_REGEX_THREAD)) ||
-                std::regex_match(newLine, std::regex(DEBUG_REGEX_THREAD)) ||
-                std::regex_match(newLine, std::regex(DEBUG_VERBOSE_REGEX_THREAD)) ||
-                std::regex_match(newLine, std::regex(WARNING_REGEX_THREAD))) )
-        {
-            FAIL() << "Invalid line: " << newLine;
-        }
-    }
+TEST_F(LoggerHelperTest, simpleDebugVerboseFormattedTest)
+{
+    logDebug2(TAG, "%s", "Testing Debug Verbose log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(DEBUG_VERBOSE_REGEX)));
+}
 
-    SUCCEED();
+TEST_F(LoggerHelperTest, simpleWarningFormattedTest)
+{
+    logWarn(TAG, "%s", "Testing Warning log");
+    EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(WARNING_REGEX)));
 }

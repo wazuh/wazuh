@@ -14,6 +14,7 @@
 #include "../os_net/os_net.h"
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/evp.h>
 #include "../os_crypto/md5/md5_op.h"
 #include "../os_crypto/sha512/sha512_op.h"
 #include "shared.h"
@@ -513,31 +514,30 @@ static int wm_fluent_send_ping(wm_fluent_t * fluent, const wm_fluent_helo_t * he
 
     {
         unsigned char md[SHA512_DIGEST_LENGTH];
-        SHA512_CTX ctx;
-        SHA512_Init(&ctx);
-
-        SHA512_Update(&ctx, salt, sizeof(salt));
-        SHA512_Update(&ctx, hostname, strlen(hostname));
-        SHA512_Update(&ctx, helo->nonce, helo->nonce_size);
-        SHA512_Update(&ctx, fluent->shared_key, strlen(fluent->shared_key));
-
-        SHA512_Final(md, &ctx);
+        EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+        EVP_DigestInit(ctx, EVP_sha512());
+        EVP_DigestUpdate(ctx, salt, sizeof(salt));
+        EVP_DigestUpdate(ctx, hostname, strlen(hostname));
+        EVP_DigestUpdate(ctx, helo->nonce, helo->nonce_size);
+        EVP_DigestUpdate(ctx, fluent->shared_key, strlen(fluent->shared_key));
+        EVP_DigestFinal(ctx, md, NULL);
+        EVP_MD_CTX_free(ctx);
         OS_SHA512_Hex(md, shared_key_hexdigest);
     }
 
 
     if (helo->auth_size > 0) {
         unsigned char md[SHA512_DIGEST_LENGTH];
-        SHA512_CTX ctx;
+        EVP_MD_CTX *ctx = EVP_MD_CTX_new();
 
         /* Compute password hex digest */
 
-        SHA512_Init(&ctx);
-        SHA512_Update(&ctx, helo->auth, helo->auth_size);
-        SHA512_Update(&ctx, fluent->user_name, strlen(fluent->user_name));
-        SHA512_Update(&ctx, fluent->user_pass, strlen(fluent->user_pass));
-
-        SHA512_Final(md, &ctx);
+        EVP_DigestInit(ctx, EVP_sha512());
+        EVP_DigestUpdate(ctx, helo->auth, helo->auth_size);
+        EVP_DigestUpdate(ctx, fluent->user_name, strlen(fluent->user_name));
+        EVP_DigestUpdate(ctx, fluent->user_pass, strlen(fluent->user_pass));
+        EVP_DigestFinal(ctx, md, NULL);
+        EVP_MD_CTX_free(ctx);
         OS_SHA512_Hex(md, password);
     }
 

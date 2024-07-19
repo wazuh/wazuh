@@ -77,31 +77,31 @@ The Wazuh WUI provides a powerful user interface for data visualization and anal
 
 **Modules overview**
 
-![Modules overview](https://github.com/wazuh/wazuh-kibana-app/raw/master/screenshots/app.png)
+![Modules overview](https://github.com/wazuh/wazuh-dashboard-plugins/raw/master/screenshots/app.png)
 
 **Security events**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app2.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app2.png)
 
 **Integrity monitoring**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app3.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app3.png)
 
 **Vulnerability detection**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app4.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app4.png)
 
 **Regulatory compliance**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app5.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app5.png)
 
 **Agents overview**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app6.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app6.png)
 
 **Agent summary**
 
-![Overview](https://github.com/wazuh/wazuh-kibana-app/blob/master/screenshots/app7.png)
+![Overview](https://github.com/wazuh/wazuh-dashboard-plugins/blob/master/screenshots/app7.png)
 
 ## Orchestration
 
@@ -134,26 +134,30 @@ Here you can find all the automation tools maintained by the Wazuh team.
 |---|---|---|---|
 |[bzip2](https://github.com/libarchive/bzip2)|1.0.8|Julian Seward|BSD License|
 |[cJSON](https://github.com/DaveGamble/cJSON)|1.7.12|Dave Gamble|MIT License|
-|[cPython](https://github.com/python/cpython)|3.9.9|Guido van Rossum|Python Software Foundation License version 2|
-|[cURL](https://github.com/curl/curl)|7.88.1|Daniel Stenberg|MIT License|
+|[cPython](https://github.com/python/cpython)|3.10.13|Guido van Rossum|Python Software Foundation License version 2|
+|[cURL](https://github.com/curl/curl)|8.5.0|Daniel Stenberg|MIT License|
+|[Flatbuffers](https://github.com/google/flatbuffers/)|23.5.26|Google Inc.|Apache 2.0 License|
 |[GoogleTest](https://github.com/google/googletest)|1.11.0|Google Inc.|3-Clause "New" BSD License|
 |[jemalloc](https://github.com/jemalloc/jemalloc)|5.2.1|Jason Evans|2-Clause "Simplified" BSD License|
-|[libarchive](https://github.com/libarchive/libarchive)|3.5.1|Tim Kientzle|3-Clause "New" BSD License|
+|[Lua](https://github.com/lua/lua)|5.3.6|PUC-Rio|MIT License|
+|[libarchive](https://github.com/libarchive/libarchive)|3.7.2|Tim Kientzle|3-Clause "New" BSD License|
 |[libdb](https://github.com/yasuhirokimura/db18)|18.1.40|Oracle Corporation|Affero GPL v3|
 |[libffi](https://github.com/libffi/libffi)|3.2.1|Anthony Green|MIT License|
-|[libpcre2](https://github.com/PCRE2Project/pcre2)|10.34|Philip Hazel|BSD License|
+|[libpcre2](https://github.com/PCRE2Project/pcre2)|10.42.0|Philip Hazel|BSD License|
 |[libplist](https://github.com/libimobiledevice/libplist)|2.2.0|Aaron Burghardt et al.|GNU Lesser General Public License version 2.1|
 |[libYAML](https://github.com/yaml/libyaml)|0.1.7|Kirill Simonov|MIT License|
+|[liblzma](https://github.com/tukaani-project/xz)|5.4.2|Lasse Collin, Jia Tan et al.|GNU Public License version 3|
 |[Linux Audit userspace](https://github.com/linux-audit/audit-userspace)|2.8.4|Rik Faith|LGPL (copyleft)|
 |[msgpack](https://github.com/msgpack/msgpack-c)|3.1.1|Sadayuki Furuhashi|Boost Software License version 1.0|
 |[nlohmann](https://github.com/nlohmann/json)|3.7.3|Niels Lohmann|MIT License|
-|[OpenSSL](https://github.com/openssl/openssl)|1.1.1t|OpenSSL Software Foundation|Apache 2.0 License|
+|[OpenSSL](https://github.com/openssl/openssl)|3.0.12|OpenSSL Software Foundation|Apache 2.0 License|
 |[pacman](https://gitlab.archlinux.org/pacman/pacman)|5.2.2|Judd Vinet|GNU Public License version 2 (copyleft)|
 |[popt](https://github.com/rpm-software-management/popt)|1.16|Jeff Johnson & Erik Troan|MIT License|
 |[procps](https://gitlab.com/procps-ng/procps)|2.8.3|Brian Edmonds et al.|LGPL (copyleft)|
-|[rpm](https://github.com/rpm-software-management/rpm)|4.16.1.3|Marc Ewing & Erik Troan|GNU Public License version 2 (copyleft)|
-|[sqlite](https://github.com/sqlite/sqlite)|3.36.0|D. Richard Hipp|Public Domain (no restrictions)|
-|[zlib](https://github.com/madler/zlib)|1.2.11|Jean-loup Gailly & Mark Adler|zlib/libpng License|
+|[RocksDB](https://github.com/facebook/rocksdb/)|8.3.2|Facebook Inc.|Apache 2.0 License|
+|[rpm](https://github.com/rpm-software-management/rpm)|4.18.2|Marc Ewing & Erik Troan|GNU Public License version 2 (copyleft)|
+|[sqlite](https://github.com/sqlite/sqlite)|3.45.0|D. Richard Hipp|Public Domain (no restrictions)|
+|[zlib](https://github.com/madler/zlib)|1.3.1|Jean-loup Gailly & Mark Adler|zlib/libpng License|
 
 * [PyPi packages](framework/requirements.txt)
 

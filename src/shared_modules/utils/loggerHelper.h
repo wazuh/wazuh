@@ -12,6 +12,8 @@
 #ifndef LOGGER_HELPER_H
 #define LOGGER_HELPER_H
 
+#include "commonDefs.h"
+#include <cstdarg>
 #include <functional>
 #include <iostream>
 #include <map>
@@ -19,150 +21,186 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
-#include "commonDefs.h"
 
 // We can't use std::source_location until C++20
-#define LogEndl Log::sourceFile {__FILE__, __LINE__, __func__}
+#define LogEndl                                                                                                        \
+    Log::SourceFile                                                                                                    \
+    {                                                                                                                  \
+        __FILE__, __LINE__, __func__                                                                                   \
+    }
+#define logInfo(X, Y, ...)   Log::Logger::info(X, LogEndl, Y, ##__VA_ARGS__)
+#define logWarn(X, Y, ...)   Log::Logger::warning(X, LogEndl, Y, ##__VA_ARGS__)
+#define logDebug1(X, Y, ...) Log::Logger::debug(X, LogEndl, Y, ##__VA_ARGS__)
+#define logDebug2(X, Y, ...) Log::Logger::debugVerbose(X, LogEndl, Y, ##__VA_ARGS__)
+#define logError(X, Y, ...)  Log::Logger::error(X, LogEndl, Y, ##__VA_ARGS__)
+constexpr auto MAXLEN {65536};
 
 namespace Log
 {
-    static std::mutex logMutex;
-    struct sourceFile
+    auto constexpr LOGLEVEL_DEBUG_VERBOSE {5};
+    auto constexpr LOGLEVEL_CRITICAL {4};
+    auto constexpr LOGLEVEL_ERROR {3};
+    auto constexpr LOGLEVEL_WARNING {2};
+    auto constexpr LOGLEVEL_INFO {1};
+    auto constexpr LOGLEVEL_DEBUG {0};
+
+    struct SourceFile
     {
         const char* file;
         int line;
         const char* func;
     };
+// Remove visibility of this extern function
+#pragma GCC visibility push(hidden)
 
-    class Logger
+    extern std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+        GLOBAL_LOG_FUNCTION;
+#pragma GCC visibility pop
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+
+    /**
+     * @brief Assign the global log function.
+     *        
+     * @param logFunction callback function that is going to be called on every message logging operation.
+     */
+    static void assignLogFunction(const std::function<void(const int,
+                                                           const std::string&,
+                                                           const std::string&,
+                                                           const int,
+                                                           const std::string&,
+                                                           const std::string&,
+                                                           va_list)>& logFunction)
     {
-        private:
-            full_log_fnc_t m_logFunction;
-            std::unordered_map<std::thread::id, std::string> m_threadsBuffers;
-            std::string m_tag;
+        if (!GLOBAL_LOG_FUNCTION)
+        {
+            GLOBAL_LOG_FUNCTION = logFunction;
+        }
+    }
 
-        protected:
-            Logger()
-            {
-                m_logFunction = nullptr;
-            }
-
-        public:
-            ~Logger() = default;
-            Logger& operator=(const Logger& other) = delete;
-            Logger(const Logger& other) = delete;
-
-            Logger& assignLogFunction(full_log_fnc_t logFunction, const std::string& tag)
-            {
-                if (!m_logFunction && logFunction)
-                {
-                    m_logFunction = logFunction;
-                    m_tag = tag;
-                }
-
-                return *this;
-            }
-
-            // The << operator is overloaded to append data in the buffer for the current thread
-            // but the message isn't logged until std::endl or LogEndl are found.
-            friend Logger& operator<<(Logger& logObject, const std::string& msg)
-            {
-                if (!msg.empty())
-                {
-                    std::lock_guard<std::mutex> lockGuard(logMutex);
-                    logObject.m_threadsBuffers[std::this_thread::get_id()] += msg;
-                }
-
-                return logObject;
-            }
-
-            // This << overload is used when std::endl is found. But the file, line and function always point here.
-            friend Logger& operator<<(Logger& logObject,
-                                      std::ostream & (*)(std::ostream&))
-            {
-                if (logObject.m_logFunction)
-                {
-                    std::lock_guard<std::mutex> lockGuard(logMutex);
-                    auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_tag.c_str(), __FILE__, __LINE__, __func__, logObject.m_threadsBuffers[threadId].c_str());
-                    logObject.m_threadsBuffers.erase(threadId);
-                }
-
-                return logObject;
-            }
-
-            // This << overload is used when LogEndl is found. The file, line and function are taken from the sourceFile structure that
-            // contains the required data.
-            friend Logger& operator<<(Logger& logObject,
-                                      sourceFile sourceLocation)
-            {
-                if (logObject.m_logFunction)
-                {
-                    std::lock_guard<std::mutex> lockGuard(logMutex);
-                    auto threadId = std::this_thread::get_id();
-                    logObject.m_logFunction(logObject.m_tag.c_str(), sourceLocation.file, sourceLocation.line, sourceLocation.func, logObject.m_threadsBuffers[threadId].c_str());
-                    logObject.m_threadsBuffers.erase(threadId);
-                }
-
-                return logObject;
-            }
-    };
-
-    class DebugVerbose : public Logger
+    /**
+     * @brief Deassign the global log function.
+     *        Use it with care!
+     *        Take into account that running it, you will disable the previous set logging functionality in the running executable.
+     *
+     */
+    static void deassignLogFunction()
     {
-        public:
-            static DebugVerbose& instance()
-            {
-                static DebugVerbose logInstance;
-                return logInstance;
-            }
-    };
+        GLOBAL_LOG_FUNCTION = nullptr;
+    }
+    
+#pragma GCC diagnostic pop
 
-    class Debug : public Logger
+    /**
+     * @brief Logging helper class.
+     *
+     */
+    class Logger final
     {
-        public:
-            static Debug& instance()
+    public:
+        /**
+         * @brief INFO log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void info(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                static Debug logInstance;
-                return logInstance;
-            }
-    };
+                std::va_list args;
+                va_start(args, msg);
 
-    class Info : public Logger
-    {
-        public:
-            static Info& instance()
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_INFO, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
+            }
+        }
+
+        /**
+         * @brief WARNING LOG.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void warning(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                static Info logInstance;
-                return logInstance;
-            }
-    };
+                std::va_list args;
+                va_start(args, msg);
 
-    class Warning : public Logger
-    {
-        public:
-            static Warning& instance()
+                GLOBAL_LOG_FUNCTION(
+                    LOGLEVEL_WARNING, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
+            }
+        }
+
+        /**
+         * @brief DEBUG log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void debug(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                static Warning logInstance;
-                return logInstance;
-            }
-    };
+                std::va_list args;
+                va_start(args, msg);
 
-    class Error : public Logger
-    {
-        public:
-            static Error& instance()
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_DEBUG, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
+            }
+        }
+
+        /**
+         * @brief DEBUG VERBOSE log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void debugVerbose(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
             {
-                static Error logInstance;
-                return logInstance;
+                std::va_list args;
+                va_start(args, msg);
+
+                GLOBAL_LOG_FUNCTION(
+                    LOGLEVEL_DEBUG_VERBOSE, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
             }
+        }
+
+        /**
+         * @brief ERROR log.
+         *
+         * @param tag Module tag.
+         * @param msg Message to be logged.
+         * @param sourceFile Log location.
+         */
+        static void error(const char* tag, SourceFile sourceFile, const char* msg, ...)
+        {
+            if (GLOBAL_LOG_FUNCTION)
+            {
+                std::va_list args;
+                va_start(args, msg);
+
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_ERROR, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+
+                va_end(args);
+            }
+        }
     };
-
-    static DebugVerbose& debugVerbose = DebugVerbose::instance();
-    static Debug& debug = Debug::instance();
-    static Info& info = Info::instance();
-    static Warning& warning = Warning::instance();
-    static Error& error = Error::instance();
-
 } // namespace Log
 #endif // LOGGER_HELPER_H

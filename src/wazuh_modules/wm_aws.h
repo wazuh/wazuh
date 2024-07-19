@@ -24,8 +24,6 @@ typedef struct wm_aws_state_t {
 
 typedef struct wm_aws_bucket {
     char *bucket;                       // S3 bucket
-    char *access_key;                   // IAM access key
-    char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
     char *iam_role_duration;            // IAM role session duration
@@ -48,8 +46,6 @@ typedef struct wm_aws_bucket {
 
 typedef struct wm_aws_service {
     char *type;                         // String defining service type.
-    char *access_key;                   // IAM access key
-    char *secret_key;                   // IAM secret key
     char *aws_profile;                  // AWS credentials profile
     char *iam_role_arn;                 // IAM role
     char *iam_role_duration;            // IAM role session duration
@@ -83,8 +79,6 @@ typedef struct wm_aws_subscriber {
 typedef struct wm_aws {
     sched_scan_config scan_config;
     char *bucket;                       // DEPRECATE
-    char *access_key;                   // DEPRECATE
-    char *secret_key;                   // DEPRECATE
     int queue_fd;
     unsigned int enabled:1;
     unsigned int run_on_start:1;

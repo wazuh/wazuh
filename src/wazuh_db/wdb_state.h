@@ -93,11 +93,6 @@ typedef struct _agent_syscollector_t {
     agent_syscollector_deprecated_t deprecated;
 } agent_syscollector_t;
 
-typedef struct _agent_vulnerability_t {
-    uint64_t vulnerability_detector_queries;
-    struct timeval vulnerability_detector_time;
-} agent_vulnerability_t;
-
 typedef struct _agent_breakdown_t {
     uint64_t begin_queries;
     uint64_t close_queries;
@@ -106,6 +101,7 @@ typedef struct _agent_breakdown_t {
     uint64_t sql_queries;
     uint64_t vacuum_queries;
     uint64_t get_fragmentation_queries;
+    uint64_t sleep_queries;
     struct timeval begin_time;
     struct timeval close_time;
     struct timeval commit_time;
@@ -113,13 +109,14 @@ typedef struct _agent_breakdown_t {
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
+    struct timeval open_calls_time;
+    struct timeval sleep_time;
     agent_ciscat_t ciscat;
     agent_rootcheck_t rootcheck;
     agent_sca_t sca;
     agent_sync_t sync;
     agent_syscheck_t syscheck;
     agent_syscollector_t syscollector;
-    agent_vulnerability_t vulnerability;
 } agent_breakdown_t;
 
 typedef struct _global_agent_t {
@@ -131,6 +128,7 @@ typedef struct _global_agent_t {
     uint64_t get_all_agents_queries;
     uint64_t get_distinct_groups_queries;
     uint64_t get_groups_integrity_queries;
+    uint64_t recalculate_agent_group_hashes_queries;
     uint64_t insert_agent_queries;
     uint64_t reset_agents_connection_queries;
     uint64_t select_agent_group_queries;
@@ -152,6 +150,7 @@ typedef struct _global_agent_t {
     struct timeval get_all_agents_time;
     struct timeval get_distinct_groups_time;
     struct timeval get_groups_integrity_time;
+    struct timeval recalculate_agent_group_hashes_time;
     struct timeval insert_agent_time;
     struct timeval reset_agents_connection_time;
     struct timeval select_agent_group_time;
@@ -195,10 +194,13 @@ typedef struct _global_breakdown_t {
     uint64_t sql_queries;
     uint64_t vacuum_queries;
     uint64_t get_fragmentation_queries;
+    uint64_t sleep_queries;
     struct timeval backup_time;
     struct timeval sql_time;
     struct timeval vacuum_time;
     struct timeval get_fragmentation_time;
+    struct timeval open_calls_time;
+    struct timeval sleep_time;
     global_agent_t agent;
     global_belongs_t belongs;
     global_group_t group;
@@ -291,6 +293,13 @@ void w_inc_wazuhdb_remove_time(struct timeval time);
  *
  */
 void w_inc_agent();
+
+/**
+ * @brief Increment open agent DB time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_open_time(struct timeval time);
 
 /**
  * @brief Increment sql agent queries counter
@@ -421,19 +430,6 @@ void w_inc_agent_ciscat();
  * @param time Value to increment the counter.
  */
 void w_inc_agent_ciscat_time(struct timeval time);
-
-/**
- * @brief Increment vulnerability detector agent queries counter
- *
- */
-void w_inc_agent_vul_detector();
-
-/**
- * @brief Increment vulnerability detector agent time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_agent_vul_detector_time(struct timeval time);
 
 /**
  * @brief Increment dbsync agent queries counter
@@ -693,10 +689,30 @@ void w_inc_agent_syscollector_deprecated_osinfo();
 void w_inc_agent_syscollector_deprecated_osinfo_time(struct timeval time);
 
 /**
+ * @brief Increment deprecated syscollector OS information agent queries counter
+ *
+ */
+void w_inc_agent_sleep();
+
+/**
+ * @brief Increment deprecated OS information syscollector agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_agent_sleep_time(struct timeval time);
+
+/**
  * @brief Increment total global queries counter
  *
  */
 void w_inc_global();
+
+/**
+ * @brief Increment open global time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_open_time(struct timeval time);
 
 /**
  * @brief Increment sql global queries counter
@@ -998,6 +1014,19 @@ void w_inc_global_agent_get_groups_integrity();
 void w_inc_global_agent_get_groups_integrity_time(struct timeval time);
 
 /**
+ * @brief Increment recalculate-agent-group-hashes global agent queries counter
+ *
+ */
+void w_inc_global_agent_recalculate_agent_group_hashes();
+
+/**
+ * @brief Increment recalculate-agent-group-hashes global agent time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_agent_recalculate_agent_group_hashes_time(struct timeval time);
+
+/**
  * @brief Increment insert-agent-group global group queries counter
  *
  */
@@ -1113,6 +1142,19 @@ void w_inc_global_get_fragmentation();
  * @param time Value to increment the counter.
  */
 void w_inc_global_get_fragmentation_time(struct timeval time);
+
+/**
+ * @brief Increment sleep global queries counter
+ *
+ */
+void w_inc_global_sleep();
+
+/**
+ * @brief Increment sleep global time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_global_sleep_time(struct timeval time);
 
 /**
  * @brief Increment task queries counter

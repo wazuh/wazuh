@@ -1501,7 +1501,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s samba -> r:package 'samba' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:no packages found matching sambad|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:no packages found matching samba|deinstall|not-installed"
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 28562

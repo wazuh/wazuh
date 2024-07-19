@@ -14,7 +14,6 @@ import sys
 from wazuh.core.utils import clean_pid_files
 from wazuh.core.wlogging import WazuhLogger
 
-
 #
 # Aux functions
 #
@@ -43,7 +42,7 @@ def set_logging(foreground_mode=False, debug_mode=0) -> WazuhLogger:
 
 def print_version():
     """Print Wazuh metadata."""
-    from wazuh.core.cluster import __version__, __author__, __wazuh_name__, __licence__
+    from wazuh.core.cluster import __author__, __licence__, __version__, __wazuh_name__
     print(f"\n{__wazuh_name__} {__version__} - {__author__}\n\n{__licence__}")
 
 
@@ -82,7 +81,9 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     logger : WazuhLogger
         Cluster logger.
     """
-    from wazuh.core.cluster import master, local_server
+    from wazuh.core.cluster import local_server, master
+    from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
+
     cluster_utils.context_tag.set('Master')
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
                               configuration=cluster_config, enable_ssl=args.ssl, logger=logger,
@@ -95,7 +96,10 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
                                                      concurrency_test=args.concurrency_test, node=my_server,
                                                      configuration=cluster_config, enable_ssl=args.ssl,
                                                      cluster_items=cluster_items)
-    await asyncio.gather(my_server.start(), my_local_server.start())
+    tasks = [my_server, my_local_server]
+    if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
+        tasks.append(HAPHelper)
+    await asyncio.gather(*[task.start() for task in tasks])
 
 
 #
@@ -115,8 +119,9 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     logger : WazuhLogger
         Cluster logger.
     """
-    from wazuh.core.cluster import worker, local_server
     from concurrent.futures import ProcessPoolExecutor
+
+    from wazuh.core.cluster import local_server, worker
     cluster_utils.context_tag.set('Worker')
 
     # Pool is defined here so the child process is not recreated when the connection with master node is broken.
@@ -141,7 +146,9 @@ async def worker_main(args: argparse.Namespace, cluster_config: dict, cluster_it
                                                          concurrency_test=args.concurrency_test, node=my_client,
                                                          configuration=cluster_config, enable_ssl=args.ssl,
                                                          cluster_items=cluster_items)
-
+        # Spawn pool processes
+        if my_client.task_pool is not None:
+            my_client.task_pool.map(cluster_utils.process_spawn_sleep, range(my_client.task_pool._max_workers))
         try:
             await asyncio.gather(my_client.start(), my_local_server.start())
         except asyncio.CancelledError:
@@ -251,7 +258,7 @@ def main():
 
 if __name__ == '__main__':
     import wazuh.core.cluster.utils as cluster_utils
-    from wazuh.core import pyDaemonModule, common, configuration
+    from wazuh.core import common, configuration, pyDaemonModule
 
     cluster_items = cluster_utils.get_cluster_items()
     original_sig_handler = signal.signal(signal.SIGTERM, exit_handler)

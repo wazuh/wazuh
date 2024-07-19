@@ -10,13 +10,14 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <openssl/evp.h>
 
+#include "file_op.h"
 #include "sha512_op.h"
 #include "headers/defs.h"
 
 int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
 {
-    SHA512_CTX c;
     FILE *fp;
     unsigned char buf[2048 + 2];
     unsigned char md[SHA512_DIGEST_LENGTH];
@@ -24,18 +25,28 @@ int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
 
     buf[2049] = '\0';
 
-    fp = fopen(fname, mode == OS_BINARY ? "rb" : "r");
+    fp = wfopen(fname, mode == OS_BINARY ? "rb" : "r");
     if (!fp) {
         return (-1);
     }
 
-    SHA512_Init(&c);
-    while ((n = fread(buf, 1, 2048, fp)) > 0) {
-        buf[n] = '\0';
-        SHA512_Update(&c, buf, n);
+    EVP_MD_CTX *sha512_ctx = EVP_MD_CTX_new();
+
+    if (!sha512_ctx) {
+        fclose(fp);
+        return (-1);
     }
 
-    SHA512_Final(&(md[0]), &c);
+    EVP_DigestInit(sha512_ctx, EVP_sha512());
+
+    while ((n = fread(buf, 1, 2048, fp)) > 0) {
+        buf[n] = '\0';
+        EVP_DigestUpdate(sha512_ctx, buf, n);
+    }
+
+    EVP_DigestFinal(sha512_ctx, md, NULL);
+    EVP_MD_CTX_free(sha512_ctx);
+
     OS_SHA512_Hex(md, output);
     fclose(fp);
 
@@ -44,12 +55,14 @@ int OS_SHA512_File(const char *fname, os_sha512 output, int mode)
 
 int OS_SHA512_String(const char *str, os_sha512 output)
 {
-    SHA512_CTX c;
     unsigned char md[SHA512_DIGEST_LENGTH];
 
-    SHA512_Init(&c);
-    SHA512_Update(&c, str, strlen(str));
-    SHA512_Final(&(md[0]), &c);
+    EVP_MD_CTX *sha512_ctx = EVP_MD_CTX_new();
+    EVP_DigestInit(sha512_ctx, EVP_sha512());
+    EVP_DigestUpdate(sha512_ctx, str, strlen(str));
+    EVP_DigestFinal(sha512_ctx, md, NULL);
+    EVP_MD_CTX_free(sha512_ctx);
+
     OS_SHA512_Hex(md, output);
 
     return (0);

@@ -1111,7 +1111,7 @@ time_t get_agent_date_added(int agent_id) {
 
     snprintf(path, PATH_MAX, "%s", TIMESTAMP_FILE);
 
-    fp = fopen(path, "r");
+    fp = wfopen(path, "r");
 
     if (!fp) {
         return 0;

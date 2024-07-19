@@ -329,7 +329,8 @@ def test_validate_upload_delete_dir(relative_dirname, res_path, err_code):
 @patch('wazuh.rule.upload_file')
 @patch('wazuh.rule.remove')
 @patch('wazuh.rule.safe_move')
-def test_upload_file(mock_safe_move, mock_remove, mock_xml, mock_full_copy,
+@patch('wazuh.rule.validate_dummy_logtest')
+def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_xml, mock_full_copy,
                      mock_delete, file, relative_dirname, overwrite, rule_path):
     """Test uploading a rule file.
 

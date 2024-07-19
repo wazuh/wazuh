@@ -35,9 +35,6 @@ size_t wmcom_dispatch(char * command, char ** output){
         }
         return wmcom_getconfig(rcv_args, output);
     } else if (strncmp(command, "query ", 6) == 0) {
-        /*
-         * query vulnerability-detector run_now
-        */
         return wm_module_query(command + 6, output);
     } else if (wmcom_sync(command) == 0) {
         /*

@@ -15,10 +15,6 @@
 #define LOG_FILE "active-response\\active-responses.log"
 #endif
 
-#define ECHO "/bin/echo"
-#define PASSWD "/usr/bin/passwd"
-#define CHUSER "/usr/bin/chuser"
-
 #define COMMANDSIZE_4096 4096
 
 #define VERSION 1

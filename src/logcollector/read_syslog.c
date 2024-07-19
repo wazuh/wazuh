@@ -31,7 +31,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     /* Obtain context to calculate hash */
     current_position = w_ftell(lf->fp);
 
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
     for (offset = w_ftell(lf->fp); can_read() && fgets(str, OS_MAXSTR - OS_LOG_HEADER, lf->fp) != NULL && (!maximum_lines || lines < maximum_lines) && offset >= 0; offset += rbytes) {
@@ -46,7 +46,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
         /* Get the last occurrence of \n */
         if (str[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(&context, NULL, str);
+                OS_SHA1_Stream(context, NULL, str);
             }
             str[rbytes - 1] = '\0';
 
@@ -64,7 +64,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
             /* Message size > maximum allowed */
             __ms = 1;
             if (is_valid_context_file) {
-                OS_SHA1_Stream(&context, NULL, str);
+                OS_SHA1_Stream(context, NULL, str);
             }
             str[rbytes - 1] = '\0';
         } else {
@@ -130,7 +130,7 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
                 }
 
                 if (is_valid_context_file) {
-                    OS_SHA1_Stream(&context, NULL, str);
+                    OS_SHA1_Stream(context, NULL, str);
                 }
 
                 /* Get the last occurrence of \n */
@@ -144,7 +144,9 @@ void *read_syslog(logreader *lf, int *rc, int drop_it) {
     }
 
     if (is_valid_context_file) {
-        w_update_file_status(lf->file, current_position, &context);
+        w_update_file_status(lf->file, current_position, context);
+    } else {
+        EVP_MD_CTX_free(context);
     }
 
     mdebug2("Read %d lines from %s", lines, lf->file);

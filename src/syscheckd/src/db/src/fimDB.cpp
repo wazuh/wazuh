@@ -199,11 +199,11 @@ void FIMDB::pushMessage(const std::string& data)
 
 void FIMDB::teardown()
 {
-    std::unique_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
     try
     {
         stopIntegrity();
+        std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
         m_rsyncHandler = nullptr;
         m_dbsyncHandler = nullptr;
     }

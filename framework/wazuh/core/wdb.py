@@ -39,7 +39,7 @@ class AsyncWazuhDBConnection:
 
     async def open_connection(self):
         """Establish a Unix socket connection."""
-        self._reader, self._writer = await asyncio.open_unix_connection(path=self.socket_path, loop=self.loop)
+        self._reader, self._writer = await asyncio.open_unix_connection(path=self.socket_path)
 
     def close(self):
         """Close writer socket."""

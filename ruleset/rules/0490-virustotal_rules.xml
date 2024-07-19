@@ -18,14 +18,14 @@
 
     <rule id="87101" level="3">
         <if_sid>87100</if_sid>
-        <field name="virustotal.error">204</field>
+        <field name="virustotal.error">409</field>
         <description>VirusTotal: Error: Public API request rate limit reached</description>
         <options>no_full_log</options>
     </rule>
 
     <rule id="87102" level="3">
         <if_sid>87100</if_sid>
-        <field name="virustotal.error">403</field>
+        <field name="virustotal.error">401</field>
         <description>VirusTotal: Error: Check credentials</description>
         <group>gdpr_IV_35.7.d,gdpr_IV_32.2,</group>
         <options>no_full_log</options>

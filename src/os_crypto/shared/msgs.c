@@ -91,11 +91,11 @@ void OS_StartCounter(keystore *keys)
             snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[i]->id);
         }
 
-        keys->keyentries[i]->fp = fopen(rids_file, "r+");
+        keys->keyentries[i]->fp = wfopen(rids_file, "r+");
 
         /* If nothing is there, try to open as write only */
         if (!keys->keyentries[i]->fp) {
-            keys->keyentries[i]->fp = fopen(rids_file, "w");
+            keys->keyentries[i]->fp = wfopen(rids_file, "w");
             if (!keys->keyentries[i]->fp) {
                 int my_error = errno;
 
@@ -181,9 +181,9 @@ static void StoreCounter(const keystore *keys, int id, unsigned int global, unsi
     if (!keys->keyentries[id]->fp) {
         char rids_file[OS_FLSIZE + 1];
         snprintf(rids_file, OS_FLSIZE, "%s/%s", RIDS_DIR, keys->keyentries[id]->id);
-        keys->keyentries[id]->fp = fopen(rids_file, "r+");
+        keys->keyentries[id]->fp = wfopen(rids_file, "r+");
         if (!keys->keyentries[id]->fp) {
-            keys->keyentries[id]->fp = fopen(rids_file, "w");
+            keys->keyentries[id]->fp = wfopen(rids_file, "w");
             if (!keys->keyentries[id]->fp) {
                 int my_error = errno;
 
@@ -219,10 +219,10 @@ static void ReloadCounter(const keystore *keys, unsigned int id, const char * ci
     new_inode = File_Inode(rids_file);
 
     if (keys->keyentries[id]->inode != new_inode) {
-        keys->keyentries[id]->fp = fopen(rids_file, "r+");
+        keys->keyentries[id]->fp = wfopen(rids_file, "r+");
 
         if (!keys->keyentries[id]->fp) {
-            keys->keyentries[id]->fp = fopen(rids_file, "w");
+            keys->keyentries[id]->fp = wfopen(rids_file, "w");
             if (!keys->keyentries[id]->fp) {
                 goto fail_open;
             }
@@ -359,7 +359,7 @@ int ReadSecMSG(keystore *keys, char *buffer, char *cleartext, int id, unsigned i
 #ifdef CLIENT
             merror(UNCOMPRESS_ERR);
 #else
-            merror(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
+            mwarn(UNCOMPRESS_ERR " Message received from agent '%s' at '%s'", keys->keyentries[id]->id, keys->keyentries[id]->ip->ip);
 #endif
             return KS_CORRUPT;
         }

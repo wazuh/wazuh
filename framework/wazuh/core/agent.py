@@ -388,7 +388,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         self.remove_extra_fields = True
 
     def _format_data_into_dictionary(self) -> str:
-        """Add <field>: 'unknown' when filter field is not within the response. Compute 'status' field, format id with
+        """Add <field>: 'N/A' when filter field is not within the response. Compute 'status' field, format id with
         zero padding and remove non-user-requested fields. Also remove, extra fields (internal key and registration IP).
 
         Returns
@@ -399,7 +399,7 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         for result in self._data:
             for field in self.filter_fields['fields']:
                 if field not in result.keys():
-                    result[field] = 'unknown'
+                    result[field] = 'N/A'
 
         fields_to_nest, non_nested = get_fields_to_nest(self.fields.keys(), ['os'], '.')
 
@@ -474,7 +474,7 @@ class Agent:
               'os.uname': 'os_uname', 'os.arch': 'os_arch', 'os.build': 'os_build',
               'node_name': 'node_name', 'lastKeepAlive': 'last_keepalive', 'internal_key': 'internal_key',
               'registerIP': 'register_ip', 'disconnection_time': 'disconnection_time',
-              'group_config_status': 'group_config_status'}
+              'group_config_status': 'group_config_status', 'status_code': 'status_code'}
 
     def __init__(self, id: str = None, name: str = None, ip: str = None, key: str = None, force: dict = None):
         """Initialize an agent.
@@ -517,6 +517,7 @@ class Agent:
         self.registerIP = ip
         self.disconnection_time = None
         self.group_config_status = None
+        self.status_code = None
 
         # If the method has only been called with an ID parameter, no new agent should be added.
         # Otherwise, a new agent must be added
@@ -531,7 +532,8 @@ class Agent:
                       'version': self.version, 'dateAdd': self.dateAdd, 'lastKeepAlive': self.lastKeepAlive,
                       'status': self.status, 'key': self.key, 'configSum': self.configSum, 'mergedSum': self.mergedSum,
                       'group': self.group, 'manager': self.manager, 'node_name': self.node_name,
-                      'disconnection_time': self.disconnection_time, 'group_config_status': self.group_config_status}
+                      'disconnection_time': self.disconnection_time, 'group_config_status': self.group_config_status,
+                      'status_code': self.status_code}
 
         return dictionary
 
@@ -1423,8 +1425,9 @@ def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, *
     for chunk in agents_chunks:
         response = core_upgrade_agents(command=command, agents_chunk=chunk, wpk_repo=kwargs.get('wpk_repo'),
                                        version=kwargs.get('version'), force=kwargs.get('force'),
-                                       use_http=kwargs.get('use_http'), file_path=kwargs.get('file_path'),
-                                       installer=kwargs.get('installer'), get_result=kwargs.get('get_result'))
+                                       use_http=kwargs.get('use_http'), package_type=kwargs.get('package_type'),
+                                       file_path=kwargs.get('file_path'), installer=kwargs.get('installer'),
+                                       get_result=kwargs.get('get_result'))
 
         # In case of task manager communication error, try to create the upgrade tasks again with a smaller chunk size
         # If the used chunk size is 1, return the response with the task manager communication error
@@ -1437,8 +1440,8 @@ def create_upgrade_tasks(eligible_agents: list, chunk_size: int, command: str, *
 
 
 def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk_repo: str = None, version: str = None,
-                        force: bool = False, use_http: bool = False, file_path: str = None, installer: str = None,
-                        get_result: bool = False) -> dict:
+                        force: bool = False, use_http: bool = False, package_type: str = None, file_path: str = None,
+                        installer: str = None, get_result: bool = False) -> dict:
     """Send command to upgrade module / task module.
 
     Parameters
@@ -1455,6 +1458,8 @@ def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk
         Forces the agents to upgrade, ignoring version validations.
     use_http : bool
         False for HTTPS protocol, True for HTTP protocol.
+    package_type : str
+        Default package type (rpm, deb).
     file_path : str
         Path to the installation file.
     installer : str
@@ -1474,6 +1479,7 @@ def core_upgrade_agents(agents_chunk: list, command: str = 'upgrade_result', wpk
                                           'version': unify_wazuh_upgrade_version_format(version),
                                           'force_upgrade': force,
                                           'use_http': use_http,
+                                          'package_type': package_type,
                                           'wpk_repo': wpk_repo,
                                           'file_path': file_path,
                                           'installer': installer

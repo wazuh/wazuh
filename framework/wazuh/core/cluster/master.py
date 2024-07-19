@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import functools
 import json
@@ -19,7 +20,7 @@ from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.cluster.utils import context_tag
+from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
@@ -635,8 +636,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
 
         data = await self.get_chunks_in_task_id(task_id, b'syn_m_a_err')
-        result = await self.update_chunks_wdb(data, 'agent-info', logger, b'syn_m_a_err',
-                                              self.cluster_items['intervals']['master']['timeout_agent_info'])
+        result = await self.update_chunks_wdb(data, 'agent-info', logger, b'syn_m_a_err')
 
         # Send result to worker.
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
@@ -658,6 +658,8 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         logger = self.task_loggers['Agent-groups send full']
         start_time = get_utc_now()
         logger.info('Starting.')
+
+        await self.recalculate_group_hash(logger)
 
         sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
                                            data_retriever=AsyncWazuhDBConnection().run_wdb_command,
@@ -975,7 +977,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             pending_task.task.cancel()
 
         # Clean cluster files from previous executions.
-        cluster.clean_up(node_name=self.name)
+        self.name and cluster.clean_up(node_name=self.name)
 
 
 class Master(server.AbstractServer):
@@ -1073,8 +1075,11 @@ class Master(server.AbstractServer):
             before = perf_counter()
             file_integrity_logger.info("Starting.")
             try:
-                self.integrity_control = await cluster.run_in_pool(self.loop, self.task_pool, cluster.get_files_status,
-                                                                   self.integrity_control)
+                self.integrity_control, logs = await cluster.run_in_pool(self.loop,
+                                                                         self.task_pool,
+                                                                         cluster.get_files_status,
+                                                                         self.integrity_control)
+                log_subprocess_execution(file_integrity_logger, logs)
             except Exception as e:
                 file_integrity_logger.error(f"Error calculating local file integrity: {e}")
             finally:

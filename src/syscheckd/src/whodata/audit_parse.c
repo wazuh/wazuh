@@ -958,19 +958,22 @@ void audit_parse(char *buffer) {
             char *syscall = NULL;
             os_malloc(match_size + 1, syscall);
             snprintf(syscall, match_size + 1, "%.*s", match_size, buffer + match[1].rm_so);
-            if (!strcmp(syscall, "2") || !strcmp(syscall, "257") || !strcmp(syscall, "5") || !strcmp(syscall, "295")) {
+            if (!strcmp(syscall, "2") || !strcmp(syscall, "257") || !strcmp(syscall, "5") || 
+                !strcmp(syscall, "295") || !strcmp(syscall, "56")) {
                 // x86_64: 2 open
                 // x86_64: 257 openat
                 // i686: 5 open
                 // i686: 295 openat
+                // aarch64: 56 openat
                 mdebug2(FIM_HEALTHCHECK_CREATE, syscall);
                 atomic_int_set(&audit_health_check_creation, 1);
             } else if (!strcmp(syscall, "87") || !strcmp(syscall, "263") || !strcmp(syscall, "10") ||
-                       !strcmp(syscall, "301")) {
+                       !strcmp(syscall, "301") || !strcmp(syscall, "35")) {
                 // x86_64: 87 unlink
                 // x86_64: 263 unlinkat
                 // i686: 10 unlink
                 // i686: 301 unlinkat
+                // aarch64: 35 unlinkat
                 mdebug2(FIM_HEALTHCHECK_DELETE, syscall);
             } else {
                 mdebug2(FIM_HEALTHCHECK_UNRECOGNIZED_EVENT, syscall);

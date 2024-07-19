@@ -82,6 +82,8 @@ int __wrap_wdb_global_sync_agent_info_set(wdb_t *wdb,cJSON * json_agent);
 
 cJSON* __wrap_wdb_global_get_all_agents(wdb_t *wdb, int last_agent_id, wdbc_result* status);
 
+int __wrap_wdb_global_get_all_agents_context(wdb_t *wdb);
+
 cJSON* __wrap_wdb_global_get_agent_info(wdb_t *wdb, int id);
 
 int __wrap_wdb_global_reset_agents_connection(wdb_t *wdb, const char *sync_status);
@@ -109,5 +111,7 @@ int __wrap_wdb_global_restore_backup(wdb_t** wdb, char* snapshot, bool save_pre_
 int __wrap_wdb_remove_group_db(const char *name, int *sock);
 
 cJSON* __wrap_wdb_global_get_distinct_agent_groups(   __attribute__((unused)) wdb_t *wdb, char *group_hash, wdbc_result* status);
+
+int __wrap_wdb_global_recalculate_all_agent_groups_hash(__attribute__((unused)) wdb_t *wdb);
 
 #endif

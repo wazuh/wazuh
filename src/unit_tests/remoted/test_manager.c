@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/remoted/request_wrappers.h"
 #include "../wrappers/wazuh/remoted/remoted_op_wrappers.h"
 #include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 
 #include "../wazuh_db/wdb.h"
 #include "../remoted/remoted.h"
@@ -30,6 +31,7 @@
 #include "../../remoted/manager.c"
 
 int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock);
+extern OSHash *agent_data_hash;
 
 /* tests */
 
@@ -69,6 +71,40 @@ static void free_group_c_group(void *data) {
         os_free(group);
     }
 }
+
+static int setup_globals(void ** state) {
+    agent_data_hash = __real_OSHash_Create();
+    test_mode = 1;
+
+    return 0;
+}
+
+static int setup_globals_no_test_mode(void ** state) {
+    agent_data_hash = __real_OSHash_Create();
+    test_mode = 0;
+
+    return 0;
+}
+
+static int teardown_globals(void ** state) {
+    __real_OSHash_Clean(agent_data_hash, agent_data_hash_cleaner);
+    test_mode = 0;
+
+    return 0;
+}
+
+static int setup_test_mode(void ** state) {
+    test_mode = 1;
+
+    return 0;
+}
+
+static int teardown_test_mode(void ** state) {
+    test_mode = 0;
+
+    return 0;
+}
+
 
 int __wrap_send_msg(const char *agent_id, const char *msg, ssize_t msg_length) {
     check_expected(agent_id);
@@ -806,9 +842,9 @@ void test_c_group_no_changes_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
@@ -910,9 +946,9 @@ void test_c_group_changes(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test2");
     will_return(__wrap_OS_MD5_File, 0);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)2);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)2);
 
     will_return(__wrap_fwrite, 1);
 
@@ -951,9 +987,9 @@ void test_c_group_changes_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
@@ -1051,9 +1087,9 @@ void test_c_group_fail(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)2);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)2);
 
     will_return(__wrap_fwrite, 1);
 
@@ -1088,9 +1124,9 @@ void test_c_group_fail_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, (FILE *)1);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, (FILE *)1);
 
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
@@ -1444,9 +1480,9 @@ void test_c_group_invalid_share_file(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
@@ -1681,9 +1717,9 @@ void test_c_group_truncate_error_disk(void **state)
     expect_string(__wrap_w_parser_get_group, name, group->name);
     will_return(__wrap_w_parser_get_group, NULL);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg.tmp");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
@@ -2683,9 +2719,9 @@ void test_process_groups_find_group_null(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "etc/shared/test/merged.mg");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
@@ -2795,9 +2831,9 @@ void test_process_groups_find_group_changed(void **state)
     will_return(__wrap_OS_MD5_File, "md5_test");
     will_return(__wrap_OS_MD5_File, -1);
 
-    expect_string(__wrap_fopen, path, "etc/shared/test_default/merged.mg");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
 
@@ -5123,6 +5159,10 @@ void test_save_controlmsg_shutdown(void **state)
     will_return(__wrap_strerror, "fail");
     expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
 
+    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, "001");
+    expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
+
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
     free_keyentry(&key);
@@ -5170,6 +5210,10 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     will_return(__wrap_wdb_update_agent_connection_status, OS_INVALID);
 
     expect_string(__wrap__mwarn, formatted_msg, "Unable to set connection status as disconnected for agent: 001");
+
+    will_return(__wrap_OSHash_Delete_ex, NULL);
+    expect_string(__wrap_OSHash_Delete_ex, key, "001");
+    expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
     save_controlmsg(&key, r_msg, msg_length, wdb_sock);
 
@@ -5300,16 +5344,16 @@ int main(void)
         cmocka_unit_test(test_save_controlmsg_request_error),
         cmocka_unit_test(test_save_controlmsg_request_success),
         cmocka_unit_test(test_save_controlmsg_invalid_msg),
-        cmocka_unit_test(test_save_controlmsg_agent_invalid_version),
-        cmocka_unit_test(test_save_controlmsg_get_agent_version_fail),
-        cmocka_unit_test(test_save_controlmsg_could_not_add_pending_data),
-        cmocka_unit_test(test_save_controlmsg_unable_to_save_last_keepalive),
-        cmocka_unit_test(test_save_controlmsg_update_msg_error_parsing),
-        cmocka_unit_test(test_save_controlmsg_update_msg_unable_to_update_information),
-        cmocka_unit_test(test_save_controlmsg_update_msg_lookfor_agent_group_fail),
-        cmocka_unit_test(test_save_controlmsg_startup),
-        cmocka_unit_test(test_save_controlmsg_shutdown),
-        cmocka_unit_test(test_save_controlmsg_shutdown_wdb_fail),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_agent_invalid_version, setup_globals_no_test_mode, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_get_agent_version_fail, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_could_not_add_pending_data, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_unable_to_save_last_keepalive, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_update_msg_error_parsing, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_update_msg_unable_to_update_information, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_update_msg_lookfor_agent_group_fail, setup_test_mode, teardown_test_mode),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_startup, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown_wdb_fail, setup_globals, teardown_globals),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }

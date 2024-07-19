@@ -1,0 +1,29 @@
+- sections:
+    - section: syscheck
+      elements:
+      - disabled:
+          value: 'no'
+      - frequency:
+            value: 3
+      - directories:
+          value: TEST_DIRECTORIES
+          attributes: ATTRIBUTES
+      - diff:
+          elements:
+            - file_size:
+                elements:
+                  - enabled:
+                      value: FILE_SIZE_ENABLED
+                  - limit:
+                      value: FILE_SIZE_LIMIT
+            - disk_quota:
+                elements:
+                  - enabled:
+                      value: DISK_QUOTA_ENABLED
+                  - limit:
+                      value: DISK_QUOTA_LIMIT
+
+    - section: sca
+      elements:
+        - enabled:
+            value: 'no'

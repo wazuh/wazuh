@@ -18,6 +18,7 @@ variables:
 
   # delays
   reconnect_delay: 30
+  restart_delay: 90
   restart_delay_cluster: 150
   upgrade_delay: 60
   global_db_delay: 30
@@ -70,6 +71,11 @@ variables:
     <label key="installation" hidden="yes">January 1st, 2017</label>
     </labels>
     </agent_config>
+
+  empty_file_xml:
+    <?xml version="1.0" ?>
+    <metadata>
+    </metadata>
 
   wrong_file_xml:
     <agent_confi>
@@ -163,6 +169,109 @@ variables:
         <email_notification>no</email_notification>
         <agents_disconnection_time>20s</agents_disconnection_time>
         <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+        <update_check>no</update_check>
+      </global>
+
+      <logging>
+        <log_format>plain</log_format>
+      </logging>
+
+      <alerts>
+        <log_alert_level>300</log_alert_level>
+        <email_alert_level>12</email_alert_level>
+      </alerts>
+
+      <remote>
+        <connection>secure</connection>
+        <port>1514</port>
+        <protocol>tcp</protocol>
+      </remote>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
+    </ossec_config>
+
+  valid_ossec_conf_with_update_check_enabled:
+    <ossec_config>
+      <global>
+        <jsonout_output>yes</jsonout_output>
+        <alerts_log>yes</alerts_log>
+        <logall>no</logall>
+        <logall_json>no</logall_json>
+        <email_notification>no</email_notification>
+        <agents_disconnection_time>20s</agents_disconnection_time>
+        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+        <update_check>yes</update_check>
+        <cti-url>http://cti:4041</cti-url>
+      </global>
+
+      <logging>
+        <log_format>plain</log_format>
+      </logging>
+
+      <alerts>
+        <log_alert_level>300</log_alert_level>
+        <email_alert_level>12</email_alert_level>
+      </alerts>
+
+      <remote>
+        <connection>secure</connection>
+        <port>1514</port>
+        <protocol>tcp</protocol>
+      </remote>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
+    </ossec_config>
+
+  invalid_ossec_conf:
+    <ossec_config>
+      <global>
+        <jsonout_output>yes</jsonout_output>
+        <alerts_log>yes</alerts_log>
+        <logall>no</logall>
+        <logall_json>no</logall_json>
+      </global>
+
+      <alerts>
+        <log_alert_level>3</log_alert_level>
+        <email_alert_level>12</email_alert_level>
+      </alerts>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
+
+      <remote>
+    </ossec_config>
+
+  invalid_ossec_xml:
+    <ossec_config>
+      <global>
+        <jsonout_output>yes</jsonout_output>
+        <alerts_log>yes</alerts_log>
+        <logall>no</logall>
+        <logall_json>no</logall_json>
+        <email_notification>no</email_notification>
+        <agents_disconnection_time>20s</agents_disconnection_time>
+        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+        <update_checkkk>no</update_checkkk>
       </global>
 
       <logging>
@@ -185,19 +294,42 @@ variables:
       </syscheck>
     </ossec_config>
 
-  invalid_ossec_conf:
+  ossec_conf_with_invalid_cti_url:
     <ossec_config>
       <global>
         <jsonout_output>yes</jsonout_output>
         <alerts_log>yes</alerts_log>
         <logall>no</logall>
         <logall_json>no</logall_json>
+        <email_notification>no</email_notification>
+        <agents_disconnection_time>20s</agents_disconnection_time>
+        <agents_disconnection_alert_time>100s</agents_disconnection_alert_time>
+        <update_check>yes</update_check>
+        <cti-url>http://localhost:4041</cti-url>
       </global>
 
+      <logging>
+        <log_format>plain</log_format>
+      </logging>
+
       <alerts>
-        <log_alert_level>3</log_alert_level>
+        <log_alert_level>300</log_alert_level>
         <email_alert_level>12</email_alert_level>
       </alerts>
 
       <remote>
+        <connection>secure</connection>
+        <port>1514</port>
+        <protocol>tcp</protocol>
+      </remote>
+
+      <syscheck>
+        <disabled>yes</disabled>
+      </syscheck>
+    
+      <vulnerability-detection>
+        <enabled>no</enabled>
+        <index-status>yes</index-status>
+        <feed-update-interval>60m</feed-update-interval>
+      </vulnerability-detection>
     </ossec_config>

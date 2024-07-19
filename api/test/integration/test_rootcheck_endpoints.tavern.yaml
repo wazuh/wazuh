@@ -1,4 +1,29 @@
 ---
+test_name: GET /rootcheck/001/last_scan
+
+stages:
+
+  # GET /rootcheck/001/last_scan
+  - name: Get when the last scan for agent 001 started and ended
+    request:
+      verify: False
+      method: GET
+      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001/last_scan"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - start: !anystr
+              end: !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+
+---
 test_name: GET /rootcheck/001
 
 stages:
@@ -41,7 +66,6 @@ stages:
               log: !anystr
               date_first: !anystr
               date_last: !anystr
-              cis: !anystr
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -88,7 +112,6 @@ stages:
             - status: "{offset_item.status}"
               date_last: "{offset_item.date_last}"
               date_first: "{offset_item.date_first}"
-              cis: "{offset_item.cis}"
               log: "{offset_item.log}"
           failed_items: []
           total_affected_items: !anyint
@@ -450,31 +473,6 @@ stages:
       status_code: 400
       json:
         error: 2007
-
----
-test_name: GET /rootcheck/001/last_scan
-
-stages:
-
-  # GET /rootcheck/001/last_scan
-  - name: Get when the last scan for agent 001 started and ended
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/001/last_scan"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - end: !anything
-              start: !anystr
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
 
 ---
 test_name: PUT /rootcheck

@@ -94,7 +94,7 @@ int wurl_get(const char * url, const char * dest, const char * header, const cha
         char const *cert = find_cert_list();
 
         old_mask = umask(0006);
-        fp = fopen(dest, "wb");
+        fp = wfopen(dest, "wb");
         umask(old_mask);
         if (!fp) {
             mdebug1(FOPEN_ERROR, dest, errno, strerror(errno));

@@ -84,7 +84,7 @@ jobs:
         run: |
           cd src/win32/qa
           Copy-Item *.pmc C:\executables\
-          python -m pytest -vv ./
+          python -m pytest -vv ./test_dll_hijack.py
       - name: Upload .csv files
         if: always()
         uses: actions/upload-artifact@v3

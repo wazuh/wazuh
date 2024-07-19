@@ -32,6 +32,7 @@
 #define WM_MS_GRAPH_DOD_API_LOGIN_FQDN "login.microsoftonline.us"
 #define WM_MS_GRAPH_DOD_API_QUERY_FQDN "dod-graph.microsoft.us"
 
+
 #define WM_MS_GRAPH_API_URL "https://%s/%s/%s/%s?$filter=createdDateTime+gt+%s"
 #define WM_MS_GRAPH_ACCESS_TOKEN_URL "https://%s/%s/oauth2/v2.0/token"
 #define WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD "scope=https://%s/.default&grant_type=client_credentials&client_id=%s&client_secret=%s"
@@ -63,7 +64,7 @@ typedef struct wm_ms_graph {
 	bool run_on_start;
 	char* version;
 	sched_scan_config scan_config;
-	wm_ms_graph_auth auth_config;
+	wm_ms_graph_auth **auth_config;
 	wm_ms_graph_resource* resources;
 	unsigned int num_resources;
 	wm_ms_graph_state_t state;

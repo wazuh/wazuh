@@ -75,7 +75,7 @@ jobs:
         run: |
           cd src
           make deps TARGET=agent -j3
-          /usr/local/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j3
+          /opt/homebrew/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j3
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
         uses: actions/upload-artifact@v3

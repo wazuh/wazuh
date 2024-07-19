@@ -24,7 +24,7 @@ using namespace DbSync;
 void DBSyncPipelineFactoryTest::SetUp()
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
-    m_dbHandle = DBSyncImplementation::instance().initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql);
+    m_dbHandle = DBSyncImplementation::instance().initialize(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql, DbManagement::VOLATILE, {});
 };
 
 void DBSyncPipelineFactoryTest::TearDown()

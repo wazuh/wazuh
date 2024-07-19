@@ -2,17 +2,16 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import argparse
 import os
 import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-import configparser
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 import aws_tools
+import services
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -33,7 +32,9 @@ import aws_utils as utils
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs'),
     (['main', '--subscriber', 'security_lake', '--iam_role_arn', utils.TEST_IAM_ROLE_ARN,
-      '--external_id', utils.TEST_EXTERNAL_ID, '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
+      '--external_id', utils.TEST_EXTERNAL_ID, '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
+    (['main', '--subscriber', 'buckets', '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
+    (['main', '--subscriber', 'security_hub', '--queue', utils.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):
@@ -58,45 +59,36 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.check_bucket.assert_called_once()
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
-        assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
-        assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
+        if args[2] == 'inspector':
+            assert mocked_class.call_count == len(services.inspector.SUPPORTED_REGIONS)
+            assert instance.get_alerts.call_count == len(services.inspector.SUPPORTED_REGIONS)
+        else:
+            assert mocked_class.call_count == len(aws_tools.ALL_REGIONS)
+            assert instance.get_alerts.call_count == len(aws_tools.ALL_REGIONS)
     elif 'subscriber' in args[1]:
         mocked_class.assert_called_once()
         instance.sync_events.assert_called_once()
 
 
-@pytest.mark.parametrize('args', [
-    ['main', '--bucket', 'bucket-name', '--type', 'invalid'],
-    ['main', '--service', 'invalid'],
-    ['main', '--subscriber', 'invalid']
+@pytest.mark.parametrize('args, error_code', [
+    (['main', '--bucket', 'bucket-name', '--type', 'invalid'], utils.INVALID_TYPE_ERROR_CODE),
+    (['main', '--service', 'invalid'], utils.INVALID_TYPE_ERROR_CODE),
+    (['main', '--subscriber', 'invalid'], utils.INVALID_TYPE_ERROR_CODE),
+    (['main', '--service', 'cloudwatchlogs', '--regions', 'in-valid-1'], utils.INVALID_REGION_ERROR_CODE),
+    (['main', '--service', 'inspector', '--regions', 'in-valid-1'], utils.INVALID_REGION_ERROR_CODE),
+    (['main', '--service', 'inspector', '--regions', 'af-south-1'], utils.INVALID_REGION_ERROR_CODE)
 ])
-@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
-def test_main_type_ko(mock_arguments, args: list[str]):
+def test_main_type_ko(args: list[str], error_code: int):
     """Test 'main' function handles exceptions when receiving invalid buckets or services.
 
     Parameters
     ----------
     args : list[str]
         List of arguments that make the `main` function exit.
+    error_code : int
+        Expected error code.
     """
     with patch("sys.argv", args), \
             pytest.raises(SystemExit) as e:
         aws_s3.main(args)
-    assert e.value.code == utils.INVALID_TYPE_ERROR_CODE
-
-
-@patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
-def test_main_invalid_region_ko(mock_arguments):
-    """Test 'main' function handles exceptions when receiving invalid region.
-
-    Parameters
-    ----------
-    args : list[str]
-        List of arguments that make the `main` function exit.
-    """
-    args = ['main', '--service', 'inspector', '--regions', 'in-valid-1']
-
-    with patch("sys.argv", args), \
-            pytest.raises(SystemExit) as e:
-        aws_s3.main(args)
-    assert e.value.code == utils.INVALID_REGION_ERROR_CODE
+    assert e.value.code == error_code

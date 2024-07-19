@@ -7,7 +7,8 @@
         "field": "data.aws.region",
         "value": "{{data.aws.awsRegion}}",
         "override": false,
-        "ignore_failure": true
+        "ignore_failure": true,
+        "ignore_empty_value" : true
       }
     },
     {
@@ -15,7 +16,8 @@
         "field": "data.aws.accountId",
         "value": "{{data.aws.aws_account_id}}",
         "override": false,
-        "ignore_failure": true
+        "ignore_failure": true,
+        "ignore_empty_value" : true
       }
     },
     {
@@ -65,6 +67,15 @@
     },
     {
       "geoip": {
+        "field": "data.aws.httpRequest.clientIp",
+        "target_field": "GeoLocation",
+        "properties": ["city_name", "country_name", "region_name", "location"],
+        "ignore_missing": true,
+        "ignore_failure": true
+      }
+    },
+    {
+      "geoip": {
         "field": "data.gcp.jsonPayload.sourceIP",
         "target_field": "GeoLocation",
         "properties": ["city_name", "country_name", "region_name", "location"],
@@ -98,7 +109,6 @@
         "ignore_failure": false
       }
     },
-
     { "remove": { "field": "message", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "ecs", "ignore_missing": true, "ignore_failure": true } },
     { "remove": { "field": "beat", "ignore_missing": true, "ignore_failure": true } },

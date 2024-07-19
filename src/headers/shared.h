@@ -186,27 +186,15 @@ typedef uint8_t u_int8_t;
 #define WFALLTHROUGH ((void) 0)
 #endif
 
-/* IPv4 structure */
-typedef struct _os_ipv4 {
-    unsigned int ip_address;
-    unsigned int netmask;
-} os_ipv4;
-
-/* IPv6 structure */
-typedef struct _os_ipv6 {
-    uint8_t ip_address[16];
-    uint8_t netmask[16];
-} os_ipv6;
-
-/* IP structure */
-typedef struct _os_ip {
-    char *ip;
-    union {
-        os_ipv4 *ipv4;
-        os_ipv6 *ipv6;
-    };
-    bool is_ipv6;
-} os_ip;
+/* Common structure for socket forwarding in Analysisd and logcollector */
+typedef struct _socket_forwarder {
+    char   *name;
+    char   *location;
+    int    mode;
+    char   *prefix;
+    int    socket;
+    time_t last_attempt;
+} socket_forwarder;
 
 
 extern const char *__local_name;
@@ -271,6 +259,7 @@ extern const char *__local_name;
 #include "store_op.h"
 #include "rc.h"
 #include "ar.h"
+#include "os_ip.h"
 #include "validate_op.h"
 #include "file-queue.h"
 #include "json-queue.h"
@@ -307,9 +296,9 @@ extern const char *__local_name;
 #include "enrollment_op.h"
 #include "buffer_op.h"
 #include "atomic.h"
+#include "binaries_op.h"
 #include "logging_helper.h"
 #include "../shared_modules/rsync/include/rsync.h"
 #include "../shared_modules/dbsync/include/dbsync.h"
-#include "limits_op.h"
 
 #endif /* SHARED_H */

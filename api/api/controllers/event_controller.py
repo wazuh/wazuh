@@ -4,19 +4,20 @@
 
 import logging
 
-from aiohttp import web
+from connexion import request
+from connexion.lifecycle import ConnexionResponse
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.event import send_event_to_analysisd
 
-from api.encoder import dumps, prettify
+from api.controllers.util import json_response, JSON_CONTENT_TYPE
 from api.models.base_model_ import Body
-from api.models.events_ingest_model import EventsIngestModel
+from api.models.event_ingest_model import EventIngestModel
 from api.util import raise_if_exc, remove_nones_to_dict
 
 logger = logging.getLogger('wazuh-api')
 
 
-async def forward_event(request: web.Request, pretty: bool = False, wait_for_complete: bool = False) -> web.Response:
+async def forward_event(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Forward events to analysisd.
 
     Parameters
@@ -30,11 +31,11 @@ async def forward_event(request: web.Request, pretty: bool = False, wait_for_com
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API Response.
     """
-    Body.validate_content_type(request, expected_content_type='application/json')
-    f_kwargs = await EventsIngestModel.get_kwargs(request)
+    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
+    f_kwargs = await EventIngestModel.get_kwargs(request)
 
     dapi = DistributedAPI(f=send_event_to_analysisd,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -42,9 +43,9 @@ async def forward_event(request: web.Request, pretty: bool = False, wait_for_com
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
 
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

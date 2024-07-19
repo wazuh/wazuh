@@ -1,12 +1,12 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 from glob import glob
 from typing import Union
 
 from wazuh.core import common
 from wazuh.core.agent import Agent, get_agents_info, get_rbac_filters, WazuhDBQueryAgents
-from wazuh.core.database import Connection
 from wazuh.core.exception import WazuhInternalError, WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.syscheck import WazuhDBQuerySyscheck, syscheck_delete_agent

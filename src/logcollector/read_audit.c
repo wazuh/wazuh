@@ -59,7 +59,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Obtain context to calculate hash */
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     offset = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, offset);
 
@@ -75,7 +75,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
 
         if (buffer[rbytes - 1] == '\n') {
             if (is_valid_context_file) {
-                OS_SHA1_Stream(&context, NULL, buffer);
+                OS_SHA1_Stream(context, NULL, buffer);
             }
 
             buffer[rbytes - 1] = '\0';
@@ -96,7 +96,7 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
                         break;
                     }
                     if (is_valid_context_file) {
-                        OS_SHA1_Stream(&context, NULL, buffer);
+                        OS_SHA1_Stream(context, NULL, buffer);
                     }
 
                     if (buffer[rbytes - 1] == '\n') {
@@ -151,7 +151,9 @@ void *read_audit(logreader *lf, int *rc, int drop_it) {
     if (icache > 0)
         audit_send_msg(cache, icache, drop_it, lf);
     if (is_valid_context_file) {
-        w_update_file_status(lf->file, offset, &context);
+        w_update_file_status(lf->file, offset, context);
+    } else {
+        EVP_MD_CTX_free(context);
     }
 
     mdebug2("Read %d lines from %s", lines, lf->file);

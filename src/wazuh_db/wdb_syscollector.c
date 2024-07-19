@@ -14,7 +14,7 @@
 
 
 // Function to save Network info into the DB. Return 0 on success or -1 on error.
-int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int64_t mtu, const char * mac, long tx_packets, long rx_packets, int64_t tx_bytes, int64_t rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
         mdebug1("at wdb_netinfo_save(): cannot begin transaction");
@@ -49,7 +49,7 @@ int wdb_netinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
 }
 
 // Insert Network info tuple. Return 0 on success or -1 on error.
-int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int mtu, const char * mac, long tx_packets, long rx_packets, long tx_bytes, long rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
+int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * name, const char * adapter, const char * type, const char * state, int64_t mtu, const char * mac, long tx_packets, long rx_packets, int64_t tx_bytes, int64_t rx_bytes, long tx_errors, long rx_errors, long tx_dropped, long rx_dropped, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == name) {
@@ -73,7 +73,7 @@ int wdb_netinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 6, state, -1, NULL);
 
     if (mtu > 0) {
-        sqlite3_bind_int(stmt, 7, mtu);
+        sqlite3_bind_int64(stmt, 7, mtu);
     } else {
         sqlite3_bind_null(stmt, 7);
     }
@@ -366,9 +366,6 @@ int wdb_hotfix_delete(wdb_t * wdb, const char * scan_id) {
 
 // Function to save OS info into the DB. Return 0 on success or -1 on error.
 int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace) {
-    int triaged = 0;
-    char *reference = NULL;
-    cJSON *j_osinfo = NULL;
     sqlite3_stmt *stmt_del = NULL;
 
     if (!wdb->transaction && wdb_begin2(wdb) < 0){
@@ -376,28 +373,9 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         return -1;
     }
 
-    // Getting old data to preserve triaged value
-    if (j_osinfo = wdb_agents_get_sys_osinfo(wdb), !j_osinfo) {
-        merror("Retrieving old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
-        return -1;
-    }
-    else {
-        cJSON *j_triaged = cJSON_GetObjectItem(j_osinfo->child, "triaged");
-        cJSON *j_reference = cJSON_GetObjectItem(j_osinfo->child, "reference");
-        if (!cJSON_IsNumber(j_triaged) || !cJSON_IsString(j_reference)) {
-            mdebug2("No previous data related to the triaged status and reference of the OS");
-        }
-        else {
-            triaged = j_triaged->valueint;
-            os_strdup(j_reference->valuestring, reference);
-        }
-        cJSON_Delete(j_osinfo);
-    }
-
     /* Delete old OS information before insert the new scan */
     if (wdb_stmt_cache(wdb, WDB_STMT_OSINFO_DEL) < 0) {
         mdebug1("at wdb_osinfo_save(): cannot cache statement (%d)", WDB_STMT_OSINFO_DEL);
-        os_free(reference);
         return -1;
     }
 
@@ -405,7 +383,6 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 
     if (wdb_step(stmt_del) != SQLITE_DONE) {
         merror("Deleting old information from 'sys_osinfo' table: %s", sqlite3_errmsg(wdb->db));
-        os_free(reference);
         return -1;
     }
 
@@ -427,10 +404,6 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
                       os_release ? os_release : "",
                       NULL);
 
-    // If there is a change in the OS, the triaged is set to 0
-    triaged = reference && strcmp(hexdigest, reference) == 0 ? triaged : 0;
-    os_free(reference);
-
     if (wdb_osinfo_insert(wdb,
         scan_id,
         scan_time,
@@ -451,8 +424,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
         os_display_version,
         checksum,
         replace,
-        hexdigest,
-        triaged) < 0) {
+        hexdigest) < 0) {
 
         return -1;
     }
@@ -461,7 +433,7 @@ int wdb_osinfo_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert OS info tuple. Return 0 on success or -1 on error. (v2)
-int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest, int triaged) {
+int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * hostname, const char * architecture, const char * os_name, const char * os_version, const char * os_codename, const char * os_major, const char * os_minor, const char * os_patch, const char * os_build, const char * os_platform, const char * sysname, const char * release, const char * version, const char * os_release, const char * os_display_version, const char * checksum, const bool replace, os_sha1 hexdigest) {
     sqlite3_stmt *stmt = NULL;
 
     if (wdb_stmt_cache(wdb, replace ? WDB_STMT_OSINFO_INSERT2 : WDB_STMT_OSINFO_INSERT) < 0) {
@@ -490,7 +462,6 @@ int wdb_osinfo_insert(wdb_t * wdb, const char * scan_id, const char * scan_time,
     sqlite3_bind_text(stmt, 17, os_display_version, -1, NULL);
     sqlite3_bind_text(stmt, 18, checksum, -1, NULL);
     sqlite3_bind_text(stmt, 19, hexdigest, -1, NULL);
-    sqlite3_bind_int(stmt, 20, triaged);
 
     if (wdb_step(stmt) == SQLITE_DONE){
         return OS_SUCCESS;
@@ -525,7 +496,6 @@ int wdb_package_save(wdb_t * wdb, const char * scan_id, const char * scan_time, 
         source,
         description,
         location,
-        0,
         checksum,
         item_id,
         replace) < 0) {
@@ -551,7 +521,7 @@ int wdb_hotfix_save(wdb_t * wdb, const char * scan_id, const char * scan_time, c
 }
 
 // Insert Package info tuple. Return 0 on success or -1 on error.
-int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char triaged, const char * checksum, const char * item_id, const bool replace) {
+int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time, const char * format, const char * name, const char * priority, const char * section, long size, const char * vendor, const char * install_time, const char * version, const char * architecture, const char * multiarch, const char * source, const char * description, const char * location, const char * checksum, const char * item_id, const bool replace) {
     sqlite3_stmt *stmt = NULL;
 
     if (NULL == name || NULL == version || NULL == architecture) {
@@ -586,9 +556,8 @@ int wdb_package_insert(wdb_t * wdb, const char * scan_id, const char * scan_time
     sqlite3_bind_text(stmt, 13, source, -1, NULL);
     sqlite3_bind_text(stmt, 14, description, -1, NULL);
     sqlite3_bind_text(stmt, 15, NULL != location ? location : "", -1, NULL); // Avoid bind NULL for agents older than 4.5.2
-    sqlite3_bind_int(stmt, 16, triaged);
-    sqlite3_bind_text(stmt, 17, checksum, -1, NULL);
-    sqlite3_bind_text(stmt, 18, item_id, -1, NULL);
+    sqlite3_bind_text(stmt, 16, checksum, -1, NULL);
+    sqlite3_bind_text(stmt, 17, item_id, -1, NULL);
 
     switch (wdb_step(stmt)) {
         case SQLITE_DONE:
@@ -656,12 +625,11 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
     while (result = wdb_step(stmt_get), result == SQLITE_ROW) {
         const char *cpe = (const char *) sqlite3_column_text(stmt_get, 0);
         const char *msu_name = (const char *) sqlite3_column_text(stmt_get, 1);
-        const int triaged = sqlite3_column_int(stmt_get, 2);
-        const char *format = (const char *) sqlite3_column_text(stmt_get, 3);
-        const char *name = (const char *) sqlite3_column_text(stmt_get, 4);
-        const char *vendor = (const char *) sqlite3_column_text(stmt_get, 5);
-        const char *version = (const char *) sqlite3_column_text(stmt_get, 6);
-        const char *arch = (const char *) sqlite3_column_text(stmt_get, 7);
+        const char *format = (const char *) sqlite3_column_text(stmt_get, 2);
+        const char *name = (const char *) sqlite3_column_text(stmt_get, 3);
+        const char *vendor = (const char *) sqlite3_column_text(stmt_get, 4);
+        const char *version = (const char *) sqlite3_column_text(stmt_get, 5);
+        const char *arch = (const char *) sqlite3_column_text(stmt_get, 6);
 
         sqlite3_stmt *stmt_update = NULL;
         if (wdb_stmt_cache(wdb, WDB_STMT_PROGRAM_UPD) < 0) {
@@ -672,13 +640,12 @@ int wdb_package_update(wdb_t * wdb, const char * scan_id) {
         stmt_update = wdb->stmt[WDB_STMT_PROGRAM_UPD];
         sqlite3_bind_text(stmt_update, 1, cpe, -1, NULL);
         sqlite3_bind_text(stmt_update, 2, msu_name, -1, NULL);
-        sqlite3_bind_int(stmt_update, 3, triaged);
-        sqlite3_bind_text(stmt_update, 4, scan_id, -1, NULL);
-        sqlite3_bind_text(stmt_update, 5, format, -1, NULL);
-        sqlite3_bind_text(stmt_update, 6, name, -1, NULL);
-        sqlite3_bind_text(stmt_update, 7, vendor, -1, NULL);
-        sqlite3_bind_text(stmt_update, 8, version, -1, NULL);
-        sqlite3_bind_text(stmt_update, 9, arch, -1, NULL);
+        sqlite3_bind_text(stmt_update, 3, scan_id, -1, NULL);
+        sqlite3_bind_text(stmt_update, 4, format, -1, NULL);
+        sqlite3_bind_text(stmt_update, 5, name, -1, NULL);
+        sqlite3_bind_text(stmt_update, 6, vendor, -1, NULL);
+        sqlite3_bind_text(stmt_update, 7, version, -1, NULL);
+        sqlite3_bind_text(stmt_update, 8, arch, -1, NULL);
 
         if (wdb_step(stmt_update) != SQLITE_DONE) {
             goto error;
@@ -1253,12 +1220,12 @@ int wdb_syscollector_netinfo_save2(wdb_t * wdb, const cJSON * attributes)
     const char * adapter = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "adapter"));
     const char * type = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "type"));
     const char * state = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "state"));
-    const int mtu = cJSON_GetObjectItem(attributes, "mtu") ? cJSON_GetObjectItem(attributes, "mtu")->valueint : 0;
+    const int64_t mtu = cJSON_GetObjectItem(attributes, "mtu") ? cJSON_GetObjectItem(attributes, "mtu")->valuedouble : 0;
     const char * mac = cJSON_GetStringValue(cJSON_GetObjectItem(attributes, "mac"));
     const long tx_packets = cJSON_GetObjectItem(attributes, "tx_packets") ? cJSON_GetObjectItem(attributes, "tx_packets")->valueint : 0;
     const long rx_packets = cJSON_GetObjectItem(attributes, "rx_packets") ? cJSON_GetObjectItem(attributes, "rx_packets")->valueint : 0;
-    const long tx_bytes = cJSON_GetObjectItem(attributes, "tx_bytes") ? cJSON_GetObjectItem(attributes, "tx_bytes")->valueint : 0;
-    const long rx_bytes = cJSON_GetObjectItem(attributes, "rx_bytes") ? cJSON_GetObjectItem(attributes, "rx_bytes")->valueint : 0;
+    const int64_t tx_bytes = cJSON_GetObjectItem(attributes, "tx_bytes") ? cJSON_GetObjectItem(attributes, "tx_bytes")->valuedouble : 0;
+    const int64_t rx_bytes = cJSON_GetObjectItem(attributes, "rx_bytes") ? cJSON_GetObjectItem(attributes, "rx_bytes")->valuedouble : 0;
     const long tx_errors = cJSON_GetObjectItem(attributes, "tx_errors") ? cJSON_GetObjectItem(attributes, "tx_errors")->valueint : 0;
     const long rx_errors = cJSON_GetObjectItem(attributes, "rx_errors") ? cJSON_GetObjectItem(attributes, "rx_errors")->valueint : 0;
     const long tx_dropped = cJSON_GetObjectItem(attributes, "tx_dropped") ? cJSON_GetObjectItem(attributes, "tx_dropped")->valueint : 0;

@@ -1,0 +1,9 @@
+- name: SCA enabled
+  description: Set enabled to yes value
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 100
+    POLICY_FILE: cis_centos8_osregex.yaml
+  metadata:
+    enabled: true
+    policy_file: cis_centos8_osregex.yaml

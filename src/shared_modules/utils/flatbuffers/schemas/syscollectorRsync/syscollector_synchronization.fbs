@@ -1,0 +1,220 @@
+namespace SyscollectorSynchronization;
+
+table AgentInfo {
+    agent_id:string;
+    agent_ip:string;
+    agent_name:string;
+    agent_version:string;
+}
+
+table syscollector_hotfixes {
+    checksum:string;
+    hotfix:string;
+    scan_time:string;
+}
+
+table syscollector_hwinfo {
+    board_serial:string;
+    checksum:string;
+    cpu_cores:int;
+    cpu_mhz:double;
+    cpu_name:string;
+    ram_free:int;
+    ram_total:int;
+    ram_usage:int;
+    scan_time:string;
+}
+
+table syscollector_network_address {
+    address:string;
+    broadcast:string;
+    checksum:string;
+    iface:string;
+    item_id:string;
+    netmask:string;
+    proto:int;
+    scan_time:string;
+}
+
+table syscollector_network_iface {
+    adapter:string;
+    checksum:string;
+    item_id:string;
+    mac:string;
+    mtu:long;
+    name:string;
+    rx_bytes:long;
+    rx_dropped:long;
+    rx_errors:long;
+    rx_packets:long;
+    scan_time:string;
+    state:string;
+    tx_bytes:long;
+    tx_dropped:long;
+    tx_errors:long;
+    tx_packets:long;
+    type:string;
+}
+
+table syscollector_network_protocol {
+    checksum:string;
+    dhcp:string;
+    gateway:string;
+    iface:string;
+    item_id:string;
+    metric:string;
+    scan_time:string;
+    type:string;
+}
+
+table syscollector_osinfo {
+    architecture:string;
+    checksum:string;
+    hostname:string;
+    os_build:string;
+    os_codename:string;
+    os_display_version:string;
+    os_major:string;
+    os_minor:string;
+    os_name:string;
+    os_patch:string;
+    os_platform:string;
+    os_release:string;
+    os_version:string;
+    release:string;
+    scan_time:string;
+    sysname:string;
+    version:string;
+}
+
+table syscollector_packages {
+    architecture:string;
+    checksum:string;
+    description:string;
+    format:string;
+    groups:string;
+    install_time:string;
+    item_id:string;
+    location:string;
+    multiarch:string;
+    name:string;
+    priority:string;
+    scan_time:string;
+    size:int;
+    source:string;
+    vendor:string;
+    version:string;
+}
+
+table syscollector_ports {
+    checksum:string;
+    inode:long;
+    item_id:string;
+    local_ip:string;
+    local_port:long;
+    pid:long;
+    process:string;
+    protocol:string;
+    remote_ip:string;
+    remote_port:long;
+    rx_queue:long;
+    scan_time:string;
+    state:string;
+    tx_queue:long;
+}
+
+table syscollector_processes {
+    argvs:string;
+    checksum:string;
+    cmd:string;
+    egroup:string;
+    euser:string;
+    fgroup:string;
+    name:string;
+    nice:long;
+    nlwp:long;
+    pgrp:long;
+    pid:string;
+    ppid:long;
+    priority:long;
+    processor:long;
+    resident:long;
+    rgroup:string;
+    ruser:string;
+    scan_time:string;
+    session:long;
+    sgroup:string;
+    share:long;
+    size:long;
+    start_time:long;
+    state:string;
+    stime:long;
+    suser:string;
+    tgid:long;
+    tty:long;
+    utime:long;
+    vm_size:long;
+}
+
+union AttributesUnion {
+    syscollector_hotfixes,
+    syscollector_hwinfo,
+    syscollector_network_address,
+    syscollector_network_iface,
+    syscollector_network_protocol,
+    syscollector_osinfo,
+    syscollector_packages,
+    syscollector_ports,
+    syscollector_processes
+}
+
+table state {
+  attributes: AttributesUnion;
+  index: string;
+  timestamp: string;
+}
+
+table integrity_check_global {
+  attributes_type:string;
+  id: int;
+  begin: string;
+  end: string;
+  checksum: string;
+}
+
+table integrity_check_right {
+  attributes_type:string;
+  id: int;
+  begin: string;
+  end: string;
+  checksum: string;
+}
+
+table integrity_check_left {
+  attributes_type:string;
+  id: int;
+  begin: string;
+  end: string;
+  tail: string;
+  checksum: string;
+}
+
+table integrity_clear {
+  attributes_type:string;
+  id: int;
+}
+
+union DataUnion {
+    state,
+    integrity_check_global,
+    integrity_check_left,
+    integrity_check_right,
+    integrity_clear
+}
+
+table SyncMsg {
+    agent_info: AgentInfo;
+    data: DataUnion;
+}
+
+root_type SyncMsg;

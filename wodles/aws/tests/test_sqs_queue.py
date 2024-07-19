@@ -45,7 +45,6 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
                                         bucket_handler=mock_bucket_log_handler_init,
                                         **kwargs)
     mock_wazuh_integration.assert_called_with(integration,
-                                              access_key=None, secret_key=None,
                                               iam_role_arn=kwargs["iam_role_arn"],
                                               profile=None,
                                               external_id=kwargs["external_id"],
@@ -58,7 +57,7 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
     assert integration.iam_role_arn == kwargs['iam_role_arn']
     mock_get_sqs_url.assert_called_once()
     mock_bucket_log_handler_init.assert_called_once()
-    mock_sts_client.assert_called_with(None, None, None)
+    mock_sts_client.assert_called_with(None)
     mock_client.get_caller_identity.assert_called_once()
 
 

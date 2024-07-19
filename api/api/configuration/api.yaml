@@ -11,7 +11,7 @@
 #  cert: "server.crt"
 #  use_ca: False
 #  ca: "ca.crt"
-#  ssl_protocol: "TLSv1.2"
+#  ssl_protocol: "auto"
 #  ssl_ciphers: ""
 
 # Modify API's intervals (time in seconds)
@@ -29,18 +29,13 @@
 #    enabled: False
 #    size: "1M"
 
-# Cross-origin resource sharing: https://github.com/aio-libs/aiohttp-cors#usage
+# Cross-origin resource sharing: https://www.starlette.io/middleware/#corsmiddleware
 # cors:
 #  enabled: no
 #  source_route: "*"
 #  expose_headers: "*"
 #  allow_headers: "*"
 #  allow_credentials: no
-
-# Cache (time in seconds)
-# cache:
-#  enabled: yes
-#  time: 0.750
 
 # Access parameters
 # access:
@@ -72,3 +67,10 @@
 #   agents:
 #     allow_higher_versions:
 #       allow: yes
+#   indexer:
+#     allow: yes
+#   integrations:
+#     virustotal:
+#       public_key:
+#         allow: yes
+#         minimum_quota: 240

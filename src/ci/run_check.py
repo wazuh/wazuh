@@ -674,8 +674,9 @@ def runValgrind(moduleName):
         if entry.is_file() and bool(re.match(reg, entry.name)):
             tests.append(entry.name)
     valgrindCommand = "valgrind --leak-check=full --show-leak-kinds=all \
-                       -q --error-exitcode=1 {}".format(currentDir)
-
+                       -q --error-exitcode=1 {}".format("./")
+    oldPath = os.getcwd()
+    os.chdir(currentDir)
     for test in tests:
         out = subprocess.run(os.path.join(valgrindCommand, test),
                              stdout=subprocess.PIPE,
@@ -690,5 +691,6 @@ def runValgrind(moduleName):
             utils.printFail(msg="[{} : FAILED]".format(test))
             errorString = "Error Running valgrind: {}".format(out.returncode)
             raise ValueError(errorString)
+    os.chdir(oldPath)
     utils.printGreen(msg="[Memory leak check: PASSED]",
                      module=moduleName)

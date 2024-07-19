@@ -14,6 +14,8 @@
 #ifndef WM_TASK_MANAGER_H
 #define WM_TASK_MANAGER_H
 
+#include "../wm_task_general.h"
+
 #define WM_TASK_MANAGER_LOGTAG ARGV0 ":" TASK_MANAGER_WM_NAME
 
 #define WM_TASK_MAX_IN_PROGRESS_TIME 900 // 15 minutes

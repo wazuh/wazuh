@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -59,7 +59,7 @@ from wazuh_testing.utils import configuration, callbacks
 
 from . import TEST_CASES_PATH
 
-pytestmark = [pytest.mark.linux, pytest.mark.tier(level=0), pytest.mark.server]
+pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
 # Configuration and cases data.
 test_cases_path = Path(TEST_CASES_PATH, 'cases_event_messages.yaml')
@@ -82,7 +82,7 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Test function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_event_messages(test_metadata, configure_local_internal_options, configure_sockets_environment,
+def test_event_messages(test_metadata, configure_local_internal_options, configure_sockets_environment_module,
                        connect_to_sockets_module, wait_for_analysisd_startup):
     '''
     description: Check if when the 'wazuh-analysisd' daemon socket receives a message with
@@ -102,7 +102,7 @@ def test_event_messages(test_metadata, configure_local_internal_options, configu
         - configure_local_internal_options:
             type: fixture
             brief: Configure the Wazuh local internal options.
-        - configure_sockets_environment:
+        - configure_sockets_environment_module:
             type: fixture
             brief: Configure environment for sockets and MITM.
         - connect_to_sockets_module:

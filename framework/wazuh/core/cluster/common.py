@@ -1,5 +1,6 @@
+# Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
 import base64
@@ -25,8 +26,9 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
-from wazuh.core.common import DECIMALS_DATE_FORMAT
-from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.wdb import AsyncWazuhDBConnection
+
+IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
 
 class Response:
     """
@@ -128,8 +130,8 @@ class SendStringTask:
     """
     Create an asyncio task that can be identified by a task_id specified in advance.
     """
-    # Due to a CPython bug in the Streams library, tasks must be hard-referenced so that they are not deleted
-    # by the garbage collector (https://github.com/python/cpython/issues/90467). It should be fixed in Python 3.10.8.
+    # Due to a CPython bug in the asyncio library, tasks must be hard-referenced so that they are not deleted
+    # by the garbage collector (https://github.com/python/cpython/issues/91887).
     tasks_hard_reference = set()
 
     def __init__(self, wazuh_common, logger):
@@ -570,8 +572,7 @@ class Handler(asyncio.Protocol):
 
         return data
 
-    async def update_chunks_wdb(self, data: dict, info_type: str, logger: logging.Logger, error_command: bytes,
-                                timeout: int) -> dict:
+    async def update_chunks_wdb(self, data: dict, info_type: str, logger: logging.Logger, error_command: bytes) -> dict:
         """Send the received data to WDB and returns the result of the operation.
 
         Parameters
@@ -584,8 +585,6 @@ class Handler(asyncio.Protocol):
             Logger to use.
         error_command : bytes
             Command sent to the sender node in case of error.
-        timeout : int
-            Seconds to wait before stopping the task.
 
         Returns
         -------
@@ -593,26 +592,17 @@ class Handler(asyncio.Protocol):
             Dict containing number of updated chunks, error messages (if any) and time spent.
         """
         try:
-            result = await cluster.run_in_pool(self.loop, self.server.task_pool, send_data_to_wdb, data,
-                                               timeout, info_type=info_type)
+            result = await send_data_to_wdb(logger, data, info_type)
         except Exception as e:
-            print(f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
+            logger.error(f'error processing {info_type} chunks: {str(e)}'.encode())
             with contextlib.suppress(Exception):
                 await self.send_request(command=error_command,
-                                        data=f'error processing {info_type} chunks in process pool: {str(e)}'.encode())
+                                        data=f'error processing {info_type} chunks: {str(e)}'.encode())
             raise exception.WazuhClusterError(3037, extra_message=str(e))
 
         # Log information about the results
-        for error in result['error_messages']['others']:
-            logger.error(error)
-
-        for error in result['error_messages']['chunks']:
-            logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
-            logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
-
         logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
                      f'in {result["time_spent"]:.3f}s.')
-        result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
 
         return result
 
@@ -747,12 +737,15 @@ class Handler(asyncio.Protocol):
         try:
             await self.get_manager().local_server.clients[client].send_request(b'ok', self.in_str[string_id].payload)
         except Exception as e:
-            self.logger.error(f"Error sending sendsync response to local client: {e}")
             if isinstance(e, exception.WazuhException):
-                exc = json.dumps(e, cls=WazuhJSONEncoder)
+                if e.code == 3020:
+                    return
+                else:
+                    exc = json.dumps(e, cls=WazuhJSONEncoder)
             else:
                 exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
             with contextlib.suppress(Exception):
+                self.logger.error(f"Error sending sendsync response to local client: {e}")
                 await self.send_request(b'sendsync_err', exc.encode())
         finally:
             # Remove the string after using it
@@ -1196,6 +1189,22 @@ class WazuhCommon:
         """Class constructor."""
         self.sync_tasks = {}
 
+    @staticmethod
+    async def recalculate_group_hash(logger) -> None:
+        """Recalculate agent-group hash in the DB.
+
+        Parameters
+        ----------
+        logger : Logger object
+            Logger to use during the recalculation process.
+        """
+        try:
+            # Recalculate group hashes before retrieving agent groups info
+            logger.debug('Recalculating agent-group hash.')
+            await AsyncWazuhDBConnection().run_wdb_command(command='global recalculate-agent-group-hashes')
+        except (exception.WazuhInternalError, exception.WazuhError) as e:
+            logger.warning(f'Error {e.code} executing recalculate agent-group hash command: {e.message}')
+
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
         """Get a logger object.
 
@@ -1434,8 +1443,10 @@ class SyncFiles(SyncTask):
 
         self.logger.debug(f"Compressing {'files and ' if files else ''}"
                           f"'files_metadata.json' of {metadata_len} files.")
-        compressed_data = await cluster.run_in_pool(self.server.loop, task_pool, cluster.compress_files,
-                                                    self.server.name, files, files_metadata, zip_limit)
+        compressed_data, logs = await cluster.run_in_pool(self.server.loop, task_pool, cluster.compress_files,
+                                                          self.server.name, files, files_metadata, zip_limit)
+
+        cluster_utils.log_subprocess_execution(self.logger, logs)
 
         try:
             # Start the synchronization process with peer node and get a taskID.
@@ -1483,8 +1494,12 @@ class SyncFiles(SyncTask):
                     self.logger.debug(f"Increasing sync size limit to {self.server.current_zip_limit / (1024**2):.2f}"
                                       f" MB.")
 
-            # Remove local file.
-            os.unlink(compressed_data)
+            try:
+                # Remove local file.
+                os.unlink(compressed_data)
+            except FileNotFoundError:
+                self.logger.error(f"File {compressed_data} could not be removed/not found. "
+                                  f"May be due to a lost connection.")
 
 
 class SyncWazuhdb(SyncTask):
@@ -1660,15 +1675,15 @@ def error_receiving_agent_information(logger, response, info_type):
     return b'ok', b'Thanks'
 
 
-def send_data_to_wdb(data, timeout, info_type='agent-info'):
+async def send_data_to_wdb(logger: logging.Logger, data: dict, info_type: str = 'agent-info') -> dict[str, Any]:
     """Send chunks of data to Wazuh-db socket.
 
     Parameters
     ----------
+    logger : Logger object
+        Logger to use.
     data : dict
         Dict containing command and list of chunks to be sent to wazuh-db.
-    timeout : int
-        Seconds to wait before stopping the task.
     info_type : str
         Information type handled.
 
@@ -1677,36 +1692,35 @@ def send_data_to_wdb(data, timeout, info_type='agent-info'):
     result : dict
         Dict containing number of updated chunks, error messages (if any) and time spent.
     """
-    result = {'updated_chunks': 0, 'error_messages': {'chunks': [], 'others': []}, 'time_spent': 0}
-    wdb_conn = WazuhDBConnection()
+    result = {'updated_chunks': 0, 'error_messages': [], 'time_spent': 0}
+    wdb_conn = AsyncWazuhDBConnection()
     before = time.perf_counter()
 
     try:
-        with utils.Timeout(timeout):
-            for i, chunk in enumerate(data['chunks']):
-                try:
-                    if info_type == 'agent-info':
-                        wdb_conn.send(f"{data['set_data_command']} {chunk}", raw=True)
-                    elif info_type == 'agent-groups':
-                        data['payload']['data'] = json.loads(chunk)[0]['data']
-                        wdb_conn.send(
-                            f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}",
-                            raw=True
-                        )
-                    result['updated_chunks'] += 1
-                except TimeoutError as e:
-                    raise e
-                except Exception as e:
-                    result['error_messages']['chunks'].append((i, str(e)))
-    except TimeoutError:
-        result['error_messages']['others'].append(f'Timeout while processing {info_type} chunks.')
+        for i, chunk in enumerate(data['chunks']):
+            try:
+                if info_type == 'agent-info':
+                    await wdb_conn.run_wdb_command(f"{data['set_data_command']} {chunk}")
+                elif info_type == 'agent-groups':
+                    data['payload']['data'] = json.loads(chunk)[0]['data']
+                    await wdb_conn.run_wdb_command(
+                        f"{data['set_data_command']} {json.dumps(data['payload'], separators=(',', ':'))}"
+                    )
+                result['updated_chunks'] += 1
+            except Exception as e:
+                error = str(e)
+                if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
+                    continue
+
+                result['error_messages'].append(error)
+                logger.debug2(f'Chunk {i + 1}/{len(data["chunks"])}: {data["chunks"][i]}')
+                logger.error(f'Wazuh-db response for chunk {i + 1}/{len(data["chunks"])} was not "ok": {error}')
     except Exception as e:
-        result['error_messages']['others'].append(f'Error while processing {info_type} chunks: {e}')
+        logger.error(f'Error while processing {info_type} chunks: {str(e)}')
 
     result['time_spent'] = time.perf_counter() - before
     wdb_conn.close()
     return result
-
 
 def asyncio_exception_handler(loop, context: Dict):
     """Exception handler used in the protocol.

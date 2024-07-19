@@ -228,6 +228,9 @@ static int poll_interval_time = 0;
 /* This variable is used to prevent flooding when group files exceed the maximum size */
 static int reported_path_size_exceeded = 0;
 
+/* Hash table for agent data */
+OSHash *agent_data_hash;
+
 // Frees data in m_hash table
 void cleaner(void* data) {
     os_free(data);
@@ -302,6 +305,8 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             if (agent_info = cJSON_Parse(strchr(r_msg, '{')), agent_info) {
                 cJSON *version = NULL;
                 if (version = cJSON_GetObjectItem(agent_info, "version"), cJSON_IsString(version)) {
+                    // Update agent data to keep context of events to forward
+                    OSHash_Set_ex(agent_data_hash, key->id, cJSON_Duplicate(agent_info, true));
                     if (!logr.allow_higher_versions &&
                         compare_wazuh_versions(__ossec_version, version->valuestring, false) < 0) {
 
@@ -327,6 +332,7 @@ void save_controlmsg(const keyentry * key, char *r_msg, size_t msg_length, int *
             mdebug1("Agent %s sent HC_SHUTDOWN from '%s'", key->name, aux_ip);
             is_shutdown = 1;
             rem_inc_recv_ctrl_shutdown(key->id);
+            cJSON_Delete(OSHash_Delete_ex(agent_data_hash, key->id));
         }
     } else {
         /* Clean msg and shared files (remove random string) */
@@ -685,7 +691,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
     if ((!r_group || !r_group->merged_is_downloaded) && (!is_multigroup || create_merged)) {
         if (create_merged) {
             if (disk_storage) {
-                if (finalfp = fopen(merged_tmp, "w"), finalfp == NULL) {
+                if (finalfp = wfopen(merged_tmp, "w"), finalfp == NULL) {
                     merror("Unable to create merged file: '%s' due to [(%d)-(%s)].", merged_tmp, errno, strerror(errno));
                     return;
                 }
@@ -743,7 +749,7 @@ STATIC void c_group(const char *group, OSHash **_f_time, os_md5 *_merged_sum, ch
                 if (disk_storage) {
                     OS_MoveFile(merged_tmp, merged);
                 } else {
-                    if (finalfp = fopen(merged, "w"), finalfp == NULL) {
+                    if (finalfp = wfopen(merged, "w"), finalfp == NULL) {
                         merror("Unable to open file: '%s' due to [(%d)-(%s)].", merged, errno, strerror(errno));
                         os_free(finalbuf);
                         return;
@@ -1587,7 +1593,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
         snprintf(file, OS_SIZE_1024, "%s/%s/%s", sharedcfg_dir, group, name);
     }
 
-    fp = fopen(file, "r");
+    fp = wfopen(file, "r");
     if (!fp) {
         mdebug1(FOPEN_ERROR, file, errno, strerror(errno));
         return OS_INVALID;
@@ -1610,6 +1616,7 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     key_unlock();
     if (protocol < 0) {
         merror(AR_NOAGENT_ERROR, agent_id);
+        fclose(fp);
         return OS_INVALID;
     }
 
@@ -1762,6 +1769,8 @@ void manager_init()
     groups = OSHash_Create();
     multi_groups = OSHash_Create();
 
+    agent_data_hash = OSHash_Create();
+
     disk_storage = getDefine_Int("remoted", "disk_storage", 0, 1);
 
     /* Run initial groups and multigroups scan */
@@ -1779,6 +1788,16 @@ void manager_init()
     OSHash_SetFreeDataPointer(pending_data, (void (*)(void *))free_pending_data);
 }
 
+/**
+ * @brief Custom deleter to clean the entries of the hash table without compilation warnings.
+ *
+ * @param data The cJSON pointer to remove.
+ */
+void agent_data_hash_cleaner(void *data) {
+    cJSON_Delete((cJSON*)data);
+}
+
 void manager_free() {
     linked_queue_free(pending_queue);
+    OSHash_Clean(agent_data_hash, agent_data_hash_cleaner);
 }

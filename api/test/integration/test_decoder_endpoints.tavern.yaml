@@ -315,6 +315,33 @@ stages:
           failed_items: []
           total_affected_items: 0
           total_failed_items: !anyint
+  
+  - name: Get decoders using a nested query
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        q: status=enabled;(name=agent-buffer,name=wazuh)
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: !anything
+          failed_items: []
+          total_affected_items: 2
+          total_failed_items: !anyint
+
+  - name: Try to get decoders using an invalid query
+    request:
+      verify: False
+      <<: *get_decoders
+      params:
+        q: status
+    response:
+      status_code: 400
+      json:
+        error: 1407
 
   - name: Get distinct decoders
     request:
@@ -1247,6 +1274,29 @@ stages:
                 code: 1113
               id:
                 - "etc/decoders/invalid_decoder.xml"
+          total_affected_items: 0
+          total_failed_items: 1
+        error: 1
+
+  - name: Upload empty xml decoder
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/decoders/files/empty_file.xml"
+      method: PUT
+      data: "{empty_file_xml:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items: [ ]
+          failed_items:
+            - error:
+                code: 1113
+              id:
+                - "etc/decoders/empty_file.xml"
           total_affected_items: 0
           total_failed_items: 1
         error: 1

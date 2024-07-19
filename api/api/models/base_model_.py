@@ -1,3 +1,7 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import pprint
 import typing
 from json import JSONDecodeError
@@ -199,10 +203,12 @@ class Body(Model):
         except JSONDecodeError:
             raise_if_exc(WazuhError(1018))
 
-        invalid = get_invalid_keys(dikt, f_kwargs)
+        if dikt:
+            invalid = get_invalid_keys(dikt, f_kwargs)
 
-        if invalid:
-            raise ProblemException(status=400, title='Bad Request', detail='Invalid field found {}'.format(invalid))
+            if invalid:
+                raise ProblemException(status=400, title='Bad Request', 
+                                       detail=f'Invalid field found {invalid}')
 
         if additional_kwargs is not None:
             f_kwargs.update(additional_kwargs)
@@ -232,5 +238,5 @@ class Body(Model):
 
     @classmethod
     def validate_content_type(cls, request, expected_content_type):
-        if request.content_type != expected_content_type:
+        if request.mimetype != expected_content_type:
             raise_if_exc(WazuhNotAcceptable(6002))

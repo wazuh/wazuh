@@ -1,0 +1,20 @@
+- name: test agent version
+  description: test agent version
+  configuration_parameters:
+    PROTOCOL: 'TCP'
+  metadata:
+    protocol: 'TCP'
+
+- name: test agent version
+  description: test agent version
+  configuration_parameters:
+    PROTOCOL: 'UDP'
+  metadata:
+    protocol: 'UDP'
+
+- name: test agent version
+  description: test agent version
+  configuration_parameters:
+    PROTOCOL: 'TCP,UDP'
+  metadata:
+    protocol: 'TCP'

@@ -14,9 +14,13 @@
  */
 
 #include "cJSON.h"
+#include "debug_op.h"
 #include "os_err.h"
 #include "wdb.h"
 #include "os_crypto/sha1/sha1_op.h"
+#include "pthreads_op.h"
+#include "utils/flatbuffers/include/syscollector_deltas_schema.h"
+#include "router.h"
 #include <openssl/evp.h>
 #include <stdarg.h>
 
@@ -52,6 +56,63 @@ extern void mock_assert(const int result, const char* const expression,
     mock_assert((int)(expression), #expression, __FILE__, __LINE__);
 #endif
 
+void wdbi_report_removed(const char* agent_id, wdb_component_t component, sqlite3_stmt* stmt) {
+    if (!router_agent_events_handle) {
+        mdebug2("Router handle not available.");
+        return;
+    }
+
+    cJSON* j_msg_to_send = NULL;
+    cJSON* j_agent_info = NULL;
+    cJSON* j_data = NULL;
+    char* msg_to_send = NULL;
+    char* type = NULL;
+    int result = SQLITE_ERROR;
+
+    do{
+        j_msg_to_send = cJSON_CreateObject();
+        j_agent_info = cJSON_CreateObject();
+        j_data = cJSON_CreateObject();
+
+        cJSON_AddStringToObject(j_agent_info, "agent_id", agent_id);
+        cJSON_AddItemToObject(j_msg_to_send, "agent_info", j_agent_info);
+
+        switch (component)
+        {
+            case WDB_SYSCOLLECTOR_HOTFIXES:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deleteHotfix");
+                cJSON_AddItemToObject(j_data, "hotfix", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                break;
+            case WDB_SYSCOLLECTOR_PACKAGES:
+                cJSON_AddStringToObject(j_msg_to_send, "action", "deletePackage");
+                cJSON_AddItemToObject(j_data, "name", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 0)));
+                cJSON_AddItemToObject(j_data, "version", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 1)));
+                cJSON_AddItemToObject(j_data, "architecture", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 2)));
+                cJSON_AddItemToObject(j_data, "format", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 3)));
+                cJSON_AddItemToObject(j_data, "location", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 4)));
+                cJSON_AddItemToObject(j_data, "item_id", cJSON_CreateString((const char*) sqlite3_column_text(stmt, 5)));
+                break;
+            default:
+                break;
+        }
+
+        cJSON_AddItemToObject(j_msg_to_send, "data", j_data);
+
+        msg_to_send = cJSON_PrintUnformatted(j_msg_to_send);
+
+        if (msg_to_send) {
+            router_provider_send(router_agent_events_handle, msg_to_send, strlen(msg_to_send));
+        } else {
+            mdebug2("Unable to dump delete message to publish. Agent %s", agent_id);
+        }
+
+        cJSON_Delete(j_msg_to_send);
+        cJSON_free(msg_to_send);
+
+        result = wdb_step(stmt);
+    } while(result == SQLITE_ROW);
+}
+
 void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_value) {
     assert(wdb != NULL);
 
@@ -74,6 +135,10 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, INDEXES[component]) == OS_INVALID) {
         mdebug1("Cannot cache statement");
         return;
@@ -86,9 +151,12 @@ void wdbi_remove_by_pk(wdb_t *wdb, wdb_component_t component, const char *pk_val
         return;
     }
 
-    if (wdb_step(stmt) != SQLITE_DONE) {
+    int result = wdb_step(stmt);
+
+    if (result == SQLITE_ROW) {
+        wdbi_report_removed(wdb->id, component, stmt);
+    } else if (result != SQLITE_DONE) {
         mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
-        return;
     }
 }
 
@@ -182,6 +250,10 @@ int wdbi_checksum(wdb_t * wdb, wdb_component_t component, os_sha1 hexdigest) {
 
     assert(component < sizeof(INDEXES) / sizeof(int));
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
         mdebug1("Cannot cache statement");
         return -1;
@@ -224,6 +296,10 @@ int wdbi_checksum_range(wdb_t * wdb, wdb_component_t component, const char * beg
                             [WDB_SYSCOLLECTOR_OSINFO] = WDB_STMT_SYSCOLLECTOR_OSINFO_SELECT_CHECKSUM_RANGE };
 
     assert(component < sizeof(INDEXES) / sizeof(int));
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
         mdebug1("Cannot cache statement");
@@ -297,6 +373,10 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 
     int index = tail ? INDEXES_RANGE[component] : INDEXES_AROUND[component];
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, index) == -1) {
         return -1;
     }
@@ -311,7 +391,11 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
         sqlite3_bind_text(stmt, 2, end, -1, NULL);
     }
 
-    if (wdb_step(stmt) != SQLITE_DONE) {
+    int result = wdb_step(stmt);
+
+    if (result == SQLITE_ROW) {
+        wdbi_report_removed(wdb->id, component, stmt);
+    } else if (result != SQLITE_DONE) {
         mdebug1("DB(%s) SQLite: %s", wdb->id, sqlite3_errmsg(wdb->db));
         return -1;
     }
@@ -321,6 +405,10 @@ int wdbi_delete(wdb_t * wdb, wdb_component_t component, const char * begin, cons
 
 void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum, bool legacy) {
     assert(wdb != NULL);
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, legacy ? WDB_STMT_SYNC_UPDATE_ATTEMPT_LEGACY : WDB_STMT_SYNC_UPDATE_ATTEMPT) == -1) {
         return;
@@ -340,6 +428,10 @@ void wdbi_update_attempt(wdb_t * wdb, wdb_component_t component, long timestamp,
 
 void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timestamp, os_sha1 last_agent_checksum, os_sha1 manager_checksum) {
     assert(wdb != NULL);
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_UPDATE_COMPLETION) == -1) {
         return;
@@ -369,6 +461,10 @@ void wdbi_update_completion(wdb_t * wdb, wdb_component_t component, long timesta
  */
 void wdbi_set_last_completion(wdb_t * wdb, wdb_component_t component, long timestamp) {
     assert(wdb != NULL);
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_SET_COMPLETION) == -1) {
         return;
@@ -463,7 +559,6 @@ integrity_sync_status_t wdbi_query_checksum(wdb_t * wdb, wdb_component_t compone
         default:
             break;
         }
-
     }
     else if (INTEGRITY_CHECK_LEFT == action) {
         item = cJSON_GetObjectItem(data, "tail");
@@ -511,6 +606,10 @@ int wdbi_query_clear(wdb_t * wdb, wdb_component_t component, const char * payloa
 
     long timestamp = item->valuedouble;
 
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
+
     if (wdb_stmt_cache(wdb, INDEXES[component]) == -1) {
         goto end;
     }
@@ -532,6 +631,10 @@ end:
 
 int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha1 manager_checksum) {
     int result = OS_INVALID;
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
         mdebug1("Cannot cache statement");
@@ -557,85 +660,6 @@ int wdbi_get_last_manager_checksum(wdb_t *wdb, wdb_component_t component, os_sha
     return result;
 }
 
-// Calculates SHA1 hash from a NULL terminated string array
-int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest) {
-    size_t it = 0;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-    int ret_val = OS_SUCCESS;
-
-    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
-    if (!ctx) {
-        mdebug2("Failed during hash context creation");
-        return OS_INVALID;
-    }
-
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
-        mdebug2("Failed during hash context initialization");
-        EVP_MD_CTX_destroy(ctx);
-        return OS_INVALID;
-    }
-
-    if (strings_to_hash) {
-        while(strings_to_hash[it]) {
-            if (1 != EVP_DigestUpdate(ctx, strings_to_hash[it], strlen(strings_to_hash[it])) ) {
-                mdebug2("Failed during hash context update");
-                ret_val = OS_INVALID;
-                break;
-            }
-            it++;
-        }
-    }
-
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-    if (ret_val != OS_INVALID) {
-        OS_SHA1_Hexdigest(digest, hexdigest);
-    }
-
-    return ret_val;
-}
-
- // Calculates SHA1 hash from a set of strings as parameters, with NULL as end
- int wdbi_strings_hash(os_sha1 hexdigest, ...) {
-    char* parameter = NULL;
-    unsigned char digest[EVP_MAX_MD_SIZE];
-    unsigned int digest_size;
-    int ret_val = OS_SUCCESS;
-    va_list parameters;
-
-    EVP_MD_CTX * ctx = EVP_MD_CTX_create();
-    if (!ctx) {
-        mdebug2("Failed during hash context creation");
-        return OS_INVALID;
-    }
-
-    if (1 != EVP_DigestInit(ctx, EVP_sha1()) ) {
-        mdebug2("Failed during hash context initialization");
-        EVP_MD_CTX_destroy(ctx);
-        return OS_INVALID;
-    }
-
-    va_start(parameters, hexdigest);
-
-    while(parameter = va_arg(parameters, char*), parameter) {
-        if (1 != EVP_DigestUpdate(ctx, parameter, strlen(parameter)) ) {
-            mdebug2("Failed during hash context update");
-            ret_val = OS_INVALID;
-            break;
-        }
-    }
-    va_end(parameters);
-
-    EVP_DigestFinal_ex(ctx, digest, &digest_size);
-    EVP_MD_CTX_destroy(ctx);
-    if (ret_val != OS_INVALID) {
-        OS_SHA1_Hexdigest(digest, hexdigest);
-    }
-
-    return ret_val;
- }
-
 /**
  * @brief Returns the syncronization status of a component from sync_info table.
  *
@@ -646,6 +670,10 @@ int wdbi_array_hash(const char ** strings_to_hash, os_sha1 hexdigest) {
 int wdbi_check_sync_status(wdb_t *wdb, wdb_component_t component) {
     cJSON* j_sync_info = NULL;
     int result = 0;
+
+    if (wdb_begin2(wdb) == -1) {
+        mdebug1("Cannot begin transaction");
+    }
 
     if (wdb_stmt_cache(wdb, WDB_STMT_SYNC_GET_INFO) == -1) {
         mdebug1("Cannot cache statement");

@@ -1,3 +1,8 @@
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
+
 import glob
 import json
 import re
@@ -46,6 +51,12 @@ def calculate_test_mappings():
 
     return test_mapping
 
+def extract_module_from_path(file_path):
+    """Extracts the module from the file path."""
+    parts = file_path.split('/')
+    # Assuming the module is the last part of the path
+    wazuh_modules = parts[-1]
+    return wazuh_modules
 
 def get_file_and_test_info(test_name, test_mapping, module_name):
     try:
@@ -56,10 +67,14 @@ def get_file_and_test_info(test_name, test_mapping, module_name):
 
     if test_tag == 'test':
         # Integration tests themselves must be added. Unit tests must not
-        related_tests = [] if not test_name.endswith('.yaml') else [test_name]
+        related_tests = [test_name] if test_name.endswith('.yaml') else []
     elif path.basename(module_name) == 'rbac':
         # Every file within the RBAC directory must be tagged as RBAC
         related_tests = test_mapping['rbac']
+    elif test_tag in ['black', 'white']:
+        # If the tag contains 'black' or 'white', filter RBAC tests with the same tag
+        module_name = extract_module_from_path(mappings['path'])
+        related_tests = [test for test in test_mapping['rbac'] if test_tag in test and module_name in test]
     elif test_mapping[test_tag]:
         # If a tag matches, both their normal and RBAC tests will be assigned
         related_tests = test_mapping[test_tag] + [test for test in test_mapping['rbac'] if test_tag in test] \
@@ -121,3 +136,4 @@ if __name__ == '__main__':
     else:
         print('Invalid number of arguments.\n\t- No arguments: generate test mapping file.\n\t- One argument: '
               'Show assigned integration tests to that file.')
+        

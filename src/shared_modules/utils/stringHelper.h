@@ -12,16 +12,22 @@
 #ifndef _STRING_HELPER_H
 #define _STRING_HELPER_H
 
-#include <vector>
-#include <string>
-#include <sstream>
-#include <iomanip>
 #include <algorithm>
+#include <iomanip>
 #include <memory>
 #include <regex>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
+
+// Time values for conversion
+#define W_WEEK_SECONDS   604800
+#define W_DAY_SECONDS    86400
+#define W_HOUR_SECONDS   3600
+#define W_MINUTE_SECONDS 60
 
 namespace Utils
 {
@@ -30,13 +36,13 @@ namespace Utils
         // Convert from ISO-8859-1 to UTF-8
         std::string strOut;
         // 0xc0 is 11000000 in binary, used to mask the first 2 bits of the character of a 2-byte sequence
-        constexpr auto UTF8_2BYTE_SEQ{ 0xc0 };
+        constexpr auto UTF8_2BYTE_SEQ {0xc0};
         // 6 is the number of bits to shift the character to the right
-        constexpr auto UTF8_2BYTE_SEQ_VALUE_LEN{ 6 };
+        constexpr auto UTF8_2BYTE_SEQ_VALUE_LEN {6};
         // 0x80 is 10000000 in binary, is the first code point of a 2-byte sequence
-        constexpr auto UTF8_2BYTE_FIRST_CODE_VALUE{ 0x80 };
+        constexpr auto UTF8_2BYTE_FIRST_CODE_VALUE {0x80};
         // 0x3f is 00111111 in binary, used to mask the last 6 bits of the character of a 2-byte sequence
-        constexpr auto UTF8_2BYTE_MASK{ 0x3f };
+        constexpr auto UTF8_2BYTE_MASK {0x3f};
 
         for (auto it = data.begin(); it != data.end(); ++it)
         {
@@ -61,12 +67,10 @@ namespace Utils
         data = strOut;
     }
 
-    static bool replaceAll(std::string& data,
-                           const std::string& toSearch,
-                           const std::string& toReplace)
+    static bool replaceAll(std::string& data, const std::string& toSearch, const std::string& toReplace)
     {
-        auto pos { data.find(toSearch) };
-        const auto ret{ std::string::npos != pos };
+        auto pos {data.find(toSearch)};
+        const auto ret {std::string::npos != pos};
 
         while (std::string::npos != pos)
         {
@@ -77,12 +81,10 @@ namespace Utils
         return ret;
     }
 
-    static bool replaceFirst(std::string& data,
-                             const std::string& toSearch,
-                             const std::string& toReplace)
+    static bool replaceFirst(std::string& data, const std::string& toSearch, const std::string& toReplace)
     {
-        auto pos { data.find(toSearch) };
-        auto ret { false };
+        auto pos {data.find(toSearch)};
+        auto ret {false};
 
         if (std::string::npos != pos)
         {
@@ -95,11 +97,15 @@ namespace Utils
 
     static std::string leftTrim(const std::string& str, const std::string& args = " ")
     {
-        const auto pos{ str.find_first_not_of(args) };
+        const auto pos {str.find_first_not_of(args)};
 
         if (pos != std::string::npos)
         {
             return str.substr(pos);
+        }
+        else
+        {
+            return "";
         }
 
         return str;
@@ -107,11 +113,15 @@ namespace Utils
 
     static std::string rightTrim(const std::string& str, const std::string& args = " ")
     {
-        const auto pos{ str.find_last_not_of(args) };
+        const auto pos {str.find_last_not_of(args)};
 
         if (pos != std::string::npos)
         {
             return str.substr(0, pos + 1);
+        }
+        else
+        {
+            return "";
         }
 
         return str;
@@ -122,12 +132,11 @@ namespace Utils
         return leftTrim(rightTrim(str, args), args);
     }
 
-    static std::vector<std::string> split(const std::string& str,
-                                          const char delimiter)
+    static std::vector<std::string> split(const std::string& str, const char delimiter)
     {
         std::vector<std::string> tokens;
         std::string token;
-        std::istringstream tokenStream{ str };
+        std::istringstream tokenStream {str};
 
         while (std::getline(tokenStream, token, delimiter))
         {
@@ -137,12 +146,10 @@ namespace Utils
         return tokens;
     }
 
-    static std::string splitIndex(const std::string& str,
-                                  const char delimiter,
-                                  const size_t index)
+    static std::string splitIndex(const std::string& str, const char delimiter, const size_t index)
     {
         std::string retVal;
-        const auto& splitResult { split(str, delimiter) };
+        const auto& splitResult {split(str, delimiter)};
 
         if (index < splitResult.size())
         {
@@ -176,14 +183,13 @@ namespace Utils
         return ret;
     }
 
-    static void splitMapKeyValue(const std::string& str,
-                                 const char delimiter,
-                                 std::map<std::string, std::string>& mapResult)
+    static void
+    splitMapKeyValue(const std::string& str, const char delimiter, std::map<std::string, std::string>& mapResult)
     {
         constexpr auto NEWLINE_DELIMITER {'\n'};
         std::string line;
         std::vector<std::string> lineKeyValue;
-        std::istringstream strStream{ str };
+        std::istringstream strStream {str};
 
         mapResult.clear();
 
@@ -196,7 +202,8 @@ namespace Utils
                 continue;
             }
 
-            mapResult.insert(std::pair<std::string, std::string>(trim(line.substr(0, delimiterPos), " \"\t"), trim(line.substr(delimiterPos + 1), " \"\t")));
+            mapResult.insert(std::pair<std::string, std::string>(trim(line.substr(0, delimiterPos), " \"\t"),
+                                                                 trim(line.substr(delimiterPos + 1), " \"\t")));
         }
     }
 
@@ -217,9 +224,9 @@ namespace Utils
         // LCOV_EXCL_START
         else
         {
-            const auto size{asciiData.size() * 2};
-            const auto buffer{std::make_unique<char[]>(size + 1)};
-            char* output{buffer.get()};
+            const auto size {asciiData.size() * 2};
+            const auto buffer {std::make_unique<char[]>(size + 1)};
+            char* output {buffer.get()};
 
             for (const auto& value : asciiData)
             {
@@ -227,7 +234,7 @@ namespace Utils
                 output += 2;
             }
 
-            ret = std::string{buffer.get(), size};
+            ret = std::string {buffer.get(), size};
         }
 
         // LCOV_EXCL_STOP
@@ -236,14 +243,38 @@ namespace Utils
 
     static std::string toUpperCase(const std::string& str)
     {
-        std::string temp{ str };
+        std::string temp {str};
         std::transform(std::begin(temp),
                        std::end(temp),
                        std::begin(temp),
-                       [](std::string::value_type character)
+                       [](std::string::value_type character) { return std::toupper(character); });
+        return temp;
+    }
+
+    static std::string toLowerCase(const std::string& str)
+    {
+        std::string temp {str};
+        std::transform(std::begin(temp),
+                       std::end(temp),
+                       std::begin(temp),
+                       [](std::string::value_type character) { return std::tolower(character); });
+        return temp;
+    }
+
+    static bool haveUpperCaseCharacters(const std::string& str)
+    {
+        return std::any_of(
+            std::begin(str), std::end(str), [](std::string::value_type character) { return std::isupper(character); });
+    }
+
+    static std::string toSentenceCase(const std::string& str)
+    {
+        std::string temp;
+        if (!str.empty())
         {
-            return std::toupper(character);
-        });
+            temp = toLowerCase(str);
+            *temp.begin() = static_cast<char>(std::toupper(*str.begin()));
+        }
         return temp;
     }
 
@@ -261,8 +292,8 @@ namespace Utils
     {
         if (!str.empty() && str.length() >= ending.length())
         {
-            const auto endLength{ ending.length()};
-            const auto token{ str.substr(str.length() - endLength, endLength) };
+            const auto endLength {ending.length()};
+            const auto token {str.substr(str.length() - endLength, endLength)};
             return token == ending;
         }
 
@@ -271,7 +302,7 @@ namespace Utils
 
     static std::string substrOnFirstOccurrence(const std::string& str, const std::string& args = " ")
     {
-        const auto pos{ str.find(args) };
+        const auto pos {str.find(args)};
 
         if (pos != std::string::npos)
         {
@@ -281,14 +312,13 @@ namespace Utils
         return str;
     }
 
-    static std::pair<std::string, std::string> splitKeyValueNonEscapedDelimiter(const std::string& str,
-                                                                                const char delimiter,
-                                                                                const char escapeChar)
+    static std::pair<std::string, std::string>
+    splitKeyValueNonEscapedDelimiter(const std::string& str, const char delimiter, const char escapeChar)
     {
-        std::pair<std::string, std::string> retVal { std::make_pair(str, "") };
-        const auto findText { std::string{escapeChar} + std::string{delimiter} };
-        auto found { str.find_first_of(findText) };
-        constexpr auto DELIMITER_ESCAPE_LENGTH { 2 };
+        std::pair<std::string, std::string> retVal {std::make_pair(str, "")};
+        const auto findText {std::string {escapeChar} + std::string {delimiter}};
+        auto found {str.find_first_of(findText)};
+        constexpr auto DELIMITER_ESCAPE_LENGTH {2};
 
         while (std::string::npos != found)
         {
@@ -310,7 +340,7 @@ namespace Utils
                                   const size_t matchIndex = 0,
                                   const std::string& start = "")
     {
-        bool ret{false};
+        bool ret {false};
 
         if (start.empty() || startsWith(in, start))
         {
@@ -326,6 +356,25 @@ namespace Utils
         return ret;
     }
 
+    /**
+     * @brief Checks that the string is alphanumeric and contains all of the special characters passed as argument.
+     *
+     * @param str Original string.
+     * @param specialCharacters Special characters string.
+     * @return true
+     * @return false
+     */
+    static bool isAlphaNumericWithSpecialCharacters(const std::string& str, const std::string& specialCharacters)
+    {
+        return str.compare("") != 0 ? std::all_of(std::begin(str),
+                                                  std::end(str),
+                                                  [&specialCharacters](const auto& character) {
+                                                      return std::isalnum(character) ||
+                                                             specialCharacters.find(character) != std::string::npos;
+                                                  })
+                                    : false;
+    }
+
     static bool isNumber(const std::string& str)
     {
         std::string::const_iterator it = str.begin();
@@ -334,7 +383,80 @@ namespace Utils
 
         return !str.empty() && it == str.end();
     }
-}
+
+    static bool parseStrToBool(const std::string& str)
+    {
+        if (str.compare("yes") == 0)
+        {
+            return true;
+        }
+        else if (str.compare("no") == 0)
+        {
+            return false;
+        }
+        else
+        {
+            throw std::runtime_error("Invalid input.");
+        }
+    }
+
+    static long parseStrToTime(const std::string& str)
+    {
+        std::size_t pos;
+        try
+        {
+            auto seconds {std::stol(str, &pos)};
+
+            if (seconds < 0)
+            {
+                return -1;
+            }
+
+            if (isNumber(str))
+            {
+                return seconds;
+            }
+
+            switch (str.at(pos))
+            {
+                case '\0': break;
+                case 'w': seconds *= W_WEEK_SECONDS; break;
+                case 'd': seconds *= W_DAY_SECONDS; break;
+                case 'h': seconds *= W_HOUR_SECONDS; break;
+                case 'm': seconds *= W_MINUTE_SECONDS; break;
+                case 's': break;
+                default: return -1;
+            }
+
+            return seconds;
+        }
+        catch (const std::invalid_argument& e)
+        {
+            return -1;
+        }
+    }
+    /**
+     * @brief Add size padding to a string.
+     *
+     * @param str Original string.
+     * @param padCharacter Character to use for padding.
+     * @param minSize Minimum size of the string.
+     * @return std::string Padded string.
+     */
+    static std::string padString(const std::string& str, const char padCharacter, const int64_t minSize)
+    {
+        std::string out;
+        const auto strLength = minSize - static_cast<int64_t>(str.length());
+
+        for (auto i = 0ll; i < strLength; ++i)
+        {
+            out += padCharacter;
+        }
+        out += str;
+        return out;
+    }
+
+} // namespace Utils
 
 #pragma GCC diagnostic pop
 

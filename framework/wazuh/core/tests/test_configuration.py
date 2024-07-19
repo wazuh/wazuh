@@ -42,7 +42,6 @@ def mock_wazuh_path():
     ({}, None, 'new', 1),
     ({}, None, 'new', False),
     ({'old': [None]}, 'ruleset', 'include', [1]),
-    ({'old': [None]}, 'vulnerability-detector', 'provider', [1])
 ])
 def test_insert(json_dst, section_name, option, value):
     """Checks insert function."""
@@ -90,16 +89,72 @@ def test_read_option():
         assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detector.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
-            {'enabled': 'no', 'interval': '5m',
-             'provider': {'enabled': 'no', 'name': 'canonical', 'os': ['trusty', 'xenial', 'bionic', 'focal', 'jammy'],
-                          'update_interval': '1h'}})
+            {'enabled': 'no', 'feed-update-interval': '60m', 'index-status': 'yes'}
+        )
         for section in data:
-            assert configuration._read_option('vulnerability-detector', section) == (section.tag,
+            assert configuration._read_option('vulnerability-detection', section) == (section.tag,
                                                                                      EXPECTED_VALUES[section.tag])
 
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/indexer.conf')) as f:
+        data = fromstring(f.read())
+        EXPECTED_VALUES = MappingProxyType(
+            {
+                'enabled': 'yes',
+                'hosts': ['http://127.0.0.1:9200', 'http://127.0.0.2:9200'],
+                'username': 'admin',
+                'password': 'admin',
+            }
+        )
+        for section in data:
+            assert configuration._read_option('indexer', section) == (section.tag,
+                                                                    EXPECTED_VALUES[section.tag])
+
+
+@pytest.mark.parametrize("configuration_file, expected_values", [
+    ('journald.conf', MappingProxyType({
+            "location": "journald",
+            "log_format": "journald",
+            "filter": [{
+                "field": "MESSAGE_ID",
+                "item": "^8d45620c1a4348dbb17410da57c60c66$"
+            }],
+            "only-future-events": "no"
+        })
+     ),
+    ('journald1.conf', MappingProxyType({
+            "location": "journald",
+            "log_format": "journald",
+            "filter": [
+                {
+                    "field": "_SYSTEMD_UNIT",
+                    "item": "^cron.service$"
+                },
+                {
+
+                    "field": "PRIORITY",
+                    "ignore_if_missing": "yes",
+                    "item": "[0-3]"
+                }
+            ]
+        })
+     )
+])
+def test_read_option_journald(configuration_file, expected_values):
+    with open(os.path.join(parent_directory, tmp_path, f'configuration/default/{configuration_file}')) as f:
+        data = fromstring(f.read())
+        list_of_filters = []
+
+        for section in data:
+            if section.tag == 'filter':
+                list_of_filters.append(configuration._read_option('localfile', section)[1])
+            else:
+                assert configuration._read_option('localfile', section) == (section.tag,
+                                                                            expected_values[section.tag])
+
+        assert list_of_filters == expected_values["filter"]
 
 def test_agentconf2json():
     xml_conf = configuration.load_wazuh_xml(
@@ -136,6 +191,21 @@ def test_rootkit_trojans2json():
 
     assert configuration._rootkit_trojans2json(filepath=os.path.join(
         parent_directory, tmp_path, 'configuration/trojan.txt'))[0]['filename'] == 'trojan'
+
+
+def test_merged_mg2json():
+    """Checks that _merged_mg2json parses the file content correctly."""
+    with patch('builtins.open', return_value=Exception):
+        with pytest.raises(WazuhError, match=".* 1101 .*"):
+            configuration._merged_mg2json(file_path=os.path.join(
+                parent_directory, tmp_path, 'configuration/default/merged.mg'))
+
+    item = configuration._merged_mg2json(file_path=os.path.join(
+        parent_directory, tmp_path, 'configuration/default/merged.mg'))[0]
+
+    assert item['file_name'] == 'ar.conf'
+    assert item['file_size'] == 77
+    assert item['file_content'] == 'restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n'
 
 
 def test_get_ossec_conf():
@@ -232,36 +302,33 @@ def test_get_file_conf():
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'noexists')):
         with pytest.raises(WazuhError, match=".* 1710 .*"):
             configuration.get_file_conf(filename='ossec.conf', group_id='default', type_conf='conf',
-                                        return_format='xml')
+                                        raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1006 .*"):
             configuration.get_file_conf(filename='noexists.conf', group_id='default', type_conf='conf',
-                                        return_format='xml')
+                                        raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='conf',
-                                                      return_format='xml'), str)
-        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='rcl',
-                                                      return_format='xml'), dict)
+        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='conf'),
+                          dict)
+        assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='rcl'),
+                          dict)
         assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default',
-                                                      return_format='xml'), str)
+                                                      raw=True), str)
         rootkit_files = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'link': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_files.txt', group_id='default',
-                                           return_format='xml') == rootkit_files
+        assert configuration.get_file_conf(filename='rootkit_files.txt', group_id='default') == rootkit_files
         rootkit_trojans = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'description': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',
-                                           return_format='xml') == rootkit_trojans
+        assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',) == rootkit_trojans
         ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0',
                    'restart-wazuh0 - restart-ossec.sh - 0', 'restart-wazuh0 - restart-ossec.cmd - 0',
                    'restart-wazuh0 - restart-wazuh - 0', 'restart-wazuh0 - restart-wazuh.exe - 0']
-        assert configuration.get_file_conf(filename='ar.conf', group_id='default', return_format='xml') == ar_list
+        assert configuration.get_file_conf(filename='ar.conf', group_id='default') == ar_list
         rcl = {'vars': {}, 'controls': [{}, {'name': 'NEW_ELEMENT', 'cis': [], 'pci': [], 'condition': 'FOR',
                                              'reference': 'TESTING', 'checks': []}]}
-        assert configuration.get_file_conf(filename='rcl.conf', group_id='default', return_format='xml') == rcl
+        assert configuration.get_file_conf(filename='rcl.conf', group_id='default') == rcl
         with pytest.raises(WazuhError, match=".* 1104 .*"):
-            configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='noconf',
-                                        return_format='xml')
+            configuration.get_file_conf(filename='agent.conf', group_id='default', type_conf='noconf')
 
 
 def test_parse_internal_options():
@@ -483,3 +550,75 @@ def test_write_ossec_conf_exceptions():
     with patch('wazuh.core.configuration.open', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1126 .*"):
             configuration.write_ossec_conf(new_conf="placeholder")
+
+
+@pytest.mark.parametrize(
+    'update_check_config,expected',
+    (
+        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'yes'}}, True],
+        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}}, False],
+        [{configuration.GLOBAL_KEY: {}}, True],
+        [{}, True],
+        [{'ossec_config': {}}, True]
+    )
+)
+@patch('wazuh.core.configuration.get_ossec_conf')
+def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expected):
+    """
+    Test that update_check_is_enabled function returns the expected value,
+    based on the value of UPDATE_CHECK_OSSEC_FIELD.
+    """
+    get_ossec_conf_mock.return_value = update_check_config
+
+    assert configuration.update_check_is_enabled() == expected
+
+
+@pytest.mark.parametrize("error_id, value", [
+    (1101, None),
+    (1102, None),
+    (1103, None),
+    (1106, True)
+])
+def test_update_check_is_enabled_exceptions(error_id, value):
+    """Test update_check_is_enabled exception handling."""
+    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
+        if value is not None:
+            assert configuration.update_check_is_enabled() == value
+        else:
+            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
+                configuration.update_check_is_enabled()
+
+
+@pytest.mark.parametrize(
+    'config, expected',
+    (
+        [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: configuration.DEFAULT_CTI_URL}},
+         configuration.DEFAULT_CTI_URL],
+        [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: 'https://test-cti.com'}}, 'https://test-cti.com'],
+        [{configuration.GLOBAL_KEY: {}}, configuration.DEFAULT_CTI_URL],
+        [{}, configuration.DEFAULT_CTI_URL],
+        [{'ossec_config': {}}, configuration.DEFAULT_CTI_URL]
+    )
+)
+@patch('wazuh.core.configuration.get_ossec_conf')
+def test_get_cti_url(get_ossec_conf_mock, config, expected):
+    """Check that get_cti_url function returns the expected value, based on the CTI_URL_FIELD."""
+    get_ossec_conf_mock.return_value = config
+
+    assert configuration.get_cti_url() == expected
+
+
+@pytest.mark.parametrize("error_id, value", [
+    (1101, None),
+    (1102, None),
+    (1103, None),
+    (1106, configuration.DEFAULT_CTI_URL)
+])
+def test_get_cti_url_exceptions(error_id, value):
+    """Test get_cti_url exception handling."""
+    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
+        if value is not None:
+            assert configuration.get_cti_url() == value
+        else:
+            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
+                configuration.get_cti_url()

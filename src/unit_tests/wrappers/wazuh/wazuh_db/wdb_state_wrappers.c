@@ -30,6 +30,10 @@ void __wrap_w_inc_global() {
     function_called();
 }
 
+void __wrap_w_inc_global_open_time(){
+    function_called();
+}
+
 void __wrap_w_inc_global_sql(){
     function_called();
 }
@@ -229,6 +233,14 @@ void __wrap_w_inc_global_agent_get_distinct_groups() {
 }
 
 void __wrap_w_inc_global_agent_get_distinct_groups_time(__attribute__((unused))struct timeval diff) {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_recalculate_agent_group_hashes() {
+    function_called();
+}
+
+void __wrap_w_inc_global_agent_recalculate_agent_group_hashes_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
 

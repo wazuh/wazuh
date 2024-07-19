@@ -555,30 +555,41 @@ int restore_audit_policies() {
         merror(FIM_ERROR_WHODATA_RESTORE_POLICIES);
         return 1;
     }
+
     // Get the current policies
     char *cmd_output = NULL;
-    const int wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, 5, NULL);
+    int wm_exec_ret_code, i = 0;
+    int retries = 5;
+    int timeout = 5;
+    BOOL cmd_failed;
+    do {
+        cmd_failed = 0;
+        wm_exec_ret_code = wm_exec(command, &cmd_output, &result_code, timeout+i, NULL);
+        if (wm_exec_ret_code < 0) {
+            merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
+            cmd_failed = 1;
+        } else if (wm_exec_ret_code == 1) {
+            merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
+            os_free(cmd_output);
+            cmd_failed = 1;
+        } else if (!wm_exec_ret_code && result_code) {
+            char error_msg[OS_MAXSTR];
+            snprintf(error_msg, OS_MAXSTR, FIM_ERROR_WHODATA_AUDITPOL, "command returned failure'. Output: '%s");
+            merror(error_msg, cmd_output);
+            os_free(cmd_output);
+            cmd_failed = 1;
+        }
+        if (cmd_failed) {
+            merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
+        }
+        i++;
+    } while (i <= retries && cmd_failed);
+    
+    if (i == retries + 1) {
+       merror(FIM_AUDITPOL_FINAL_FAIL, i);
+    } 
 
-    if (wm_exec_ret_code < 0) {
-        merror(FIM_ERROR_WHODATA_AUDITPOL, "failed to execute command");
-        return 1;
-    }
-
-    if (wm_exec_ret_code == 1) {
-        merror(FIM_ERROR_WHODATA_AUDITPOL, "time overtaken while running the command");
-        os_free(cmd_output);
-        return 1;
-    }
-
-    if (!wm_exec_ret_code && result_code) {
-        char error_msg[OS_MAXSTR];
-        snprintf(error_msg, OS_MAXSTR, FIM_ERROR_WHODATA_AUDITPOL, "command returned failure'. Output: '%s");
-        merror(error_msg, cmd_output);
-        os_free(cmd_output);
-        return 1;
-    }
-
-    return 0;
+    return cmd_failed;
 }
 
 PEVT_VARIANT whodata_event_render(EVT_HANDLE event) {
@@ -1006,7 +1017,6 @@ int policy_check() {
     BOOL open_policy = FALSE;
     NTSTATUS Status;
     DWORD err_code;
-    LPSTR err_msg = NULL;
 
     ZeroMemory(&ObjectAttributes, sizeof(ObjectAttributes));
     Status = LsaOpenPolicy(NULL, &ObjectAttributes, POLICY_VIEW_AUDIT_INFORMATION, &PolicyHandle);
@@ -1089,7 +1099,8 @@ int policy_check() {
 
 error:
     err_code = GetLastError();
-
+    char err_msg[OS_SIZE_1024];
+    memset(err_msg, 0, OS_SIZE_1024);
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_MAX_WIDTH_MASK,
                   NULL, err_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR) &err_msg, OS_SIZE_1024, NULL);
     mwarn(FIM_WHODATA_ERROR_CHECKING_POL, err_msg, err_code);
@@ -1262,18 +1273,30 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_BACKUP_COMMAND, WPOL_BACKUP_FILE);
 
     // Get the current policies
-    int wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
-    if (wm_exec_ret_code || result_code) {
-        retval = 2;
+    int wm_exec_ret_code, i = 0;
+    int retries = 5;
+    int timeout = 5;
+    do {
+        wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
+        if (wm_exec_ret_code || result_code) {
+            retval = 2;
+            merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
+        } else {
+            retval = 1;
+        }
+        i++;
+    } while (i <= retries && (wm_exec_ret_code || result_code));
+
+    if (retval == 2) {
         merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }
 
-    if (f_backup = fopen (WPOL_BACKUP_FILE, "r"), !f_backup) {
+    if (f_backup = wfopen(WPOL_BACKUP_FILE, "r"), !f_backup) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_OPEN, WPOL_BACKUP_FILE, strerror(errno), errno);
         goto end;
     }
-    if (f_new = fopen (WPOL_NEW_FILE, "w"), !f_new) {
+    if (f_new = wfopen(WPOL_NEW_FILE, "w"), !f_new) {
         merror(FIM_ERROR_WPOL_BACKUP_FILE_OPEN, WPOL_NEW_FILE, strerror(errno), errno);
         goto end;
     }
@@ -1292,9 +1315,19 @@ int set_policies() {
     snprintf(command, OS_SIZE_1024, WPOL_RESTORE_COMMAND, WPOL_NEW_FILE);
 
     // Set the new policies
-    wm_exec_ret_code = wm_exec(command, NULL, &result_code, 5, NULL);
-    if (wm_exec_ret_code || result_code) {
-        retval = 2;
+    i = 0;
+    do { 
+        wm_exec_ret_code = wm_exec(command, NULL, &result_code, timeout+i, NULL);
+        if (wm_exec_ret_code || result_code) {
+            retval = 2;
+            merror(FIM_AUDITPOL_ATTEMPT_FAIL, i+1);
+        } else {
+            retval = 1;
+        }
+        i++;
+    } while (i <= retries && (wm_exec_ret_code || result_code));
+
+    if (retval == 2) {
         merror(FIM_WARN_WHODATA_AUTOCONF);
         goto end;
     }

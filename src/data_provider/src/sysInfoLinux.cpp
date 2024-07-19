@@ -518,10 +518,10 @@ nlohmann::json SysInfo::getPorts() const
     for (const auto& portType : PORTS_TYPE)
     {
         const auto fileContent { Utils::getFileContent(WM_SYS_NET_DIR + portType.second) };
-        const auto rows { Utils::split(fileContent, '\n') };
+        auto rows { Utils::split(fileContent, '\n') };
         auto fileBody { false };
 
-        for (auto row : rows)
+        for (auto& row : rows)
         {
             nlohmann::json port {};
 
@@ -534,7 +534,7 @@ nlohmann::json SysInfo::getPorts() const
                     Utils::replaceAll(row, "  ", " ");
                     std::make_unique<PortImpl>(std::make_shared<LinuxPortWrapper>(portType.first, row))->buildPortData(port);
                     inodes.push_back(port.at("inode"));
-                    ports.push_back(port);
+                    ports.push_back(std::move(port));
                 }
 
                 fileBody = true;

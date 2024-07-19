@@ -26,11 +26,13 @@ try:
     from wazuh.core.cluster.dapi.dapi import DistributedAPI
     from wazuh.core.exception import WazuhError
     from wazuh.core.cluster import utils as cluster_utils
+    from wazuh.core.wlogging import CLIFilter
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
 
 logger = logging.getLogger('wazuh')
+logger.addFilter(CLIFilter())
 
 
 # Functions
@@ -61,6 +63,7 @@ def get_script_arguments() -> argparse.Namespace:
     parser.add_argument("-x", "--execute", type=str,
                         help="Executable filename in the WPK custom file. [Default: upgrade.sh]")
     parser.add_argument("--http", action="store_true", help="Uses http protocol instead of https.")
+    parser.add_argument("--package_type", type=str, help="Use rpm or deb packages for linux platforms.")
 
     return parser
 
@@ -132,7 +135,7 @@ def create_command() -> dict:
     """
     if not args.file and not args.execute:
         f_kwargs = {'agent_list': args.agents, 'wpk_repo': args.repository, 'version': args.version,
-                    'use_http': args.http, 'force': args.force}
+                    'use_http': args.http, 'force': args.force, 'package_type': args.package_type}
     else:
         # Upgrade custom
         f_kwargs = {'agent_list': args.agents, 'installer': args.execute, 'file_path': args.file}

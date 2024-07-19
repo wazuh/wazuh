@@ -73,6 +73,7 @@ int GlobalConf(const char *cfgfile)
     Config.includes = NULL;
     Config.lists = NULL;
     Config.decoders = NULL;
+    Config.forwarders_list = NULL;
     Config.label_cache_maxage = 10;
     Config.show_hidden_labels = 0;
 
@@ -90,6 +91,7 @@ int GlobalConf(const char *cfgfile)
     modules |= CRULES;
     modules |= CALERTS;
     modules |= CCLUSTER;
+    modules |= CANDSOCKET;
 
     /* Read config */
     if (ReadConfig(modules, cfgfile, &Config, NULL) < 0 ||

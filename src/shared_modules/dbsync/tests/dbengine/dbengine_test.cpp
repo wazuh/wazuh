@@ -43,6 +43,7 @@ static void initNoMetaDataMocks(std::unique_ptr<SQLiteDBEngine>& spEngine)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
                                    mockFactory,
@@ -75,6 +76,7 @@ TEST_F(DBEngineTest, Initialization)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
                         mockFactory,
@@ -97,6 +99,7 @@ TEST_F(DBEngineTest, InitializationSQLError)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_THROW(std::make_unique<SQLiteDBEngine>(
                      mockFactory,
@@ -117,6 +120,7 @@ TEST_F(DBEngineTest, InitializationEmptyQuery)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     EXPECT_NO_THROW(std::make_unique<SQLiteDBEngine>(
                         mockFactory,
@@ -154,6 +158,7 @@ TEST_F(DBEngineTest, InitializeStatusField)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -234,6 +239,7 @@ TEST_F(DBEngineTest, InitializeStatusFieldNoMetadata)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -274,6 +280,7 @@ TEST_F(DBEngineTest, InitializeStatusFieldPreExistent)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -362,6 +369,8 @@ TEST_F(DBEngineTest, DeleteRowsByStatusField)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
+
     EXPECT_CALL(*mockConnection, changes()).Times(1)
     .WillOnce(Return(1));
 
@@ -451,6 +460,7 @@ TEST_F(DBEngineTest, DeleteRowsByStatusFieldNoMetadata)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -490,6 +500,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusFieldNoMetadata)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -535,6 +546,7 @@ TEST_F(DBEngineTest, GetRowsToBeDeletedByStatusField)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -696,6 +708,7 @@ TEST_F(DBEngineTest, AddTableRelationship)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(
@@ -826,6 +839,7 @@ TEST_F(DBEngineTest, AddTableRelationshipNoMetadata)
     EXPECT_CALL(*mockConnection, execute("PRAGMA temp_store = memory;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA journal_mode = truncate;")).Times(1);
     EXPECT_CALL(*mockConnection, execute("PRAGMA synchronous = OFF;")).Times(1);
+    EXPECT_CALL(*mockConnection, execute("PRAGMA user_version = 1;")).Times(1);
 
     std::unique_ptr<SQLiteDBEngine> spEngine;
     EXPECT_NO_THROW(spEngine = std::make_unique<SQLiteDBEngine>(

@@ -8,7 +8,7 @@ from types import MappingProxyType
 from typing import Dict, List
 
 from defusedxml import ElementTree as ET
-from jsonschema import draft4_format_checker
+from jsonschema import Draft4Validator
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
@@ -32,7 +32,7 @@ _iso8601_date = re.compile(r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9]
 _iso8601_date_time = re.compile(
     r'^([0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])[tT](2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.['
     r'0-9]+)?([zZ]|[+-](?:2[0-3]|[01][0-9]):[0-5][0-9])$')
-_names = re.compile(r'^[\w\-.%]+$')
+_names = re.compile(r'^[\w\-.%]+$', re.ASCII)
 _numbers = re.compile(r'^\d+$')
 _numbers_or_all = re.compile(r'^(\d+|all)$')
 _wazuh_key = re.compile(r'[a-zA-Z0-9]+$')
@@ -91,7 +91,7 @@ api_config_schema = {
                 "ca": {"type": "string",
                        "pattern": r"^[\w\-.]+$"},
                 "ssl_protocol": {"type": "string", "enum": ["tls", "tlsv1", "tlsv1.1", "tlsv1.2", "TLS",
-                                                            "TLSv1", "TLSv1.1", "TLSv1.2"]},
+                                                            "TLSv1", "TLSv1.1", "TLSv1.2", "auto", "AUTO"]},
                 "ssl_ciphers": {"type": "string"}
             },
         },
@@ -205,10 +205,39 @@ api_config_schema = {
                             },
                         }
                     }
+                },
+                "indexer": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "allow": {
+                            "type": "boolean"
+                        }
+                    }
+                },
+                "integrations": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "virustotal": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "public_key": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "properties": {
+                                        "allow": {"type": "boolean"},
+                                        "minimum_quota": {"type": "integer"}
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
-        },
-    },
+        }
+    }
 }
 
 WAZUH_COMPONENT_CONFIGURATION_MAPPING = MappingProxyType(
@@ -340,22 +369,22 @@ def check_component_configuration_pair(component: str, configuration: str) -> Wa
                                               f"{WAZUH_COMPONENT_CONFIGURATION_MAPPING[component]}")
 
 
-@draft4_format_checker.checks("alphanumeric")
+@Draft4Validator.FORMAT_CHECKER.checks("alphanumeric")
 def format_alphanumeric(value):
     return check_exp(value, _alphanumeric_param)
 
 
-@draft4_format_checker.checks("alphanumeric_symbols")
+@Draft4Validator.FORMAT_CHECKER.checks("alphanumeric_symbols")
 def format_alphanumeric_symbols(value):
     return check_exp(value, _symbols_alphanumeric_param)
 
 
-@draft4_format_checker.checks("base64")
+@Draft4Validator.FORMAT_CHECKER.checks("base64")
 def format_base64(value):
     return check_exp(value, _base64)
 
 
-@draft4_format_checker.checks("get_dirnames_path")
+@Draft4Validator.FORMAT_CHECKER.checks("get_dirnames_path")
 def format_get_dirnames_path(relative_path):
     if not is_safe_path(relative_path):
         return False
@@ -363,132 +392,132 @@ def format_get_dirnames_path(relative_path):
     return check_exp(relative_path, _get_dirnames_path)
 
 
-@draft4_format_checker.checks("hash")
+@Draft4Validator.FORMAT_CHECKER.checks("hash")
 def format_hash(value):
     return check_exp(value, _hashes)
 
 
-@draft4_format_checker.checks("names")
+@Draft4Validator.FORMAT_CHECKER.checks("names")
 def format_names(value):
     return check_exp(value, _names)
 
 
-@draft4_format_checker.checks("numbers")
+@Draft4Validator.FORMAT_CHECKER.checks("numbers")
 def format_numbers(value):
     return check_exp(value, _numbers)
 
 
-@draft4_format_checker.checks("numbers_or_all")
+@Draft4Validator.FORMAT_CHECKER.checks("numbers_or_all")
 def format_numbers_or_all(value):
     return check_exp(value, _numbers_or_all)
 
 
-@draft4_format_checker.checks("cdb_filename_path")
+@Draft4Validator.FORMAT_CHECKER.checks("cdb_filename_path")
 def format_cdb_filename_path(value):
     return check_exp(value, _cdb_filename_path)
 
 
-@draft4_format_checker.checks("xml_filename")
+@Draft4Validator.FORMAT_CHECKER.checks("xml_filename")
 def format_xml_filename(value):
     return check_exp(value, _xml_filename)
 
 
-@draft4_format_checker.checks("xml_filename_path")
+@Draft4Validator.FORMAT_CHECKER.checks("xml_filename_path")
 def format_xml_filename_path(value):
     return check_exp(value, _xml_filename_path)
 
 
-@draft4_format_checker.checks("path")
+@Draft4Validator.FORMAT_CHECKER.checks("path")
 def format_path(value):
     if not is_safe_path(value):
         return False
     return check_exp(value, _paths)
 
 
-@draft4_format_checker.checks("wpk_path")
+@Draft4Validator.FORMAT_CHECKER.checks("wpk_path")
 def format_wpk_path(value):
     if not is_safe_path(value, relative=False):
         return False
     return check_exp(value, _wpk_path)
 
 
-@draft4_format_checker.checks("active_response_command")
+@Draft4Validator.FORMAT_CHECKER.checks("active_response_command")
 def format_active_response_command(command):
     if not is_safe_path(command):
         return False
     return check_exp(command, _active_response_command)
 
 
-@draft4_format_checker.checks("query")
+@Draft4Validator.FORMAT_CHECKER.checks("query")
 def format_query(value):
     return check_exp(value, _query_param)
 
 
-@draft4_format_checker.checks("range")
+@Draft4Validator.FORMAT_CHECKER.checks("range")
 def format_range(value):
     return check_exp(value, _ranges)
 
 
-@draft4_format_checker.checks("search")
+@Draft4Validator.FORMAT_CHECKER.checks("search")
 def format_search(value):
     return check_exp(value, _search_param)
 
 
-@draft4_format_checker.checks("sort")
+@Draft4Validator.FORMAT_CHECKER.checks("sort")
 def format_sort(value):
     return check_exp(value, _sort_param)
 
 
-@draft4_format_checker.checks("timeframe")
+@Draft4Validator.FORMAT_CHECKER.checks("timeframe")
 def format_timeframe(value):
     return check_exp(value, _timeframe_type)
 
 
-@draft4_format_checker.checks("wazuh_key")
+@Draft4Validator.FORMAT_CHECKER.checks("wazuh_key")
 def format_wazuh_key(value):
     return check_exp(value, _wazuh_key)
 
 
-@draft4_format_checker.checks("wazuh_version")
+@Draft4Validator.FORMAT_CHECKER.checks("wazuh_version")
 def format_wazuh_version(value):
     return check_exp(value, _wazuh_version)
 
 
-@draft4_format_checker.checks("date")
+@Draft4Validator.FORMAT_CHECKER.checks("date")
 def format_date(value):
     return check_exp(value, _iso8601_date)
 
 
-@draft4_format_checker.checks("date-time")
+@Draft4Validator.FORMAT_CHECKER.checks("date-time")
 def format_datetime(value):
     return check_exp(value, _iso8601_date_time)
 
 
-@draft4_format_checker.checks("hash_or_empty")
+@Draft4Validator.FORMAT_CHECKER.checks("hash_or_empty")
 def format_hash_or_empty(value):
     return True if value == "" else format_hash(value)
 
 
-@draft4_format_checker.checks("names_or_empty")
+@Draft4Validator.FORMAT_CHECKER.checks("names_or_empty")
 def format_names_or_empty(value):
     return True if value == "" else format_names(value)
 
 
-@draft4_format_checker.checks("numbers_or_empty")
+@Draft4Validator.FORMAT_CHECKER.checks("numbers_or_empty")
 def format_numbers_or_empty(value):
     return True if value == "" else format_numbers(value)
 
 
-@draft4_format_checker.checks("date-time_or_empty")
+@Draft4Validator.FORMAT_CHECKER.checks("date-time_or_empty")
 def format_datetime_or_empty(value):
     return True if value == "" else format_datetime(value)
 
 
-@draft4_format_checker.checks("group_names")
+@Draft4Validator.FORMAT_CHECKER.checks("group_names")
 def format_group_names(value):
     return check_exp(value, _group_names)
 
 
-@draft4_format_checker.checks("group_names_or_all")
+@Draft4Validator.FORMAT_CHECKER.checks("group_names_or_all")
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)

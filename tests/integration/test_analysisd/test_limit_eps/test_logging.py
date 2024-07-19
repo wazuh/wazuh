@@ -1,5 +1,5 @@
 '''
-copyright: Copyright (C) 2015-2022, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -70,9 +70,6 @@ local_internal_options = {analysisd_config.ANALYSISD_DEBUG: '2'}
 
 # Test daemons to restart.
 daemons_handler_configuration = {'all_daemons': True}
-
-# Test variables.
-SYSLOG_SIMULATOR_START_TIME = 2
 
 
 # Test function.

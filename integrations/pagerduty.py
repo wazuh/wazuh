@@ -8,18 +8,16 @@
 import json
 import os
 import sys
-import time
 
 # Exit error codes
-ERR_NO_REQUEST_MODULE   = 1
-ERR_BAD_ARGUMENTS       = 2
-ERR_FILE_NOT_FOUND      = 6
-ERR_INVALID_JSON        = 7
+ERR_NO_REQUEST_MODULE = 1
+ERR_BAD_ARGUMENTS = 2
+ERR_FILE_NOT_FOUND = 6
+ERR_INVALID_JSON = 7
 
 try:
     import requests
-    from requests.auth import HTTPBasicAuth
-except Exception as e:
+except Exception:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(ERR_NO_REQUEST_MODULE)
 
@@ -32,17 +30,17 @@ except Exception as e:
 # </integration>
 
 # Global vars
-debug_enabled   = False
-pwd             = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-json_alert      = {}
-json_options    = {}
+debug_enabled = False
+pwd = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+json_alert = {}
+json_options = {}
 
 # Log path
-LOG_FILE        = f'{pwd}/logs/integrations.log'
+LOG_FILE = f'{pwd}/logs/integrations.log'
 
 # Constants
-ALERT_INDEX     = 1
-APIKEY_INDEX    = 2
+ALERT_INDEX = 1
+APIKEY_INDEX = 2
 
 
 def main(args):
@@ -50,25 +48,19 @@ def main(args):
     try:
         # Read arguments
         bad_arguments: bool = False
+        msg = ''
         if len(args) >= 4:
-            msg = '{0} {1} {2} {3} {4}'.format(
-                args[1],
-                args[2],
-                args[3],
-                args[4] if len(args) > 4 else '',
-                args[5] if len(args) > 5 else ''
-            )
-            debug_enabled = (len(args) > 4 and args[4] == 'debug')
+            debug_enabled = len(args) > 4 and args[4] == 'debug'
         else:
-            msg = '# ERROR: Wrong arguments'
+            msg = '# ERROR: Wrong arguments\n'
             bad_arguments = True
 
         # Logging the call
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
+        with open(LOG_FILE, 'a') as f:
+            f.write(msg)
 
         if bad_arguments:
-            debug("# ERROR: Exiting, bad arguments. Inputted: %s" % args)
+            debug('# ERROR: Exiting, bad arguments. Inputted: %s' % args)
             sys.exit(ERR_BAD_ARGUMENTS)
 
         # Core function
@@ -78,26 +70,26 @@ def main(args):
         debug(str(e))
         raise
 
-def process_args(args) -> None:
-    """
-        This is the core function, creates a message with all valid fields
-        and overwrite or add with the optional fields
 
-        Parameters
-        ----------
-        args : list[str]
-            The argument list from main call
+def process_args(args) -> None:
+    """This is the core function, creates a message with all valid fields
+    and overwrite or add with the optional fields
+
+    Parameters
+    ----------
+    args : list[str]
+        The argument list from main call
     """
-    debug("# Running PagerDuty script")
+    debug('# Running PagerDuty script')
 
     # Read args
-    alert_file_location: str     = args[ALERT_INDEX]
-    apikey: str                  = args[APIKEY_INDEX]
-    options_file_location: str   = ''
+    alert_file_location: str = args[ALERT_INDEX]
+    apikey: str = args[APIKEY_INDEX]
+    options_file_location: str = ''
 
     # Look for options file location
     for idx in range(4, len(args)):
-        if(args[idx][-7:] == "options"):
+        if args[idx][-7:] == 'options':
             options_file_location = args[idx]
             break
 
@@ -106,53 +98,52 @@ def process_args(args) -> None:
     debug(f"# Opening options file at '{options_file_location}' with '{json_options}'")
 
     # Load alert. Parse JSON object.
-    json_alert  = get_json_alert(alert_file_location)
+    json_alert = get_json_alert(alert_file_location)
     debug(f"# Opening alert file at '{alert_file_location}' with '{json_alert}'")
 
-    debug("# Generating message")
-    msg: any = generate_msg(json_alert, json_options,apikey)
+    debug('# Generating message')
+    msg: any = generate_msg(json_alert, json_options, apikey)
 
     if not len(msg):
-        debug("# ERROR: Empty message")
+        debug('# ERROR: Empty message')
         raise Exception
 
-    debug(f"# Sending message {msg} to PagerDuty server")
+    debug(f'# Sending message {msg} to PagerDuty server')
     send_msg(msg)
 
-def debug(msg: str) -> None:
-    """
-        Log the message in the log file with the timestamp, if debug flag
-        is enabled
 
-        Parameters
-        ----------
-        msg : str
-            The message to be logged.
+def debug(msg: str) -> None:
+    """Log the message in the log file with the timestamp, if debug flag
+    is enabled
+
+    Parameters
+    ----------
+    msg : str
+        The message to be logged.
     """
     if debug_enabled:
         print(msg)
-        with open(LOG_FILE, "a") as f:
+        with open(LOG_FILE, 'a') as f:
             f.write(msg + '\n')
 
 
 def generate_msg(alert: any, options: any, apikey: str) -> str:
-    """
-        Generate the JSON object with the message to be send
+    """Generate the JSON object with the message to be send
 
-        Parameters
-        ----------
-        alert : any
-            JSON alert object.
-        options: any
-            JSON options object.
+    Parameters
+    ----------
+    alert : any
+        JSON alert object.
+    options: any
+        JSON options object.
 
-        Returns
-        -------
-        msg: str
-            The JSON message to send
+    Returns
+    -------
+    msg: str
+        The JSON message to send
     """
-    managed_security_url    = 'https://wazuh.com'
-    level                   = alert['rule']['level']
+    managed_security_url = 'https://wazuh.com'
+    level = alert['rule']['level']
 
     severity = 'info'
     if level >= 7:
@@ -165,62 +156,62 @@ def generate_msg(alert: any, options: any, apikey: str) -> str:
     groups = ', '.join(alert['rule']['groups'])
 
     msg = {
-        'routing_key':  apikey,
+        'routing_key': apikey,
         'event_action': 'trigger',
         'payload': {
-            "summary": alert['rule']['description'] if 'description' in alert['rule'] else "N/A",
-            "timestamp": alert['timestamp'],
-            "source": alert['agent']['name'],
-            "severity": severity,
-            "group": groups,
-            "custom_details": alert
+            'summary': alert['rule']['description'] if 'description' in alert['rule'] else 'N/A',
+            'timestamp': alert['timestamp'],
+            'source': alert['agent']['name'],
+            'severity': severity,
+            'group': groups,
+            'custom_details': alert,
         },
-        "client": "Wazuh Monitoring Service",
-        "client_url": managed_security_url
+        'client': 'Wazuh Monitoring Service',
+        'client_url': managed_security_url,
     }
 
-    if(options):
+    if options:
         msg.update(options)
 
     return json.dumps(msg)
 
-def send_msg(msg: any) -> None:
-    """
-        Send the message to the API
 
-        Parameters
-        ----------
-        msg : str
-            JSON message.
-        url: str
-            URL of the API.
+def send_msg(msg: any) -> None:
+    """Send the message to the API
+
+    Parameters
+    ----------
+    msg : str
+        JSON message.
+    url: str
+        URL of the API.
     """
 
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
-    url     = 'https://events.pagerduty.com/v2/enqueue'
-    res     = requests.post(url, data=msg, headers=headers)
-    debug("# Response received: %s" % res.json)
+    url = 'https://events.pagerduty.com/v2/enqueue'
+    res = requests.post(url, data=msg, headers=headers, timeout=10)
+    debug('# Response received: %s' % res.json)
+
 
 def get_json_alert(file_location: str) -> any:
-    """
-        Read JSON alert object from file
+    """Read JSON alert object from file
 
-        Parameters
-        ----------
-        file_location : str
-            Path to the JSON file location.
+    Parameters
+    ----------
+    file_location : str
+        Path to the JSON file location.
 
-        Returns
-        -------
-        {}: any
-            The JSON object read it.
+    Returns
+    -------
+    dict: any
+        The JSON object read it.
 
-        Raises
-        ------
-        FileNotFoundError
-            If no JSON file is found.
-        JSONDecodeError
-            If no valid JSON file are used
+    Raises
+    ------
+    FileNotFoundError
+        If no JSON file is found.
+    JSONDecodeError
+        If no valid JSON file are used
     """
     try:
         with open(file_location) as alert_file:
@@ -229,27 +220,27 @@ def get_json_alert(file_location: str) -> any:
         debug("# JSON file for alert %s doesn't exist" % file_location)
         sys.exit(ERR_FILE_NOT_FOUND)
     except json.decoder.JSONDecodeError as e:
-        debug("Failed getting JSON alert. Error: %s" % e)
+        debug('Failed getting JSON alert. Error: %s' % e)
         sys.exit(ERR_INVALID_JSON)
 
+
 def get_json_options(file_location: str) -> any:
-    """
-        Read JSON options object from file
+    """Read JSON options object from file
 
-        Parameters
-        ----------
-        file_location : str
-            Path to the JSON file location.
+    Parameters
+    ----------
+    file_location : str
+        Path to the JSON file location.
 
-        Returns
-        -------
-        {}: any
-            The JSON object read it.
+    Returns
+    -------
+    dict: any
+        The JSON object read it.
 
-        Raises
-        ------
-        JSONDecodeError
-            If no valid JSON file are used
+    Raises
+    ------
+    JSONDecodeError
+        If no valid JSON file are used
     """
     try:
         with open(file_location) as options_file:
@@ -257,8 +248,9 @@ def get_json_options(file_location: str) -> any:
     except FileNotFoundError:
         debug("# JSON file for options %s doesn't exist" % file_location)
     except BaseException as e:
-        debug("Failed getting JSON options. Error: %s" % e)
+        debug('Failed getting JSON options. Error: %s' % e)
         sys.exit(ERR_INVALID_JSON)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main(sys.argv)

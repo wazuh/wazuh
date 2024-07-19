@@ -1,0 +1,253 @@
+- name: cloudtrail_discard_regex
+  description: CloudTrail discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: cloudtrail
+    BUCKET_NAME: wazuh-cloudtrail-integration-tests
+    DISCARD_FIELD: eventSource
+    DISCARD_REGEX: .*sts.amazonaws.com.*
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: cloudtrail
+    bucket_name: wazuh-cloudtrail-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: eventSource
+    discard_regex: .*sts.amazonaws.com.*
+    expected_results: 1
+    skipped_logs: 1
+
+- name: vpc_discard_regex
+  description: VPC discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: vpcflow
+    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    DISCARD_FIELD: action
+    DISCARD_REGEX: "REJECT"
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: vpcflow
+    bucket_name: wazuh-vpcflow-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: action
+    discard_regex: "REJECT"
+    vpc_name: wazuh-vpc-integration-tests
+    expected_results: 1
+    skipped_logs: 5
+
+- name: config_discard_regex
+  description: Config discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: config
+    BUCKET_NAME: wazuh-config-integration-tests
+    DISCARD_FIELD: configuration.complianceType
+    DISCARD_REGEX: .*COMPLIANT.*
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: config
+    bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: configuration.complianceType
+    discard_regex: .*COMPLIANT.*
+    expected_results: 5
+    skipped_logs: 1
+
+- name: alb_discard_regex
+  description: ALB discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: alb
+    BUCKET_NAME: wazuh-alb-integration-tests
+    DISCARD_FIELD: elb_status_code
+    DISCARD_REGEX: '403'
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: alb
+    bucket_name: wazuh-alb-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: elb_status_code
+    discard_regex: '403'
+    expected_results: 1
+    skipped_logs: 5
+
+- name: clb_discard_regex
+  description: CLB discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: clb
+    BUCKET_NAME: wazuh-clb-integration-tests
+    DISCARD_FIELD: elb_status_code
+    DISCARD_REGEX: '403'
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: clb
+    bucket_name: wazuh-clb-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: elb_status_code
+    discard_regex: '403'
+    expected_results: 1
+    skipped_logs: 5
+
+- name: nlb_discard_regex
+  description: NLB discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: nlb
+    BUCKET_NAME: wazuh-nlb-integration-tests
+    DISCARD_FIELD: type
+    DISCARD_REGEX: tls
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: nlb
+    bucket_name: wazuh-nlb-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: type
+    discard_regex: tls
+    expected_results: 1
+    skipped_logs: 5
+
+- name: kms_discard_regex
+  description: KMS discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: custom
+    BUCKET_NAME: wazuh-kms-integration-tests
+    DISCARD_FIELD: eventName
+    DISCARD_REGEX: GenerateDataKey
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: custom
+    bucket_name: wazuh-kms-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: eventName
+    discard_regex: GenerateDataKey
+    expected_results: 1
+    skipped_logs: 1
+
+- name: macie_discard_regex
+  description: Macie discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: custom
+    BUCKET_NAME: wazuh-macie-integration-tests
+    DISCARD_FIELD: severity
+    DISCARD_REGEX: CRITICAL
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: custom
+    bucket_name: wazuh-macie-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: severity
+    discard_regex: CRITICAL
+    expected_results: 3
+    skipped_logs: 1
+
+- name: trusted_advisor_discard_regex
+  description: Trusted Advisor discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: custom
+    BUCKET_NAME: wazuh-trusted-advisor-integration-tests
+    DISCARD_FIELD: status
+    DISCARD_REGEX: OK
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: custom
+    bucket_name: wazuh-trusted-advisor-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: status
+    discard_regex: OK
+    expected_results: 1
+    skipped_logs: 1
+
+- name: guardduty_discard_regex
+  description: GuardDuty discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: guardduty
+    BUCKET_NAME: wazuh-guardduty-integration-tests
+    DISCARD_FIELD: partition
+    DISCARD_REGEX: aws
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: guardduty
+    bucket_name: wazuh-guardduty-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: partition
+    discard_regex: aws
+    expected_results: 1
+    skipped_logs: 1
+
+- name: native_guardduty_discard_regex
+  description: Native GuardDuty discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: guardduty
+    BUCKET_NAME: wazuh-native-guardduty-integration-tests
+    DISCARD_FIELD: partition
+    DISCARD_REGEX: aws
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: guardduty
+    bucket_name: wazuh-native-guardduty-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: partition
+    discard_regex: aws
+    expected_results: 1
+    skipped_logs: 1
+
+- name: waf_discard_regex
+  description: WAF discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: waf
+    BUCKET_NAME: wazuh-waf-integration-tests
+    DISCARD_FIELD: action
+    DISCARD_REGEX: BLOCK
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: waf
+    bucket_name: wazuh-waf-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: action
+    discard_regex: BLOCK
+    expected_results: 1
+    skipped_logs: 1
+
+- name: server_access_discard_regex
+  description: Server Access discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: server_access
+    BUCKET_NAME: wazuh-server-access-integration-tests
+    DISCARD_FIELD: http_status
+    DISCARD_REGEX: '404'
+    PATH: ''
+  metadata:
+    resource_type: bucket
+    bucket_type: server_access
+    bucket_name: wazuh-server-access-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: http_status
+    discard_regex: '404'
+    expected_results: 1
+    skipped_logs: 1
+
+- name: cisco_umbrella_discard_regex
+  description: CloudTrail discard regex configurations
+  configuration_parameters:
+    BUCKET_TYPE: cisco_umbrella
+    BUCKET_NAME: wazuh-umbrella-integration-tests
+    DISCARD_FIELD: action
+    DISCARD_REGEX: Allowed
+    PATH: dnslogs
+  metadata:
+    resource_type: bucket
+    bucket_type: cisco_umbrella
+    bucket_name: wazuh-umbrella-integration-tests
+    only_logs_after: 2022-NOV-20
+    discard_field: action
+    discard_regex: Allowed
+    expected_results: 1
+    skipped_logs: 5
+    path: dnslogs

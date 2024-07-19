@@ -1,5 +1,9 @@
 # coding: utf-8
 
+# Copyright (C) 2015, Wazuh Inc.
+# Created by Wazuh, Inc. <info@wazuh.com>.
+# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
@@ -10,7 +14,7 @@ from api.models.base_model_ import Body
 
 class ActiveResponseModel(Body):
 
-    def __init__(self, command: str = None, custom: bool = None, arguments: list = None, alert: dict = None):
+    def __init__(self, command: str = None, arguments: list = None, alert: dict = None):
         """ActiveResponseModel body model.
 
         Parameters

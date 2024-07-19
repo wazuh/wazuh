@@ -11,7 +11,7 @@
 #include "shared.h"
 #include "agentd.h"
 #include "os_net/os_net.h"
-#include "limits_op.h"
+
 
 /* Start the agent daemon */
 void AgentdStart(int uid, int gid, const char *user, const char *group)
@@ -53,7 +53,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             merror_exit(AG_NOKEYS_EXIT);
         }
     }
-    /* Read private keys  */
+
+    /* Read private keys */
     minfo(ENC_READ);
     OS_ReadKeys(&keys, W_DUAL_KEY, 0);
 
@@ -111,7 +112,6 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
         buffer_init();
 
-        w_create_thread(update_limits_thread, (void *)NULL);
         w_create_thread(dispatch_buffer, (void *)NULL);
     } else {
         minfo(DISABLED_BUFFER);

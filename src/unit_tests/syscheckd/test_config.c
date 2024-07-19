@@ -29,8 +29,15 @@ typedef struct entry_struct_s {
     char *filerestrict;
 } entry_struct_t;
 
+static int setup_read_config(void **state) {
+    test_mode = 0;
+
+    return 0;
+}
+
 static int restart_syscheck(void **state)
 {
+    test_mode = 1;
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
     expect_function_call_any(__wrap_pthread_mutex_lock);
     expect_function_call_any(__wrap_pthread_mutex_unlock);
@@ -104,7 +111,9 @@ void test_Read_Syscheck_Config_success(void **state)
     expect_any_always(__wrap__mwarn, formatted_msg);
 
 
+    test_mode = 0;
     ret = Read_Syscheck_Config("test_syscheck_max_dir.conf");
+    test_mode = 1;
 
     assert_int_equal(ret, 0);
     assert_int_equal(syscheck.rootcheck, 0);
@@ -265,7 +274,7 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.sync_interval, 300);
     assert_int_equal(syscheck.sync_queue_size, 16384);
     assert_int_equal(syscheck.sync_thread_pool, 1);
-    assert_int_equal(syscheck.max_eps, 100);
+    assert_int_equal(syscheck.max_eps, 50);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
     assert_int_equal(syscheck.file_size_enabled, true);
@@ -611,7 +620,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
     assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
     cJSON *max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
-    assert_int_equal(max_eps->valueint, 100);
+    assert_int_equal(max_eps->valueint, 50);
     cJSON *process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(process_priority->valueint, 10);
 
@@ -891,15 +900,15 @@ void test_fim_adjust_path_convert_system32 (void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_success, restart_syscheck),
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_invalid, restart_syscheck),
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_undefined, restart_syscheck),
-        cmocka_unit_test_teardown(test_Read_Syscheck_Config_unparsed, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckConfig, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckConfig_no_audit, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckConfig_no_directories, restart_syscheck),
-        cmocka_unit_test_teardown(test_getSyscheckInternalOptions, restart_syscheck),
-        cmocka_unit_test_teardown(test_SyscheckConf_DirectoriesWithCommas, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_success, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_invalid, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_directories, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_SyscheckConf_DirectoriesWithCommas, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_fim_create_directory_add_new_entry, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_create_directory_OSMatch_Compile_fail_maxsize, setup_entry, teardown_entry),
         cmocka_unit_test_setup_teardown(test_fim_insert_directory_duplicate_entry, setup_entry, teardown_entry),

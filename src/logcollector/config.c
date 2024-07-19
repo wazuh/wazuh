@@ -30,7 +30,7 @@ int LogCollectorConfig(const char *cfgfile)
     logreader_config log_config;
 
     modules |= CLOCALFILE;
-    modules |= CSOCKET;
+    modules |= CLGCSOCKET;
 
     log_config.config = NULL;
     log_config.globs = NULL;
@@ -139,7 +139,11 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             }
             cJSON_AddItemToObject(file, "query", query);
         }
-        cJSON_AddStringToObject(file,"ignore_binaries",list[i].filter_binary ? "yes" : "no");
+        // Invalid configuration for journal logs
+        if (list[i].journal_log == NULL) {
+            cJSON_AddStringToObject(file, "ignore_binaries", list[i].filter_binary ? "yes" : "no");
+        }
+
         if (list[i].age_str) cJSON_AddStringToObject(file,"age",list[i].age_str);
         if (list[i].exclude) cJSON_AddStringToObject(file,"exclude",list[i].exclude);
 
@@ -195,6 +199,15 @@ void _getLocalfilesListJSON(logreader *list, cJSON *array, int gl) {
             cJSON_AddStringToObject(multiline, "regex", w_expression_get_regex_pattern(list[i].multiline->regex));
             cJSON_AddNumberToObject(multiline, "timeout", list[i].multiline->timeout);
             cJSON_AddItemToObject(file, "multiline_regex", multiline);
+        }
+        if (list[i].journal_log != NULL && list[i].journal_log->filters != NULL) {
+
+            cJSON * filters = w_journal_filter_list_as_json(list[i].journal_log->filters);
+            if (filters != NULL) {
+                cJSON_AddItemToObject(file, "filters", filters);
+            }
+
+            cJSON_AddBoolToObject(file, "filters_disabled", list[i].journal_log->disable_filters);
         }
         if (list[i].regex_ignore != NULL) {
             OSListNode *node_it;
@@ -280,28 +293,28 @@ cJSON *getSocketConfig(void) {
     }
 
     cJSON *root = cJSON_CreateObject();
-    cJSON *targets = cJSON_CreateArray();
+    cJSON *sockets = cJSON_CreateArray();
     int i;
 
     for (i=0;logsk[i].name;i++) {
-        cJSON *target = cJSON_CreateObject();
+        cJSON *socket = cJSON_CreateObject();
 
-        cJSON_AddStringToObject(target,"name",logsk[i].name);
-        cJSON_AddStringToObject(target,"location",logsk[i].location);
+        cJSON_AddStringToObject(socket,"name",logsk[i].name);
+        cJSON_AddStringToObject(socket,"location",logsk[i].location);
         if (logsk[i].mode == IPPROTO_UDP) {
-            cJSON_AddStringToObject(target,"mode","udp");
+            cJSON_AddStringToObject(socket,"mode","udp");
         } else {
-            cJSON_AddStringToObject(target,"mode","tcp");
+            cJSON_AddStringToObject(socket,"mode","tcp");
         }
-        if (logsk[i].prefix) cJSON_AddStringToObject(target,"prefix",logsk[i].prefix);
+        if (logsk[i].prefix) cJSON_AddStringToObject(socket,"prefix",logsk[i].prefix);
 
-        cJSON_AddItemToArray(targets, target);
+        cJSON_AddItemToArray(sockets, socket);
     }
 
-    if (cJSON_GetArraySize(targets) > 0) {
-        cJSON_AddItemToObject(root,"target",targets);
+    if (cJSON_GetArraySize(sockets) > 0) {
+        cJSON_AddItemToObject(root,"socket",sockets);
     } else {
-        cJSON_free(targets);
+        cJSON_free(sockets);
     }
 
     return root;

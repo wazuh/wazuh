@@ -10,7 +10,7 @@ cmake_minimum_required(VERSION 3.10)
 list(APPEND os_crypto_sha1_tests_names "test_sha1_op")
 list(APPEND os_crypto_sha1_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                                         -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
-                                        -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc")
+                                        -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,wfopen -Wl,--wrap,popen")
 
 # Compiling tests
 list(LENGTH os_crypto_sha1_tests_names count)

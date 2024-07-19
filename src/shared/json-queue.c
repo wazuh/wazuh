@@ -26,7 +26,7 @@ int jqueue_open(file_queue * queue, int tail) {
         fclose(queue->fp);
     }
 
-    if (queue->fp = fopen(queue->file_name, "r"), !queue->fp) {
+    if (queue->fp = wfopen(queue->file_name, "r"), !queue->fp) {
         merror(FOPEN_ERROR, queue->file_name, errno, strerror(errno));
         return -1;
     }

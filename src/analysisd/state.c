@@ -16,6 +16,7 @@
 #include "analysisd.h"
 #include "state.h"
 #include "config.h"
+#include "limits.h"
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -284,7 +285,7 @@ int w_analysisd_write_state() {
     snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
-    if (fp = fopen(path_temp, "w"), !fp) {
+    if (fp = wfopen(path_temp, "w"), !fp) {
         merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         return -1;
     }
@@ -1478,7 +1479,7 @@ cJSON* asys_create_state_json() {
         cJSON *_eps = cJSON_CreateObject();
         cJSON_AddItemToObject(_metrics, "eps", _eps);
 
-        limit_reached(analysisd_limits, &available_credits);
+        limit_reached(&available_credits);
 
         cJSON_AddNumberToObject(_eps, "available_credits", available_credits);
         cJSON_AddNumberToObject(_eps, "available_credits_prev", state_cpy.eps_state_breakdown.available_credits_prev);

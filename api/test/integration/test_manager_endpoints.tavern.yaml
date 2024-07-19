@@ -57,8 +57,7 @@ stages:
         error: 0
         data:
           affected_items:
-            - compilation_date: !anystr
-              max_agents: !anystr
+            - max_agents: !anystr
               openssl_support: !anystr
               path: !anystr
               type: !anystr
@@ -90,7 +89,8 @@ marks:
        - sca
        - syscheck
        - syscollector
-       - vulnerability-detector
+       - vulnerability-detection
+       - indexer
 
 stages:
 
@@ -160,7 +160,8 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -872,30 +873,7 @@ stages:
       json:
         error: 0
         data:
-          affected_items:
-            - sca: !anything
-            - wazuh-agentlessd: !anything
-            - wazuh-analysisd: !anything
-            - wazuh-authd: !anything
-            - wazuh-csyslogd: !anything
-            - wazuh-db: !anything
-            - wazuh-dbd: !anything
-            - wazuh-execd: !anything
-            - wazuh-integratord: !anything
-            - wazuh-logcollector: !anything
-            - wazuh-modulesd: !anything
-            - wazuh-modulesd:agent-upgrade: !anything
-            - wazuh-modulesd:ciscat: !anything
-            - wazuh-modulesd:control: !anything
-            - wazuh-modulesd:database: !anything
-            - wazuh-modulesd:download: !anything
-            - wazuh-modulesd:osquery: !anything
-            - wazuh-modulesd:syscollector: !anything
-            - wazuh-modulesd:task-manager: !anything
-            - wazuh-monitord: !anything
-            - wazuh-remoted: !anything
-            - wazuh-rootcheck: !anything
-            - wazuh-syscheckd: !anything
+          affected_items: !anything
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
@@ -943,9 +921,6 @@ stages:
                   expose_headers: !anystr
                   allow_headers: !anystr
                   allow_credentials: !anybool
-                cache:
-                  enabled: !anybool
-                  time: !anything
                 access:
                   max_login_attempts: !anyint
                   block_time: !anyint
@@ -966,6 +941,13 @@ stages:
                   agents:
                     allow_higher_versions:
                       allow: !anybool
+                  indexer:
+                    allow: !anybool
+                  integrations:
+                       virustotal:
+                         public_key:
+                           allow: !anybool
+                           minimum_quota: !anyint
           total_affected_items: 1
           total_failed_items: 0
           failed_items: []
@@ -994,49 +976,6 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
-
----
-test_name: GET /manager/validation (KO)
-
-stages:
-
-  #### Upload corrupted rules file
-  # PUT /rules/files
-  - name: Upload corrupted
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: PUT
-      data: "<!-- Local rules -->\n <group name=\"local,\">\n <!--   NEW RULE    -->\n  <rule id=\"111111\" level=\"XXX\">\n      <if_sid>5716</if_sid>\n      <srcip>1.1.1.1</srcip>\n      <description>sshd: authentication failed from IP 1.1.1.1.</description>\n      <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,</group>\n    </rule>\n  </group>\n"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-      json:
-        error: 0
-
-  # GET /manager/configuration/validation
-  - name: Request validation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1908
-              id:
-                - !anystr
-          total_affected_items: 0
-          total_failed_items: 1
 
 ---
 test_name: GET /manager/configuration/{component}/{configuration}
@@ -1522,6 +1461,29 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
+  - name: Try to upload an invalid xml
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{invalid_ossec_xml:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: []
+          failed_items:
+            - error:
+                code: 1908
+              id:
+                - 'manager'
+          total_affected_items: 0
+          total_failed_items: 1
+
   # PUT /manager/configuration
   - name: Try to upload an invalid configuration with an invalid content-type
     request:
@@ -1533,9 +1495,9 @@ stages:
         Authorization: "Bearer {test_login_token}"
         content-type: application/json
     response:
-      status_code: 406
+      status_code: 415
       json:
-        error: 6002
+        title: Unsupported Media Type
 
   # GET /manager/configuration/
   - name: Ensure the config didn't change
@@ -1559,6 +1521,218 @@ stages:
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
+
+---
+test_name: GET /manager/version/check with update_check disabled
+
+stages:
+
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
+
+  - name: Get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: false
+
+  - name: Get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: false
+
+---
+test_name: GET /manager/version/check with update_check enabled
+
+stages:
+  - name: Get wazuh version
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      save:
+        json:
+          wazuh_version: data.api_version
+  
+  - name: Enable update check
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{valid_ossec_conf_with_update_check_enabled:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'manager'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Restart manager to apply the configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{restart_delay}"
+
+  - name: Get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: true
+
+  - name: Get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code:
+        - 200
+        - 500
+      verify_response_with:
+        function: tavern_utils:validate_update_check_response
+        extra_kwargs:
+          current_version: "v{wazuh_version:s}"
+          update_check: true
+
+---
+test_name: GET /manager/version/check with update_check service error
+
+stages:
+
+  - name: Set an invalid CTI url
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/configuration"
+      method: PUT
+      data: "{ossec_conf_with_invalid_cti_url:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        data:
+          affected_items:
+            - 'manager'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+        error: 0
+
+  - name: Restart manager to apply the configuration
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/manager/restart"
+      method: PUT
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - !anystr
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
+    delay_after: !float "{restart_delay}"
+
+  - name: Try to get available updates
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 500
+      json:
+        error: 2100
+
+  - name: Try to get available updates with force option
+    request:
+      verify: false
+      url: "{protocol:s}://{host:s}:{port:d}/manager/version/check"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      params:
+        force_query: "true"
+    response:
+      status_code: 500
+      json:
+        error: 2100
 
 ---
 test_name: PUT /manager/restart

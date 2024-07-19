@@ -1,0 +1,10 @@
+<!-- Test:  no existing if_sid rule number -->
+<group name="testing">
+
+    <rule id="100001" level="3">
+    <if_sid>123123</if_sid>
+    <program_name>example</program_name>
+    <description>example_description</description>
+    </rule>
+
+</group>

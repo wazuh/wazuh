@@ -5,10 +5,10 @@
 import logging
 from typing import Union
 
-from aiohttp import web
+from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
-from api.encoder import dumps, prettify
+from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
 from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh import decoder as decoder_framework
@@ -18,10 +18,10 @@ from wazuh.core.results import AffectedItemsWazuhResult
 logger = logging.getLogger('wazuh-api')
 
 
-async def get_decoders(request, decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
+async def get_decoders(decoder_names: list = None, pretty: bool = False, wait_for_complete: bool = False,
                        offset: int = 0, limit: int = None, select: list = None, sort: str = None, search: str = None,
                        q: str = None, filename: str = None, relative_dirname: str = None,
-                       status: str = None, distinct: bool = False) -> web.Response:
+                       status: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get all decoders.
 
     Returns information about all the decoders included in the ossec.conf file.
@@ -29,7 +29,6 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
 
     Parameters
     ----------
-    request : connexion.request
     decoder_names : list
         Filters by decoder name.
     pretty: bool
@@ -60,7 +59,7 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     f_kwargs = {'names': decoder_names,
@@ -83,17 +82,17 @@ async def get_decoders(request, decoder_names: list = None, pretty: bool = False
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_decoders_files(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+async def get_decoders_files(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = None, sort: str = None, search: str = None, filename: str = None,
                              relative_dirname: str = None, status: str = None, q: str = None,
-                             select: str = None, distinct: bool = False) -> web.Response:
+                             select: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get all decoders' files.
 
     Returns information about all decoders' files used in Wazuh.
@@ -101,7 +100,6 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
 
     Parameters
     ----------
-    request : connexion.request
     pretty: bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -132,7 +130,7 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     f_kwargs = {'offset': offset,
@@ -154,23 +152,22 @@ async def get_decoders_files(request, pretty: bool = False, wait_for_complete: b
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_decoders_parents(request, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
+async def get_decoders_parents(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                                limit: int = None, select: list = None, sort: str = None,
-                               search: str = None) -> web.Response:
+                               search: str = None) -> ConnexionResponse:
     """Get decoders by parents.
 
     Returns information about all parent decoders. A parent decoder is a decoder used as base of other decoders.
 
     Parameters
     ----------
-    request : connexion.request
     pretty: bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -189,7 +186,7 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     f_kwargs = {'offset': offset,
@@ -207,21 +204,20 @@ async def get_decoders_parents(request, pretty: bool = False, wait_for_complete:
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def get_file(request, pretty: bool = False, wait_for_complete: bool = False, 
+async def get_file(pretty: bool = False, wait_for_complete: bool = False, 
                    filename: str = None, relative_dirname: str = None, 
-                   raw: bool = False) -> Union[web.Response, ConnexionResponse]:
+                   raw: bool = False) -> ConnexionResponse:
     """Get decoder file content.
 
     Parameters
     ----------
-    request : connexion.request
     pretty : bool
         Show results in human-readable format. It only works when `raw` is False (JSON format).
     wait_for_complete : bool
@@ -236,10 +232,10 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
     Returns
     -------
     web.json_response or ConnexionResponse
-        Depending on the `raw` parameter, it will return a web.Response object or a ConnexionResponse object:
+        Depending on the `raw` parameter, it will return a ConnexionResponse object:
             raw=True            -> ConnexionResponse (application/xml)
-            raw=False (default) -> web.Response (application/json)
-        If any exception was raised, it will return a web.Response with details.
+            raw=False (default) -> ConnexionResponse (application/json)
+        If any exception was raised, it will return a ConnexionResponse with details.
     """
     f_kwargs = {'filename': filename, 'raw': raw, 'relative_dirname': relative_dirname}
 
@@ -249,27 +245,26 @@ async def get_file(request, pretty: bool = False, wait_for_complete: bool = Fals
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
     if isinstance(data, AffectedItemsWazuhResult):
-        response = web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+        response = json_response(data, pretty=pretty)
     else:
-        response = ConnexionResponse(body=data["message"], 
-                                     mimetype='application/xml', content_type='application/xml')
+        response = ConnexionResponse(body=data["message"],
+                                     content_type=XML_CONTENT_TYPE)
 
     return response
 
 
-async def put_file(request, body: dict, filename: str = None, relative_dirname: str = None,
+async def put_file(body: bytes, filename: str = None, relative_dirname: str = None,
                    overwrite: bool = False, pretty: bool = False,
-                   wait_for_complete: bool = False) -> web.Response:
+                   wait_for_complete: bool = False) -> ConnexionResponse:
     """Upload a decoder file.
 
     Parameters
     ----------
-    request : connexion.request
-    body : dict
+    body : bytes
         Body request with the file content to be uploaded.
     filename : str
         Name of the file.
@@ -285,7 +280,7 @@ async def put_file(request, body: dict, filename: str = None, relative_dirname: 
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     # Parse body to utf-8
@@ -303,22 +298,19 @@ async def put_file(request, body: dict, filename: str = None, relative_dirname: 
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)
 
 
-async def delete_file(request, filename: str = None, 
-                      relative_dirname: str = None,
-                      pretty: bool = False,
-                      wait_for_complete: bool = False) -> web.Response:
+async def delete_file(filename: str = None, relative_dirname: str = None,
+                      pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Delete a decoder file.
 
     Parameters
     ----------
-    request : connexion.request
     filename : str
         Name of the file.
     relative_dirname : str
@@ -330,7 +322,7 @@ async def delete_file(request, filename: str = None,
 
     Returns
     -------
-    web.Response
+    ConnexionResponse
         API response.
     """
     f_kwargs = {'filename': filename, 'relative_dirname': relative_dirname}
@@ -341,8 +333,8 @@ async def delete_file(request, filename: str = None,
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
-                          rbac_permissions=request['token_info']['rbac_policies']
+                          rbac_permissions=request.context['token_info']['rbac_policies']
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
-    return web.json_response(data=data, status=200, dumps=prettify if pretty else dumps)
+    return json_response(data, pretty=pretty)

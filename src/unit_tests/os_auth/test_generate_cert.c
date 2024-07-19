@@ -32,31 +32,29 @@ static void test_generate_cert_success(void **state) {
     FILE cert_file = {0};
 
     will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 1);
-    will_return(__wrap_RSA_generate_key_ex, 0);
 
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 1);
     expect_value(__wrap_fclose, _File, &cert_file);
 
     will_return(__wrap_fclose, 0);
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
     assert_int_equal(ret_value, 0);
 }
 
@@ -65,32 +63,29 @@ static void test_generate_cert_success_typo(void **state) {
     FILE cert_file = {0};
 
     will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 1);
-
-    will_return(__wrap_RSA_generate_key_ex, 0);
 
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, mode, "wb");
-    expect_string(__wrap_fopen, path, "key_path");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, mode, "wb");
+    expect_string(__wrap_wfopen, path, "key_path");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 1);
     expect_value(__wrap_fclose, _File, &cert_file);
 
     will_return(__wrap_fclose, 0);
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/asdfg/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/asdfg/");
     assert_int_equal(ret_value, 0);
 }
 
@@ -99,16 +94,13 @@ static void test_save_key_fail(void **state) {
     FILE cert_file = {0};
 
     will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 1);
-
-    will_return(__wrap_RSA_generate_key_ex, 0);
 
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 0);
     expect_string(__wrap__merror, formatted_msg, "Cannot dump private key.");
@@ -116,7 +108,7 @@ static void test_save_key_fail(void **state) {
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
 
     assert_int_equal(ret_value, 1);
 }
@@ -125,20 +117,17 @@ static void test_save_key_fail_fopen(void **state) {
     FILE key_file = {0};
 
     will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 1);
-
-    will_return(__wrap_RSA_generate_key_ex, 0);
 
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Cannot open key_path.");
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
 
     assert_int_equal(ret_value, 1);
 }
@@ -148,32 +137,29 @@ static void test_save_cert_fail(void **state) {
     FILE cert_file = {0};
 
     will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 1);
-
-    will_return(__wrap_RSA_generate_key_ex, 0);
 
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &cert_file);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &cert_file);
 
     will_return(__wrap_PEM_write_X509, 0);
     expect_string(__wrap__merror, formatted_msg, "Cannot dump certificate.");
     expect_value(__wrap_fclose, _File, &cert_file);
     will_return(__wrap_fclose, 0);
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
     assert_int_equal(ret_value, 1);
 }
 
@@ -183,43 +169,37 @@ static void test_save_cert_fail_fopen(void **state) {
 
     will_return(__wrap_EVP_PKEY_new, 1);
 
-    will_return(__wrap_RSA_new, 1);
-
-    will_return(__wrap_RSA_generate_key_ex, 0);
-
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 1);
 
-    expect_string(__wrap_fopen, path, "key_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, &key_file);
+    expect_string(__wrap_wfopen, path, "key_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, &key_file);
 
     will_return(__wrap_PEM_write_PrivateKey, 1);
 
     expect_value(__wrap_fclose, _File, &key_file);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap_fopen, path, "cert_path");
-    expect_string(__wrap_fopen, mode, "wb");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "cert_path");
+    expect_string(__wrap_wfopen, mode, "wb");
+    will_return(__wrap_wfopen, NULL);
     expect_string(__wrap__merror, formatted_msg, "Cannot open cert_path.");
 
-
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
     assert_int_equal(ret_value, 1);
 }
 
 static void test_generate_cert_key_null(void **state) {
-    will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 0);
-    will_return(__wrap_RSA_new, NULL);
+    will_return(__wrap_EVP_PKEY_new, 0);
+    will_return(__wrap_EVP_PKEY_new, NULL);
 
     will_return(__wrap_X509_new, 1);
 
-    expect_string(__wrap__merror, formatted_msg, "Cannot create RSA structure.");
+    expect_string(__wrap__merror, formatted_msg, "Cannot create EVP_PKEY or EVP_PKEY_CTX structure.");
     expect_string(__wrap__merror, formatted_msg, "Cannot generate key to sign the certificate.");
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
     assert_int_equal(ret_value, 1);
 }
 
@@ -228,27 +208,23 @@ static void test_generate_cert_pkey_null(void **state) {
     will_return(__wrap_EVP_PKEY_new, NULL);
 
     will_return(__wrap_X509_new, 1);
-    will_return(__wrap_RSA_new, 1);
 
-    expect_string(__wrap__merror, formatted_msg, "Cannot create EVP_PKEY structure.");
+    expect_string(__wrap__merror, formatted_msg, "Cannot create EVP_PKEY or EVP_PKEY_CTX structure.");
     expect_string(__wrap__merror, formatted_msg, "Cannot generate key to sign the certificate.");
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
     assert_int_equal(ret_value, 1);
 }
 
 static void test_generate_cert_x509_null(void **state) {
     will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 1);
-
-    will_return(__wrap_RSA_generate_key_ex, 0);
 
     will_return(__wrap_X509_new, 0);
     will_return(__wrap_X509_new, NULL);
 
     expect_string(__wrap__merror, formatted_msg, "Cannot generate certificate.");
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
     assert_int_equal(ret_value, 1);
 }
 
@@ -257,15 +233,13 @@ static void test_generate_cert_sign_fail(void **state) {
     FILE cert_file = {0};
 
     will_return(__wrap_EVP_PKEY_new, 1);
-    will_return(__wrap_RSA_new, 1);
-    will_return(__wrap_RSA_generate_key_ex, 0);
 
     will_return(__wrap_X509_new, 1);
     will_return(__wrap_X509_sign, 0);
 
     expect_string(__wrap__merror, formatted_msg, "Error signing certificate.");
 
-    int ret_value = generate_cert(1024, 20248, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
+    int ret_value = generate_cert(1024, 2048, "key_path", "cert_path", "/C=US/ST=California/CN=Wazuh/");
     assert_int_equal(ret_value, 1);
 }
 int main(void) {

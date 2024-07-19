@@ -1,0 +1,179 @@
+namespace SyscollectorDeltas;
+
+table dbsync_hotfixes {
+    scan_time:string;
+    hotfix:string;
+    checksum:string;
+}
+
+table dbsync_hwinfo {
+    scan_time:string;
+    board_serial:string;
+    cpu_name:string;
+    cpu_cores:int;
+    cpu_mhz:double;
+    ram_total:int;
+    ram_free:int;
+    ram_usage:int;
+    checksum:string;
+}
+
+table dbsync_network_address {
+    scan_time:string;
+    iface:string;
+    proto:int;
+    address:string;
+    netmask:string;
+    broadcast:string;
+    checksum:string;
+    item_id:string;
+    metric:string;
+    dhcp:string;
+}
+
+table dbsync_network_iface {
+    scan_time:string;
+    name:string;
+    adapter:string;
+    type:string;
+    state:string;
+    mtu:long;
+    mac:string;
+    tx_packets:long;
+    rx_packets:long;
+    tx_bytes:long;
+    rx_bytes:long;
+    tx_errors:long;
+    rx_errors:long;
+    tx_dropped:long;
+    rx_dropped:long;
+    checksum:string;
+    item_id:string;
+}
+
+table dbsync_network_protocol {
+    scan_time:string;
+    iface:string;
+    type:string;
+    gateway:string;
+    dhcp:string;
+    metric:string;
+    checksum:string;
+    item_id:string;
+}
+
+table dbsync_osinfo {
+    scan_time:string;
+    hostname:string;
+    architecture:string;
+    os_name:string;
+    os_version:string;
+    os_codename:string;
+    os_major:string;
+    os_minor:string;
+    os_patch:string;
+    os_build:string;
+    os_platform:string;
+    sysname:string;
+    release:string;
+    version:string;
+    os_release:string;
+    os_display_version:string;
+    checksum:string;
+}
+
+table dbsync_ports {
+    scan_time:string;
+    protocol:string;
+    local_ip:string;
+    local_port:long;
+    remote_ip:string;
+    remote_port:long;
+    tx_queue:long;
+    rx_queue:long;
+    inode:long;
+    state:string;
+    pid:long;
+    process:string;
+    checksum:string;
+    item_id:string;
+}
+
+table dbsync_processes {
+    scan_time:string;
+    pid:string;
+    name:string;
+    state:string;
+    ppid:long;
+    utime:long;
+    stime:long;
+    cmd:string;
+    argvs:string;
+    euser:string;
+    ruser:string;
+    suser:string;
+    egroup:string;
+    rgroup:string;
+    sgroup:string;
+    fgroup:string;
+    priority:long;
+    nice:long;
+    size:long;
+    vm_size:long;
+    resident:long;
+    share:long;
+    start_time:long;
+    pgrp:long;
+    session:long;
+    nlwp:long;
+    tgid:long;
+    tty:long;
+    processor:long;
+    checksum:string;
+}
+
+table dbsync_packages {
+    scan_time:string;
+    name:string;
+    version:string;
+    vendor:string;
+    install_time:string;
+    location:string;
+    architecture:string;
+    groups:string;
+    description:string;
+    size:int;
+    priority:string;
+    multiarch:string;
+    source:string;
+    format:string;
+    checksum:string;
+    item_id:string;
+}
+
+union Provider {
+    dbsync_network_iface,
+    dbsync_network_protocol,
+    dbsync_network_address,
+    dbsync_osinfo,
+    dbsync_hwinfo,
+    dbsync_ports,
+    dbsync_packages,
+    dbsync_hotfixes,
+    dbsync_processes
+}
+
+table AgentInfo {
+    agent_id:string;
+    agent_ip:string;
+    agent_name:string;
+    agent_version:string;
+}
+
+table Delta {
+    agent_info:AgentInfo;
+    data:Provider;
+    operation:string;
+}
+
+root_type Delta;

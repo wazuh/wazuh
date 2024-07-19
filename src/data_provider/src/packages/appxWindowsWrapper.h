@@ -112,7 +112,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
         std::string multiarch() const override
         {
-            return UNKNOWN_VALUE;
+            return std::string();
         }
 
     private:

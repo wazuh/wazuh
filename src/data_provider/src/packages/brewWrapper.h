@@ -33,7 +33,6 @@ class BrewWrapper final : public IPackageWrapper
             , m_size{0}
             , m_vendor{UNKNOWN_VALUE}
             , m_installTime{UNKNOWN_VALUE}
-            , m_multiarch{UNKNOWN_VALUE}
         {
             const auto rows { Utils::split(Utils::getFileContent(ctx.filePath + "/" + ctx.package + "/" + ctx.version + "/.brew/" + ctx.package + ".rb"), '\n')};
 

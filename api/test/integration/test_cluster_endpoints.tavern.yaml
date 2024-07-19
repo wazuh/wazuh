@@ -604,7 +604,8 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -636,7 +637,8 @@ stages:
               sca: !anything
               syscheck: !anything
               syscollector: !anything
-              vulnerability-detector: !anything
+              vulnerability-detection: !anything
+              indexer: !anything
           failed_items: []
           total_affected_items: 1
           total_failed_items: 0
@@ -833,98 +835,6 @@ stages:
           total_affected_items: 3
           total_failed_items: 0
 
-  #### Upload corrupted rules file
-  - name: Upload corrupted configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: PUT
-      data: "{corrupted_rules_file}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-    delay_after: !float "{cluster_sync_delay}"
-
-  - name: Request validation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          failed_items:
-            - error:
-                code: 1908
-              id:
-                - 'master-node'
-                - 'worker1'
-                - 'worker2'
-          total_affected_items: 0
-          total_failed_items: 3
-
-    #### Delete corrupted rules file
-  - name: Delete rules file
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/rules/files/new-rules_corrupted.xml"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-    delay_after: !float "{cluster_sync_delay}"
-
-  - name: Request cluster validation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        nodes_list: 'worker1,worker2'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - name: worker1
-              status: 'OK'
-            - name: worker2
-              status: 'OK'
-          failed_items: []
-          total_affected_items: 2
-          total_failed_items: 0
-
-  - name: Request cluster validation
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        nodes_list: 'master-node'
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items:
-            - name: master-node
-              status: 'OK'
-          failed_items: []
-          total_affected_items: 1
-          total_failed_items: 0
-
 ---
 test_name: GET /cluster/api/config
 
@@ -970,9 +880,6 @@ stages:
                   expose_headers: !anystr
                   allow_headers: !anystr
                   allow_credentials: !anybool
-                cache:
-                  enabled: !anybool
-                  time: !anything
                 access:
                   max_login_attempts: !anyint
                   block_time: !anyint
@@ -993,6 +900,13 @@ stages:
                   agents:
                     allow_higher_versions:
                       allow: !anybool
+                  indexer:
+                    allow: !anybool
+                  integrations:
+                    virustotal:
+                      public_key:
+                        allow: !anybool
+                        minimum_quota: !anyint
             - node_name: "worker1"
               node_api_config:
                 <<: *default_api_config
@@ -1566,7 +1480,6 @@ stages:
           affected_items:
             - path: !anystr
               version: !anystr
-              compilation_date: !anystr
               type: !anystr
               max_agents: !anystr
               openssl_support: !anystr
@@ -2398,6 +2311,30 @@ stages:
           failed_items:
             - error:
                 code: 1113
+              id:
+                - 'worker1'
+          total_affected_items: 0
+          total_failed_items: 1
+
+  # PUT /cluster/{node_id}/configuration
+  - name: Try to upload an invalid xml
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      method: PUT
+      data: "{invalid_ossec_xml:s}"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+        content-type: application/octet-stream
+    response:
+      status_code: 200
+      json:
+        error: 1
+        data:
+          affected_items: [ ]
+          failed_items:
+            - error:
+                code: 1908
               id:
                 - 'worker1'
           total_affected_items: 0

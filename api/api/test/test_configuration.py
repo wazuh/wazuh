@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -22,7 +22,7 @@ custom_api_configuration = {
         "cert": "server.crt",
         "use_ca": False,
         "ca": "ca.crt",
-        "ssl_protocol": "TLSv1.2",
+        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {
@@ -35,10 +35,6 @@ custom_api_configuration = {
         "expose_headers": "*",
         "allow_headers": "*",
         "allow_credentials": False,
-    },
-    "cache": {
-        "enabled": True,
-        "time": 0.750
     },
     "access": {
         "max_login_attempts": 50,
@@ -59,6 +55,17 @@ custom_api_configuration = {
         "agents": {
             "allow_higher_versions": {
                 "allow": True
+            }
+        },
+        "indexer": {
+            "allow": True
+        },
+        "integrations": {
+            "virustotal": {
+                "public_key": {
+                    "allow": True,
+                    "minimum_quota": 240
+                }
             }
         }
     }
@@ -128,9 +135,6 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'cors': {'allow_headers': 12345}},
     {'cors': {'allow_credentials': 12345}},
     {'cors': {'invalid_subkey': 'value'}},
-    {'cache': {'enabled': 'invalid_type'}},
-    {'cache': {'time': 'invalid_type'}},
-    {'cache': {'invalid_subkey': 'value'}},
     {'access': {'max_login_attempts': 'invalid_type'}},
     {'access': {'block_time': 'invalid_type'}},
     {'access': {'max_request_per_minute': 'invalid_type'}},
@@ -141,7 +145,9 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'remote_commands': {'wodle_command': {'enabled': 'invalid_type'}}},
     {'remote_commands': {'wodle_command': {'exceptions': [0, 1, 2]}}},
     {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
-    {'agents': {'allowed_higher_versions': {'allow': []}}},
+    {'agents': {'allow_higher_versions': {'allow': True}}},
+    {'indexer': {'allow': True}},
+    {'integrations': {'virustotal': {'public_key': {'allow': True}}}},
 ])
 @patch('os.path.exists', return_value=True)
 def test_read_wrong_configuration(mock_exists, config):
@@ -154,6 +160,24 @@ def test_read_wrong_configuration(mock_exists, config):
             m.return_value = config
             with pytest.raises(api_exception.APIError, match=r'\b2000\b'):
                 configuration.read_yaml_config()
+
+
+@pytest.mark.parametrize('config, expected_msg', [
+    ({}, False),
+    ({'cache': {}}, False),
+    ({'cache': {'enabled': True}}, True),
+    ({'cache': {'enabled': False}}, False)
+])
+@patch('os.path.exists', return_value=True)
+def test_read_cache_configuration(mock_exists, config, expected_msg):
+    """Verify that expected warning is logged when reading the cace API option configuration"""
+    with patch('api.configuration.yaml.safe_load') as m, patch('logging.Logger.warning') as mock_logger, \
+            patch('builtins.open'):
+        m.return_value = config
+        configuration.read_yaml_config()
+
+        if expected_msg:
+            mock_logger.assert_called_once_with(configuration.CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
 
 
 @patch('os.chmod')

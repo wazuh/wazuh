@@ -47,7 +47,7 @@
     error_type: 'Invalid'
     module: 'office365'
 
-    
+
 - name: Invalid_Curl_Max_Size
   description: Check office365 integration does not start with Invalid Curl Max Size
   configuration_parameters:
@@ -80,7 +80,6 @@
     event_monitor: 'tenant_id'
     error_type: 'Empty'
     module: 'office365'
-
 
 
 - name: Empty_Client_Id

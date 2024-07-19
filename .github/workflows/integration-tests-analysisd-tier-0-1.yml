@@ -1,4 +1,4 @@
-name: Integration tests for Analisysd - Tier 0 and 1
+name: Integration tests for Analysisd - Tier 0 and 1
 
 on:
   workflow_dispatch:
@@ -11,6 +11,10 @@ on:
     paths:
         - ".github/workflows/integration-tests-analysisd-tier-0-1.yml"
         - "src/analysisd/**"
+        - "src/config/alerts-config.c"
+        - "src/config/global-config.c"
+        - "src/config/global-config.h"
+        - "src/config/rules-config.c"
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_analysisd/**"
@@ -68,9 +72,9 @@ jobs:
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
-          if [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
               QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote --heads https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
               QA_BRANCH=${BRANCH_BASE}
           else
               QA_BRANCH="main"

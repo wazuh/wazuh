@@ -5,6 +5,7 @@
 import json
 import sys
 from os import path
+from typing import List
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
@@ -13,7 +14,7 @@ import aws_tools
 class AWSQueueMessageProcessor:
     """Class in charge of processing the messages retrieved from an AWS SQS queue."""
 
-    def extract_message_info(self, sqs_messages: list[dict]) -> list:
+    def extract_message_info(self, sqs_messages: List[dict]) -> List[dict]:
         messages = []
         for mesg in sqs_messages:
             body = mesg['Body']

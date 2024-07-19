@@ -13,6 +13,8 @@
 #include "wdb_state.h"
 #include <os_net/os_net.h>
 
+#define WDB_AGENT_EVENTS_TOPIC "wdb-agent-events"
+
 static void wdb_help() __attribute__ ((noreturn));
 static void handler(int signum);
 static void cleanup();
@@ -29,7 +31,7 @@ wnotify_t * notify_queue;
 //static w_queue_t * sock_queue;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 //static pthread_cond_t sock_cond = PTHREAD_COND_INITIALIZER;
-static volatile int running = 1;
+static volatile _Atomic(int) running = 1;
 rlim_t nofile;
 
 int main(int argc, char ** argv)
@@ -103,8 +105,12 @@ int main(int argc, char ** argv)
     // Allocating memory for configuration structures and setting default values
     wdb_init_conf();
 
+    int modules = 0;
+    modules |= WAZUHDB;
+    modules |= CCLUSTER;
+
     // Read ossec.conf
-    if (ReadConfig(WAZUHDB, OSSECCONF, NULL, NULL) < 0) {
+    if (ReadConfig(modules, OSSECCONF, &gconfig, NULL) < 0) {
         merror_exit("Invalid configuration block for Wazuh-DB.");
     }
 
@@ -124,8 +130,7 @@ int main(int argc, char ** argv)
 
     // Initialize variables
 
-    open_dbs = OSHash_Create();
-    if (!open_dbs) merror_exit("wazuh_db: OSHash_Create() failed");
+    wdb_pool_init();
 
     if (!run_foreground) {
         goDaemon();
@@ -195,6 +200,14 @@ int main(int argc, char ** argv)
 
     minfo(STARTUP_MSG, (int)getpid());
 
+    // Router module logging initialization
+    router_initialize(taggedLogFunction);
+
+    // Router provider initialization
+    if (router_agent_events_handle = router_provider_create(WDB_AGENT_EVENTS_TOPIC, false), !router_agent_events_handle) {
+        mdebug2("Failed to create router handle for 'wdb-agent-events'.");
+    }
+
     if (notify_queue = wnotify_init(1), !notify_queue) {
         merror_exit("at run_dealer(): wnotify_init(): %s (%d)",
                 strerror(errno), errno);
@@ -203,6 +216,10 @@ int main(int argc, char ** argv)
     // Global stats uptime
 
     wdb_state.uptime = time(NULL);
+
+    // Create template
+
+    wdb_create_profile();
 
     // Start threads
 
@@ -239,7 +256,6 @@ int main(int argc, char ** argv)
     }
 
     // Join threads
-
     pthread_join(thread_dealer, NULL);
 
     for (i = 0; i < wconfig.worker_pool_size; i++) {
@@ -254,8 +270,6 @@ int main(int argc, char ** argv)
         pthread_join(thread_backup, NULL);
     }
     wdb_close_all();
-
-    OSHash_Free(open_dbs);
     wdb_free_conf();
 
     // Reset template here too, remove queue/db/.template.db again
@@ -263,6 +277,7 @@ int main(int argc, char ** argv)
     snprintf(path_template, sizeof(path_template), "%s/%s", WDB2_DIR, WDB_PROF_NAME);
     unlink(path_template);
     mdebug1("Template file removed again: %s", path_template);
+    minfo("Graceful process shutdown.");
 
     return EXIT_SUCCESS;
 
@@ -378,7 +393,7 @@ void * run_worker(__attribute__((unused)) void * args) {
 
         switch (length) {
         case -1:
-            merror("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
+            mdebug1("at run_worker(): at recv(): %s (%d)", strerror(errno), errno);
             close(peer);
             continue;
 
@@ -465,7 +480,7 @@ void * run_backup(__attribute__((unused)) void * args) {
                                 merror("Creating Global DB snapshot by interval failed: %s", output);
                             }
                             last_global_backup_time = current_time;
-                            wdb_leave(wdb);
+                            wdb_pool_leave(wdb);
                         }
                     }
                     break;
@@ -524,7 +539,7 @@ void * run_up(__attribute__((unused)) void * args) {
         wdb = wdb_open_agent2(atoi(entry));
 
         if (wdb != NULL) {
-            wdb_leave(wdb);
+            wdb_pool_leave(wdb);
         }
 
         free(entry);

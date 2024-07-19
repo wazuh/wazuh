@@ -1261,6 +1261,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
     cJSON *old_attributes = NULL;
     cJSON *audit = NULL;
     cJSON *object = NULL;
+    int version = 0;
     char *entry_type = NULL;
     fim_decoders_t *decoder = NULL;
     syscheck_event_t event_type;
@@ -1316,6 +1317,13 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
             }
 
             break;
+
+        case cJSON_Number:
+            if (strcmp(object->string, "version") == 0) {
+                version = object->valueint;
+            }
+
+            break;
         }
     }
 
@@ -1325,7 +1333,7 @@ static int fim_process_alert(_sdb * sdb, Eventinfo *lf, cJSON * event) {
         return -1;
     }
 
-    if ((strcmp("registry_key", entry_type) == 0) || (strcmp("registry_value", entry_type) == 0)) {
+    if (((strcmp("registry_key", entry_type) == 0) || (strcmp("registry_value", entry_type) == 0)) && version >= 3) {
         if (lf->fields[FIM_REGISTRY_HASH].value == NULL) {
             mdebug1("No member 'index' in Syscheck JSON payload");
             return -1;

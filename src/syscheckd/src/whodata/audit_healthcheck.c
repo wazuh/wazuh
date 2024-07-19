@@ -54,7 +54,7 @@ int audit_health_check(int audit_socket) {
 
     // Generate open events until they get picked up
     do {
-        fp = fopen(abs_path_healthcheck_file, "w");
+        fp = wfopen(abs_path_healthcheck_file, "w");
 
         if (!fp) {
             mdebug1(FIM_AUDIT_HEALTHCHECK_FILE);

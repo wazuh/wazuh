@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 import pytest
 
@@ -38,7 +38,7 @@ def test_signal_handler(mock_exit):
 @patch("builtins.print")
 @patch("yaml.safe_load", return_value={"default_users": ["testing_user"]})
 @patch("scripts.rbac_control.cluster_utils.forward_function")
-async def test_restore_default_passwords(forward_mock, safe_load_mock, print_mock, user_input, db_setup):
+async def test_restore_default_passwords(forward_mock: AsyncMock, safe_load_mock, print_mock, user_input, db_setup):
     """Check if the `restore_default_passwords` uses the correct parameters when called.
 
     Parameters

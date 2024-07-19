@@ -45,11 +45,37 @@ void test_sha512_hex() {
     assert_string_equal(buffer, string_sha512);
 }
 
+void test_sha512_file() {
+    const char *string = "teststring";
+    const char *string_sha512 = "6253b39071e5df8b5098f59202d414c37a17d6a38a875ef5f8c7d89b0212b028692d3d2090ce03ae1de66c862fa8a561e57ed9eb7935ce627344f742c0931d72";
+    os_sha512 buffer;
+
+    /* create tmp file */
+    char file_name[256];
+    strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
+    int fd = mkstemp(file_name);
+
+    write(fd, string, strlen(string));
+    close(fd);
+
+    assert_int_equal(OS_SHA512_File(file_name, buffer, OS_TEXT), 0);
+
+    assert_string_equal(buffer, string_sha512);
+}
+
+void test_sha512_file_fail() {
+    os_sha512 buffer;
+
+    assert_int_equal(OS_SHA512_File("file_name", buffer, OS_TEXT), -1);
+}
+
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_sha512_string),
-        cmocka_unit_test(test_sha512_hex)
+        cmocka_unit_test(test_sha512_hex),
+        cmocka_unit_test(test_sha512_file),
+        cmocka_unit_test(test_sha512_file_fail),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

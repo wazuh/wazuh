@@ -34,7 +34,7 @@ Where:
   - db_name: Database name to be used.
   - db_type: Database type to be used. Only SQLITE3 is currently supported.
   - host_type: Agent or Manager.
-  - persistance: Database type of persistance being used. Not implemented yet.
+  - persistance: Database type of persistance being used.
   - sql_statement: Database sql structure to be created. This structure will be associated with the other files needed to use the tool.
 
 2) Create the needed amount of json files representing the different actions information. These ones need to follow the sql_statement structure created in the step 1.
@@ -44,4 +44,3 @@ Where:
 ./dbsync_test_tool -c config.json -a input1.json,input2.json,input3.json -o ./output
 ```
 5) Considering the example above all diff snapshots will be located in ./output folder in the following format: action_1.json, action_2.json ... action_n.json where 'n' will be the number of json files passed as part of the argument "-a".
-

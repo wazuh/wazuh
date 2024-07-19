@@ -33,7 +33,7 @@ namespace Utils
         , public RawValueDecoder
     {
         public:
-            MsgDispatcher(const unsigned int threadPoolSize = std::thread::hardware_concurrency(),
+            explicit MsgDispatcher(const unsigned int threadPoolSize = std::thread::hardware_concurrency(),
                           const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
                 : ThreadType
             {

@@ -1,0 +1,21 @@
+- name: '"CIS CentOS 8 osregex" policy'
+  description: Run a SCA scan and check regex engine used and results
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 1000
+    POLICY_FILE: cis_centos8_osregex.yaml
+  metadata:
+    policy_file: cis_centos8_osregex.yaml
+    results: 2
+    regex_type: osregex
+
+- name: '"CIS CentOS 8 PCRE2 regex" policy'
+  description: Run a SCA scan and check regex engine used and results
+  configuration_parameters:
+    ENABLED: 'yes'
+    INTERVAL: 1000
+    POLICY_FILE: cis_centos8_pcre2.yaml
+  metadata:
+    policy_file: cis_centos8_pcre2.yaml
+    results: 2
+    regex_type: pcre2

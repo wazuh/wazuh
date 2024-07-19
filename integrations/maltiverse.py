@@ -5,8 +5,7 @@
 # License (version 2) as published by the FSF - Free Software
 # Foundation.
 
-"""
-What is Maltiverse?
+"""What is Maltiverse?
 ###################
 
 Maltiverse works as a broker for Threat intelligence sources that are
@@ -61,12 +60,11 @@ import json
 import os
 import socket
 import sys
-import time
 from urllib.parse import urlsplit
 
 try:
     import requests
-except Exception as e:
+except Exception:
     print("No module 'requests' found. Install: pip install requests")
     sys.exit(1)
 
@@ -81,12 +79,11 @@ SOCKET_ADDR: str = os.path.join(pwd, 'queue', 'sockets', 'queue')
 # Max size of the event that ANALYSISID can handle
 MAX_EVENT_SIZE = 65535
 
+
 class Maltiverse:
     """This class is a simplification of maltiverse pypi package."""
 
-    def __init__(
-            self, auth_token: str, endpoint: str = "https://api.maltiverse.com"
-    ):
+    def __init__(self, auth_token: str, endpoint: str = 'https://api.maltiverse.com'):
         """Initialize the Maltiverse class.
 
         Parameters
@@ -99,10 +96,11 @@ class Maltiverse:
         self.endpoint = endpoint
         self.auth_token = auth_token
         self.session = requests.Session()
-        self.session.headers.update({
-            "Accept": "application/json",
-            "Authorization": f"Bearer {self.auth_token}",
-        }
+        self.session.headers.update(
+            {
+                'Accept': 'application/json',
+                'Authorization': f'Bearer {self.auth_token}',
+            }
         )
 
     def ip_get(self, ip_addr: str) -> dict:
@@ -150,7 +148,7 @@ class Maltiverse:
         """
         return self.session.get(os.path.join(self.endpoint, 'url', urlchecksum)).json()
 
-    def sample_get(self, sample: str, algorithm: str = "md5") -> dict:
+    def sample_get(self, sample: str, algorithm: str = 'md5') -> dict:
         """Request Maltiverse sample via API.
 
         Parameters
@@ -166,10 +164,10 @@ class Maltiverse:
             The Maltiverse sample information as a dictionary.
         """
         mapping = {
-            "md5": self.sample_get_by_md5,
-            "sha1": self.sample_get_by_sha1,
+            'md5': self.sample_get_by_md5,
+            'sha1': self.sample_get_by_sha1,
         }
-        callable_function = mapping.get(algorithm, mapping.get("md5"))
+        callable_function = mapping.get(algorithm, mapping.get('md5'))
         return callable_function(sample)
 
     def sample_get_by_md5(self, md5: str):
@@ -232,25 +230,19 @@ def main(args: list):
     try:
         # Read arguments
         bad_arguments = False
+        msg = ''
         if len(args) >= 4:
-            msg = "{0} {1} {2} {3} {4}".format(
-                args[1],
-                args[2],
-                args[3],
-                args[4] if len(args) > 4 else "",
-                args[5] if len(args) > 5 else ""
-            )
-            debug_enabled = len(args) > 4 and args[4] == "debug"
+            debug_enabled = len(args) > 4 and args[4] == 'debug'
         else:
-            msg = '# ERROR: Wrong arguments'
+            msg = '# ERROR: Wrong arguments\n'
             bad_arguments = True
 
         # Logging the call
-        with open(LOG_FILE, "a") as f:
-            f.write(msg + '\n')
+        with open(LOG_FILE, 'a') as f:
+            f.write(msg)
 
         if bad_arguments:
-            debug("# ERROR: Exiting, bad arguments. Inputted: %s" % args)
+            debug('# ERROR: Exiting, bad arguments. Inputted: %s' % args)
             sys.exit(2)
 
         # Main function
@@ -281,7 +273,7 @@ def load_alert(file_path: str) -> dict:
         debug("# Alert file %s doesn't exist" % file_path)
         sys.exit(3)
     except json.decoder.JSONDecodeError as e:
-        debug(f"Failed getting json_alert: {e}")
+        debug(f'Failed getting json_alert: {e}')
         sys.exit(4)
 
 
@@ -293,29 +285,29 @@ def process_args(args: list):
     args : list
         The command-line arguments passed to the script.
     """
-    debug("# Starting")
+    debug('# Starting')
 
     alert_file_location = args[1]
     api_key: str = args[2]
     hook_url: str = args[3]
 
     if not is_valid_url(hook_url):
-        debug(f"# Hook URL argument seems to be invalid: {hook_url}")
+        debug(f'# Hook URL argument seems to be invalid: {hook_url}')
         sys.exit(5)
 
     json_alert = load_alert(alert_file_location)
 
-    debug(f"# File location: {alert_file_location}")
-    debug(f"# API Key: {api_key}")
-    debug(f"# Hook Url: {hook_url}")
-    debug(f"# Processing alert: {json_alert}")
+    debug(f'# File location: {alert_file_location}')
+    debug(f'# API Key: {api_key}')
+    debug(f'# Hook Url: {hook_url}')
+    debug(f'# Processing alert: {json_alert}')
 
     maltiverse_api = Maltiverse(endpoint=hook_url, auth_token=api_key)
 
     # Request Maltiverse info and send event to
     # Wazuh Manager in case of positive match
     for msg in request_maltiverse_info(json_alert, maltiverse_api):
-        send_event(msg, json_alert["agent"])
+        send_event(msg, json_alert['agent'])
 
 
 def debug(msg: str):
@@ -328,7 +320,7 @@ def debug(msg: str):
     """
     if debug_enabled:
         print(msg)
-        with open(LOG_FILE, "a") as f:
+        with open(LOG_FILE, 'a') as f:
             f.write(msg + '\n')
 
 
@@ -345,16 +337,16 @@ def get_ioc_confidence(ioc: dict) -> str:
     str
         The confidence rating.
     """
-    if not (classification := ioc.get("classification")):
-        return "Not Specified"
+    if not (classification := ioc.get('classification')):
+        return 'Not Specified'
 
-    sightings = len(ioc.get("blacklist", []))
-    if classification == "malicious":
-        return "High" if sightings > 1 else "Medium"
-    elif classification == "suspicious":
-        return "Medium" if sightings > 1 else "Low"
-    elif classification in ("neutral", "whitelist"):
-        return "Low" if sightings > 1 else "None"
+    sightings = len(ioc.get('blacklist', []))
+    if classification == 'malicious':
+        return 'High' if sightings > 1 else 'Medium'
+    elif classification == 'suspicious':
+        return 'Medium' if sightings > 1 else 'Low'
+    elif classification in ('neutral', 'whitelist'):
+        return 'Low' if sightings > 1 else 'None'
 
 
 def get_mitre_information(ioc: dict) -> dict:
@@ -371,24 +363,24 @@ def get_mitre_information(ioc: dict) -> dict:
         The MITRE information as a dictionary.
     """
     mitre_info = {}
-    for indicator in ioc.get("blacklist", []):
-        for external_references in indicator.get("external_references", []):
+    for indicator in ioc.get('blacklist', []):
+        for external_references in indicator.get('external_references', []):
             # filter by mitre known attacks
-            if external_references.get("source_name") != "mitre-attack":
+            if external_references.get('source_name') != 'mitre-attack':
                 continue
 
             # get the last occurrence since it should be more updated
-            if external_references.get("external_id", "").startswith("S"):
-                mitre_info["software"] = {
-                    "id": external_references.get("external_id"),
-                    "reference": external_references.get("url"),
-                    "name": external_references.get("description"),
+            if external_references.get('external_id', '').startswith('S'):
+                mitre_info['software'] = {
+                    'id': external_references.get('external_id'),
+                    'reference': external_references.get('url'),
+                    'name': external_references.get('description'),
                 }
     return mitre_info
 
 
 def match_ecs_type(maltiverse_type: str) -> str:
-    """ Convert the Maltiverse type to the ECS Threat type.
+    """Convert the Maltiverse type to the ECS Threat type.
 
     Parameters
     ----------
@@ -401,20 +393,20 @@ def match_ecs_type(maltiverse_type: str) -> str:
         The ECS Threat type.
     """
     mapping = {
-        "ip": "ipv4-addr",
-        "hostname": "domain-name",
-        "sample": "file",
-        "url": "url",
+        'ip': 'ipv4-addr',
+        'hostname': 'domain-name',
+        'sample': 'file',
+        'url': 'url',
     }
     return mapping.get(maltiverse_type)
 
 
 def maltiverse_alert(
-        alert_id: int,
-        ioc_dict: dict,
-        ioc_name: str,
-        ioc_ref: str = None,
-        include_full_source: bool = True,
+    alert_id: int,
+    ioc_dict: dict,
+    ioc_name: str,
+    ioc_ref: str = None,
+    include_full_source: bool = True,
 ) -> dict:
     """Generate a new alert.
 
@@ -437,46 +429,214 @@ def maltiverse_alert(
     dict
         The generated alert as a dictionary.
     """
-    _blacklist = ioc_dict.get("blacklist", [])
-    _type = ioc_dict.get("type")
+    _blacklist = ioc_dict.get('blacklist', [])
+    _type = ioc_dict.get('type')
     _ref = ioc_ref if ioc_ref else ioc_name
 
     alert = {
-        "integration": "maltiverse",
-        "alert_id": alert_id,
-        "maltiverse": {
-            "source": ioc_dict,
+        'integration': 'maltiverse',
+        'alert_id': alert_id,
+        'maltiverse': {
+            'source': ioc_dict,
         },
-        "threat": {
-            "indicator": {
-                "name": ioc_name,
-                "type": match_ecs_type(_type),
-                "description": ", ".join(
-                    sorted(set([b.get("description") for b in _blacklist])),
+        'threat': {
+            'indicator': {
+                'name': ioc_name,
+                'type': match_ecs_type(_type),
+                'description': ', '.join(
+                    sorted(set([b.get('description') for b in _blacklist])),
                 ),
-                "provider": ", ".join(
-                    sorted(set([b.get("source") for b in _blacklist])),
+                'provider': ', '.join(
+                    sorted(set([b.get('source') for b in _blacklist])),
                 ),
-                "first_seen": ioc_dict.get("creation_time"),
-                "modified_at": ioc_dict.get("modification_time"),
-                "last_seen": ioc_dict.get("modification_time"),
-                "confidence": get_ioc_confidence(ioc_dict),
-                "sightings": len(_blacklist),
-                "reference": f"https://maltiverse.com/{_type}/{_ref}" if _type else "",
+                'first_seen': ioc_dict.get('creation_time'),
+                'modified_at': ioc_dict.get('modification_time'),
+                'last_seen': ioc_dict.get('modification_time'),
+                'confidence': get_ioc_confidence(ioc_dict),
+                'sightings': len(_blacklist),
+                'reference': f'https://maltiverse.com/{_type}/{_ref}' if _type else '',
             }
         },
     }
 
-    if _type == "ip":
-        alert["threat"]["indicator"]["ip"] = ioc_name
+    if _type == 'ip':
+        alert['threat']['indicator']['ip'] = ioc_name
 
-    if (mitre_info := get_mitre_information(ioc_dict)) and "software" in mitre_info:
-        alert["threat"]["software"] = mitre_info["software"]
+    if (mitre_info := get_mitre_information(ioc_dict)) and 'software' in mitre_info:
+        alert['threat']['software'] = mitre_info['software']
 
     if not include_full_source:
-        alert.pop("maltiverse")
+        alert.pop('maltiverse')
 
     return alert
+
+
+def get_md5_in_alert(alert: dict, maltiverse_api: Maltiverse):
+    """Extract MD5-related information from the alert and query Maltiverse API.
+
+    Parameters
+    ----------
+    alert : dict
+        The alert dictionary.
+    maltiverse_api : Maltiverse
+        Maltiverse API instance.
+
+    Returns
+    -------
+    List[Dict]
+        List of Maltiverse alerts related to MD5 information.
+    """
+    results = []
+
+    if 'syscheck' in alert and 'md5_after' in alert['syscheck']:
+        debug('# Maltiverse: MD5 checksum present in the alert')
+        md5 = alert['syscheck']['md5_after']
+
+        if md5_ioc := maltiverse_api.sample_get_by_md5(md5):
+            results.append(
+                maltiverse_alert(
+                    alert_id=alert['id'],
+                    ioc_dict=md5_ioc,
+                    ioc_name=md5,
+                )
+            )
+
+    return results
+
+
+def get_sha1_in_alert(alert: dict, maltiverse_api: Maltiverse):
+    """Extract SHA1-related information from the alert and query Maltiverse API.
+
+    Parameters
+    ----------
+    alert : dict
+        The alert dictionary.
+    maltiverse_api : Maltiverse
+        Maltiverse API instance.
+
+    Returns
+    -------
+    List[Dict]
+        List of Maltiverse alerts related to SHA1 information.
+    """
+    results = []
+
+    if 'syscheck' in alert and 'sha1_after' in alert['syscheck']:
+        debug('# Maltiverse: SHA1 checksum present in the alert')
+        sha1 = alert['syscheck']['sha1_after']
+
+        if sha1_ioc := maltiverse_api.sample_get_by_sha1(sha1):
+            results.append(
+                maltiverse_alert(
+                    alert_id=alert['id'],
+                    ioc_dict=sha1_ioc,
+                    ioc_name=sha1,
+                )
+            )
+
+    return results
+
+
+def get_source_ip_in_alert(alert: dict, maltiverse_api: Maltiverse):
+    """Extract source IP-related information from the alert and query Maltiverse API.
+
+    Parameters
+    ----------
+    alert : dict
+        The alert dictionary.
+    maltiverse_api : Maltiverse
+        Maltiverse API instance.
+
+    Returns
+    -------
+    List[Dict]
+        List of Maltiverse alerts related to source IP information.
+    """
+    results = []
+
+    if 'data' in alert and 'srcip' in alert['data']:
+        debug('# Maltiverse: Source IP Address present in the alert')
+        ipv4 = alert['data']['srcip']
+
+        if not ipaddress.IPv4Address(ipv4).is_private:
+            if ipv4_ioc := maltiverse_api.ip_get(ipv4):
+                results.append(
+                    maltiverse_alert(
+                        alert_id=alert['id'],
+                        ioc_dict=ipv4_ioc,
+                        ioc_name=ipv4,
+                    )
+                )
+
+    return results
+
+
+def get_hostname_in_alert(alert: dict, maltiverse_api: Maltiverse):
+    """Extract hostname-related information from the alert and query Maltiverse API.
+
+    Parameters
+    ----------
+    alert : dict
+        The alert dictionary.
+    maltiverse_api : Maltiverse
+        Maltiverse API instance.
+
+    Returns
+    -------
+    List[Dict]
+        List of Maltiverse alerts related to hostname information.
+    """
+    results = []
+
+    if 'data' in alert and 'hostname' in alert['data']:
+        debug('# Maltiverse: Hostname present in the alert')
+        hostname = alert['data']['hostname']
+
+        if hostname_ioc := maltiverse_api.hostname_get(hostname):
+            results.append(
+                maltiverse_alert(
+                    alert_id=alert['id'],
+                    ioc_dict=hostname_ioc,
+                    ioc_name=hostname,
+                )
+            )
+
+    return results
+
+
+def get_url_in_alert(alert: dict, maltiverse_api: Maltiverse):
+    """Extract URL-related information from the alert and query Maltiverse API.
+
+    Parameters
+    ----------
+    alert : dict
+        The alert dictionary.
+    maltiverse_api : Maltiverse
+        Maltiverse API instance.
+
+    Returns
+    -------
+    List[Dict]
+        List of Maltiverse alerts related to URL information.
+    """
+    results = []
+
+    if 'data' in alert and 'url' in alert['data']:
+        debug('# Maltiverse: URL present in the alert')
+        url = alert['data']['url']
+        urlchecksum = hashlib.sha256(url.encode('utf-8')).hexdigest()
+
+        if url_ioc := maltiverse_api.url_get(urlchecksum):
+            results.append(
+                maltiverse_alert(
+                    alert_id=alert['id'],
+                    ioc_dict=url_ioc,
+                    ioc_name=url,
+                    ioc_ref=urlchecksum,
+                )
+            )
+
+    return results
 
 
 def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
@@ -496,73 +656,11 @@ def request_maltiverse_info(alert: dict, maltiverse_api: Maltiverse) -> dict:
     """
     results = []
 
-    if "syscheck" in alert and "md5_after" in alert["syscheck"]:
-        debug("# Maltiverse: MD5 checksum present in the alert")
-        md5 = alert["syscheck"]["md5_after"]
-
-        if md5_ioc := maltiverse_api.sample_get_by_md5(md5):
-            results.append(
-                maltiverse_alert(
-                    alert_id=alert["id"],
-                    ioc_dict=md5_ioc,
-                    ioc_name=md5,
-                )
-            )
-
-    if "syscheck" in alert and "sha1_after" in alert["syscheck"]:
-        debug("# Maltiverse: SHA1 checksum present in the alert")
-        sha1 = alert["syscheck"]["sha1_after"]
-
-        if sha1_ioc := maltiverse_api.sample_get_by_sha1(sha1):
-            results.append(
-                maltiverse_alert(
-                    alert_id=alert["id"],
-                    ioc_dict=sha1_ioc,
-                    ioc_name=sha1,
-                )
-            )
-
-    if "data" in alert and "srcip" in alert["data"]:
-        debug("# Maltiverse: Source IP Address present in the alert")
-        ipv4 = alert["data"]["srcip"]
-
-        if not ipaddress.IPv4Address(ipv4).is_private:
-            if ipv4_ioc := maltiverse_api.ip_get(ipv4):
-                results.append(
-                    maltiverse_alert(
-                        alert_id=alert["id"],
-                        ioc_dict=ipv4_ioc,
-                        ioc_name=ipv4,
-                    )
-                )
-
-    if "data" in alert and "hostname" in alert["data"]:
-        debug("# Maltiverse: Hostname present in the alert")
-        hostname = alert["data"]["hostname"]
-
-        if hostname_ioc := maltiverse_api.hostname_get(hostname):
-            results.append(
-                maltiverse_alert(
-                    alert_id=alert["id"],
-                    ioc_dict=hostname_ioc,
-                    ioc_name=hostname,
-                )
-            )
-
-    if "data" in alert and "url" in alert["data"]:
-        debug("# Maltiverse: URL present in the alert")
-        url = alert["data"]["url"]
-        urlchecksum = hashlib.sha256(url.encode("utf-8")).hexdigest()
-
-        if url_ioc := maltiverse_api.url_get(urlchecksum):
-            results.append(
-                maltiverse_alert(
-                    alert_id=alert["id"],
-                    ioc_dict=url_ioc,
-                    ioc_name=url,
-                    ioc_ref=urlchecksum,
-                )
-            )
+    results.extend(get_md5_in_alert(alert, maltiverse_api))
+    results.extend(get_sha1_in_alert(alert, maltiverse_api))
+    results.extend(get_source_ip_in_alert(alert, maltiverse_api))
+    results.extend(get_hostname_in_alert(alert, maltiverse_api))
+    results.extend(get_url_in_alert(alert, maltiverse_api))
 
     return results
 
@@ -577,20 +675,20 @@ def send_event(msg: str, agent: dict = None):
     agent : dict, optional
         The agent information.
     """
-    if not agent or agent["id"] == "000":
-        event = f"1:maltiverse:{json.dumps(msg)}"
+    if not agent or agent['id'] == '000':
+        event = f'1:maltiverse:{json.dumps(msg)}'
     else:
-        location = "[{0}] ({1}) {2}".format(
-            agent["id"],
-            agent["name"],
-            agent["ip"] if "ip" in agent else "any",
+        location = '[{0}] ({1}) {2}'.format(
+            agent['id'],
+            agent['name'],
+            agent['ip'] if 'ip' in agent else 'any',
         )
-        location = location.replace("|", "||").replace(":", "|:")
-        event = f"1:{location}->maltiverse:{json.dumps(msg)}"
+        location = location.replace('|', '||').replace(':', '|:')
+        event = f'1:{location}->maltiverse:{json.dumps(msg)}'
 
     debug(event)
     if len(event) > MAX_EVENT_SIZE:
-        debug(f"# WARNING: Message size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.")
+        debug(f'# WARNING: Message size exceeds the maximum allowed limit of {MAX_EVENT_SIZE} bytes.')
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
         sock.connect(SOCKET_ADDR)
@@ -598,12 +696,12 @@ def send_event(msg: str, agent: dict = None):
         sock.close()
     except socket.error as e:
         if e.errno == 111:
-            print("ERROR: Wazuh is not running.")
+            print('ERROR: Wazuh is not running.')
             sys.exit(6)
         elif e.errno == 90:
-            print("ERROR: Message too long to send to Wazuh.")
+            print('ERROR: Message too long to send to Wazuh.')
             sys.exit(7)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main(sys.argv)

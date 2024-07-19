@@ -225,7 +225,7 @@ int main(int argc, char **argv)
             printf("\n%s %s. Available active responses:\n", __ossec_name, ARGV0);
         }
 
-        fp = fopen(DEFAULTAR, "r");
+        fp = wfopen(DEFAULTAR, "r");
         if (fp) {
             char buffer[256];
 
@@ -599,7 +599,7 @@ int main(int argc, char **argv)
         FILE *fp;
         int pass = 0;
 
-        if (fp = fopen(DEFAULTAR, "r"), fp) {
+        if (fp = wfopen(DEFAULTAR, "r"), fp) {
             char name[256];
             char command[256];
             unsigned timeout;

@@ -14,17 +14,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../remoted/remoted.h"
 #include "../headers/shared.h"
-#include "../../wrappers/common.h"
-#include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../../wrappers/libc/stdio_wrappers.h"
-#include "../../wrappers/wazuh/shared/queue_linked_op_wrappers.h"
-
-
-
+#include "../../os_crypto/blowfish/bf_op.h"
 
 /* Forward declarations */
+int doEncryptByMethod(const char *input, char *output, const char *charkey,
+                      long size, short int action,int method);
 void StoreCounter(const keystore *keys, int id, unsigned int global, unsigned int local);
 
 /* Setup/teardown */
@@ -174,9 +169,9 @@ void test_StoreCounter_pushing_rids_fp_null(void **state)
     key->rids_node = NULL;
     keys.keyentries[0] = key;
 
-    expect_string(__wrap_fopen, path, "queue/rids/001");
-    expect_string(__wrap_fopen, mode, "r+");
-    will_return(__wrap_fopen, 1234);
+    expect_string(__wrap_wfopen, path, "queue/rids/001");
+    expect_string(__wrap_wfopen, mode, "r+");
+    will_return(__wrap_wfopen, 1234);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opening rids for agent 001.");
 
@@ -233,13 +228,13 @@ void test_StoreCounter_fail_first_open(void **state)
     key->rids_node = NULL;
     keys.keyentries[0] = key;
 
-    expect_string(__wrap_fopen, path, "queue/rids/001");
-    expect_string(__wrap_fopen, mode, "r+");
-    will_return(__wrap_fopen, NULL);
+    expect_string(__wrap_wfopen, path, "queue/rids/001");
+    expect_string(__wrap_wfopen, mode, "r+");
+    will_return(__wrap_wfopen, NULL);
     errno = EACCES;
-    expect_string(__wrap_fopen, path, "queue/rids/001");
-    expect_string(__wrap_fopen, mode, "w");
-    will_return(__wrap_fopen, 1234);
+    expect_string(__wrap_wfopen, path, "queue/rids/001");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, 1234);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Opening rids for agent 001.");
 
@@ -269,6 +264,69 @@ void test_StoreCounter_fail_first_open(void **state)
     os_free(keys.keyentries);
 }
 
+void test_encrypt_by_method_blowfish(void **state){
+    const char *key = "test_key";
+    const char *string = "test string";
+    const int buffersize = 1024;
+    char buffer1[buffersize];
+    char buffer2[buffersize];
+
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
+
+    assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_BLOWFISH), 1);
+    assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_BLOWFISH), 1);
+
+    assert_string_equal(buffer2, string);
+}
+
+void test_encrypt_by_method_aes(void **state){
+    const char *key = "test_key";
+    const char *string = "test string";
+    const int buffersize = 1024;
+    char buffer1[buffersize];
+    char buffer2[buffersize];
+
+    memset(buffer1, 0, sizeof(buffer1));
+    memset(buffer2, 0, sizeof(buffer2));
+
+    assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,W_METH_AES), 16);
+    assert_int_equal(doEncryptByMethod(buffer1, buffer2, key, strlen(buffer1), OS_DECRYPT ,W_METH_AES), 11);
+
+    assert_int_equal(strncmp(buffer2, string, strlen(string)), 0);
+}
+
+void test_encrypt_by_method_default(void **state){
+    const char *key = "test_key";
+    const char *string = "test string";
+    const int buffersize = 1024;
+    char buffer1[buffersize];
+
+    memset(buffer1, 0, sizeof(buffer1));
+
+    assert_int_equal(doEncryptByMethod(string, buffer1, key, strlen(string), OS_ENCRYPT ,2), OS_INVALID);
+}
+
+void test_set_agent_crypto_method(void **state){
+    keystore *keys;
+
+    os_calloc(1, sizeof(keystore), keys);
+    os_calloc(1, sizeof(keyentry *), keys->keyentries);
+    keys->keysize = 1;
+
+    os_calloc(1, sizeof(keyentry), keys->keyentries[0]);
+    keys->keyentries[0]->keyid = 0;
+    keys->keyentries[0]->id = "001";
+    keys->keyentries[0]->name = "agent1";
+
+    os_set_agent_crypto_method(keys, W_METH_BLOWFISH);
+
+    assert_int_equal(keys->keyentries[0]->crypto_method, W_METH_BLOWFISH);
+
+    free(keys->keyentries[0]);
+    free(keys->keyentries);
+    free(keys);
+}
 
 int main(void)
 {
@@ -277,7 +335,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_StoreCounter_updating_rids, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_StoreCounter_pushing_rids, setup_config, teardown_config),
         cmocka_unit_test_setup_teardown(test_StoreCounter_pushing_rids_fp_null, setup_config, teardown_config),
-        cmocka_unit_test_setup_teardown(test_StoreCounter_fail_first_open, setup_config, teardown_config)
+        cmocka_unit_test_setup_teardown(test_StoreCounter_fail_first_open, setup_config, teardown_config),
+        cmocka_unit_test(test_encrypt_by_method_blowfish),
+        cmocka_unit_test(test_encrypt_by_method_aes),
+        cmocka_unit_test(test_encrypt_by_method_default),
+        cmocka_unit_test(test_set_agent_crypto_method),
         };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

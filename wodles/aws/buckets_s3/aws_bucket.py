@@ -30,6 +30,7 @@ INVALID_CREDENTIALS_ERROR_CODE = "SignatureDoesNotMatch"
 INVALID_REQUEST_TIME_ERROR_CODE = "RequestTimeTooSkewed"
 THROTTLING_EXCEPTION_ERROR_CODE = "ThrottlingException"
 
+UNKNOWN_ERROR_MESSAGE = "Unexpected error: '{error}'."
 INVALID_CREDENTIALS_ERROR_MESSAGE = "Invalid credentials to access S3 Bucket"
 INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AWS environment differ"
 THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. " \
@@ -50,10 +51,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     ----------
     reparse : bool
         Whether to parse already parsed logs or not.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
     profile : str
         AWS profile.
     iam_role_arn : str
@@ -86,7 +83,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
     """
     empty_bucket_message_template = "+++ No logs to process in bucket: {aws_account_id}/{aws_region}"
 
-    def __init__(self, db_table_name, bucket, reparse, access_key, secret_key, profile, iam_role_arn,
+    def __init__(self, db_table_name, bucket, reparse, profile, iam_role_arn,
                  only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
                  region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
         # common SQL queries
@@ -189,8 +186,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         wazuh_integration.WazuhAWSDatabase.__init__(self,
                                                     db_name=self.db_name,
                                                     service_name='s3',
-                                                    access_key=access_key,
-                                                    secret_key=secret_key,
                                                     profile=profile,
                                                     iam_role_arn=iam_role_arn,
                                                     region=region,
@@ -212,7 +207,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.aws_organization_id = aws_organization_id
         self.date_format = "%Y/%m/%d"
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
-        self.prefix_regex = re.compile("^\d{12}$")
+        self.prefix_regex = re.compile(r"^\d{12}$")
         self.check_prefix = False
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
@@ -283,7 +278,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     'aws_region': aws_region,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
+            aws_tools.error(f"Failed to execute DB cleanup - AWS Account ID: {aws_account_id}  Region: {aws_region}: {e}")
 
     def marker_custom_date(self, aws_region: str, aws_account_id: str, date: datetime) -> str:
         """
@@ -361,7 +356,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 sys.exit(1)
 
         except KeyError:
-            print(f"ERROR: No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of "
+            aws_tools.error(f"No logs found in '{self.get_base_prefix()}'. Check the provided prefix and the location of "
                   f"the logs for the bucket type '{aws_tools.get_script_arguments().type.lower()}'")
             sys.exit(18)
 
@@ -479,7 +474,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 except:
                     aws_tools.debug("++ Failed to send message to Wazuh", 1)
             else:
-                print("ERROR: {}".format(error_txt))
+                aws_tools.error(error_txt)
                 sys.exit(error_code)
 
         try:
@@ -528,6 +523,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                         f'+++ The "{self.discard_regex.pattern}" regex found a match in the "{self.discard_field}" '
                         f'field. The event will be skipped.', 2)
                     continue
+                else:
+                    aws_tools.debug(
+                        f'+++ The "{self.discard_regex.pattern}" regex did not find a match in the '
+                        f'"{self.discard_field}" field. The event will be processed.', 3)
                 # Parse out all the values of 'None'
                 event_msg = self.get_alert_msg(aws_account_id, log_key, event)
 
@@ -622,8 +621,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 else:
                     break
         except botocore.exceptions.ClientError as error:
-            error_message = "Unknown"
-            exit_number = 1
             error_code = error.response.get("Error", {}).get("Code")
 
             if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
@@ -632,7 +629,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             else:
                 error_message = f'ERROR: The "iter_files_in_bucket" request failed: {error}'
                 exit_number = 1
-            print(f"ERROR: {error_message}")
+            aws_tools.error(f"{error_message}")
             exit(exit_number)
 
         except Exception as err:
@@ -640,7 +637,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
             else:
                 aws_tools.debug(f"+++ Unexpected error: {err}", 2)
-            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            aws_tools.error(f"Unexpected error querying/working with objects in S3: {err}")
             sys.exit(7)
 
     def check_bucket(self):
@@ -652,12 +649,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 if 'CommonPrefixes' in page:
                     break
             else:
-                print("ERROR: No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
+                aws_tools.error("No files were found in '{0}'. No logs will be processed.".format(self.bucket_path))
                 exit(14)
 
         except botocore.exceptions.ClientError as error:
-            error_message = "Unknown"
-            exit_number = 1
             error_code = error.response.get("Error", {}).get("Code")
 
             if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
@@ -669,11 +664,14 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             elif error_code == INVALID_REQUEST_TIME_ERROR_CODE:
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
+            else:
+                error_message = UNKNOWN_ERROR_MESSAGE.format(error=error)
+                exit_number = 1
 
-            print(f"ERROR: {error_message}")
+            aws_tools.error(f"{error_message}")
             exit(exit_number)
         except botocore.exceptions.EndpointConnectionError as e:
-            print(f"ERROR: {str(e)}")
+            aws_tools.error(f"{str(e)}")
             exit(15)
 
 
@@ -735,10 +733,8 @@ class AWSCustomBucket(AWSBucket):
         AWSBucket.__init__(self, db_table_name=db_table_name if db_table_name else 'custom', **kwargs)
         self.retain_db_records = MAX_RECORD_RETENTION
         # get STS client
-        access_key = kwargs.get('access_key', None)
-        secret_key = kwargs.get('secret_key', None)
         profile = kwargs.get('profile', None)
-        self.sts_client = self.get_sts_client(access_key, secret_key, profile=profile)
+        self.sts_client = self.get_sts_client(profile=profile)
         # get account ID
         self.aws_account_id = self.sts_client.get_caller_identity().get('Account')
         self.macie_location_pattern = re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
@@ -943,4 +939,4 @@ class AWSCustomBucket(AWSBucket):
                     'aws_account_id': aws_account_id if aws_account_id else self.aws_account_id,
                     'retain_db_records': self.retain_db_records})
         except Exception as e:
-            print(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")
+            aws_tools.error(f"ERROR: Failed to execute DB cleanup - Path: {self.bucket_path}: {e}")

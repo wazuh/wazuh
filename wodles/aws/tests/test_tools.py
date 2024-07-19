@@ -5,6 +5,7 @@
 import argparse
 import os
 import sys
+import io
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -125,7 +126,7 @@ def test_arg_valid_regions_raises_exception_when_invalid_region_provided():
         aws_tools.arg_valid_regions('invalid-region')
 
 
-@pytest.mark.parametrize('arg_string', ["900", "3600"])
+@pytest.mark.parametrize('arg_string', ["900", "43200"])
 def test_arg_valid_iam_role_duration(arg_string: str):
     """Test 'arg_valid_iam_role_duration' function returns the expected duration.
 
@@ -147,7 +148,7 @@ def test_arg_valid_bucket_name_raises_exception_when_invalid_bucket_name_provide
         aws_tools.arg_valid_bucket_name('--ol-s3-invalid')
 
 
-@pytest.mark.parametrize('arg_string', ["899", "3601"])
+@pytest.mark.parametrize('arg_string', ["899", "43201"])
 def test_arg_valid_iam_role_duration_raises_exception_when_invalid_duration_provided(arg_string):
     """Test 'arg_valid_iam_role_duration' function raises an 'ArgumentTypeError' error
     when the duration is not between 15m and 12h.
@@ -159,6 +160,27 @@ def test_arg_valid_iam_role_duration_raises_exception_when_invalid_duration_prov
     """
     with pytest.raises(argparse.ArgumentTypeError):
         aws_tools.arg_valid_iam_role_duration(arg_string)
+
+
+@pytest.mark.parametrize("test_input, expected_output", [
+    (('external_id', None, None), "ERROR: Used a subscriber but no --iam_role_arn provided."),
+    (('external_id', None, 'iam_role_arn'), "ERROR: Used a subscriber but no --queue provided."),
+    ((None, 'name', 'iam_role_arn'), "ERROR: Used a subscriber but no --external_id provided.")
+])
+def test_arg_validate_security_lake_auth_params(test_input, expected_output):
+    """Test the arg_validate_security_lake_auth_params function of aws_tools."""
+    captured_output = io.StringIO()
+    sys.stdout = captured_output
+
+    with pytest.raises(SystemExit) as excinfo:
+        aws_tools.arg_validate_security_lake_auth_params(*test_input)
+
+    output = captured_output.getvalue().strip()
+
+    assert output == expected_output
+    assert excinfo.value.code == 21
+
+    sys.stdout = sys.__stdout__
 
 
 @patch('configparser.RawConfigParser')

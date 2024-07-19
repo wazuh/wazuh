@@ -1,8 +1,9 @@
 ---
-name: Release Candidate - Workload benchmarks metrics 
+name: Release Candidate - Workload benchmarks metrics
 about: Report the workload benchmarks metrics.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - Workload benchmarks metrics'
-labels: 'API, cluster, qa'
+title: Release [WAZUH VERSION] - Release Candidate [RC VERSION] - Workload benchmarks
+  metrics
+labels: ''
 assignees: ''
 
 ---
@@ -63,4 +64,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ]

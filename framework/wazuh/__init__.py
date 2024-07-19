@@ -4,7 +4,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-from datetime import datetime, timezone
 from time import strftime
 
 from wazuh.core import common
@@ -18,7 +17,7 @@ Wazuh is a python package to manage OSSEC.
 
 """
 
-__version__ = '4.8.0'
+__version__ = '5.0.0'
 
 
 msg = "\n\nPython 2.7 or newer not found."
@@ -45,9 +44,8 @@ class Wazuh:
         :return:
         """
 
-        self.version = common.WAZUH_VERSION
-        self.installation_date = common.WAZUH_INSTALLATION_DATE
-        self.type = common.WAZUH_INSTALL_TYPE
+        self.version = f'v{__version__}'
+        self.type = 'server'
         self.path = common.WAZUH_PATH
         self.max_agents = 'unlimited'
         self.openssl_support = 'N/A'
@@ -65,14 +63,8 @@ class Wazuh:
         return False
 
     def to_dict(self):
-        date_format = '%a %b %d %H:%M:%S %Z %Y'
-        try:
-            compilation_date = datetime.strptime(self.installation_date, date_format).replace(tzinfo=timezone.utc)
-        except ValueError:
-            compilation_date = datetime.utcnow().replace(tzinfo=timezone.utc)
         return {'path': self.path,
                 'version': self.version,
-                'compilation_date': compilation_date,
                 'type': self.type,
                 'max_agents': self.max_agents,
                 'openssl_support': self.openssl_support,

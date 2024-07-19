@@ -1,4 +1,4 @@
-# Copyright (C) 2015-2021, Wazuh Inc.
+# Copyright (C) 2015-2024, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
@@ -14,14 +14,16 @@ from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import callbacks
 from wazuh_testing.utils.file import remove_file
 
+
 @pytest.fixture()
 def wait_for_msgraph_start():
     # Wait for module ms-graph starts
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(patterns.MODULESD_STARTED, {
                               'integration': 'ms-graph'
-                          }))     
+                          }))
     assert (wazuh_log_monitor.callback_result == None), f'Error invalid configuration event not detected'
+
 
 @pytest.fixture(scope="session")
 def proxy_setup():

@@ -267,7 +267,7 @@ typedef struct registry_ignore_regex {
 
 typedef struct fim_file_data {
     // Checksum attributes
-    unsigned int size;
+    unsigned long int size;
 #ifdef WIN32
     cJSON * perm_json;
 #endif
@@ -318,7 +318,7 @@ typedef struct fim_registry_value_data {
     int arch;
     char* name;
     unsigned int type;
-    unsigned int size;
+    unsigned int long size;
     os_md5 hash_md5;
     os_sha1 hash_sha1;
     os_sha256 hash_sha256;
@@ -435,6 +435,7 @@ typedef struct _config {
     pthread_mutex_t fim_realtime_mutex;
 #ifndef WIN32
     pthread_mutex_t fim_symlink_mutex;
+    unsigned int queue_size;                           /* Linux Audit message queue size for whodata */
 #endif
     rtfim *realtime;
     fdb_t *database;

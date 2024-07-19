@@ -130,11 +130,7 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     }
 #ifndef WIN32
 #ifndef CLIENT
-    else if (!strcmp(node->values[0], WM_VULNDETECTOR_CONTEXT.name)) {
-        mwarn("A deprecated Vulnerability Detector configuration block was found. It will be ignored.");
-        OS_ClearNode(children);
-        return 0;
-    } else if (!strcmp(node->values[0], KEY_WM_NAME)) {
+    else if (!strcmp(node->values[0], KEY_WM_NAME)) {
         if (wm_key_request_read(children, cur_wmodule) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;

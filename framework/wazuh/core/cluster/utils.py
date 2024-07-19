@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import fcntl
 import json
 import logging
@@ -17,14 +18,142 @@ from operator import setitem
 
 from wazuh.core import common, pyDaemonModule
 from wazuh.core.configuration import get_ossec_conf
-from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
 from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
+NO = 'no'
+YES = 'yes'
+DISABLED = 'disabled'
+HAPROXY_HELPER = 'haproxy_helper'
+HAPROXY_DISABLED = 'haproxy_disabled'
+HAPROXY_ADDRESS = 'haproxy_address'
+HAPROXY_PORT = 'haproxy_port'
+HAPROXY_PROTOCOL = 'haproxy_protocol'
+HAPROXY_USER = 'haproxy_user'
+HAPROXY_PASSWORD = 'haproxy_password'
+HAPROXY_BACKEND = 'haproxy_backend'
+HAPROXY_RESOLVER = 'haproxy_resolver'
+FREQUENCY = 'frequency'
+EXCLUDED_NODES = 'excluded_nodes'
+AGENT_CHUNK_SIZE = 'agent_chunk_size'
+AGENT_RECONNECTION_TIME = 'agent_reconnection_time'
+AGENT_RECONNECTION_STABILITY_TIME = 'agent_reconnection_stability_time'
+IMBALANCE_TOLERANCE = 'imbalance_tolerance'
+REMOVE_DISCONNECTED_NODE_AFTER = 'remove_disconnected_node_after'
+
 logger = logging.getLogger('wazuh')
 execq_lockfile = os.path.join(common.WAZUH_PATH, "var", "run", ".api_execq_lock")
+
+HELPER_DEFAULTS = {
+    HAPROXY_PORT: 5555,
+    HAPROXY_PROTOCOL: 'http',
+    HAPROXY_BACKEND: 'wazuh_reporting',
+    HAPROXY_RESOLVER: None,
+    EXCLUDED_NODES: [],
+    FREQUENCY: 60,
+    AGENT_CHUNK_SIZE: 300,
+    AGENT_RECONNECTION_TIME: 5,
+    AGENT_RECONNECTION_STABILITY_TIME: 60,
+    IMBALANCE_TOLERANCE: 0.1,
+    REMOVE_DISCONNECTED_NODE_AFTER: 240,
+}
+
+
+def _parse_haproxy_helper_integer_values(helper_config: dict) -> dict:
+    """Parse HAProxy helper integer values.
+
+    Parameters
+    ----------
+    helper_config : dict
+        Configuration to parse.
+
+    Returns
+    -------
+    dict
+        Parsed configuration with integer values.
+
+    Raises
+    ------
+    WazuhError (3004)
+        If some value has an invalid type.
+    """
+    for field in [
+        HAPROXY_PORT,
+        FREQUENCY,
+        AGENT_RECONNECTION_STABILITY_TIME,
+        AGENT_RECONNECTION_TIME,
+        AGENT_CHUNK_SIZE,
+        REMOVE_DISCONNECTED_NODE_AFTER
+    ]:
+        if helper_config.get(field):
+            try:
+                helper_config[field] = int(helper_config[field])
+            except ValueError:
+                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be an integer.")
+    return helper_config
+
+
+def _parse_haproxy_helper_float_values(helper_config: dict) -> dict:
+    """Parse HAProxy helper float values.
+
+    Parameters
+    ----------
+    helper_config : dict
+        Configuration to parse.
+
+    Returns
+    -------
+    dict
+        Parsed configuration with float values.
+
+    Raises
+    ------
+    WazuhError (3004)
+        If some value has an invalid type.
+    """
+    for field in [IMBALANCE_TOLERANCE]:
+        if helper_config.get(field):
+            try:
+                helper_config[field] = float(helper_config[field])
+            except ValueError:
+                raise WazuhError(3004, extra_message=f"HAProxy Helper {field} must be a float.")
+    return helper_config
+
+
+def parse_haproxy_helper_config(helper_config: dict) -> dict:
+    """Parse HAProxy helper configuration section.
+
+    Parameters
+    ----------
+    helper_config : dict
+        Configuration to parse.
+
+    Returns
+    -------
+    dict
+        Parsed configuration for HAProxy Helper.
+
+    Raises
+    ------
+    WazuhError (3004)
+        If some value has an invalid type.
+    """
+    # If any value is missing from user's cluster configuration, add the default one.
+    for value_name in set(HELPER_DEFAULTS.keys()) - set(helper_config.keys()):
+        helper_config[value_name] = HELPER_DEFAULTS[value_name]
+
+    if helper_config[HAPROXY_DISABLED] == NO:
+        helper_config[HAPROXY_DISABLED] = False
+    elif helper_config[HAPROXY_DISABLED] == YES:
+        helper_config[HAPROXY_DISABLED] = True
+
+    helper_config = _parse_haproxy_helper_integer_values(helper_config)
+    helper_config = _parse_haproxy_helper_float_values(helper_config)
+
+    return helper_config
 
 
 def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typing.Dict:
@@ -78,11 +207,11 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
         raise WazuhError(3004, extra_message="Cluster port must be an integer.")
 
     config_cluster['port'] = int(config_cluster['port'])
-    if config_cluster['disabled'] == 'no':
-        config_cluster['disabled'] = False
-    elif config_cluster['disabled'] == 'yes':
-        config_cluster['disabled'] = True
-    elif not isinstance(config_cluster['disabled'], bool):
+    if config_cluster[DISABLED] == NO:
+        config_cluster[DISABLED] = False
+    elif config_cluster[DISABLED] == YES:
+        config_cluster[DISABLED] = True
+    elif not isinstance(config_cluster[DISABLED], bool):
         raise WazuhError(3004,
                          extra_message=f"Allowed values for 'disabled' field are 'yes' and 'no'. "
                                        f"Found: '{config_cluster['disabled']}'")
@@ -90,6 +219,9 @@ def read_cluster_config(config_file=common.OSSEC_CONF, from_import=False) -> typ
     if config_cluster['node_type'] == 'client':
         logger.info("Deprecated node type 'client'. Using 'worker' instead.")
         config_cluster['node_type'] = 'worker'
+
+    if config_cluster.get(HAPROXY_HELPER):
+        config_cluster[HAPROXY_HELPER] = parse_haproxy_helper_config(config_cluster[HAPROXY_HELPER])
 
     return config_cluster
 
@@ -124,7 +256,7 @@ def get_manager_status(cache=False) -> typing.Dict:
         pidfile = glob(os.path.join(run_dir, f"{process}-*.pid"))
         if os.path.exists(os.path.join(run_dir, f"{process}.failed")):
             data[process] = 'failed'
-        elif os.path.exists(os.path.join(run_dir, f".restart")):
+        elif os.path.exists(os.path.join(run_dir, ".restart")):
             data[process] = 'restarting'
         elif os.path.exists(os.path.join(run_dir, f"{process}.start")):
             data[process] = 'starting'
@@ -307,6 +439,29 @@ class ClusterLogger(WazuhLogger):
         self.logger.setLevel(debug_level)
 
 
+def log_subprocess_execution(logger_instance: logging.Logger, logs: dict):
+    """Log messages returned by functions that are executed in cluster's subprocesses.
+
+    Parameters
+    ----------
+    logger_instance: Logger object
+        Instance of the used logger.
+    logs: dict
+        Dict containing messages of different logging level.
+    """
+    if 'debug' in logs and logs['debug']:
+        logger_instance.debug(f"{dict(logs['debug'])}")
+    if 'debug2' in logs and logs['debug2']:
+        logger_instance.debug2(f"{dict(logs['debug2'])}")
+    if 'warning' in logs and logs['warning']:
+        logger_instance.warning(f"{dict(logs['warning'])}")
+    if 'error' in logs and logs['error']:
+        logger_instance.error(f"{dict(logs['error'])}")
+    if 'generic_errors' in logs and logs['generic_errors']:
+        for error in logs['generic_errors']:
+            logger_instance.error(error, exc_info=False)
+
+
 def process_spawn_sleep(child):
     """Task to force the cluster pool spawn all its children and create their PID files.
 
@@ -348,9 +503,23 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
 
     import concurrent
     from asyncio import run
+
     from wazuh.core.cluster.dapi.dapi import DistributedAPI
     dapi = DistributedAPI(f=func, f_kwargs=f_kwargs, request_type=request_type,
                           is_async=False, wait_for_complete=True, logger=logger, nodes=nodes,
                           broadcasting=broadcasting)
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()
+
+
+def running_in_master_node() -> bool:
+    """Determine if cluster is disabled or API is running in a master node.
+
+    Returns
+    -------
+    bool
+        True if API is running in master node or if cluster is disabled else False.
+    """
+    cluster_config = read_cluster_config()
+
+    return cluster_config['disabled'] or cluster_config['node_type'] == 'master'

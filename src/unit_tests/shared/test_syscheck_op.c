@@ -23,6 +23,7 @@
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "../wrappers/wazuh/shared/privsep_op_wrappers.h"
+#include "../wrappers/common.h"
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/wazuh/syscheckd/syscom_wrappers.h"
@@ -123,6 +124,7 @@ static int setup_string_array(void **state) {
         return -1;
 
     *state = array;
+    test_mode = 1;
 
     return 0;
 }
@@ -131,6 +133,7 @@ static int teardown_string_array(void **state) {
     char **array = *state;
 
     free_strarray(array);
+    test_mode = 0;
 
     return 0;
 }
@@ -3595,7 +3598,7 @@ static void test_get_file_user_GetSecurityInfo_error(void **state) {
              "GetSecurityInfo error code = (%lu), 'Access denied.'",
              ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
 
     array[0] = get_file_user("C:\\a\\path", &array[1]);
 
@@ -4117,7 +4120,7 @@ void test_get_registry_group_GetSecurityInfo_fails(void **state) {
              "GetSecurityInfo error code = (%lu), 'Access denied.'",
              ERROR_ACCESS_DENIED);
 
-    expect_string(__wrap__merror, formatted_msg, error_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, error_msg);
 
     group = get_registry_group(&group_id, hndl);
 

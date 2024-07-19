@@ -78,6 +78,7 @@ void wm_agent_upgrade_free_upgrade_task(wm_upgrade_task* upgrade_task) {
         os_free(upgrade_task->wpk_version);
         os_free(upgrade_task->wpk_file);
         os_free(upgrade_task->wpk_sha1);
+        os_free(upgrade_task->package_type);
         os_free(upgrade_task);
     }
 }
@@ -111,6 +112,7 @@ void wm_agent_upgrade_free_agent_info(wm_agent_info* agent_info) {
         os_free(agent_info->architecture);
         os_free(agent_info->wazuh_version);
         os_free(agent_info->connection_status);
+        os_free(agent_info->package_type);
         os_free(agent_info);
     }
 }

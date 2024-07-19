@@ -12,8 +12,6 @@
 #define VALIDATE_H
 
 
-#define w_free_os_ip(x) if(x){if(x->is_ipv6){os_free(x->ipv6)}else{os_free(x->ipv4)};os_free(x->ip);os_free(x)}
-
 /* Run-time definitions */
 int getDefine_Int(const char *high_name, const char *low_name, int min, int max) __attribute__((nonnull));
 

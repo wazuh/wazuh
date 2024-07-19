@@ -144,7 +144,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
     *rc = 0;
 
     /* Obtain context to calculate hash */
-    SHA_CTX context;
+    EVP_MD_CTX *context = EVP_MD_CTX_new();
     int64_t current_position = w_ftell(lf->fp);
     bool is_valid_context_file = w_get_hash_context(lf, &context, current_position);
 
@@ -153,7 +153,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
         lines++;
 
         if (is_valid_context_file) {
-            OS_SHA1_Stream(&context, NULL, str);
+            OS_SHA1_Stream(context, NULL, str);
         }
 
         /* If need clear is set, we need to clear the line */
@@ -266,6 +266,7 @@ void *read_nmapg(logreader *lf, int *rc, int drop_it) {
 file_error:
 
         merror("Bad formated nmap grepable file.");
+        EVP_MD_CTX_free(context);
         *rc = -1;
         return (NULL);
 
@@ -273,7 +274,9 @@ file_error:
 
     current_position = w_ftell(lf->fp);
     if (is_valid_context_file) {
-        w_update_file_status(lf->file, current_position, &context);
+        w_update_file_status(lf->file, current_position, context);
+    } else {
+        EVP_MD_CTX_free(context);
     }
 
     mdebug2("Read %d lines from %s", lines, lf->file);

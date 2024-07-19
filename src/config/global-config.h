@@ -19,6 +19,8 @@
 #define EPS_LIMITS_MAX_EPS 100000
 #define EPS_LIMITS_MIN_EPS 0
 
+#define CTI_URL_DEFAULT "https://cti.wazuh.com/api/v1/catalog/contexts/vd_1.0.0/consumers/vd_4.8.0"
+
 typedef struct __eps {
     // EPS limits configuration
     unsigned int maximum;
@@ -41,6 +43,7 @@ typedef struct __Config {
     u_int8_t mailbylevel;
     u_int8_t logbylevel;
     u_int8_t logfw;
+    u_int8_t update_check;
     int decoder_order_size;
 
     /* Agent's disconnection global parameters */
@@ -106,6 +109,13 @@ typedef struct __Config {
     /* Global rule hash */
     OSHash *g_rules_hash;
 
+    /* Vector of targets forwarder */
+    char** forwarders_list;
+
+    /* Vector of socket configuration from ossec.conf <socket/> */
+    socket_forwarder *socket_list;
+
+
 #ifdef LIBGEOIP_ENABLED
     /* GeoIP support */
     u_int8_t loggeoip;
@@ -131,6 +141,9 @@ typedef struct __Config {
 
     // EPS limits configuration
     _eps eps;
+
+    // CTI URL
+    char *cti_url;
 } _Config;
 
 

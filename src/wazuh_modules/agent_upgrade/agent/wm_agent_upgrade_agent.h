@@ -22,6 +22,7 @@
 
 typedef enum _wm_upgrade_agent_state {
     WM_UPGRADE_SUCCESSFUL = 0,
+    WM_UPGRADE_FAILED_DEPENDENCY,
     WM_UPGRADE_FAILED,
     WM_UPGRADE_MAX_STATE
 } wm_upgrade_agent_state;

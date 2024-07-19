@@ -84,13 +84,20 @@ int wm_config() {
     ReadConfig(CWMODULE | CAGENT_CONFIG, AGENTCONFIG, &wmodules, &agent_cfg);
 #else
     wmodule *module;
-    // The database module won't be available on agents
 
+    if ((module = wm_router_read())) {
+        wm_add(module);
+    }
+
+    if ((module = wm_content_manager_read())) {
+        wm_add(module);
+    }
+
+    // The database module won't be available on agents
     if ((module = wm_database_read()))
         wm_add(module);
 
     // Downloading module
-
     if ((module = wm_download_read()))
         wm_add(module);
 
@@ -198,7 +205,7 @@ int wm_state_io(const char * tag, int op, void *state, size_t size) {
     snprintf(path, PATH_MAX, "%s/%s", WM_STATE_DIR, tag);
     #endif
 
-    if (!(file = fopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
+    if (!(file = wfopen(path, op == WM_IO_WRITE ? "wb" : "rb"))) {
         return -1;
     }
     w_file_cloexec(file);
@@ -354,8 +361,6 @@ wmodule * wm_find_module(const char * name) {
 // Run a query in a module
 
 size_t wm_module_query(char * query, char ** output) {
-    // vulnerability-detector run_now
-
     char * module_name = query;
     char * args = strchr(query, ' ');
 
@@ -462,68 +467,6 @@ int wm_relative_path(const char * path) {
 
     return 0;
 }
-
-
-// Get binary full path
-int wm_get_path(const char *binary, char **validated_comm){
-
-#ifdef WIN32
-    const char sep[2] = ";";
-#else
-    const char sep[2] = ":";
-#endif
-    char *path;
-    char *full_path;
-    char *validated = NULL;
-    char *env_path = NULL;
-    char *save_ptr = NULL;
-
-#ifdef WIN32
-    if (IsFile(binary) == 0) {
-#else
-    if (binary[0] == '/') {
-        // Check binary full path
-        if (IsFile(binary) == -1) {
-            return 0;
-        }
-#endif
-        validated = strdup(binary);
-
-    } else {
-
-        env_path = getenv("PATH");
-        path = strtok_r(env_path, sep, &save_ptr);
-
-        while (path != NULL) {
-            os_calloc(strlen(path) + strlen(binary) + 2, sizeof(char), full_path);
-#ifdef WIN32
-            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s\\%s", path, binary);
-#else
-            snprintf(full_path, strlen(path) + strlen(binary) + 2, "%s/%s", path, binary);
-#endif
-            if (IsFile(full_path) == 0) {
-                validated = strdup(full_path);
-                free(full_path);
-                break;
-            }
-            free(full_path);
-            path = strtok_r(NULL, sep, &save_ptr);
-        }
-
-        // Check binary found
-        if (validated == NULL) {
-            return 0;
-        }
-    }
-
-    if (validated_comm) {
-        *validated_comm = strdup(validated);
-    }
-
-    free(validated);
-    return 1;
-}
-
 
 /**
  Check the binary wich executes a commad has the specified hash.

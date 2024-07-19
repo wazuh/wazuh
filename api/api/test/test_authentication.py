@@ -7,10 +7,9 @@ import json
 import os
 import sys
 from copy import deepcopy
-from datetime import datetime
 from unittest.mock import patch, MagicMock, ANY, call
 
-from werkzeug.exceptions import Unauthorized
+from connexion.exceptions import Unauthorized
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -60,11 +59,11 @@ def test_check_user_master():
     assert result == {'result': True}
 
 
+@pytest.mark.asyncio
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
-@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
-def test_check_user(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi):
+async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi):
     """Verify if result is as expected"""
     result = authentication.check_user('test_user', 'test_pass')
 
@@ -126,15 +125,15 @@ def test_get_security_conf():
     assert all(x in result.keys() for x in ('auth_token_exp_timeout', 'rbac_mode'))
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('auth_context', [{'name': 'initial_auth'}, None])
 @patch('api.authentication.jwt.encode', return_value='test_token')
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
-@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
-def test_generate_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_keypair,
+async def test_generate_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_keypair,
                         mock_encode, auth_context):
     """Verify if result is as expected"""
 
@@ -166,15 +165,16 @@ def test_check_token(mock_tokenmanager):
     assert result == {'valid': ANY, 'policies': ANY}
 
 
+@pytest.mark.asyncio
 @patch('api.authentication.jwt.decode')
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None)
-@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
-@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
+@patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', return_value=True)
 @patch('api.authentication.raise_if_exc', side_effect=None)
-def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, mock_dapi, mock_generate_keypair,
+async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_keypair,
                       mock_decode):
+    
     mock_decode.return_value = deepcopy(original_payload)
     mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                      WazuhResult(security_conf)]
@@ -197,12 +197,12 @@ def test_decode_token(mock_raise_if_exc, mock_submit, mock_distribute_function, 
     assert mock_raise_if_exc.call_count == 2
 
 
+@pytest.mark.asyncio
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.distribute_function', side_effect=None)
-@patch('concurrent.futures.ThreadPoolExecutor.submit', side_effect=None)
 @patch('api.authentication.raise_if_exc', side_effect=None)
 @patch('api.authentication.generate_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
-def test_decode_token_ko(mock_generate_keypair, mock_raise_if_exc, mock_submit, mock_distribute_function):
+async def test_decode_token_ko(mock_generate_keypair, mock_raise_if_exc, mock_distribute_function):
     """Assert exceptions are handled as expected inside decode_token()"""
     with pytest.raises(Unauthorized):
         authentication.decode_token(token='test_token')

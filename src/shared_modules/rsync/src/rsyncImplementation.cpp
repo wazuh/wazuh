@@ -16,12 +16,16 @@
 #include "loggerHelper.h"
 #include "messageCreatorFactory.h"
 #include "rsync.hpp"
+#include "synchronizationController.hpp"
 
 using namespace RSync;
+
+SynchronizationController RSyncImplementation::m_synchronizationController;
 
 void RSyncImplementation::release()
 {
     std::lock_guard<std::mutex> lock{ m_mutex };
+    m_synchronizationController.clear();
 
     for (const auto& ctx : m_remoteSyncContexts)
     {
@@ -37,6 +41,7 @@ void RSyncImplementation::releaseContext(const RSYNC_HANDLE handle)
     m_registrationController.removeComponentByHandle(handle);
     remoteSyncContext(handle)->m_msgDispatcher->rundown();
     std::lock_guard<std::mutex> lock{ m_mutex };
+    m_synchronizationController.stop(handle);
     m_remoteSyncContexts.erase(handle);
 }
 
@@ -107,11 +112,12 @@ void RSyncImplementation::startRSync(const RSYNC_HANDLE handle,
             checksumCtx.rightCtx.type = IntegrityMsgType::INTEGRITY_CLEAR;
         }
 
+        m_synchronizationController.start(handle, jsStartParamsTable, checksumCtx.rightCtx.id);
         // rightCtx will have the final checksum based on fillChecksum method. After processing all checksum select data
         // checksumCtx.rightCtx will have the needed (final) information
         messageCreator->send(callbackWrapper, startConfiguration, checksumCtx.rightCtx);
 
-        Log::debugVerbose << "Remote sync started: " << RSync::IntegrityCommands[checksumCtx.rightCtx.type] << LogEndl;
+        logDebug2(RSYNC_LOG_TAG, "Remote sync started: %s", RSync::IntegrityCommands[checksumCtx.rightCtx.type].c_str());
     }
     else
     {
@@ -150,10 +156,12 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
 
     const auto registerCallback
     {
-        [spDBSyncWrapper, syncConfiguration, callbackWrapper] (const SyncInputData & syncData)
+        [spDBSyncWrapper, syncConfiguration, callbackWrapper, handle] (const SyncInputData & syncData)
         {
             try
             {
+                m_synchronizationController.checkId(handle, syncConfiguration.at("table"), syncData.id);
+
                 if (0 == syncData.command.compare("checksum_fail"))
                 {
                     sendChecksumFail(spDBSyncWrapper, syncConfiguration, callbackWrapper, syncData);
@@ -166,7 +174,6 @@ void RSyncImplementation::registerSyncId(const RSYNC_HANDLE handle,
                 {
                     throw rsync_error { INVALID_OPERATION };
                 }
-
             }
             catch (const std::exception& e)
             {
@@ -203,7 +210,7 @@ void RSyncImplementation::sendChecksumFail(const std::shared_ptr<DBSyncWrapper>&
 
         FactoryMessageCreator<nlohmann::json, MessageType::ROW_DATA>::create()->send(callbackWrapper, jsonSyncConfiguration, rowData);
     }
-    else if (1 <= size)
+    else if (1 < size)
     {
         auto messageCreator { FactoryMessageCreator<SplitContext, MessageType::CHECKSUM>::create() };
 

@@ -5,6 +5,7 @@
 import asyncio
 import hashlib
 import json
+import jwt
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -12,8 +13,7 @@ from typing import Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
-from jose import JWTError, jwt
-from werkzeug.exceptions import Unauthorized
+from connexion.exceptions import Unauthorized
 
 import api.configuration as conf
 import wazuh.core.utils as core_utils
@@ -28,6 +28,8 @@ from wazuh.core.common import wazuh_uid, wazuh_gid
 from wazuh.rbac.orm import AuthenticationManager, TokenManager, UserRolesManager
 from wazuh.rbac.preprocessor import optimize_resources
 
+INVALID_TOKEN = "Invalid token"
+EXPIRED_TOKEN = "Token expired"
 pool = ThreadPoolExecutor(max_workers=1)
 
 
@@ -82,9 +84,7 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
     data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
 
     if data['result']:
-        return {'sub': user,
-                'active': True
-                }
+        return {'sub': user, 'active': True }
 
 
 # Set JWT settings
@@ -191,7 +191,8 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
                   "run_as": auth_context is not None,
                   "rbac_roles": data['roles'],
                   "rbac_mode": result['rbac_mode']
-              } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(), digest_size=16).hexdigest()}
+              } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(),
+                                                         digest_size=16).hexdigest()}
                    if auth_context is not None else {})
 
     return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
@@ -275,7 +276,7 @@ def decode_token(token: str) -> dict:
         data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
 
         if not data['result']['valid']:
-            raise Unauthorized
+            raise Unauthorized(INVALID_TOKEN)
         payload['rbac_policies'] = data['result']['policies']
         payload['rbac_policies']['rbac_mode'] = payload.pop('rbac_mode')
 
@@ -292,8 +293,8 @@ def decode_token(token: str) -> dict:
         current_expiration_time = result['auth_token_exp_timeout']
         if payload['rbac_policies']['rbac_mode'] != current_rbac_mode \
                 or (payload['exp'] - payload['nbf']) != current_expiration_time:
-            raise Unauthorized
+            raise Unauthorized(EXPIRED_TOKEN)
 
         return payload
-    except JWTError as e:
-        raise Unauthorized from e
+    except jwt.exceptions.PyJWTError as exc:
+        raise Unauthorized(INVALID_TOKEN) from exc

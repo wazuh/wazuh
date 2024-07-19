@@ -51,6 +51,22 @@ static int test_teardown(void **state){
     return 0;
 }
 
+static int test_setup_global(void **state) {
+    test_struct_t *init_data;
+
+    init_data = malloc(sizeof(test_struct_t));
+    init_data->wdb = malloc(sizeof(wdb_t));
+    init_data->wdb_global = malloc(sizeof(wdb_t));
+    init_data->wdb->id = strdup("global");
+    init_data->output = calloc(256, sizeof(char));
+    init_data->wdb->peer = 1234;
+    init_data->wdb->enabled = true;
+
+    *state = init_data;
+
+    return 0;
+}
+
 void test_wdb_parse_syscheck_no_space(void **state) {
     int ret;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -541,7 +557,6 @@ void test_integrity_clear_ok(void **state) {
     os_free(query);
 }
 
-
 void test_invalid_command(void **state) {
     int ret;
     test_struct_t *data  = (test_struct_t *)*state;
@@ -556,6 +571,98 @@ void test_invalid_command(void **state) {
     assert_int_equal(ret, -1);
 
     os_free(query);
+}
+
+void test_wdb_parse_sca_no_space(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid Security Configuration Assessment query syntax.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Security Configuration Assessment query: badquery_nospace");
+
+    ret = wdb_parse_sca(data->wdb, "badquery_nospace", data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near \'badquery_nospace\'");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_query_not_found(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [7] = "query ";
+
+    will_return(__wrap_wdb_sca_find, 0);
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok not found");
+    assert_int_equal(ret, 0);
+}
+
+void test_wdb_parse_sca_query_found(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [7] = "query ";
+
+    will_return(__wrap_wdb_sca_find, 1);
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "ok found ");
+    assert_int_equal(ret, 1);
+}
+
+void test_wdb_parse_sca_cannot_query(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [7] = "query ";
+
+    will_return(__wrap_wdb_sca_find, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, "Cannot query Security Configuration Assessment.");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Cannot query Security Configuration Assessment");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_invalid_insert(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [8] = "insert ";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Invalid Security Configuration Assessment query syntax. JSON object not found or invalid");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near ''");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_invalid_insert_not_number_id(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [25] = "insert {\"id\":\"wazuh\"}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON: field 'id' must be a number");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near '{\"id\":\"wazuh\"}'");
+    assert_int_equal(ret, -1);
+}
+
+void test_wdb_parse_sca_invalid_insert_negative_number_id(void **state) {
+    int ret;
+    test_struct_t *data  = (test_struct_t *)*state;
+    char query [25] = "insert {\"id\":-1}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Malformed JSON: field 'id' cannot be negative");
+
+    ret = wdb_parse_sca(data->wdb, query, data->output);
+
+    assert_string_equal(data->output, "err Invalid Security Configuration Assessment query syntax, near '{\"id\":-1}'");
+    assert_int_equal(ret, -1);
 }
 
 
@@ -767,6 +874,9 @@ void test_osinfo_syntax_error(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "DB(000) query error near: osinfo");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'osinfo'");
@@ -786,6 +896,9 @@ void test_osinfo_invalid_action(void **state) {
     expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: osinfo invalid");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     ret = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid osinfo action: invalid");
@@ -845,41 +958,6 @@ void test_osinfo_get_success(void **state) {
     ret = wdb_parse_osinfo(data->wdb, query, data->output);
 
     assert_string_equal(data->output, "ok []");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
-void test_osinfo_set_triaged_error(void **state) {
-    int ret = OS_INVALID;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-    os_strdup("set_triaged", query);
-
-    // wdb_agents_set_sys_osinfo_triaged
-    will_return(__wrap_wdb_agents_set_sys_osinfo_triaged, OS_INVALID);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-
-    ret = wdb_parse_osinfo(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Cannot set sys_osinfo as triaged; SQL err: ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_osinfo_set_triaged_success(void **state) {
-    int ret = OS_INVALID;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-    os_strdup("set_triaged", query);
-
-    // wdb_agents_get_sys_osinfo
-    will_return(__wrap_wdb_agents_set_sys_osinfo_triaged, OS_SUCCESS);
-
-    ret = wdb_parse_osinfo(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok");
     assert_int_equal(ret, OS_SUCCESS);
 
     os_free(query);
@@ -1244,359 +1322,6 @@ void test_osinfo_set_success(void **state) {
     os_free(query);
 }
 
-/* Tests vuln_cves */
-
-void test_vuln_cves_syntax_error(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("agent 000 vuln_cves", query);
-
-    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
-    will_return(__wrap_wdb_open_agent2, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cves");
-
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Invalid vuln_cves query syntax.");
-    expect_string(__wrap__mdebug2, formatted_msg, "DB(000) vuln_cves query error near: vuln_cves");
-    expect_string(__wrap_w_is_file, file, "queue/db/000.db");
-    will_return(__wrap_w_is_file, 1);
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid vuln_cves query syntax, near 'vuln_cves'");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_invalid_action(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("agent 000 vuln_cves invalid", query);
-    expect_value(__wrap_wdb_open_agent2, agent_id, atoi(data->wdb->id));
-    will_return(__wrap_wdb_open_agent2, data->wdb);
-    expect_string(__wrap__mdebug2, formatted_msg, "Agent 000 query: vuln_cves invalid");
-    expect_string(__wrap_w_is_file, file, "queue/db/000.db");
-    will_return(__wrap_w_is_file, 1);
-    ret = wdb_parse(query, data->output, 0);
-
-    assert_string_equal(data->output, "err Invalid vuln_cves action: invalid");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_missing_action(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("", query);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Missing vuln_cves action");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_insert_syntax_error(void **state) {
-    int ret = OS_INVALID;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("insert {\"name\":\"package\",\"version\":}", query);
-
-    // wdb_parse_agents_insert_vuln_cves
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON syntax when inserting vulnerable package.");
-    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: }");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Invalid JSON syntax, near '{\"name\":\"package\",\"version\":}'");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_insert_constraint_error(void **state) {
-    int ret = OS_INVALID;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\"}", query);
-
-    // wdb_parse_agents_insert_vuln_cves
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON data when inserting vulnerable package."
-    " Not compliant with constraints defined in the database.");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Invalid JSON data, missing required fields");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_insert_command_error(void **state) {
-    int ret = OS_INVALID;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\","
-              "\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\","
-              "\"check_pkg_existence\":true,\"severity\":null,\"cvss2_score\":0,\"cvss3_score\":0}", query);
-
-    // wdb_parse_agents_insert_vuln_cves
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, name, "package");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, version, "2.2");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, architecture, "x86");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, cve, "CVE-2021-1500");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, reference, "8549fd9faf9b124635298e9311ccf672c2ad05d1");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existence, true);
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, severity, NULL);
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss2_score, 0);
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss3_score, 0);
-    will_return(__wrap_cJSON_PrintUnformatted, NULL);
-
-    will_return(__wrap_wdb_agents_insert_vuln_cves, NULL);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Error inserting vulnerability in vuln_cves.");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Error inserting vulnerability in vuln_cves.");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_insert_command_success(void **state) {
-    int ret = OS_INVALID;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-    char *result = NULL;
-    os_strdup("[{\"test\":\"TEST\"}]", result);
-    os_strdup("insert {\"name\":\"package\",\"version\":\"2.2\",\"architecture\":\"x86\",\"cve\":\"CVE-2021-1500\","
-              "\"reference\":\"8549fd9faf9b124635298e9311ccf672c2ad05d1\",\"type\":\"PACKAGE\",\"status\":\"VALID\","
-              "\"check_pkg_existence\":true,\"severity\":\"MEDIUM\",\"cvss2_score\":5.2,\"cvss3_score\":6,"
-              "\"external_references\":[\"https.//refs.com/refs1\",\"https.//refs.com/refs1\"],\"condition\":\"Package unfixes\","
-              "\"title\":\"CVE-2021-1500 affects package\",\"published\":\"01-01-2020\",\"updated\":\"02-01-2020\"}", query);
-
-    cJSON *test =  cJSON_CreateObject();
-
-    // wdb_parse_agents_insert_vuln_cves
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, name, "package");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, version, "2.2");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, architecture, "x86");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, cve, "CVE-2021-1500");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, reference, "8549fd9faf9b124635298e9311ccf672c2ad05d1");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, type, "PACKAGE");
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, status, "VALID");
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, check_pkg_existence, true);
-    expect_string(__wrap_wdb_agents_insert_vuln_cves, severity, "MEDIUM");
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss2_score, 5.2);
-    expect_value(__wrap_wdb_agents_insert_vuln_cves, cvss3_score, 6);
-    will_return(__wrap_wdb_agents_insert_vuln_cves, test);
-    will_return(__wrap_cJSON_PrintUnformatted, strdup("[\"https.//refs.com/refs1\",\"https.//refs.com/refs1\"]"));
-
-    will_return(__wrap_cJSON_PrintUnformatted, result);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok [{\"test\":\"TEST\"}]");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
-void test_vuln_cves_update_status_syntax_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("update_status {\"old_status\",\"new_status\"}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON syntax when updating status value.");
-    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: ,\"new_status\"}");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Invalid JSON syntax, near '{\"old_status\",\"new_status\"}'");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_update_status_constraint_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("update_status {\"old_status\":\"new_status\"}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON data when updating CVE's status.");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Invalid JSON data, missing or wrong required fields");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_update_status_command_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_INVALID);
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, old_status, "valid");
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "obsolete");
-    expect_value(__wrap_wdb_agents_update_vuln_cves_status, type, NULL);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_update_status_command_success(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("update_status {\"old_status\":\"valid\",\"new_status\":\"obsolete\"}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_SUCCESS);
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, old_status, "valid");
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "obsolete");
-    expect_value(__wrap_wdb_agents_update_vuln_cves_status, type, NULL);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
-void test_vuln_cves_update_status_by_type_command_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("update_status {\"type\":\"PACKAGES\",\"new_status\":\"VALID\"}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_INVALID);
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, type, "PACKAGES");
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "VALID");
-    expect_value(__wrap_wdb_agents_update_vuln_cves_status, old_status, NULL);
-    will_return_count(__wrap_sqlite3_errmsg, "ERROR MESSAGE", -1);
-    expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Cannot execute vuln_cves update_status command; SQL err: ERROR MESSAGE");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_update_status_by_type_command_success(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("update_status {\"type\":\"PACKAGES\",\"new_status\":\"VALID\"}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    will_return(__wrap_wdb_agents_update_vuln_cves_status, OS_SUCCESS);
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, type, "PACKAGES");
-    expect_string(__wrap_wdb_agents_update_vuln_cves_status, new_status, "VALID");
-    expect_value(__wrap_wdb_agents_update_vuln_cves_status, old_status, NULL);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
-void test_vuln_cves_remove_syntax_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("remove {\"status\"}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON syntax when removing vulnerabilities.");
-    expect_string(__wrap__mdebug2, formatted_msg, "JSON error near: }");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Invalid JSON syntax, near '{\"status\"}'");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_remove_json_data_error(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("remove {}", query);
-
-    // wdb_parse_agents_update_status_vuln_cves
-    expect_string(__wrap__mdebug1, formatted_msg, "Invalid vuln_cves JSON data to remove vulnerabilities.");
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "err Invalid JSON data");
-    assert_int_equal(ret, OS_INVALID);
-
-    os_free(query);
-}
-
-void test_vuln_cves_remove_by_status_success(void **state){
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char *query = NULL;
-
-    os_strdup("remove {\"status\":\"OBSOLETE\"}", query);
-
-    // wdb_agents_remove_vuln_cves_by_status
-    expect_string(__wrap_wdb_agents_remove_vuln_cves_by_status, status, "OBSOLETE");
-    will_return(__wrap_wdb_agents_remove_vuln_cves_by_status, "{\"cve\":\"cve-xxxx-yyyy\"}");
-    will_return(__wrap_wdb_agents_remove_vuln_cves_by_status, WDBC_OK);
-
-    ret = wdb_parse_vuln_cves(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok {\"cve\":\"cve-xxxx-yyyy\"}");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
 /* wdb_parse_packages */
 
 /* get */
@@ -1610,29 +1335,6 @@ void test_packages_get_success(void **state) {
     os_strdup("[{\"status\":\"SUCCESS\"}]", result);
     cJSON *test =  cJSON_CreateObject();
 
-    expect_value(__wrap_wdb_agents_get_packages, not_triaged_only, FALSE);
-    will_return(__wrap_wdb_agents_get_packages, test);
-    will_return(__wrap_wdb_agents_get_packages, OS_SUCCESS);
-    will_return(__wrap_cJSON_PrintUnformatted, result);
-
-    ret = wdb_parse_packages(data->wdb, query, data->output);
-
-    assert_string_equal(data->output, "ok [{\"status\":\"SUCCESS\"}]");
-    assert_int_equal(ret, OS_SUCCESS);
-
-    os_free(query);
-}
-
-void test_packages_get_not_triaged_success(void **state) {
-    int ret = -1;
-    test_struct_t *data  = (test_struct_t *)*state;
-    char* query = NULL;
-    char* result = NULL;
-    os_strdup("get not_triaged", query);
-    os_strdup("[{\"status\":\"SUCCESS\"}]", result);
-    cJSON *test =  cJSON_CreateObject();
-
-    expect_value(__wrap_wdb_agents_get_packages, not_triaged_only, TRUE);
     will_return(__wrap_wdb_agents_get_packages, test);
     will_return(__wrap_wdb_agents_get_packages, OS_SUCCESS);
     will_return(__wrap_cJSON_PrintUnformatted, result);
@@ -1651,7 +1353,6 @@ void test_packages_get_null_response(void **state) {
     char* query = NULL;
     os_strdup("get", query);
 
-    expect_value(__wrap_wdb_agents_get_packages, not_triaged_only, FALSE);
     will_return(__wrap_wdb_agents_get_packages, NULL);
     will_return(__wrap_wdb_agents_get_packages, OS_SUCCESS);
     expect_string(__wrap__mdebug1, formatted_msg, "Error getting packages from sys_programs");
@@ -1673,7 +1374,6 @@ void test_packages_get_err_response(void **state) {
     os_strdup("[{\"status\":\"ERROR\"}]", result);
     cJSON *test =  cJSON_CreateObject();
 
-    expect_value(__wrap_wdb_agents_get_packages, not_triaged_only, FALSE);
     will_return(__wrap_wdb_agents_get_packages, test);
     will_return(__wrap_wdb_agents_get_packages, OS_INVALID);
     will_return(__wrap_cJSON_PrintUnformatted, result);
@@ -1695,7 +1395,6 @@ void test_packages_get_sock_err_response(void **state) {
     os_strdup("[{\"status\":\"ERROR\"}]", result);
     cJSON *test =  cJSON_CreateObject();
 
-    expect_value(__wrap_wdb_agents_get_packages, not_triaged_only, FALSE);
     will_return(__wrap_wdb_agents_get_packages, test);
     will_return(__wrap_wdb_agents_get_packages, OS_SOCKTERR);
     will_return(__wrap_cJSON_PrintUnformatted, result);
@@ -2534,6 +2233,7 @@ void test_wdb_parse_global_backup_invalid_syntax(void **state) {
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
     will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2586,6 +2286,7 @@ void test_wdb_parse_global_backup_create_failed(void **state) {
 
     expect_string(__wrap_w_is_file, file, "queue/db/global.db");
     will_return(__wrap_w_is_file, 1);
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2606,6 +2307,8 @@ void test_wdb_parse_global_backup_create_success(void **state) {
 
     will_return(__wrap_wdb_global_create_backup, "ok SNAPSHOT");
     will_return(__wrap_wdb_global_create_backup, OS_SUCCESS);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2635,6 +2338,9 @@ void test_wdb_parse_agent_vacuum_commit_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot end transaction.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot end transaction");
@@ -2662,6 +2368,9 @@ void test_wdb_parse_agent_vacuum_vacuum_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot vacuum database.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot vacuum database");
@@ -2691,6 +2400,9 @@ void test_wdb_parse_agent_vacuum_success_get_db_state_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Couldn't get fragmentation after vacuum for the database.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Vacuum performed, but couldn't get fragmentation information after vacuum");
@@ -2725,6 +2437,9 @@ void test_wdb_parse_agent_vacuum_success_update_vacuum_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Couldn't update last vacuum info for the database.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Vacuum performed, but last vacuum information couldn't be updated in the metadata table");
@@ -2760,6 +2475,8 @@ void test_wdb_parse_agent_vacuum_success(void **state) {
 
     will_return(__wrap_cJSON_PrintUnformatted, response);
 
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "ok {\"fragmentation_after_vacuum\":10}");
@@ -2787,6 +2504,9 @@ void test_wdb_parse_agent_get_fragmentation_db_state_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot get database fragmentation.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot get database fragmentation");
@@ -2812,6 +2532,9 @@ void test_wdb_parse_agent_get_fragmentation_free_pages_error(void **state) {
     expect_string(__wrap__mdebug1, formatted_msg, "DB(000) Cannot get database fragmentation.");
     expect_string(__wrap_w_is_file, file, "queue/db/000.db");
     will_return(__wrap_w_is_file, 1);
+
+    expect_function_call(__wrap_wdb_pool_leave);
+
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Cannot get database fragmentation");
@@ -2838,6 +2561,8 @@ void test_wdb_parse_global_get_fragmentation_success(void **state) {
     will_return(__wrap_wdb_get_db_free_pages_percentage, 10);
 
     will_return(__wrap_cJSON_PrintUnformatted, response);
+
+    expect_function_call(__wrap_wdb_pool_leave);
 
     result = wdb_parse(query, data->output, 0);
 
@@ -2867,7 +2592,9 @@ void test_wdb_parse_delete_db_file (void **state) {
     will_return(__wrap_w_is_file, 0);
 
     expect_string(__wrap__mwarn, formatted_msg, "DB(queue/db/000.db) not found. This behavior is unexpected, the database will be recreated.");
+    will_return(__wrap_wdb_close, NULL);
     will_return(__wrap_wdb_close, OS_SUCCESS);
+    expect_function_call(__wrap_wdb_pool_leave);
     result = wdb_parse(query, data->output, 0);
 
     assert_string_equal(data->output, "err Invalid DB query syntax, near 'non-query'");
@@ -2911,6 +2638,13 @@ int main()
         cmocka_unit_test_setup_teardown(test_integrity_clear_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_integrity_clear_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_invalid_command, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_no_space, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_query_not_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_query_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_cannot_query, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_invalid_insert, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_invalid_insert_not_number_id, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_sca_invalid_insert_negative_number_id, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_badquery, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_delete_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_rootcheck_delete_ok, test_setup, test_teardown),
@@ -2930,9 +2664,6 @@ int main()
         // osinfo get
         cmocka_unit_test_setup_teardown(test_osinfo_get_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_get_success, test_setup, test_teardown),
-        // osinfo set_triaged
-        cmocka_unit_test_setup_teardown(test_osinfo_set_triaged_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_osinfo_set_triaged_success, test_setup, test_teardown),
         // osinfo set
         cmocka_unit_test_setup_teardown(test_osinfo_set_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_scan_id, test_setup, test_teardown),
@@ -2952,32 +2683,8 @@ int main()
         cmocka_unit_test_setup_teardown(test_osinfo_set_error_no_os_release, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_set_error_saving, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_osinfo_set_success, test_setup, test_teardown),
-        /* Tests vuln_cves */
-        cmocka_unit_test_setup_teardown(test_vuln_cves_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_invalid_action, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_missing_action, test_setup, test_teardown),
-        // wdb_parse_agents_insert_vuln_cves
-        cmocka_unit_test_setup_teardown(test_vuln_cves_insert_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_insert_constraint_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_insert_command_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_insert_command_success, test_setup, test_teardown),
-        // wdb_parse_agents_update_vuln_cves_status
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_constraint_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_command_success, test_setup, test_teardown),
-        // wdb_parse_agents_update_vuln_cves_status_by_type
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_update_status_by_type_command_success,
-                                        test_setup,
-                                        test_teardown),
-        // wdb_parse_agents_remove_vuln_cves
-        cmocka_unit_test_setup_teardown(test_vuln_cves_remove_syntax_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_remove_json_data_error, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_vuln_cves_remove_by_status_success, test_setup, test_teardown),
         // wdb_parse_packages
         cmocka_unit_test_setup_teardown(test_packages_get_success, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_packages_get_not_triaged_success, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_get_null_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_get_err_response, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_packages_get_sock_err_response, test_setup, test_teardown),
@@ -3020,11 +2727,11 @@ int main()
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_ok, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_dbsync_deleted_err, test_setup, test_teardown),
         /* wdb_parse_global_backup */
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_action, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_failed, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_syntax, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_missing_action, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_invalid_action, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_failed, test_setup_global, test_teardown),
+        cmocka_unit_test_setup_teardown(test_wdb_parse_global_backup_create_success, test_setup_global, test_teardown),
         /* wdb_parse_agent_vacuum */
         cmocka_unit_test_setup_teardown(test_wdb_parse_agent_vacuum_commit_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_wdb_parse_agent_vacuum_vacuum_error, test_setup, test_teardown),

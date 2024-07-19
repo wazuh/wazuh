@@ -1,6 +1,7 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
+
 import asyncio
 import json
 import logging
@@ -37,7 +38,8 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.cluster import local_client
 
 logger = logging.getLogger('wazuh')
-loop = asyncio.get_event_loop()
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
 
 DEFAULT_REQUEST_TIMEOUT = 10
 
@@ -67,12 +69,16 @@ def raise_if_exc_routine(dapi_kwargs, expected_error=None):
 
 class TestingLoggerParent:
     """Class used to create the parent attribute of TestingLogger objects."""
+    __test__ = False
+
     def __init__(self):
         self.handlers = []
 
 
 class TestingLogger:
     """Class used to create custom Logger objects for testing purposes."""
+    __test__ = False
+    
     def __init__(self, logger_name):
         self.name = logger_name
         self.handlers = []
@@ -95,8 +101,7 @@ class TestingLogger:
     {'api_timeout': 15},
     {'api_timeout': 5}
 ])
-@patch('wazuh.core.cluster.dapi.dapi.common.WAZUH_INSTALL_TYPE', return_value='local')
-def test_DistributedAPI(install_type_mock, kwargs):
+def test_DistributedAPI(kwargs):
     """Test constructor from DistributedAPI class.
 
     Parameters
@@ -639,12 +644,12 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
 
         node = NodeMock()
         with patch.object(node, "send_request", Exception("break while true")):
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect=Exception("break while true")):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect=Exception("break while true")):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
                 with pytest.raises(Exception):
                     await sendsync.run()
 
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect="noerror"):
                 with pytest.raises(Exception):
                     await sendsync.run()

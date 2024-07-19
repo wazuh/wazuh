@@ -278,7 +278,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
             snprintf(exec_tmp_file, 2048, "/tmp/%s-%d-%ld.alert",
                         integrator_config[s]->name, (int)time(0), (long int)os_random());
 
-            fp = fopen(exec_tmp_file, "w");
+            fp = wfopen(exec_tmp_file, "w");
             if(!fp)
             {
                 mdebug2("File %s couldn't be created.", exec_tmp_file);
@@ -415,7 +415,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
                 snprintf(opt_tmp_file, 2048, "/tmp/%s-%d-%ld.options",
                             integrator_config[s]->name, (int)time(0), (long int) os_random());
 
-                fp = fopen(opt_tmp_file, "w");
+                fp = wfopen(opt_tmp_file, "w");
                 if (!fp) {
                     mdebug2("File %s couldn't be created.", opt_tmp_file);
                     opt_tmp_file[0] = '\0';
@@ -441,9 +441,7 @@ void OS_IntegratorD(IntegratorConfig **integrator_config)
 
             if (dbg_lvl <= 0) strcat(exec_full_cmd, " > /dev/null 2>&1");
 
-            mdebug1("Running script with args: %s", exec_full_cmd);
-
-            char **cmd = OS_StrBreak(' ', exec_full_cmd, 8);
+            char **cmd = OS_StrBreak(' ', exec_full_cmd, 9);
 
             if (cmd) {
                 wfd_t * wfd = wpopenv(integrator_config[s]->path, cmd, W_BIND_STDOUT | W_BIND_STDERR | W_CHECK_WRITE);

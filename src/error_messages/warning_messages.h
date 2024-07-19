@@ -71,6 +71,8 @@
 #define FIM_WHODATA_POLICY_CHANGE_CHECKER       "(6952): Audit policy change detected. Switching directories to realtime."
 #define FIM_WHODATA_POLICY_CHANGE_CHANNEL       "(6953): Event 4719 received due to changes in audit policy. Switching directories to realtime."
 #define FIM_EMPTY_CHANGED_ATTRIBUTES            "(6954): Entry '%s' does not have any modified fields. No event will be generated."
+#define FIM_INVALID_FILE_NAME                   "(6955): Ignoring file '%s' due to unsupported name (non-UTF8)."
+#define FIM_FULL_AUDIT_QUEUE                    "(6956): Internal audit queue is full. Some events may be lost. Next scheduled scan will recover lost data."
 
 /* Monitord warning messages */
 #define ROTATE_LOG_LONG_PATH                    "(7500): The path of the rotated log is too long."
@@ -138,6 +140,23 @@
 #define LOGCOLLECTOR_MISSING_LOCATION_MACOS     "(8006): Missing 'location' element when using 'macos' as " \
                                                 "'log_format'. Default value will be used."
 #define LOGCOLLECTOR_DEFAULT_REGEX_TYPE         "(8007): Invalid type in '%s' regex '%s', setting by default PCRE2 regex."
+
+#define LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_LOAD      "(8008): Failed to load '%s': '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_LIB_FAIL_OWN       "(8009): The library '%s' is not owned by the root user."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_OPEN          "(8010): Failed open journal log: '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_TS       "(8011): Failed to read timestamp from journal log: '%s'. Using current time."
+#define LOGCOLLECTOR_JOURNAL_LOG_FUTURE_TS          "(8012): The timestamp '%" PRIu64 "' is in the future or invalid. Using the most recent entry."
+#define LOGCOLLECTOR_JOURNAL_LOG_FAIL_READ_OLD_TS   "(8013): Failed to read oldest timestamp from journal log: '%s'."
+#define LOGCOLLECTOR_JOURNAL_LOG_CHANGE_TS          "(8014): The timestamp '%" PRIu64 "' is older than the oldest available in journal. Using the oldest entry."
+
+#define LOGCOLLECTOR_JOURNAL_CONFG_FAIL_FILTER      "(8015): Cannot add filter, the block will be ignored."
+#define LOGCOLLECTOR_JOURNAL_CONFG_MISSING_LOC      "(8016): Missing 'location' element when using '%s' as 'log_format'. Default value will be used."
+#define LOGCOLLECTOR_JOURNAL_CONFG_INVALID_LOC      "(8017): Invalid location value '%s' when using '%s' as 'log_format'. Default value will be used."
+#define LOGCOLLECTOR_JOURNAL_CONFG_NOT_JOURNAL_FILTER "(8018): log_format '%s' does not support filter option. Will be ignored."
+#define LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_FIELD "(8019): The field for the journal filter cannot be empty."
+#define LOGCOLLECTOR_JOURNAL_CONFG_EMPTY_FILTER_EXPR  "(8020): The expression for the journal filter cannot be empty."
+#define LOGCOLLECTOR_JOURNAL_CONFG_FILTER_EXP_FAIL    "(8021): Error compiling the PCRE2 expression '%s' for field '%s' in journal filter."
+#define LOGCOLLECTOR_JOURNAL_CONFG_DISABLE_FILTER    "(8022): The filters of the journald log will be disabled in the merge, because one of the configuration does not have filters."
 
 /* Remoted */
 #define REMOTED_NET_PROTOCOL_ERROR              "(9000): Error getting protocol. Default value (%s) will be used."
