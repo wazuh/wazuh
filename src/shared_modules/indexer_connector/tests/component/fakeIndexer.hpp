@@ -45,6 +45,7 @@ public:
      * @param port Port of the server.
      * @param health Health status of the server.
      * @param indexName Name of the index.
+     * @param templateData Returned template information.
      */
     FakeIndexer(std::string host, int port, std::string health, std::string indexName, std::string templateData = "")
         : m_thread(&FakeIndexer::run, this)
