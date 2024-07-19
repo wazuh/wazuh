@@ -13,6 +13,9 @@ All notable changes to this project will be documented in this file.
 - Enhanced vulnerability scanner logging to be more expressive. ([#24536](https://github.com/wazuh/wazuh/pull/24536))
 - The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
 - Added the HAProxy helper to manage load balancer configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
+- Added helper to manage HAProxy configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
+- Added a validation to avoid killing processes from external services. ([#23222](https://github.com/wazuh/wazuh/pull/23222))
+- Enabled ceritificates validation in the requests to the HAProxy helper using the default CA bundle. ([#23996](https://github.com/wazuh/wazuh/pull/23996))
 
 #### Fixed
 
@@ -24,6 +27,8 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Changed error messages about `recv()` messages from wazuh-db to debug logs. ([#20285](https://github.com/wazuh/wazuh/pull/20285))
+- Sanitized the `integrations` directory code. ([#21195](https://github.com/wazuh/wazuh/pull/21195))
+- Modified multiple cluster commands to be asynchronous. ([#22640](https://github.com/wazuh/wazuh/pull/22640))
 
 ### Agent
 
@@ -56,19 +61,44 @@ All notable changes to this project will be documented in this file.
 - Fixed error in packages generation centos 7. ([#24412](https://github.com/wazuh/wazuh/pull/24412))
 - Fixed Wazuh deb uninstallation to remove non-config files from the installation directory. ([#2195](https://github.com/wazuh/wazuh/issues/2195))
 - Fixed Azure auditLogs/signIns status parsing (thanks to @Jmnis for the contribution). ([#22392](https://github.com/wazuh/wazuh/pull/22392))
+- Fixed how the S3 object keys with special characters are handled in the Custom Logs Buckets integration. ([#22621](https://github.com/wazuh/wazuh/pull/22621))
 
 #### Changed
 
 - The directory /boot has been removed from the default FIM settings for AIX. ([#19753](https://github.com/wazuh/wazuh/pull/19753))
+- Refactored and modularized the Azure integration code. ([#20624](https://github.com/wazuh/wazuh/pull/20624))
+- Improved logging of errors in Azure and AWS modules. ([#16314](https://github.com/wazuh/wazuh/issues/16314))
+
+#### Removed
+- Dropped support for Python 3.7 in cloud integrations. ([#22583](https://github.com/wazuh/wazuh/pull/22583))
 
 ### RESTful API
 
+#### Added
+- Added support in the Wazuh API to parse `journald` configurations from the `ossec.conf` file. ([#23094](https://github.com/wazuh/wazuh/pull/23094))
+- Added user-agent to the CTI service request. ([#24360](https://github.com/wazuh/wazuh/pull/24360))
+
 #### Changed
 
+- Merged group files endpoints into one (`GET /groups/{group_id}/files/{filename}`) that uses the `raw` parameter to receive plain text data. ([#21653](https://github.com/wazuh/wazuh/pull/21653))
+- Removed the hardcoded fields returned by the `GET /agents/outdated` endpoint and added the select parameter to the specification. ([#22388](https://github.com/wazuh/wazuh/pull/22388))
+- Updated the regex used to validate CDB lists. ([#22423](https://github.com/wazuh/wazuh/pull/22423))
+- Changed the default value for empty fields in the `GET /agents/stats/distinct` endpoint response. ([#22413](https://github.com/wazuh/wazuh/pull/22413))
+- Changed the Wazuh API endpoint responses when receiving the `Expect` header. ([#22380](https://github.com/wazuh/wazuh/pull/22380))
+- Enhanced Authorization header values decoding errors to avoid showing the stack trace and fail gracefully. ([#22745](https://github.com/wazuh/wazuh/pull/22745))
+- Updated the format of the fields that can be N/A in the API specification. ([#22908](https://github.com/wazuh/wazuh/pull/22908))
+- Updated the WAZUH API specification to conform with the current endpoint requests and responses. ([#22954](https://github.com/wazuh/wazuh/pull/22954))
 - Replaced the used aiohttp server with uvicorn. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
-- Changed the `PUT /groups/{group_id}/configuration` endpoint response error code when uploading an empty file. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
-- Changed the `GET, PUT and DELETE /lists/files/{filename}` endpoints response status code when an invalid file is used. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
-- Changed the `PUT /manager/configuration` endpoint response status code when uploading a file with invalid content-type. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
+    - Changed the `PUT /groups/{group_id}/configuration` endpoint response error code when uploading an empty file.
+    - Changed the `GET, PUT and DELETE /lists/files/{filename}` endpoints response status code when an invalid file is used.
+    - Changed the `PUT /manager/configuration` endpoint response status code when uploading a file with invalid content-type.
+
+#### Fixed
+- Improved XML validation to match the Wazuh internal XML validator. ([#20507](https://github.com/wazuh/wazuh/pull/20507))
+- Fixed bug in `GET /groups`. ([#22428](https://github.com/wazuh/wazuh/pull/22428))
+
+#### Removed
+- Removed the `cache` configuration option from the Wazuh API. ([#22416](https://github.com/wazuh/wazuh/pull/22416))
 
 ### Ruleset
 
@@ -87,8 +117,8 @@ All notable changes to this project will be documented in this file.
 - Upgraded external OpenSSL library dependency version to 3.0. ([#20778](https://github.com/wazuh/wazuh/pull/20778))
 - Migrated QA framework. ([#17427](https://github.com/wazuh/wazuh/issues/17427))
 - Improved WPKs. ([#21152](https://github.com/wazuh/wazuh/issues/21152))
-- Migrated and adapted Wazuh subsystem repositories as part of Wazuh packages redesign. ([(#23508)](https://github.com/wazuh/wazuh/pull/23508))
-- Upgraded external connexion library dependency version to 3.0.5 and its related interdependencies. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
+- Migrated and adapted Wazuh subsystem repositories as part of Wazuh packages redesign. ([#23508](https://github.com/wazuh/wazuh/pull/23508))
+- Upgraded external connexion library dependency version to 3.0.5 and its related interdependencies. ([#22680](https://github.com/wazuh/wazuh/pull/22680))
 
 #### Fixed
 
