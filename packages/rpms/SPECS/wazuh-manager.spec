@@ -316,10 +316,12 @@ if [ $1 = 2 ]; then
     cp -rp %{_localstatedir}/queue/ossec %{_localstatedir}/queue/sockets
   fi
 
-  # Ensure that the 'Indexer' is configured
-  CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
-  . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-indexer.sh
-  updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+  FILE_PATH="%{_localstatedir}/packages_files/manager_installation_scripts/src/init/update-indexer.sh"
+  if [ -f "$FILE_PATH" ]; then
+    CONFIG_INDEXER_TEMPLATE="%{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/generic/wodle-indexer.manager.template"
+    . "$FILE_PATH"
+    updateIndexerTemplate "%{_localstatedir}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
+  fi
 fi
 
 %define _vdfilename vd_1.0.0_vd_4.8.0.tar.xz
@@ -752,7 +754,7 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/centos/*
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel/*
-%attr(750, wazuh, wazuh) %{_localstatedir}/tmp/%{_vdfilename}
+%attr(750, wazuh, wazuh) %config(missingok) %{_localstatedir}/tmp/%{_vdfilename}
 %dir %attr(750, root, wazuh) %{_localstatedir}/queue
 %attr(600, root, wazuh) %ghost %{_localstatedir}/queue/agents-timestamp
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/queue/agentless
@@ -897,9 +899,9 @@ rm -fr %{buildroot}
 %changelog
 * Wed Jun 19 2024 support <info@wazuh.com> - 4.10.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-10-0.html
-* Wed Jul 10 2024 support <info@wazuh.com> - 4.9.0
+* Wed Aug 15 2024 support <info@wazuh.com> - 4.9.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-9-0.html
-* Wed Jun 26 2024 support <info@wazuh.com> - 4.8.1
+* Wed Jul 10 2024 support <info@wazuh.com> - 4.8.1
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-1.html
 * Wed Jun 12 2024 support <info@wazuh.com> - 4.8.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-8-0.html

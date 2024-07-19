@@ -12,8 +12,10 @@
 #include "argsParser.hpp"
 #include "homedirHelper.hpp"
 #include "keyStore.hpp"
+#include "loggerHelper.h"
 #include <filesystem>
 #include <fstream>
+#include <functional>
 
 namespace Log
 {

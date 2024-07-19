@@ -9,8 +9,9 @@
  * Foundation.
  */
 
-#include "testtoolArgsParser.hpp"
 #include "keyStore.hpp"
+#include "testtoolArgsParser.hpp"
+#include <functional>
 #include <iostream>
 
 namespace Log

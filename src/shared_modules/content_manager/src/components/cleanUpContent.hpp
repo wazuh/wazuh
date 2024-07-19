@@ -40,7 +40,7 @@ private:
         // Check if the path exists.
         if (!std::filesystem::exists(path))
         {
-            logWarn(WM_CONTENTUPDATER, "The path does not exist: %s", path.string().c_str());
+            logWarn(WM_CONTENTUPDATER, "The path does not exist: %s.", path.string().c_str());
             return;
         }
 

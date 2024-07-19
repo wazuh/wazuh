@@ -5,7 +5,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import argparse
-import logging
 from asyncio import run
 from os.path import dirname
 from signal import signal, SIGINT
@@ -19,18 +18,13 @@ path.append(dirname(argv[0]) + '/../framework')  # It is necessary to import Waz
 # Import framework
 try:
     import wazuh.agent
-    from api.util import raise_if_exc
     from wazuh.agent import upgrade_agents, get_upgrade_result, get_agents
     from wazuh.core import common
-    from wazuh.core.agent import Agent
-    from wazuh.core.cluster.dapi.dapi import DistributedAPI
     from wazuh.core.exception import WazuhError
     from wazuh.core.cluster import utils as cluster_utils
 except Exception as e:
     print("Error importing 'Wazuh' package.\n\n{0}\n".format(e))
     exit()
-
-logger = logging.getLogger('wazuh')
 
 
 # Functions
@@ -97,6 +91,7 @@ async def get_agents_versions(agents: list) -> dict:
         "limit": len(agents)
     }
     agent_versions = await cluster_utils.forward_function(get_agents, f_kwargs=f_kwargs)
+    cluster_utils.raise_if_exc(agent_versions)
     return {agent['id']: {"prev_version": agent['version'], "new_version": None}
             for agent in agent_versions.affected_items}
 
@@ -120,6 +115,7 @@ async def get_agent_version(agent_id: str) -> str:
         "limit": 1
     }
     result = await cluster_utils.forward_function(get_agents, f_kwargs=f_kwargs)
+    cluster_utils.raise_if_exc(result)
     return result.affected_items[0]['version']
 
 
@@ -176,9 +172,12 @@ async def check_status(affected_agents: list, result_dict: dict, failed_agents: 
     """
     affected_agents = set(affected_agents)
     len(affected_agents) and print('\nUpgrading...')
+
     while len(affected_agents):
         task_results = await cluster_utils.forward_function(get_upgrade_result,
                                                             f_kwargs={'agent_list': list(affected_agents)})
+        cluster_utils.raise_if_exc(task_results)
+
         for task_result in task_results.affected_items.copy():
             if task_result['status'] == 'Updated' or 'Legacy upgrade' in task_result['status']:
                 result_dict[task_result['agent']]['new_version'] = args.version if args.version \
@@ -210,6 +209,7 @@ async def main():
             exit(0)
 
         result = await cluster_utils.forward_function(upgrade_agents, f_kwargs=create_command())
+        cluster_utils.raise_if_exc(result)
 
         not args.silent and len(result.failed_items.keys()) > 0 and print("Agents that cannot be upgraded:")
         if not args.silent:

@@ -14,7 +14,7 @@ import wazuh.syscheck as syscheck
 import wazuh.syscollector as syscollector
 from api import configuration
 from api.controllers.util import json_response
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deprecate_endpoint
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.exception import WazuhResourceNotFound
 
@@ -73,7 +73,6 @@ async def clear_rootcheck_database(pretty: bool = False, wait_for_complete: bool
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def clear_syscheck_database(pretty: bool = False, wait_for_complete: bool = False,
                                   agents_list: list = None) -> ConnexionResponse:
@@ -192,7 +191,6 @@ async def get_cis_cat_results(pretty: bool = False, wait_for_complete: bool = Fa
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_hardware_info(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
@@ -257,7 +255,6 @@ async def get_hardware_info(pretty: bool = False, wait_for_complete: bool = Fals
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_network_address_info(pretty: bool = False, wait_for_complete: bool = False,
                                    agents_list: str = '*', offset: int = 0, limit: str = None, select: str = None,
@@ -330,7 +327,6 @@ async def get_network_address_info(pretty: bool = False, wait_for_complete: bool
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_network_interface_info(pretty: bool = False, wait_for_complete: bool = False,
                                      agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
@@ -404,7 +400,6 @@ async def get_network_interface_info(pretty: bool = False, wait_for_complete: bo
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_network_protocol_info(pretty: bool = False, wait_for_complete: bool = False,
                                     agents_list: str = '*', offset: int = 0, limit: int = None, select: str = None,
@@ -472,7 +467,6 @@ async def get_network_protocol_info(pretty: bool = False, wait_for_complete: boo
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_os_info(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                       offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
@@ -545,7 +539,6 @@ async def get_os_info(pretty: bool = False, wait_for_complete: bool = False, age
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_packages_info(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
@@ -616,7 +609,6 @@ async def get_packages_info(pretty: bool = False, wait_for_complete: bool = Fals
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_ports_info(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                          offset: int = 0, limit: int = None, select: str = None, sort: str = None, search: str = None,
@@ -695,7 +687,6 @@ async def get_ports_info(pretty: bool = False, wait_for_complete: bool = False, 
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_processes_info(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                              offset: int = 0, limit: int = None, select: str = None, sort: str = None,
@@ -797,7 +788,6 @@ async def get_processes_info(pretty: bool = False, wait_for_complete: bool = Fal
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 @check_experimental_feature_value
 async def get_hotfixes_info(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*',
                             offset: int = 0, limit: int = None, sort: str = None, search: str = None,

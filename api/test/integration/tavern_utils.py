@@ -538,9 +538,9 @@ def validate_update_check_response(response, current_version, update_check):
     assert error_code == 0
     assert data['current_version'] == current_version
     assert data['update_check'] == update_check
+    assert data['uuid'] is not None
     last_check_date = data['last_check_date']
     if update_check:
-        assert data['uuid'] is not None
         assert last_check_date is not None
     else:
         assert last_check_date == ''
