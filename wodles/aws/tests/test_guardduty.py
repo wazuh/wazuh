@@ -10,9 +10,9 @@ from unittest.mock import patch, mock_open, MagicMock
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
-import constants
 import guardduty
 
 SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}

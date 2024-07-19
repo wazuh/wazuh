@@ -51,7 +51,7 @@ class AWSService(wazuh_integration.WazuhAWSDatabase):
 
     def __init__(self, reparse: bool, profile: str, iam_role_arn: str,
                  service_name: str, only_logs_after: str, account_alias: str, region: str,
-                 db_table_name: str = constants.DEFAULT_AWS_SERVICE_TABLENAME, discard_field: str = None,
+                 db_table_name: str = constants.DEFAULT_AWS_SERVICES_TABLENAME, discard_field: str = None,
                  discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                  iam_role_duration: str = None, **kwargs):
         # DB name

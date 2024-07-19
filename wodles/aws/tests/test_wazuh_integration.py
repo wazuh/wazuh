@@ -40,7 +40,7 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
     mock_version.assert_called_once()
     assert integration.wazuh_path == constants.TEST_WAZUH_PATH
     assert integration.wazuh_queue == os.path.join(integration.wazuh_path, constants.QUEUE_PATH)
-    assert integration.wazuh_wodle == os.path.join(integration.wazuh_path, constants.WODLE_PATH)
+    assert integration.wazuh_wodle == os.path.join(integration.wazuh_path, constants.WODLES_PATH)
     mock_client.assert_called_with(profile=args["profile"], iam_role_arn=args["iam_role_arn"],
                                    service_name=args["service_name"], region=args["region"],
                                    sts_endpoint=args["sts_endpoint"], service_endpoint=args["service_endpoint"],
@@ -87,20 +87,20 @@ def test_default_config(file_exists, options, retry_attempts, retry_mode):
                     constants.RETRY_MODE_BOTO_KEY: retry_mode
                 }
             else:
-                retries = constants.WAZUH_DEFAULT_RETRY_CONFIGURATION
+                retries = constants.DEFAULT_RETRY_CONFIGURATION
 
             assert config['config'].retries == retries
         else:
             config = wazuh_integration.WazuhIntegration.default_config(profile=constants.TEST_AWS_PROFILE)
             assert 'config' in config
-            assert config['config'].retries == constants.WAZUH_DEFAULT_RETRY_CONFIGURATION
+            assert config['config'].retries == constants.DEFAULT_RETRY_CONFIGURATION
 
 
 @pytest.mark.parametrize('profile', [
     None,
     constants.TEST_AWS_PROFILE,
 ])
-@pytest.mark.parametrize('region', list(constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS) + ['us-east-1', None])
+@pytest.mark.parametrize('region', list(constants.DEFAULT_GOV_REGIONS) + ['us-east-1', None])
 @pytest.mark.parametrize('service_name', list(constants.SERVICES_REQUIRING_REGION) + ['other'])
 def test_wazuh_integration_get_client_authentication(profile, region, service_name):
     """Test `get_client` function uses the different authentication parameters properly.
@@ -126,7 +126,7 @@ def test_wazuh_integration_get_client_authentication(profile, region, service_na
     if region and service_name in constants.SERVICES_REQUIRING_REGION:
         expected_conn_args['region_name'] = region
     else:
-        expected_conn_args['region_name'] = region if region in constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS else None
+        expected_conn_args['region_name'] = region if region in constants.DEFAULT_GOV_REGIONS else None
 
     with patch('wazuh_integration.utils.find_wazuh_path', return_value=constants.TEST_WAZUH_PATH), \
             patch('wazuh_integration.utils.get_wazuh_version', return_value=constants.TEST_HARDCODED_WAZUH_VERSION), \

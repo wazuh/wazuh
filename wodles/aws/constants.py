@@ -9,7 +9,7 @@ from os import path
 RETRY_ATTEMPTS_KEY: str = "max_attempts"
 RETRY_MODE_CONFIG_KEY: str = "retry_mode"
 RETRY_MODE_BOTO_KEY: str = "mode"
-WAZUH_DEFAULT_RETRY_CONFIGURATION = {RETRY_ATTEMPTS_KEY: 10, RETRY_MODE_BOTO_KEY: 'standard'}
+DEFAULT_RETRY_CONFIGURATION = {RETRY_ATTEMPTS_KEY: 10, RETRY_MODE_BOTO_KEY: 'standard'}
 
 # AWS BUCKET CONFIGURATIONS
 MAX_AWS_BUCKET_RECORD_RETENTION = 500
@@ -25,8 +25,8 @@ INSPECTOR_SUPPORTED_REGIONS = (
 )
 
 # DATABASE VALUES
-DEFAULT_AWS_SERVICE_DATABASE_NAME = "aws_services"
-DEFAULT_AWS_SERVICE_TABLENAME = "aws_services"
+DEFAULT_AWS_SERVICES_DATABASE_NAME = "aws_services"
+DEFAULT_AWS_SERVICES_TABLENAME = "aws_services"
 DEFAULT_AWS_BUCKET_DATABASE_NAME = "s3_cloudtrail"
 TEST_DATABASE = "test"
 
@@ -40,7 +40,7 @@ ALL_REGIONS = (
     'eu-central-2', 'eu-north-1', 'eu-south-1', 'eu-south-2', 'eu-west-1', 'eu-west-2', 'eu-west-3', 'il-central-1',
     'me-central-1', 'me-south-1', 'sa-east-1', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
 )
-DEFAULT_AWS_INTEGRATION_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
+DEFAULT_GOV_REGIONS = {'us-gov-east-1', 'us-gov-west-1'}
 SERVICES_REQUIRING_REGION = {'inspector', 'cloudwatchlogs'}
 
 
@@ -53,7 +53,7 @@ SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/cur
 
 # PATHS
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
-WODLE_PATH = 'wodles/aws'
+WODLES_PATH = 'wodles/aws'
 QUEUE_PATH = 'queue/sockets/queue'
 TEST_WAZUH_PATH = "/var/ossec"
 

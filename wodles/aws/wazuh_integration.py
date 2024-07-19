@@ -105,7 +105,7 @@ class WazuhIntegration:
             configparser error when given profile does not exist in user config file.
         """
         args = {}
-        args['config'] = botocore.config.Config(retries=constants.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+        args['config'] = botocore.config.Config(retries=constants.DEFAULT_RETRY_CONFIGURATION)
 
         if path.exists(constants.DEFAULT_AWS_CONFIG_PATH):
             # Get User Aws Config
@@ -159,7 +159,7 @@ class WazuhIntegration:
             conn_args['region_name'] = region
         else:
             # it is necessary to set region_name for GovCloud regions
-            conn_args['region_name'] = region if region in constants.DEFAULT_AWS_INTEGRATION_GOV_REGIONS else None
+            conn_args['region_name'] = region if region in constants.DEFAULT_GOV_REGIONS else None
 
         boto_session = boto3.Session(**conn_args)
         service_name = "logs" if service_name == "cloudwatchlogs" else service_name
