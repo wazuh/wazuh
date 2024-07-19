@@ -12,16 +12,17 @@ import json
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
-import constants
+import aws_constants as test_constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'subscribers'))
 import s3_log_handler
 
 SAMPLE_PARQUET_KEY = 'aws/source/region=region/accountId=accountID/eventHour=YYYYMMDDHH/file.gz.parquet'
-SAMPLE_MESSAGE = {'bucket_path': constants.TEST_MESSAGE, 'log_path': SAMPLE_PARQUET_KEY}
+SAMPLE_MESSAGE = {'bucket_path': test_constants.TEST_MESSAGE, 'log_path': SAMPLE_PARQUET_KEY}
 SAMPLE_PARQUET_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
@@ -43,10 +44,10 @@ def test_method_raises_not_implemented():
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effet=wazuh_integration.WazuhIntegration.__init__)
 def test_aws_sl_subscriber_bucket_initializes_properly(mock_wazuh_integration, mock_client, mock_sts_client):
     """Test if the instances of AWSSLSubscriberBucket are created properly."""
-    kwargs = utils.get_aws_s3_log_handler_parameters(iam_role_arn=constants.TEST_IAM_ROLE_ARN,
-                                                     iam_role_duration=constants.TEST_IAM_ROLE_DURATION,
-                                                     service_endpoint=constants.TEST_SERVICE_ENDPOINT,
-                                                     sts_endpoint=constants.TEST_STS_ENDPOINT)
+    kwargs = utils.get_aws_s3_log_handler_parameters(iam_role_arn=test_constants.TEST_IAM_ROLE_ARN,
+                                                     iam_role_duration=test_constants.TEST_IAM_ROLE_DURATION,
+                                                     service_endpoint=test_constants.TEST_SERVICE_ENDPOINT,
+                                                     sts_endpoint=test_constants.TEST_STS_ENDPOINT)
 
     integration = s3_log_handler.AWSSLSubscriberBucket(**kwargs)
 
@@ -69,10 +70,10 @@ def test_aws_sl_subscriber_bucket_obtain_logs(mock_wazuh_integration, mock_sts_c
     mock_get_object = instance.client.get_object
 
     with patch('io.BytesIO', return_value=(os.path.join(logs_path, 'AWSSecurityLake', 'test_file.parquet'))):
-        events = instance.obtain_logs(constants.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+        events = instance.obtain_logs(test_constants.TEST_BUCKET, SAMPLE_PARQUET_KEY)
 
     assert events == [json.dumps(SAMPLE_PARQUET_EVENT_1)]
-    mock_get_object.assert_called_with(Bucket=constants.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
+    mock_get_object.assert_called_with(Bucket=test_constants.TEST_BUCKET, Key=SAMPLE_PARQUET_KEY)
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -85,7 +86,7 @@ def test_aws_sl_subscriber_bucket_obtain_logs_handles_exception(mock_wazuh_integ
     instance.client.get_object.side_effect = Exception
 
     with pytest.raises(SystemExit) as e:
-        instance.obtain_logs(constants.TEST_BUCKET, SAMPLE_PARQUET_KEY)
+        instance.obtain_logs(test_constants.TEST_BUCKET, SAMPLE_PARQUET_KEY)
     assert e.value.code == constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
@@ -269,8 +270,8 @@ def test_obtain_logs_processes_security_hub_events(content, expected_logs):
         with patch('s3_log_handler.AWSSubscriberBucket.decompress_file', return_value=io.StringIO(content)):
             with patch("s3_log_handler.AWSSecurityHubSubscriberBucket._add_event_type_fields",
                        side_effect=lambda event, base: base.update(event)):
-                formatted_logs = s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=constants.TEST_BUCKET,
-                                                                                             log_path=constants.TEST_LOG_KEY
+                formatted_logs = s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=test_constants.TEST_BUCKET,
+                                                                                             log_path=test_constants.TEST_LOG_KEY
                                                                                              )
                 assert formatted_logs == expected_logs
                 assert formatted_logs is not None
@@ -284,8 +285,8 @@ def test_sec_hub_obtain_logs_handles_exception():
                                                                                                 ('test', 'test', 1),
                                                                                                 AttributeError]):
                 with pytest.raises(SystemExit) as e:
-                    s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=constants.TEST_BUCKET,
-                                                                                log_path=constants.TEST_LOG_KEY)
+                    s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=test_constants.TEST_BUCKET,
+                                                                                log_path=test_constants.TEST_LOG_KEY)
                 assert e.value.code == constants.PARSE_FILE_ERROR_CODE
 
 
@@ -294,8 +295,8 @@ def test_sec_hub_obtain_logs_handles_exception():
 def test_sec_hub_process_file_sends_expected_messages(mock_debug, discard_log):
     """Test 'process_file' method of AWSSecurityHubSubscriberBucket the class sends the events inside the given
     message to AnalysisD."""
-    log_file = constants.TEST_LOG_KEY
-    bucket_path = constants.TEST_BUCKET
+    log_file = test_constants.TEST_LOG_KEY
+    bucket_path = test_constants.TEST_BUCKET
     message_body = {"log_path": log_file, "bucket_path": bucket_path}
 
     formatted_logs = [{"field": "value"}]

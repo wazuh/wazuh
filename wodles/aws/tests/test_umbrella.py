@@ -9,6 +9,9 @@ from unittest.mock import patch, mock_open
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
+import aws_constants as test_constants
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
@@ -83,7 +86,7 @@ def test_cisco_umbrella_load_information_from_file(mock_sts_client, prefix: str,
     instance.prefix = prefix
 
     with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
-        assert instance.load_information_from_file(constants.TEST_LOG_KEY) == expected_result
+        assert instance.load_information_from_file(test_constants.TEST_LOG_KEY) == expected_result
 
 
 @patch('aws_bucket.AWSCustomBucket.get_sts_client')
@@ -96,7 +99,7 @@ def test_cisco_umbrella_load_information_from_file_handles_exceptions(mock_sts_c
 
     with patch('aws_bucket.AWSBucket.decompress_file'), \
             pytest.raises(SystemExit) as e:
-        instance.load_information_from_file(constants.TEST_LOG_KEY)
+        instance.load_information_from_file(test_constants.TEST_LOG_KEY)
     assert e.value.code == constants.INVALID_TYPE_ERROR_CODE
 
 
@@ -104,13 +107,13 @@ def test_cisco_umbrella_load_information_from_file_handles_exceptions(mock_sts_c
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_cisco_umbrella_marker_only_logs_after(mock_integration, mock_sts):
     """Test 'marker_only_logs_after' method returns the expected marker using the `only_logs_after` value."""
-    test_only_logs_after = constants.TEST_ONLY_LOGS_AFTER
+    test_only_logs_after = test_constants.TEST_ONLY_LOGS_AFTER
 
     instance = utils.get_mocked_bucket(class_=umbrella.CiscoUmbrella, only_logs_after=test_only_logs_after)
-    instance.prefix = constants.TEST_PREFIX
+    instance.prefix = test_constants.TEST_PREFIX
 
     instance.date_format = '%Y-%m-%d'
 
-    marker = instance.marker_only_logs_after(aws_region=constants.TEST_REGION, aws_account_id=constants.TEST_ACCOUNT_ID)
+    marker = instance.marker_only_logs_after(aws_region=test_constants.TEST_REGION, aws_account_id=test_constants.TEST_ACCOUNT_ID)
     assert marker == f"{instance.prefix}{test_only_logs_after[0:4]}-{test_only_logs_after[4:6]}-" \
                      f"{test_only_logs_after[6:8]}"

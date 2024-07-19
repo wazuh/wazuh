@@ -16,10 +16,11 @@ import pytest
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
-import constants
+import aws_constants as test_constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
 import aws_bucket
@@ -41,29 +42,29 @@ SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_k
 SAMPLE_EVENT_1 = {'key1': 'value1', 'key2': 'value2'}
 SAMPLE_EVENT_2 = {'key1': 'value1', 'key2': None}
 
-constants.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1
+test_constants.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1
 
 
 @pytest.mark.parametrize('only_logs_after', [None, "20220101"])
 @patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version')
 @patch('wazuh_integration.sqlite3.connect')
 @patch('wazuh_integration.WazuhIntegration.get_client')
-@patch('wazuh_integration.utils.find_wazuh_path', return_value=constants.TEST_WAZUH_PATH)
+@patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH)
 @patch('wazuh_integration.utils.get_wazuh_version')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
 def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, mock_path, mock_client, mock_connect,
                                          mock_metadata,
                                          only_logs_after: str or None):
     """Test if the instances of AWSBucket are created properly."""
-    kwargs = utils.get_aws_bucket_parameters(db_table_name=constants.TEST_TABLE_NAME, bucket=constants.TEST_BUCKET,
-                                             profile=constants.TEST_AWS_PROFILE, iam_role_arn=constants.TEST_IAM_ROLE_ARN,
-                                             account_alias=constants.TEST_ACCOUNT_ALIAS, prefix=constants.TEST_PREFIX,
-                                             suffix=constants.TEST_SUFFIX, aws_organization_id=constants.TEST_ORGANIZATION_ID,
-                                             region=constants.TEST_REGION, discard_field=constants.TEST_DISCARD_FIELD,
-                                             discard_regex=constants.TEST_DISCARD_REGEX,
-                                             sts_endpoint=constants.TEST_STS_ENDPOINT,
-                                             service_endpoint=constants.TEST_SERVICE_ENDPOINT,
-                                             iam_role_duration=constants.TEST_IAM_ROLE_DURATION, delete_file=True,
+    kwargs = utils.get_aws_bucket_parameters(db_table_name=test_constants.TEST_TABLE_NAME, bucket=test_constants.TEST_BUCKET,
+                                             profile=test_constants.TEST_AWS_PROFILE, iam_role_arn=test_constants.TEST_IAM_ROLE_ARN,
+                                             account_alias=test_constants.TEST_ACCOUNT_ALIAS, prefix=test_constants.TEST_PREFIX,
+                                             suffix=test_constants.TEST_SUFFIX, aws_organization_id=test_constants.TEST_ORGANIZATION_ID,
+                                             region=test_constants.TEST_REGION, discard_field=test_constants.TEST_DISCARD_FIELD,
+                                             discard_regex=test_constants.TEST_DISCARD_REGEX,
+                                             sts_endpoint=test_constants.TEST_STS_ENDPOINT,
+                                             service_endpoint=test_constants.TEST_SERVICE_ENDPOINT,
+                                             iam_role_duration=test_constants.TEST_IAM_ROLE_DURATION, delete_file=True,
                                              skip_on_error=True, reparse=True, only_logs_after=only_logs_after)
     integration = aws_bucket.AWSBucket(**kwargs)
     mock_wazuh_integration.assert_called_with(integration, service_name="s3",
@@ -91,13 +92,13 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
 
 
 @pytest.mark.parametrize('log_file, account_id, region, expected_result', [
-    (constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, constants.TEST_ACCOUNT_ID,
-     constants.TEST_REGION, True),
-    (constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_2, constants.TEST_ACCOUNT_ID,
-     constants.TEST_REGION, True),
-    ("", constants.TEST_ACCOUNT_ID, constants.TEST_REGION, False),
-    (constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, constants.TEST_ACCOUNT_ID, "", False),
-    (constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, "", constants.TEST_REGION, False),
+    (test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, test_constants.TEST_ACCOUNT_ID,
+     test_constants.TEST_REGION, True),
+    (test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_2, test_constants.TEST_ACCOUNT_ID,
+     test_constants.TEST_REGION, True),
+    ("", test_constants.TEST_ACCOUNT_ID, test_constants.TEST_REGION, False),
+    (test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, test_constants.TEST_ACCOUNT_ID, "", False),
+    (test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1, "", test_constants.TEST_REGION, False),
 ])
 def test_aws_bucket_already_processed(custom_database,
                                       log_file: str, account_id: str, region: str, expected_result: bool):
@@ -116,7 +117,7 @@ def test_aws_bucket_already_processed(custom_database,
     """
     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
 
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, region=region)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, region=region)
     bucket.db_connector = custom_database
     bucket.db_cursor = bucket.db_connector.cursor()
     bucket.db_table_name = 'cloudtrail'
@@ -130,34 +131,34 @@ def test_aws_bucket_get_creation_date_raises_exception():
     bucket = utils.get_mocked_aws_bucket()
 
     with pytest.raises(NotImplementedError):
-        bucket.get_creation_date(constants.TEST_LOG_KEY)
+        bucket.get_creation_date(test_constants.TEST_LOG_KEY)
 
 
 def test_aws_bucket_mark_complete(custom_database):
     """Test 'mark_complete' method inserts non-processed logs into the DB."""
     utils.database_execute_script(custom_database, TEST_EMPTY_TABLE_SCHEMA)
 
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET)
     bucket.db_connector = custom_database
     bucket.db_cursor = bucket.db_connector.cursor()
-    bucket.db_table_name = constants.TEST_TABLE_NAME
+    bucket.db_table_name = test_constants.TEST_TABLE_NAME
 
     assert utils.database_execute_query(bucket.db_connector,
                                         constants.SQL_COUNT_ROWS.format(table_name=bucket.db_table_name)) == 0
 
-    with patch('aws_bucket.AWSBucket.get_creation_date', return_value=constants.TEST_CREATION_DATE):
-        bucket.mark_complete(aws_account_id=constants.TEST_ACCOUNT_ID, aws_region=constants.TEST_REGION,
-                             log_file={'Key': constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
+    with patch('aws_bucket.AWSBucket.get_creation_date', return_value=test_constants.TEST_CREATION_DATE):
+        bucket.mark_complete(aws_account_id=test_constants.TEST_ACCOUNT_ID, aws_region=test_constants.TEST_REGION,
+                             log_file={'Key': test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
 
     assert utils.database_execute_query(bucket.db_connector,
                                         constants.SQL_COUNT_ROWS.format(table_name=bucket.db_table_name)) == 1
 
     row = utils.database_execute_query(bucket.db_connector, SQL_GET_ROW.format(table_name=bucket.db_table_name))
-    assert row[0] == f"{constants.TEST_BUCKET}/"
-    assert row[1] == constants.TEST_ACCOUNT_ID
-    assert row[2] == constants.TEST_REGION
-    assert row[3] == constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1
-    assert row[4] == constants.TEST_CREATION_DATE
+    assert row[0] == f"{test_constants.TEST_BUCKET}/"
+    assert row[1] == test_constants.TEST_ACCOUNT_ID
+    assert row[2] == test_constants.TEST_REGION
+    assert row[3] == test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1
+    assert row[4] == test_constants.TEST_CREATION_DATE
 
 
 @patch('aws_bucket.aws_tools.debug')
@@ -170,23 +171,23 @@ def test_aws_bucket_mark_complete_handles_exceptions_when_db_query_fails(mock_de
     mocked_cursor.execute.side_effect = Exception
     bucket.db_cursor = mocked_cursor
 
-    bucket.mark_complete(aws_account_id=constants.TEST_ACCOUNT_ID, aws_region=constants.TEST_REGION,
-                         log_file={'Key': constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
+    bucket.mark_complete(aws_account_id=test_constants.TEST_ACCOUNT_ID, aws_region=test_constants.TEST_REGION,
+                         log_file={'Key': test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1})
 
-    mock_debug.assert_called_with(f'+++ Error marking log {constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ', 2)
+    mock_debug.assert_called_with(f'+++ Error marking log {test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1} as completed: ', 2)
 
 
-@pytest.mark.parametrize('region', [constants.TEST_REGION, "invalid_region"])
+@pytest.mark.parametrize('region', [test_constants.TEST_REGION, "invalid_region"])
 def test_aws_bucket_db_count_region(custom_database, region):
     """Test 'db_count_region' method counts the number of rows in DB for a region"""
     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
     bucket = utils.get_mocked_aws_bucket()
     bucket.db_connector = custom_database
     bucket.db_cursor = bucket.db_connector.cursor()
-    bucket.db_table_name = constants.TEST_TABLE_NAME
+    bucket.db_table_name = test_constants.TEST_TABLE_NAME
 
-    expected_count = CLOUDTRAIL_SCHEMA_COUNT if region == constants.TEST_REGION else 0
-    assert bucket.db_count_region(constants.TEST_ACCOUNT_ID, region) == expected_count
+    expected_count = CLOUDTRAIL_SCHEMA_COUNT if region == test_constants.TEST_REGION else 0
+    assert bucket.db_count_region(test_constants.TEST_ACCOUNT_ID, region) == expected_count
 
 
 @pytest.mark.parametrize('expected_db_count', [CLOUDTRAIL_SCHEMA_COUNT, 0])
@@ -196,14 +197,14 @@ def test_aws_bucket_db_maintenance(custom_database, expected_db_count):
     bucket = utils.get_mocked_aws_bucket()
     bucket.db_connector = custom_database
     bucket.db_cursor = bucket.db_connector.cursor()
-    bucket.db_table_name = constants.TEST_TABLE_NAME
+    bucket.db_table_name = test_constants.TEST_TABLE_NAME
     bucket.retain_db_records = expected_db_count
 
     assert utils.database_execute_query(bucket.db_connector, constants.SQL_COUNT_ROWS.format(
         table_name=bucket.db_table_name)) == CLOUDTRAIL_SCHEMA_COUNT
 
     with patch('aws_bucket.AWSBucket.db_count_region', return_value=CLOUDTRAIL_SCHEMA_COUNT):
-        bucket.db_maintenance(aws_account_id=constants.TEST_ACCOUNT_ID, aws_region=constants.TEST_REGION)
+        bucket.db_maintenance(aws_account_id=test_constants.TEST_ACCOUNT_ID, aws_region=test_constants.TEST_REGION)
 
     assert utils.database_execute_query(bucket.db_connector, constants.SQL_COUNT_ROWS.format(
         table_name=bucket.db_table_name)) == expected_db_count
@@ -218,7 +219,7 @@ def test_aws_bucket_db_maintenance_handles_exceptions_when_db_fails(mock_print, 
     mocked_cursor = MagicMock()
     mocked_cursor.execute.side_effect = Exception
 
-    bucket.db_maintenance(aws_account_id=constants.TEST_ACCOUNT_ID, aws_region=constants.TEST_REGION)
+    bucket.db_maintenance(aws_account_id=test_constants.TEST_ACCOUNT_ID, aws_region=test_constants.TEST_REGION)
 
     mock_print.assert_called_once()
 
@@ -229,34 +230,34 @@ def test_aws_bucket_marker_custom_date():
     bucket.date_format = '%Y-%m-%d'
 
     test_date = datetime.now()
-    full_prefix = f"{constants.TEST_ACCOUNT_ID}/{constants.TEST_REGION}/"
+    full_prefix = f"{test_constants.TEST_ACCOUNT_ID}/{test_constants.TEST_REGION}/"
     with patch('aws_bucket.AWSBucket.get_full_prefix', return_value=full_prefix):
-        marker = bucket.marker_custom_date(aws_region=constants.TEST_REGION, aws_account_id=constants.TEST_ACCOUNT_ID,
+        marker = bucket.marker_custom_date(aws_region=test_constants.TEST_REGION, aws_account_id=test_constants.TEST_ACCOUNT_ID,
                                            date=test_date)
     assert marker == f"{full_prefix}{test_date.strftime(bucket.date_format)}"
 
 
 def test_aws_bucket_marker_only_logs_after():
     """Test 'marker_only_logs_after' method returns a valid marker using only_log_after."""
-    test_only_logs_after = constants.TEST_ONLY_LOGS_AFTER
+    test_only_logs_after = test_constants.TEST_ONLY_LOGS_AFTER
     bucket = utils.get_mocked_aws_bucket(only_logs_after=test_only_logs_after)
     bucket.date_format = '%Y-%m-%d'
 
-    full_prefix = f"{constants.TEST_ACCOUNT_ID}/{constants.TEST_REGION}/"
+    full_prefix = f"{test_constants.TEST_ACCOUNT_ID}/{test_constants.TEST_REGION}/"
     with patch('aws_bucket.AWSBucket.get_full_prefix', return_value=full_prefix):
-        marker = bucket.marker_only_logs_after(aws_region=constants.TEST_REGION, aws_account_id=constants.TEST_ACCOUNT_ID)
+        marker = bucket.marker_only_logs_after(aws_region=test_constants.TEST_REGION, aws_account_id=test_constants.TEST_ACCOUNT_ID)
     assert marker == f"{full_prefix}{test_only_logs_after[0:4]}-{test_only_logs_after[4:6]}-{test_only_logs_after[6:8]}"
 
 
 @pytest.mark.parametrize('event', [SAMPLE_EVENT_1, SAMPLE_EVENT_2, None])
 def test_aws_bucket_get_alert_msg(event):
     """Test 'get_alert_msg' method returns messages with the valid format."""
-    bucket = utils.get_mocked_aws_bucket(account_alias=constants.TEST_ACCOUNT_ALIAS)
+    bucket = utils.get_mocked_aws_bucket(account_alias=test_constants.TEST_ACCOUNT_ALIAS)
     expected_error_message = "error message"
     expected_msg = copy.deepcopy(constants.AWS_BUCKET_MSG_TEMPLATE)
     expected_msg['aws']['log_info'].update({
         'aws_account_alias': bucket.account_alias,
-        'log_file': constants.TEST_LOG_KEY,
+        'log_file': test_constants.TEST_LOG_KEY,
         's3bucket': bucket.bucket
     })
     if event:
@@ -264,7 +265,8 @@ def test_aws_bucket_get_alert_msg(event):
         expected_msg['aws'].update({k: v for k, v in event.items() if v is not None})
     else:
         expected_msg['error_msg'] = expected_error_message
-    assert bucket.get_alert_msg(constants.TEST_ACCOUNT_ID, constants.TEST_LOG_KEY, event,
+    assert bucket.get_alert_msg(test_constants.TEST_ACCOUNT_ID,
+                                test_constants.TEST_LOG_KEY, event,
                                 error_msg=expected_error_message) == expected_msg
 
 
@@ -273,7 +275,8 @@ def test_aws_bucket_get_full_prefix():
     bucket = utils.get_mocked_aws_bucket()
 
     with pytest.raises(NotImplementedError):
-        bucket.get_full_prefix(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+        bucket.get_full_prefix(test_constants.TEST_ACCOUNT_ID,
+                               test_constants.TEST_REGION)
 
 
 def test_aws_bucket_get_base_prefix():
@@ -289,31 +292,31 @@ def test_aws_bucket_get_service_prefix():
     bucket = utils.get_mocked_aws_bucket()
 
     with pytest.raises(NotImplementedError):
-        bucket.get_service_prefix(constants.TEST_ACCOUNT_ID)
+        bucket.get_service_prefix(test_constants.TEST_ACCOUNT_ID)
 
 
-@patch('aws_bucket.AWSBucket.get_base_prefix', return_value=constants.TEST_PREFIX)
+@patch('aws_bucket.AWSBucket.get_base_prefix', return_value=test_constants.TEST_PREFIX)
 def test_aws_bucket_find_account_ids(mock_prefix):
     """Test 'find_account_ids' method returns a valid account_ids list."""
-    object_list = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{constants.TEST_ACCOUNT_ID}/'},
-                                      {'Prefix': f'AWSLogs/prefix/{constants.TEST_ACCOUNT_ID}/'}]}
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, prefix=constants.TEST_PREFIX)
+    object_list = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{test_constants.TEST_ACCOUNT_ID}/'},
+                                      {'Prefix': f'AWSLogs/prefix/{test_constants.TEST_ACCOUNT_ID}/'}]}
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, prefix=test_constants.TEST_PREFIX)
     bucket.client = MagicMock()
     bucket.client.list_objects_v2.return_value = object_list
 
     accounts = bucket.find_account_ids()
-    bucket.client.list_objects_v2.assert_called_with(Bucket=constants.TEST_BUCKET, Prefix=constants.TEST_PREFIX, Delimiter='/')
-    assert accounts == [constants.TEST_ACCOUNT_ID for _ in object_list['CommonPrefixes']]
+    bucket.client.list_objects_v2.assert_called_with(Bucket=test_constants.TEST_BUCKET, Prefix=test_constants.TEST_PREFIX, Delimiter='/')
+    assert accounts == [test_constants.TEST_ACCOUNT_ID for _ in object_list['CommonPrefixes']]
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
     (constants.THROTTLING_EXCEPTION_ERROR_NAME, constants.THROTTLING_ERROR_CODE),
     ('OtherClientException', constants.UNKNOWN_ERROR_CODE)
 ])
-@patch('aws_bucket.AWSBucket.get_base_prefix', return_value=constants.TEST_PREFIX)
+@patch('aws_bucket.AWSBucket.get_base_prefix', return_value=test_constants.TEST_PREFIX)
 def test_aws_bucket_find_account_ids_handles_exceptions_on_client_error(mock_prefix, error_code: str, exit_code: int):
     """Test 'find_account_ids' method handles client errors as expected."""
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, prefix=constants.TEST_PREFIX)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, prefix=test_constants.TEST_PREFIX)
     bucket.client = MagicMock()
     bucket.client.list_objects_v2.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}}, "name")
 
@@ -322,11 +325,11 @@ def test_aws_bucket_find_account_ids_handles_exceptions_on_client_error(mock_pre
     assert e.value.code == exit_code
 
 
-@patch('aws_bucket.AWSBucket.get_base_prefix', return_value=constants.TEST_PREFIX)
+@patch('aws_bucket.AWSBucket.get_base_prefix', return_value=test_constants.TEST_PREFIX)
 @patch('aws_bucket.aws_tools.get_script_arguments')
 def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix, mock_script_arguments):
     """Test 'find_account_ids' method handles KeyError as expected."""
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, prefix=constants.TEST_PREFIX)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, prefix=test_constants.TEST_PREFIX)
     bucket.client = MagicMock()
     bucket.client.list_objects_v2.side_effect = KeyError
 
@@ -335,20 +338,20 @@ def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix
     assert e.value.code == constants.INVALID_PREFIX_ERROR_CODE
 
 
-@pytest.mark.parametrize('object_list', [constants.LIST_OBJECT_V2,
-                                         constants.LIST_OBJECT_V2_NO_PREFIXES])
-@patch('aws_bucket.AWSBucket.get_service_prefix', return_value=constants.TEST_PREFIX)
+@pytest.mark.parametrize('object_list', [test_constants.LIST_OBJECT_V2,
+                                         test_constants.LIST_OBJECT_V2_NO_PREFIXES])
+@patch('aws_bucket.AWSBucket.get_service_prefix', return_value=test_constants.TEST_PREFIX)
 def test_aws_bucket_find_regions(mock_prefix, object_list: dict):
     """Test 'find_regions' method returns a valid region list."""
 
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, prefix=constants.TEST_PREFIX)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, prefix=test_constants.TEST_PREFIX)
     bucket.client = MagicMock()
     bucket.client.list_objects_v2.return_value = object_list
 
-    accounts = bucket.find_regions(constants.TEST_ACCOUNT_ID)
-    bucket.client.list_objects_v2.assert_called_with(Bucket=constants.TEST_BUCKET, Prefix=constants.TEST_PREFIX, Delimiter='/')
+    accounts = bucket.find_regions(test_constants.TEST_ACCOUNT_ID)
+    bucket.client.list_objects_v2.assert_called_with(Bucket=test_constants.TEST_BUCKET, Prefix=test_constants.TEST_PREFIX, Delimiter='/')
     if object_list.get('CommonPrefixes'):
-        assert accounts == [constants.TEST_REGION for _ in object_list['CommonPrefixes']]
+        assert accounts == [test_constants.TEST_REGION for _ in object_list['CommonPrefixes']]
     else:
         assert len(accounts) == 0
 
@@ -357,24 +360,24 @@ def test_aws_bucket_find_regions(mock_prefix, object_list: dict):
     (constants.THROTTLING_EXCEPTION_ERROR_NAME, constants.THROTTLING_ERROR_CODE),
     ('OtherClientException', constants.UNKNOWN_ERROR_CODE)
 ])
-@patch('aws_bucket.AWSBucket.get_service_prefix', return_value=constants.TEST_PREFIX)
+@patch('aws_bucket.AWSBucket.get_service_prefix', return_value=test_constants.TEST_PREFIX)
 def test_aws_bucket_find_regions_handles_exceptions_on_client_error(mock_prefix, error_code: str, exit_code: int):
     """Test 'find_regions' method handles client errors as expected."""
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, prefix=constants.TEST_PREFIX)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, prefix=test_constants.TEST_PREFIX)
     bucket.client = MagicMock()
     bucket.client.list_objects_v2.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}}, "name")
 
     with pytest.raises(SystemExit) as e:
-        bucket.find_regions(constants.TEST_ACCOUNT_ID)
+        bucket.find_regions(test_constants.TEST_ACCOUNT_ID)
     assert e.value.code == exit_code
 
 
 @pytest.mark.parametrize('reparse', [True, False])
-@pytest.mark.parametrize('only_logs_after', [constants.TEST_ONLY_LOGS_AFTER, None])
+@pytest.mark.parametrize('only_logs_after', [test_constants.TEST_ONLY_LOGS_AFTER, None])
 @pytest.mark.parametrize('iterating', [True, False])
 @pytest.mark.parametrize('custom_delimiter', ['', '-'])
-@pytest.mark.parametrize('region', [constants.TEST_REGION, 'region_for_empty_db'])
-@patch('aws_bucket.AWSBucket.get_full_prefix', return_value=constants.TEST_FULL_PREFIX)
+@pytest.mark.parametrize('region', [test_constants.TEST_REGION, 'region_for_empty_db'])
+@patch('aws_bucket.AWSBucket.get_full_prefix', return_value=test_constants.TEST_FULL_PREFIX)
 def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
                                          region: str, custom_delimiter: str, iterating: bool,
                                          only_logs_after: str or None, reparse: bool):
@@ -395,18 +398,19 @@ def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
     """
     utils.database_execute_script(custom_database, TEST_CLOUDTRAIL_SCHEMA)
 
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, reparse=reparse, only_logs_after=only_logs_after)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, reparse=reparse, only_logs_after=only_logs_after)
     bucket.db_connector = custom_database
     bucket.db_cursor = bucket.db_connector.cursor()
-    bucket.db_table_name = constants.TEST_TABLE_NAME
+    bucket.db_table_name = test_constants.TEST_TABLE_NAME
 
     expected_filter_args = {
         'Bucket': bucket.bucket,
         'MaxKeys': 1000,
-        'Prefix': mock_get_full_prefix(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+        'Prefix': mock_get_full_prefix(test_constants.TEST_ACCOUNT_ID,
+                                       test_constants.TEST_REGION)
     }
 
-    aws_account_id = constants.TEST_ACCOUNT_ID
+    aws_account_id = test_constants.TEST_ACCOUNT_ID
     aws_region = region
 
     if bucket.reparse:
@@ -464,7 +468,7 @@ def test_aws_bucket_load_information_from_file():
     bucket = utils.get_mocked_aws_bucket()
 
     with pytest.raises(NotImplementedError):
-        bucket.load_information_from_file(constants.TEST_LOG_KEY)
+        bucket.load_information_from_file(test_constants.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize('expected_result', [SAMPLE_EVENT_1, SAMPLE_EVENT_2])
@@ -473,25 +477,25 @@ def test_aws_bucket_get_log_file(mock_load_from_file, expected_result):
     """Test 'get_log_file' method returns the expected event from a log file"""
     bucket = utils.get_mocked_aws_bucket()
     mock_load_from_file.return_value = expected_result
-    assert expected_result == bucket.get_log_file(constants.TEST_ACCOUNT_ID,
-                                                  constants.TEST_LOG_KEY)
-    mock_load_from_file.assert_called_with(log_key=constants.TEST_LOG_KEY)
+    assert expected_result == bucket.get_log_file(test_constants.TEST_ACCOUNT_ID,
+                                                  test_constants.TEST_LOG_KEY)
+    mock_load_from_file.assert_called_with(log_key=test_constants.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize('exception, error_message, exit_code', [
-    (TypeError, f'Failed to decompress file {constants.TEST_LOG_KEY}: TypeError()',
+    (TypeError, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: TypeError()',
      constants.DECOMPRESS_FILE_ERROR_CODE),
-    (zipfile.BadZipfile, f'Failed to decompress file {constants.TEST_LOG_KEY}: BadZipFile()',
+    (zipfile.BadZipfile, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: BadZipFile()',
      constants.DECOMPRESS_FILE_ERROR_CODE),
-    (zipfile.LargeZipFile, f'Failed to decompress file {constants.TEST_LOG_KEY}: LargeZipFile()',
+    (zipfile.LargeZipFile, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: LargeZipFile()',
      constants.DECOMPRESS_FILE_ERROR_CODE),
-    (IOError, f'Failed to decompress file {constants.TEST_LOG_KEY}: OSError()',
+    (IOError, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: OSError()',
      constants.DECOMPRESS_FILE_ERROR_CODE),
-    (ValueError, f'Failed to parse file {constants.TEST_LOG_KEY}: ValueError()',
+    (ValueError, f'Failed to parse file {test_constants.TEST_LOG_KEY}: ValueError()',
      constants.PARSE_FILE_ERROR_CODE),
-    (csv.Error, f'Failed to parse file {constants.TEST_LOG_KEY}: Error()',
+    (csv.Error, f'Failed to parse file {test_constants.TEST_LOG_KEY}: Error()',
      constants.PARSE_FILE_ERROR_CODE),
-    (Exception, f'Unknown error reading/parsing file {constants.TEST_LOG_KEY}: Exception()',
+    (Exception, f'Unknown error reading/parsing file {test_constants.TEST_LOG_KEY}: Exception()',
      constants.UNKNOWN_ERROR_CODE)
 ])
 @pytest.mark.parametrize('skip_on_error', [True, False])
@@ -522,19 +526,22 @@ def test_aws_bucket_get_log_file_handles_exceptions_when_information_cannot_be_l
                 patch('aws_bucket.AWSBucket.get_alert_msg', return_value='error_msg') as mock_get_alert_msg:
             debug_message_example = "++ {}; skipping...".format(error_message)
 
-            bucket.get_log_file(constants.TEST_ACCOUNT_ID, constants.TEST_LOG_KEY)
+            bucket.get_log_file(test_constants.TEST_ACCOUNT_ID,
+                                test_constants.TEST_LOG_KEY)
             mock_debug.assert_called_with(debug_message_example, 1)
-            mock_get_alert_msg.assert_called_once_with(constants.TEST_ACCOUNT_ID,
-                                                       constants.TEST_LOG_KEY, None, error_message)
+            mock_get_alert_msg.assert_called_once_with(test_constants.TEST_ACCOUNT_ID,
+                                                       test_constants.TEST_LOG_KEY, None, error_message)
             mock_send_msg.assert_called_once_with(mock_get_alert_msg())
 
             mock_send_msg.side_effect = Exception
-            bucket.get_log_file(constants.TEST_ACCOUNT_ID, constants.TEST_LOG_KEY)
+            bucket.get_log_file(test_constants.TEST_ACCOUNT_ID,
+                                test_constants.TEST_LOG_KEY)
             mock_debug.assert_called_with("++ Failed to send message to Wazuh", 1)
 
     else:
         with pytest.raises(SystemExit) as e:
-            bucket.get_log_file(constants.TEST_ACCOUNT_ID, constants.TEST_LOG_KEY)
+            bucket.get_log_file(test_constants.TEST_ACCOUNT_ID,
+                                test_constants.TEST_LOG_KEY)
         assert e.value.code == exit_code
 
 
@@ -545,19 +552,20 @@ def test_aws_bucket_iter_bucket(mock_init, mock_iter):
     bucket = utils.get_mocked_aws_bucket()
     bucket.db_connector = MagicMock()
     bucket.db_cursor = MagicMock()
-    bucket.iter_bucket(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+    bucket.iter_bucket(test_constants.TEST_ACCOUNT_ID, test_constants.TEST_REGION)
 
     mock_init.assert_called_once()
-    mock_iter.assert_called_with(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+    mock_iter.assert_called_with(test_constants.TEST_ACCOUNT_ID,
+                                 test_constants.TEST_REGION)
     bucket.db_connector.commit.assert_called_once()
     bucket.db_cursor.execute.assert_called_with(bucket.sql_db_optimize)
     bucket.db_connector.close.assert_called_once()
 
 
-@pytest.mark.parametrize('account_id', [[constants.TEST_ACCOUNT_ID], None])
-@pytest.mark.parametrize('regions', [[constants.TEST_REGION], None])
-@patch('aws_bucket.AWSBucket.find_account_ids', return_value=[constants.TEST_ACCOUNT_ID])
-@patch('aws_bucket.AWSBucket.find_regions', side_effect=[[constants.TEST_REGION], None])
+@pytest.mark.parametrize('account_id', [[test_constants.TEST_ACCOUNT_ID], None])
+@pytest.mark.parametrize('regions', [[test_constants.TEST_REGION], None])
+@patch('aws_bucket.AWSBucket.find_account_ids', return_value=[test_constants.TEST_ACCOUNT_ID])
+@patch('aws_bucket.AWSBucket.find_regions', side_effect=[[test_constants.TEST_REGION], None])
 @patch('aws_bucket.AWSBucket.iter_files_in_bucket')
 @patch('aws_bucket.AWSBucket.db_maintenance')
 def test_aws_bucket_iter_regions_and_accounts(mock_db_maintenance, mock_iter_files, mock_find_regions, mock_accounts,
@@ -612,20 +620,23 @@ def test_aws_bucket_iter_events(mock_debug, mock_send_event, mock_get_alert,
         {'eventVersion': 'version', 'userIdentity': {'type': 'someType'}, 'eventTime': 'someTime', 'eventName': 'name',
          'source': 'cloudtrail'}]
 
-    bucket.iter_events(event_list, constants.TEST_LOG_KEY, constants.TEST_ACCOUNT_ID)
+    bucket.iter_events(event_list, test_constants.TEST_LOG_KEY,
+                       test_constants.TEST_ACCOUNT_ID)
     for event in event_list:
         if bucket.discard_field and discard_regex:
             mock_debug.assert_any_call(
                 f'+++ The "{bucket.discard_regex.pattern}" regex found a match in the "{bucket.discard_field}" '
                 f'field. The event will be skipped.', 2)
             continue
-        mock_get_alert.assert_called_with(constants.TEST_ACCOUNT_ID, constants.TEST_LOG_KEY, event)
+        mock_get_alert.assert_called_with(test_constants.TEST_ACCOUNT_ID,
+                                          test_constants.TEST_LOG_KEY, event)
         mock_send_event.assert_called()
 
 
 @pytest.mark.parametrize('object_list',
-                         [constants.LIST_OBJECT_V2, constants.LIST_OBJECT_V2_NO_PREFIXES,
-                          constants.LIST_OBJECT_V2_TRUNCATED])
+                         [test_constants.LIST_OBJECT_V2,
+                          test_constants.LIST_OBJECT_V2_NO_PREFIXES,
+                          test_constants.LIST_OBJECT_V2_TRUNCATED])
 @pytest.mark.parametrize('reparse', [True, False])
 @pytest.mark.parametrize('check_prefix', [True, False])
 @pytest.mark.parametrize('delete_file', [True, False])
@@ -647,29 +658,30 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
     object_list: dict
         Objects to be returned by list_objects_v2.
     """
-    bucket = utils.get_mocked_aws_bucket(bucket=constants.TEST_BUCKET, delete_file=delete_file, reparse=reparse,
-                                         prefix=constants.TEST_PREFIX)
+    bucket = utils.get_mocked_aws_bucket(bucket=test_constants.TEST_BUCKET, delete_file=delete_file, reparse=reparse,
+                                         prefix=test_constants.TEST_PREFIX)
 
     mock_build_filter.return_value = {
         'Bucket': bucket.bucket,
         'MaxKeys': 1000,
-        'Prefix': constants.TEST_PREFIX
+        'Prefix': test_constants.TEST_PREFIX
     }
 
     bucket.client.list_objects_v2.return_value = object_list
     bucket.check_prefix = check_prefix
 
-    aws_account_id = constants.TEST_ACCOUNT_ID
-    aws_region = constants.TEST_REGION
+    aws_account_id = test_constants.TEST_ACCOUNT_ID
+    aws_region = test_constants.TEST_REGION
 
     with patch('aws_bucket.AWSBucket.already_processed', return_value=True) as mock_already_processed, \
             patch('aws_bucket.AWSBucket.get_log_file') as mock_get_log_file, \
             patch('aws_bucket.AWSBucket.iter_events') as mock_iter_events, \
             patch('aws_bucket.AWSBucket.mark_complete') as mock_mark_complete, \
-            patch('aws_bucket.AWSBucket.get_full_prefix', return_value=constants.TEST_FULL_PREFIX):
+            patch('aws_bucket.AWSBucket.get_full_prefix', return_value=test_constants.TEST_FULL_PREFIX):
 
         if 'IsTruncated' in object_list and object_list['IsTruncated']:
-            bucket.client.list_objects_v2.side_effect = [object_list, constants.LIST_OBJECT_V2_NO_PREFIXES]
+            bucket.client.list_objects_v2.side_effect = [object_list,
+                                                         test_constants.LIST_OBJECT_V2_NO_PREFIXES]
 
         bucket.iter_files_in_bucket(aws_account_id, aws_region)
 
@@ -735,12 +747,14 @@ def test_aws_bucket_iter_files_in_bucket_handles_exceptions_on_error(error_code,
         with pytest.raises(SystemExit) as e:
             bucket.client.list_objects_v2.side_effect = botocore.exceptions.ClientError({'Error': {'Code': error_code}},
                                                                                         "name")
-            bucket.iter_files_in_bucket(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+            bucket.iter_files_in_bucket(test_constants.TEST_ACCOUNT_ID,
+                                        test_constants.TEST_REGION)
         assert e.value.code == exit_code
 
         with pytest.raises(SystemExit) as e:
             mock_build_filter.side_effect = Exception
-            bucket.iter_files_in_bucket(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+            bucket.iter_files_in_bucket(test_constants.TEST_ACCOUNT_ID,
+                                        test_constants.TEST_REGION)
         assert e.value.code == constants.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
@@ -815,27 +829,28 @@ def test_aws_bucket_check_bucket_handles_exceptions_on_endpoint_error():
     assert e.value.code == constants.INVALID_ENDPOINT_ERROR_CODE
 
 
-@pytest.mark.parametrize('prefix', [constants.TEST_PREFIX, None])
-@pytest.mark.parametrize('suffix', [constants.TEST_SUFFIX, None])
+@pytest.mark.parametrize('prefix', [test_constants.TEST_PREFIX, None])
+@pytest.mark.parametrize('suffix', [test_constants.TEST_SUFFIX, None])
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
 def test_aws_logs_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_database, prefix, suffix):
     """Test if the instances of AWSLogsBucket are created properly."""
-    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, bucket=constants.TEST_BUCKET,
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, bucket=test_constants.TEST_BUCKET,
                                        prefix=prefix, suffix=suffix)
     mock_bucket.assert_called_once()
-    assert instance.bucket_path == f"{constants.TEST_BUCKET}/{prefix}{suffix}"
+    assert instance.bucket_path == f"{test_constants.TEST_BUCKET}/{prefix}{suffix}"
 
 
-@pytest.mark.parametrize('organization_id', [constants.TEST_ORGANIZATION_ID, None])
+@pytest.mark.parametrize('organization_id', [test_constants.TEST_ORGANIZATION_ID, None])
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_logs_bucket_get_base_prefix(mock_wazuh_aws_database, organization_id):
     """Test 'get_base_prefix' returns the expected prefix with the format
     <prefix>/AWSLogs/<suffix>/<organization_id>/.
     """
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, aws_organization_id=organization_id,
-                                       prefix=f'{constants.TEST_PREFIX}/', suffix=f'{constants.TEST_SUFFIX}/')
-    expected_base_prefix = os.path.join(constants.TEST_PREFIX, 'AWSLogs', constants.TEST_SUFFIX,
+                                       prefix=f'{test_constants.TEST_PREFIX}/', suffix=f'{test_constants.TEST_SUFFIX}/')
+    expected_base_prefix = os.path.join(test_constants.TEST_PREFIX, 'AWSLogs',
+                                        test_constants.TEST_SUFFIX,
                                         (organization_id if organization_id else ""), '')
     assert instance.get_base_prefix() == expected_base_prefix
 
@@ -847,26 +862,26 @@ def test_aws_logs_bucket_get_service_prefix(mock_base_prefix, mock_wazuh_aws_dat
     <base_prefix>/<account_id>/<service>.
     """
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
-    instance.service = constants.TEST_SERVICE_NAME
-    expected_base_prefix = os.path.join('base_prefix', constants.TEST_ACCOUNT_ID,
-                                        constants.TEST_SERVICE_NAME, '')
-    assert instance.get_service_prefix(constants.TEST_ACCOUNT_ID) == expected_base_prefix
+    instance.service = test_constants.TEST_SERVICE_NAME
+    expected_base_prefix = os.path.join('base_prefix', test_constants.TEST_ACCOUNT_ID,
+                                        test_constants.TEST_SERVICE_NAME, '')
+    assert instance.get_service_prefix(test_constants.TEST_ACCOUNT_ID) == expected_base_prefix
 
 
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSLogsBucket.get_service_prefix', return_value='service_prefix/')
 def test_aws_logs_bucket_get_full_prefix(mock_service_prefix, mock_wazuh_aws_database):
     """Test 'get_full_prefix' method returns the expected prefix with the format <service_prefix>/<region>."""
-    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, region=constants.TEST_REGION)
-    expected_base_prefix = os.path.join('service_prefix', constants.TEST_REGION, '')
-    assert instance.get_full_prefix(constants.TEST_ACCOUNT_ID,
-                                    constants.TEST_REGION) == expected_base_prefix
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket, region=test_constants.TEST_REGION)
+    expected_base_prefix = os.path.join('service_prefix', test_constants.TEST_REGION, '')
+    assert instance.get_full_prefix(test_constants.TEST_ACCOUNT_ID,
+                                    test_constants.TEST_REGION) == expected_base_prefix
 
 
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_logs_bucket_get_creation_date(mock_wazuh_aws_database):
     """Test 'get_creation_date' method returns the expected date from a log filename."""
-    log_file = {'Key': constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1}
+    log_file = {'Key': test_constants.TEST_LOG_FULL_PATH_CLOUDTRAIL_1}
     expected_result = 20190401
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
     assert instance.get_creation_date(log_file) == expected_result
@@ -878,15 +893,15 @@ def test_aws_logs_bucket_get_alert_msg():
 
     with patch('wazuh_integration.WazuhAWSDatabase.__init__'):
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSLogsBucket)
-        aws_account_id = constants.TEST_ACCOUNT_ID
+        aws_account_id = test_constants.TEST_ACCOUNT_ID
         expected_msg = copy.deepcopy(constants.AWS_BUCKET_MSG_TEMPLATE)
         expected_error_message = "error message"
 
-        expected_alert_msg = bucket.get_alert_msg(aws_account_id, constants.TEST_LOG_KEY, expected_msg,
+        expected_alert_msg = bucket.get_alert_msg(aws_account_id, test_constants.TEST_LOG_KEY, expected_msg,
                                                   error_msg=expected_error_message)
         expected_alert_msg['aws']['aws_account_id'] = aws_account_id
 
-        assert expected_alert_msg == instance.get_alert_msg(aws_account_id, constants.TEST_LOG_KEY, expected_msg,
+        assert expected_alert_msg == instance.get_alert_msg(aws_account_id, test_constants.TEST_LOG_KEY, expected_msg,
                                                             expected_error_message)
 
 
@@ -917,11 +932,11 @@ def test_aws_logs_bucket_load_information_from_file(mock_wazuh_aws_database, moc
 
     mock_json_load.return_value = json_file_content
 
-    assert result == instance.load_information_from_file(constants.TEST_LOG_KEY)
-    mock_decompress.assert_called_once_with(instance.bucket, log_key=constants.TEST_LOG_KEY)
+    assert result == instance.load_information_from_file(test_constants.TEST_LOG_KEY)
+    mock_decompress.assert_called_once_with(instance.bucket, log_key=test_constants.TEST_LOG_KEY)
 
 
-@pytest.mark.parametrize('profile', [constants.TEST_AWS_PROFILE, None])
+@pytest.mark.parametrize('profile', [test_constants.TEST_AWS_PROFILE, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
@@ -964,7 +979,7 @@ def test_aws_custom_bucket_load_information_from_file(mock_wazuh_aws_database, m
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 
     with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
-        assert result == instance.load_information_from_file(constants.TEST_LOG_KEY)
+        assert result == instance.load_information_from_file(test_constants.TEST_LOG_KEY)
 
 
 @pytest.mark.parametrize('log_file, expected_date', [
@@ -1007,10 +1022,10 @@ def test_aws_custom_bucket_get_creation_date(mock_wazuh_aws_database, mock_sts, 
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_custom_bucket_get_full_prefix(mock_wazuh_aws_database, mock_sts):
     """Test 'get_full_prefix' method returns the expected prefix."""
-    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, prefix=constants.TEST_PREFIX)
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, prefix=test_constants.TEST_PREFIX)
 
-    assert instance.get_full_prefix(constants.TEST_ACCOUNT_ID,
-                                    constants.TEST_REGION) == constants.TEST_PREFIX
+    assert instance.get_full_prefix(test_constants.TEST_ACCOUNT_ID,
+                                    test_constants.TEST_REGION) == test_constants.TEST_PREFIX
 
 
 @pytest.mark.parametrize('event_field, event_field_name', [('count', ''), ('other_field', 'event_field_value')])
@@ -1086,20 +1101,21 @@ def test_aws_custom_bucket_iter_regions_and_accounts(mock_wazuh_aws_database, mo
     """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files."""
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
 
-    instance.iter_regions_and_accounts(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+    instance.iter_regions_and_accounts(test_constants.TEST_ACCOUNT_ID,
+                                       test_constants.TEST_REGION)
 
     mock_maintenance.assert_called_once()
     mock_iter_files_bucket.assert_called_once()
 
 
 @pytest.mark.parametrize('log_file, account_id, region, expected_result', [
-    (constants.TEST_LOG_FULL_PATH_CUSTOM_1, constants.TEST_ACCOUNT_ID,
-     constants.TEST_REGION, True),
-    (constants.TEST_LOG_FULL_PATH_CUSTOM_2, constants.TEST_ACCOUNT_ID,
-     constants.TEST_REGION, True),
-    ("", constants.TEST_ACCOUNT_ID, constants.TEST_REGION, False),
-    (constants.TEST_LOG_FULL_PATH_CUSTOM_1, constants.TEST_ACCOUNT_ID, "", True),
-    (constants.TEST_LOG_FULL_PATH_CUSTOM_1, "", constants.TEST_REGION, False),
+    (test_constants.TEST_LOG_FULL_PATH_CUSTOM_1, test_constants.TEST_ACCOUNT_ID,
+     test_constants.TEST_REGION, True),
+    (test_constants.TEST_LOG_FULL_PATH_CUSTOM_2, test_constants.TEST_ACCOUNT_ID,
+     test_constants.TEST_REGION, True),
+    ("", test_constants.TEST_ACCOUNT_ID, test_constants.TEST_REGION, False),
+    (test_constants.TEST_LOG_FULL_PATH_CUSTOM_1, test_constants.TEST_ACCOUNT_ID, "", True),
+    (test_constants.TEST_LOG_FULL_PATH_CUSTOM_1, "", test_constants.TEST_REGION, False),
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
@@ -1121,7 +1137,7 @@ def test_aws_custom_bucket_already_processed(mock_wazuh_aws_database, mock_sts,
     """
     utils.database_execute_script(custom_database, TEST_CUSTOM_SCHEMA)
 
-    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, bucket=constants.TEST_BUCKET, region=region)
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket, bucket=test_constants.TEST_BUCKET, region=region)
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
     instance.db_table_name = 'custom'
@@ -1141,15 +1157,16 @@ def test_aws_custom_bucket_mark_complete():
             patch('wazuh_integration.WazuhAWSDatabase.__init__'), \
             patch('aws_bucket.AWSBucket.mark_complete'):
         instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
-        instance.aws_account_id = constants.TEST_ACCOUNT_ID
+        instance.aws_account_id = test_constants.TEST_ACCOUNT_ID
 
-        instance.mark_complete(constants.TEST_ACCOUNT_ID, constants.TEST_REGION, test_log_file)
+        instance.mark_complete(test_constants.TEST_ACCOUNT_ID,
+                               test_constants.TEST_REGION, test_log_file)
         bucket.mark_complete.assert_called_once_with(instance, instance.aws_account_id,
-                                                     constants.TEST_REGION,
+                                                     test_constants.TEST_REGION,
                                                      test_log_file)
 
 
-@pytest.mark.parametrize('aws_account_id', [constants.TEST_ACCOUNT_ID, None])
+@pytest.mark.parametrize('aws_account_id', [test_constants.TEST_ACCOUNT_ID, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_custom_bucket_db_count_custom(mock_wazuh_aws_database, mock_sts, custom_database,
@@ -1167,14 +1184,14 @@ def test_aws_custom_bucket_db_count_custom(mock_wazuh_aws_database, mock_sts, cu
     instance.db_connector = custom_database
     instance.db_cursor = instance.db_connector.cursor()
     instance.db_table_name = "custom"
-    instance.aws_account_id = constants.TEST_ACCOUNT_ID
+    instance.aws_account_id = test_constants.TEST_ACCOUNT_ID
 
     expected_count = CUSTOM_SCHEMA_COUNT
     assert instance.db_count_custom(aws_account_id) == expected_count
 
 
 @pytest.mark.parametrize('expected_db_count', [CUSTOM_SCHEMA_COUNT, 0])
-@pytest.mark.parametrize('aws_account_id', [constants.TEST_ACCOUNT_ID, None])
+@pytest.mark.parametrize('aws_account_id', [test_constants.TEST_ACCOUNT_ID, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_custom_bucket_db_maintenance(mock_wazuh_aws_database, mock_sts, aws_account_id, expected_db_count,
@@ -1187,7 +1204,7 @@ def test_aws_custom_bucket_db_maintenance(mock_wazuh_aws_database, mock_sts, aws
     instance.db_cursor = instance.db_connector.cursor()
     instance.db_table_name = "custom"
     instance.retain_db_records = expected_db_count
-    instance.aws_account_id = constants.TEST_ACCOUNT_ID
+    instance.aws_account_id = test_constants.TEST_ACCOUNT_ID
 
     assert utils.database_execute_query(instance.db_connector, constants.SQL_COUNT_ROWS.format(
         table_name=instance.db_table_name)) == CUSTOM_SCHEMA_COUNT
@@ -1211,6 +1228,6 @@ def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_data
     mocked_cursor = MagicMock()
     mocked_cursor.execute.side_effect = Exception
 
-    instance.db_maintenance(aws_account_id=constants.TEST_ACCOUNT_ID)
+    instance.db_maintenance(aws_account_id=test_constants.TEST_ACCOUNT_ID)
 
     mock_print.assert_called_once()

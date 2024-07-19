@@ -8,6 +8,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
+import aws_constants as test_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_s3
 import aws_tools
@@ -28,10 +31,11 @@ import constants
     (['main', '--bucket', 'bucket-name', '--type', 'server_access'], 'buckets_s3.server_access.AWSServerAccess'),
     (['main', '--service', 'inspector'], 'services.inspector.AWSInspector'),
     (['main', '--service', 'cloudwatchlogs'], 'services.cloudwatchlogs.AWSCloudWatchLogs'),
-    (['main', '--subscriber', 'security_lake', '--iam_role_arn', constants.TEST_IAM_ROLE_ARN,
-      '--external_id', constants.TEST_EXTERNAL_ID, '--queue', constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
-    (['main', '--subscriber', 'buckets', '--queue', constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
-    (['main', '--subscriber', 'security_hub', '--queue', constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
+    (['main', '--subscriber', 'security_lake', '--iam_role_arn', test_constants.TEST_IAM_ROLE_ARN,
+      '--external_id', test_constants.TEST_EXTERNAL_ID, '--queue',
+      test_constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
+    (['main', '--subscriber', 'buckets', '--queue', test_constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue'),
+    (['main', '--subscriber', 'security_hub', '--queue', test_constants.TEST_SQS_NAME], 'subscribers.sqs_queue.AWSSQSQueue')
 ])
 @patch('aws_tools.get_script_arguments', side_effect=aws_tools.get_script_arguments)
 def test_main(mock_arguments, args: list[str], class_):

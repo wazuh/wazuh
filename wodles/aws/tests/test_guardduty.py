@@ -10,6 +10,9 @@ from unittest.mock import patch, mock_open, MagicMock
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
+import aws_constants as test_constants
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
@@ -34,8 +37,8 @@ def test_aws_guardduty_bucket_initializes_properly(mock_custom_bucket, guardduty
             assert instance.type == "GuardDutyKinesis"
 
 
-@pytest.mark.parametrize('object_list, result', [(constants.LIST_OBJECT_V2, True),
-                                                 (constants.LIST_OBJECT_V2_NO_PREFIXES, False)])
+@pytest.mark.parametrize('object_list, result', [(test_constants.LIST_OBJECT_V2, True),
+                                                 (test_constants.LIST_OBJECT_V2_NO_PREFIXES, False)])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 def test_aws_guardduty_bucket_check_guardduty_type(mock_wazuh_aws_integration, mock_sts,
@@ -80,8 +83,8 @@ def test_aws_guardduty_bucket_get_service_prefix(mock_custom_bucket, mock_type, 
     <base_prefix>/<account_id>/<service>."""
     instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
 
-    expected_base_prefix = os.path.join('base_prefix', constants.TEST_ACCOUNT_ID, instance.service, '')
-    assert instance.get_service_prefix(constants.TEST_ACCOUNT_ID) == expected_base_prefix
+    expected_base_prefix = os.path.join('base_prefix', test_constants.TEST_ACCOUNT_ID, instance.service, '')
+    assert instance.get_service_prefix(test_constants.TEST_ACCOUNT_ID) == expected_base_prefix
 
 
 @pytest.mark.parametrize('guardduty_native', [True, False])
@@ -101,12 +104,13 @@ def test_aws_guardduty_bucket_get_full_prefix(mock_wazuh_aws_integration, mock_s
         instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket, prefix='prefix/')
 
         if instance.type == "GuardDutyNative":
-            assert os.path.join(instance.get_service_prefix(constants.TEST_ACCOUNT_ID),
-                                constants.TEST_REGION, '') == \
-                   instance.get_full_prefix(constants.TEST_ACCOUNT_ID, constants.TEST_REGION)
+            assert os.path.join(instance.get_service_prefix(test_constants.TEST_ACCOUNT_ID),
+                                test_constants.TEST_REGION, '') == \
+                   instance.get_full_prefix(test_constants.TEST_ACCOUNT_ID,
+                                            test_constants.TEST_REGION)
         else:
-            assert instance.prefix == instance.get_full_prefix(constants.TEST_ACCOUNT_ID,
-                                                               constants.TEST_REGION)
+            assert instance.prefix == instance.get_full_prefix(test_constants.TEST_ACCOUNT_ID,
+                                                               test_constants.TEST_REGION)
 
 
 @pytest.mark.parametrize('guardduty_native', [True, False])
@@ -141,8 +145,8 @@ def test_aws_guardduty_bucket_iter_regions_and_accounts(mock_wazuh_aws_integrati
     guardduty_native: bool
         Result for the 'check_guardduty_type' call that determines the GuardDuty bucket type.
     """
-    account_ids = [constants.TEST_ACCOUNT_ID]
-    regions = [constants.TEST_REGION]
+    account_ids = [test_constants.TEST_ACCOUNT_ID]
+    regions = [test_constants.TEST_REGION]
     with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type', return_value=guardduty_native), \
             patch('aws_bucket.AWSBucket.iter_regions_and_accounts') as mock_bucket_regions_and_accounts, \
             patch('aws_bucket.AWSCustomBucket.iter_regions_and_accounts') as mock_custom_regions_and_accounts:

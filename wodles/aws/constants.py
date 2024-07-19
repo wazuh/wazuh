@@ -2,7 +2,6 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import copy
 from os import path
 
 # RETRIES CONFIGURATIONS
@@ -28,7 +27,7 @@ INSPECTOR_SUPPORTED_REGIONS = (
 DEFAULT_AWS_SERVICES_DATABASE_NAME = "aws_services"
 DEFAULT_AWS_SERVICES_TABLENAME = "aws_services"
 DEFAULT_AWS_BUCKET_DATABASE_NAME = "s3_cloudtrail"
-TEST_DATABASE = "test"
+
 
 # DATABASE QUERIES
 SQL_COUNT_ROWS = """SELECT count(*) FROM {table_name};"""
@@ -55,7 +54,6 @@ SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/cur
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
 WODLES_PATH = 'wodles/aws'
 QUEUE_PATH = 'queue/sockets/queue'
-TEST_WAZUH_PATH = "/var/ossec"
 
 # MSG HEADERS
 WAZUH_AWS_MESSAGE_HEADER = "1:Wazuh-AWS:"
@@ -105,52 +103,3 @@ INVALID_REQUEST_TIME_ERROR_MESSAGE = "The server datetime and datetime of the AW
 THROTTLING_EXCEPTION_ERROR_MESSAGE = "The '{name}' request was denied due to request throttling. " \
                                      "If the problem persists check the following link to learn how to use " \
                                      f"the Retry configuration to avoid it: '{RETRY_CONFIGURATION_URL}'"
-
-# TESTS VALUES
-TEST_HARDCODED_WAZUH_VERSION = "4.5.0"
-TEST_TABLE_NAME = "cloudtrail"
-TEST_SERVICE_NAME = "s3"
-TEST_AWS_PROFILE = "test_aws_profile"
-TEST_IAM_ROLE_ARN = "arn:aws:iam::123455678912:role/Role"
-TEST_IAM_ROLE_DURATION = '3600'
-TEST_ACCOUNT_ID = "123456789123"
-TEST_ACCOUNT_ALIAS = "test_account_alias"
-TEST_ORGANIZATION_ID = "test_organization_id"
-TEST_TOKEN = 'test_token'
-TEST_CREATION_DATE = "2022-01-01"
-TEST_BUCKET = "test-bucket"
-TEST_SERVICE = "test-service"
-TEST_SQS_NAME = "test-sqs"
-TEST_PREFIX = "test_prefix"
-TEST_SUFFIX = "test_suffix"
-TEST_REGION = "us-east-1"
-TEST_DISCARD_FIELD = "test_field"
-TEST_DISCARD_REGEX = "test_regex"
-TEST_ONLY_LOGS_AFTER = "20220101"
-TEST_ONLY_LOGS_AFTER_WITH_FORMAT = "2022-01-01 00:00:00.0"
-TEST_LOG_KEY = "123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz"
-TEST_FULL_PREFIX = "base/account_id/service/region/"
-TEST_EXTERNAL_ID = "external-id-Sec-Lake"
-TEST_MESSAGE = "test_message"
-
-TEST_SERVICE_ENDPOINT = 'test_service_endpoint'
-TEST_STS_ENDPOINT = "test_sts_endpoint"
-
-TEST_LOG_FULL_PATH_CLOUDTRAIL_1 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_' \
-                                  '20190401T0030Z_aaaa.json.gz'
-TEST_LOG_FULL_PATH_CLOUDTRAIL_2 = 'AWSLogs/123456789/CloudTrail/us-east-1/2019/04/01/123456789_CloudTrail-us-east-1_' \
-                                  '20190401T00015Z_aaaa.json.gz'
-TEST_LOG_FULL_PATH_CUSTOM_1 = 'custom/2019/04/15/07/firehose_custom-1-2019-04-15-09-16-03.zip'
-TEST_LOG_FULL_PATH_CUSTOM_2 = 'custom/2019/04/15/07/firehose_custom-1-2019-04-15-13-19-03.zip'
-TEST_LOG_FULL_PATH_CONFIG_1 = 'AWSLogs/123456789/Config/us-east-1/2019/4/15/ConfigHistory/123456789_Config_us-east-1_' \
-                              'ConfigHistory_20190415T020500Z.json.gz'
-
-LIST_OBJECT_V2 = {'CommonPrefixes': [{'Prefix': f'AWSLogs/{TEST_REGION}/'},
-                                     {'Prefix': f'AWSLogs/prefix/{TEST_REGION}/'}]}
-LIST_OBJECT_V2_NO_PREFIXES = {'Contents': [{
-    'Key': '',
-    'OtherKey': 'value'}],
-    'IsTruncated': False
-}
-LIST_OBJECT_V2_TRUNCATED = copy.deepcopy(LIST_OBJECT_V2_NO_PREFIXES)
-LIST_OBJECT_V2_TRUNCATED.update({'IsTruncated': True, 'NextContinuationToken': 'Token'})

@@ -10,6 +10,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
+import aws_constants as test_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import aws_tools
 import constants
@@ -62,9 +65,9 @@ def test_arg_valid_key_raises_exception_when_invalid_format_provided():
 
 
 @pytest.mark.parametrize('arg_string', [
-    constants.TEST_ACCOUNT_ID,
-    f'{constants.TEST_ACCOUNT_ID},{constants.TEST_ACCOUNT_ID}',
-    f'{constants.TEST_ACCOUNT_ID},{constants.TEST_ACCOUNT_ID},{constants.TEST_ACCOUNT_ID}',
+    test_constants.TEST_ACCOUNT_ID,
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID}',
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID}',
     None
 ])
 def test_arg_valid_accountid(arg_string: str or None):
@@ -81,9 +84,9 @@ def test_arg_valid_accountid(arg_string: str or None):
 
 
 @pytest.mark.parametrize('arg_string', [
-    constants.TEST_ACCOUNT_ID[:-1],
-    f'{constants.TEST_ACCOUNT_ID},{constants.TEST_ACCOUNT_ID[:-1]}',
-    f'{constants.TEST_ACCOUNT_ID},{constants.TEST_ACCOUNT_ID},123456789abc'
+    test_constants.TEST_ACCOUNT_ID[:-1],
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID[:-1]}',
+    f'{test_constants.TEST_ACCOUNT_ID},{test_constants.TEST_ACCOUNT_ID},123456789abc'
 ])
 def test_arg_valid_accountid_raises_exception_when_invalid_account_provided(arg_string):
     """Test 'arg_valid_accountid' function raises an 'ArgumentTypeError' error
@@ -99,9 +102,9 @@ def test_arg_valid_accountid_raises_exception_when_invalid_account_provided(arg_
 
 
 @pytest.mark.parametrize('arg_string', [
-    constants.TEST_REGION,
-    f'{constants.TEST_REGION},{constants.TEST_REGION}',
-    f'{constants.TEST_REGION},{constants.TEST_REGION},{constants.TEST_REGION}',
+    test_constants.TEST_REGION,
+    f'{test_constants.TEST_REGION},{test_constants.TEST_REGION}',
+    f'{test_constants.TEST_REGION},{test_constants.TEST_REGION},{test_constants.TEST_REGION}',
     None
 ])
 def test_arg_valid_regions(arg_string):

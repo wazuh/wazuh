@@ -1,17 +1,13 @@
-# Copyright (C) 2015, Wazuh Inc.
-# Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
-
 import os
 import sys
 from unittest.mock import patch
+
+import wodles.aws.tests.aws_constants as test_constants
 
 data_path = os.path.join(os.path.dirname(__file__), 'data')
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
-from wodles.aws.constants import TEST_TABLE_NAME, TEST_SERVICE_NAME, TEST_AWS_PROFILE, TEST_IAM_ROLE_ARN, TEST_BUCKET, \
-    TEST_SQS_NAME, TEST_EXTERNAL_ID, TEST_HARDCODED_WAZUH_VERSION, TEST_WAZUH_PATH, TEST_DATABASE
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
 import aws_bucket
@@ -24,7 +20,8 @@ import sqs_queue
 import s3_log_handler
 
 
-def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
+def get_wazuh_integration_parameters(service_name: str = test_constants.TEST_SERVICE_NAME,
+                                     profile: str = test_constants.TEST_AWS_PROFILE,
                                      iam_role_arn: str = None, region: str = None, discard_field: str = None,
                                      discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                      iam_role_duration: str = None, external_id: str = None,
@@ -68,8 +65,9 @@ def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, prof
             'external_id': external_id, 'skip_on_error': skip_on_error}
 
 
-def get_wazuh_aws_database_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
-                                      db_name: str = TEST_DATABASE,
+def get_wazuh_aws_database_parameters(service_name: str = test_constants.TEST_SERVICE_NAME,
+                                      profile: str = test_constants.TEST_AWS_PROFILE,
+                                      db_name: str = test_constants.TEST_DATABASE,
                                       iam_role_arn: str = None, region: str = None, discard_field: str = None,
                                       discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                       iam_role_duration: str = None, external_id: str = None):
@@ -111,8 +109,9 @@ def get_wazuh_aws_database_parameters(service_name: str = TEST_SERVICE_NAME, pro
             'external_id': external_id}
 
 
-def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str = TEST_BUCKET, reparse: bool = False,
-                              profile: str = TEST_AWS_PROFILE,
+def get_aws_bucket_parameters(db_table_name: str = test_constants.TEST_TABLE_NAME,
+                              bucket: str = test_constants.TEST_BUCKET, reparse: bool = False,
+                              profile: str = test_constants.TEST_AWS_PROFILE,
                               iam_role_arn: str = None, only_logs_after: str = None, skip_on_error: bool = False,
                               account_alias: str = None, prefix: str = "", suffix: str = "", delete_file: bool = False,
                               aws_organization_id: str = None, region: str = None, discard_field: str = None,
@@ -173,9 +172,9 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
 
-def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
+def get_aws_service_parameters(db_table_name: str = test_constants.TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
                                reparse: bool = False,
-                               profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
+                               profile: str = test_constants.TEST_AWS_PROFILE, iam_role_arn: str = None,
                                only_logs_after: str = None, account_alias: str = None, region: str = None, aws_log_groups: str = None,
                                remove_log_streams: bool = None, discard_field: str = None,
                                discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
@@ -230,8 +229,9 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}
 
 
-def get_aws_sqs_queue_parameters(name: str = TEST_SQS_NAME, external_id: str = TEST_EXTERNAL_ID,
-                                 iam_role_arn: str = TEST_IAM_ROLE_ARN, iam_role_duration: str = None,
+def get_aws_sqs_queue_parameters(name: str = test_constants.TEST_SQS_NAME,
+                                 external_id: str = test_constants.TEST_EXTERNAL_ID,
+                                 iam_role_arn: str = test_constants.TEST_IAM_ROLE_ARN, iam_role_duration: str = None,
                                  sts_endpoint: str = None, service_endpoint: str = None):
     """Return a dict containing every parameter supported by AWSSQSQueue. Used to simulate different ossec.conf
     configurations.
@@ -288,8 +288,8 @@ def get_aws_s3_log_handler_parameters(iam_role_arn: str = None, iam_role_duratio
 def get_mocked_wazuh_integration(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=TEST_HARDCODED_WAZUH_VERSION):
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=test_constants.TEST_HARDCODED_WAZUH_VERSION):
         return wazuh_integration.WazuhIntegration(**get_wazuh_integration_parameters(**kwargs))
 
 
@@ -297,8 +297,8 @@ def get_mocked_wazuh_aws_database(**kwargs):
     with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=TEST_HARDCODED_WAZUH_VERSION):
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=test_constants.TEST_HARDCODED_WAZUH_VERSION):
         return wazuh_integration.WazuhAWSDatabase(**get_wazuh_aws_database_parameters(**kwargs))
 
 
@@ -306,8 +306,8 @@ def get_mocked_aws_bucket(**kwargs):
     with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=TEST_HARDCODED_WAZUH_VERSION):
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=test_constants.TEST_HARDCODED_WAZUH_VERSION):
         return aws_bucket.AWSBucket(**get_aws_bucket_parameters(**kwargs))
 
 
@@ -315,8 +315,8 @@ def get_mocked_bucket(class_=aws_bucket.AWSBucket, **kwargs):
     with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=TEST_HARDCODED_WAZUH_VERSION):
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=test_constants.TEST_HARDCODED_WAZUH_VERSION):
         return class_(**get_aws_bucket_parameters(**kwargs))
 
 
@@ -324,15 +324,15 @@ def get_mocked_service(class_=aws_service.AWSService, **kwargs):
     with patch('wazuh_integration.WazuhAWSDatabase.check_metadata_version'), \
             patch('wazuh_integration.WazuhIntegration.get_client'), \
             patch('wazuh_integration.sqlite3.connect'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=TEST_HARDCODED_WAZUH_VERSION):
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=test_constants.TEST_HARDCODED_WAZUH_VERSION):
         return class_(**get_aws_service_parameters(**kwargs))
 
 
 def get_mocked_aws_sqs_queue(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=TEST_HARDCODED_WAZUH_VERSION), \
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=test_constants.TEST_HARDCODED_WAZUH_VERSION), \
             patch('s3_log_handler.AWSS3LogHandler.__init__') as mocked_handler, \
             patch('sqs_message_processor.AWSQueueMessageProcessor.__init__') as mocked_processor:
         return sqs_queue.AWSSQSQueue(message_processor=mocked_processor, bucket_handler=mocked_handler,
@@ -341,8 +341,8 @@ def get_mocked_aws_sqs_queue(**kwargs):
 
 def get_mocked_aws_sl_subscriber_bucket(**kwargs):
     with patch('wazuh_integration.WazuhIntegration.get_client'), \
-            patch('wazuh_integration.utils.find_wazuh_path', return_value=TEST_WAZUH_PATH), \
-            patch('wazuh_integration.utils.get_wazuh_version', return_value=TEST_HARDCODED_WAZUH_VERSION):
+            patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH), \
+            patch('wazuh_integration.utils.get_wazuh_version', return_value=test_constants.TEST_HARDCODED_WAZUH_VERSION):
         return s3_log_handler.AWSSLSubscriberBucket(**get_aws_s3_log_handler_parameters(**kwargs))
 
 
