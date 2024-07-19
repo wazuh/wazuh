@@ -6,6 +6,7 @@
 
 import argparse
 import asyncio
+import logging
 from os.path import basename
 from signal import signal, SIGINT
 from sys import exit, argv

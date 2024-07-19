@@ -6,6 +6,7 @@
 
 import argparse
 from asyncio import run
+import logging
 from os.path import dirname
 from signal import signal, SIGINT
 from sys import exit, path, argv
