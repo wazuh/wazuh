@@ -33,6 +33,30 @@ TEST_F(StringUtilsTest, CheckNotReplacement)
     EXPECT_FALSE(retVal);
 }
 
+TEST_F(StringUtilsTest, CheckUnchanged)
+{
+    std::string string_base {"hello_world"};
+    const auto retVal {Utils::replaceAll(string_base, "_", "_")};
+    EXPECT_EQ(string_base, "hello_world");
+    EXPECT_TRUE(retVal);
+}
+
+TEST_F(StringUtilsTest, CheckQuoteEscape)
+{
+    std::string string_base {"hello'world"};
+    const auto retVal {Utils::replaceAll(string_base, "'", "''")};
+    EXPECT_EQ(string_base, "hello''world");
+    EXPECT_TRUE(retVal);
+}
+
+TEST_F(StringUtilsTest, CheckUnquoteEscape)
+{
+    std::string string_base {"hello''world"};
+    const auto retVal {Utils::replaceAll(string_base, "''", "'")};
+    EXPECT_EQ(string_base, "hello'world");
+    EXPECT_TRUE(retVal);
+}
+
 TEST_F(StringUtilsTest, SplitEmptyString)
 {
     auto splitTextVector {Utils::split("", '.')};
@@ -588,4 +612,3 @@ TEST_F(StringUtilsTest, haveUpperCaseCharacters)
     EXPECT_FALSE(Utils::haveUpperCaseCharacters("test"));
     EXPECT_FALSE(Utils::haveUpperCaseCharacters(""));
 }
-
