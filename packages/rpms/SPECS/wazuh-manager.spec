@@ -878,7 +878,6 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh) %{_localstatedir}/var/db/mitre.db
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/download
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/var/multigroups
-%dir %attr(770, wazuh, wazuh) %{_localstatedir}/var/certs
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/run
 %dir %attr(770, root, wazuh) %{_localstatedir}/var/selinux
 %attr(640, root, wazuh) %{_localstatedir}/var/selinux/*
