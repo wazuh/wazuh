@@ -12,8 +12,10 @@
 #include "argsParser.hpp"
 #include "homedirHelper.hpp"
 #include "keyStore.hpp"
+#include "loggerHelper.h"
 #include <filesystem>
 #include <fstream>
+#include <functional>
 
 namespace Log
 {
@@ -28,6 +30,29 @@ int main(int argc, char* argv[])
     std::string key;
     std::string value;
     std::string valuePath;
+
+    Log::assignLogFunction(
+        [](const int logLevel,
+           const std::string&,
+           const std::string&,
+           const int,
+           const std::string&,
+           const std::string& str,
+           va_list args)
+        {
+            char formattedStr[MAXLEN] = {0};
+            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
+
+            if (logLevel == Log::LOGLEVEL_ERROR || logLevel == Log::LOGLEVEL_CRITICAL ||
+                logLevel == Log::LOGLEVEL_WARNING)
+            {
+                std::cerr << formattedStr << "\n";
+            }
+            else
+            {
+                std::cout << formattedStr << "\n";
+            }
+        });
 
     try
     {

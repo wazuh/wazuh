@@ -9,13 +9,12 @@ from connexion.lifecycle import ConnexionResponse
 
 import wazuh.syscollector as syscollector
 from api.controllers.util import json_response
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deprecate_endpoint
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 
 logger = logging.getLogger('wazuh-api')
 
 
-@deprecate_endpoint()
 async def get_hardware_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                             select: str = None) -> ConnexionResponse:
     """Get hardware info of an agent.
@@ -52,7 +51,6 @@ async def get_hardware_info(agent_id: str, pretty: bool = False, wait_for_comple
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_hotfix_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                           offset: int = 0, limit: int = None, sort: str = None, search: str = None, select: str = None,
                           hotfix: str = None, q: str = None, distinct: bool = False) -> ConnexionResponse:
@@ -116,7 +114,6 @@ async def get_hotfix_info(agent_id: str, pretty: bool = False, wait_for_complete
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_network_address_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                    offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                                    search: str = None, iface: str = None, proto: str = None, address: str = None,
@@ -193,7 +190,6 @@ async def get_network_address_info(agent_id: str, pretty: bool = False, wait_for
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_network_interface_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                      offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                                      search: str = None, name: str = None, adapter: str = None, state: str = None,
@@ -271,7 +267,6 @@ async def get_network_interface_info(agent_id: str, pretty: bool = False, wait_f
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_network_protocol_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                     offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                                     search: str = None, iface: str = None, gateway: str = None, dhcp: str = None,
@@ -342,7 +337,6 @@ async def get_network_protocol_info(agent_id: str, pretty: bool = False, wait_fo
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_os_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                       select: str = None) -> ConnexionResponse:
     """Get OS info of an agent.
@@ -380,7 +374,6 @@ async def get_os_info(agent_id: str, pretty: bool = False, wait_for_complete: bo
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_packages_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                             offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                             search: str = None, vendor: str = None, name: str = None, architecture: str = None,
@@ -454,7 +447,6 @@ async def get_packages_info(agent_id: str, pretty: bool = False, wait_for_comple
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_ports_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                          limit: int = None, select: str = None, sort: str = None, search: str = None, pid: str = None,
                          protocol: str = None, tx_queue: str = None, state: str = None, process: str = None,
@@ -534,7 +526,6 @@ async def get_ports_info(agent_id: str, pretty: bool = False, wait_for_complete:
     return json_response(data, pretty=pretty)
 
 
-@deprecate_endpoint()
 async def get_processes_info(agent_id: str, pretty: bool = False, wait_for_complete: bool = False,
                              offset: int = 0, limit: int = None, select: str = None, sort: str = None,
                              search: str = None, pid: str = None, state: str = None, ppid: str = None,

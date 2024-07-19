@@ -63,7 +63,7 @@ jobs:
 
       - name: Run retag script
         run: |
-          if [ "${{ inputs.old_version }}" != "none" ] && [ "${{ inputs.new_version }}" != "none" ]; then
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             new_version=${{ inputs.new_version }}
             old_version=${{ inputs.old_version }}
           else
