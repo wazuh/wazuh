@@ -140,6 +140,12 @@ void ExecdTimeoutRun(int *childcount)
         /* Timed out */
         if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
 
+            if (list_entry->command[0] == NULL)
+            {
+                merror("Timeout command is null.");
+                return EXIT_FAILURE;
+            }
+
             mdebug1("Executing command '%s %s' after a timeout of '%ds'",
                 list_entry->command[0],
                 list_entry->parameters ? list_entry->parameters : "",
@@ -275,9 +281,17 @@ void ExecdRun(char *exec_msg, int *childcount)
             return;
         }
 
+        char *cmd_copy;
+        os_calloc(2, sizeof(char *), cmd_copy);
+        os_strdup(cmd[0], cmd_copy[0]);
+        if (cmd_copy == NULL) {
+            merror("Active response cmd_copy is null");
+            return EXIT_FAILURE;
+        }
+
         /* Set rkey initially with the name of the AR */
         memset(rkey, '\0', OS_SIZE_4096);
-        snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd[0]));
+        snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd_copy[0]));
 
         keys_json = get_json_from_input(response);
         if (keys_json != NULL) {
