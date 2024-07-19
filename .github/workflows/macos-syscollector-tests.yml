@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-11
+    runs-on: macos-13
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -19,17 +19,17 @@ jobs:
       - name: Build wazuh agent for macOS
         run: |
           rm -rf src/VERSION
-          make deps -C src TARGET=agent -j2
-          make -C src build_syscollector TARGET=agent -j2
+          make deps -C src TARGET=agent -j4
+          make -C src build_syscollector TARGET=agent -j4
       - name: Install dependencies
         run: |
           brew install wget
           pip3 install -r src/data_provider/qa/requirements.txt
       - name: Install macports package manager
         run: |
-          wget https://github.com/macports/macports-base/releases/download/v2.8.1/MacPorts-2.8.1-11-BigSur.pkg
-          sudo installer -pkg MacPorts-2.8.1-11-BigSur.pkg -target /
-          rm -rf MacPorts-2.8.1-11-BigSur.pkg
+          wget https://github.com/macports/macports-base/releases/download/v2.8.1/MacPorts-2.8.1-13-Ventura.pkg
+          sudo installer -pkg MacPorts-2.8.1-13-Ventura.pkg -target /
+          rm -rf MacPorts-2.8.1-13-Ventura.pkg
       - name: Install port
         run: |
           sudo /opt/local/bin/port -b install nano

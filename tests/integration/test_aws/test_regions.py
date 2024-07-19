@@ -18,7 +18,7 @@ from wazuh_testing.utils.db_queries.aws_db import (get_multiple_service_db_row, 
 # Local module imports
 from . import event_monitor
 from .configurator import configurator
-from .utils import ERROR_MESSAGE, TIMEOUT, local_internal_options
+from .utils import ERROR_MESSAGE, TIMEOUT, ALL_REGIONS, local_internal_options
 
 pytestmark = [pytest.mark.server]
 
@@ -106,9 +106,9 @@ def test_regions(
     bucket_name = metadata['bucket_name']
     bucket_type = metadata['bucket_type']
     only_logs_after = metadata['only_logs_after']
-    regions = metadata['regions']
+    regions: str = metadata['regions']
     expected_results = metadata['expected_results']
-    pattern = f".*DEBUG: \+\+\+ No logs to process in bucket: {RANDOM_ACCOUNT_ID}/{regions}"
+    regions_list = regions.split(",")
 
     parameters = [
         'wodles/aws/aws-s3',
@@ -141,27 +141,31 @@ def test_regions(
             callback=event_monitor.callback_detect_event_processed,
             accumulations=expected_results
         )
-
         assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
+        
+        assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
-    else:
-        log_monitor.start(
-            timeout=TIMEOUT[10],
-            callback=event_monitor.make_aws_callback(pattern),
-        )
-
-        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_no_region_found_message']
-
-    assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
-
-    if expected_results:
-        regions_list = regions.split(",")
+        # Validate database updates
         for row in get_multiple_s3_db_row(table_name=bucket_type):
             if hasattr(row, "aws_region"):
                 assert row.aws_region in regions_list
             else:
                 assert row.log_key.split("/")[3] in regions_list
+
     else:
+        invalid_region = None
+        for region in regions_list:
+            if region not in ALL_REGIONS:
+                invalid_region = region
+                break        
+        log_monitor.start(
+            timeout=session_parameters.default_timeout,
+            callback=event_monitor.make_aws_callback(
+                fr".*\+\+\+ ERROR: Invalid region '{invalid_region}'"
+            ),
+        )
+        assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_no_region_found_message']
+
         assert not table_exists_or_has_values(table_name=bucket_type)
 
     # Detect any ERROR message
@@ -169,7 +173,6 @@ def test_regions(
         timeout=session_parameters.default_timeout,
         callback=event_monitor.callback_detect_all_aws_err
     )
-
     assert log_monitor.callback_result is None, ERROR_MESSAGE['error_found']
 
 

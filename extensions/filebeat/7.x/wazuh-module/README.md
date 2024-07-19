@@ -56,7 +56,6 @@ To add a new version of the module it is necessary to follow the following steps
 
 ```
 # chmod 755 wazuh
-# chmod 755 wazuh/_meta
 # chmod 755 wazuh/alerts
 # chmod 755 wazuh/alerts/config
 # chmod 755 wazuh/alerts/ingest

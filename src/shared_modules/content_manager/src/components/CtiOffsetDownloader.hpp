@@ -48,7 +48,7 @@ private:
         auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
         if (stopCondition->check())
         {
-            logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted");
+            logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted.");
             return;
         }
 
@@ -65,7 +65,7 @@ private:
         {
             if (stopCondition->check())
             {
-                logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted");
+                logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted.");
                 return;
             }
 

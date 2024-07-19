@@ -6,6 +6,8 @@ param (
     [string]$SIGN = "no",
     [string]$WIX_TOOLS_PATH = "",
     [string]$SIGN_TOOLS_PATH = "",
+    [string]$CERTIFICATE_PATH = "",
+    [string]$CERTIFICATE_PASSWORD = "",
     [switch]$help
     )
 
@@ -22,12 +24,13 @@ if(($help.isPresent)) {
         2. SIGN: yes or no. By default 'no'.
         3. WIX_TOOLS_PATH: Wix tools path.
         4. SIGN_TOOLS_PATH: sign tools path.
+        5. CERTIFICATE_PATH: Path to the .pfx certificate file.
+        6. CERTIFICATE_PASSWORD: Password for the .pfx certificate file.
 
     USAGE:
 
         * WAZUH:
           $ ./generate_wazuh_msi.ps1  -MSI_NAME {{ NAME }} -SIGN {{ yes|no }} -WIX_TOOLS_PATH {{ PATH }} -SIGN_TOOLS_PATH {{ PATH }}
-
             Build a devel msi:    $ ./generate_wazuh_msi.ps1 -MSI_NAME wazuh-agent_4.9.0-0_windows_0ceb378.msi -SIGN no
             Build a prod msi:     $ ./generate_wazuh_msi.ps1 -MSI_NAME wazuh-agent-4.9.0-1.msi -SIGN yes
     "
@@ -53,19 +56,35 @@ function BuildWazuhMsi(){
     }
 
     if($SIGN -eq "yes"){
-        # Sign .exe files and the InstallerScripts.vbs
-        Write-Host "Signing .exe files..."
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 ".\*.exe"
-        Write-Host "Signing .vbs files..."
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 ".\InstallerScripts.vbs"
-        Write-Host "Signing .dll files..."
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\*.dll"
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 ".\*.dll"
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\data_provider\build\bin\sysinfo.dll"
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\shared_modules\dbsync\build\bin\dbsync.dll"
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\shared_modules\rsync\build\bin\rsync.dll"
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\wazuh_modules\syscollector\build\bin\syscollector.dll"
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 "..\syscheckd\build\bin\libfimdb.dll"
+        # Determine signing command options
+        $signOptions = @()
+        if ($CERTIFICATE_PATH -ne "" -and $CERTIFICATE_PASSWORD -ne "") {
+            $signOptions += "/f"
+            $signOptions += "`"$CERTIFICATE_PATH`""
+            $signOptions += "/p"
+            $signOptions += "`"$CERTIFICATE_PASSWORD`""
+        } else {
+            $signOptions += "/a"
+        }
+
+        # Define files to sign
+        $filesToSign = @(
+            ".\*.exe",
+            ".\InstallerScripts.vbs",
+            "..\*.dll",
+            ".\*.dll",
+            "..\data_provider\build\bin\sysinfo.dll",
+            "..\shared_modules\dbsync\build\bin\dbsync.dll",
+            "..\shared_modules\rsync\build\bin\rsync.dll",
+            "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
+            "..\syscheckd\build\bin\libfimdb.dll"
+        )
+
+        # Sign the files
+        foreach ($file in $filesToSign) {
+            Write-Host "Signing $file..."
+            & $SIGNTOOL_EXE sign $signOptions /tr http://timestamp.digicert.com /fd SHA256 /td SHA256 $file
+        }
     }
 
     Write-Host "Building MSI installer..."
@@ -75,7 +94,7 @@ function BuildWazuhMsi(){
 
     if($SIGN -eq "yes"){
         Write-Host "Signing $MSI_NAME..."
-        & $SIGNTOOL_EXE sign /a /tr http://timestamp.digicert.com /d $MSI_NAME /fd SHA256 /td SHA256 $MSI_NAME
+        & $SIGNTOOL_EXE sign $signOptions /tr http://timestamp.digicert.com /d $MSI_NAME /fd SHA256 /td SHA256 $MSI_NAME
     }
 }
 

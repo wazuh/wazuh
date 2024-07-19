@@ -8837,8 +8837,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/4.9/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/4.9/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/4.10/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/4.10/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -14548,7 +14548,6 @@ paths:
     get:
       tags:
         - Syscheck
-      deprecated: true
       summary: "Get results"
       description: "Return FIM findings in the specified agent"
       operationId: api.controllers.syscheck_controller.get_syscheck_agent
@@ -14641,7 +14640,6 @@ paths:
     delete:
       tags:
         - Syscheck
-      deprecated: true
       summary: "Clear results"
       description: "Clear file integrity monitoring scan results for a specified agent. Only available for agents < 3.12.0, it doesn't apply for more recent ones"
       operationId: api.controllers.syscheck_controller.delete_syscheck_agent
@@ -15235,7 +15233,6 @@ paths:
     delete:
       tags:
         - Experimental
-      deprecated: true
       summary: "Clear agents FIM results"
       description: "Clear the syscheck database for all agents or a list of them"
       operationId: api.controllers.experimental_controller.clear_syscheck_database
@@ -15386,7 +15383,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents hardware"
       description: "Return all agents (or a list of them) hardware info. This information include cpu, ram, scan info
       among others of all agents"
@@ -15482,7 +15478,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents netaddr"
       description: "Return all agents (or a list of them) IPv4 and IPv6 addresses associated to their network
       interfaces. This information include used IP protocol, interface, and IP address among others"
@@ -15561,7 +15556,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents netiface"
       description: "Return all agents (or a list of them) network interfaces. This information includes rx, scan, tx
       info and some network information among other"
@@ -15682,7 +15676,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents netproto"
       description: "Return all agents (or a list of them) routing configuration for each network interface. This
       information includes interface, type protocol information among other"
@@ -15758,7 +15751,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents OS"
       description: "Return all agents (or a list of them) OS info. This information includes os information,
       architecture information among other"
@@ -15862,7 +15854,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents packages"
       description: "Return all agents (or a list of them) packages info. This information includes name, section, size,
       and priority information of all packages among other"
@@ -15963,7 +15954,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents ports"
       description: "Return all agents (or a list of them) ports info. This information includes local IP, Remote IP,
       protocol information among other"
@@ -16067,7 +16057,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents processes"
       description: "Return all agents (or a list of them) processes info"
       operationId: api.controllers.experimental_controller.get_processes_info
@@ -16195,7 +16184,6 @@ paths:
     get:
       tags:
         - Experimental
-      deprecated: true
       summary: "Get agents hotfixes"
       description: "Return all agents (or a list of them) hotfixes info"
       operationId: api.controllers.experimental_controller.get_hotfixes_info
@@ -16254,7 +16242,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent hardware"
       description: "Return the agent's hardware info. This information include cpu, ram, scan info among others"
       operationId: api.controllers.syscollector_controller.get_hardware_info
@@ -16313,7 +16300,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent hotfixes"
       description: "Return all hotfixes installed by Microsoft(R) in Windows(R) systems (KB... fixes)"
       operationId: api.controllers.syscollector_controller.get_hotfix_info
@@ -16370,7 +16356,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent netaddr"
       description: "Return the agent's network address info. This information include used IP protocol, interface, IP
       address  among others"
@@ -16436,7 +16421,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent netiface"
       description: "Return the agent's network interface info. This information include rx, scan, tx info and some
       network information among others"
@@ -16521,7 +16505,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent netproto"
       description: "Return the agent's routing configuration for each network interface"
       operationId: api.controllers.syscollector_controller.get_network_protocol_info
@@ -16584,7 +16567,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent OS"
       description: "Return the agent's OS info. This information include os information, architecture information among
       others of all agents"
@@ -16647,7 +16629,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent packages"
       description: "Return the agent's packages info. This information include name, section, size, priority
       information of all packages among others"
@@ -16755,7 +16736,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent ports"
       description: "Return the agent's ports info. This information include local IP, Remote IP, protocol information
       among others"
@@ -16865,7 +16845,6 @@ paths:
     get:
       tags:
         - Syscollector
-      deprecated: true
       summary: "Get agent processes"
       description: "Return the agent's processes info"
       operationId: api.controllers.syscollector_controller.get_processes_info

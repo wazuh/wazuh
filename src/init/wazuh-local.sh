@@ -70,7 +70,7 @@ lock() {
         # Waiting 1 second before trying again
         sleep 1;
         i=`expr $i + 1`;
-        pid=`cat ${LOCK_PID}` 2>/dev/null
+        pid=$(cat ${LOCK_PID} 2>/dev/null)
 
         if [ $? = 0 ]
         then
@@ -231,7 +231,7 @@ start_service()
 
     # Delete all files in temporary folder
     TO_DELETE="$DIR/tmp"
-    find $TO_DELETE -mindepth 1 -name "*" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
+    find $TO_DELETE -mindepth 1 -not -path "$TO_DELETE/vd_*_vd_*.tar" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
 
     # We actually start them now.
     for i in ${SDAEMONS}; do

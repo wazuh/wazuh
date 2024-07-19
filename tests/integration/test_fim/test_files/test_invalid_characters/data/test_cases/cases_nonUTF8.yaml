@@ -1,0 +1,42 @@
+- name: Invalid nonUTF8 - Scheduled
+  description: When a scheduled monitored directory is deleted, modified
+               or added FIM raises a log in the next scan, in
+               this case the scan are made every 3 secconds.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    FREQUENCY: 3
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    fim_mode: scheduled
+
+- name: Invalid nonUTF8 - Realtime
+  description: When a scheduled monitored directory is deleted, modified
+               or added FIM raises a log in the next scan, in
+               this case the scan are made every 3 secconds.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      realtime: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    fim_mode: realtime
+
+- name: Invalid nonUTF8 - Whodata
+  description: When a scheduled monitored directory is deleted, modified
+               or added FIM raises a log in the next scan, in
+               this case the scan are made every 3 secconds.
+  configuration_parameters:
+    TEST_DIR: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    FREQUENCY: 43200 # As default 12 hs
+    FIM_MODE:
+      whodata: 'yes'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    fim_mode: whodata

@@ -3,6 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.0]
 
+## [v4.10.0]
 
 ## [v4.9.0]
 
@@ -11,14 +12,27 @@ All notable changes to this project will be documented in this file.
 #### Added
 
 - The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
+- Added missing functionality for vulnerability scanner translations. ([#23518](https://github.com/wazuh/wazuh/issues/23518))
+- Improved performance for vulnerability scanner translations. ([#23722](https://github.com/wazuh/wazuh/pull/23722))
+- Enhanced vulnerability scanner logging to be more expressive. ([#24536](https://github.com/wazuh/wazuh/pull/24536))
+- The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
+- Added the HAProxy helper to manage load balancer configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
+- Added helper to manage HAProxy configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
+- Added a validation to avoid killing processes from external services. ([#23222](https://github.com/wazuh/wazuh/pull/23222))
+- Enabled ceritificates validation in the requests to the HAProxy helper using the default CA bundle. ([#23996](https://github.com/wazuh/wazuh/pull/23996))
 
 #### Fixed
 
 - Fixed compilation issue for local installation. ([#20505](https://github.com/wazuh/wazuh/pull/20505))
+- Fixed malformed JSON error in wazuh-analysisd. ([#16666](https://github.com/wazuh/wazuh/pull/16666))
+- Fixed a warning when uninstalling the Wazuh manager if the VD feed is missing. ([#24375](https://github.com/wazuh/wazuh/pull/24375))
+- Ensured vulnerability detection scanner log messages end with a period. ([#24393](https://github.com/wazuh/wazuh/pull/24393))
 
 #### Changed
 
 - Changed error messages about `recv()` messages from wazuh-db to debug logs. ([#20285](https://github.com/wazuh/wazuh/pull/20285))
+- Sanitized the `integrations` directory code. ([#21195](https://github.com/wazuh/wazuh/pull/21195))
+- Modified multiple cluster commands to be asynchronous. ([#22640](https://github.com/wazuh/wazuh/pull/22640))
 
 ### Agent
 
@@ -26,6 +40,8 @@ All notable changes to this project will be documented in this file.
 
 - Added debug logging in FIM to detect invalid report change registry values. Thanks to Zafer Balkan (@zbalkan). ([#21690](https://github.com/wazuh/wazuh/pull/21690))
 - Added Amazon Linux 1 and 2023 support for the installation script. ([#21287](https://github.com/wazuh/wazuh/pull/21287))
+- Added Journald support in Logcollector. ([#23137](https://github.com/wazuh/wazuh/pull/23137))
+- Added support for Amazon Security Hub via AWS SQS. ([#23203](https://github.com/wazuh/wazuh/pull/23203))
 
 #### Fixed
 
@@ -37,10 +53,56 @@ All notable changes to this project will be documented in this file.
 - Fixed a crash in the agent's Rootcheck component when using `<ignore>`. ([#22588](https://github.com/wazuh/wazuh/pull/22588))
 - Fixed command wodle to support UTF-8 characters on windows agent. ([#19146](https://github.com/wazuh/wazuh/pull/19146))
 - Fixed Windows agent to delete wazuh-agent.state file when stopped. ([#20425](https://github.com/wazuh/wazuh/pull/20425))
+- Fixed Windows Agent 4.8.0 permission errors on Windows 11 after upgrade. ([#20727](https://github.com/wazuh/wazuh/pull/20727))
+- Fixed Syscollector not checking if there's a scan in progress before starting a new one. ([#22440](https://github.com/wazuh/wazuh/pull/22440))
+- Fixed alerts are created when syscheck diff DB is full. ([#16487](https://github.com/wazuh/wazuh/pull/16487))
+- Fixed Wazuh deb uninstallation to remove non-config files. ([#2195](https://github.com/wazuh/wazuh/pull/2195))
+- Fixed improper Windows agent ACL on non-default installation directory. ([#23273](https://github.com/wazuh/wazuh/pull/23273))
+- Fixed socket configuration of an agent is displayed. ([#17664](https://github.com/wazuh/wazuh/pull/17664))
+- Fixed wazuh-modulesd printing child process not found error. ([#18494](https://github.com/wazuh/wazuh/pull/18494))
+- Fixed issue with an agent starting automatically without reason. ([#23848](https://github.com/wazuh/wazuh/pull/23848))
+- Fixed GET /syscheck to properly report size for files larger than 2GB. ([#17415](https://github.com/wazuh/wazuh/pull/17415))
+- Fixed error in packages generation centos 7. ([#24412](https://github.com/wazuh/wazuh/pull/24412))
+- Fixed Wazuh deb uninstallation to remove non-config files from the installation directory. ([#2195](https://github.com/wazuh/wazuh/issues/2195))
+- Fixed Azure auditLogs/signIns status parsing (thanks to @Jmnis for the contribution). ([#22392](https://github.com/wazuh/wazuh/pull/22392))
+- Fixed how the S3 object keys with special characters are handled in the Custom Logs Buckets integration. ([#22621](https://github.com/wazuh/wazuh/pull/22621))
 
 #### Changed
 
 - The directory /boot has been removed from the default FIM settings for AIX. ([#19753](https://github.com/wazuh/wazuh/pull/19753))
+- Refactored and modularized the Azure integration code. ([#20624](https://github.com/wazuh/wazuh/pull/20624))
+- Improved logging of errors in Azure and AWS modules. ([#16314](https://github.com/wazuh/wazuh/issues/16314))
+
+#### Removed
+- Dropped support for Python 3.7 in cloud integrations. ([#22583](https://github.com/wazuh/wazuh/pull/22583))
+
+### RESTful API
+
+#### Added
+- Added support in the Wazuh API to parse `journald` configurations from the `ossec.conf` file. ([#23094](https://github.com/wazuh/wazuh/pull/23094))
+- Added user-agent to the CTI service request. ([#24360](https://github.com/wazuh/wazuh/pull/24360))
+
+#### Changed
+
+- Merged group files endpoints into one (`GET /groups/{group_id}/files/{filename}`) that uses the `raw` parameter to receive plain text data. ([#21653](https://github.com/wazuh/wazuh/pull/21653))
+- Removed the hardcoded fields returned by the `GET /agents/outdated` endpoint and added the select parameter to the specification. ([#22388](https://github.com/wazuh/wazuh/pull/22388))
+- Updated the regex used to validate CDB lists. ([#22423](https://github.com/wazuh/wazuh/pull/22423))
+- Changed the default value for empty fields in the `GET /agents/stats/distinct` endpoint response. ([#22413](https://github.com/wazuh/wazuh/pull/22413))
+- Changed the Wazuh API endpoint responses when receiving the `Expect` header. ([#22380](https://github.com/wazuh/wazuh/pull/22380))
+- Enhanced Authorization header values decoding errors to avoid showing the stack trace and fail gracefully. ([#22745](https://github.com/wazuh/wazuh/pull/22745))
+- Updated the format of the fields that can be N/A in the API specification. ([#22908](https://github.com/wazuh/wazuh/pull/22908))
+- Updated the WAZUH API specification to conform with the current endpoint requests and responses. ([#22954](https://github.com/wazuh/wazuh/pull/22954))
+- Replaced the used aiohttp server with uvicorn. ([#23199](https://github.com/wazuh/wazuh/pull/23199))
+    - Changed the `PUT /groups/{group_id}/configuration` endpoint response error code when uploading an empty file.
+    - Changed the `GET, PUT and DELETE /lists/files/{filename}` endpoints response status code when an invalid file is used.
+    - Changed the `PUT /manager/configuration` endpoint response status code when uploading a file with invalid content-type.
+
+#### Fixed
+- Improved XML validation to match the Wazuh internal XML validator. ([#20507](https://github.com/wazuh/wazuh/pull/20507))
+- Fixed bug in `GET /groups`. ([#22428](https://github.com/wazuh/wazuh/pull/22428))
+
+#### Removed
+- Removed the `cache` configuration option from the Wazuh API. ([#22416](https://github.com/wazuh/wazuh/pull/22416))
 
 ### Ruleset
 
@@ -57,12 +119,47 @@ All notable changes to this project will be documented in this file.
 #### Changed
 
 - Upgraded external OpenSSL library dependency version to 3.0. ([#20778](https://github.com/wazuh/wazuh/pull/20778))
+- Migrated QA framework. ([#17427](https://github.com/wazuh/wazuh/issues/17427))
+- Improved WPKs. ([#21152](https://github.com/wazuh/wazuh/issues/21152))
+- Migrated and adapted Wazuh subsystem repositories as part of Wazuh packages redesign. ([#23508](https://github.com/wazuh/wazuh/pull/23508))
+- Upgraded external connexion library dependency version to 3.0.5 and its related interdependencies. ([#22680](https://github.com/wazuh/wazuh/pull/22680))
 
 #### Fixed
 
 - Fixed a buffer overflow hazard in HMAC internal library. ([#19794](https://github.com/wazuh/wazuh/pull/19794))
 
 ## [v4.8.1]
+
+### Manager
+
+#### Added
+
+- Added dedicated RSA keys for keystore encryption. ([#24357](https://github.com/wazuh/wazuh/pull/24357))
+
+#### Fixed
+
+- Fixed bug in `upgrade_agent` CLI where it would sometimes raise an unhandled exception. ([#24341](https://github.com/wazuh/wazuh/pull/24341))
+- Changed keystore cipher algorithm to remove reuse of sslmanager.cert and sslmanager.key. ([#24509](https://github.com/wazuh/wazuh/pull/24509))
+
+### Agent
+
+#### Fixed
+
+- Fixed incorrect macOS agent name retrieval. ([#23989](https://github.com/wazuh/wazuh/pull/23989))
+
+### RESTful API
+
+#### Changed
+
+- Changed `GET /manager/version/check` endpoint response to always show the `uuid` field. ([#24173](https://github.com/wazuh/wazuh/pull/24173))
+
+### Other
+
+#### Changed
+
+- Upgraded external Jinja2 library dependency version to 3.1.4. ([#24108](https://github.com/wazuh/wazuh/pull/24108))
+- Upgraded external requests library dependency version to 2.32.2. ([#23925](https://github.com/wazuh/wazuh/pull/23925))
+
 
 ## [v4.8.0]
 
@@ -126,7 +223,6 @@ All notable changes to this project will be documented in this file.
 - Added new `GET /manager/version/check` endpoint to obtain information about new releases of Wazuh. ([#19952](https://github.com/wazuh/wazuh/pull/19952))
 - Introduced an `auto` option for the ssl_protocol setting in the API configuration. This enables automatic negotiation of the TLS certificate to be used. ([#20420](https://github.com/wazuh/wazuh/pull/20420))
 - Added API indexer protection to allow uploading new configuration files if the `<indexer>` section is not modified. ([#22727](https://github.com/wazuh/wazuh/pull/22727))
-
 
 #### Fixed
 

@@ -91,7 +91,7 @@ namespace PackageLinuxHelper
 
             if (it != info.end())
             {
-                size = stol(it->second);
+                size = stol(it->second) * 1024;
             }
 
             it = info.find("Multi-Arch");
