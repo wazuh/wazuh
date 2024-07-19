@@ -237,11 +237,13 @@ def test_get_api_config():
 
 @pytest.mark.parametrize('update_check', (True, False))
 @pytest.mark.parametrize('last_check_date', (None, datetime.now()))
-def test_get_update_information_template(last_check_date, update_check):
+def test_get_update_information_template(last_check_date, update_check, installation_uid):
     """Test that the get_update_information_template function is working properly with the given data."""
 
-    template = get_update_information_template(update_check=update_check, last_check_date=last_check_date)
+    template = get_update_information_template(uuid=installation_uid, update_check=update_check,
+                                               last_check_date=last_check_date)
 
+    assert 'uuid' in template
     assert 'last_check_date' in template
     assert template['last_check_date'] == (last_check_date if last_check_date is not None else '')
     assert 'update_check' in template
@@ -386,6 +388,7 @@ async def test_query_update_check_service_request(
             headers={
                 WAZUH_UID_KEY: installation_uid,
                 WAZUH_TAG_KEY: f'v{version}',
+                USER_AGENT_KEY: f'Wazuh UpdateCheckService/v{version}'
             },
             follow_redirects=True
         )

@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(keystore)
 
-# enable_testing()
+enable_testing()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,14 +12,12 @@ if(FSANITIZE)
   set(CMAKE_CXX_FLAGS_DEBUG "-g -fsanitize=address,leak,undefined")
 endif(FSANITIZE)
 
+set(ORIGINAL_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SRC_FOLDER})
 
-
-
 file(GLOB KEYSTORE_SRC
-    "src/*.cpp"
+    "src/keyStore.cpp"
     )
-
 
 if (NOT SRC_FOLDER)
     get_filename_component(SRC_FOLDER     ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)

@@ -17,7 +17,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
 
         import scripts.agent_upgrade as agent_upgrade
-        from wazuh.core.exception import WazuhError
+        from wazuh.core.exception import WazuhError, WazuhInternalError
         from wazuh.core.results import AffectedItemsWazuhResult
 
 
@@ -173,7 +173,6 @@ async def test_check_status(mock_sleep, mock_print_result, silent):
         else:
             mock_print_result.assert_not_called()
 
-
 @pytest.mark.asyncio
 @patch('scripts.agent_upgrade.signal')
 @patch('scripts.agent_upgrade.exit')
@@ -202,7 +201,6 @@ async def test_main(mock_check_status, mock_get_agents_versions, mock_list_outda
         out, err = capfd.readouterr()
         assert out == 'Agents that cannot be upgraded:\n\tAgent 001, 002 upgrade failed. Status: 1000\n'
 
-
 @pytest.mark.asyncio
 async def test_main_ko(capfd):
     """Check that expected exceptions are raised in main function."""
@@ -220,3 +218,16 @@ async def test_main_ko(capfd):
             await agent_upgrade.main()
         out, err = capfd.readouterr()
         assert out == 'Internal error: \n'
+
+@pytest.mark.asyncio
+async def test_main_internal_error_ko(capfd):
+    """Check that the main function exits successfully when there's an internal error."""
+    agent_upgrade.args = MagicMock()
+    agent_upgrade.args.list_outdated = []
+    exc = WazuhInternalError(1816, 'Agent information not found in database')
+
+    with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=exc):
+        with pytest.raises(WazuhInternalError, match='.* 1816 .*'):
+            await agent_upgrade.main()
+        out, err = capfd.readouterr()
+        assert out == 'Internal error: Error 1816 - Agent information not found in database\n'

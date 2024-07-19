@@ -15,8 +15,9 @@ with patch('wazuh.core.common.getgrnam'):
             with patch('wazuh.core.common.wazuh_gid'):
                 sys.modules['wazuh.rbac.orm'] = MagicMock()
 
-                from wazuh import WazuhError, WazuhException, WazuhInternalError
                 from wazuh.core.cluster import utils
+                from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhPermissionError, \
+                    WazuhResourceNotFound, WazuhHAPHelperError
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
@@ -122,7 +123,8 @@ def test_parse_haproxy_helper_config(config: dict):
 
 
 @pytest.mark.parametrize(
-        'config',
+    'config, exception_type, expected_error_code',
+    [
         (
             {
                 utils.HAPROXY_DISABLED: 'no',
@@ -131,19 +133,37 @@ def test_parse_haproxy_helper_config(config: dict):
                 utils.HAPROXY_USER: 'test',
                 utils.FREQUENCY: 'bad',
             },
+            WazuhError,
+            '3004'
+        ),
+        (
             {
                 utils.HAPROXY_DISABLED: 'no',
                 utils.HAPROXY_ADDRESS: 'test',
                 utils.HAPROXY_PASSWORD: 'test',
                 utils.HAPROXY_USER: 'test',
                 utils.IMBALANCE_TOLERANCE: 'bad'
-            }
+            },
+            WazuhError,
+            '3004'
+        ),
+        (
+            {
+                utils.HAPROXY_DISABLED: 'no',
+                utils.HAPROXY_ADDRESS: 'test',
+                utils.HAPROXY_PASSWORD: 'test',
+                utils.HAPROXY_USER: 'test',
+                utils.HAPROXY_PROTOCOL: 'https'
+            },
+            WazuhHAPHelperError,
+            '3042'
         )
+    ]
 )
-def test_parse_haproxy_helper_config_ko(config: dict):
+def test_parse_haproxy_helper_config_ko(config: dict, exception_type: WazuhException, expected_error_code: str):
     """Verify that parse_haproxy_helper_config function raises when config has an invalid type."""
 
-    with pytest.raises(WazuhError, match='.* 3004 .*'):
+    with pytest.raises(exception_type, match=f'.* {expected_error_code} .*'):
         utils.parse_haproxy_helper_config(config)
 
 
@@ -401,3 +421,21 @@ def test_running_on_master_node(read_cluster_config_mock, cluster_config, expect
     read_cluster_config_mock.return_value = cluster_config
 
     assert utils.running_in_master_node() == expected
+
+@pytest.mark.parametrize('result', [
+    WazuhError(6001),
+    WazuhInternalError(1000),
+    WazuhPermissionError(4000),
+    WazuhResourceNotFound(1710),
+    'value',
+    1,
+    False,
+    {'key': 'value'}
+])
+def test_raise_if_exc(result):
+    """Check that raise_if_exc raises an exception if the result is one."""
+    if isinstance(result, Exception):
+        with pytest.raises(Exception):
+            utils.raise_if_exc(result)
+    else:
+        utils.raise_if_exc(result)
