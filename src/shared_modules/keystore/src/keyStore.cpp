@@ -49,6 +49,7 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
 
                 // Decrypt the RSA value
                 RSAHelper().rsaDecrypt(PRIVATE_KEY_FILE, encryptedRSAValue, rawValue);
+                logDebug2(KS_NAME, "Decryption successful for key: '%s'", key.c_str());
 
                 // Encrypt the value with AES 256
                 EVPHelper().encryptAES256(rawValue, encryptedValue);
@@ -129,4 +130,3 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
         EVPHelper().decryptAES256(encryptedValueVec, value);
     }
 }
-

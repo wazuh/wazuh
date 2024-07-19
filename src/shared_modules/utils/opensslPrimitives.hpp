@@ -13,6 +13,7 @@
 #define _OPENSSL_PRIMITIVES_HPP
 
 #include <openssl/aes.h>
+#include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -139,6 +140,16 @@ protected:
     }
 
     const int AES_BLOCK_LENGTH = AES_BLOCK_SIZE;
+
+    inline unsigned long ERR_get_error(void)
+    {
+        return ::ERR_get_error();
+    }
+
+    inline const char* ERR_reason_error_string(unsigned long e)
+    {
+        return ::ERR_reason_error_string(e);
+    }
 #pragma GCC diagnostic pop
 };
 
