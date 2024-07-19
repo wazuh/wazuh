@@ -27,4 +27,4 @@ link_directories(${SRC_FOLDER})
 link_directories(${SRC_FOLDER}/external/rocksdb/build)
 
 add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} rocksdb wazuhext)
+target_link_libraries(${PROJECT_NAME} rocksdb wazuhext keystore)
