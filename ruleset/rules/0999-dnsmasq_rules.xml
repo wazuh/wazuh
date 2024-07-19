@@ -1,8 +1,8 @@
 <!-- 
   - DNSMasq rules
   - Author: bytew0lf <bytewolf@web.de>.
-  - Date: 2024-07-07
-  - ID range: 99900 - 99909
+  - Date: 2024-07-19
+  - ID range: 99900 - 99910
 -->
 
 <group name="syslog,dnsmasq,">
@@ -64,6 +64,16 @@
     <if_sid>99900</if_sid>
     <field name="type" type="pcre2">^gravity</field>
     <description>DNSMasq: DNS request blocked. $(url) has IP $(dstip)</description>
+  </rule>
+
+<!--
+New Rule for blacklisted URLs
+-->
+
+  <rule id="99910" level="3">
+    <if_sid>99900</if_sid>
+    <field name="type" type="pcre2">blacklisted</field>
+    <description>DNSMasq: DNS request blacklisted. $(url) has IP $(dstip)</description>
   </rule>
   
 </group>

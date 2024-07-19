@@ -1,7 +1,7 @@
 <!-- 
   - DNSMasq decoder
   - Author: bytew0lf <bytewolf@web.de>.
-  - Date: 2024-07-07
+  - Date: 2024-07-19
 -->
 
 <!--
@@ -16,6 +16,9 @@ Jul  7 20:19:36 dnsmasq[536]: gravity blocked tags.tiqcdn.com is 0.0.0.0
 Jul  7 00:00:53 dnsmasq[553]: query[HTTPS] mask.icloud.com from 192.168.1.115
 Jul  7 00:02:38 dnsmasq[553]: cached a1ewuiz2p7wdvw-ats.iot.us-west-2.amazonaws.com is 2620:108:700f::340a:b2a4
 Jul  7 00:07:02 dnsmasq[553]: query[SVCB] _dns.resolver.arpa from 192.168.1.115
+
+Jul 19 15:53:09 dnsmasq[536]: exactly blacklisted detectportal.firefox.com is 0.0.0.0
+Jul 19 15:53:09 dnsmasq[536]: exactly blacklisted detectportal.firefox.com is ::
 -->
 
 <decoder name="dnsmasq">  
@@ -71,4 +74,134 @@ Jul  7 00:07:02 dnsmasq[553]: query[SVCB] _dns.resolver.arpa from 192.168.1.115
   <parent>dnsmasq</parent>
   <regex type="pcre2" offset="after_parent">(gravity blocked)\s+(\S+)\s+is\s+(\S+)</regex>
   <order>type,url,dstip</order>
+</decoder>
+
+<!-- NEW -->
+<!--
+Jul 19 15:49:19 dnsmasq[536]: validation result is INSECURE
+Jul 19 15:49:38 dnsmasq[536]: validation result is SECURE
+Jul 19 15:45:00 dnsmasq[536]: validation result is TRUNCATED
+Jul 19 14:32:35 dnsmasq[536]: validation _dns.resolver.arpa is BOGUS
+
+Jul 19 00:12:57 dnsmasq[536]: regex blacklisted vast.livejasmin.com is 0.0.0.0
+Jul 19 00:22:06 dnsmasq[536]: exactly blacklisted tsyndicate.com is NODATA
+-->
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(validation)\s(\S+).is.(BOGUS)</regex>
+  <order>type,url,result</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(validation result).is.(BOGUS|SECURE|INSECURE|TRUNCATED)</regex>
+  <order>type,result</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s\S+.(blacklisted).(\S+).is.(\S+)</regex>
+  <order>type,url,dstip</order>
+</decoder>
+
+
+<!--
+  Decoder Extension for log-entries=extra
+-->
+<!--
+  https://dnsmasq.org/docs/dnsmasq-man.html
+  Log the results of DNS queries handled by dnsmasq. Enable a full cache dump on receipt of SIGUSR1. 
+  If the argument "extra" is supplied, ie log-queries=extra then the log has extra information at the start of each line. 
+  This consists of a serial number which ties together the log lines associated with an individual query, and the IP address of the requestor.
+
+EXAMPLE LOGS
+
+Jul 19 16:01:10 dnsmasq[539]: 625 192.168.1.185/60568 query[A] detectportal.firefox.com from 192.168.1.185
+Jul 19 16:01:08 dnsmasq[539]: 624 192.168.1.185/51915 query[AAAA] incoming.telemetry.mozilla.org from 192.168.1.185
+Jul 19 16:19:29 dnsmasq[539]: 1285 192.168.1.185/51238 query[HTTPS] az764295.vo.msecnd.net from 192.168.1.185
+Jul 19 16:02:29 dnsmasq[539]: 647 192.168.1.115/60215 query[SVCB] _dns.resolver.arpa from 192.168.1.115
+
+Jul 19 16:19:22 dnsmasq[539]: 1283 dnssec-query[DS] twitchcdn.net to 208.67.220.220
+Jul 19 16:01:07 dnsmasq[539]: 621 192.168.1.185/50749 forwarded assets.twitch.tv to 208.67.222.222
+Jul 19 16:01:07 dnsmasq[539]: 622 192.168.1.185/46835 cached assets.twitch.tv is NODATA-IPv6
+
+Jul 19 16:01:08 dnsmasq[539]: 624 192.168.1.185/51915 gravity blocked incoming.telemetry.mozilla.org is ::
+Jul 19 16:01:10 dnsmasq[539]: 625 192.168.1.185/60568 exactly blacklisted detectportal.firefox.com is 0.0.0.0
+Jul 19 16:01:10 dnsmasq[539]: 626 192.168.1.185/36638 exactly blacklisted detectportal.firefox.com is ::
+
+Jul 19 16:01:36 dnsmasq[539]: 627 192.168.1.96/53997 reply a1ewuiz2p7wdvw-ats.iot.us-west-2.amazonaws.com is 52.26.205.253
+Jul 19 16:01:36 dnsmasq[539]: 628 192.168.1.96/33815 reply a1ewuiz2p7wdvw-ats.iot.us-west-2.amazonaws.com is 2620:108:700f::340d:b9a2
+
+Jul 19 15:53:47 dnsmasq[539]: 226 192.168.1.185/55368 validation result is SECURE
+Jul 19 16:01:36 dnsmasq[539]: 627 192.168.1.96/53997 validation result is INSECURE
+Jul 19 15:57:05 dnsmasq[539]: 370 192.168.1.185/37858 validation result is TRUNCATED
+Jul 19 16:02:29 dnsmasq[539]: 647 192.168.1.115/60215 validation _dns.resolver.arpa is BOGUS (EDE: RRSIG missing)
+-->
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(query\[A+\])\s+(\S+)\s+from\s+\S+</regex>
+  <order>id,srcip,srcport,type,url</order>
+</decoder>
+
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(query\[HTTPS\])\s+(\S+)\s+from\s+\S+</regex>
+  <order>id,srcip,srcport,type,url</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(query\[SVCB\])\s+(\S+)\s+from\s+\S+</regex>
+  <order>id,srcip,srcport,type,url</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(forwarded)\s+(\S+)\s+to\s+(\S+)</regex>
+  <order>id,srcip,srcport,type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(dnssec-query\[DS\])\s+(\S+)\s+to\s+(\S+)</regex>
+  <order>id,type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(reply)\s+(\S+)\s+is\s+(\S+)</regex>
+  <order>id,srcip,srcport,type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(cached)\s+(\S+)\s+is\s+(\S+)</regex>
+  <order>id,srcip,type,url,dstip</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(gravity blocked)\s+(\S+)\s+is\s+(\S+)</regex>
+  <order>id,srcip,srcport,type,url,dstip</order>
+</decoder>
+
+<!-- NEW -->
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(validation)\s(\S+).is.(BOGUS|SECURE|INSECURE|TRUNCATED).([\S\x20]+)</regex>
+  <order>id,srcip,srcport,type,url,result,reason</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(validation result).is.(BOGUS|SECURE|INSECURE|TRUNCATED)</regex>
+  <order>id,srcip,srcport,type,result</order>
+</decoder>
+
+<decoder name="dnsmasq-fields">
+  <parent>dnsmasq</parent>
+  <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s\S+.(blacklisted).(\S+).is.(\S+)</regex>
+  <order>id,srcip,srcport,type,url,dstip</order>
 </decoder>
