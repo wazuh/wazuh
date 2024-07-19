@@ -23,7 +23,7 @@ constexpr auto PRIVATE_KEY_FILE {"etc/sslmanager.key"};
 constexpr auto CERTIFICATE_FILE {"etc/sslmanager.cert"};
 
 constexpr auto KS_NAME {"keystore"};
-template<typename TRSAPrimitive = RSAHelper<>>
+template<typename TRSAPrimitive = RSAHelper>
 class TKeystore final
 {
 
@@ -88,6 +88,7 @@ public:
             }
             // Decrypt value
             TRSAPrimitive().rsaDecrypt(PRIVATE_KEY_FILE, encryptedValue, value);
+            logDebug2(KS_NAME, "Decryption successful for key: '%s'", key.c_str());
         }
     }
 };

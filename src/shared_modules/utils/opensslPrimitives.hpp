@@ -12,6 +12,7 @@
 #ifndef _OPENSSL_PRIMITIVES_HPP
 #define _OPENSSL_PRIMITIVES_HPP
 
+#include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/rsa.h>
 
@@ -82,6 +83,16 @@ protected:
     inline int EVP_PKEY_get_base_id(const EVP_PKEY* pkey)
     {
         return ::EVP_PKEY_get_base_id(pkey);
+    }
+
+    inline unsigned long ERR_get_error(void)
+    {
+        return ::ERR_get_error();
+    }
+
+    inline const char* ERR_reason_error_string(unsigned long e)
+    {
+        return ::ERR_reason_error_string(e);
     }
 #pragma GCC diagnostic pop
 };

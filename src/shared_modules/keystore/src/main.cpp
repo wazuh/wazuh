@@ -29,6 +29,29 @@ int main(int argc, char* argv[])
     std::string value;
     std::string valuePath;
 
+    Log::assignLogFunction(
+        [](const int logLevel,
+           const std::string&,
+           const std::string&,
+           const int,
+           const std::string&,
+           const std::string& str,
+           va_list args)
+        {
+            char formattedStr[MAXLEN] = {0};
+            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
+
+            if (logLevel == Log::LOGLEVEL_ERROR || logLevel == Log::LOGLEVEL_CRITICAL ||
+                logLevel == Log::LOGLEVEL_WARNING)
+            {
+                std::cerr << formattedStr << "\n";
+            }
+            else
+            {
+                std::cout << formattedStr << "\n";
+            }
+        });
+
     try
     {
         // Define current working directory
