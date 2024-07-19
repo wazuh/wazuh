@@ -1,7 +1,7 @@
 /*
- * Wazuh keystore
+ * Wazuh shared modules utils
  * Copyright (C) 2015, Wazuh Inc.
- * January 25, 2024.
+ * July 11, 2024.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,12 +9,8 @@
  * Foundation.
  */
 
-#include "argsParser.hpp"
-#include "homedirHelper.hpp"
-#include "keyStore.hpp"
 #include "loggerHelper.h"
-#include <filesystem>
-#include <functional>
+#include "gtest/gtest.h"
 
 namespace Log
 {
@@ -23,12 +19,8 @@ namespace Log
         GLOBAL_LOG_FUNCTION;
 };
 
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
-    std::string family;
-    std::string key;
-    std::string value;
-
     Log::assignLogFunction(
         [](const int logLevel,
            const std::string&,
@@ -43,6 +35,7 @@ int main(int argc, char* argv[])
 
             if (logLevel == Log::LOGLEVEL_ERROR || logLevel == Log::LOGLEVEL_CRITICAL ||
                 logLevel == Log::LOGLEVEL_WARNING)
+
             {
                 std::cerr << formattedStr << "\n";
             }
@@ -52,31 +45,6 @@ int main(int argc, char* argv[])
             }
         });
 
-    try
-    {
-        // Define current working directory
-        std::filesystem::path home_path = Utils::findHomeDirectory();
-        std::filesystem::current_path(home_path);
-
-        CmdLineArgs args(argc, argv);
-
-        family = args.getColumnFamily();
-        key = args.getKey();
-        value = args.getValue();
-
-        Keystore::put(family, key, value);
-    }
-    catch (const CmdLineArgsException& e)
-    {
-        std::cerr << e.what() << "\n";
-        CmdLineArgs::showHelp();
-        return 1;
-    }
-    catch (const std::exception& e)
-    {
-        std::cerr << e.what() << "\n";
-        return 1;
-    }
-
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
