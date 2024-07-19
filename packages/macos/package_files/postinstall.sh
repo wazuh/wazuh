@@ -173,5 +173,5 @@ fi
 
 if [ -n "${upgrade}" ] && [ -n "${restart}" ]; then
     echo "Restarting Wazuh..."
-    ${DIR}/bin/wazuh-control restart
+
 fi

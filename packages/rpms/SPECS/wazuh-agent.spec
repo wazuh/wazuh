@@ -223,17 +223,12 @@ if [ $1 = 2 ]; then
   elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-agent stop > /dev/null 2>&1
     touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
   fi
-  %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1 || %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
 fi
 
 %post
 
-echo "VERSION=\"$(%{_localstatedir}/bin/wazuh-control info -v)\"" > /etc/ossec-init.conf
+echo "VERSION=\"\"" > /etc/ossec-init.conf
 if [ $1 = 2 ]; then
   if [ -d %{_localstatedir}/logs/ossec ]; then
     rm -rf %{_localstatedir}/logs/wazuh
@@ -425,7 +420,6 @@ if [ $1 = 0 ]; then
   elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-agent stop > /dev/null 2>&1
   fi
-  %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
 
   # Remove the SELinux policy
   if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
@@ -518,7 +512,7 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   elif command -v service > /dev/null 2>&1; then
     service wazuh-agent restart > /dev/null 2>&1
   else
-    %{_localstatedir}/bin/wazuh-control restart > /dev/null 2>&1
+
   fi
 fi
 

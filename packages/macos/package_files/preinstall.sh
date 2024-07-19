@@ -29,17 +29,31 @@ if [ -d "${DIR}" ]; then
         rm -f "${DIR}/WAZUH_RESTART"
     fi
 
+<<<<<<< HEAD
     # Stops the agent before upgrading it
     if ${DIR}/bin/wazuh-control status | grep "is running" > /dev/null 2>&1; then
+=======
+    touch "${DIR}/WAZUH_PKG_UPGRADE"
+    upgrade="true"
+
+    if  | grep "is running" > /dev/null 2>&1; then
+>>>>>>> 058865e67c (refactor: removed references to deprecated daemons in packages files)
         touch "${DIR}/WAZUH_RESTART"
         ${DIR}/bin/wazuh-control stop
         restart="true"
-    elif ${DIR}/bin/ossec-control status | grep "is running" > /dev/null 2>&1; then
+    elif  | grep "is running" > /dev/null 2>&1; then
         touch "${DIR}/WAZUH_RESTART"
         ${DIR}/bin/ossec-control stop
         restart="true"
     fi
 
+<<<<<<< HEAD
+=======
+# Stops the agent before upgrading it
+echo "Stopping the agent before upgrading it."
+
+if [ -n "${upgrade}" ]; then
+>>>>>>> 058865e67c (refactor: removed references to deprecated daemons in packages files)
     echo "Backing up configuration files to ${DIR}/config_files/"
     mkdir -p ${DIR}/config_files/
     cp -r ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/config_files/
@@ -98,6 +112,14 @@ if [[ ${new_uid} != ${new_gid} ]]
     exit 5;
 fi
 
+<<<<<<< HEAD
+=======
+# Stops the agent before upgrading it
+if [ -f  ]; then
+elif [ -f  ]; then
+fi
+
+>>>>>>> 058865e67c (refactor: removed references to deprecated daemons in packages files)
 # Creating the group
 echo "Checking group..."
 if [[ $(dscl . -read /Groups/wazuh) ]]

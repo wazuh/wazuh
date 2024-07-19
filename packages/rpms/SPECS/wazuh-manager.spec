@@ -215,22 +215,13 @@ fi
 if [ $1 = 2 ]; then
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
     systemctl stop wazuh-manager.service > /dev/null 2>&1
-    %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1
     touch %{_localstatedir}/tmp/wazuh.restart
   # Check for SysV
   elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-manager stop > /dev/null 2>&1
-    %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1
-    touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-    touch %{_localstatedir}/tmp/wazuh.restart
-  elif %{_localstatedir}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     touch %{_localstatedir}/tmp/wazuh.restart
   fi
-  %{_localstatedir}/bin/ossec-control stop > /dev/null 2>&1 || %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
-fi
-if pgrep -f ossec-authd > /dev/null 2>&1; then
-    kill -15 $(pgrep -f ossec-authd)
+
 fi
 
 # Remove/relocate existing SQLite databases
@@ -272,7 +263,7 @@ if [ $1 = 2 ]; then
     . %{_sysconfdir}/ossec-init.conf
   else
     # Ask wazuh-control the version
-    VERSION=$(%{_localstatedir}/bin/wazuh-control info -v)
+    VERSION=$()
   fi
 
   # Get the major and minor version
@@ -302,7 +293,7 @@ fi
 
 %post
 
-echo "VERSION=\"$(%{_localstatedir}/bin/wazuh-control info -v)\"" > /etc/ossec-init.conf
+echo "VERSION=\"$()\"" > /etc/ossec-init.conf
 
 # Upgrade install code block
 if [ $1 = 2 ]; then
@@ -351,7 +342,7 @@ fi
 
 # Generation auto-signed certificate if not exists
 if [ ! -f "%{_localstatedir}/etc/sslmanager.key" ] && [ ! -f "%{_localstatedir}/etc/sslmanager.cert" ]; then
-  %{_localstatedir}/bin/wazuh-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/sslmanager.key -X %{_localstatedir}/etc/sslmanager.cert 2>/dev/null
+
   chmod 640 %{_localstatedir}/etc/sslmanager.key
   chmod 640 %{_localstatedir}/etc/sslmanager.cert
 fi
@@ -518,7 +509,7 @@ if [ $1 = 0 ]; then
   elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
     service wazuh-manager stop > /dev/null 2>&1
   fi
-  %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
+
 
   # Remove the SELinux policy
   if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
@@ -589,7 +580,7 @@ if [ -f %{_localstatedir}/tmp/wazuh.restart ]; then
   elif command -v service > /dev/null 2>&1 ; then
     service wazuh-manager restart > /dev/null 2>&1
   else
-    %{_localstatedir}/bin/wazuh-control restart > /dev/null 2>&1
+
   fi
 fi
 
@@ -639,34 +630,8 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh, wazuh) %{_localstatedir}/backup/agents
 %dir %attr(750, root, wazuh) %{_localstatedir}/backup/shared
 %dir %attr(750, root, wazuh) %{_localstatedir}/bin
-%attr(750, root, root) %{_localstatedir}/bin/agent_control
-%attr(750, root, wazuh) %{_localstatedir}/bin/agent_groups
-%attr(750, root, wazuh) %{_localstatedir}/bin/agent_upgrade
-%attr(750, root, root) %{_localstatedir}/bin/clear_stats
-%attr(750, root, wazuh) %{_localstatedir}/bin/cluster_control
-%attr(750, root, root) %{_localstatedir}/bin/manage_agents
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-agentlessd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-analysisd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-authd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-control
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-csyslogd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-dbd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-execd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-integratord
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-logcollector
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-logtest-legacy
-%attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-logtest
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-maild
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-monitord
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-regex
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-remoted
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-reportd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-syscheckd
-%attr(750, root, wazuh) %{_localstatedir}/bin/verify-agent-conf
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-apid
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-clusterd
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-db
-%attr(750, root, root) %{_localstatedir}/bin/wazuh-modulesd
 %attr(750, root, wazuh) %{_localstatedir}/bin/rbac_control
 %attr(750, root, wazuh) %{_localstatedir}/bin/wazuh-keystore
 %dir %attr(770, wazuh, wazuh) %{_localstatedir}/etc

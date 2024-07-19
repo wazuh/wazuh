@@ -31,12 +31,7 @@ case "$1" in
             elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
                 service wazuh-agent stop > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
-            elif ${DIR}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-                touch ${WAZUH_TMP_DIR}/wazuh.restart
-            elif ${DIR}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-                touch ${WAZUH_TMP_DIR}/wazuh.restart
             fi
-            ${DIR}/bin/ossec-control stop > /dev/null 2>&1 || ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
             
             if [ -d ${DIR}/logs/ossec ]; then
                 mv ${DIR}/logs/ossec ${DIR}/logs/wazuh
