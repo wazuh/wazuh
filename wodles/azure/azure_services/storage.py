@@ -135,7 +135,6 @@ def get_blobs(
     json_file: bool,  # CHECKME
     json_inline: bool,  # CHECKME
     blob_extension: str,
-    next_marker: str = None,
     prefix: str = None,
 ):
     """Get the blobs from a container and send their content.
@@ -154,8 +153,6 @@ def get_blobs(
         Value to compare with the blobs last modified times.
     md5_hash : str
         md5 value used to search the container in the file containing the dates.
-    next_marker : str
-        Token used as a marker to continue from previous iteration.
     prefix : str, optional
         Prefix value to search blobs that match with it.
 

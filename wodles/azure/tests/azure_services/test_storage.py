@@ -324,14 +324,12 @@ def test_get_blobs(
     service_client.get_container_client.return_value = container_client
 
     container_name = 'container'
-    marker = 'marker'
     md5_hash = 'hash'
     tag = 'tag'
     get_blobs(
         container_name=container_name,
         service_client=service_client,
         md5_hash=md5_hash,
-        next_marker=marker,
         min_datetime=parse(min_date),
         max_datetime=parse(max_date),
         desired_datetime=parse(desired_date),
@@ -390,13 +388,11 @@ def test_that_empty_blobs_are_omitted(mock_logging):
     service_client.get_container_client.return_value = container_client
 
     container_name = 'container'
-    marker = 'marker'
     md5_hash = 'hash'
     get_blobs(
         container_name=container_name,
         service_client=service_client,
         md5_hash=md5_hash,
-        next_marker=marker,
         min_datetime=parse(PRESENT_DATE),
         max_datetime=parse(FUTURE_DATE),
         desired_datetime=parse(FUTURE_DATE),
