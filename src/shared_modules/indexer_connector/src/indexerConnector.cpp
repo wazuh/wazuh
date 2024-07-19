@@ -73,8 +73,8 @@ static void mergeCaRootCertificates(const std::vector<std::string>& filePaths, s
 
     caRootCertificate = DEFAULT_PATH;
 
-    std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
-    if (!std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
+    if (std::filesystem::path dirPath = std::filesystem::path(caRootCertificate).parent_path();
+        !std::filesystem::exists(dirPath) && !std::filesystem::create_directories(dirPath))
     {
         throw std::runtime_error("Could not create the directory for the CA root merged file");
     }
