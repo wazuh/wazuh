@@ -30,10 +30,7 @@ setup_build(){
 }
 
 set_debug(){
-    local debug="$1"
-    if [[ "${debug}" == "no" ]]; then
-        echo '%debug_package %{nil}' > /etc/rpm/macros
-    fi
+    return;
 }
 
 build_deps(){
@@ -87,7 +84,8 @@ get_package_and_checksum(){
     src="$3"
 
     RPM_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "wazuh-${BUILD_TARGET}" | grep -v "debuginfo")
-    SYMBOLS_NAME=$(ls -R ${rpm_build_dir}/RPMS | grep "wazuh-${BUILD_TARGET}-debuginfo")
+    SYMBOLS_NAME=$(ls -R ${rpm_build_dir}/RPMS)
+    SYMBOLS_NAME=$(echo "${SYMBOLS_NAME}" | grep "wazuh-${BUILD_TARGET}-debuginfo" || true)
     SRC_NAME=$(ls -R ${rpm_build_dir}/SRPMS | grep "\.src\.rpm$")
 
     echo "RPM_NAME: ${RPM_NAME}"
@@ -105,6 +103,8 @@ get_package_and_checksum(){
         mv ${rpm_build_dir}/SRPMS/$SRC_NAME /var/local/wazuh
     else
         mv ${rpm_build_dir}/RPMS/$RPM_NAME /var/local/wazuh
-        mv ${rpm_build_dir}/RPMS/$SYMBOLS_NAME /var/local/wazuh
+        if [ -n "${SYMBOLS_NAME}" ]; then
+            mv ${rpm_build_dir}/RPMS/$SYMBOLS_NAME /var/local/wazuh
+        fi
     fi
 }
