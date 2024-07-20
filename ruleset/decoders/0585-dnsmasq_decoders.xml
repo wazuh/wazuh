@@ -178,7 +178,7 @@ Jul 19 16:02:29 dnsmasq[539]: 647 192.168.1.115/60215 validation _dns.resolver.a
 <decoder name="dnsmasq-fields">
   <parent>dnsmasq</parent>
   <regex type="pcre2" offset="after_parent">\s(\d+)\s(\S+)\/(\S+)\s(cached)\s+(\S+)\s+is\s+(\S+)</regex>
-  <order>id,srcip,type,url,dstip</order>
+  <order>id,srcip,srcport,type,url,dstip</order>
 </decoder>
 
 <decoder name="dnsmasq-fields">
