@@ -606,5 +606,6 @@ TEST_F(RocksDBWrapperTest, CorruptAndRepairTest)
     }
     EXPECT_TRUE(corrupted);
 
-    EXPECT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false); });
+    EXPECT_ANY_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, false); });
+    EXPECT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, true); });
 }

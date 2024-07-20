@@ -66,8 +66,10 @@ namespace Utils
          *
          * @param dbPath Path to the RocksDB database.
          * @param enableWal Whether to enable WAL or not.
+         * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
+         *                        WARNING: this process might not recover all data.
          */
-        explicit TRocksDBWrapper(std::string dbPath, const bool enableWal = true)
+        explicit TRocksDBWrapper(std::string dbPath, const bool enableWal = true, const bool repairIfCorrupt = true)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
         {
@@ -91,6 +93,11 @@ namespace Utils
                 std::vector<std::string> columnsNames;
                 if (auto listStatus {T::ListColumnFamilies(options, m_path, &columnsNames)}; !listStatus.ok())
                 {
+                    if (!repairIfCorrupt)
+                    {
+                        throw std::runtime_error("Failed to list columns, '" + m_path +
+                                                 "' won't be repaired: " + std::string {listStatus.getState()});
+                    }
                     repairDB(listStatus);
                     listStatus = T::ListColumnFamilies(options, m_path, &columnsNames);
                     if (!listStatus.ok())
@@ -124,6 +131,12 @@ namespace Utils
             {
                 if (auto status {T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr)}; !status.ok())
                 {
+                    if (!repairIfCorrupt)
+                    {
+                        throw std::runtime_error("Failed to open RocksDB, '" + m_path +
+                                                 "' won't be repaired: " + std::string {status.getState()});
+                    }
+
                     repairDB(status);
                     status = T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr);
                     if (!status.ok())
@@ -694,7 +707,7 @@ namespace Utils
                     throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
                                              std::string {repairStatus.getState()});
                 }
-                logWarn(LOGGER_GLOBAL_TAG, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
+                logWarn(LOGGER_DEFAULT_TAG, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
             }
             else
             {
