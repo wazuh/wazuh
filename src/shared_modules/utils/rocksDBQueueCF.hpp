@@ -113,7 +113,7 @@ public:
                         throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
                                                  std::string {status.getState()});
                     }
-                    logWarn(LOGGER_GLOBAL_TAG, "Database '%s' was repaired because it was corrupt.", path.c_str());
+                    logWarn(LOGGER_DEFAULT_TAG, "Database '%s' was repaired because it was corrupt.", path.c_str());
                 }
             }
             else

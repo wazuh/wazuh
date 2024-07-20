@@ -28,8 +28,7 @@ namespace Log
     std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
         GLOBAL_LOG_FUNCTION;
-    const char* GLOBAL_TAG;
-}; // namespace Log
+};
 constexpr auto IC_NAME {"indexer-connector"};
 constexpr auto MAX_WAIT_TIME {60};
 constexpr auto START_TIME {1};
@@ -370,19 +369,8 @@ IndexerConnector::IndexerConnector(
 
             if (m_stopping.load())
             {
-                // Process data.
-                HTTPRequest::instance().post(
-                    HttpURL(url),
-                    bulkData,
-                    [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                    [](const std::string& error, const long statusCode)
-                    {
-                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-                        throw std::runtime_error(error);
-                    },
-                    "",
-                    DEFAULT_HEADERS,
-                    secureCommunication);
+                logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
             auto url = selector->getNext();
