@@ -23,7 +23,7 @@ class Indexer:
         port: int = 9200,
         use_ssl: bool = True,
         verify_certs: bool = True,
-        ca_certs: str = ''
+        ca_certs: str = '',
     ) -> None:
         self.host = host
         self.user = user
@@ -51,10 +51,10 @@ class Indexer:
             http_auth=(self.user, self.password),
             use_ssl=self.use_ssl,
             verify_certs=self.verify_certs,
-            ca_certs=self.ca_certs
+            ca_certs=self.ca_certs,
         )
 
-    async def initiazlize(self):
+    async def initialize(self):
         """Initialize the Wazuh Indexer connection.
 
         Raises
@@ -79,15 +79,15 @@ async def create_indexer(
     backoff_in_seconds: int = 1,
     **kwargs,
 ) -> Indexer:
-    """Create and initialize the Indexer instance implementing a retry with backoff machanism.
+    """Create and initialize the Indexer instance implementing a retry with backoff mechanism.
 
     Parameters
     ----------
-    host : str, optional
+    host : str
         Location of the Wazuh Indexer.
-    user : str, optional
+    user : str
         User of the Wazuh Indexer to authenticate with.
-    password : str, optional
+    password : str
         Password of the Wazuh Indexer to authenticate with.
     port : int, optional
         Port of the Wazuh Indexer to connect with, by default 9200
@@ -106,7 +106,7 @@ async def create_indexer(
     retries_count = 0
     while True:
         try:
-            await indexer.initiazlize()
+            await indexer.initialize()
             return indexer
         except WazuhIndexerError:
             if retries_count == retries:
