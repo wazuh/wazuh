@@ -279,8 +279,9 @@ async def test_access_log_ko(mock_req, exception):
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 10))
-async def test_wazuh_access_logger_middleware(mock_req):
+async def test_wazuh_access_logger_middleware():
     """Test access logger middleware."""
+    mock_req = AsyncMock()
     response = MagicMock()
     response.status_code = 200
     dispatch_mock = AsyncMock(return_value=response)

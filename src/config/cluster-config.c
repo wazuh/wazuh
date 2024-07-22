@@ -40,6 +40,10 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
     static const char *haproxy_password = "haproxy_password";
     static const char *haproxy_resolver = "haproxy_resolver";
     static const char *haproxy_backend = "haproxy_backend";
+    static const char *haproxy_cert = "haproxy_cert";
+    static const char *client_cert = "client_cert";
+    static const char *client_cert_key = "client_cert_key";
+    static const char *client_cert_password = "client_cert_password";
     static const char *api_port = "api_port";
     static const char *excluded_nodes = "excluded_nodes";
     static const char *frequency = "frequency";
@@ -126,30 +130,39 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 if (!strcmp(child[j]->element, haproxy_disabled)) {
                     if (strcmp(child[j]->content, "yes") && strcmp(child[j]->content, "no")) {
                         merror("Detected an invalid value for the disabled tag '%s'. Valid values are 'yes' and 'no'.", child[j]->element);
+                        OS_ClearNode(child);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, frequency)) {
                 } else if (!strcmp(child[j]->element, haproxy_address)) {
                     if (!strlen(node[i]->content)) {
                         merror("HAProxy address is missing in the configuration");
+                        OS_ClearNode(child);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_port)) {
                 } else if (!strcmp(child[j]->element, haproxy_protocol)) {
                     if (strcmp(child[j]->content, "http") && strcmp(child[j]->content, "https")) {
                         merror("Detected an invalid value for the haproxy_protocol tag '%s'. Valid values are 'http' and 'https'.", child[j]->element);
+                        OS_ClearNode(child);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_user)) {
                     if (!strlen(node[i]->content)) {
                         merror("HAProxy user is missing in the configuration");
+                        OS_ClearNode(child);
                         return OS_INVALID;
                     }
                 } else if (!strcmp(child[j]->element, haproxy_password)) {
                     if (!strlen(node[i]->content)) {
                         merror("HAProxy password is missing in the configuration");
+                        OS_ClearNode(child);
                         return OS_INVALID;
                     }
+                } else if (!strcmp(child[j]->element, haproxy_cert)) {
+                } else if (!strcmp(child[j]->element, client_cert)) {
+                } else if (!strcmp(child[j]->element, client_cert_key)) {
+                } else if (!strcmp(child[j]->element, client_cert_password)) {
                 } else if (!strcmp(child[j]->element, haproxy_backend)) {
                 } else if (!strcmp(child[j]->element, haproxy_resolver)) {
                 } else if (!strcmp(child[j]->element, excluded_nodes)) {
@@ -160,6 +173,7 @@ int Read_Cluster(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unus
                 } else if (!strcmp(child[j]->element, remove_disconnected_node_after)) {
                 } else {
                     merror(XML_INVELEM, child[i]->element);
+                    OS_ClearNode(child);
                     return OS_INVALID;
                 }
 

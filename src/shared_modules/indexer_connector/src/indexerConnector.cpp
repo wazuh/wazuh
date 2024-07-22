@@ -414,7 +414,7 @@ IndexerConnector::IndexerConnector(
                     [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
                     [](const std::string& error, const long statusCode)
                     {
-                        logError(IC_NAME, "%s, status code: %ld", error.c_str(), statusCode);
+                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
                         throw std::runtime_error(error);
                     },
                     "",

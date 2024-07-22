@@ -13,24 +13,17 @@ USER="wazuh"
 DIR="/Library/Ossec"
 INSTALLATION_SCRIPTS_DIR="${DIR}/packages_files/agent_installation_scripts"
 SCA_BASE_DIR="${INSTALLATION_SCRIPTS_DIR}/sca"
+UPGRADE_FILE_FLAG="${DIR}/WAZUH_PKG_UPGRADE"
 
-if [ -f "${DIR}/WAZUH_PKG_UPGRADE" ]; then
-    upgrade="true"
-fi
-
-if [ -f "${DIR}/WAZUH_PKG_UPGRADE" ]; then
-    rm -f ${DIR}/WAZUH_PKG_UPGRADE
-fi
 
 if [ -f "${DIR}/WAZUH_RESTART" ]; then
     restart="true"
-fi
-
-if [ -f "${DIR}/WAZUH_RESTART" ]; then
     rm -f ${DIR}/WAZUH_RESTART
 fi
 
-if [ -n "${upgrade}" ]; then
+if [ -f "${UPGRADE_FILE_FLAG}" ]; then
+    upgrade="true"
+    rm -f ${UPGRADE_FILE_FLAG}
     echo "Restoring configuration files from ${DIR}/config_files/ to ${DIR}/etc/"
     rm -rf ${DIR}/etc/{ossec.conf,client.keys,local_internal_options.conf,shared}
     cp -rf ${DIR}/config_files/{ossec.conf,client.keys,local_internal_options.conf,shared} ${DIR}/etc/
@@ -76,7 +69,6 @@ chown root:${GROUP} ${DIR}/etc/ossec.conf
 chmod 660 ${DIR}/etc/ossec.conf
 chown root:${GROUP} ${DIR}/etc/wpk_root.pem
 chmod 640 ${DIR}/etc/wpk_root.pem
-
 
 chmod 770 ${DIR}/.ssh
 
@@ -160,7 +152,6 @@ echo "Removing temporary files..."
 rm -rf ${DIR}/packages_files
 
 # Remove old ossec user and group if exists and change ownwership of files
-
 if [[ $(dscl . -read /Groups/ossec) ]]; then
     echo "Changing group from Ossec to Wazuh"
     find ${DIR}/ -group ossec -user root -exec chown root:wazuh {} \ > /dev/null 2>&1 || true

@@ -215,7 +215,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            logError(WM_CONTENTUPDATER, "Action for '%s' failed: %s", m_topicName.c_str(), e.what());
+            logError(WM_CONTENTUPDATER, "Action for '%s' failed: %s.", m_topicName.c_str(), e.what());
         }
 
         logDebug2(WM_CONTENTUPDATER, "Action for '%s' finished", m_topicName.c_str());

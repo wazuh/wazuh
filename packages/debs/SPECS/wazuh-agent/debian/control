@@ -11,4 +11,8 @@ Architecture: any
 Depends: ${shlibs:Depends}, libc6 (>= 2.7), lsb-release, debconf, adduser
 Conflicts: ossec-hids-agent, wazuh-manager, ossec-hids, wazuh-api
 Breaks: ossec-hids-agent, wazuh-manager, ossec-hids
-Description: Wazuh helps you to gain security visibility into your infrastructure by monitoring hosts at an operating system and application level. It provides the following capabilities: log analysis, file integrity monitoring, intrusions detection and policy and compliance monitoring
+Description: Wazuh agent
+ Wazuh helps you to gain security visibility into your infrastructure by
+ monitoring hosts at an operating system and application level. It provides
+ the following capabilities: log analysis, file integrity monitoring,
+ intrusions detection and policy and compliance monitoring.

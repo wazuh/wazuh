@@ -84,6 +84,10 @@ class ProxyAPI:
         address: str = 'localhost',
         port: int = 5555,
         protocol: HTTP_PROTOCOL = 'http',
+        haproxy_cert_file: str | bool = True,
+        client_cert_file: str | None = None,
+        client_key_file: str | None = None,
+        client_password: str | None = None
     ):
         self.username = username
         self.password = password
@@ -91,6 +95,10 @@ class ProxyAPI:
         self.port = port
         self.tag = tag
         self.protocol = protocol
+        # Required for HTTPS use
+        self.haproxy_cert = haproxy_cert_file
+        self.client_cert = (client_cert_file, client_key_file, client_password) \
+            if client_cert_file and self.protocol == 'https' else None
 
         self.version = 0
 
@@ -103,7 +111,7 @@ class ProxyAPI:
             In case of errors communicating with the HAProxy REST API.
         """
         try:
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(verify=self.haproxy_cert, cert=self.client_cert) as client:
                 response = await client.get(
                     join(f'{self.protocol}://', f'{self.address}:{self.port}', self.HAP_ENDPOINT, 'health'),
                     auth=(self.username, self.password),
@@ -156,7 +164,8 @@ class ProxyAPI:
         query_parameters.update({'version': self.version})
 
         try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
+            async with httpx.AsyncClient(verify=self.haproxy_cert,
+                                         cert=self.client_cert, follow_redirects=True) as client:
                 response = await client.request(
                     method=method.value,
                     url=uri,
