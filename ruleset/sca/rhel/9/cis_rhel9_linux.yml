@@ -1263,28 +1263,10 @@ checks:
       - mitre_mitigations: ["M1050"]
     condition: none
     rules:
+      - "f:/etc/gdm/custom.conf"
       - 'f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
 
-  # 1.9 Ensure updates, patches, and additional security software are installed (Manual)
-  - id: 28049
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available updates: # dnf update. Once the update process is complete, verify if reboot is required to load changes. dnf needs-restarting -r."
-    compliance:
-      - cis: ["1.9"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - soc_2: ["CC7.1"]
-      - mitre_techniques: ["T1211"]
-      - mitre_tactics: ["TA0004", "TA0008"]
-      - mitre_mitigations: ["M1051"]
-    condition: all
-    rules:
-      - 'not c:sh -c "dnf check-update | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
+  # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not Implemented
 
   # 1.10 Ensure system-wide crypto policy is not legacy (Automated)
   - id: 28050
