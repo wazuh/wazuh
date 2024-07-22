@@ -35,6 +35,7 @@ STATIC OSHash *repeated_hash;
 #ifdef WAZUH_UNIT_TESTING
     #include "unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
+static pthread_mutex_t timeout_list_mutex;
 extern w_queue_t * winexec_queue;
 DWORD WINAPI win_exec_main(void * args);
 #endif
@@ -73,6 +74,9 @@ void FreeTimeoutEntry(timeout_data *timeout_entry)
 /* Free the timeout list
  */
 void FreeTimeoutList() {
+#ifdef WIN32
+    w_mutex_lock(&timeout_list_mutex);
+#endif
     timeout_node = OSList_GetFirstNode(timeout_list);
     while (timeout_node) {
         FreeTimeoutEntry((timeout_data *)timeout_node->data);
@@ -80,6 +84,9 @@ void FreeTimeoutList() {
         timeout_node = OSList_GetCurrentlyNode(timeout_list);
     }
     os_free(timeout_list);
+#ifdef WIN32
+    w_mutex_unlock(&timeout_list_mutex);
+#endif
 }
 
 #ifdef WIN32
@@ -91,6 +98,9 @@ void ExecdShutdown(int sig)
     /* Remove pending active responses */
     minfo(EXEC_SHUTDOWN);
 
+#ifdef WIN32
+    w_mutex_lock(&timeout_list_mutex);
+#endif
     timeout_node = timeout_list ? OSList_GetFirstNode(timeout_list) : NULL;
     while (timeout_node) {
         timeout_data *list_entry;
@@ -119,6 +129,9 @@ void ExecdShutdown(int sig)
 
 #ifndef WIN32
     HandleSIG(sig);
+#else
+    w_mutex_unlock(&timeout_list_mutex);
+    w_mutex_destroy(&timeout_list_mutex);
 #endif
 }
 
@@ -130,6 +143,9 @@ void ExecdTimeoutRun(int *childcount)
 {
     time_t curr_time = time(NULL);
 
+#ifdef WIN32
+    w_mutex_lock(&timeout_list_mutex);
+#endif
     /* Check if there is any timed out command to execute */
     timeout_node = OSList_GetFirstNode(timeout_list);
     while (timeout_node) {
@@ -143,7 +159,10 @@ void ExecdTimeoutRun(int *childcount)
             if (list_entry->command[0] == NULL)
             {
                 merror("Timeout command is null.");
-                return EXIT_FAILURE;
+#ifdef WIN32
+                w_mutex_unlock(&timeout_list_mutex);
+#endif
+                return;
             }
 
             mdebug1("Executing command '%s %s' after a timeout of '%ds'",
@@ -176,6 +195,9 @@ void ExecdTimeoutRun(int *childcount)
             timeout_node = OSList_GetNextNode(timeout_list);
         }
     }
+#ifdef WIN32
+    w_mutex_unlock(&timeout_list_mutex);
+#endif
 }
 
 #ifdef WIN32
@@ -286,7 +308,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         os_strdup(cmd[0], cmd_copy[0]);
         if (cmd_copy == NULL) {
             merror("Active response cmd_copy is null");
-            return EXIT_FAILURE;
+            return;
         }
 
         /* Set rkey initially with the name of the AR */
@@ -349,6 +371,9 @@ void ExecdRun(char *exec_msg, int *childcount)
                 }
             }
 
+#ifdef WIN32
+            w_mutex_lock(&timeout_list_mutex);
+#endif
             /* Check if this command was already executed */
             timeout_node = OSList_GetFirstNode(timeout_list);
             while (timeout_node) {
@@ -369,7 +394,9 @@ void ExecdRun(char *exec_msg, int *childcount)
                 /* Continue with the next entry in timeout list */
                 timeout_node = OSList_GetNextNode(timeout_list);
             }
-
+#ifdef WIN32
+            w_mutex_unlock(&timeout_list_mutex);
+#endif
             /* If it wasn't added before, do it now */
             if (!added_before) {
                 /* Timeout parameters */
@@ -392,10 +419,16 @@ void ExecdRun(char *exec_msg, int *childcount)
                     timeout_entry->time_to_block
                 );
 
+#ifdef WIN32
+                w_mutex_lock(&timeout_list_mutex);
+#endif
                 if (!OSList_AddData(timeout_list, timeout_entry)) {
                     merror(LIST_ADD_ERROR);
                     FreeTimeoutEntry(timeout_entry);
                 }
+#ifdef WIN32
+                w_mutex_unlock(&timeout_list_mutex);
+#endif
             }
         }
 
@@ -545,6 +578,9 @@ int WinExecdStart()
     } else {
         repeated_hash = NULL;
     }
+
+    /* Mutex to access timeout list */
+    w_mutex_init(&timeout_list_mutex, NULL);
 
     /* Delete pending AR at succesfull exit */
     atexit(ExecdShutdown);
