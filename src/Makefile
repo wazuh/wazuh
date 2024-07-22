@@ -16,30 +16,20 @@ uname_V := $(shell sh -c 'uname -v 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 
 
-ifeq (${TARGET}, winagent)
-WAZUH_LIB_OUTPUT_PATH := win32/
-STRIP_TOOL := i686-w64-mingw32-strip
-DLLTOOL := i686-w64-mingw32-dlltool
-libstdc++_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libstdc++-6.dll 2>/dev/null || echo not')
-LIBSTDCPP_NAME := libstdc++-6.dll
-libgcc_s_path := $(shell sh -c 'i686-w64-mingw32-g++-posix --print-file-name=libgcc_s_dw2-1.dll 2>/dev/null || echo not')
-LIBGCC_S_NAME := libgcc_s_dw2-1.dll
-else
 ifeq (${uname_S},AIX)
-libstdc++_path_temp := $(shell sh -c 'g++ --print-file-name=libstdc++.a 2>/dev/null || echo not')
-libgcc_s_path_temp := $(shell sh -c 'g++ --print-file-name=libgcc_s.a 2>/dev/null || echo not')
-libstdc++_path=$(subst libstdc++.a,pthread/libstdc++.a,$(libstdc++_path_temp))
-libgcc_s_path=$(subst libgcc_s.a,pthread/libgcc_s.a,$(libgcc_s_path_temp))
-LIBSTDCPP_NAME := libstdc++.a
-LIBGCC_S_NAME := libgcc_s.a
+	libstdc++_path_temp := $(shell sh -c 'g++ --print-file-name=libstdc++.a 2>/dev/null || echo not')
+	libgcc_s_path_temp := $(shell sh -c 'g++ --print-file-name=libgcc_s.a 2>/dev/null || echo not')
+	libstdc++_path=$(subst libstdc++.a,pthread/libstdc++.a,$(libstdc++_path_temp))
+	libgcc_s_path=$(subst libgcc_s.a,pthread/libgcc_s.a,$(libgcc_s_path_temp))
+	LIBSTDCPP_NAME := libstdc++.a
+	LIBGCC_S_NAME := libgcc_s.a
 else
-libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
-libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
-LIBSTDCPP_NAME := libstdc++.so.6
-LIBGCC_S_NAME := libgcc_s.so.1
+	libstdc++_path := $(shell sh -c 'g++ --print-file-name=libstdc++.so.6 2>/dev/null || echo not')
+	libgcc_s_path := $(shell sh -c 'g++ --print-file-name=libgcc_s.so.1 2>/dev/null || echo not')
+	LIBSTDCPP_NAME := libstdc++.so.6
+	LIBGCC_S_NAME := libgcc_s.so.1
 endif
 STRIP_TOOL := strip
-endif
 
 ifeq (, $(filter ${libstdc++_path}, not ${LIBSTDCPP_NAME}))
 ifeq (, $(filter ${libgcc_s_path}, not ${LIBGCC_S_NAME}))
@@ -75,12 +65,10 @@ EXTERNAL_FLATBUFFERS=external/flatbuffers/
 EXTERNAL_LZMA=external/lzma/
 EXTERNAL_LUA=external/lua/
 EXTERNAL_LIBPCRE2=external/libpcre2/
-ifneq (${TARGET},winagent)
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
 EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
-endif
 EXTERNAL_JEMALLOC=external/jemalloc/
 ifeq (${uname_S},Linux)
 EXTERNAL_RPM=external/rpm/
@@ -118,16 +106,6 @@ DISABLE_CISCAT?=no
 IMAGE_TRUST_CHECKS?=1
 CA_NAME?=DigiCert Assured ID Root CA
 HTTP_REQUEST_BRANCH?=v1.0.0
-
-ifeq (${TARGET},winagent)
-CMAKE_OPTS=-DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER=${MING_BASE}${CC} -DCMAKE_CXX_COMPILER=${MING_BASE}${CXX}
-WIN_CMAKE_RULES+=win32/sysinfo
-WIN_CMAKE_RULES+=win32/shared_modules
-WIN_RESOURCE_OBJ=-DRESOURCE_OBJ=win32/version-dll.o
-ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-WIN_CMAKE_RULES+=win32/syscollector
-endif
-endif
 
 ifeq (${uname_S},Darwin)
 SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
@@ -170,8 +148,7 @@ DEFINES=-DOSSECHIDS
 DEFINES+=-DUSER=\"${WAZUH_USER}\"
 DEFINES+=-DGROUPGLOBAL=\"${WAZUH_GROUP}\"
 
-ifneq (${TARGET},winagent)
-		DEFINES+=-D${uname_S}
+DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
@@ -317,17 +294,6 @@ endif # Darwin
 endif # SunOS
 endif # AIX
 endif # Linux
-else
-	    # There is a bug in the delay load mechanism for MinGW 32-bits executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=22676)
-		# The workaround is to remove the __declspec(dllimport) from the function declaration in the executables (https://www.sourceware.org/bugzilla/show_bug.cgi?id=14339)
-		SHARED=dll
-		DEFINES_EVENTCHANNEL=-D_WIN32_WINNT=0x600
-		# We link against a patched libwinpthread.a library that no contains version.o (version.rc) to avoid including the resource in the executables due to the "--whole-archive" flag
-		OSSEC_CFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
-		OSSEC_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
-		AR_LDFLAGS+=-Wl,-L,win32/ -Wl,-Bstatic,--whole-archive -lwinpthreadpatched -Wl,--no-whole-archive -Wl,-Bdynamic -ldelayimp -pthread -DBUILDING_LIBCURL="" -DPCRE2_EXP_DECL=""
-		PRECOMPILED_OS:=windows
-endif # winagent
 
 ifeq (${IMAGE_TRUST_CHECKS}, 0)
 	DEFINES+=-DIMAGE_TRUST_CHECKS=0
@@ -337,11 +303,7 @@ else ifeq (${IMAGE_TRUST_CHECKS}, 2)
 	DEFINES+=-DIMAGE_TRUST_CHECKS=2
 endif
 
-ifeq (${TARGET}, winagent)
-	DEFINES+=-DCA_NAME='"${CA_NAME}"'
-else
-	DEFINES+=-DCA_NAME='${CA_NAME}'
-endif
+DEFINES+=-DCA_NAME='${CA_NAME}'
 
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
 	DEFINES+=-DENABLE_SYSC
@@ -371,13 +333,8 @@ AR_LDFLAGS+=${OFLAGS}
 DBSYNC_LIB+=-ldbsync
 RSYNC_LIB+=-lrsync
 
-ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/bin
-	OSSEC_LDFLAGS+=-L${RSYNC}build/bin
-else
-	OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
-	OSSEC_LDFLAGS+=-L${RSYNC}build/lib
-endif
+OSSEC_LDFLAGS+=-L${DBSYNC}build/lib
+OSSEC_LDFLAGS+=-L${RSYNC}build/lib
 
 ifeq (${TARGET},server)
 	WAZUH_LIBS+=-lrouter
@@ -426,66 +383,7 @@ ifeq (,$(filter ${V},YES yes y Y 1))
 	QUIET_ENDCOLOR= @printf '%b' ${ENDCOLOR} 1>&2;
 endif
 
-MING_BASE:=
-ifeq (${TARGET}, winagent)
-# Avoid passing environment variables such CFLAGS to external Makefiles
-ifeq (${CC}, gcc)
-	MAKEOVERRIDES=
-endif
-
-CC=gcc
-ifeq (${TARGET}, winagent)
-CXX=g++-posix
-else
 CXX=g++
-endif
-
-ifneq (,$(shell which amd64-mingw32msvc-gcc))
-	ifeq (${CC}, gcc)
-		MING_BASE:=amd64-mingw32msvc-
-	else
-		MING_BASE:=
-	endif
-	MINGW_HOST="amd64-mingw32msvc"
-else
-ifneq (,$(shell which i686-pc-mingw32-gcc))
-	ifeq (${CC}, gcc)
-		MING_BASE:=i686-pc-mingw32-
-	else
-		MING_BASE:=
-	endif
-	MINGW_HOST="i686-pc-mingw32"
-else
-ifneq (,$(shell which i686-w64-mingw32-gcc))
-	ifeq (${CC}, gcc)
-		MING_BASE:=i686-w64-mingw32-
-	else
-		MING_BASE:=
-	endif
-	MINGW_HOST="i686-w64-mingw32"
-else
-$(error No windows cross-compiler found!) #MING_BASE:=unknown-
-endif
-endif
-endif
-
-ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread-1.dll))
-	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread-1.dll
-else
-ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll))
-	WIN_PTHREAD_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll
-endif
-endif
-
-ifneq (,$(wildcard /usr/i686-w64-mingw32/lib/libwinpthread.a))
-	WIN_PTHREAD_STATIC_LIB:=/usr/i686-w64-mingw32/lib/libwinpthread.a
-else
-ifneq (,$(wildcard /usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread.a))
-	WIN_PTHREAD_STATIC_LIB:=/usr/i686-w64-mingw32/sys-root/mingw/bin/libwinpthread.a
-endif
-endif
-
-endif #winagent
 
 OSSEC_CC      		=${QUIET_CC}${MING_BASE}${CC}
 OSSEC_CCBIN   		=${QUIET_CCBIN}${MING_BASE}${CC}
@@ -528,13 +426,8 @@ endif # USE_GEOIP
 
 SYSINFO_LIB+=-lsysinfo
 
-ifeq (${TARGET}, winagent)
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/bin
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/bin
-else
-	OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
-	OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
-endif
+OSSEC_LDFLAGS+=-L${SYSCOLLECTOR}build/lib
+OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
 
 ifeq (,$(filter ${DISABLE_SYSC}, YES yes y Y 1))
 	SYSCOLLECTOR_LIB+=-lsyscollector
@@ -648,10 +541,7 @@ endif
 failtarget:
 	@echo "TARGET is required: "
 	@echo "   make TARGET=server   to build the server"
-	@echo "   make TARGET=local      - local version of server"
-	@echo "   make TARGET=hybrid     - hybrid version of server"
 	@echo "   make TARGET=agent    to build the unix agent"
-	@echo "   make TARGET=winagent to build the windows agent"
 
 .PHONY: help
 help: failtarget
@@ -818,48 +708,6 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
 
-WINDOWS_LIBS:=win32/syscollector
-WINDOWS_BINS:=win32/wazuh-agent.exe win32/wazuh-agent-eventchannel.exe win32/manage_agents.exe win32/setup-windows.exe win32/setup-iis.exe win32/os_win32ui.exe win32/agent-auth.exe
-WINDOWS_ACTIVE_RESPONSES:=win32/restart-wazuh.exe win32/route-null.exe win32/netsh.exe
-
-ifeq (${MAKECMDGOALS},winagent)
-$(error Do not use 'winagent' directly, use 'TARGET=winagent')
-endif
-.PHONY: winagent
-winagent: external win32/libwinpthread-1.dll win32/libwinpthreadpatched.a ${WAZUH_LIB_OUTPUT_PATH}${LIBGCC_S_NAME} ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME} win32/version-dll.o win32/version-app.o
-	${MAKE} ${WAZUHEXT_LIB} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lws2_32 -lcrypt32"
-	${MAKE} ${WINDOWS_LIBS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1"
-	${MAKE} ${WINDOWS_BINS} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
-	${MAKE} ${WINDOWS_ACTIVE_RESPONSES} CFLAGS="-DCLIENT -D_POSIX_C_SOURCE -DWIN32 -DPSAPI_VERSION=1" LIBS="-lwsock32 -lwevtapi -lshlwapi -lcomctl32 -ladvapi32 -lkernel32 -lpsapi -lgdi32 -liphlpapi -lws2_32 -lcrypt32 -lwintrust"
-	cd win32/ && ./unix2dos.pl ossec.conf > default-ossec.conf
-	cd win32/ && ./unix2dos.pl help.txt > help_win.txt
-	cd win32/ && ./unix2dos.pl ../../etc/internal_options.conf > internal_options.conf
-	cd win32/ && ./unix2dos.pl ../../etc/local_internal_options-win.conf > default-local_internal_options.conf
-	cd win32/ && ./unix2dos.pl ../../LICENSE > LICENSE.txt
-	cd win32/ && ./unix2dos.pl ../VERSION > VERSION
-	cd win32/ && ./unix2dos.pl ../REVISION > REVISION
-	cd win32/ && makensis wazuh-installer.nsi
-
-win32/shared_modules: $(WAZUHEXT_LIB)
-	cd ${DBSYNC} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${DBSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-	cd ${RSYNC} &&  mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${RSYNC_TEST} ${SHARED_MODULES_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-#### Sysinfo ##
-
-win32/sysinfo: $(WAZUHEXT_LIB) win32/version-dll.o
-	cd ${SYSINFO} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSINFO_OS} ${SYSINFO_TEST} ${SYSINFO_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-#### Syscollector ##
-win32/syscollector: win32/shared_modules win32/sysinfo win32/version-dll.o
-	cd ${SYSCOLLECTOR} && mkdir -p build && cd build && cmake ${CMAKE_OPTS} ${SYSCOLLECTOR_TEST} ${SYSCOLLECTOR_RELEASE_TYPE} ${WIN_RESOURCE_OBJ} .. && ${MAKE}
-
-win32/libwinpthread-1.dll: ${WIN_PTHREAD_LIB}
-	cp $< $@
-
-win32/libwinpthreadpatched.a: ${WIN_PTHREAD_STATIC_LIB}
-	cp $< $@
-	${OSSEC_REMOVE_OBJECT} $@ version.o
-
 ####################
 #### External ######
 ####################
@@ -890,16 +738,7 @@ FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB)
-
-# Adding libcurl only on Windows, Linux and MacOS
-ifeq (${TARGET},winagent)
-	EXTERNAL_LIBS += $(LIBCURL_LIB)
-else ifeq (${uname_S},Linux)
-	EXTERNAL_LIBS += $(LIBCURL_LIB)
-else ifeq (${uname_S},Darwin)
-	EXTERNAL_LIBS += $(LIBCURL_LIB)
-endif
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB) $(LIBCURL_LIB)
 
 # Adding libraries only for server
 ifeq (${TARGET},server)
@@ -907,11 +746,11 @@ ifeq (${TARGET},server)
 	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
 endif
 
-ifneq (${TARGET},winagent)
 EXTERNAL_LIBS += $(MSGPACK_LIB)
 ifneq (${TARGET},agent)
 EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
 endif
+
 ifeq (${uname_S},Linux)
 ifneq ($(CHECK_CENTOS5),YES)
 EXTERNAL_LIBS +=  ${LUA_LIB} ${RPM_LIB} ${POPT_LIB}
@@ -919,14 +758,13 @@ endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
-
 ifeq ($(CHECK_CENTOS5),YES)
 EXTERNAL_LIBS += $(PROCPS_LIB)
 else
 EXTERNAL_LIBS += $(PROCPS_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
 endif
 endif
-endif
+
 ifeq (${uname_S},Darwin)
 EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
@@ -943,12 +781,8 @@ ifeq (${TARGET},server)
 external: $(ROCKSDB_LIB)
 endif
 
-ifneq (${TARGET},winagent)
-ifneq (${TARGET},agent)
 ifneq (,$(wildcard ${EXTERNAL_CPYTHON}))
 external: build_python
-endif
-endif
 endif
 
 test_external:
@@ -970,9 +804,6 @@ endif
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
-ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_OPENSSL} && CC=${MING_BASE}${CC} RC=${MING_BASE}windres ./Configure $(OPENSSL_FLAGS) mingw && ${MAKE} build_libs
-else
 ifeq (${uname_S},Darwin)
 ifeq (${uname_M},arm64)
 	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-arm64-cc && ${MAKE} build_libs
@@ -994,7 +825,6 @@ else
 endif
 else
 	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
-endif
 endif
 endif
 endif
@@ -1031,11 +861,7 @@ endif
 #### zlib ##########
 
 $(ZLIB_LIB):
-ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_ZLIB} && cp zconf.h.in zconf.h && ${MAKE} -f win32/Makefile.gcc PREFIX=${MING_BASE} libz.a
-else
 	cd ${EXTERNAL_ZLIB} && CFLAGS=-fPIC ./configure && ${MAKE} libz.a
-endif
 
 ZLIB_INCLUDE=-I./${EXTERNAL_ZLIB}
 
@@ -1090,21 +916,13 @@ ${LIBYAML_LIB}: $(EXTERNAL_LIBYAML)Makefile
 	$(MAKE) -C $(EXTERNAL_LIBYAML)
 
 $(EXTERNAL_LIBYAML)Makefile:
-ifeq (${TARGET},winagent)
-	cd $(EXTERNAL_LIBYAML) && CC=${MING_BASE}${CC} && CFLAGS=-fPIC ./configure --host=${MINGW_HOST} --enable-static=yes
-else
 	cd $(EXTERNAL_LIBYAML) && CFLAGS=-fPIC ./configure --enable-static=yes --enable-shared=no
-endif
 
 #### curl ##########
 
 ${LIBCURL_LIB}: $(EXTERNAL_CURL)Makefile
 	${MAKE} -C $(EXTERNAL_CURL)lib
 
-ifeq (${TARGET},winagent)
-$(EXTERNAL_CURL)Makefile:
-	cd $(EXTERNAL_CURL) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --host=${MINGW_HOST} PREFIX=${MING_BASE} --enable-static=yes --disable-shared --with-schannel --disable-ldap --without-libidn2 --without-zstd && ${MAKE}
-else
 $(EXTERNAL_CURL)Makefile: $(OPENSSL_LIB)
 ifeq (${uname_S},Linux)
 ifneq (,$(filter ${uname_M},aarch64 ppc64le))
@@ -1114,7 +932,6 @@ else
 endif
 else
 	cd $(EXTERNAL_CURL) && CPPFLAGS="-fPIC -I${ROUTE_PATH}/${EXTERNAL_OPENSSL}include" LDFLAGS="-L${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LIBS="-lpthread" ./configure --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" --disable-ldap --without-libidn2 --without-brotli --without-nghttp2 --without-librtmp --without-zstd
-endif
 endif
 
 
@@ -1147,14 +964,12 @@ endif
 
 #### libarchive ######
 
-ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 ${LIBARCHIVE_LIB}: $(EXTERNAL_LIBARCHIVE)Makefile
 	 ${MAKE} -C $(EXTERNAL_LIBARCHIVE)
 
 $(EXTERNAL_LIBARCHIVE)Makefile:
 	cd ${EXTERNAL_LIBARCHIVE} && CPPFLAGS=-fPIC ./configure --disable-acl --without-expat --without-iconv --without-xml2 --without-lz4 --without-lzma --without-zstd --without-bz2lib --without-openssl --without-libb2
-endif
 endif
 
 #### libalpm ######
@@ -1196,7 +1011,6 @@ ifeq (,$(filter ${USE_MSGPACK_OPT},YES yes y Y 1))
         MSGPACK_ARCH=-march=i486
 endif
 
-ifneq (${TARGET},winagent)
 msgpack_c := $(wildcard ${EXTERNAL_MSGPACK}src/*.c)
 msgpack_o := $(msgpack_c:.c=.o)
 
@@ -1206,16 +1020,12 @@ ${EXTERNAL_MSGPACK}src/%.o: ${EXTERNAL_MSGPACK}src/%.c
 $(MSGPACK_LIB): ${msgpack_o}
 	${OSSEC_LINK} $@ $^
 	${OSSEC_RANLIB} $@
-endif
 
 #### PCRE2 lib #########
 
 
 
 $(LIBPCRE2_LIB):
-ifeq (${TARGET},winagent)
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC CC=${MING_BASE}${CC} ./configure --enable-jit=no --host=${MINGW_HOST} --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-else
 ifeq (${uname_S},SunOS)
 ifeq (${uname_R},5.10)
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=no --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
@@ -1227,7 +1037,6 @@ ifeq (${CHECK_CENTOS5},YES)
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=no --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
 else
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-endif
 endif
 endif
 
@@ -1242,10 +1051,6 @@ $(POPT_BUILD_DIR)Makefile:
 
 ### lua lib ###
 
-$(LUA_LIB):
-ifeq (${TARGET},winagent)
-	cd ${EXTERNAL_LUA} && make mingw CC=${MING_BASE}${CC} MYCFLAGS='-fPIC' && make local TO_BIN='lua.exe luac.exe'
-else
 ifeq (${uname_S},Darwin)
 	cd ${EXTERNAL_LUA} && make macosx MYCFLAGS='-fPIC' && make local
 else
@@ -1259,7 +1064,6 @@ ifeq (${uname_S},AIX)
 	cd ${EXTERNAL_LUA} && make aix MYCFLAGS='-fPIC' && make local
 else
 	cd ${EXTERNAL_LUA} && make posix MYCFLAGS='-fPIC' && make local
-endif
 endif
 endif
 endif
@@ -1315,7 +1119,6 @@ RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
-ifneq (${TARGET}, winagent)
 ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
 	cpu_arch := ${uname_M}
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
@@ -1367,7 +1170,6 @@ endif
 	PRECOMPILED_ARCH := /${cpu_arch}
 endif
 endif
-endif
 
 ifeq ($(CHECK_CENTOS5),YES)
 PRECOMPILED_OS := el5
@@ -1380,14 +1182,7 @@ ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
 PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
-# Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark
-ifneq (${TARGET},agent)
-ifneq (${TARGET},winagent)
-	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers
-endif
-endif
+EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark $(CPYTHON) jemalloc flatbuffers
 
 EXTERNAL_DIR := $(EXTERNAL_RES:%=external/%)
 EXTERNAL_TAR := $(EXTERNAL_RES:%=external/%.tar.gz)
@@ -1495,19 +1290,9 @@ shared_modules/http-request.tar.gz:
 ####################
 #### OSSEC Libs ####
 ####################
-ifeq (${TARGET}, winagent)
-# libwazuhext
-WAZUHEXT_DLL = libwazuhext.$(SHARED)
-WAZUHEXT_LIB = libwazuhext.lib
-WAZUHEXT_LIB_DEF = libwazuhext.def
-# libwazuhshared
-WAZUH_DLL = libwazuhshared.$(SHARED)
-WAZUH_LIB = libwazuhshared.lib
-WAZUH_DEF = libwazuhshared.def
-else
+
 WAZUHEXT_LIB = libwazuhext.$(SHARED)
 WAZUH_LIB = libwazuhshared.$(SHARED)
-endif
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 
 $(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS) $(WINDOWS_BINS): $(BUILD_LIBS)
@@ -1614,11 +1399,7 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
 
-	ifeq (${TARGET},winagent)
-		UNIT_TEST_WRAPPERS+=${wrappers_windows_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_windows_lib_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_windows_posix_o}
-	else ifeq (${uname_S},Darwin)
+	ifeq (${uname_S},Darwin)
 	    UNIT_TEST_WRAPPERS+=${wrappers_macos_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_macos_libc_o}
 		UNIT_TEST_WRAPPERS+=${wrappers_macos_posix_o}
@@ -1705,15 +1486,6 @@ WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
 $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ $(OSSEC_LIBS)
 else
-ifeq (${TARGET}, winagent)
-$(WAZUHEXT_LIB): $(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF)
-	$(DLLTOOL) -D $(WAZUHEXT_DLL) --def $(WAZUHEXT_LIB_DEF) --output-delaylib $@
-
-$(WAZUHEXT_DLL) $(WAZUHEXT_LIB_DEF): $(EXTERNAL_LIBS) win32/version-dll.o
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $(WAZUHEXT_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUHEXT_LIB_DEF) ${OSSEC_LIBS}
-
-
-else
 ifeq (${uname_S},SunOS)
 ifneq ($(uname_R),5.10)
 LIBGCC_FLAGS := -static-libgcc
@@ -1754,7 +1526,6 @@ endif
 endif
 endif
 endif
-endif
 
 ### libwazuhshared.so #########
 
@@ -1763,15 +1534,6 @@ WAZUH_SHARED_SHFLAGS=-install_name @rpath/libwazuhshared.$(SHARED)
 
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHARED_SHFLAGS) -o $@ -Wl,-all_load $^ $(OSSEC_LIBS)
-else
-ifeq (${TARGET}, winagent)
-$(WAZUH_DLL) $(WAZUH_DEF) : $(WAZUHEXT_DLL) $(AR_PROGRAMS_DEPS) win32/version-dll.o
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -UOSSECHIDS -o $(WAZUH_DLL) -static-libgcc -Wl,--export-all-symbols -Wl,--add-stdcall-alias -Wl,--whole-archive $^ -Wl,--no-whole-archive -Wl,--output-def,$(WAZUH_DEF) ${OSSEC_LIBS}
-
-$(WAZUH_LIB): $(WAZUH_DLL) $(WAZUH_DEF)
-	$(DLLTOOL)  -D $(WAZUH_DLL) --def $(WAZUH_DEF) --output-delaylib $@
-
-
 else
 ifeq (${uname_S},SunOS)
 ifneq ($(uname_R),5.10)
@@ -1796,8 +1558,6 @@ $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 endif
 endif
 endif
-endif
-
 
 ### wazuh-gtest-gmock ###
 
@@ -1869,10 +1629,8 @@ install_mitre: install_python
 ####################
 CFLAGS_TEST=-g -O0 --coverage -DWAZUH_UNIT_TESTING
 # Use sanitizers only on linux
-ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 CFLAGS_TEST+= -fsanitize=address -fsanitize=undefined
-endif
 endif
 
 LIBS_TEST=-lcmocka
@@ -1944,96 +1702,10 @@ test-rules:
 	( cd ../ruleset/testing && sudo python runtests.py)
 
 ####################
-#### windows #######
-####################
-
-win32/version-dll.o: win32/version.rc
-	${OSSEC_WINDRES} ${WIN_BUILD_VERSION} ${WIN_BUILD_TYPE} -DVER_TYPE=VFT_DLL -i $< -o $@
-
-win32/version-app.o: win32/version.rc
-	${OSSEC_WINDRES} ${WIN_BUILD_VERSION} ${WIN_BUILD_TYPE} -DVER_TYPE=VFT_APP -i $< -o $@
-
-# For security reasons, all executables must have a manifest
-# except those .exe files that aren't distributed in the final signed .msi
-
-win32/ui_resource.o: win32/ui/win32ui.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/auth_resource.o: win32/agent-auth.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/wazuh_agent_resource.o: win32/wazuh-agent.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/manage_agents_resource.o: win32/manage_agents.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/restart_wazuh_resource.o: win32/restart-wazuh.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/route_null_resource.o: win32/route-null.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/netsh_resource.o: win32/netsh.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/wazuh_agent_eventchannel_resource.o: win32/wazuh-agent-eventchannel.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/icon.o: win32/icofile.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32_c := $(wildcard win32/*.c)
-win32_o := $(win32_c:.c=.o)
-
-win32/%.o: win32/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -DARGV0=\"wazuh-agent\" -c $^ -o $@
-
-win32/%_rk.o: win32/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-agent\" -c $^ -o $@
-
-win32_ui_c := $(wildcard win32/ui/*.c)
-win32_ui_o := $(win32_ui_c:.c=.o)
-
-win32/ui/%.o: win32/ui/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} -UOSSECHIDS -DARGV0=\"wazuh-win32ui\" -c $^ -o $@
-
-win32/manage_agents.exe: win32/manage_agents_resource.o win32/version-app.o win32/win_service_rk.o
-	${OSSEC_CCBIN} -DARGV0=\"manage-agents\" -DMA ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-win32/setup-windows.exe: win32/win_service_rk.o win32/setup-win.o win32/setup-shared.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-windows\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-win32/setup-iis.exe: win32/win_service_rk.o win32/setup-iis.o
-	${OSSEC_CCBIN} -DARGV0=\"setup-iis\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -o $@
-
-win32/ui_resource.o: win32/ui/win32ui.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/auth_resource.o: win32/agent-auth.rc
-	${OSSEC_WINDRES} -i $< -o $@
-
-win32/os_win32ui.exe: win32/ui_resource.o win32/version-app.o win32/win_service_rk.o ${win32_ui_o}
-	${OSSEC_CCBIN} -DARGV0=\"wazuh-win32ui\" ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -mwindows -o $@
-
-win32/agent-auth.exe: win32/auth_resource.o win32/version-app.o win32/win_service_rk.o
-	${OSSEC_CCBIN} -DARGV0=\"agent-auth\" -DOSSECHIDS ${OSSEC_LDFLAGS} $^ ${OSSEC_LIBS} -lshlwapi -lwsock32 -lsecur32 -lws2_32 -flto -o $@
-
-win32/restart-wazuh.exe: win32/restart_wazuh_resource.o win32/version-app.o active-response/active_responses.o active-response/restart-wazuh.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"restart-wazuh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
-
-win32/route-null.exe: win32/route_null_resource.o win32/version-app.o active-response/active_responses.o active-response/route-null.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"route-null\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
-
-win32/netsh.exe: win32/netsh_resource.o win32/version-app.o active-response/active_responses.o active-response/netsh.o ${WAZUH_LIB} ${WAZUHEXT_LIB}
-	${OSSEC_CCBIN} -DARGV0=\"netsh\" ${AR_LDFLAGS} $^ -lwintrust -lpsapi -lcrypt32 -lshlwapi -o $@
-
-
-####################
 #### Clean #########
 ####################
 
-clean: clean-test clean-internals clean-external clean-windows clean-framework clean-config
+clean: clean-test clean-internals clean-external clean-framework clean-config
 
 clean-test:
 	rm -Rf coverage-report/
@@ -2044,7 +1716,6 @@ clean-external: clean-wpython
 ifneq ($(wildcard external/*/*),)
 	rm -f ${cjson_o} $(EXTERNAL_JSON)libcjson.*
 	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f Makefile.in distclean
-	-cd ${EXTERNAL_ZLIB} && ${MAKE} -f win32/Makefile.gcc clean
 	rm -f ${EXTERNAL_ZLIB}/Makefile ${EXTERNAL_ZLIB}/zconf.h
 	-cd ${EXTERNAL_OPENSSL} && ${MAKE} distclean
 	-cd ${EXTERNAL_LIBYAML} && ${MAKE} distclean
@@ -2146,38 +1817,6 @@ clean-unit-tests:
 
 clean-framework:
 	${MAKE} -C ../framework clean
-
-clean-windows:
-	rm -f libwazuh.a
-	rm -f libwazuhshared.*
-	rm -f libwazuhext.*
-	rm -f wazuh_modules/syscollector/*.o wazuh_modules/syscollector/*.obj
-	rm -f win32/LICENSE.txt
-	rm -f win32/help_win.txt
-	rm -f win32/internal_options.conf
-	rm -f win32/default-local_internal_options.conf
-	rm -f win32/default-ossec.conf
-	rm -f win32/restart-ossec.cmd
-	rm -f win32/route-null.cmd
-	rm -f win32/route-null-2012.cmd
-	rm -f win32/netsh.cmd
-	rm -f win32/netsh-win-2016.cmd
-	rm -f win32/default-ossec-pre6.conf
-	rm -f win32/restart-wazuh.exe
-	rm -f win32/route-null.exe
-	rm -f win32/netsh.exe
-	rm -f ${win32_o} ${win32_ui_o} win32/win_service_rk.o
-	rm -f win32/icon.o win32/resource.o
-	rm -f ${WINDOWS_BINS}
-	rm -f win32/wazuh-agent-*.exe
-	rm -f win32/libwinpthread-1.dll
-	rm -f win32/*.o
-	rm -f win32/version-*.o
-	rm -f win32/VERSION
-	rm -f win32/REVISION
-	rm -f win32/libstdc++-6.dll
-	rm -f win32/libgcc_s_dw2-1.dll
-	rm -f win32/libgcc_s_sjlj-1.dll
 
 clean-config:
 	rm -f ../etc/ossec.mc
