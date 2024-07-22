@@ -188,7 +188,7 @@ void wm_ms_graph_get_access_token(wm_ms_graph_auth* auth_config, const ssize_t c
 
 void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_scan) {
     char url[OS_SIZE_8192] = { '\0' };
-    char auth_header[OS_SIZE_2048] = { '\0' };
+    char auth_header[OS_SIZE_8192] = { '\0' };
     char* headers[] = { NULL, NULL };
     curl_response* response;
     char relationship_state_name[OS_SIZE_1024] = { '\0' };
@@ -237,15 +237,32 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                 gmtime_r(&relationship_state_struc.next_time, &tm_aux);
                 strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
 
-                snprintf(auth_header, OS_SIZE_2048 - 1, "Authorization: Bearer %s", it->access_token);
+                snprintf(auth_header, OS_SIZE_8192 - 1, "Authorization: Bearer %s", it->access_token);
                 os_strdup(auth_header, headers[0]);
 
-                snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
-                it->query_fqdn,
-                ms_graph->version,
-                ms_graph->resources[resource_num].name,
-                ms_graph->resources[resource_num].relationships[relationship_num],
-                start_time_str);
+                if (!strcmp(ms_graph->resources[resource_num].name, WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT)) {
+                    if (!strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS)) {
+                        snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL_FILTER_ACTIVITY_DATE,
+                        it->query_fqdn,
+                        ms_graph->version,
+                        WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
+                        WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS,
+                        start_time_str);
+                    } else {
+                        snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
+                        it->query_fqdn,
+                        ms_graph->version,
+                        WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
+                        ms_graph->resources[resource_num].relationships[relationship_num]);
+                    }
+                } else {
+                    snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL_FILTER_CREATED_DATE,
+                    it->query_fqdn,
+                    ms_graph->version,
+                    ms_graph->resources[resource_num].name,
+                    ms_graph->resources[resource_num].relationships[relationship_num],
+                    start_time_str);
+                }
 
                 mtdebug1(WM_MS_GRAPH_LOGTAG, "Microsoft Graph API Log URL: '%s'", url);
 
