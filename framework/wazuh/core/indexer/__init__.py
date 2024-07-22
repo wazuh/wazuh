@@ -23,6 +23,7 @@ class Indexer:
         port: int = 9200,
         use_ssl: bool = True,
         verify_certs: bool = True,
+        ca_certs: str = ''
     ) -> None:
         self.host = host
         self.user = user
@@ -30,6 +31,7 @@ class Indexer:
         self.port = port
         self.use_ssl = use_ssl
         self.verify_certs = verify_certs
+        self.ca_certs = ca_certs
 
         self._client = self._get_opensearch_client()
 
@@ -49,6 +51,7 @@ class Indexer:
             http_auth=(self.user, self.password),
             use_ssl=self.use_ssl,
             verify_certs=self.verify_certs,
+            ca_certs=self.ca_certs
         )
 
     async def initiazlize(self):
