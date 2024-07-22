@@ -781,7 +781,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/dnf/dnf.conf -> r:^\s*gpgcheck\s*=\s*1'
-      - 'not c:grep -Rh ^gpgcheck /etc/yum.repos.d/ -> r:gpgcheck\s*=\s*0'
+      - 'd:/etc/yum.repos.d/ -> \.+ -> !r:^# && !r:^\s*gpgcheck\s*=\s*0'
 
   # 1.2.3 Ensure package manager repositories are configured. (Manual) - Not Implemented
 
@@ -1292,24 +1292,7 @@ checks:
     rules:
       - "c:gsettings get org.gnome.desktop.media-handling automount -> r:^false"
 
-  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual)
-  - id: 32058
-    title: "Ensure updates, patches, and additional security software are installed."
-    description: "Periodically patches are released for included software either due to security flaws or to include additional functionality."
-    rationale: "Newer patches may contain security enhancements that would not be available through the latest full update. As a result, it is recommended that the latest software patches be used to take advantage of the latest functionality. As with any software installation, organizations need to determine if a given update meets their requirements and verify the compatibility and supportability of any additional software against the update revision that is selected."
-    remediation: "Use your package manager to update all packages on the system according to site policy. The following command will install all available updates: # dnf update."
-    compliance:
-      - cis: ["1.9"]
-      - cis_csc_v8: ["7.3", "7.4"]
-      - cis_csc_v7: ["3.4"]
-      - cmmc_v2.0: ["SI.L1-3.14.1"]
-      - mitre_techniques: ["T1017", "T1019", "T1068", "T1072", "T1073", "T1075", "T1100", "T1103", "T1137", "T1138", "T1189", "T1190", "T1195", "T1210", "T1211", "T1212", "T1495"]
-      - nist_sp_800-53: ["SI-2(2)"]
-      - pci_dss_v3.2.1: ["6.2"]
-      - soc_2: ["CC7.1"]
-    condition: all
-    rules:
-      - 'not c:sh -c "dnf check-update | egrep -v \"Updating|Last metadata|^$\"" -> r:^\w'
+  # 1.9 Ensure updates, patches, and additional security software are installed. (Manual) - Not Implemented
 
   # 1.10 Ensure system-wide crypto policy is not legacy. (Automated)
   - id: 32059
