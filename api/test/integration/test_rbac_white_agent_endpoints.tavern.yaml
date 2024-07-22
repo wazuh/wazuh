@@ -1859,3 +1859,21 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       <<: *permission_denied
+
+---
+test_name: GET /agents/uninstall
+
+stages:
+
+  - name: Check user's permission to uninstall agents (Allowed)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/uninstall"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      status_code: 200
+      json:
+        message: "Agent has permission to be uninstalled"
+        error: 0
