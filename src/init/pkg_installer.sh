@@ -134,6 +134,7 @@ while [ "$status" != "connected" -a $COUNTER -gt 0 ]; do
 done
 
 # Check connection and update upgrade log
+status="pending"
 if [ "$status" = "connected" -a $RESULT -eq 0 ]; then
     echo "$(date +"%Y/%m/%d %H:%M:%S") - Connected to manager." >> ./logs/upgrade.log
     echo -ne "0" > ./var/upgrade/upgrade_result
