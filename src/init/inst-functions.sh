@@ -1138,8 +1138,11 @@ InstallLocal()
       ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
     fi
 
-    ### Install API
+    ### Install Server management API
     ${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR}
+
+    ### Install Agent comms API
+    ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=${INSTALLDIR}
 
     ### Restore old API
     if [ "X${update_only}" = "Xyes" ]; then

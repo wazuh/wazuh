@@ -32,6 +32,7 @@ FW_INIT="../framework/wazuh/__init__.py"
 CLUSTER_INIT="../framework/wazuh/core/cluster/__init__.py"
 API_SETUP="../api/setup.py"
 API_SPEC="../api/api/spec/spec.yaml"
+COMMS_API_SETUP="../apis/comms_api/setup.py"
 VERSION_DOCU="../src/Doxyfile"
 WIN_RESOURCE="../src/win32/version.rc"
 
@@ -179,6 +180,10 @@ then
     sed -E -i'' -e "s/version: '.+'/version: '${version:1}'/g" $API_SPEC
     sed -E -i'' -e "s_/v[0-9]+\.[0-9]+\.[0-9]+_/${version}_g" $API_SPEC
     sed -E -i'' -e "s_com/[0-9]+\.[0-9]+_com/$(expr match "$version" 'v\([0-9]*.[0-9]*\).*')_g" $API_SPEC
+
+    # Agent comms API
+
+    sed -E -i'' -e "s/version='.+',/version='${version:1}',/g" $COMMS_API_SETUP
 
     # Documentation config file
 
