@@ -107,10 +107,6 @@ IMAGE_TRUST_CHECKS?=1
 CA_NAME?=DigiCert Assured ID Root CA
 HTTP_REQUEST_BRANCH?=v1.0.0
 
-ifeq (${uname_S},Darwin)
-SYSINFO_OS=-DCMAKE_SYSTEM_NAME=Darwin
-endif
-
 ifneq (,$(filter ${TEST},YES yes y Y 1))
 DBSYNC_TEST=-DUNIT_TEST=ON #--coverage
 RSYNC_TEST=-DUNIT_TEST=ON #--coverage
@@ -177,122 +173,6 @@ ifeq (${CHECK_ARCHLINUX},YES)
 		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 		AR_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
-else
-ifeq (${uname_S},AIX)
-		DEFINES+=-DAIX -D__unix
-		DEFINES+=-DHIGHFIRST
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread -L./lib
-ifeq ($(INSTALLDIR),)
-	INSTALLDIR = /var/ossec
-endif
-		CMAKE_OPTS+=-DINSTALL_PREFIX=${INSTALLDIR}
-		OSSEC_LDFLAGS+='-Wl,-blibpath:${INSTALLDIR}/lib:/usr/lib:/lib'
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+='-Wl,-blibpath:${INSTALLDIR}/lib:/usr/lib:/lib'
-		PATH:=${PATH}:/usr/vac/bin
-		CC=gcc
-		PRECOMPILED_OS:=aix
-else
-ifeq (${uname_S},SunOS)
-SOLARIS_CMAKE_OPTS=-DSOLARIS=ON
-PRECOMPILED_OS:=solaris
-ifneq ($(uname_R),5.10)
-		DEFINES+=-DSUN_MAJOR_VERSION=$(word 1, $(subst ., ,$(uname_V)))
-		DEFINES+=-DSUN_MINOR_VERSION=$(word 2, $(subst ., ,$(uname_V)))
-else
-		DEFINES+=-DSUN_MAJOR_VERSION=10
-		DEFINES+=-DSUN_MINOR_VERSION=0
-endif
-		DEFINES+=-DSOLARIS
-		DEFINES+=-DHIGHFIRST
-		DEFINES+=-D_REENTRANT
-ifneq ($(uname_R),5.10)
-		OSSEC_LDFLAGS+=-z relax=secadj
-		AR_LDFLAGS+=-z relax=secadj
-else
-		OSSEC_CFLAGS+=-DMSGPACK_ZONE_ALIGN=8
-endif
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
-		OSSEC_LIBS+=-lsocket -lnsl -lresolv -lrt -lpthread -lm
-		PATH:=${PATH}:/usr/ccs/bin:/usr/xpg4/bin:/opt/csw/gcc3/bin:/opt/csw/bin:/usr/sfw/bin
-		CC=gcc
-#		This is necessary in order to compile libcurl
-		NM=gnm
-		uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
-else
-ifeq (${uname_S},Darwin)
-	DEFINES+=-DDarwin
-	DEFINES+=-DHIGHFIRST
-	OSSEC_CFLAGS+=-pthread
-	OSSEC_LDFLAGS+=-pthread
-	OSSEC_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../lib"
-	AR_LDFLAGS+=-pthread
-	AR_LDFLAGS+=-Xlinker -rpath -Xlinker "@executable_path/../../lib"
-	SHARED=dylib
-	OSSEC_LIBS+=-framework Security -framework CoreFoundation -framework SystemConfiguration
-	PRECOMPILED_OS:=darwin
-else
-ifeq (${uname_S},FreeBSD)
-		DEFINES+=-DFreeBSD
-		OSSEC_CFLAGS+=-pthread -I/usr/local/include
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-L/usr/local/lib
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-L/usr/local/lib
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
-		PRECOMPILED_OS:=freebsd
-else
-ifeq (${uname_S},NetBSD)
-		DEFINES+=-DNetBSD
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
-		PRECOMPILED_OS:=netbsd
-else
-ifeq (${uname_S},OpenBSD)
-		DEFINES+=-DOpenBSD
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-L/usr/local/lib
-		OSSEC_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../lib'
-		AR_LDFLAGS+=-pthread
-		AR_LDFLAGS+=-L/usr/local/lib
-		AR_LDFLAGS+=-Wl,-zorigin '-Wl,-rpath,$$ORIGIN/../../lib'
-		PRECOMPILED_OS:=openbsd
-else
-ifeq (${uname_S},HP-UX)
-		DEFINES+=-DHPUX
-		DEFINES+=-D_XOPEN_SOURCE_EXTENDED
-		DEFINES+=-DHIGHFIRST
-		DEFINES+=-DOS_BIG_ENDIAN
-		OSSEC_CFLAGS+=-pthread
-		OSSEC_LDFLAGS+=-lrt -pthread -L. -lwazuhext
-		AR_LDFLAGS+=-lrt -pthread -L. -lwazuhext -lwazuhshared
-ifeq ($(INSTALLDIR),)
-	INSTALLDIR = /var/ossec
-endif
-		CMAKE_OPTS+=-DINSTALL_PREFIX=${INSTALLDIR}
-		OSSEC_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
-		AR_LDFLAGS+='-Wl,+b,${INSTALLDIR}/lib'
-		OSSEC_CFLAGS+=-pthread
-		PATH:=${PATH}:/usr/local/bin
-		CC=gcc
-		INSTALL=/usr/local/coreutils/bin/install
-		PRECOMPILED_OS:=hpux
-else
-	    # Unknow platform
-endif # HPUX
-endif # OpenBSD
-endif # NetBSD
-endif # FreeBSD
-endif # Darwin
-endif # SunOS
-endif # AIX
 endif # Linux
 
 ifeq (${IMAGE_TRUST_CHECKS}, 0)
@@ -385,14 +265,13 @@ endif
 
 CXX=g++
 
-OSSEC_CC      		=${QUIET_CC}${MING_BASE}${CC}
-OSSEC_CCBIN   		=${QUIET_CCBIN}${MING_BASE}${CC}
-OSSEC_CXXBIN  		=${QUIET_CCBIN}${MING_BASE}${CXX}
-OSSEC_SHARED  		=${QUIET_CCBIN}${MING_BASE}${CC} -shared
-OSSEC_LINK    		=${QUIET_LINK}${MING_BASE}ar -crus
-OSSEC_REMOVE_OBJECT =${QUIET_LINK}${MING_BASE}ar -d
-OSSEC_RANLIB  		=${QUIET_RANLIB}${MING_BASE}ranlib
-OSSEC_WINDRES 		=${QUIET_CCBIN}${MING_BASE}windres
+OSSEC_CC      		=${QUIET_CC}${CC}
+OSSEC_CCBIN   		=${QUIET_CCBIN}${CC}
+OSSEC_CXXBIN  		=${QUIET_CCBIN}${CXX}
+OSSEC_SHARED  		=${QUIET_CCBIN}${CC} -shared
+OSSEC_LINK    		=${QUIET_LINK}ar -crus
+OSSEC_REMOVE_OBJECT =${QUIET_LINK}ar -d
+OSSEC_RANLIB  		=${QUIET_RANLIB}ranlib
 
 ifneq (,$(filter ${USE_INOTIFY},YES auto yes y Y 1))
 	DEFINES+=-DINOTIFY_ENABLED
@@ -516,10 +395,6 @@ ifndef TARGET
 	TARGET=failtarget
 endif # TARGET
 
-ifeq (${TARGET},agent)
-	DEFINES+=-DCLIENT
-endif
-
 ifeq (${TARGET},local)
 	DEFINES+=-DLOCAL
 endif
@@ -541,7 +416,6 @@ endif
 failtarget:
 	@echo "TARGET is required: "
 	@echo "   make TARGET=server   to build the server"
-	@echo "   make TARGET=agent    to build the unix agent"
 
 .PHONY: help
 help: failtarget
@@ -586,7 +460,7 @@ help: failtarget
 	@echo "   make WAZUH_USER=wazuh        Set wazuh user"
 	@echo
 	@echo "Examples: Client with debugging enabled"
-	@echo "   make TARGET=agent DEBUG=yes"
+	@echo "   make TARGET=server DEBUG=yes"
 
 .PHONY: settings
 settings:
@@ -633,14 +507,7 @@ settings:
 	@echo "    CC                ${CC}"
 	@echo "    MAKE              ${MAKE}"
 
-BUILD_SERVER+=manage_agents
-BUILD_SERVER+=active-responses
-BUILD_SERVER+=wazuh-logtest-legacy
 BUILD_SERVER+=wazuh-keystore
-
-BUILD_AGENT+=agent-auth
-BUILD_AGENT+=manage_agents
-BUILD_AGENT+=active-responses
 
 BUILD_CMAKE_PROJECTS+=build_sysinfo
 BUILD_CMAKE_PROJECTS+=build_shared_modules
@@ -648,9 +515,7 @@ ifeq (${TARGET},server)
 BUILD_CMAKE_PROJECTS+=build_wazuh_cmake
 endif
 ifeq (,$(filter ${DISABLE_SYSC},YES yes y Y 1))
-ifneq (${uname_S},HP-UX)
 BUILD_CMAKE_PROJECTS+=build_syscollector
-endif
 endif
 
 ${WAZUH_LIB_OUTPUT_PATH}${LIBSTDCPP_NAME}: ${libstdc++_path}
@@ -665,7 +530,7 @@ ifneq (${uname_S},AIX)
 	${STRIP_TOOL} -x $@
 endif
 
-.PHONY: server local hybrid agent selinux
+.PHONY: server 
 
 ifeq (${MAKECMDGOALS},server)
 $(error Do not use 'server' directly, use 'TARGET=server')
@@ -674,30 +539,8 @@ server: external ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 	${MAKE} ${BUILD_SERVER}
 
-ifeq (${MAKECMDGOALS},local)
-$(error Do not use 'local' directly, use 'TARGET=local')
-endif
-local: external ${CPPLIBDEPS}
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
-
-ifeq (${MAKECMDGOALS},hybrid)
-$(error Do not use 'hybrid' directly, use 'TARGET=hybrid')
-endif
-hybrid: external ${CPPLIBDEPS}
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_SERVER}
-
-ifeq (${MAKECMDGOALS},agent)
-$(error Do not use 'agent' directly, use 'TARGET=agent')
-endif
-
-agent: external ${CPPLIBDEPS}
-	${MAKE} ${BUILD_CMAKE_PROJECTS}
-	${MAKE} ${BUILD_AGENT}
-
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server local hybrid agent: selinux
+server: selinux
 endif
 
 selinux: $(SELINUX_POLICY)
@@ -738,18 +581,10 @@ FLATBUFFERS_LIB = $(EXTERNAL_FLATBUFFERS)build/libflatbuffers.a
 LZMA_LIB = $(EXTERNAL_LZMA)build/liblzma.a
 LUA_LIB = ${EXTERNAL_LUA}install/lib/liblua.a
 
-EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB) $(LIBCURL_LIB)
+EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_LIB) $(LIBYAML_LIB) $(LIBPCRE2_LIB) $(LIBCURL_LIB) $(LZMA_LIB) $(MINIZIP_LIB) $(MSGPACK_LIB) $(LIBFFI_LIB) $(BZIP2_LIB)
 
 # Adding libraries only for server
-ifeq (${TARGET},server)
-	EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
-	EXTERNAL_LIBS += $(LZMA_LIB) $(MINIZIP_LIB)
-endif
-
-EXTERNAL_LIBS += $(MSGPACK_LIB)
-ifneq (${TARGET},agent)
-EXTERNAL_LIBS += $(LIBFFI_LIB) $(BZIP2_LIB)
-endif
+EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
 
 ifeq (${uname_S},Linux)
 ifneq ($(CHECK_CENTOS5),YES)
@@ -763,10 +598,6 @@ EXTERNAL_LIBS += $(PROCPS_LIB)
 else
 EXTERNAL_LIBS += $(PROCPS_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
 endif
-endif
-
-ifeq (${uname_S},Darwin)
-EXTERNAL_LIBS += ${LIBPLIST_LIB}
 endif
 
 
@@ -804,31 +635,7 @@ endif
 ${CRYPTO_LIB}: ${OPENSSL_LIB}
 
 ${OPENSSL_LIB}:
-ifeq (${uname_S},Darwin)
-ifeq (${uname_M},arm64)
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-arm64-cc && ${MAKE} build_libs
-else
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) darwin64-x86_64-cc && ${MAKE} build_libs
-endif
-else
-ifeq (${uname_S},HP-UX)
-	cd ${EXTERNAL_OPENSSL} && MAKE=gmake ./Configure $(OPENSSL_FLAGS) hpux-ia64-gcc && ${MAKE} build_libs
-else
-ifeq (${uname_S},AIX)
-	cd ${EXTERNAL_OPENSSL} && ./config aix-gcc $(OPENSSL_FLAGS) && ${MAKE} build_libs
-else
-ifeq (${uname_S},SunOS)
-ifeq ($(uname_M),i86pc)
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-x86-gcc && ${MAKE} build_libs
-else
-	cd ${EXTERNAL_OPENSSL} && ./Configure $(OPENSSL_FLAGS) solaris-sparcv9-gcc && ${MAKE} build_libs
-endif
-else
 	cd ${EXTERNAL_OPENSSL} && ./config $(OPENSSL_FLAGS) && ${MAKE} build_libs
-endif
-endif
-endif
-endif
 
 ### rocks db ###
 
@@ -854,9 +661,6 @@ LIBFFI_FLAGS = "CFLAGS=-fPIC"
 
 ${LIBFFI_LIB}:
 	cd ${EXTERNAL_LIBFFI} && test -e server || (./configure $(LIBFFI_FLAGS) && ${MAKE})
-ifneq (${TARGET},server)
-	cd ${EXTERNAL_LIBFFI} && test -e server && mv server $(TARGET) || true
-endif
 
 #### zlib ##########
 
@@ -895,10 +699,6 @@ $(sqlite_o): $(sqlite_c)
 	${OSSEC_CC} ${OSSEC_CFLAGS} -w -fPIC ${SQLITE_CFLAGS} -c $^ -o $@ -fPIC
 
 #### cJSON #########
-
-ifeq (${uname_S},Darwin)
-JSON_SHFLAGS=-install_name @rpath/libcjson.$(SHARED)
-endif
 
 cjson_c := ${EXTERNAL_JSON}cJSON.c
 cjson_o := $(cjson_c:.c=.o)
@@ -1050,24 +850,8 @@ $(POPT_BUILD_DIR)Makefile:
 	mkdir -p $(POPT_BUILD_DIR) && cd $(POPT_BUILD_DIR) && cmake ..
 
 ### lua lib ###
-
-ifeq (${uname_S},Darwin)
-	cd ${EXTERNAL_LUA} && make macosx MYCFLAGS='-fPIC' && make local
-else
-ifeq (${uname_S},SunOS)
-	cd ${EXTERNAL_LUA} && gmake solaris MYCFLAGS='-fPIC' && gmake local INSTALL='cp -p' INSTALL_EXEC='cp -p' INSTALL_DATA='cp -p'
-else
-ifeq ($(findstring BSD,${uname_S}), BSD)
-	cd ${EXTERNAL_LUA} && make bsd MYCFLAGS='-fPIC' && make local
-else
-ifeq (${uname_S},AIX)
-	cd ${EXTERNAL_LUA} && make aix MYCFLAGS='-fPIC' && make local
-else
 	cd ${EXTERNAL_LUA} && make posix MYCFLAGS='-fPIC' && make local
-endif
-endif
-endif
-endif
+
 
 ### rpm lib ###
 
@@ -1119,7 +903,7 @@ RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
 PYTHON_SOURCE := no
 
-ifneq (,$(filter ${uname_S},Linux Darwin HP-UX))
+ifneq (,$(filter ${uname_S},Linux HP-UX))
 	cpu_arch := ${uname_M}
 ifneq (,$(filter ${cpu_arch},x86_64 amd64))
 	PRECOMPILED_ARCH := /amd64
@@ -1295,7 +1079,7 @@ WAZUHEXT_LIB = libwazuhext.$(SHARED)
 WAZUH_LIB = libwazuhshared.$(SHARED)
 BUILD_LIBS = libwazuh.a $(WAZUHEXT_LIB)
 
-$(BUILD_SERVER) $(BUILD_AGENT) $(WINDOWS_BINS) $(WINDOWS_BINS): $(BUILD_LIBS)
+$(BUILD_SERVER) $(BUILD_AGENT) : $(BUILD_LIBS)
 
 #### os_xml ########
 
@@ -1399,19 +1183,12 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
 
-	ifeq (${uname_S},Darwin)
-	    UNIT_TEST_WRAPPERS+=${wrappers_macos_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_macos_libc_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_macos_posix_o}
-	else
-		UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
-		UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
-	endif
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
+	UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
 
-	ifeq (${TARGET},server)
-		UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_modules_o}
-	endif
+	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_modules_o}
+	
 endif #TEST
 
 #### Config ##########
@@ -1480,12 +1257,6 @@ libwazuh.a: ${crypto_o} ${os_zlib_o} ${UNIT_TEST_WRAPPERS} ${manage_agents}
 
 ### libwazuhext #########
 
-ifeq (${uname_S},Darwin)
-WAZUH_SHFLAGS=-install_name @rpath/libwazuhext.$(SHARED)
-
-$(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHFLAGS) -o $@ -Wl,-all_load $^ $(OSSEC_LIBS)
-else
 ifeq (${uname_S},SunOS)
 ifneq ($(uname_R),5.10)
 LIBGCC_FLAGS := -static-libgcc
@@ -1525,39 +1296,10 @@ $(WAZUHEXT_LIB): $(EXTERNAL_LIBS)
 endif
 endif
 endif
-endif
 
 ### libwazuhshared.so #########
-
-ifeq (${uname_S},Darwin)
-WAZUH_SHARED_SHFLAGS=-install_name @rpath/libwazuhshared.$(SHARED)
-
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $(WAZUH_SHARED_SHFLAGS) -o $@ -Wl,-all_load $^ $(OSSEC_LIBS)
-else
-ifeq (${uname_S},SunOS)
-ifneq ($(uname_R),5.10)
-LIBGCC_FLAGS := -static-libgcc
-else
-LIBGCC_FLAGS := -Wl,-rpath,\$$ORIGIN
-endif
-ifeq (${uname_P},sparc)
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -mimpure-text -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-else
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ $(LIBGCC_FLAGS) -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
-else
-ifneq (,$(filter ${uname_S},AIX HP-UX))
-$(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
-	$(OSSEC_SHARED) $(OSSEC_CFLAGS) $^ ${OSSEC_LIBS} -o $@ -static-libgcc
-else
 $(WAZUH_LIB): $(WAZUHEXT_LIB) $(AR_PROGRAMS_DEPS)
 	$(OSSEC_SHARED) $(OSSEC_CFLAGS) -o $@ -Wl,--whole-archive $^ -Wl,--no-whole-archive ${OSSEC_LIBS}
-endif
-endif
-endif
 
 ### wazuh-gtest-gmock ###
 
