@@ -1261,10 +1261,10 @@ checks:
       - mitre_techniques: ["T1040", "T1056", "T1056.001", "T1557"]
       - mitre_tactics: ["TA0002"]
       - mitre_mitigations: ["M1050"]
-    condition: none
+    condition: all
     rules:
       - "f:/etc/gdm/custom.conf"
-      - 'f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
+      - 'not f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
 
   # 1.9 Ensure updates, patches, and additional security software are installed (Manual) - Not Implemented
 
