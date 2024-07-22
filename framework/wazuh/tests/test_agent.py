@@ -30,7 +30,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
-            ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
+            agent_check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent
         from wazuh import WazuhError, WazuhException, WazuhInternalError
         from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
@@ -1593,3 +1593,11 @@ def test_unset_single_group_agent_ko(agent_basic_mock, group_exists_mock, get_gr
     with pytest.raises(WazuhException, match=f".* {expected_exc} .*"):
         Agent.unset_single_group_agent(agent_id, group_id, force=force)
 
+
+def test_agent_check_uninstall_permission():
+    """Check that agent_check_uninstall_permission returns the expected msg"""
+
+    result = agent_check_uninstall_permission()
+    expected = WazuhResult({'message': "Agent has permission to be uninstalled"})
+
+    assert result == expected
