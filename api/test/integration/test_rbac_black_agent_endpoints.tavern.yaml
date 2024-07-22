@@ -1678,3 +1678,18 @@ stages:
         - function: tavern_utils:test_validate_restart_by_node_rbac
           extra_kwargs:
             permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
+
+---
+test_name: GET /agents/uninstall
+
+stages:
+
+  - name: Check user's permission to uninstall agents (Denied)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{port:d}/agents/uninstall"
+      method: GET
+      headers:
+        Authorization: "Bearer {test_login_token}"
+    response:
+      <<: *permission_denied

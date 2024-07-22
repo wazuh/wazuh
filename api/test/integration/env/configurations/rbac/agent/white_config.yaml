@@ -58,6 +58,12 @@
   effect: deny
 
 - actions:
+  - agent:uninstall
+  resources:
+  - "*:*:*"
+  effect: allow
+
+- actions:
   - agent:upgrade
   resources:
   - agent:id:005

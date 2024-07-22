@@ -57,6 +57,12 @@
   effect: deny
 
 - actions:
+  - agent:uninstall
+  resources:
+  - "*:*:*"
+  effect: deny
+
+- actions:
   - group:read
   - group:update_config
   - group:modify_assignments
