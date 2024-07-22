@@ -2,7 +2,7 @@ import os
 import sys
 from unittest.mock import patch
 
-import wodles.aws.tests.aws_constants as test_constants
+import aws_constants as test_constants
 
 data_path = os.path.join(os.path.dirname(__file__), 'data')
 
