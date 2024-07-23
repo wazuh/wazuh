@@ -183,7 +183,8 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
         },
         "loggers": {
             "wazuh-api": {"handlers": hdls, "level": log_level, "propagate": False},
-            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False}
+            "start-stop-api": {"handlers": hdls, "level": 'INFO', "propagate": False},
+            "wazuh-comms-api": {"handlers": hdls, "level": log_level, "propagate": False}
         }
     }
 
@@ -208,6 +209,11 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
     log_config_dict['loggers']['uvicorn'] = {"handlers": hdls, "level": 'WARNING', "propagate": False}
     log_config_dict['loggers']['uvicorn.error'] = {"handlers": hdls, "level": 'WARNING', "propagate": False}
     log_config_dict['loggers']['uvicorn.access'] = {'level': 'WARNING'}
+
+    # Configure the gunicorn loggers. They will be created by the gunicorn process.
+    log_config_dict['loggers']['gunicorn'] = {"handlers": hdls, "level": log_level, "propagate": False}
+    log_config_dict['loggers']['gunicorn.error'] = {"handlers": hdls, "level": log_level, "propagate": False}
+    log_config_dict['loggers']['gunicorn.access'] = {'level': log_level}
 
     return log_config_dict
 

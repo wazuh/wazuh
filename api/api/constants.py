@@ -14,6 +14,7 @@ SECURITY_PATH = os.path.join(CONFIG_PATH, 'security')
 SECURITY_CONFIG_PATH = os.path.join(SECURITY_PATH, 'security.yaml')
 RELATIVE_SECURITY_PATH = os.path.relpath(SECURITY_PATH, common.WAZUH_PATH)
 API_LOG_PATH = os.path.join(common.WAZUH_PATH, 'logs', 'api')
+COMMS_API_LOG_PATH = os.path.join(common.WAZUH_PATH, 'logs', 'comms_api')
 API_SSL_PATH = os.path.join(CONFIG_PATH, 'ssl')
 INSTALLATION_UID_PATH = os.path.join(SECURITY_PATH, 'installation_uid')
 INSTALLATION_UID_KEY = 'installation_uid'
