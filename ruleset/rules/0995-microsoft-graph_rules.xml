@@ -19,7 +19,7 @@
     </rule>
 
 
-<!--Alerts&Incidents 99501-99700-->
+<!--Alerts&Incidents 99501-99650-->
 
     <rule id="99501" level="3">
         <if_sid>99500</if_sid>
@@ -27,7 +27,7 @@
         <field name="ms-graph.relationship">alerts|alerts_v2</field>
         <description>MS Graph message: Alert related events.</description>
     </rule>
-    
+
     <rule id="99502" level="3">
         <if_sid>99500</if_sid>
         <options>no_full_log</options>
@@ -73,7 +73,7 @@
         <field name="ms-graph.determination">unknownFutureValue</field>
         <description>MS Graph message: Evolvable enumeration sentinel value. Unused value - Check for logging misconfigurations.</description>
     </rule>
-    
+
     <rule id="99510" level="4">
         <if_sid>99501,99502</if_sid>
         <options>no_full_log</options>
@@ -374,7 +374,7 @@
         <field name="ms-graph.category">Execution</field>
         <mitre>
             <id>TA0002</id>
-        </mitre>        
+        </mitre>
         <description>MS Graph message: Indicators that the system is performing malicious code execution have been detected. However, this alert is unlikely to indciate an APT. Check the system for signs of infection.</description>
     </rule>
 
@@ -384,7 +384,7 @@
         <field name="ms-graph.category">InitialAccess</field>
         <mitre>
             <id>TA0001</id>
-        </mitre>        
+        </mitre>
         <description>MS Graph message: Indicators that the system is affected by intrusion attempts have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
 
@@ -394,7 +394,7 @@
         <field name="ms-graph.category">LateralMovement</field>
         <mitre>
             <id>TA0008</id>
-        </mitre>        
+        </mitre>
         <description>MS Graph message: Indicators that the system is establishing unauthorized internal connections have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the systems for signs of infection.</description>
     </rule>
 
@@ -404,7 +404,7 @@
         <field name="ms-graph.category">Persistence</field>
         <mitre>
             <id>TA0003</id>
-        </mitre>        
+        </mitre>
         <description>MS Graph message: Indicators that the system is affected by persistence establishment attempts have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
 
@@ -770,9 +770,9 @@
         <if_sid>99503</if_sid>
         <options>no_full_log</options>
         <field name="ms-graph.determination">multiStagedAttack</field>
-        <description>MS Graph message: An attack involving multiple kill-chain attack stages has been detected. This is a true positive alert.</description> 
+        <description>MS Graph message: An attack involving multiple kill-chain attack stages has been detected. This is a true positive alert.</description>
     </rule>
-    
+
     <rule id="99612" level="15">
         <if_sid>99503</if_sid>
         <options>no_full_log</options>
@@ -847,7 +847,7 @@
         <field name="ms-graph.classification">falsePositive</field>
         <description>MS Graph message: No malicious activity has been detected. This alert indicates a false positive.</description>
     </rule>
-    
+
     <rule id="99632" level="6">
         <if_sid>99501,99502</if_sid>
         <options>no_full_log</options>
@@ -864,4 +864,26 @@
 
 
 <!--End of Alerts&Incidents -->
+
+
+<!--MDM Intune 99651-99700-->
+
+
+    <rule id="99651" level="3">
+        <if_sid>99500</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.resource">deviceManagement</field>
+        <description>MS Graph message: MDM Intune event.</description>
+    </rule>
+
+    <rule id="99652" level="3">
+        <if_sid>99651</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.relationship">auditEvents</field>
+        <description>MS Graph message: MDM Intune audit event.</description>
+    </rule>
+
+
+<!--MDM Intune 99651-99700-->
+
 </group>
