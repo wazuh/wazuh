@@ -1,0 +1,109 @@
+#!/bin/sh
+# postrm script for wazuh-agent
+# Wazuh, Inc 2015
+
+set -e
+
+DIR="/var/ossec"
+WAZUH_TMP_DIR="${DIR}/packages_files/agent_config_files"
+
+case "$1" in
+    remove|failed-upgrade|abort-install|abort-upgrade|disappear)
+
+        if [ -d ${WAZUH_TMP_DIR} ]; then
+            rm -rf ${WAZUH_TMP_DIR}
+        fi
+
+        # Back up the old configuration files as .save
+        if [ ! -d ${DIR}/etc ]; then
+            mkdir -p ${DIR}/etc
+        fi
+
+        # If the directory is not empty, copy the files into ${DIR}/etc
+        if ls -A ${DIR}/tmp/conffiles > /dev/null 2>&1 ; then
+            mv ${DIR}/tmp/conffiles/* ${DIR}/etc
+        fi
+        rm -rf ${DIR}/tmp
+        if [ "$1" = "remove" ]; then
+            rm -rf ${DIR}/ruleset
+            rm -rf ${DIR}/var
+            rm -rf ${DIR}/logs
+            rm -rf ${DIR}/queue
+            rm -rf ${DIR}/etc/shared
+        fi
+
+        # Delete old .save
+        find ${DIR}/etc/ -type f  -name "*save" -exec rm -f {} \;
+
+        # Rename the files
+        find ${DIR}/etc/ -type f -exec mv {} {}.save \;
+
+        ;;
+
+        purge)
+
+        if getent passwd wazuh >/dev/null 2>&1; then
+            deluser wazuh > /dev/null 2>&1
+        fi
+        if getent group wazuh >/dev/null 2>&1; then
+            delgroup wazuh > /dev/null 2>&1
+        fi
+        rm -rf ${DIR}/*
+
+    ;;
+
+    upgrade)
+        # If the upgrade downgrades to earlier versions, restore ownership
+        if command -v ${DIR}/bin/ossec-control > /dev/null 2>&1; then
+
+            OSMYSHELL="/sbin/nologin"
+
+            if [ -d ${DIR}/logs/wazuh ]; then
+                mv ${DIR}/logs/wazuh ${DIR}/logs/ossec
+            fi
+
+            if [ -d ${DIR}/queue/sockets ]; then
+                mv ${DIR}/queue/sockets ${DIR}/queue/ossec
+            fi
+
+            if [ -f ${DIR}/queue/sockets/.agent_info ]; then
+                mv ${DIR}/queue/sockets/.agent_info ${DIR}/queue/ossec/
+            fi
+
+            rm -rf ${DIR}/queue/sockets > /dev/null 2>&1
+
+            if ! getent group ossec > /dev/null 2>&1; then
+                addgroup --system ossec > /dev/null 2>&1
+            fi
+
+            if ! getent passwd ossec > /dev/null 2>&1; then
+                adduser --system --home /var/ossec --shell ${OSMYSHELL} --ingroup ossec ossec > /dev/null 2>&1
+            fi
+
+            # Set the correct permissions to orphaned files (not owned by root)
+            find ${DIR} ! -group root -exec chgrp ossec {} \; > /dev/null 2>&1
+            find ${DIR} ! -user root -exec chown ossec {} \; > /dev/null 2>&1
+
+            # delete wazuh user and group
+            if getent passwd wazuh > /dev/null 2>&1; then
+                deluser wazuh
+            fi
+
+            if getent group wazuh > /dev/null 2>&1; then
+                delgroup wazuh
+            fi
+        fi
+
+        exit 0
+
+    ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+
+    ;;
+
+esac
+
+exit 0
