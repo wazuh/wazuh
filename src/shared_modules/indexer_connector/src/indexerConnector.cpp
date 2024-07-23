@@ -294,8 +294,7 @@ void IndexerConnector::initialize(const std::shared_ptr<ServerSelector>& selecto
     nlohmann::json templateData {};
     auto onSuccess = [&templateData](const std::string& response)
     {
-        nlohmann::json jsonResponse = nlohmann::json::parse(response);
-        templateData = jsonResponse.at("index_templates").front().at("index_template").at("template");
+        templateData = nlohmann::json::parse(response).at("index_templates").front().at("index_template").at("template");
     };
 
     // Initialize Index.
