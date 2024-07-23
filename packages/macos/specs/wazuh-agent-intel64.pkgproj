@@ -812,7 +812,7 @@
 				<key>USE_HFS+_COMPRESSION</key>
 				<false/>
 				<key>VERSION</key>
-				<string>4.9.0-1</string>
+				<string>4.9.1-1</string>
 			</dict>
 			<key>TYPE</key>
 			<integer>0</integer>
@@ -1239,7 +1239,7 @@
 				</dict>
 			</array>
 			<key>NAME</key>
-			<string>wazuh-agent-4.9.0-1.intel64</string>
+			<string>wazuh-agent-4.9.1-1.intel64</string>
 			<key>PAYLOAD_ONLY</key>
 			<false/>
 			<key>TREAT_MISSING_PRESENTATION_DOCUMENTS_AS_WARNING</key>

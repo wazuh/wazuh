@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.9.0"
-REVISION="40903"
+VERSION="v4.9.1"
+REVISION="40910"
 TYPE="server"
 
 ###  Do not modify below here ###
