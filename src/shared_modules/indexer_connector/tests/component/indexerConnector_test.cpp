@@ -59,6 +59,14 @@ static const auto TEMPLATE_DATA = R"(
     }
 )"_json; // Real template example.
 
+static const auto TEMPLATE_WRONG_DATA = R"(
+    {
+        "index_templates": [
+            {}
+        ]
+    }
+)"_json;
+
 // Indexers.
 static const auto INDEXER_TIMEOUT {0u};
 static const std::string INDEXER_HOSTNAME {"localhost"};
@@ -82,6 +90,16 @@ static const auto B_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(B_PORT)};
 static const auto C_IDX {2};
 static const auto C_PORT {7777};
 static const auto C_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(C_PORT)};
+
+// Indexer D.
+static const auto D_IDX {3};
+static const auto D_PORT {6666};
+static const auto D_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(D_PORT)};
+
+// Indexer E.
+static const auto E_IDX {3};
+static const auto E_PORT {5555};
+static const auto E_ADDRESS {INDEXER_HOSTNAME + ":" + std::to_string(E_PORT)};
 
 // Dummy log function used on tests.
 static void logFunction(const int logLevel,
@@ -115,6 +133,9 @@ void IndexerConnectorTest::SetUp()
         std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, B_PORT, "red", INDEXER_NAME, TEMPLATE_DATA.dump()));
     m_indexerServers.push_back(
         std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, C_PORT, "red", INDEXER_NAME, TEMPLATE_DATA.dump()));
+    m_indexerServers.push_back(
+        std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, D_PORT, "green", INDEXER_NAME, TEMPLATE_WRONG_DATA.dump()));
+    m_indexerServers.push_back(std::make_unique<FakeIndexer>(INDEXER_HOSTNAME, E_PORT, "green", INDEXER_NAME, ""));
 }
 
 void IndexerConnectorTest::TearDown()
@@ -191,6 +212,78 @@ TEST_F(IndexerConnectorTest, Connection)
     constexpr auto EXPECTED_CALLBACK_CALLED_TIMES {1};
     ASSERT_EQ(callbackCalled, EXPECTED_CALLBACK_CALLED_TIMES);
     ASSERT_EQ(templateData, TEMPLATE_DATA.at("index_templates").front().at("index_template").at("template"));
+}
+
+/**
+ * @brief Test the outcome when the template information format is not expected.
+ *
+ */
+TEST_F(IndexerConnectorTest, IndexInitializationWrongTemplateFormat)
+{
+    nlohmann::json indexData;
+    nlohmann::json templateData;
+    unsigned int callbackCalled {0};
+    const auto checkInitDataCallback {[&callbackCalled, &indexData, &templateData](const std::string& data)
+                                      {
+                                          auto responseData = nlohmann::json::parse(data);
+                                          ++callbackCalled;
+
+                                          if (1 == callbackCalled)
+                                          {
+                                              templateData = std::move(responseData);
+                                              return;
+                                          }
+
+                                          indexData = std::move(responseData);
+                                      }};
+    m_indexerServers[D_IDX]->setInitIndexCallback(checkInitDataCallback);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({D_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, logFunction, INDEXER_TIMEOUT)};
+    EXPECT_THROW(waitUntil([this]() { return m_indexerServers[D_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS),
+                 std::runtime_error);
+
+    constexpr auto EXPECTED_CALLBACK_CALLED_TIMES {0};
+    ASSERT_EQ(callbackCalled, EXPECTED_CALLBACK_CALLED_TIMES);
+    ASSERT_EQ(templateData, nullptr);
+}
+
+/**
+ * @brief Test the initialization when the indexer does not have a template.
+ *
+ */
+TEST_F(IndexerConnectorTest, MissingTemplate)
+{
+    nlohmann::json indexData;
+    nlohmann::json templateData;
+    unsigned int callbackCalled {0};
+    const auto checkInitDataCallback {[&callbackCalled, &indexData, &templateData](const std::string& data)
+                                      {
+                                          auto responseData = nlohmann::json::parse(data);
+                                          ++callbackCalled;
+
+                                          if (1 == callbackCalled)
+                                          {
+                                              templateData = std::move(responseData);
+                                              return;
+                                          }
+
+                                          indexData = std::move(responseData);
+                                      }};
+    m_indexerServers[E_IDX]->setInitIndexCallback(checkInitDataCallback);
+
+    nlohmann::json indexerConfig;
+    indexerConfig["name"] = INDEXER_NAME;
+    indexerConfig["hosts"] = nlohmann::json::array({E_ADDRESS});
+    auto indexerConnector {IndexerConnector(indexerConfig, logFunction, INDEXER_TIMEOUT)};
+    EXPECT_THROW(waitUntil([this]() { return m_indexerServers[E_IDX]->initialized(); }, MAX_INDEXER_INIT_TIME_MS),
+                 std::runtime_error);
+
+    constexpr auto EXPECTED_CALLBACK_CALLED_TIMES {0};
+    ASSERT_EQ(callbackCalled, EXPECTED_CALLBACK_CALLED_TIMES);
+    ASSERT_EQ(templateData, nullptr);
 }
 
 /**

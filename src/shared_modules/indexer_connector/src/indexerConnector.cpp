@@ -294,7 +294,16 @@ void IndexerConnector::initialize(const std::shared_ptr<ServerSelector>& selecto
     nlohmann::json templateData {};
     auto onSuccess = [&templateData](const std::string& response)
     {
-        templateData = nlohmann::json::parse(response).at("index_templates").front().at("index_template").at("template");
+        try
+        {
+            templateData =
+                nlohmann::json::parse(response).at("index_templates").front().at("index_template").at("template");
+        }
+        catch (const nlohmann::json::exception& e)
+        {
+            logDebug1(IC_NAME, "Failed to parse index template: %s", e.what());
+            throw std::runtime_error("Failed to parse index template.");
+        }
     };
 
     // Initialize Index.

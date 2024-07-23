@@ -137,7 +137,14 @@ public:
                      [this](const httplib::Request& req, httplib::Response& res)
                      {
                          std::ignore = req;
-                         res.set_content(m_templateData, "text/plain");
+                         if (!m_templateData.empty())
+                         {
+                             res.set_content(m_templateData, "text/plain");
+                         }
+                         else
+                         {
+                             res.status = 404;
+                         }
                      });
 
         // Endpoint where the index is initialized.
