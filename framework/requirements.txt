@@ -1,3 +1,4 @@
+annotated-types==0.7.0
 anyio==4.1.0
 aiohttp==3.9.5
 aiosignal==1.3.1
@@ -22,11 +23,14 @@ content-size-limit-asgi==0.1.5
 cryptography==42.0.4
 Cython==0.29.36
 defusedxml==0.6.0
+dnspython==2.6.1
 docker==7.1.0
 docker-pycreds==0.4.0
 docutils==0.15.2
+email_validator==2.2.0
 Events==0.5
 exceptiongroup==1.2.0
+fastapi==0.111.1
 frozenlist==1.2.0
 future==0.18.3
 google-api-core==1.30.0
@@ -40,6 +44,7 @@ google-resumable-media==1.3.1
 greenlet==2.0.2
 grpc-google-iam-v1==0.12.3
 grpcio==1.58.0
+gunicorn==22.0.0
 httpcore==1.0.2
 httpx==0.26.0
 h11==0.14.0
@@ -68,6 +73,8 @@ pathlib==1.0.1
 protobuf==3.19.6
 proto-plus==1.19.0
 pyarrow==14.0.1
+pydantic==2.8.2
+pydantic_core==2.20.1
 psutil==5.9.0
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
@@ -102,9 +109,3 @@ xmltodict==0.12.0
 yarl==1.7.0
 zipp==3.3.2
 content_size_limit_asgi==0.1.5
-
-# Agent comms API
-# TODO: define versions
-fastapi
-gunicorn
-pydantic
