@@ -21,8 +21,7 @@ void ThreadEventDispatcherTest::TearDown() {
 };
 
 constexpr auto BULK_SIZE {50};
-TEST_F(ThreadEventDispatcherTest, Ctor)
-{
+TEST_F(ThreadEventDispatcherTest, ConstructorTestSingleThread) {
     static const std::vector<int> MESSAGES_TO_SEND_LIST {120, 100};
 
     for (auto MESSAGES_TO_SEND : MESSAGES_TO_SEND_LIST)
@@ -60,7 +59,7 @@ TEST_F(ThreadEventDispatcherTest, Ctor)
     }
 }
 
-TEST_F(ThreadEventDispatcherTest, CtorNoWorker)
+TEST_F(ThreadEventDispatcherTest, CtorNoWorkerSingleThread)
 {
     static const std::vector<int> MESSAGES_TO_SEND_LIST {120, 100};
 
@@ -101,7 +100,7 @@ TEST_F(ThreadEventDispatcherTest, CtorNoWorker)
     }
 }
 
-TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
+TEST_F(ThreadEventDispatcherTest, CtorPopFeatureSingleThread)
 {
     constexpr auto MESSAGES_TO_SEND {1000};
 
@@ -144,4 +143,3 @@ TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
     promise.get_future().wait_for(std::chrono::seconds(10));
     EXPECT_EQ(MESSAGES_TO_SEND, counter);
 }
-

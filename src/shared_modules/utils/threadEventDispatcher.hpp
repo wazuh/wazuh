@@ -33,20 +33,30 @@ public:
     explicit TThreadEventDispatcher(Functor functor,
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const unsigned int numberOfThreads = 1)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
+        , m_numberOfThreads {numberOfThreads}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
-        m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
+        m_threads.reserve(m_numberOfThreads);
+
+        for (unsigned int i = 0; i < m_numberOfThreads; ++i)
+        {
+            m_threads.push_back(
+                std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
+        }
     }
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const unsigned int numberOfThreads = 1)
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_numberOfThreads {numberOfThreads}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
     }
@@ -61,7 +71,9 @@ public:
     void startWorker(Functor functor)
     {
         m_functor = std::move(functor);
-        m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
+        m_threads.reserve(m_numberOfThreads);
+        m_threads.push_back(
+            std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
     }
 
     void push(const T& value)
@@ -116,7 +128,7 @@ public:
     {
         m_running = false;
         m_queue->cancel();
-        joinThread();
+        joinThreads();
     }
 
     bool cancelled() const
@@ -208,20 +220,24 @@ private:
         }
     }
 
-    void joinThread()
+    void joinThreads()
     {
-        if (m_thread.joinable())
+        for (auto& thread : m_threads)
         {
-            m_thread.join();
+            if (thread.joinable())
+            {
+                thread.join();
+            }
         }
     }
 
     Functor m_functor;
     std::unique_ptr<TSafeQueueType> m_queue;
-    std::thread m_thread;
+    std::vector<std::thread> m_threads;
     std::atomic_bool m_running = true;
 
     const size_t m_maxQueueSize;
+    const unsigned int m_numberOfThreads;
     const uint64_t m_bulkSize;
 };
 
