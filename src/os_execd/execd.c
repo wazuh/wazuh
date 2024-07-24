@@ -156,7 +156,7 @@ void ExecdTimeoutRun(int *childcount)
         /* Timed out */
         if ((curr_time - list_entry->time_of_addition) > list_entry->time_to_block) {
 
-            if (list_entry->command[0] == NULL)
+            if (list_entry->command == NULL || list_entry->command[0] == NULL)
             {
                 merror("Timeout command is null.");
 #ifdef WIN32
@@ -304,8 +304,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         }
 
         char *cmd_copy;
-        os_calloc(2, sizeof(char *), cmd_copy);
-        os_strdup(cmd[0], cmd_copy[0]);
+        os_strdup(cmd[0], cmd_copy);
         if (cmd_copy == NULL) {
             merror("Active response cmd_copy is null");
             return;
@@ -313,7 +312,7 @@ void ExecdRun(char *exec_msg, int *childcount)
 
         /* Set rkey initially with the name of the AR */
         memset(rkey, '\0', OS_SIZE_4096);
-        snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd_copy[0]));
+        snprintf(rkey, OS_SIZE_4096 - 1, "%s", basename_ex(cmd_copy));
 
         keys_json = get_json_from_input(response);
         if (keys_json != NULL) {
@@ -449,7 +448,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         fflush(wfd->file_in);
 
         wpclose(wfd);
-
+        os_free(cmd_copy);
 #ifndef WIN32
         (*childcount)++;
 #endif
