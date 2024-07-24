@@ -42,6 +42,21 @@ if sys.version_info[0] == 3:
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
 
+def assign_wazuh_ownership(filepath: str):
+    """Create a file if it doesn't exist and assign ownership.
+
+    Parameters
+    ----------
+    filepath : str
+        File to assign ownership.
+    """
+    if not os.path.isfile(filepath):
+        f = open(filepath, "w")
+        f.close()
+    if os.stat(filepath).st_gid != common.wazuh_gid() or \
+        os.stat(filepath).st_uid != common.wazuh_uid():
+        os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
+
 def clean_pid_files(daemon: str) -> None:
     """Check the existence of '.pid' files for a specified daemon.
 

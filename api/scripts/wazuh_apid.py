@@ -49,22 +49,6 @@ def spawn_authentication_pool():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-def assign_wazuh_ownership(filepath: str):
-    """Create a file if it doesn't exist and assign ownership.
-
-    Parameters
-    ----------
-    filepath : str
-        File to assign ownership.
-    """
-    if not os.path.isfile(filepath):
-        f = open(filepath, "w")
-        f.close()
-    if os.stat(filepath).st_gid != common.wazuh_gid() or \
-        os.stat(filepath).st_uid != common.wazuh_uid():
-        os.chown(filepath, common.wazuh_uid(), common.wazuh_gid())
-
-
 def configure_ssl(params):
     """Configure https files and permission, and set the uvicorn dictionary configuration keys.
 
@@ -106,8 +90,8 @@ def configure_ssl(params):
                 logger.warning(SSL_DEPRECATED_MESSAGE.format(ssl_protocol=config_ssl_protocol))
 
         # Check and assign ownership to wazuh user for server.key and server.crt files
-        assign_wazuh_ownership(api_conf['https']['key'])
-        assign_wazuh_ownership(api_conf['https']['cert'])
+        utils.assign_wazuh_ownership(api_conf['https']['key'])
+        utils.assign_wazuh_ownership(api_conf['https']['cert'])
 
         params['ssl_version'] = ssl.PROTOCOL_TLS_SERVER
 
@@ -386,7 +370,7 @@ if __name__ == '__main__':
     # set permission on log files
     for handler in uvicorn_params['log_config']['handlers'].values():
         if 'filename' in handler:
-            assign_wazuh_ownership(handler['filename'])
+            utils.assign_wazuh_ownership(handler['filename'])
             os.chmod(handler['filename'], 0o660)
 
     # Configure and create the wazuh-api logger

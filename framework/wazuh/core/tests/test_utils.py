@@ -160,6 +160,34 @@ test_xml = '''
 <!-- Example -->
 '''
 
+@patch('os.chown')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
+def test_assign_wazuh_ownership(mock_gid, mock_uid, mock_chown):
+    """Test assign_wazuh_ownership function."""
+    with TemporaryDirectory() as tmp_dirname:
+        tmp_file = NamedTemporaryFile(dir=tmp_dirname, delete=False)
+        filename = os.path.join(tmp_dirname, tmp_file.name)
+        utils.assign_wazuh_ownership(filename)
+
+        mock_chown.assert_called_once_with(filename, mock_uid(), mock_gid())
+
+
+@patch('os.chown')
+@patch('wazuh.core.common.wazuh_uid')
+@patch('wazuh.core.common.wazuh_gid')
+def test_assign_wazuh_ownership_write_file(mock_gid, mock_uid, mock_chown):
+    """Test assign_wazuh_ownership function with a non-regular file."""
+    with TemporaryDirectory() as tmp_dirname:
+        tmp_file = NamedTemporaryFile(dir=tmp_dirname, delete=False)
+        filename = os.path.join(tmp_dirname, tmp_file.name)
+
+        with patch('os.path.isfile', return_value=False):
+            with patch('builtins.open') as mock_open:
+                utils.assign_wazuh_ownership(filename)
+                mock_open.assert_called_once_with(filename, 'w')
+
+            mock_chown.assert_called_once_with(filename, mock_uid(), mock_gid())
 
 @pytest.mark.parametrize('month', [
     1,
