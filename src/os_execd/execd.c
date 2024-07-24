@@ -306,7 +306,10 @@ void ExecdRun(char *exec_msg, int *childcount)
         char *cmd_copy;
         os_strdup(cmd[0], cmd_copy);
         if (cmd_copy == NULL) {
-            merror("Active response cmd_copy is null");
+            merror("Active response command is null");
+            wpclose(wfd);
+            os_free(cmd_parameters);
+            cJSON_Delete(json_root);
             return;
         }
 
