@@ -54,14 +54,6 @@ class EXPORTED IndexerConnector final
     std::unordered_map<std::string, std::chrono::system_clock::time_point> m_lastSync;
 
     /**
-     * @brief Intialize method used to initialize the index.
-     *
-     * @param selector Server selector.
-     * @param secureCommunication Secure communication.
-     */
-    void initialize(const std::shared_ptr<ServerSelector>& selector, const SecureCommunication& secureCommunication);
-
-    /**
      * @brief This method is used to calculate the diff between the inventory database and the indexer.
      * @param responseJson Response JSON.
      * @param agentId Agent ID.

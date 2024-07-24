@@ -272,61 +272,6 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     }
 }
 
-void IndexerConnector::initialize(const std::shared_ptr<ServerSelector>& selector,
-                                  const SecureCommunication& secureCommunication)
-{
-    // Define the error callback
-    auto onError = [](const std::string& error, const long statusCode)
-    {
-        if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
-        {
-            std::string errorMessage = error;
-            if (statusCode != NOT_USED)
-            {
-                errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
-            }
-
-            throw std::runtime_error(errorMessage);
-        }
-    };
-
-    // Define the success callback
-    nlohmann::json templateData {};
-    auto onSuccess = [&templateData](const std::string& response)
-    {
-        try
-        {
-            templateData =
-                nlohmann::json::parse(response).at("index_templates").front().at("index_template").at("template");
-        }
-        catch (const nlohmann::json::exception& e)
-        {
-            logDebug1(IC_NAME, "Failed to parse index template: %s", e.what());
-            throw std::runtime_error("Failed to parse index template.");
-        }
-    };
-
-    // Initialize Index.
-    HTTPRequest::instance().get(HttpURL(selector->getNext() + "/_index_template/" + m_indexName),
-                                onSuccess,
-                                onError,
-                                "",
-                                DEFAULT_HEADERS,
-                                secureCommunication);
-
-    HTTPRequest::instance().put(
-        HttpURL(selector->getNext() + "/" + m_indexName),
-        templateData,
-        [](const std::string&) { /* Not used */ },
-        onError,
-        "",
-        DEFAULT_HEADERS,
-        secureCommunication);
-
-    m_initialized = true;
-    logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
-}
-
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::function<void(
@@ -448,45 +393,6 @@ IndexerConnector::IndexerConnector(
         },
         SYNC_WORKERS,
         SYNC_QUEUE_LIMIT);
-
-    m_initializeThread = std::thread(
-        // coverity[copy_constructor_call]
-        [this, selector, secureCommunication]()
-        {
-            auto sleepTime = std::chrono::seconds(START_TIME);
-            std::unique_lock lock(m_mutex);
-            auto warningPrinted {false};
-            do
-            {
-                try
-                {
-                    sleepTime *= DOUBLE_FACTOR;
-                    if (sleepTime.count() > MAX_WAIT_TIME)
-                    {
-                        sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
-                    }
-
-                    initialize(selector, secureCommunication);
-                }
-                catch (const std::exception& e)
-                {
-                    logDebug1(IC_NAME,
-                              "Unable to initialize IndexerConnector for index '%s': %s. Retrying in %ld "
-                              "seconds.",
-                              m_indexName.c_str(),
-                              e.what(),
-                              sleepTime.count());
-                    if (!warningPrinted)
-                    {
-                        logWarn(IC_NAME,
-                                "IndexerConnector initialization failed for index '%s', retrying until the connection "
-                                "is successful.",
-                                m_indexName.c_str());
-                        warningPrinted = true;
-                    }
-                }
-            } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [this]() { return m_stopping.load(); }));
-        });
 }
 
 IndexerConnector::~IndexerConnector()
