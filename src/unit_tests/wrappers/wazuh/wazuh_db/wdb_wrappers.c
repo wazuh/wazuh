@@ -179,6 +179,14 @@ void __wrap_wdbi_update_completion(__attribute__((unused))wdb_t * wdb,
     check_expected(manager_checksum);
 }
 
+int __wrap_wdbc_connect_with_attempts(__attribute__((unused)) int max_attempts) {
+
+    if (max_attempts <= 0) {
+        fail_msg("Attempts must be greater than 0.");
+    }
+    return mock();
+}
+
 cJSON* __wrap_wdbc_query_parse_json(__attribute__((unused)) int *sock,
                                     __attribute__((unused)) const char *query,
                                     char *response,

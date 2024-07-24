@@ -61,6 +61,14 @@ int mitre_load() {
     os_calloc(OS_SIZE_6144 + 1, sizeof(char), wazuhdb_query);
     os_calloc(OS_MAXSTR, sizeof(char), response);
 
+    /* Connect to wdb */
+    sock = wdbc_connect_with_attempts(5);
+    if (sock < 0) {
+        merror("Unable to connect to Wazuh-DB for Mitre matrix information.");
+        result = -1;
+        goto end;
+    }
+
     /* Getting technique ID and name from Mitre's database in Wazuh-DB  */
     snprintf(wazuhdb_query, OS_SIZE_6144, SQL_GET_ALL_TECHNIQUES, MAX_TECHNIQUES_REQUEST, offset);
     techniques_json = wdbc_query_parse_json(&sock, wazuhdb_query, response, OS_MAXSTR);
