@@ -7,8 +7,6 @@ on:
     types:
       - ready_for_review
       - synchronize
-    branches:
-      - 11334-dev-new-wazuh-engine
     paths:
       - 'src/engine/**'
 

@@ -7,8 +7,6 @@ on:
     types:
       - ready_for_review
       - synchronize
-    branches:
-      - 11334-dev-new-wazuh-engine
     paths:
       - 'src/engine/**'
 
@@ -53,4 +51,3 @@ jobs:
       # Run unit tests using CTest
       working-directory: ${{env.ENGINE_DIR}}/build
       run: ctest -C ${{env.BUILD_TYPE}} -T test --output-on-failure -j2
-
