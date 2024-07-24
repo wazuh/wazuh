@@ -57,7 +57,7 @@ Vagrant.configure("2") do |config|
         echo "--- Downlading the engine from github ---"
         su vagrant -c "mkdir engine"
         cd engine
-        su vagrant -c "git clone --branch 11334-dev-new-wazuh-engine  https://github.com/wazuh/wazuh.git"
+        su vagrant -c "git clone --branch master  https://github.com/wazuh/wazuh.git"
         # Make symbolic link to the engine folder
         su vagrant -c "cd && ln -s engine/wazuh/src/engine/ project"
         cd wazuh/src/engine
