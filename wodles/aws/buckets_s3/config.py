@@ -156,10 +156,15 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
 
         sorted_files = sorted(filtered_files, key=lambda x: extract_date_from_key(x['Key']))
 
-        for sorted_file in sorted_files:
-            file_date = extract_date_from_key(sorted_file['Key'])
-            if file_date and file_date >= self.only_logs_after:
+        if self.only_logs_after is None:
+            for sorted_file in sorted_files:
                 yield sorted_file
+
+        else:
+            for sorted_file in sorted_files:
+                file_date = extract_date_from_key(sorted_file['Key'])
+                if file_date and file_date >= self.only_logs_after:
+                    yield sorted_file
 
     def reformat_msg(self, event):
         aws_bucket.AWSBucket.reformat_msg(self, event)
