@@ -278,9 +278,8 @@ UBUNTU_CODENAME=jammy\n");
 TEST_F(StringUtilsTest, CheckMultiReplacement)
 {
     std::string string_base {"hello         world"};
-    const auto retVal {Utils::replaceAll(string_base, "  ", " ")};
-    EXPECT_EQ(string_base, "hello world");
-    EXPECT_TRUE(retVal);
+    const auto retVal {Utils::trimRepeated(string_base, ' ')};
+    EXPECT_EQ(retVal, "hello world");
 }
 
 TEST_F(StringUtilsTest, substrOnFirstOccurrenceCorrect)
