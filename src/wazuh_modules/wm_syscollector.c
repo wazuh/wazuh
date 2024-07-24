@@ -256,12 +256,12 @@ void* wm_sys_main(wm_sys_t *sys) {
         close(queue_fd);
         queue_fd = 0;
     }
-    so_free_library(syscollector_module);
+
 #ifndef CLIENT
     so_free_library(router_module_ptr);
     router_module_ptr = NULL;
 #endif // CLIENT
-    syscollector_module = NULL;
+
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
     w_cond_signal(&sys_stop_condition);
