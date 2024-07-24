@@ -2205,8 +2205,14 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2353,8 +2359,14 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2433,8 +2445,14 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2513,8 +2531,14 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2593,8 +2617,14 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2607,12 +2637,6 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug2, formatted_msg, "No new logs received.");
 
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
@@ -2620,7 +2644,7 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
 }
@@ -2689,8 +2713,14 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2712,12 +2742,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, result);
 
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
@@ -2725,7 +2749,7 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
 }
@@ -2794,8 +2818,14 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2831,12 +2861,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
 
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
@@ -2844,7 +2868,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
 }
@@ -2891,13 +2915,13 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource) * 2, module_data->resources);
     os_strdup("security", module_data->resources[0].name);
-    os_strdup("auditlogs", module_data->resources[1].name);
+    os_strdup("deviceManagement", module_data->resources[1].name);
     module_data->num_resources = 2;
     os_malloc(sizeof(char*) * 2, module_data->resources[0].relationships);
     os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     os_malloc(sizeof(char*) * 2, module_data->resources[1].relationships);
-    os_strdup("signIns", module_data->resources[1].relationships[0]);
+    os_strdup("auditEvents", module_data->resources[1].relationships[0]);
     module_data->resources[1].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
     bool initial = false;
@@ -2923,8 +2947,14 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2945,12 +2975,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
 
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
@@ -2958,7 +2982,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wm_state_io, 1);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     // resource auditlogs
     os_calloc(1, sizeof(curl_response), response);
@@ -2967,7 +2991,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     os_strdup("{\"value\":[{\"full_log\":\"log1_resource_2\"}]}", response->body);
     os_strdup("test", response->header);
 
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-auditlogs-signIns");
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-deviceManagement-auditEvents");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
@@ -2980,8 +3004,14 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
     will_return(__wrap_strftime, 20);
 
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
+    will_return(__wrap_strftime, 20);
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/auditlogs/signIns?$filter=createdDateTime+gt+2023-02-08T12:24:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/auditEvents?$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2992,23 +3022,17 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"auditlogs\",\"relationship\":\"signIns\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"deviceManagement\",\"relationship\":\"auditEvents\"}}'");
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"auditlogs\",\"relationship\":\"signIns\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1_resource_2\",\"resource\":\"deviceManagement\",\"relationship\":\"auditEvents\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
 
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-auditlogs-signIns");
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-deviceManagement-auditEvents");
     expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
     expect_any(__wrap_wm_state_io, state);
     expect_any(__wrap_wm_state_io, size);
