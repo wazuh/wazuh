@@ -132,6 +132,21 @@ namespace Utils
         return leftTrim(rightTrim(str, args), args);
     }
 
+    static std::string trimRepeated(const std::string& str, char c = ' ')
+    {
+        auto haystack = str;
+        auto needle = std::string(2, c);
+        auto pos = haystack.find(needle);
+
+        while (std::string::npos != pos)
+        {
+            haystack.replace(pos, 2, 1, c);
+            pos = haystack.find(needle);
+        }
+
+        return haystack;
+    }
+
     static std::vector<std::string> split(const std::string& str, const char delimiter)
     {
         std::vector<std::string> tokens;

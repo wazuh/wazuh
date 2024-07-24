@@ -127,7 +127,7 @@ public:
                                 {
                                     // Remove the tabs and double spaces.
                                     Utils::replaceAll(response, "\t", " ");
-                                    Utils::replaceAll(response, "  ", " ");
+                                    response = Utils::trimRepeated(response, ' ');
                                     // Split the response by rows.
                                     const auto rows {Utils::split(response, '\n')};
 
