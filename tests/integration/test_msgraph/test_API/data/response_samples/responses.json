@@ -20,7 +20,7 @@
       }
     },
     {
-      "url": "http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+gt+*",
+      "url": "http://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
       "method": "GET",
       "responseCode": 200,
       "responseBody": {
@@ -30,7 +30,7 @@
       }
     },
     {
-      "url": "http://graph.microsoft.com/v1.0/security/incidents?$filter=createdDateTime+gt+*",
+      "url": "http://graph.microsoft.com/v1.0/security/incidents?$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
       "method": "GET",
       "responseCode": 200,
       "responseBody": {
@@ -40,7 +40,7 @@
       }
     },
     {
-      "url": "http://graph.microsoft.com/v1.0/resource_name/resource_relationship?$filter=createdDateTime+gt+*",
+      "url": "http://graph.microsoft.com/v1.0/resource_name/resource_relationship?$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
       "method": "GET",
       "responseCode": 200,
       "responseBody": {
@@ -50,7 +50,7 @@
       }
     },
     {
-      "url": "http://*/*/*/*$filter=createdDateTime+gt+*",
+      "url": "http://*/*/*/*$filter=createdDateTime+ge+*+and+createdDateTime+lt+*",
       "method": "GET",
       "responseCode": 403,
       "responseBody": {
