@@ -479,7 +479,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
         self.iter_regions_and_accounts(account_id, regions)
         self.db_connector.commit()
-        print('rock111: iter_bucket: commit')
         self.db_cursor.execute(self.sql_db_optimize)
         self.db_connector.close()
 
