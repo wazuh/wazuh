@@ -35,6 +35,7 @@ if [ -d "${DIR}" ]; then
 =======
     touch "${DIR}/WAZUH_PKG_UPGRADE"
     upgrade="true"
+<<<<<<< HEAD
 
     if  | grep "is running" > /dev/null 2>&1; then
 >>>>>>> 058865e67c (refactor: removed references to deprecated daemons in packages files)
@@ -46,6 +47,9 @@ if [ -d "${DIR}" ]; then
         ${DIR}/bin/ossec-control stop
         restart="true"
     fi
+=======
+fi
+>>>>>>> cff2779e10 (fix: addressed requested changes and removed deprecated installation scripts)
 
 <<<<<<< HEAD
 =======
@@ -113,6 +117,7 @@ if [[ ${new_uid} != ${new_gid} ]]
 fi
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 # Stops the agent before upgrading it
 if [ -f  ]; then
@@ -120,6 +125,8 @@ elif [ -f  ]; then
 fi
 
 >>>>>>> 058865e67c (refactor: removed references to deprecated daemons in packages files)
+=======
+>>>>>>> cff2779e10 (fix: addressed requested changes and removed deprecated installation scripts)
 # Creating the group
 echo "Checking group..."
 if [[ $(dscl . -read /Groups/wazuh) ]]

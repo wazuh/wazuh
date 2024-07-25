@@ -46,9 +46,7 @@ case "$1" in
     ;;
 
     failed-upgrade)
-      if [ -f  ]; then
 
-      fi
     ;;
 
     *)

@@ -46,7 +46,7 @@ case "$1" in
             if [ -f /etc/ossec-init.conf ]; then
                 . /etc/ossec-init.conf
             else
-                 VERSION=$(${DIR}/bin/wazuh-control info -v)
+                VERSION=$(${DIR}/bin/wazuh-control info -v)
             fi
 
             # Get the major and minor version

@@ -263,7 +263,7 @@ if [ $1 = 2 ]; then
     . %{_sysconfdir}/ossec-init.conf
   else
     # Ask wazuh-control the version
-    VERSION=$()
+    VERSION=$(%{_localstatedir}/bin/wazuh-control info -v)
   fi
 
   # Get the major and minor version
@@ -293,7 +293,7 @@ fi
 
 %post
 
-echo "VERSION=\"$()\"" > /etc/ossec-init.conf
+echo "VERSION=\"$(%{_localstatedir}/bin/wazuh-control info -v)\"" > /etc/ossec-init.conf
 
 # Upgrade install code block
 if [ $1 = 2 ]; then
