@@ -23,21 +23,21 @@ class TestIndexer:
 
         assert isinstance(indexer_instance._client, AsyncOpenSearch)
 
-    async def test_initialize(self, indexer_instance_with_mocked_client):
-        """Check the correct function of `initialize` method."""
+    async def test_connect(self, indexer_instance_with_mocked_client):
+        """Check the correct function of `connect` method."""
 
         indexer_instance_with_mocked_client._client.ping.return_value = True
-        await indexer_instance_with_mocked_client.initialize()
+        await indexer_instance_with_mocked_client.connect()
 
         indexer_instance_with_mocked_client._client.ping.assert_called_once()
 
-    async def test_initialize_ko(self, indexer_instance_with_mocked_client):
-        """Check the correct raise of `initialize` method."""
+    async def test_connect_ko(self, indexer_instance_with_mocked_client):
+        """Check the correct raise of `connect` method."""
 
         indexer_instance_with_mocked_client._client.ping.return_value = False
 
         with pytest.raises(WazuhIndexerError, match='.*2200.*'):
-            await indexer_instance_with_mocked_client.initialize()
+            await indexer_instance_with_mocked_client.connect()
 
     async def test_close(self, indexer_instance_with_mocked_client):
         """Check the correct function of `close` method."""
@@ -57,7 +57,7 @@ async def test_create_indexer(indexer_mock: mock.AsyncMock):
 
     instance_mock = await create_indexer(host=host, user=user, password=password)
     indexer_mock.assert_called_once_with(host=host, user=user, password=password, port=9200)
-    instance_mock.initialize.assert_called_once()
+    instance_mock.connect.assert_called_once()
 
 
 @pytest.mark.parametrize('retries', [2, 4])
@@ -70,13 +70,13 @@ async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
     password = 'password_test'
 
     instance_mock = mock.AsyncMock()
-    instance_mock.initialize.side_effect = WazuhIndexerError(2200)
+    instance_mock.connect.side_effect = WazuhIndexerError(2200)
     indexer_mock.return_value = instance_mock
 
     with mock.patch('wazuh.core.indexer.sleep') as sleep_mock:
         with pytest.raises(WazuhIndexerError, match='.*2200.*'):
             instance_mock = await create_indexer(host=host, user=user, password=password, retries=retries)
 
-        assert instance_mock.initialize.call_count == retries + 1
+        assert instance_mock.connect.call_count == retries + 1
         instance_mock.close.assert_called_once()
         assert sleep_mock.call_count == retries
