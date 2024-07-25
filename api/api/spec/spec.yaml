@@ -5628,6 +5628,7 @@ components:
         - buffer
         - labels
         - internal
+        - anti_tampering
         - agentless
         - global
         - active_response
