@@ -7,21 +7,40 @@ from wazuh.core.indexer import Indexer, create_indexer
 
 
 @pytest.fixture
-def indexer_instance() -> Indexer:
-    return Indexer(host='test', user='user_test', password='password_test')
-
-
-@pytest.fixture
-def indexer_instance_with_mocked_client(indexer_instance) -> Indexer:
+def indexer_instance_with_mocked_client() -> Indexer:
+    indexer_instance = Indexer(host='test', user='user_test', password='password_test')
     indexer_instance._client = mock.AsyncMock()
     return indexer_instance
 
 
 class TestIndexer:
-    def test_indexer_init(self, indexer_instance):
+    @pytest.mark.parametrize(
+        'params',
+        [
+            {'user': 'user_test', 'password': 'password_test'},
+            {'client_cert_path': '/tmp/client.pem', 'client_key_path': '/tmp/client-key.pem'},
+        ],
+    )
+    def test_indexer_init(self, params: dict):
         """Check the correct initalization of the `Indexer` class."""
+        indexer_instance = Indexer(host='test', **params)
 
         assert isinstance(indexer_instance._client, AsyncOpenSearch)
+
+    @pytest.mark.parametrize(
+        'params',
+        [
+            {'user': 'user_test'},
+            {'password': 'password_test'},
+            {'client_cert_path': '/tmp/client.pem'},
+            {'client_key_path': '/tmp/client-key.pem'},
+            {},
+        ],
+    )
+    def test_indexer_init_ko(self, params: dict):
+        """Check the correct initalization of the `Indexer` class."""
+        with pytest.raises(WazuhIndexerError, match='.*2201.*'):
+            Indexer(host='test', **params)
 
     async def test_connect(self, indexer_instance_with_mocked_client):
         """Check the correct function of `connect` method."""

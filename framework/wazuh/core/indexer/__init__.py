@@ -18,20 +18,24 @@ class Indexer:
     def __init__(
         self,
         host: str,
-        user: str,
-        password: str,
+        user: str = '',
+        password: str = '',
         port: int = 9200,
         use_ssl: bool = True,
+        client_cert_path: str = '',
+        client_key_path: str = '',
         verify_certs: bool = True,
-        ca_certs: str = '',
+        ca_certs_path: str = '',
     ) -> None:
         self.host = host
         self.user = user
         self.password = password
         self.port = port
         self.use_ssl = use_ssl
+        self.client_cert = client_cert_path
+        self.client_key = client_key_path
         self.verify_certs = verify_certs
-        self.ca_certs = ca_certs
+        self.ca_certs = ca_certs_path
 
         self._client = self._get_opensearch_client()
 
@@ -40,19 +44,38 @@ class Indexer:
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """Get a new OpenSearch client instance.
 
+        Raises
+        ------
+        WazuhIndexerError
+            In case authentication is not provided.
+
         Returns
         -------
         AsyncOpenSearch
             The created instance.
         """
-        return AsyncOpenSearch(
-            hosts=[{HOST_KEY: self.host, PORT_KEY: self.port}],
-            http_compress=True,
-            http_auth=(self.user, self.password),
-            use_ssl=self.use_ssl,
-            verify_certs=self.verify_certs,
-            ca_certs=self.ca_certs,
-        )
+        parameters = {
+            'hosts': [{HOST_KEY: self.host, PORT_KEY: self.port}],
+            'http_compress': True,
+            'use_ssl': self.use_ssl,
+            'verify_certs': self.verify_certs,
+            'ca_certs': self.ca_certs,
+        }
+
+        if all([self.user, self.password]):
+            parameters.update({'http_auth': (self.user, self.password)})
+        elif all([self.client_cert, self.client_key]):
+            parameters.update({'client_cert': self.client_cert, 'client_key': self.client_key})
+        else:
+            raise WazuhIndexerError(
+                2201,
+                extra_message=(
+                    'Some type of authentication must be provided, `user` and `password` for BASIC_HTTP_AUTH '
+                    'or the client certificates `client_cert_path` and `client_key_path`.'
+                )
+            )
+
+        return AsyncOpenSearch(**parameters)
 
     async def connect(self) -> None:
         """Connect to the Wazuh Indexer.
@@ -73,8 +96,8 @@ class Indexer:
 
 async def create_indexer(
     host: str,
-    user: str,
-    password: str,
+    user: str = '',
+    password: str = '',
     port: int = 9200,
     retries: int = 5,
     backoff_in_seconds: int = 1,
@@ -86,9 +109,9 @@ async def create_indexer(
     ----------
     host : str
         Location of the Wazuh Indexer.
-    user : str
+    user : str, optional
         User of the Wazuh Indexer to authenticate with.
-    password : str
+    password : str, optional
         Password of the Wazuh Indexer to authenticate with.
     port : int, optional
         Port of the Wazuh Indexer to connect with, by default 9200

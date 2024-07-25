@@ -439,6 +439,7 @@ class WazuhException(Exception):
 
         # Indexer
         2200: {'message': 'Could not connect to the indexer'},
+        2201: {'message': 'Indexer credentials not provided'},
 
         # Cluster
         3000: 'Cluster',
