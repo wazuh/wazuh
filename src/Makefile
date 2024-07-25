@@ -359,13 +359,36 @@ ifneq (,$(filter ${DEBUGAD},YES yes y Y 1))
 	DEFINES+=-DDEBUGAD
 endif
 
-OSSEC_CFLAGS+=-g
-AR_LDFLAGS+=-g
+# Check if symbol table should be included in release
+ifeq (${uname_S},Linux)
+	ifneq ($(CHECK_CENTOS5),YES)
+		SYMBOLS_IN_RELEASE = YES
+	endif
+else ifeq (${uname_S},Darwin)
+	SYMBOLS_IN_RELEASE = YES
+else ifeq (${TARGET},winagent)
+	SYMBOLS_IN_RELEASE = YES
+endif
 
-ifeq (,$(filter ${DEBUG},YES yes y Y 1))
-	OSSEC_CFLAGS+=-DNDEBUG
-	OFLAGS+=-O2
-	AR_LDFLAGS+=-s
+
+ifneq (,$(SYMBOLS_IN_RELEASE))
+	OSSEC_CFLAGS+=-g
+	AR_LDFLAGS+=-g
+	CMAKE_OPTS+=-DCMAKE_SYMBOLS_IN_RELEASE=ON
+	ifeq (,$(filter ${DEBUG},YES yes y Y 1))
+		OSSEC_CFLAGS+=-DNDEBUG
+		OFLAGS+=-O2
+		AR_LDFLAGS+=-s
+	endif
+else
+	ifneq (,$(filter ${DEBUG},YES yes y Y 1))
+		OSSEC_CFLAGS+=-g
+		AR_LDFLAGS+=-g
+	else
+		OSSEC_CFLAGS+=-DNDEBUG
+		OFLAGS+=-O2
+		AR_LDFLAGS+=-s
+	endif
 endif
 
 OSSEC_CFLAGS+=${OFLAGS}

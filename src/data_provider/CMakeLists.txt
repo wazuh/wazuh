@@ -3,7 +3,11 @@ cmake_minimum_required(VERSION 3.12.4)
 project(sysinfo)
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+  if(CMAKE_SYMBOLS_IN_RELEASE MATCHES "ON")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+  else()
+    set(CMAKE_BUILD_TYPE Release)
+  endif()
 endif()
 
 enable_testing()
