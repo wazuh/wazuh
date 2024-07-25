@@ -12,6 +12,16 @@ from pathlib import Path
 LOGGER = logging.getLogger(__name__)
 TEMPLATE_PATH='shared_modules/indexer_connector/qa/test_data/template.json'
 
+def init_template_and_index():
+    with open(TEMPLATE_PATH, 'r') as template_file:
+        template_json = json.load(template_file)
+        headers = {"Content-Type": "application/json"}
+        url = f'http://localhost:9200/_index_template/{template_json["index_patterns"][0]}'
+        if requests.put(url, data = json.dumps(template_json), headers = headers).status_code == 200:
+            url = f'http://localhost:9200/{template_json["index_patterns"][0]}'
+            return requests.put(url, data = json.dumps(template_json["template"]), headers = headers)
+
+
 def init_opensearch():
     client = docker.from_env()
     env_vars = {
@@ -26,13 +36,8 @@ def init_opensearch():
         try:
             response = requests.get('http://localhost:9200')
             if response.status_code == 200:
-                with open(TEMPLATE_PATH, 'r') as template_file:
-                    template_json = json.load(template_file)
-                    headers = {"Content-Type": "application/json"}
-                    url = f'http://localhost:9200/_index_template/{template_json["index_patterns"][0]}'
-                    response = requests.put(url, data = json.dumps(template_json), headers = headers)
-                    if response.status_code == 200:
-                        break
+                if init_template_and_index().status_code == 200:
+                    break
         except requests.exceptions.ConnectionError:
             pass
         time.sleep(1)
