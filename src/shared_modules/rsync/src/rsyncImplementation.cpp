@@ -256,8 +256,13 @@ size_t RSyncImplementation::getRangeCount(const std::shared_ptr<DBSyncWrapper>& 
     };
 
     auto rowFilter { querySelect.at("row_filter").get_ref<const std::string&>() } ;
-    Utils::replaceFirst(rowFilter, "?", syncData.begin);
-    Utils::replaceFirst(rowFilter, "?", syncData.end);
+    auto beginSanitized = syncData.begin;
+    auto endSanitized = syncData.end;
+
+    Utils::replaceAll(beginSanitized, "'", "''");
+    Utils::replaceAll(endSanitized, "'", "''");
+    Utils::replaceFirst(rowFilter, "?", beginSanitized);
+    Utils::replaceFirst(rowFilter, "?", endSanitized);
 
     queryParam["row_filter"] = rowFilter;
     queryParam["column_list"] = querySelect.at("column_list");
@@ -315,8 +320,13 @@ void RSyncImplementation::fillChecksum(const std::shared_ptr<DBSyncWrapper>& spD
     };
 
     auto rowFilter { querySelect.at("row_filter").get_ref<const std::string&>() } ;
-    Utils::replaceFirst(rowFilter, "?", begin);
-    Utils::replaceFirst(rowFilter, "?", end);
+    auto beginSanitized = begin;
+    auto endSanitized = end;
+
+    Utils::replaceAll(beginSanitized, "'", "''");
+    Utils::replaceAll(endSanitized, "'", "''");
+    Utils::replaceFirst(rowFilter, "?", beginSanitized);
+    Utils::replaceFirst(rowFilter, "?", endSanitized);
 
     auto& queryParam { selectData["query"] };
     queryParam["row_filter"] = rowFilter;
@@ -355,7 +365,10 @@ nlohmann::json RSyncImplementation::getRowData(const std::shared_ptr<DBSyncWrapp
         // Register sync flow
         querySelect = jsonSyncConfiguration.at("row_data_query_json");
         rowFilter = querySelect.at("row_filter").get_ref<const std::string&>();
-        Utils::replaceFirst(rowFilter, "?", index);
+
+        auto indexSanitized = index;
+        Utils::replaceAll(indexSanitized, "'", "''");
+        Utils::replaceFirst(rowFilter, "?", indexSanitized);
     }
     else
     {

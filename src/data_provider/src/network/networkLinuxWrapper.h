@@ -274,7 +274,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                     {
                         line = Utils::rightTrim(line);
                         Utils::replaceAll(line, "\t", " ");
-                        Utils::replaceAll(line, "  ", " ");
+                        line = Utils::trimRepeated(line, ' ');
                         const auto fields { Utils::split(line, ' ') };
 
                         if (GatewayFileFields::Size == fields.size() &&
@@ -477,7 +477,7 @@ class NetworkLinuxInterface final : public INetworkInterfaceWrapper
                     {
                         line = Utils::trim(line);
                         Utils::replaceAll(line, "\t", " ");
-                        Utils::replaceAll(line, "  ", " ");
+                        line = Utils::trimRepeated(line, ' ');
                         Utils::replaceAll(line, ": ", " ");
                         const auto fields { Utils::split(line, ' ') };
 
