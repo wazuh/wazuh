@@ -5,7 +5,11 @@ project(wazuh-syscheckd)
 enable_testing()
 
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE RelWithDebInfo)
+  if(CMAKE_SYMBOLS_IN_RELEASE MATCHES "ON")
+    set(CMAKE_BUILD_TYPE RelWithDebInfo)
+  else()
+    set(CMAKE_BUILD_TYPE Release)
+  endif()
 endif()
 
 get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
