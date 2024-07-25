@@ -110,6 +110,10 @@ CONF_SECTIONS = MappingProxyType({
     'indexer': {
         'type': 'last',
         'list_options': ['hosts']
+    },
+    'anti_tampering': {
+        'type': 'last',
+        'list_options': []
     }
 })
 

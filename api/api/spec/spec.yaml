@@ -5444,6 +5444,11 @@ components:
         <td><code>&lt;agent&gt;</code>, <code>&lt;monitord&gt;</code>, <code>&lt;remoted&gt;</code></td>
         </tr>
         <tr>
+        <td>agent</td>
+        <td>anti_tampering</td>
+        <td><code>&lt;anti_tampering&gt;</code></td>
+        </tr>
+        <tr>
         <td>agentless</td>
         <td>agentless</td>
         <td><code>&lt;agentless&gt;</code></td>
