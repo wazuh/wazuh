@@ -38,7 +38,7 @@ class Indexer:
         # Register index clients here
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
-        """Get the a new instance of the opensearch client.
+        """Get a new OpenSearch client instance.
 
         Returns
         -------
@@ -54,8 +54,8 @@ class Indexer:
             ca_certs=self.ca_certs,
         )
 
-    async def initialize(self):
-        """Initialize the Wazuh Indexer connection.
+    async def connect(self) -> None:
+        """Connect to the Wazuh Indexer.
 
         Raises
         ------
@@ -65,8 +65,9 @@ class Indexer:
         if not (await self._client.ping()):
             raise WazuhIndexerError(2200)
 
-    async def close(self):
+    async def close(self) -> None:
         """Close the Wazuh Indexer client."""
+        logger.warning('Closing the indexer client session.')
         await self._client.close()
 
 
@@ -106,7 +107,7 @@ async def create_indexer(
     retries_count = 0
     while True:
         try:
-            await indexer.initialize()
+            await indexer.connect()
             return indexer
         except WazuhIndexerError:
             if retries_count == retries:

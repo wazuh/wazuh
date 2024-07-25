@@ -438,7 +438,7 @@ class WazuhException(Exception):
         2100: {'message': 'Error in CTI service request'},
 
         # Indexer
-        2200: {'message': 'Could not initialize Indexer connection'},
+        2200: {'message': 'Could not connect to the indexer'},
 
         # Cluster
         3000: 'Cluster',
