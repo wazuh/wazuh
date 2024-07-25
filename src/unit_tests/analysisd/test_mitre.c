@@ -57,11 +57,10 @@ void test_queryid_error_socket(void **state)
     int ret;
     cJSON * id_array = NULL;
 
-    will_return(__wrap_wdbc_query_parse_json, -2);
-    will_return(__wrap_wdbc_query_parse_json, id_array);
+    will_return(__wrap_wdbc_connect_with_attempts, -2);
 
-    expect_string(__wrap__merror, formatted_msg, "Unable to connect to socket 'queue/db/wdb'");
-    expect_string(__wrap__merror, formatted_msg, "Response from the Mitre database cannot be parsed.");
+
+    expect_string(__wrap__merror, formatted_msg, "Unable to connect to Wazuh-DB for Mitre matrix information.");
     expect_string(__wrap__merror, formatted_msg, "Mitre matrix information could not be loaded.");
 
     ret = mitre_load();
@@ -75,6 +74,7 @@ void test_queryid_no_response(void **state)
     int ret;
     cJSON * id_array = NULL;
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     will_return(__wrap_wdbc_query_parse_json, -1);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
@@ -94,6 +94,8 @@ void test_queryid_bad_response(void **state)
     cJSON * id_array = NULL;
 
     char *response_ids = "err not found";
+
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     will_return(__wrap_wdbc_query_parse_json, 1);
     will_return(__wrap_wdbc_query_parse_json, response_ids);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -113,6 +115,7 @@ void test_queryid_error_parse(void **state)
     int ret;
     cJSON * id_array = cJSON_Parse("[{\"id\":}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
@@ -130,6 +133,7 @@ void test_queryid_empty_array(void **state)
     int ret;
     cJSON * id_array = cJSON_Parse("[ ]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
@@ -145,6 +149,7 @@ void test_queryid_error_parse_technique_id(void **state) {
     int ret;
     cJSON * id_array = cJSON_Parse("[{\"ids\":\"technique-0001\"},{\"ids\":\"technique-0002\"}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
@@ -166,6 +171,7 @@ void test_queryid_error_parse_technique_name(void **state) {
     int ret;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\"},{\"id\":\"technique-0002\"}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
@@ -187,6 +193,7 @@ void test_queryid_error_parse_technique_external_id(void **state) {
     int ret;
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\"}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
 
@@ -210,6 +217,7 @@ void test_querytactics_error_socket(void **state) {
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = NULL;
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -238,6 +246,7 @@ void test_querytactics_no_response(void **state) {
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = NULL;
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -267,6 +276,7 @@ void test_querytactics_bad_response(void **state) {
     cJSON * tactic_array = NULL;
     char * response_tactics = "err not found";
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -296,6 +306,7 @@ void test_querytactics_error_parse(void **state) {
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"phase_name\":}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -323,6 +334,7 @@ void test_querytactics_empty_array(void **state) {
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[ ]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -350,6 +362,7 @@ void test_querytactics_error_parse_tactics(void **state) {
     cJSON * id_array = cJSON_Parse("[{\"id\":\"technique-0001\",\"name\":\"Technique1\",\"external_id\":\"T1001\"},{\"id\":\"technique-0002\",\"name\":\"Technique2\",\"external_id\":\"T1002\"}]");
     cJSON * tactic_array = cJSON_Parse("[{\"phase\":\"Discovery\"}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -378,6 +391,7 @@ void test_queryname_error_socket(void **state) {
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = NULL;
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -411,6 +425,7 @@ void test_queryname_no_response(void **state) {
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = NULL;
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -445,6 +460,7 @@ void test_queryname_bad_response(void **state) {
     cJSON * tactic_info_array = NULL;
     char * response_tactics = "err not found";
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -479,6 +495,7 @@ void test_queryname_error_parse(void **state) {
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"info\":}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -511,6 +528,7 @@ void test_queryname_error_parse_technique_name(void **state) {
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"info\":\"Tactic1\"}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -543,6 +561,7 @@ void test_queryname_error_parse_technique_external_id(void **state) {
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\"}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -575,6 +594,7 @@ void test_query_tactics_error_filling_technique(void **state) {
     cJSON * tactic_array = cJSON_Parse("[{\"tactic_id\":\"tactic-0001\"}]");
     cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);
@@ -612,6 +632,7 @@ void test_query_tactics_success(void **state) {
     cJSON * tactic_info_array = cJSON_Parse("[{\"name\":\"Tactic1\",\"external_id\":\"TA001\"}]");
     cJSON * technique_last = cJSON_Parse(" ");
 
+    will_return(__wrap_wdbc_connect_with_attempts, 1);
     /* Mitre's techniques IDs query */
     will_return(__wrap_wdbc_query_parse_json, 0);
     will_return(__wrap_wdbc_query_parse_json, id_array);

@@ -18,15 +18,25 @@
  * @return Socket descriptor or -1 if error.
  */
 int wdbc_connect() {
+    return wdbc_connect_with_attempts(3);
+}
 
-    int attempts;
+/**
+ * @brief Connects to Wazuh-DB socket with a maximum number of attempts.
+ *
+ * @param max_attempts Maximum number of attempts to connect.
+ * @return int Socket descriptor or -1 if error.
+ */
+int wdbc_connect_with_attempts(int max_attempts) {
+
+    assert(max_attempts > 0);
     int wdb_socket = -1;
     char sockname[PATH_MAX + 1];
 
     strcpy(sockname, WDB_LOCAL_SOCK);
 
 
-    for (attempts = 1; attempts <= 3 && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
+    for (int attempts = 1; attempts <= max_attempts && (wdb_socket = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_SIZE_6144)) < 0; attempts++) {
         switch (errno) {
         case ENOENT:
             minfo("Cannot find '%s'. Waiting %d seconds to reconnect.", sockname, attempts);

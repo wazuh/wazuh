@@ -31,6 +31,7 @@ typedef enum wdbc_result {
 extern const char* WDBC_RESULT[];
 
 int wdbc_connect();
+int wdbc_connect_with_attempts(int max_attempts);
 int wdbc_query(const int sock, const char *query, char *response, const int len);
 int wdbc_query_ex(int *sock, const char *query, char *response, const int len);
 int wdbc_parse_result(char *result, char **payload);
