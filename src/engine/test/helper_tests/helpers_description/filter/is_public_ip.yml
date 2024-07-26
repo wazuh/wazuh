@@ -1,0 +1,25 @@
+# Name of the helper function
+name: is_public_ip
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - arguments:
+      target_field: 111.111.1.11
+    should_pass: true
+    description: Check IP valid
+  - arguments:
+      target_field: 3002:0bd6:0000:0000:0000:ee00:0033:6778
+    should_pass: true
+    description: Check IP valid
+  - arguments:
+      target_field: 6778
+    should_pass: false
+    description: Check IP invalid

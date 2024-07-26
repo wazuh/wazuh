@@ -1,0 +1,116 @@
+[
+    {
+        "@timestamp": "2023-06-23T14:58:39Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "error": {
+            "code": "ERR_SSL_SSLV3_ALERT_CERTIFICATE_UNKNOWN",
+            "message": "139698220353408:error:14094416:SSL routines:ssl3_read_bytes:sslv3 alert certificate unknown:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1544:SSL alert number 46\n",
+            "stack_trace": "Error: 139698220353408:error:14094416:SSL routines:ssl3_read_bytes:sslv3 alert certificate unknown:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1544:SSL alert number 46\n"
+        },
+        "event": {
+            "category": [
+                "web"
+            ],
+            "kind": "event",
+            "module": "wazuh-dashboard",
+            "original": "Jun 23 14:58:39 engine opensearch-dashboards[681]: {\"type\":\"error\",\"@timestamp\":\"2023-06-23T14:58:39Z\",\"tags\":[\"connection\",\"client\",\"error\"],\"pid\":681,\"level\":\"error\",\"error\":{\"message\":\"139698220353408:error:14094416:SSL routines:ssl3_read_bytes:sslv3 alert certificate unknown:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1544:SSL alert number 46\\n\",\"name\":\"Error\",\"stack\":\"Error: 139698220353408:error:14094416:SSL routines:ssl3_read_bytes:sslv3 alert certificate unknown:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1544:SSL alert number 46\\n\",\"code\":\"ERR_SSL_SSLV3_ALERT_CERTIFICATE_UNKNOWN\"},\"message\":\"139698220353408:error:14094416:SSL routines:ssl3_read_bytes:sslv3 alert certificate unknown:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1544:SSL alert number 46\\n\"}",
+            "start": "2024-06-23T14:58:39.000Z",
+            "type": [
+                "error"
+            ]
+        },
+        "host": {
+            "hostname": "engine",
+            "id": "001"
+        },
+        "log": {
+            "level": "error"
+        },
+        "message": "139698220353408:error:14094416:SSL routines:ssl3_read_bytes:sslv3 alert certificate unknown:../deps/openssl/openssl/ssl/record/rec_layer_s3.c:1544:SSL alert number 46\n",
+        "process": {
+            "name": "opensearch-dashboards",
+            "pid": 681
+        },
+        "related": {
+            "hosts": [
+                "engine"
+            ]
+        },
+        "tags": [
+            "connection",
+            "client",
+            "error"
+        ],
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "wazuh-dashboard"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/test/wazuhapp.log",
+            "origin": "/test/wazuhapp.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-06-26T18:45:02Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "error": {
+            "message": "Internal Server Error",
+            "stack_trace": "Error: Internal Server Error\n    at HapiResponseAdapter.toError (/usr/share/wazuh-dashboard/src/core/server/http/router/response_adapter.js:143:19)\n    at HapiResponseAdapter.toHapiResponse (/usr/share/wazuh-dashboard/src/core/server/http/router/response_adapter.js:97:19)\n    at HapiResponseAdapter.handle (/usr/share/wazuh-dashboard/src/core/server/http/router/response_adapter.js:92:17)\n    at Router.handle (/usr/share/wazuh-dashboard/src/core/server/http/router/router.js:164:34)\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (internal/process/task_queues.js:95:5)\n    at handler (/usr/share/wazuh-dashboard/src/core/server/http/router/router.js:124:50)\n    at exports.Manager.execute (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/toolkit.js:60:28)\n    at Object.internals.handler (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/handler.js:46:20)\n    at exports.execute (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/handler.js:31:20)\n    at Request._lifecycle (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/request.js:371:32)\n    at Request._execute (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/request.js:281:9)"
+        },
+        "event": {
+            "category": [
+                "web"
+            ],
+            "kind": "event",
+            "module": "wazuh-dashboard",
+            "original": "Jun 26 18:45:02 engine opensearch-dashboards[681]: {\"type\":\"error\",\"@timestamp\":\"2023-06-26T18:45:02Z\",\"tags\":[],\"pid\":681,\"level\":\"error\",\"error\":{\"message\":\"Internal Server Error\",\"name\":\"Error\",\"stack\":\"Error: Internal Server Error\\n    at HapiResponseAdapter.toError (/usr/share/wazuh-dashboard/src/core/server/http/router/response_adapter.js:143:19)\\n    at HapiResponseAdapter.toHapiResponse (/usr/share/wazuh-dashboard/src/core/server/http/router/response_adapter.js:97:19)\\n    at HapiResponseAdapter.handle (/usr/share/wazuh-dashboard/src/core/server/http/router/response_adapter.js:92:17)\\n    at Router.handle (/usr/share/wazuh-dashboard/src/core/server/http/router/router.js:164:34)\\n    at runMicrotasks (<anonymous>)\\n    at processTicksAndRejections (internal/process/task_queues.js:95:5)\\n    at handler (/usr/share/wazuh-dashboard/src/core/server/http/router/router.js:124:50)\\n    at exports.Manager.execute (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/toolkit.js:60:28)\\n    at Object.internals.handler (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/handler.js:46:20)\\n    at exports.execute (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/handler.js:31:20)\\n    at Request._lifecycle (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/request.js:371:32)\\n    at Request._execute (/usr/share/wazuh-dashboard/node_modules/@hapi/hapi/lib/request.js:281:9)\"},\"url\":\"https://192.168.56.10/api/request\",\"message\":\"Internal Server Error\"}",
+            "start": "2024-06-26T18:45:02.000Z",
+            "type": [
+                "error"
+            ]
+        },
+        "host": {
+            "hostname": "engine",
+            "id": "001"
+        },
+        "log": {
+            "level": "error"
+        },
+        "message": "Internal Server Error",
+        "process": {
+            "name": "opensearch-dashboards",
+            "pid": 681
+        },
+        "related": {
+            "hosts": [
+                "engine"
+            ]
+        },
+        "tags": [],
+        "url": {
+            "original": "https://192.168.56.10/api/request"
+        },
+        "wazuh": {
+            "decoders": [
+                "syslog",
+                "wazuh-dashboard"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/test/wazuhapp.log",
+            "origin": "/test/wazuhapp.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]

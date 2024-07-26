@@ -1,0 +1,27 @@
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="{54849625-5478-4994-A5BA-3E3B0328C30D}" />
+    <EventID>4740</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>13824</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8020000000000000</Keywords>
+    <TimeCreated SystemTime="2015-08-21T22:06:08.576887500Z" />
+    <EventRecordID>175703</EventRecordID>
+    <Correlation />
+    <Execution ProcessID="520" ThreadID="1112" />
+    <Channel>Security</Channel>
+    <Computer>DC01.contoso.local</Computer>
+    <Security />
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">Auditor</Data>
+    <Data Name="TargetDomainName">WIN81</Data>
+    <Data Name="TargetSid">S-1-5-21-3457937927-2839227994-823803824-2104</Data>
+    <Data Name="SubjectUserSid">S-1-5-18</Data>
+    <Data Name="SubjectUserName">DC01$</Data>
+    <Data Name="SubjectDomainName">CONTOSO</Data>
+    <Data Name="SubjectLogonId">0x3e7</Data>
+  </EventData>
+</Event>

@@ -1,0 +1,40 @@
+# Name of the helper function
+name: ip_cidr_match
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string
+    generate: ip
+    source: value # includes values
+  2:
+    type: string
+    generate: ip  # Expected type is string of type ip
+    source: value # includes values
+
+# IP address is not in CIDR
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - arguments:
+      1: 192.168.0.0
+      2: 192.168.0.11
+      target_field: 192.168.1.5
+    should_pass: true
+    description: Match IP CIDR
+  - arguments:
+      1: 192.168.0.0
+      2: 192.168.0.11
+      target_field: 111.111.1.11
+    should_pass: false
+    description: Don't match IP CIDR

@@ -1,0 +1,53 @@
+# Name of the helper function
+name: trim
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    source: value # includes only values
+    restrictions:
+      allowed:
+        - begin
+        - end
+        - both
+  2:
+    type: string  # Accept only string
+    source: value # includes only values
+    restrictions:
+      allowed:
+        - '-'
+
+skipped:
+  - allowed # sometimes a character comes and is valid
+
+target_field:
+  type: string
+
+test:
+  - arguments:
+      1: end
+      2: '-'
+      target_field: -- Hi wazuh! --
+    should_pass: true
+    expected: "-- Hi wazuh! "
+    description: Success trim
+  - arguments:
+      1: begin
+      2: '-'
+      target_field: -- Hi wazuh! --
+    should_pass: true
+    expected: " Hi wazuh! --"
+    description: Success trim
+  - arguments:
+      1: both
+      2: '-'
+      target_field: -- Hi wazuh! --
+    should_pass: true
+    expected: " Hi wazuh! "
+    description: Success trim

@@ -1,0 +1,86 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/sonicwall/firewall.log",
+            "message": "Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time=\"2007-01-03 14:48:06\" fw=89.160.20.156 pri=6 c=262144 m=98 msg=\"Connection Opened\" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000",
+            "origin": "/var/log/sonicwall/firewall.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "sonicwall-syslog",
+                "sonicwall-firewall"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time=\"2007-01-03 14:48:06\" fw=89.160.20.156 pri=6 c=262144 m=98 msg=\"Connection Opened\" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000",
+            "start": "2023-01-03T13:45:36.000Z",
+            "kind": "event",
+            "code": 98,
+            "dataset": "sonicwall.firewall",
+            "module": "sonicwall"
+        },
+        "host": {
+            "id": "001",
+            "hostname": "192.168.5.1"
+        },
+        "message": "id=firewall sn=000SERIAL time=\"2007-01-03 14:48:06\" fw=89.160.20.156 pri=6 c=262144 m=98 msg=\"Connection Opened\" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000",
+        "related": {
+            "hosts": [
+                "192.168.5.1"
+            ],
+            "ip": [
+                "2.2.2.2"
+            ]
+        },
+        "fileset": {
+            "name": "firewall"
+        },
+        "input": {
+            "type": "log"
+        },
+        "observer": {
+            "product": "Firewalls",
+            "type": "Firewall",
+            "vendor": "Sonicwall",
+            "ingress": {
+                "interface": {
+                    "name": "WAN"
+                }
+            }
+        },
+        "rsa": {
+            "internal": {
+                "messageid": 98,
+                "event_desc": "Connection Opened",
+                "msg": "Connection Opened"
+            },
+            "time": {
+                "event_time": "2023-01-03T13:45:36.000Z"
+            },
+            "network": {
+                "sinterface": "WAN"
+            }
+        },
+        "service": {
+            "type": "sonicwall"
+        },
+        "tags": [
+            "forwarded",
+            "sonicwall.firewall"
+        ],
+        "\\@timestamp": "2023-01-03T13:45:36.000Z",
+        "source": {
+            "ip": "2.2.2.2",
+            "port": 36701
+        }
+    }
+]

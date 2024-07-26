@@ -1,0 +1,126 @@
+{
+    "steps": [
+        {
+            "description": "Coding style",
+            "parameters": [
+                "--test format",
+                "--exclude build"
+            ]
+        },
+        {
+            "description": "Cppcheck",
+            "parameters": [
+                "--test cppcheck",
+                "--exclude build"
+            ]
+        },
+        {
+            "description": "Build (Coverage flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_COVERAGE=ON",
+                "--threads 1"
+            ]
+        },
+        {
+            "description": "Unit tests",
+            "parameters": [
+                "--test ut"
+            ]
+        },
+        {
+            "description": "Coverage",
+            "parameters": [
+                "--test coverage",
+                "--include source"
+            ]
+        },
+        {
+            "description": "Valgrind",
+            "parameters": [
+                "--test valgrind",
+                "--include build"
+            ]
+        },
+        {
+            "description": "Clang tidy",
+            "parameters": [
+                "--test clangtidy",
+                "--exclude build"
+            ]
+        },
+        {
+            "description": "Doxygen",
+            "parameters": [
+                "--test docs",
+                "--threads 1"
+            ]
+        },
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        },
+        {
+            "description": "Build (ASAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_ASAN=ON",
+                "--threads 1",
+                "--log-name asan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (ASAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name asan"
+            ]
+        },
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        },
+        {
+            "description": "Build (TSAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_TSAN=ON",
+                "--threads 1",
+                "--log-name tsan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (TSAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name tsan"
+            ]
+        },
+        {
+            "description": "Clean",
+            "parameters": [
+                "--test clean"
+            ]
+        },
+        {
+            "description": "Build (UBSAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_UBSAN=ON",
+                "--threads 1",
+                "--log-name ubsan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (UBSAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name ubsan"
+            ]
+        }
+    ]
+}

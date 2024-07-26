@@ -1,0 +1,2069 @@
+[
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-16-56-7297D7461A5CBE77\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba48acdef2d36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:59:21 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"-\", \"request_id\": \"0EC86NTN8Y97ACDW\", \"operation\": \"REST.GET.OBJECT\", \"key\": \"favicon.ico\", \"request_uri\": \"GET /favicon.ico HTTP/1.1\", \"http_status\": \"403\", \"error_code\": \"AccessDenied\", \"bytes_sent\": \"243\", \"object_sent\": \"-\", \"total_time\": \"13\", \"turn_around_time\": \"-\", \"referer\": \"https://wazuh-cloudtrail.s3.us-east-1.amazonaws.com/AWSLogs/266157451723/CloudTrail/us-east-1/2021/04/29/266157451723_CloudTrail_us-east-1_20210429T0000Z_G1vOYSX8NpPp1yb2.json.gz?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEPn%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCWV1LXdlc3QtMyJIMEYCIQCKokRRbfrUEbPdYHNW%2BNG4DRAi3gxlcVsWTBswmTEj4gIhAIH%2B2OXjpVR9j2kumUcXz%2FJSy5pqDoSOFuigMy%2FwNtacKpEDCHIQABoMMTY2MTU3NDQxNjIzIgwJLRknE%2B7%2FMtpQ7rUq7gLTQog%2B8r%2F%2FR4le%2F%2F%2F15QyZuu9VPuHbUab77oPR4XudNmUGS0rTEEuL7y6XCb22M8piKNem2aMkywEMwp1Z6uMfps8R16H35r%2Bj6K5Ow84yyHHlDH0H9cynTaAweFH0Lskub59fBwRBj9COEQmylKjthLqEBhSsg99D%2ByxzmVT15OHO%2BFJZycgELyK%2FZ32jRhDIG0JL1Z%2F41VRUZJDGnvjVQYWfr3rZIRTQsAEghJmxRYIgLL51IzR9yPGYo9kfG4l9dxP9bHJkuyo5754FVaoQyNdNNmYyrQc2BORXskRQgIHAx937INaQhWFOp2w6MZnVChbb8snybpTs8vXbqfxrgyBkEop%2BdNtymj8c%2FSZPssv5S1kqPD1Avbkn14lipILMrS1ujSW0R5y%2F37NagNJ2xjA35iy0zYrlvU7ipx%2FwVZESyAA0Jb%2F8JN6f6xV9NdVXRdZC9MDZpOX%2Bv6gm%2FVzdVukorBiFlYIxbJJLleUw%2BN%2BphAY6sgJndd0zSELg%2Fo07zRYq0AbvOdns6HtcQbAAyUBVQsA2GXhl5zYto%2BqQ97TNcez5sYpOxylplQNcu0xeTFasufucPQnEaBWQAgRhyKZGhORiTi1aIprdg5cvT1hBf0ttS78YLVNOLZQCFp7NdZAVOtJXlOrz7TpIiwQm1OxqzFSgnn13PNHrFjiNEBgk16207083RTIkioB%2BNCzLpRluhURbfSNiDWb15WvxLchIY2o5L9cdyr1Ih0BuymW09snZFulWGkqImpby%2FEAfKMGCgtM2zf4lVW%2BIAh6%2BlGtHAwir7dx2sElB3I4yPUfL%2FyjzYJlstmoSng4cCiVW6ljTXtNUvwDYsI10tynFpzLagsL%2B8Cde%2BF4BtRrCpL7gwSN5fzQOF%2FGQZrBPpFlZlp5GEOoltp4%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210429T085920Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIASNL6BLJLX5CGRFB7%2F20210429%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=f6b108ea19ce136eef97ac65cc60d4d8b644f44a60f9fed3f108e85655d938ab\", \"user_agent\": \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.152 Safari/537.36\", \"version_id\": \"-\", \"host_id\": \"IzZPYtJFGFHjl+wNZa73b/d/xowqZFBZI5Ayxr+pT7qgVIzSJDOgPFLUWzB+huF2PMsu2T5z1H0=\", \"signature_version\": \"-\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"-\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-16-56-7297D7461A5CBE77\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba48acdef2d36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:59:21 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"-\", \"request_id\": \"0EC86NTN8Y97ACDW\", \"operation\": \"REST.GET.OBJECT\", \"key\": \"favicon.ico\", \"request_uri\": \"GET /favicon.ico HTTP/1.1\", \"http_status\": \"403\", \"error_code\": \"AccessDenied\", \"bytes_sent\": \"243\", \"object_sent\": \"-\", \"total_time\": \"13\", \"turn_around_time\": \"-\", \"referer\": \"https://wazuh-cloudtrail.s3.us-east-1.amazonaws.com/AWSLogs/266157451723/CloudTrail/us-east-1/2021/04/29/266157451723_CloudTrail_us-east-1_20210429T0000Z_G1vOYSX8NpPp1yb2.json.gz?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEPn%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCWV1LXdlc3QtMyJIMEYCIQCKokRRbfrUEbPdYHNW%2BNG4DRAi3gxlcVsWTBswmTEj4gIhAIH%2B2OXjpVR9j2kumUcXz%2FJSy5pqDoSOFuigMy%2FwNtacKpEDCHIQABoMMTY2MTU3NDQxNjIzIgwJLRknE%2B7%2FMtpQ7rUq7gLTQog%2B8r%2F%2FR4le%2F%2F%2F15QyZuu9VPuHbUab77oPR4XudNmUGS0rTEEuL7y6XCb22M8piKNem2aMkywEMwp1Z6uMfps8R16H35r%2Bj6K5Ow84yyHHlDH0H9cynTaAweFH0Lskub59fBwRBj9COEQmylKjthLqEBhSsg99D%2ByxzmVT15OHO%2BFJZycgELyK%2FZ32jRhDIG0JL1Z%2F41VRUZJDGnvjVQYWfr3rZIRTQsAEghJmxRYIgLL51IzR9yPGYo9kfG4l9dxP9bHJkuyo5754FVaoQyNdNNmYyrQc2BORXskRQgIHAx937INaQhWFOp2w6MZnVChbb8snybpTs8vXbqfxrgyBkEop%2BdNtymj8c%2FSZPssv5S1kqPD1Avbkn14lipILMrS1ujSW0R5y%2F37NagNJ2xjA35iy0zYrlvU7ipx%2FwVZESyAA0Jb%2F8JN6f6xV9NdVXRdZC9MDZpOX%2Bv6gm%2FVzdVukorBiFlYIxbJJLleUw%2BN%2BphAY6sgJndd0zSELg%2Fo07zRYq0AbvOdns6HtcQbAAyUBVQsA2GXhl5zYto%2BqQ97TNcez5sYpOxylplQNcu0xeTFasufucPQnEaBWQAgRhyKZGhORiTi1aIprdg5cvT1hBf0ttS78YLVNOLZQCFp7NdZAVOtJXlOrz7TpIiwQm1OxqzFSgnn13PNHrFjiNEBgk16207083RTIkioB%2BNCzLpRluhURbfSNiDWb15WvxLchIY2o5L9cdyr1Ih0BuymW09snZFulWGkqImpby%2FEAfKMGCgtM2zf4lVW%2BIAh6%2BlGtHAwir7dx2sElB3I4yPUfL%2FyjzYJlstmoSng4cCiVW6ljTXtNUvwDYsI10tynFpzLagsL%2B8Cde%2BF4BtRrCpL7gwSN5fzQOF%2FGQZrBPpFlZlp5GEOoltp4%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210429T085920Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIASNL6BLJLX5CGRFB7%2F20210429%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=f6b108ea19ce136eef97ac65cc60d4d8b644f44a60f9fed3f108e85655d938ab\", \"user_agent\": \"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.152 Safari/537.36\", \"version_id\": \"-\", \"host_id\": \"IzZPYtJFGFHjl+wNZa73b/d/xowqZFBZI5Ayxr+pT7qgVIzSJDOgPFLUWzB+huF2PMsu2T5z1H0=\", \"signature_version\": \"-\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"-\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.OBJECT",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 13000000,
+            "id": "0EC86NTN8Y97ACDW",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:59:21.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "https://wazuh-cloudtrail.s3.us-east-1.amazonaws.com/AWSLogs/266157451723/CloudTrail/us-east-1/2021/04/29/266157451723_CloudTrail_us-east-1_20210429T0000Z_G1vOYSX8NpPp1yb2.json.gz?response-content-disposition=inline&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEPn%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCWV1LXdlc3QtMyJIMEYCIQCKokRRbfrUEbPdYHNW%2BNG4DRAi3gxlcVsWTBswmTEj4gIhAIH%2B2OXjpVR9j2kumUcXz%2FJSy5pqDoSOFuigMy%2FwNtacKpEDCHIQABoMMTY2MTU3NDQxNjIzIgwJLRknE%2B7%2FMtpQ7rUq7gLTQog%2B8r%2F%2FR4le%2F%2F%2F15QyZuu9VPuHbUab77oPR4XudNmUGS0rTEEuL7y6XCb22M8piKNem2aMkywEMwp1Z6uMfps8R16H35r%2Bj6K5Ow84yyHHlDH0H9cynTaAweFH0Lskub59fBwRBj9COEQmylKjthLqEBhSsg99D%2ByxzmVT15OHO%2BFJZycgELyK%2FZ32jRhDIG0JL1Z%2F41VRUZJDGnvjVQYWfr3rZIRTQsAEghJmxRYIgLL51IzR9yPGYo9kfG4l9dxP9bHJkuyo5754FVaoQyNdNNmYyrQc2BORXskRQgIHAx937INaQhWFOp2w6MZnVChbb8snybpTs8vXbqfxrgyBkEop%2BdNtymj8c%2FSZPssv5S1kqPD1Avbkn14lipILMrS1ujSW0R5y%2F37NagNJ2xjA35iy0zYrlvU7ipx%2FwVZESyAA0Jb%2F8JN6f6xV9NdVXRdZC9MDZpOX%2Bv6gm%2FVzdVukorBiFlYIxbJJLleUw%2BN%2BphAY6sgJndd0zSELg%2Fo07zRYq0AbvOdns6HtcQbAAyUBVQsA2GXhl5zYto%2BqQ97TNcez5sYpOxylplQNcu0xeTFasufucPQnEaBWQAgRhyKZGhORiTi1aIprdg5cvT1hBf0ttS78YLVNOLZQCFp7NdZAVOtJXlOrz7TpIiwQm1OxqzFSgnn13PNHrFjiNEBgk16207083RTIkioB%2BNCzLpRluhURbfSNiDWb15WvxLchIY2o5L9cdyr1Ih0BuymW09snZFulWGkqImpby%2FEAfKMGCgtM2zf4lVW%2BIAh6%2BlGtHAwir7dx2sElB3I4yPUfL%2FyjzYJlstmoSng4cCiVW6ljTXtNUvwDYsI10tynFpzLagsL%2B8Cde%2BF4BtRrCpL7gwSN5fzQOF%2FGQZrBPpFlZlp5GEOoltp4%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20210429T085920Z&X-Amz-SignedHeaders=host&X-Amz-Expires=300&X-Amz-Credential=ASIASNL6BLJLX5CGRFB7%2F20210429%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=f6b108ea19ce136eef97ac65cc60d4d8b644f44a60f9fed3f108e85655d938ab"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 243
+                },
+                "status_code": "403"
+            }
+        },
+        "~authentication_type": "-",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "-",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "IzZPYtJFGFHjl+wNZa73b/d/xowqZFBZI5Ayxr+pT7qgVIzSJDOgPFLUWzB+huF2PMsu2T5z1H0="
+        },
+        "registry":
+        {
+            "key": "favicon.ico"
+        },
+        "user_agent":
+        {
+            "name": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.152 Safari/537.36"
+        },
+        "client":
+        {
+            "address": "213.194.148.169",
+            "ip": "213.194.148.169",
+            "user":
+            {
+                "id": "-"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "AccessDenied"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "213.194.148.169"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba48acdef2d36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/favicon.ico"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-37-37-64B6FD7CB0C28826\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:58 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"M5XR3KNK3KQ9TBD9\", \"operation\": \"REST.GET.PUBLIC_ACCESS_BLOCK\", \"key\": \"-\", \"request_uri\": \"GET /?publicAccessBlock HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchPublicAccessBlockConfiguration\", \"bytes_sent\": \"346\", \"object_sent\": \"-\", \"total_time\": \"25\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"9111XsJhbwCuiAKHf/q65u+wkoeomaG3VuQe5rORLQo1g6zmCqLPAa5D+oJSFPL+/oG8qTD6ABM=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-37-37-64B6FD7CB0C28826\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:58 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"M5XR3KNK3KQ9TBD9\", \"operation\": \"REST.GET.PUBLIC_ACCESS_BLOCK\", \"key\": \"-\", \"request_uri\": \"GET /?publicAccessBlock HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchPublicAccessBlockConfiguration\", \"bytes_sent\": \"346\", \"object_sent\": \"-\", \"total_time\": \"25\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"9111XsJhbwCuiAKHf/q65u+wkoeomaG3VuQe5rORLQo1g6zmCqLPAa5D+oJSFPL+/oG8qTD6ABM=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.PUBLIC_ACCESS_BLOCK",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 25000000,
+            "id": "M5XR3KNK3KQ9TBD9",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:57:58.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 346
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "9111XsJhbwCuiAKHf/q65u+wkoeomaG3VuQe5rORLQo1g6zmCqLPAa5D+oJSFPL+/oG8qTD6ABM="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "213.194.148.169",
+            "ip": "213.194.148.169",
+            "user":
+            {
+                "id": "arn:aws:iam::166157441623:user/carlos.ridao"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "NoSuchPublicAccessBlockConfiguration"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "213.194.148.169"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "publicAccessBlock"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-23-33-E24E1CC86C585C5D\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::166157441623:user/david.iglesias\", \"request_id\": \"T3BXZFS0F0CJ40PX\", \"operation\": \"REST.GET.PUBLIC_ACCESS_BLOCK\", \"key\": \"-\", \"request_uri\": \"GET /?publicAccessBlock HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchPublicAccessBlockConfiguration\", \"bytes_sent\": \"346\", \"object_sent\": \"-\", \"total_time\": \"23\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"VxNjrykUMsK+VzwogA2CUZ++lyUN6247gDr66i+tjLbUGWu6A5Ck8KB7fwQjzLPqFVpJpH9aCkg=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-23-33-E24E1CC86C585C5D\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::166157441623:user/david.iglesias\", \"request_id\": \"T3BXZFS0F0CJ40PX\", \"operation\": \"REST.GET.PUBLIC_ACCESS_BLOCK\", \"key\": \"-\", \"request_uri\": \"GET /?publicAccessBlock HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchPublicAccessBlockConfiguration\", \"bytes_sent\": \"346\", \"object_sent\": \"-\", \"total_time\": \"23\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"VxNjrykUMsK+VzwogA2CUZ++lyUN6247gDr66i+tjLbUGWu6A5Ck8KB7fwQjzLPqFVpJpH9aCkg=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.PUBLIC_ACCESS_BLOCK",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 23000000,
+            "id": "T3BXZFS0F0CJ40PX",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:47:53.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 346
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "VxNjrykUMsK+VzwogA2CUZ++lyUN6247gDr66i+tjLbUGWu6A5Ck8KB7fwQjzLPqFVpJpH9aCkg="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "92.57.74.50",
+            "ip": "92.57.74.50",
+            "user":
+            {
+                "id": "arn:aws:iam::166157441623:user/david.iglesias"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "NoSuchPublicAccessBlockConfiguration"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "92.57.74.50"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "publicAccessBlock"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-24-08-46A572341891F7E7\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:59:05 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"KJX92DPG7K2DVRKW\", \"operation\": \"REST.GET.OBJECT_LOCK_CONFIGURATION\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?object-lock= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"ObjectLockConfigurationNotFoundError\", \"bytes_sent\": \"351\", \"object_sent\": \"-\", \"total_time\": \"24\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"G+h1nc9WVb6nQ9gTyzhsPK2x93DkBj7TYubl1C44E0YNDEWtjXAdvgH/uTRmxCpPwCmxEMLal7w=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-24-08-46A572341891F7E7\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:59:05 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"KJX92DPG7K2DVRKW\", \"operation\": \"REST.GET.OBJECT_LOCK_CONFIGURATION\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?object-lock= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"ObjectLockConfigurationNotFoundError\", \"bytes_sent\": \"351\", \"object_sent\": \"-\", \"total_time\": \"24\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"G+h1nc9WVb6nQ9gTyzhsPK2x93DkBj7TYubl1C44E0YNDEWtjXAdvgH/uTRmxCpPwCmxEMLal7w=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.OBJECT_LOCK_CONFIGURATION",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 24000000,
+            "id": "KJX92DPG7K2DVRKW",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:59:05.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 351
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "G+h1nc9WVb6nQ9gTyzhsPK2x93DkBj7TYubl1C44E0YNDEWtjXAdvgH/uTRmxCpPwCmxEMLal7w="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "213.194.148.169",
+            "ip": "213.194.148.169",
+            "user":
+            {
+                "id": "arn:aws:iam::166157441623:user/carlos.ridao"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "amazonaws"
+        },
+        "error":
+        {
+            "code": "ObjectLockConfigurationNotFoundError"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "213.194.148.169"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "object-lock="
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-38-37-D958F151CC09E7C4\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:09 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"4PV7SD39WB656ZKZ\", \"operation\": \"REST.GET.PUBLIC_ACCESS_BLOCK\", \"key\": \"-\", \"request_uri\": \"GET /?publicAccessBlock HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchPublicAccessBlockConfiguration\", \"bytes_sent\": \"346\", \"object_sent\": \"-\", \"total_time\": \"26\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/5.4.109-57.182.amzn2int.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"uNH+YtHYmLvoUnpjDilrRdk2DGQdHaSG2/WZ8DJMgkQ45Yv4JOOJQeaHN98Jve4H24u32Y2b8b8=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-38-37-D958F151CC09E7C4\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:09 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"4PV7SD39WB656ZKZ\", \"operation\": \"REST.GET.PUBLIC_ACCESS_BLOCK\", \"key\": \"-\", \"request_uri\": \"GET /?publicAccessBlock HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchPublicAccessBlockConfiguration\", \"bytes_sent\": \"346\", \"object_sent\": \"-\", \"total_time\": \"26\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/5.4.109-57.182.amzn2int.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"uNH+YtHYmLvoUnpjDilrRdk2DGQdHaSG2/WZ8DJMgkQ45Yv4JOOJQeaHN98Jve4H24u32Y2b8b8=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.PUBLIC_ACCESS_BLOCK",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 26000000,
+            "id": "4PV7SD39WB656ZKZ",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:57:09.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 346
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "uNH+YtHYmLvoUnpjDilrRdk2DGQdHaSG2/WZ8DJMgkQ45Yv4JOOJQeaHN98Jve4H24u32Y2b8b8="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/5.4.109-57.182.amzn2int.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "213.194.148.169",
+            "ip": "213.194.148.169",
+            "user":
+            {
+                "id": "arn:aws:iam::166157441623:user/carlos.ridao"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "NoSuchPublicAccessBlockConfiguration"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "213.194.148.169"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "publicAccessBlock"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-47-05-689ED56B49777287\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::166157441623:user/david.iglesias\", \"request_id\": \"T3BXXQXXXA2C8CTM\", \"operation\": \"REST.GET.OBJECT_LOCK_CONFIGURATION\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?object-lock= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"ObjectLockConfigurationNotFoundError\", \"bytes_sent\": \"351\", \"object_sent\": \"-\", \"total_time\": \"10\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"SvCRsXmrou4iPqc6TZQ+KeivKkxmtBi8fxinMuHkhiEAfjFIeEi+4wOe8WMRc1inPGdr9To2iyg=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-47-05-689ED56B49777287\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::166157441623:user/david.iglesias\", \"request_id\": \"T3BXXQXXXA2C8CTM\", \"operation\": \"REST.GET.OBJECT_LOCK_CONFIGURATION\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?object-lock= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"ObjectLockConfigurationNotFoundError\", \"bytes_sent\": \"351\", \"object_sent\": \"-\", \"total_time\": \"10\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"SvCRsXmrou4iPqc6TZQ+KeivKkxmtBi8fxinMuHkhiEAfjFIeEi+4wOe8WMRc1inPGdr9To2iyg=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.OBJECT_LOCK_CONFIGURATION",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 10000000,
+            "id": "T3BXXQXXXA2C8CTM",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:47:53.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 351
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "SvCRsXmrou4iPqc6TZQ+KeivKkxmtBi8fxinMuHkhiEAfjFIeEi+4wOe8WMRc1inPGdr9To2iyg="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "92.57.74.50",
+            "ip": "92.57.74.50",
+            "user":
+            {
+                "id": "arn:aws:iam::166157441623:user/david.iglesias"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "amazonaws"
+        },
+        "error":
+        {
+            "code": "ObjectLockConfigurationNotFoundError"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "92.57.74.50"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "object-lock="
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-41-37-5CFDED3B2BCCDEB1\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9ba876dc826a50c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:58 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::266157451723:user/Name.Lastname\", \"request_id\": \"M6XS2MGJ5FDA6VTJ\", \"operation\": \"REST.GET.BUCKETVERSIONS\", \"key\": \"-\", \"request_uri\": \"GET /?versions&max-keys=1&encoding-type=url HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"839\", \"object_sent\": \"-\", \"total_time\": \"54\", \"turn_around_time\": \"53\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"JyPaquNlVOP38Ap/6E0zqnh5Zj75+9KAv0weFdQChcLd6oaNZZxWyJUPhQgahDu4EHWDy7zQOsA=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-41-37-5CFDED3B2BCCDEB1\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9ba876dc826a50c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:58 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::266157451723:user/Name.Lastname\", \"request_id\": \"M6XS2MGJ5FDA6VTJ\", \"operation\": \"REST.GET.BUCKETVERSIONS\", \"key\": \"-\", \"request_uri\": \"GET /?versions&max-keys=1&encoding-type=url HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"839\", \"object_sent\": \"-\", \"total_time\": \"54\", \"turn_around_time\": \"53\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"JyPaquNlVOP38Ap/6E0zqnh5Zj75+9KAv0weFdQChcLd6oaNZZxWyJUPhQgahDu4EHWDy7zQOsA=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.BUCKETVERSIONS",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 54000000,
+            "id": "M6XS2MGJ5FDA6VTJ",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:57:58.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 839
+                },
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "53",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "JyPaquNlVOP38Ap/6E0zqnh5Zj75+9KAv0weFdQChcLd6oaNZZxWyJUPhQgahDu4EHWDy7zQOsA="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "213.194.148.169",
+            "ip": "213.194.148.169",
+            "user":
+            {
+                "id": "arn:aws:iam::266157451723:user/Name.Lastname"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "213.194.148.169"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9ba876dc826a50c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "versions&max-keys=1&encoding-type=url"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-47-05-689ED56B49777287\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235eabc1526eff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::266157451723:user/name.lastName\", \"request_id\": \"T3BJ3QVNEB2XNQZ6\", \"operation\": \"REST.GET.ENCRYPTION\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?encryption= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"ServerSideEncryptionConfigurationNotFoundError\", \"bytes_sent\": \"359\", \"object_sent\": \"-\", \"total_time\": \"28\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"aWts5+h5vGMYypTnH/uUuT+k1dt+C6r/qa9WqxHmYfv58SJlkEXi2EvgnOJcaIpTGs10FzFAS58=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-47-05-689ED56B49777287\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235eabc1526eff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::266157451723:user/name.lastName\", \"request_id\": \"T3BJ3QVNEB2XNQZ6\", \"operation\": \"REST.GET.ENCRYPTION\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?encryption= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"ServerSideEncryptionConfigurationNotFoundError\", \"bytes_sent\": \"359\", \"object_sent\": \"-\", \"total_time\": \"28\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"aWts5+h5vGMYypTnH/uUuT+k1dt+C6r/qa9WqxHmYfv58SJlkEXi2EvgnOJcaIpTGs10FzFAS58=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.ENCRYPTION",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 28000000,
+            "id": "T3BJ3QVNEB2XNQZ6",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:47:53.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 359
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "aWts5+h5vGMYypTnH/uUuT+k1dt+C6r/qa9WqxHmYfv58SJlkEXi2EvgnOJcaIpTGs10FzFAS58="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "92.57.74.50",
+            "ip": "92.57.74.50",
+            "user":
+            {
+                "id": "arn:aws:iam::266157451723:user/name.lastName"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "amazonaws"
+        },
+        "error":
+        {
+            "code": "ServerSideEncryptionConfigurationNotFoundError"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "92.57.74.50"
+            ],
+            "user":
+            [
+                "3ab1235eabc1526eff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "encryption="
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-19-14-3471F0680DF7E76A\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:54:19 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"3AJB6PD273RD52X6\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz\", \"request_uri\": \"PUT /AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"693\", \"total_time\": \"219\", \"turn_around_time\": \"18\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"Ro+Kw5mL0mjM5EelyX550IpWNjUJk9SE1Jf6G+QmV19xqMm2bDJJ/66qXCTKkYxdMOadpdD7J/E=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-19-14-3471F0680DF7E76A\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:54:19 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"3AJB6PD273RD52X6\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz\", \"request_uri\": \"PUT /AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"693\", \"total_time\": \"219\", \"turn_around_time\": \"18\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"Ro+Kw5mL0mjM5EelyX550IpWNjUJk9SE1Jf6G+QmV19xqMm2bDJJ/66qXCTKkYxdMOadpdD7J/E=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.PUT.OBJECT",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 219000000,
+            "id": "3AJB6PD273RD52X6",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:54:19.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "PUT",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "18",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "Ro+Kw5mL0mjM5EelyX550IpWNjUJk9SE1Jf6G+QmV19xqMm2bDJJ/66qXCTKkYxdMOadpdD7J/E="
+        },
+        "registry":
+        {
+            "key": "AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz"
+        },
+        "file":
+        {
+            "size": 693
+        },
+        "user_agent":
+        {
+            "name": "-"
+        },
+        "client":
+        {
+            "address": "-",
+            "user":
+            {
+                "id": "svc:cloudtrail.amazonaws.com"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/166157441623/CloudTrail/ap-northeast-2/2021/04/29/166157441623_CloudTrail_ap-northeast-2_20210429T0850Z_OqyCCmLXJkTGBfj0.json.gz"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-41-37-5CFDED3B2BCCDAB1\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:58 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::266157451723:user/Name.Lastname\", \"request_id\": \"M6XS2MGJ5FDA6VTJ\", \"operation\": \"REST.GET.OBJECT\", \"key\": \"-\", \"request_uri\": \"GET /?versions&max-keys=1&encoding-type=url HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"839\", \"object_sent\": \"-\", \"total_time\": \"54\", \"turn_around_time\": \"53\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"JyPaquNlVOP38Ap/6E0zqnh5Zj75+9KAv0weFdQChcLd6oaNZZxWyJUPhQgahDu4EHWDy7zQOsA=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-41-37-5CFDED3B2BCCDAB1\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:58 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::266157451723:user/Name.Lastname\", \"request_id\": \"M6XS2MGJ5FDA6VTJ\", \"operation\": \"REST.GET.OBJECT\", \"key\": \"-\", \"request_uri\": \"GET /?versions&max-keys=1&encoding-type=url HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"839\", \"object_sent\": \"-\", \"total_time\": \"54\", \"turn_around_time\": \"53\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"JyPaquNlVOP38Ap/6E0zqnh5Zj75+9KAv0weFdQChcLd6oaNZZxWyJUPhQgahDu4EHWDy7zQOsA=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.OBJECT",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 54000000,
+            "id": "M6XS2MGJ5FDA6VTJ",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:57:58.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 839
+                },
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "53",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "JyPaquNlVOP38Ap/6E0zqnh5Zj75+9KAv0weFdQChcLd6oaNZZxWyJUPhQgahDu4EHWDy7zQOsA="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "213.194.148.169",
+            "ip": "213.194.148.169",
+            "user":
+            {
+                "id": "arn:aws:iam::266157451723:user/Name.Lastname"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "213.194.148.169"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "versions&max-keys=1&encoding-type=url"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-39-38-09BBD09AEA944FFF\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:59:40 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"7MS7B8RJRST6P5TR\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz\", \"request_uri\": \"PUT /AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"691\", \"total_time\": \"417\", \"turn_around_time\": \"31\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"WLH6eTxti1Qs62kT5YaLFNM8h/KON9AoZA2PVpkpkd6IYJkaEsPtmVX1siMpxnVdVVCapmiiw8g=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-39-38-09BBD09AEA944FFF\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:59:40 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"7MS7B8RJRST6P5TR\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz\", \"request_uri\": \"PUT /AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"691\", \"total_time\": \"417\", \"turn_around_time\": \"31\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"WLH6eTxti1Qs62kT5YaLFNM8h/KON9AoZA2PVpkpkd6IYJkaEsPtmVX1siMpxnVdVVCapmiiw8g=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.PUT.OBJECT",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 417000000,
+            "id": "7MS7B8RJRST6P5TR",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:59:40.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "PUT",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "31",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "WLH6eTxti1Qs62kT5YaLFNM8h/KON9AoZA2PVpkpkd6IYJkaEsPtmVX1siMpxnVdVVCapmiiw8g="
+        },
+        "registry":
+        {
+            "key": "AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz"
+        },
+        "file":
+        {
+            "size": 691
+        },
+        "user_agent":
+        {
+            "name": "-"
+        },
+        "client":
+        {
+            "address": "-",
+            "user":
+            {
+                "id": "svc:cloudtrail.amazonaws.com"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/166157441623/CloudTrail/ca-central-1/2021/04/29/166157441623_CloudTrail_ca-central-1_20210429T0850Z_OQlff7itdlw6etwb.json.gz"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-38-27-8196FC2529DE67C3\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd345a35fhac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:52:31 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"WF1XB03CFCAN420K\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz\", \"request_uri\": \"PUT /AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"2725\", \"total_time\": \"103\", \"turn_around_time\": \"15\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"EEcul1xzEVPZlAQn1tZoJq8SFEwudrfxWERlYVbgM4OklyDqK8l9PNkSI30q17vwyGMUFQSyDGQ=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-38-27-8196FC2529DE67C3\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd345a35fhac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:52:31 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"WF1XB03CFCAN420K\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz\", \"request_uri\": \"PUT /AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"2725\", \"total_time\": \"103\", \"turn_around_time\": \"15\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"EEcul1xzEVPZlAQn1tZoJq8SFEwudrfxWERlYVbgM4OklyDqK8l9PNkSI30q17vwyGMUFQSyDGQ=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.PUT.OBJECT",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 103000000,
+            "id": "WF1XB03CFCAN420K",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:52:31.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "PUT",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "15",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "EEcul1xzEVPZlAQn1tZoJq8SFEwudrfxWERlYVbgM4OklyDqK8l9PNkSI30q17vwyGMUFQSyDGQ="
+        },
+        "registry":
+        {
+            "key": "AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz"
+        },
+        "file":
+        {
+            "size": 2725
+        },
+        "user_agent":
+        {
+            "name": "-"
+        },
+        "client":
+        {
+            "address": "-",
+            "user":
+            {
+                "id": "svc:cloudtrail.amazonaws.com"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd345a35fhac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/266157451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-31-58-3B49A703059B51C0\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:09 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"4PV3AP5MWB9MR2PB\", \"operation\": \"REST.GET.WEBSITE\", \"key\": \"-\", \"request_uri\": \"GET /?website HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchWebsiteConfiguration\", \"bytes_sent\": \"343\", \"object_sent\": \"-\", \"total_time\": \"8\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"+HomyseoOceOh0x316oJs2pVtgs8mQK9HHRlmLUSGb96yjlen4hiAjUZoTeI4gHemKi3/RuQ8CY=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-31-58-3B49A703059B51C0\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:57:09 +0000\", \"remote_ip\": \"213.194.148.169\", \"requester\": \"arn:aws:iam::166157441623:user/carlos.ridao\", \"request_id\": \"4PV3AP5MWB9MR2PB\", \"operation\": \"REST.GET.WEBSITE\", \"key\": \"-\", \"request_uri\": \"GET /?website HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchWebsiteConfiguration\", \"bytes_sent\": \"343\", \"object_sent\": \"-\", \"total_time\": \"8\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"+HomyseoOceOh0x316oJs2pVtgs8mQK9HHRlmLUSGb96yjlen4hiAjUZoTeI4gHemKi3/RuQ8CY=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.WEBSITE",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 8000000,
+            "id": "4PV3AP5MWB9MR2PB",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:57:09.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 343
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "+HomyseoOceOh0x316oJs2pVtgs8mQK9HHRlmLUSGb96yjlen4hiAjUZoTeI4gHemKi3/RuQ8CY="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "213.194.148.169",
+            "ip": "213.194.148.169",
+            "user":
+            {
+                "id": "arn:aws:iam::166157441623:user/carlos.ridao"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "NoSuchWebsiteConfiguration"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "213.194.148.169"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/",
+            "query": "website"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-26-09-FB9C0FDF7111AB7D\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:58:59 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"6CAEB7DA04Q1TF4Y\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz\", \"request_uri\": \"PUT /AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"1419\", \"total_time\": \"77\", \"turn_around_time\": \"55\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"IEGhHaEmvPO9VKc5b8M0cgZv6zmTNKfKiO/Z+CupJjL0AtKQVpr3Ju5GQad/2z/UqyyrDWUhPE4=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-26-09-FB9C0FDF7111AB7D\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:58:59 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:cloudtrail.amazonaws.com\", \"request_id\": \"6CAEB7DA04Q1TF4Y\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz\", \"request_uri\": \"PUT /AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"1419\", \"total_time\": \"77\", \"turn_around_time\": \"55\", \"referer\": \"-\", \"user_agent\": \"-\", \"version_id\": \"-\", \"host_id\": \"IEGhHaEmvPO9VKc5b8M0cgZv6zmTNKfKiO/Z+CupJjL0AtKQVpr3Ju5GQad/2z/UqyyrDWUhPE4=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.PUT.OBJECT",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 77000000,
+            "id": "6CAEB7DA04Q1TF4Y",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:58:59.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "PUT",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "55",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "IEGhHaEmvPO9VKc5b8M0cgZv6zmTNKfKiO/Z+CupJjL0AtKQVpr3Ju5GQad/2z/UqyyrDWUhPE4="
+        },
+        "registry":
+        {
+            "key": "AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz"
+        },
+        "file":
+        {
+            "size": 1419
+        },
+        "user_agent":
+        {
+            "name": "-"
+        },
+        "client":
+        {
+            "address": "-",
+            "user":
+            {
+                "id": "svc:cloudtrail.amazonaws.com"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/166157441623/CloudTrail/us-east-1/2021/04/29/166157441623_CloudTrail_us-east-1_20210429T0855Z_PbZyfNGEUE2GJEeE.json.gz"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-46-39-B6668AD8BC9E7478\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::166157441623:user/david.iglesias\", \"request_id\": \"T3BVCZYFQWJ71SMQ\", \"operation\": \"REST.GET.TAGGING\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?tagging= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchTagSet\", \"bytes_sent\": \"296\", \"object_sent\": \"-\", \"total_time\": \"32\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/5.4.109-57.182.amzn2int.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"H0m8NWGfPWodanNSTZPQdoDQsBElGm1dWW5QVoGqnvn3hfQGK0BSVfiJ67YfHB/ErVYldQuqu10=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-46-39-B6668AD8BC9E7478\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::166157441623:user/david.iglesias\", \"request_id\": \"T3BVCZYFQWJ71SMQ\", \"operation\": \"REST.GET.TAGGING\", \"key\": \"-\", \"request_uri\": \"GET /wazuh-cloudtrail?tagging= HTTP/1.1\", \"http_status\": \"404\", \"error_code\": \"NoSuchTagSet\", \"bytes_sent\": \"296\", \"object_sent\": \"-\", \"total_time\": \"32\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/5.4.109-57.182.amzn2int.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"H0m8NWGfPWodanNSTZPQdoDQsBElGm1dWW5QVoGqnvn3hfQGK0BSVfiJ67YfHB/ErVYldQuqu10=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.TAGGING",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 32000000,
+            "id": "T3BVCZYFQWJ71SMQ",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:47:53.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 296
+                },
+                "status_code": "404"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "H0m8NWGfPWodanNSTZPQdoDQsBElGm1dWW5QVoGqnvn3hfQGK0BSVfiJ67YfHB/ErVYldQuqu10="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/5.4.109-57.182.amzn2int.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "92.57.74.50",
+            "ip": "92.57.74.50",
+            "user":
+            {
+                "id": "arn:aws:iam::166157441623:user/david.iglesias"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "amazonaws"
+        },
+        "error":
+        {
+            "code": "NoSuchTagSet"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "92.57.74.50"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail",
+            "query": "tagging="
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-38-27-8196FC2529DE67C2\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac889ac5chf3b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:52:31 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:s3.amazonaws.com\", \"request_id\": \"WF1XB03CFCAN420K\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/266115451723/CloudTrail/us-west-1/2021/03/29/266157451723_CloudTrail_us-west-1_20210445T0840Z_QcTREycd1xiqQru5.json.gz\",\"request_uri\":\"PUT /AWSLogs/266148451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz HTTP/1.1\",\"http_status\":\"200\",\"error_code\":\"-\",\"bytes_sent\":\"-\",\"object_sent\":\"2725\",\"total_time\":\"103\",\"turn_around_time\":\"15\",\"referer\":\"-\",\"user_agent\":\"-\",\"version_id\":\"-\",\"host_id\":\"EEcul1xzEVPZlAQn1tZoJq8SFEwudrfxWERlYVbAA4OklyDqK8l9PNkSI30q17vwyGMUFQSyDGQ=\",\"signature_version\":\"SigV4\",\"cipher_suite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"authentication_type\":\"AuthHeader\",\"host_header\":\"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\",\"tls_version\":\"TLSv1.2\",\"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-38-27-8196FC2529DE67C2\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac889ac5chf3b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:52:31 +0000\", \"remote_ip\": \"-\", \"requester\": \"svc:s3.amazonaws.com\", \"request_id\": \"WF1XB03CFCAN420K\", \"operation\": \"REST.PUT.OBJECT\", \"key\": \"AWSLogs/266115451723/CloudTrail/us-west-1/2021/03/29/266157451723_CloudTrail_us-west-1_20210445T0840Z_QcTREycd1xiqQru5.json.gz\",\"request_uri\":\"PUT /AWSLogs/266148451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz HTTP/1.1\",\"http_status\":\"200\",\"error_code\":\"-\",\"bytes_sent\":\"-\",\"object_sent\":\"2725\",\"total_time\":\"103\",\"turn_around_time\":\"15\",\"referer\":\"-\",\"user_agent\":\"-\",\"version_id\":\"-\",\"host_id\":\"EEcul1xzEVPZlAQn1tZoJq8SFEwudrfxWERlYVbAA4OklyDqK8l9PNkSI30q17vwyGMUFQSyDGQ=\",\"signature_version\":\"SigV4\",\"cipher_suite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"authentication_type\":\"AuthHeader\",\"host_header\":\"wazuh-cloudtrail.s3.us-east-1.amazonaws.com\",\"tls_version\":\"TLSv1.2\",\"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.PUT.OBJECT",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 103000000,
+            "id": "WF1XB03CFCAN420K",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:52:31.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "PUT",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "15",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "EEcul1xzEVPZlAQn1tZoJq8SFEwudrfxWERlYVbAA4OklyDqK8l9PNkSI30q17vwyGMUFQSyDGQ="
+        },
+        "registry":
+        {
+            "key": "AWSLogs/266115451723/CloudTrail/us-west-1/2021/03/29/266157451723_CloudTrail_us-west-1_20210445T0840Z_QcTREycd1xiqQru5.json.gz"
+        },
+        "file":
+        {
+            "size": 2725
+        },
+        "user_agent":
+        {
+            "name": "-"
+        },
+        "client":
+        {
+            "address": "-",
+            "user":
+            {
+                "id": "svc:s3.amazonaws.com"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-east-1"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac889ac5chf3b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/AWSLogs/266148451723/CloudTrail/us-west-1/2021/04/29/266157451723_CloudTrail_us-west-1_20210429T0840Z_QcTREycd1xiqQru5.json.gz"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-49-06-51F541DE27C2AC50\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"4ab1235e25ea9e94ff9b7e4e379cdeaec872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::266157451723:user/name.lastName\", \"request_id\": \"T3BW07JM2HMSJH17\", \"operation\": \"REST.HEAD.BUCKET\", \"key\": \"-\", \"request_uri\": \"HEAD /wazuh-cloudtrail HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"-\", \"total_time\": \"29\", \"turn_around_time\": \"28\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"YnKG5o0K4Z3Lh0WD0QTJVXOBjiUwi1wcz2nnrCZa7BMu6xyX++sLbA43jEXTSRd2eoNwZty30g4=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"access_logs/2021-04-29-09-49-06-51F541DE27C2AC50\", \"s3bucket\": \"wazuh-aws-wodle\"}, \"bucket_owner\": \"4ab1235e25ea9e94ff9b7e4e379cdeaec872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:47:53 +0000\", \"remote_ip\": \"92.57.74.50\", \"requester\": \"arn:aws:iam::266157451723:user/name.lastName\", \"request_id\": \"T3BW07JM2HMSJH17\", \"operation\": \"REST.HEAD.BUCKET\", \"key\": \"-\", \"request_uri\": \"HEAD /wazuh-cloudtrail HTTP/1.1\", \"http_status\": \"200\", \"error_code\": \"-\", \"bytes_sent\": \"-\", \"object_sent\": \"-\", \"total_time\": \"29\", \"turn_around_time\": \"28\", \"referer\": \"-\", \"user_agent\": \"S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy\", \"version_id\": \"-\", \"host_id\": \"YnKG5o0K4Z3Lh0WD0QTJVXOBjiUwi1wcz2nnrCZa7BMu6xyX++sLbA43jEXTSRd2eoNwZty30g4=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "success",
+            "dataset": "aws-s3access",
+            "action": "REST.HEAD.BUCKET",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 29000000,
+            "id": "T3BW07JM2HMSJH17",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:47:53.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "HEAD",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "status_code": "200"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "28",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "YnKG5o0K4Z3Lh0WD0QTJVXOBjiUwi1wcz2nnrCZa7BMu6xyX++sLbA43jEXTSRd2eoNwZty30g4="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "S3Console/0.4, aws-internal/3 aws-sdk-java/1.11.991 Linux/4.9.230-0.1.ac.224.84.332.metal1.x86_64 OpenJDK_64-Bit_Server_VM/25.282-b08 java/1.8.0_282 vendor/Oracle_Corporation cfg/retry-mode/legacy"
+        },
+        "client":
+        {
+            "address": "92.57.74.50",
+            "ip": "92.57.74.50",
+            "user":
+            {
+                "id": "arn:aws:iam::266157451723:user/name.lastName"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "amazonaws"
+        },
+        "error":
+        {
+            "code": "-"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "92.57.74.50"
+            ],
+            "user":
+            [
+                "4ab1235e25ea9e94ff9b7e4e379cdeaec872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/wazuh-cloudtrail"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-33-48-D5F96B5D2BDB69F7\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:54:26 +0000\", \"remote_ip\": \"52.95.43.198\", \"requester\": \"arn:aws:sts::125698912807:assumed-role/Wazuh-InstanceRole-ZRTINUN0DCQF/i-00b5343781acc7986\", \"request_id\": \"QNRZ5RHSF6D8QQ7Q\", \"operation\": \"REST.HEAD.BUCKET\", \"key\": \"-\", \"request_uri\": \"HEAD / HTTP/1.1\", \"http_status\": \"403\", \"error_code\": \"AccessDenied\", \"bytes_sent\": \"243\", \"object_sent\": \"-\", \"total_time\": \"22\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"Boto3/1.9.82 Python/3.7.2 Linux/4.14.114-105.126.amzn2.x86_64 Botocore/1.12.128\", \"version_id\": \"-\", \"host_id\": \"5fGsCOsbi/5B9nN987PXxMXzzbmdlIh4Lk+Wpfh02eD/ZkoZKCMEfMdcUxsE+smI1e6ULPl4uCc=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"aws\", \"aws\": {\"log_info\": {\"aws_account_alias\": \"\", \"log_file\": \"2021-04-29-09-33-48-D5F96B5D2BDB69F7\", \"s3bucket\": \"wazuh-aws-wodle-access\"}, \"bucket_owner\": \"3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101\", \"bucket\": \"wazuh-cloudtrail\", \"time\": \"29/Apr/2021:08:54:26 +0000\", \"remote_ip\": \"52.95.43.198\", \"requester\": \"arn:aws:sts::125698912807:assumed-role/Wazuh-InstanceRole-ZRTINUN0DCQF/i-00b5343781acc7986\", \"request_id\": \"QNRZ5RHSF6D8QQ7Q\", \"operation\": \"REST.HEAD.BUCKET\", \"key\": \"-\", \"request_uri\": \"HEAD / HTTP/1.1\", \"http_status\": \"403\", \"error_code\": \"AccessDenied\", \"bytes_sent\": \"243\", \"object_sent\": \"-\", \"total_time\": \"22\", \"turn_around_time\": \"-\", \"referer\": \"-\", \"user_agent\": \"Boto3/1.9.82 Python/3.7.2 Linux/4.14.114-105.126.amzn2.x86_64 Botocore/1.12.128\", \"version_id\": \"-\", \"host_id\": \"5fGsCOsbi/5B9nN987PXxMXzzbmdlIh4Lk+Wpfh02eD/ZkoZKCMEfMdcUxsE+smI1e6ULPl4uCc=\", \"signature_version\": \"SigV4\", \"cipher_suite\": \"ECDHE-RSA-AES128-GCM-SHA256\", \"authentication_type\": \"AuthHeader\", \"host_header\": \"wazuh-cloudtrail.s3.amazonaws.com\", \"tls_version\": \"TLSv1.2\", \"source\": \"s3_server_access\"}}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.HEAD.BUCKET",
+            "category":
+            [
+                "web"
+            ],
+            "duration": 22000000,
+            "id": "QNRZ5RHSF6D8QQ7Q",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "2021-04-29T08:54:26.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "HEAD",
+                "referrer": "-"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "body":
+                {
+                    "bytes": 243
+                },
+                "status_code": "403"
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "wazuh-cloudtrail",
+        "~signature_version": "SigV4",
+        "~turn_around_time": "-",
+        "~version_id": "-",
+        "host":
+        {
+            "id": "5fGsCOsbi/5B9nN987PXxMXzzbmdlIh4Lk+Wpfh02eD/ZkoZKCMEfMdcUxsE+smI1e6ULPl4uCc="
+        },
+        "registry":
+        {
+            "key": "-"
+        },
+        "user_agent":
+        {
+            "name": "Boto3/1.9.82 Python/3.7.2 Linux/4.14.114-105.126.amzn2.x86_64 Botocore/1.12.128"
+        },
+        "client":
+        {
+            "address": "52.95.43.198",
+            "ip": "52.95.43.198",
+            "user":
+            {
+                "id": "arn:aws:sts::125698912807:assumed-role/Wazuh-InstanceRole-ZRTINUN0DCQF/i-00b5343781acc7986"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "amazonaws"
+        },
+        "error":
+        {
+            "code": "AccessDenied"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "52.95.43.198"
+            ],
+            "user":
+            [
+                "3ab1235e25ea9e94ff9b7e4e379ba6b0c872cd36c096e1ac8cce7df433b47101"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/"
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "Wazuh-AWS",
+            "message": "{\"aws\":{\"authentication_type\":\"AuthHeader\",\"bucket_owner\":\"eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177\",\"bucket\":\"awsexamplebucket1\",\"bytes_sent\":3334567,\"cipher_suite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"error_code\":\"NoSuchBucket\",\"host_header\":\"s3.us-west-2.amazonaws.com\",\"host_id\":\"XUbDuBMraSiljG+cPksjMSSiwGWriDlVsSURFQw+JQnDTUXAbKvcsm/eTPFvsiP/XV/VLi31234=\",\"http_status\":200,\"key\":\"/photos/2019/08/perri.jpg\",\"object_sent\":1234567,\"operation\":\"REST.GET.VERSIONING\",\"referer\":\"http://www.amazon.com/webservices\",\"remote_ip\":\"192.10.20.30\",\"request_id\":\"3E57427F3EXAMPLE\",\"request_uri\":\"GET /awsexamplebucket1/photos/2019/08/perri.jpg?x-foo=bar HTTP/1.1\",\"requester\":\"eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177\",\"signature_version\":\"SigV2\",\"source\":\"s3_server_access\",\"time\":\"10/Jul/1992:00:00:38 +0000\",\"tls_version\":\"TLSv1.2\",\"total_time\":70,\"turn_around_time\":10,\"user_agent\":\"curl/7.15.1\",\"version_id\":\"3HO6la5C0M0V440Ptjfkd\"},\"integration\":\"aws\"}",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "aws-json",
+                "aws-s3"
+            ],
+            "source": "logcollector"
+        },
+        "event":
+        {
+            "original": "{\"aws\":{\"authentication_type\":\"AuthHeader\",\"bucket_owner\":\"eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177\",\"bucket\":\"awsexamplebucket1\",\"bytes_sent\":3334567,\"cipher_suite\":\"ECDHE-RSA-AES128-GCM-SHA256\",\"error_code\":\"NoSuchBucket\",\"host_header\":\"s3.us-west-2.amazonaws.com\",\"host_id\":\"XUbDuBMraSiljG+cPksjMSSiwGWriDlVsSURFQw+JQnDTUXAbKvcsm/eTPFvsiP/XV/VLi31234=\",\"http_status\":200,\"key\":\"/photos/2019/08/perri.jpg\",\"object_sent\":1234567,\"operation\":\"REST.GET.VERSIONING\",\"referer\":\"http://www.amazon.com/webservices\",\"remote_ip\":\"192.10.20.30\",\"request_id\":\"3E57427F3EXAMPLE\",\"request_uri\":\"GET /awsexamplebucket1/photos/2019/08/perri.jpg?x-foo=bar HTTP/1.1\",\"requester\":\"eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177\",\"signature_version\":\"SigV2\",\"source\":\"s3_server_access\",\"time\":\"10/Jul/1992:00:00:38 +0000\",\"tls_version\":\"TLSv1.2\",\"total_time\":70,\"turn_around_time\":10,\"user_agent\":\"curl/7.15.1\",\"version_id\":\"3HO6la5C0M0V440Ptjfkd\"},\"integration\":\"aws\"}",
+            "module": "aws",
+            "outcome": "failure",
+            "dataset": "aws-s3access",
+            "action": "REST.GET.VERSIONING",
+            "category":
+            [
+                "web"
+            ],
+            "id": "3E57427F3EXAMPLE",
+            "kind": "event",
+            "type":
+            [
+                "access"
+            ],
+            "start": "1992-07-10T00:00:38.000Z"
+        },
+        "http":
+        {
+            "request":
+            {
+                "method": "GET",
+                "referrer": "http://www.amazon.com/webservices"
+            },
+            "version": "1.1",
+            "response":
+            {
+                "status_code": 200
+            }
+        },
+        "~authentication_type": "AuthHeader",
+        "~bucket": "awsexamplebucket1",
+        "~signature_version": "SigV2",
+        "~turn_around_time": 10,
+        "~version_id": "3HO6la5C0M0V440Ptjfkd",
+        "host":
+        {
+            "id": "XUbDuBMraSiljG+cPksjMSSiwGWriDlVsSURFQw+JQnDTUXAbKvcsm/eTPFvsiP/XV/VLi31234="
+        },
+        "registry":
+        {
+            "key": "/photos/2019/08/perri.jpg"
+        },
+        "user_agent":
+        {
+            "name": "curl/7.15.1"
+        },
+        "client":
+        {
+            "address": "192.10.20.30",
+            "ip": "192.10.20.30",
+            "user":
+            {
+                "id": "eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177"
+            }
+        },
+        "cloud":
+        {
+            "provider": "aws",
+            "region": "us-west-2"
+        },
+        "error":
+        {
+            "code": "NoSuchBucket"
+        },
+        "related":
+        {
+            "ip":
+            [
+                "192.10.20.30"
+            ],
+            "user":
+            [
+                "eac45794b871afb34180f310f0c44732a6d1471a59da4832ba68fbabade1e177"
+            ]
+        },
+        "tls":
+        {
+            "cipher": "ECDHE-RSA-AES128-GCM-SHA256",
+            "version_protocol": "TLS",
+            "version": "1.2"
+        },
+        "url":
+        {
+            "path": "/awsexamplebucket1/photos/2019/08/perri.jpg",
+            "query": "x-foo=bar"
+        }
+    }
+]

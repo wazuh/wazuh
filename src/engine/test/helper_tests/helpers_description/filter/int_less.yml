@@ -1,0 +1,40 @@
+# Name of the helper function
+name: int_less
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: number  # Expected type is integer
+    generate: integer
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: number
+  generate: integer
+
+
+test:
+  - arguments:
+      1: 22
+      target_field: 2
+    should_pass: true
+    description: Success int less
+  - arguments:
+      1: 2
+      target_field: 22
+    should_pass: false
+    description: Failure int less
+  - arguments:
+      1: 100
+      target_field: 100
+    should_pass: false
+    description: Failure int less

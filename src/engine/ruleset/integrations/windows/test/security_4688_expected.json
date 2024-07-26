@@ -1,0 +1,135 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "created-process",
+      "category": [
+        "process"
+      ],
+      "code": "4688",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-11-12T02:24:52.377352500Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-GG82ULGC9GO.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A new process has been created",
+    "process": {
+      "command_line": "",
+      "executable": "C:\\\\Windows\\\\System32\\\\rundll32.exe",
+      "name": "rundll32.exe",
+      "parent": {
+        "executable": "C:\\\\Windows\\\\explorer.exe",
+        "name": "explorer.exe",
+        "pid": 3700
+      },
+      "pid": 3700
+    },
+    "related": {
+      "user": [
+        "WIN-GG82ULGC9GO$",
+        "dadmin"
+      ]
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "effective": {
+        "domain": "CONTOSO",
+        "id": "S-1-5-21-1377283216-344919071-3415362939-1104",
+        "name": "dadmin"
+      },
+      "id": "S-1-5-18",
+      "name": "WIN-GG82ULGC9GO$"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "CommandLine": "",
+        "MandatoryLabel": "S-1-16-8192",
+        "NewProcessId": "0x2bc",
+        "NewProcessName": "C:\\\\Windows\\\\System32\\\\rundll32.exe",
+        "ParentProcessName": "C:\\\\Windows\\\\explorer.exe",
+        "ProcessId": "0xe74",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x3e7",
+        "SubjectUserName": "WIN-GG82ULGC9GO$",
+        "SubjectUserSid": "S-1-5-18",
+        "TargetDomainName": "CONTOSO",
+        "TargetLogonId": "0x4a5af0",
+        "TargetUserName": "dadmin",
+        "TargetUserSid": "S-1-5-21-1377283216-344919071-3415362939-1104",
+        "TokenElevationType": "%%1938"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "WIN-GG82ULGC9GO.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4688"
+        },
+        "EventRecordID": {
+          "#text": "2814"
+        },
+        "Execution": {
+          "@ProcessID": "4",
+          "@ThreadID": "400"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13312"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-11-12T02:24:52.377352500Z"
+        },
+        "Version": {
+          "#text": "2"
+        }
+      },
+      "logon": {
+        "id": "0x3e7"
+      }
+    }
+  }
+]

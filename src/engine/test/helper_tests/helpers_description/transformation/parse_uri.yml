@@ -1,0 +1,38 @@
+# Name of the helper function
+name: parse_uri
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      1: http://someurl.com
+      target_field: any_value
+    should_pass: true
+    expected:
+      original: http://someurl.com/
+      scheme: http
+      domain: someurl.com
+      path: "/"
+    description: Success uri parse
+  - arguments:
+      1: www.someurl.com
+      target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure uri parse

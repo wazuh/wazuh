@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wazuh-rules.json",
+  "title": "Schema for Wazuh rules specification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "metadata"
+  ],
+  "properties": {
+    "name": {
+      "description": "unique name identifying the rule",
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "additional information about rule",
+      "additionalProperties": false,
+      "required": [
+        "creation_date",
+        "updated_date",
+        "contributors",
+        "level",
+        "description"
+      ],
+      "properties": {
+        "creation_date": {
+          "type": "string",
+          "description": "date when the rule was created"
+        },
+        "updated_date": {
+          "type": "string",
+          "description": "date of last modification"
+        },
+        "contributors": {
+          "type": "array",
+          "description": "Contributors of the rule",
+          "items": {
+            "type": "string"
+          }
+        },
+        "level": {
+          "description": "integer from 0 to 15 representing alert severity",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "description": {
+          "description": "a detailed explanation of what the rules aims to detect and how",
+          "type": "string"
+        },
+        "references": {
+          "description": "a list of references pointing to understand rule behaviour or alert being detected, it should help deciding what to do on next steps",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "false_positives": {
+          "description": "a list of cases in wich this alert could be a false positive",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "sequence": {
+      "description": "Detects sequences",
+      "properties": {
+        "timeframe": {
+          "type": "string",
+          "description": "Window time of the secuence"
+        },
+        "maxspan": {
+          "description": "Window time between each event",
+          "type": "string"
+        },
+        "by": {
+          "description": "Join events of the sequence by the fields indicated here",
+          "type": "array"
+        },
+        "events": {
+          "type": "array",
+          "description": "Each entry defines an event of the sequence",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "only_ecs_field.json#"
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "patternProperties": {
+                  "^(?:and|or)$": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "only_ecs_field.json#"
+                        },
+                        {
+                          "$ref": "#/properties/match/items"
+                        }
+                      ]
+                    }
+                  },
+                  "^list(?:\\|negate)?$": {
+                    "type": "object",
+                    "description": "list look up",
+                    "additionalProperties": false,
+                    "required": [
+                      "name"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "find|key": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "match": {
+      "description": "this blocks describes the conditions needed to throw the alert based on event fields",
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "$ref": "only_ecs_field.json#"
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "patternProperties": {
+              "^(?:and|or)$": {
+                "type": "array",
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "only_ecs_field.json#"
+                    },
+                    {
+                      "$ref": "#/properties/match/items"
+                    }
+                  ]
+                }
+              },
+              "^list(?:\\|negate)?$": {
+                "type": "object",
+                "description": "list look up",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "find|key": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    "extend": {
+      "description": "",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tags": {
+          "description": "a list of user defined tags",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mitre": {
+          "description": "contains pairs technique and tactic that this rule aims to detect",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "techniqueID"
+            ],
+            "properties": {
+              "techniqueID": {
+                "description": "id of the technique",
+                "type": "string"
+              },
+              "tacticID": {
+                "description": "id of the tactic",
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

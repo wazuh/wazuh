@@ -1,0 +1,28 @@
+# Name of the helper function
+name: rename
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # Target field 'target_field' already exists"
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      1: 42
+      target_field: elapsed_time
+    should_pass: false
+    expected: elapsed_time
+    description: Target field 'target_field' already exists

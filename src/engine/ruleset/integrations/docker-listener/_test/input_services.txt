@@ -1,0 +1,1 @@
+{"integration": "docker", "docker": {"Type": "service", "Action": "create", "Actor": {"ID": "j4b5sltkxk8ymeesxkcko1lyx", "Attributes": {"name": "redis"}}, "scope": "swarm", "time": 1686330723, "timeNano": 1686330723187195892}}

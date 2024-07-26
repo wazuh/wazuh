@@ -1,0 +1,92 @@
+---
+name: decoder/sophos-wifi/0
+
+metadata:
+  module: Sophos
+  title: Sophos-Wifi logs decoder
+  version: [17.5.x, 18.0.x]
+  description: Decoder for Sophos Wifi
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
+
+parents:
+  - decoder/integrations/0
+
+check:
+- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="Wireless Protection"
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sophos
+  # - event.dataset: sophos.xg
+
+parse:
+  logpar:
+    # device="SFW" date=2017-02-01 time=14:17:35 timezone="IST" device_name="SG115" device_id=S110016E28BA631 log_id=106025618011 log_type="Wireless Protection" log_component="Wireless Protection" log_subtype="Information" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=2
+    # device="SFW" date=2017-02-01 time=14:19:47 timezone="IST" device_name="SG115" device_id=S110016E28BA631 log_id=106025618011 log_type="Wireless Protection" log_component="Wireless Protection" log_subtype="Information" priority=Information ap=A40024A636F7862 ssid=SPIDIGO2015 clients_conn_SSID=3
+    - event.original: <~tmp.payload_message>
+
+# TODO: All sophos named fields are not currently in the schema.
+normalize:
+  - map:
+      - ~tmp.payload_message: +replace/=""/=" "
+    logpar:
+      - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
+  - map:
+      - event.kind: event
+      - event.module: sophos
+      - event.dataset: sophos.xg
+      - event.outcome: success
+  - check:
+      - ~tmp.priority: unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
+      - event.severity: 6
+  - map:
+      # TODO: need converter timezone abbrevation to UTC offset, for example 'IST' to -02:00
+      - event.timezone: $~tmp.timezone
+      - fileset.name: xg
+      - host.name: firewall.localgroup.local
+      - input.type: log
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - log.level: $~tmp.log_subtype
+      - observer.product: XG
+      - observer.serial_number: $~tmp.device_id
+      - observer.type: firewall
+      - observer.vendor: Sophos
+      - sophos.xg.log_id: $~tmp.log_id
+      - sophos.xg.device_name: $~tmp.device_name
+      - sophos.xg.log_type: $~tmp.log_type
+      - sophos.xg.log_component: $~tmp.log_type
+      - sophos.xg.log_subtype: $~tmp.log_subtype
+      - sophos.xg.priority: $~tmp.log_subtype
+      - sophos.xg.ap: $~tmp.ap
+      - sophos.xg.ssid: $~tmp.ssid
+      - related.host: [$host.name]
+      - tags: [forwarded, preserve_original_even, sophos-xg]
+      - wazuh.decoders: +array_append/sophos-wifi
+      - ~tmp: delete()

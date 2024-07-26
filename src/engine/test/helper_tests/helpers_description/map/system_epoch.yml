@@ -1,0 +1,7 @@
+# Name of the helper function
+name: system_epoch
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False

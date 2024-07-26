@@ -1,0 +1,38 @@
+# Name of the helper function
+name: match_value
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: array  # Expected type is array
+    generate: integer
+    source: both # includes values or references (their names start with $)
+
+# Value not found
+skipped:
+  - success_cases
+
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - arguments:
+      1: [1,2,3,4]
+      target_field: 10
+    should_pass: false
+    description: Compare two different integers
+  - arguments:
+      1: [22]
+      target_field: 22
+    should_pass: true
+    description: Compare two equals integers

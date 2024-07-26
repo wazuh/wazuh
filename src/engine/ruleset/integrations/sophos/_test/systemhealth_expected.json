@@ -1,0 +1,73 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/sophos/xg.log",
+            "message": "device=\"SFW\" date=2018-06-05 time=15:10:00 timezone=\"CEST\" device_name=\"SF01V\" device_id=SFDemo-fe75a9f log_id=127626618031 log_type=\"System Health\" log_component=\"CPU\" log_subtype=\"Usage\" priority=Information system=1.29% user=7.60% idle=91.11%",
+            "origin": "/var/log/sophos/xg.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "sophos-systemhealth"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "device=\"SFW\" date=2018-06-05 time=15:10:00 timezone=\"CEST\" device_name=\"SF01V\" device_id=SFDemo-fe75a9f log_id=127626618031 log_type=\"System Health\" log_component=\"CPU\" log_subtype=\"Usage\" priority=Information system=1.29% user=7.60% idle=91.11%",
+            "code": 127626618031,
+            "dataset": "sophos.xg",
+            "kind": "event",
+            "module": "sophos",
+            "severity": 6,
+            "timezone": "CEST"
+        },
+        "host": {
+            "id": "001"
+        },
+        "fileset": {
+            "name": "xg"
+        },
+        "input": {
+            "type\"": "log"
+        },
+        "\\@timestamp": "2018-06-05T15:10:00",
+        "log": {
+            "level": "Information"
+        },
+        "observer": {
+            "product": "XG",
+            "serial_number": "SFDemo-fe75a9f",
+            "type": "firewall",
+            "vendor": "Sophos"
+        },
+        "sophos": {
+            "xg": {
+                "device": "SFW",
+                "device_name": "SF01V",
+                "idle_cpu": "91.11%",
+                "log_component": "CPU",
+                "log_id": 127626618031,
+                "log_subtype": "Usage",
+                "log_type": "System Health",
+                "priority": "Information",
+                "system_cpu": "1.29%",
+                "user_cpu": "7.60%"
+            }
+        },
+        "service": {
+            "type": "sophos"
+        },
+        "tags": [
+            "forwarded",
+            "preserve_original_even",
+            "sophos-xg"
+        ]
+    }
+]

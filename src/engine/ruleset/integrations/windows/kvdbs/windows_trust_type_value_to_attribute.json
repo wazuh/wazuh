@@ -1,0 +1,6 @@
+{
+    "1": "TRUST_TYPE_DOWNLEVEL",
+    "2": "TRUST_TYPE_UPLEVEL",
+    "3": "TRUST_TYPE_MIT",
+    "4": "TRUST_TYPE_DCE"
+}

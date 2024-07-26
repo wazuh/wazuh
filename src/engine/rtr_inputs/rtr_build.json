@@ -1,0 +1,11 @@
+{
+    "steps": [
+        {
+            "description": "Build",
+            "parameters": [
+                "--test build",
+                "--threads 4"
+            ]
+        }
+    ]
+}

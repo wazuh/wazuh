@@ -1,0 +1,29 @@
+# Name of the helper function
+name: is_not_array
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - boolean
+    - object
+    - string
+
+test:
+  - arguments:
+      target_field: [1,2,3,4]
+    should_pass: false
+    description: Is array
+  - arguments:
+      target_field: 234
+    should_pass: true
+    description: Not is array
+  - arguments:
+      target_field:
+        key: value
+    should_pass: true
+    description: Not is array

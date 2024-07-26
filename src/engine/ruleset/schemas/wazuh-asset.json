@@ -1,0 +1,259 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "wazuh-asset.json",
+    "name": "schema/wazuh-asset/0",
+    "title": "Schema for Wazuh assets",
+    "type": "object",
+    "description": "Schema for Wazuh assets",
+    "additionalProperties": false,
+    "required": [
+        "name",
+        "metadata"
+    ],
+    "anyOf": [
+        {
+            "anyOf": [
+                {
+                    "required": [
+                        "check"
+                    ]
+                },
+                {
+                    "required": [
+                        "parse"
+                    ]
+                },
+                {
+                    "required": [
+                        "normalize"
+                    ]
+                }
+            ],
+            "not": {
+                "anyOf": [
+                    {
+                        "required": [
+                            "allow"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "outputs"
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "required": [
+                "outputs"
+            ],
+            "not": {
+                "anyOf": [
+                    {
+                        "required": [
+                            "normalize"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "parse"
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "required": [
+                "allow",
+                "parents"
+            ],
+            "not": {
+                "anyOf": [
+                    {
+                        "required": [
+                            "check"
+                        ]
+                    },
+                    {
+                        "required": [
+                            "normalize"
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "patternProperties": {
+        "parse\\|\\S+": {
+            "$ref": "#/definitions/_parse"
+        }
+    },
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "Name of the asset, short and concise name to identify this asset",
+            "pattern": "^[^/]+/[^/]+/[^/]+$"
+        },
+        "metadata": {
+            "type": "object",
+            "description": "Metadata of this asset",
+            "additionalProperties": false,
+            "required": [
+                "integration",
+                "title",
+                "description",
+                "compatibility",
+                "versions",
+                "author",
+                "references"
+            ],
+            "properties": {
+                "integration": {
+                    "type": "string",
+                    "description": "The integration this asset belongs to"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "Short and concise description of this asset"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Long description of this asset, explaining what it does and how it works"
+                },
+                "compatibility": {
+                    "type": "string",
+                    "description": "Description of the supported services and versions of the logs processed by this asset"
+                },
+                "versions": {
+                    "type": "array",
+                    "description": "A list of the service versions supported",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "author": {
+                    "type": "object",
+                    "description": "Author",
+                    "additionalProperties": false,
+                    "required": [
+                        "name",
+                        "date"
+                    ],
+                    "properties": {
+                        "name": {
+                            "type": "string",
+                            "description": "Name/Organization"
+                        },
+                        "email": {
+                            "type": "string",
+                            "description": "Email"
+                        },
+                        "url": {
+                            "type": "string",
+                            "description": "URL linking to the author's website"
+                        },
+                        "date": {
+                            "type": "string",
+                            "description": "Date of the author"
+                        }
+                    }
+                },
+                "references": {
+                    "type": "array",
+                    "description": "References to external resources"
+                }
+            }
+        },
+        "parents": {
+            "type": "array",
+            "description": "This asset will process events coming only from the specified parents",
+            "items": {
+                "type": "string"
+            }
+        },
+        "check": {
+            "$ref": "#/definitions/_check"
+        },
+        "allow": {
+            "$ref": "#/definitions/_check"
+        },
+        "normalize": {
+            "type": "array",
+            "description": "Modify the event. All operations are performed in declaration order and on best effort, this stage is a list composed of blocks, where each block can be a map [map] or a conditional map [check, map].",
+            "minItems": 1,
+            "items": {
+                "$ref": "#/definitions/_normalizeBlock"
+            }
+        },
+        "outputs": {
+            "type": "array",
+            "description": "Outputs of the asset. All outputs are performed in declaration order and on best effort, this stage is a list composed of specific outputs types.",
+            "minItems": 1
+        },
+        "definitions": {
+            "type": "object",
+            "description": "Variable definitions, used to define variables that can be reused in other parts of the asset",
+            "minProperties": 1
+        }
+    },
+    "definitions": {
+        "_check": {
+            "oneOf": [
+                {
+                    "type": "array",
+                    "description": "Check list, all conditions must be met in order to further process events with this asset, conditions are expressed as `field`: `condition`, where `field` is the field to check and `condition` can be a value, a reference or a conditional helper function.",
+                    "items": {
+                        "allOf": [
+                            {
+                                "$ref": "fields.json#"
+                            },
+                            {
+                                "maxProperties": 1
+                            }
+                        ]
+                    },
+                    "minItems": 1
+                },
+                {
+                    "type": "string",
+                    "description": "Check conditional expression, the expression must be valuated to true in order to further process events with this asset"
+                }
+            ]
+        },
+        "_parse": {
+            "type": "array",
+            "description": "Parse the event using the specified parser engine. Suports `logpar` parser.",
+            "minItems": 1,
+            "items": {
+                "type": "string"
+            }
+        },
+        "_normalizeBlock": {
+            "type": "object",
+            "description": "Never shown",
+            "minItems": 1,
+            "additionalProperties": true,
+            "properties": {
+                "map": {
+                    "description": "Modify fields on the event, an array composed of tuples with syntax `- field`: `value`, where `field` is the field to modify and `value` is the new value. If `value` is a function helper, it will be executed and the result will be used as new value if executed correctly. If `value` is a reference it will be used as new value only if the reference exists.",
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "allOf": [
+                            {
+                                "$ref": "fields.json#"
+                            },
+                            {
+                                "maxProperties": 1
+                            }
+                        ]
+                    }
+                },
+                "check": {
+                    "$ref": "#/definitions/_check"
+                }
+            }
+        }
+    }
+}

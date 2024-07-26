@@ -1,0 +1,117 @@
+---
+name: decoder/sophos-waf/0
+
+metadata:
+  module: Sophos
+  title: Sophos-Waf logs decoder
+  version: [17.5.x, 18.0.x]
+  description: Decoder for Sophos Waf
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
+
+parents:
+  - decoder/integrations/0
+
+check:
+- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:alpha:][:alnum:]]*? device_id\=[[:alnum:]]*? log_id\=[[:alnum:]]*? log_type\="WAF"
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sophos
+  # - event.dataset: sophos.xg
+
+parse:
+  logpar:
+    # device="SFW" date=2020-05-18 time=14:38:46 timezone="CEST" device_name="XG230" device_id=1234567890123456 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="-" server=webmail.elasticuser.com sourceip=216.160.83.61 localip=185.8.209.207 ws_protocol="HTTP/1.1" url=/mapi/nspi/ querystring=?MailboxId=642ea57c-90ab-4571-8e05-c6997b2256f8@elastic.user.com cookie="MapiContext=MAPIAAAAAPaw98Xx0uDQ4tL/z/rX59b2x/LI+8z2x/+lhrKGtIO7jbmBsxYNAAAAAAAA;MapiRouting=UlVNOjdmNWY0OGE3LTM5OWItNDc4Yi04ZDgwLWFmZTRmMzAyZTViMDoAitM4bv3XCA==;MapiSequence=10-GtgsIA==;X-BackEndCookie=642ea57c-90ab-4571-8e05-c6997b2256f8=u56Lnp2ejJqByZrHyZ7Mys7Sm8zJnNLLnM3J0sbJxsvSnZzIxs2ans+ezMrLgYHNz83P0s/J0s3Pq87Pxc7PxcrL" referer=- method=POST httpstatus=401 reason="-" extra="-" contenttype="-" useragent="Microsoft Office/16.0 (Windows NT 10.0; Microsoft Outlook 16.0.4954; Pro)" host=216.160.83.61 responsetime=11199 bytessent=5669 bytesrcv=1419 fw_rule_id=79
+    # device="SFW" date=2020-05-18 time=14:38:47 timezone="CEST" device_name="XG230" device_id=1234567890123457 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="-" server=webmail.elasticuser.com sourceip=216.160.83.61 localip=185.8.209.207 ws_protocol="HTTP/1.1"
+    # device="SFW" date=2020-05-19 time=17:20:29 timezone="IST" device_name="XG230" device_id=1234567890123457 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="jsmith" server=www.iviewtest.com:8989 sourceip=10.198.235.254 localip=10.198.233.48 ws_protocol="HTTP/1.1" url=/ querystring= cookie="-" referer=- method=GET httpstatus=403 reason="Static URL Hardening" extra="No signature found" contenttype="text/html" useragent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0" host=10.198.235.254 responsetime=19310 bytessent=726 bytesrcv=510 fw_rule_id=3
+    # device="SFW" date=2020-05-19 time=18:03:30 timezone="IST" device_name="XG230" device_id=1234567890123456 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="jsmith" server=www.iviewtest.com:8990 sourceip=10.198.235.254 localip=10.198.233.48 ws_protocol="HTTP/1.1" url=/download/eicarcom2.zip querystring= cookie="; PHPSESSID=jetkd9iadd969hsr77jpj4q974; _pk_id.1.fc3a=3a6250e215194a92.1485866024.1.1485866069.1485866024.; _pk_ses.1.fc3a=*" referer=http://www.iviewtest.com:8990/85-0-Download.html method=GET httpstatus=403 reason="Antivirus" extra="EICAR-AV-Test" contenttype="text/html" useragent="Mozilla/5.0 (Windows NT 6.1; WOW64; rv:50.0) Gecko/20100101 Firefox/50.0" host=10.198.235.254 responsetime=403214 bytessent=739 bytesrcv=715 fw_rule_id=6
+    # device="SFW" date=2020-05-20 time=18:03:31 timezone="IST" device_name="XG230" device_id=1234567890123457 log_id=075000617071 log_type="WAF" log_component="Web Application Firewall" priority=Information user_name="-" server=- sourceip=89.160.20.112 localip=216.167.51.72 ws_protocol="HTTP/1.0" url=/ querystring="" cookie="-" referer="-" method=GET httpstatus=403 reason="WAF Anomaly" extra="Inbound Anomaly Score Exceeded (Total Score: 7, SQLi=, XSS=): Last Matched Message: Request Missing a User Agent Header" contenttype="text/html" useragent="-" host=89.160.20.112 responsetime=608 bytessent=5353 bytesrcv=295 fw_rule_id=3
+    - event.original: <~tmp.payload_message>
+
+# TODO: All sophos named fields are not currently in the schema.
+normalize:
+  - map:
+      - ~tmp.payload_message: +replace/=""/=" "
+    logpar:
+      - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
+  - map:
+      - event.action: denied
+      - event.code: $~tmp.log_id
+      - event.dataset: sophos.xg
+      - event.duration: +concat/$~tmp.responsetime/000
+      - event.kind: alert
+      - event.module: sophos
+  - check:
+      - ~tmp.priority: unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
+      - event.severity: 6
+  - map:
+      - event.timezone: $~tmp.timezone
+      - event.type: [connection, denied]
+      - destination.bytes: $~tmp.httpstatus
+      - destination.ip: $~tmp.localip
+      - fileset.name: xg
+      - http.request.method: $~tmp.method
+      - http.version: $~tmp.ws_protocol
+      - input.type": log
+      - log.level: $~tmp.log_subtype
+      - observer.product: XG
+      - observer.serial_number: $~tmp.device_id
+      - observer.type: firewall
+      - observer.vendor: Sophos
+      - related.ip: [$~tmp.localip, $~tmp.sourceip]
+      - service.type: sophos
+      - sophos.xg.cookie: $~tmp.cookie
+      - sophos.xg.device: $~tmp.device
+      - sophos.xg.device_name: $~tmp.device_name
+      - sophos.xg.extra: $~tmp.extra
+      - sophos.xg.fw_rule_id: $~tmp.fw_rule_id
+      - sophos.xg.host: $~tmp.sourceip
+      - sophos.xg.log_component: $~tmp.log_component
+      - sophos.xg.log_id: $~tmp.log_id
+      - sophos.xg.log_type: $~tmp.log_type
+      - sophos.xg.priority: $~tmp.priority
+      - sophos.xg.querystring: $~tmp.querystring
+      - sophos.xg.server: $~tmp.server
+      - sophos.xg.xss: $~tmp.XSS
+  - check:
+      - ~tmp.localip: exists()
+    logpar:
+      - ~tmp.localip: <~tmp.fill>.<~tmp.fill>.<~tmp.source.as.number>.<~tmp.fill>
+    map:
+      - source.as.number: $~tmp.source.as.number
+  - map:
+      - source.bytes: $~tmp.bytesrcv
+      - source.ip: $~tmp.sourceip
+      - tags: [forwarded, preserve_original_even, sophos-xg]
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - url.full: $~tmp.url
+      - user_agent.original: $~tmp.useragent
+      - wazuh.decoders: +array_append/sophos-waf
+      - ~tmp: delete()

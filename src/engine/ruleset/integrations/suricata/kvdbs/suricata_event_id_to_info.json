@@ -1,0 +1,193 @@
+{
+    "alert": {
+        "event": {
+            "kind": "alert",
+            "category": [
+                "network",
+                "intrusion_detection"
+            ]
+        }
+    },
+    "dns": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "dns"
+        }
+    },
+    "flow": {
+        "event": {
+            "type": [
+                "connection"
+            ]
+        }
+    },
+    "ftp": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "ftp"
+        }
+    },
+    "ftp_data": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "ftp"
+        }
+    },
+    "http": {
+        "event": {
+            "category": [
+                "network",
+                "web"
+            ],
+            "type": [
+                "protocol",
+                "access"
+            ]
+        },
+        "network": {
+            "protocol": "http"
+        }
+    },
+    "http2": {
+        "event": {
+            "category": [
+                "network",
+                "web"
+            ],
+            "type": [
+                "protocol",
+                "access"
+            ]
+        },
+        "network": {
+            "protocol": "http"
+        }
+    },
+    "ikev2": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "ikev2"
+        }
+    },
+    "krb5": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "krb5"
+        }
+    },
+    "mqtt": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "mqtt"
+        }
+    },
+    "smb": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "smb"
+        }
+    },
+    "smtp": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "smtp"
+        }
+    },
+    "snmp": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "snmp"
+        }
+    },
+    "ssh": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "ssh"
+        }
+    },
+    "stats": {
+        "event": {
+            "kind": "metric"
+        }
+    },
+    "tftp": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "tftp"
+        }
+    },
+    "tls": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "tls"
+        }
+    },
+    "rdp": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "rdp"
+        }
+    },
+    "rfb": {
+        "event": {
+            "type": [
+                "protocol"
+            ]
+        },
+        "network": {
+            "protocol": "rdp"
+        }
+    }
+}

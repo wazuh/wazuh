@@ -1,0 +1,3 @@
+name: integration/syslog/0
+decoders:
+- decoder/syslog/0

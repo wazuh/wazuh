@@ -36,7 +36,6 @@
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
 #define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
 
-
 #include "shared.h"
 #include "../config/localfile-config.h"
 #include "../config/config.h"

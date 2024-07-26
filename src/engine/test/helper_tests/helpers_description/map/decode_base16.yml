@@ -1,0 +1,24 @@
+# Name of the helper function
+name: decode_base16
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string # Expected type is string
+    generate: hexadecimal
+    source: reference # Includes only references (their names start with $)
+
+skipped:
+  - success_cases
+
+test:
+  - arguments:
+      1: 48656C6C6F20776F726C6421
+    should_pass: true
+    expected: "Hello world!"
+    description: Convert base 16 to decimal

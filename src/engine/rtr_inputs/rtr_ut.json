@@ -1,0 +1,16 @@
+{
+    "steps": [
+        {
+            "description": "Build",
+            "parameters": [
+                "--test build"
+            ]
+        },
+        {
+            "description": "Unit tests",
+            "parameters": [
+                "--test ut"
+            ]
+        }
+    ]
+}

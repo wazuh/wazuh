@@ -1,0 +1,144 @@
+[
+    {
+        "@timestamp": "2023-07-07T16:41:01.475Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
+        },
+        "ecs": {
+            "version": "8.11.0"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-slowlog",
+            "duration": 27000000,
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"index_indexing_slowlog\",\"timestamp\":\"2023-07-07T16:41:01,475Z\",\"level\":\"WARN\",\"component\":\"i.i.s.index\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"[wazuh-alerts-4.x-2023.07.04/v1yKv7V4RNaJ8j5NQFuVLA]\",\"took\":\"27.7ms\",\"took_millis\":\"27\",\"id\":\"12Q7IokBCWCnXCYjkd9d\",\"source\":\"{\\\"predecoder\\\":{\\\"hostname\\\":\\\"wazuh-server\\\",\\\"program_name\\\":\\\"sudo\\\",\\\"timestamp\\\":\\\"Jul  4 18:47:45\\\"},\\\"agent\\\":{\\\"name\\\":\\\"wazuh-server\\\",\\\"id\\\":\\\"000\\\"},\\\"manager\\\":{\\\"name\\\":\\\"wazuh-server\\\"},\\\"data\\\":{\\\"dstuser\\\":\\\"root\\\"},\\\"rule\\\":{\\\"firedtimes\\\":1,\\\"mail\\\":false,\\\"level\\\":3,\\\"pci_dss\\\":[\\\"10.2.5\\\"],\\\"hipaa\\\":[\\\"164.312.b\\\"],\\\"tsc\\\":[\\\"CC6.8\\\",\\\"CC7.2\\\",\\\"CC7.3\\\"],\\\"description\\\":\\\"PAM: Login session closed.\\\",\\\"groups\\\":[\\\"pam\\\",\\\"syslog\\\"],\\\"id\\\":\\\"5502\\\",\\\"nist_800_53\\\":[\\\"AU.14\\\",\\\"AC.7\\\"],\\\"gpg13\\\":[\\\"7.8\\\",\\\"7.9\\\"],\\\"gdpr\\\":[\\\"IV_32.2\\\"]},\\\"decoder\\\":{\\\"parent\\\":\\\"pam\\\",\\\"n\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "eOXG1FbXQB2KVUJrjJeSQQ",
+            "component": "i.i.s.index",
+            "id": "12Q7IokBCWCnXCYjkd9d",
+            "level": "WARN",
+            "message": "[wazuh-alerts-4.x-2023.07.04/v1yKv7V4RNaJ8j5NQFuVLA]",
+            "node.id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "node.name": "node-1",
+            "source": "{\"predecoder\":{\"hostname\":\"wazuh-server\",\"program_name\":\"sudo\",\"timestamp\":\"Jul  4 18:47:45\"},\"agent\":{\"name\":\"wazuh-server\",\"id\":\"000\"},\"manager\":{\"name\":\"wazuh-server\"},\"data\":{\"dstuser\":\"root\"},\"rule\":{\"firedtimes\":1,\"mail\":false,\"level\":3,\"pci_dss\":[\"10.2.5\"],\"hipaa\":[\"164.312.b\"],\"tsc\":[\"CC6.8\",\"CC7.2\",\"CC7.3\"],\"description\":\"PAM: Login session closed.\",\"groups\":[\"pam\",\"syslog\"],\"id\":\"5502\",\"nist_800_53\":[\"AU.14\",\"AC.7\"],\"gpg13\":[\"7.8\",\"7.9\"],\"gdpr\":[\"IV_32.2\"]},\"decoder\":{\"parent\":\"pam\",\"n",
+            "timestamp": "2023-07-07T16:41:01,475Z",
+            "took": "27.7ms",
+            "took_millis": "27",
+            "type": "index_indexing_slowlog"
+        },
+        "log": {
+            "level": "WARN",
+            "logger": "i.i.s.index"
+        },
+        "message": "[wazuh-alerts-4.x-2023.07.04/v1yKv7V4RNaJ8j5NQFuVLA]",
+        "node": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "slowlog": {
+            "id": "12Q7IokBCWCnXCYjkd9d",
+            "source": "{\"predecoder\":{\"hostname\":\"wazuh-server\",\"program_name\":\"sudo\",\"timestamp\":\"Jul  4 18:47:45\"},\"agent\":{\"name\":\"wazuh-server\",\"id\":\"000\"},\"manager\":{\"name\":\"wazuh-server\"},\"data\":{\"dstuser\":\"root\"},\"rule\":{\"firedtimes\":1,\"mail\":false,\"level\":3,\"pci_dss\":[\"10.2.5\"],\"hipaa\":[\"164.312.b\"],\"tsc\":[\"CC6.8\",\"CC7.2\",\"CC7.3\"],\"description\":\"PAM: Login session closed.\",\"groups\":[\"pam\",\"syslog\"],\"id\":\"5502\",\"nist_800_53\":[\"AU.14\",\"AC.7\"],\"gpg13\":[\"7.8\",\"7.9\"],\"gdpr\":[\"IV_32.2\"]},\"decoder\":{\"parent\":\"pam\",\"n",
+            "took": "27.7ms"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-slowlog"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_index_indexing_slowlog.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_index_indexing_slowlog.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    },
+    {
+        "@timestamp": "2023-07-07T16:41:01.483Z",
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "cluster": {
+            "name": "wazuh-cluster",
+            "uuid": "eOXG1FbXQB2KVUJrjJeSQQ"
+        },
+        "ecs": {
+            "version": "8.11.0"
+        },
+        "event": {
+            "category": [
+                "database"
+            ],
+            "dataset": "wazuh-indexer-slowlog",
+            "duration": 38000000,
+            "kind": "event",
+            "module": "wazuh-indexer",
+            "original": "{\"type\":\"index_indexing_slowlog\",\"timestamp\":\"2023-07-07T16:41:01,483Z\",\"level\":\"WARN\",\"component\":\"i.i.s.index\",\"cluster.name\":\"wazuh-cluster\",\"node.name\":\"node-1\",\"message\":\"[wazuh-alerts-4.x-2023.07.04/v1yKv7V4RNaJ8j5NQFuVLA]\",\"took\":\"38.8ms\",\"took_millis\":\"38\",\"id\":\"2GQ7IokBCWCnXCYjkd9d\",\"source\":\"{\\\"predecoder\\\":{\\\"hostname\\\":\\\"wazuh-server\\\",\\\"program_name\\\":\\\"su\\\",\\\"timestamp\\\":\\\"Jul  4 18:47:45\\\"},\\\"agent\\\":{\\\"name\\\":\\\"wazuh-server\\\",\\\"id\\\":\\\"000\\\"},\\\"manager\\\":{\\\"name\\\":\\\"wazuh-server\\\"},\\\"data\\\":{\\\"dstuser\\\":\\\"root\\\"},\\\"rule\\\":{\\\"firedtimes\\\":2,\\\"mail\\\":false,\\\"level\\\":3,\\\"pci_dss\\\":[\\\"10.2.5\\\"],\\\"hipaa\\\":[\\\"164.312.b\\\"],\\\"tsc\\\":[\\\"CC6.8\\\",\\\"CC7.2\\\",\\\"CC7.3\\\"],\\\"description\\\":\\\"PAM: Login session closed.\\\",\\\"groups\\\":[\\\"pam\\\",\\\"syslog\\\"],\\\"id\\\":\\\"5502\\\",\\\"nist_800_53\\\":[\\\"AU.14\\\",\\\"AC.7\\\"],\\\"gpg13\\\":[\\\"7.8\\\",\\\"7.9\\\"],\\\"gdpr\\\":[\\\"IV_32.2\\\"]},\\\"decoder\\\":{\\\"parent\\\":\\\"pam\\\",\\\"nam\",\"cluster.uuid\":\"eOXG1FbXQB2KVUJrjJeSQQ\",\"node.id\":\"Cu8rIDeyTeiZVDWOoyubFQ\"}",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "json_event": {
+            "cluster.name": "wazuh-cluster",
+            "cluster.uuid": "eOXG1FbXQB2KVUJrjJeSQQ",
+            "component": "i.i.s.index",
+            "id": "2GQ7IokBCWCnXCYjkd9d",
+            "level": "WARN",
+            "message": "[wazuh-alerts-4.x-2023.07.04/v1yKv7V4RNaJ8j5NQFuVLA]",
+            "node.id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "node.name": "node-1",
+            "source": "{\"predecoder\":{\"hostname\":\"wazuh-server\",\"program_name\":\"su\",\"timestamp\":\"Jul  4 18:47:45\"},\"agent\":{\"name\":\"wazuh-server\",\"id\":\"000\"},\"manager\":{\"name\":\"wazuh-server\"},\"data\":{\"dstuser\":\"root\"},\"rule\":{\"firedtimes\":2,\"mail\":false,\"level\":3,\"pci_dss\":[\"10.2.5\"],\"hipaa\":[\"164.312.b\"],\"tsc\":[\"CC6.8\",\"CC7.2\",\"CC7.3\"],\"description\":\"PAM: Login session closed.\",\"groups\":[\"pam\",\"syslog\"],\"id\":\"5502\",\"nist_800_53\":[\"AU.14\",\"AC.7\"],\"gpg13\":[\"7.8\",\"7.9\"],\"gdpr\":[\"IV_32.2\"]},\"decoder\":{\"parent\":\"pam\",\"nam",
+            "timestamp": "2023-07-07T16:41:01,483Z",
+            "took": "38.8ms",
+            "took_millis": "38",
+            "type": "index_indexing_slowlog"
+        },
+        "log": {
+            "level": "WARN",
+            "logger": "i.i.s.index"
+        },
+        "message": "[wazuh-alerts-4.x-2023.07.04/v1yKv7V4RNaJ8j5NQFuVLA]",
+        "node": {
+            "id": "Cu8rIDeyTeiZVDWOoyubFQ",
+            "name": "node-1"
+        },
+        "slowlog": {
+            "id": "2GQ7IokBCWCnXCYjkd9d",
+            "source": "{\"predecoder\":{\"hostname\":\"wazuh-server\",\"program_name\":\"su\",\"timestamp\":\"Jul  4 18:47:45\"},\"agent\":{\"name\":\"wazuh-server\",\"id\":\"000\"},\"manager\":{\"name\":\"wazuh-server\"},\"data\":{\"dstuser\":\"root\"},\"rule\":{\"firedtimes\":2,\"mail\":false,\"level\":3,\"pci_dss\":[\"10.2.5\"],\"hipaa\":[\"164.312.b\"],\"tsc\":[\"CC6.8\",\"CC7.2\",\"CC7.3\"],\"description\":\"PAM: Login session closed.\",\"groups\":[\"pam\",\"syslog\"],\"id\":\"5502\",\"nist_800_53\":[\"AU.14\",\"AC.7\"],\"gpg13\":[\"7.8\",\"7.9\"],\"gdpr\":[\"IV_32.2\"]},\"decoder\":{\"parent\":\"pam\",\"nam",
+            "took": "38.8ms"
+        },
+        "wazuh": {
+            "decoders": [
+                "wazuh-indexer-slowlog"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/wazuh-indexer/wazuh-cluster_index_indexing_slowlog.json",
+            "origin": "/var/log/wazuh-indexer/wazuh-cluster_index_indexing_slowlog.json",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]

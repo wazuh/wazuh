@@ -1,0 +1,150 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "code": "1",
+      "dataset": "sysmon",
+      "kind": "event",
+      "module": "windows",
+      "provider": "Microsoft-Windows-Sysmon",
+      "risk_score": 47,
+      "start": "2023-09-20T22:08:30.2988419Z",
+      "type": [
+        "start"
+      ]
+    },
+    "file": {
+      "directory": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0",
+      "extension": "exe",
+      "name": "powershell.exe"
+    },
+    "host": {
+      "id": "001",
+      "name": "DESKTOP-22QKO5D"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "Process Create",
+    "process": {
+      "args": [
+        "\"C:\\Users\\Positivo",
+        "BGH\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\"",
+        "-c",
+        "\"import",
+        "sys;",
+        "print('hello')\""
+      ],
+      "command_line": "\"C:\\Users\\Positivo BGH\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\" -c \"import sys; print('hello')\"",
+      "entity_id": "{23b237de-6d5e-650b-0506-000000002000}",
+      "executable": "C:\\Program Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.7_3.7.2544.0_x64__qbz5n2kfra8p0\\python.exe",
+      "hash": {
+        "md5": "3EC94A0EB1016971F8B073FDB6ECA966",
+        "sha1": "104605DE5514465D8334F0A27AB4F773ABF5BF3E",
+        "sha256": "90AC242852C321F469B908F83A345B387A41A71722122A63646BF8EE74097D88"
+      },
+      "name": "python.exe",
+      "parent": {
+        "args": [
+          "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\""
+        ],
+        "command_line": "\"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\"",
+        "entity_id": "{23b237de-6cd1-650b-0006-000000002000}",
+        "executable": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+        "name": "powershell.exe",
+        "pid": 7008
+      },
+      "pe": {
+        "company": "Python Software Foundation",
+        "description": "Python",
+        "file_version": "3.7.9",
+        "imphash": "2897A2A24664AE65557EDC80442FBEDE",
+        "original_file_name": "python.exe",
+        "product": "Python"
+      },
+      "pid": 9348,
+      "working_directory": "C:\\Users\\Positivo BGH\\Desktop\\nahuel\\"
+    },
+    "related": {
+      "hash": [
+        "SHA1=104605DE5514465D8334F0A27AB4F773ABF5BF3E",
+        "MD5=3EC94A0EB1016971F8B073FDB6ECA966",
+        "SHA256=90AC242852C321F469B908F83A345B387A41A71722122A63646BF8EE74097D88",
+        "IMPHASH=2897A2A24664AE65557EDC80442FBEDE"
+      ],
+      "user": [
+        "Positivo BGH"
+      ]
+    },
+    "rule": {
+      "description": "Identifies when a Python script is executed using command line input and imports the sys module. Attackers often use this method to execute malicious scripts and avoiding writing it to disk.",
+      "license": "Wazuh Inc.",
+      "name": "Python Script Execution via Command Line"
+    },
+    "threat": {
+      "framework": "MITRE ATT&CK",
+      "tactic": {
+        "id": [
+          "TA0002"
+        ],
+        "name": [
+          "Execution"
+        ],
+        "reference": [
+          "https://attack.mitre.org/tactics/TA0002"
+        ]
+      },
+      "technique": {
+        "id": [
+          "T1059"
+        ],
+        "name": [
+          "Command and Scripting Interpreter"
+        ],
+        "reference": [
+          "https://attack.mitre.org/techniques/T1059/"
+        ],
+        "subtechnique": {
+          "id": [
+            "T1059.006",
+            "T1059.003"
+          ],
+          "name": [
+            "Python",
+            "Windows Command Shell"
+          ],
+          "reference": [
+            "https://attack.mitre.org/techniques/T1059/003/",
+            "https://attack.mitre.org/techniques/T1059/003/"
+          ]
+        }
+      }
+    },
+    "user": {
+      "domain": "DESKTOP-22QKO5D",
+      "id": "S-1-5-18",
+      "name": "Positivo BGH"
+    },
+    "vulnerability": {
+      "severity": "medium"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-sysmon"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

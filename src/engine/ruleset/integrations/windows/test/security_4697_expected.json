@@ -1,0 +1,120 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "service-installed",
+      "category": [
+        "iam",
+        "configuration"
+      ],
+      "code": "4697",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-11-12T01:36:11.991070500Z",
+      "type": [
+        "admin",
+        "change"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "WIN-GG82ULGC9GO.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A service was installed in the system",
+    "related": {
+      "user": [
+        "WIN-GG82ULGC9GO$"
+      ]
+    },
+    "service": {
+      "name": "AppHostSvc",
+      "type": "Win32 Share Process"
+    },
+    "user": {
+      "domain": "CONTOSO",
+      "id": "S-1-5-18",
+      "name": "WIN-GG82ULGC9GO$"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "ServiceAccount": "localSystem",
+        "ServiceFileName": "%windir%\\\\system32\\\\svchost.exe -k apphost",
+        "ServiceName": "AppHostSvc",
+        "ServiceStartType": "2",
+        "ServiceType": "0x20",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x3e7",
+        "SubjectUserName": "WIN-GG82ULGC9GO$",
+        "SubjectUserSid": "S-1-5-18"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "WIN-GG82ULGC9GO.contoso.local"
+        },
+        "Correlation": {
+          "@ActivityID": "{913FBE70-1CE6-0000-67BF-3F91E61CD101}"
+        },
+        "EventID": {
+          "#text": "4697"
+        },
+        "EventRecordID": {
+          "#text": "2778"
+        },
+        "Execution": {
+          "@ProcessID": "736",
+          "@ThreadID": "2800"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "12289"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-11-12T01:36:11.991070500Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x3e7"
+      }
+    }
+  }
+]

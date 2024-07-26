@@ -1,0 +1,73 @@
+# Name of the helper function
+name: parse_key_value
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only values
+  2:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+    restrictions:
+      allowed:
+        - "="
+  3:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+    restrictions:
+      allowed:
+        - " "
+  4:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+    restrictions:
+      allowed:
+        - "'"
+  5:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+    restrictions:
+      allowed:
+        - "\\"
+
+skipped:
+  - success_cases # parser failed
+  - allowed # Sometimes a value of a character is assigned and it is valid
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      1:  key1=value1 key2=value2 key3=value3
+      2: "="
+      3: " "
+      4: "\\"
+      5: "'"
+      target_field: any_value
+    should_pass: true
+    expected:
+      key1: value1
+      key2: value2
+      key3: value3
+    description: Success key value parse
+  - arguments:
+      1: "key1:value1"
+      2: "="
+      3: " "
+      4: "\\"
+      5: "'"
+      target_field: any_value
+    should_pass: false
+    description: Failure key value parse

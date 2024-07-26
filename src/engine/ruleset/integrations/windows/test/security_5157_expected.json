@@ -1,0 +1,129 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "ip": "10.0.0.100",
+      "port": 49218
+    },
+    "event": {
+      "action": "windows-firewall-packet-block",
+      "category": [
+        "network"
+      ],
+      "code": "5157",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "failure",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-09-22T03:46:51.662750400Z",
+      "type": [
+        "connection",
+        "info",
+        "denied"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "The Windows Filtering Platform has blocked a connection",
+    "network": {
+      "direction": "inbound",
+      "iana_number": "6",
+      "transport": "tcp"
+    },
+    "process": {
+      "executable": "\\\\device\\\\harddiskvolume2\\\\documents\\\\listener.exe",
+      "name": "listener.exe",
+      "pid": 17750
+    },
+    "related": {
+      "ip": [
+        "10.0.0.100",
+        "10.0.0.10"
+      ]
+    },
+    "source": {
+      "ip": "10.0.0.10",
+      "port": 3333
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "Application": "\\\\device\\\\harddiskvolume2\\\\documents\\\\listener.exe",
+        "DestAddress": "10.0.0.100",
+        "DestPort": "49218",
+        "Direction": "%%14592",
+        "FilterRTID": "110398",
+        "LayerName": "%%14610",
+        "LayerRTID": "44",
+        "ProcessID": "4556",
+        "Protocol": "6",
+        "RemoteMachineID": "S-1-0-0",
+        "RemoteUserID": "S-1-0-0",
+        "SourceAddress": "10.0.0.10",
+        "SourcePort": "3333"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "5157"
+        },
+        "EventRecordID": {
+          "#text": "304390"
+        },
+        "Execution": {
+          "@ProcessID": "4",
+          "@ThreadID": "4520"
+        },
+        "Keywords": {
+          "#text": "0x8010000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "12810"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-09-22T03:46:51.662750400Z"
+        },
+        "Version": {
+          "#text": "1"
+        }
+      }
+    }
+  }
+]

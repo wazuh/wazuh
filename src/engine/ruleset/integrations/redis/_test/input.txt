@@ -1,0 +1,4 @@
+26571:M 27 Dec 2018 11:19:18.874 * Synchronization with replica 10.114.208.18:6023 succeeded
+4961:M 30 May 12:50:13.457 * Increased maximum number of open files to 10032 (it was originally set to 4864).
+30 May 10:04:45 . 0 clients connected (0 slaves), 618932 bytes in use, 0 shared objects
+[2932] 31 May 04:32:08 - 0 clients connected (0 slaves), 1179968 bytes in use

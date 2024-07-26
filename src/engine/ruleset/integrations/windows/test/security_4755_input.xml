@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="54849625-5478-4994-A5BA-3E3B0328C30D">
+    </Provider>
+    <EventID>4755</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>13826</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8020000000000000</Keywords>
+    <TimeCreated SystemTime="2020-12-22T11:22:33.456789Z">
+    </TimeCreated>
+    <EventRecordID>4676</EventRecordID>
+    <Correlation>
+    </Correlation>
+    <Execution ProcessID="321" ThreadID="1234">
+    </Execution>
+    <Channel>Security</Channel>
+    <Computer>WIN-W.locald.local</Computer>
+    <Security>
+    </Security>
+  </System>
+  <EventData>
+    <Data Name="TargetUserName">testUser</Data>
+    <Data Name="TargetDomainName">LOCALD</Data>
+    <Data Name="TargetSid">S-1-5-21-101361758-2486510592-3018839910-1113</Data>
+    <Data Name="SubjectUserSid">S-1-5-21-101361758-2486510592-3018839910-500</Data>
+    <Data Name="SubjectUserName">Administrator</Data>
+    <Data Name="SubjectDomainName">LOCALD</Data>
+    <Data Name="SubjectLogonId">0x4a727</Data>
+    <Data Name="PrivilegeList">-</Data>
+    <Data Name="SamAccountName">testUser</Data>
+    <Data Name="SidHistory">-</Data>
+  </EventData>
+</Event>
+</Events>

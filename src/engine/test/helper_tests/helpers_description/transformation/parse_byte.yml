@@ -1,0 +1,40 @@
+# Name of the helper function
+name: parse_byte
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      1: "127"
+      target_field: any_value
+    should_pass: true
+    expected: 127
+    description: Success byte parse
+  - arguments:
+      1: hello
+      target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure byte parse
+  - arguments:
+      1: "130"
+      target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure byte parse

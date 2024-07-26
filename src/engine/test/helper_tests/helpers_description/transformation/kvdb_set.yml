@@ -1,0 +1,60 @@
+# Name of the helper function
+name: kvdb_set
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Accept only object
+    generate: string
+    source: value # Includes only values
+    restrictions:
+      allowed:
+        - testing
+  2:
+    type: string  # Accept only string
+    generate: string
+    source: both # Includes values or references (their names start with $)
+    restrictions:
+      allowed:
+        - key
+  3:
+    type:
+      - object
+      - array
+      - string
+      - number
+      - boolean
+    source: both # Includes values or references (their names start with $)
+
+# ToDo:
+# target_field type not comprobed
+skipped:
+  - different_target_field_type
+  - success_cases
+
+target_field:
+  type: boolean
+  is_array: false
+
+test:
+  - arguments:
+      1: testing
+      2: new_key
+      3: any_value
+      target_field: true
+    should_pass: true
+    expected: true
+    description: Success kvdb set
+  - arguments:
+      1: testing
+      2: key
+      3: new_value
+      target_field: true
+    should_pass: true
+    expected: false
+    description: Failure kvdb set

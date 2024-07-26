@@ -1,0 +1,21 @@
+# Name of the helper function
+name: exists
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - string
+    - boolean
+    - array
+    - object
+
+test:
+  - arguments:
+      target_field: 1234
+    should_pass: true
+    description: Target Field exist

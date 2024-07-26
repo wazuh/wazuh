@@ -1,0 +1,64 @@
+# Name of the helper function
+name: merge
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type:
+      - object
+      - array
+      - number
+      - string
+      - boolean
+    source: reference # includes only references (their names start with $)
+
+target_field:
+  type:
+    - object
+    - array
+    - number
+    - string
+    - boolean
+
+skipped:
+  - success_cases # Field types do not match
+
+test:
+  - arguments:
+      1:
+        key: name
+        key2:
+          age: 27
+          address: new york
+      target_field:
+        key3: surname
+    should_pass: true
+    expected:
+      key: name
+      key2:
+        age: 27
+        address: new york
+      key3: surname
+    description: JSON objects merged
+  - arguments:
+      1:
+        - 0
+        - 1
+        - 2
+        - 4
+      target_field:
+        - 1
+        - 3
+    should_pass: true
+    expected:
+      - 1
+      - 3
+      - 0
+      - 2
+      - 4
+    description: JSON objects merged

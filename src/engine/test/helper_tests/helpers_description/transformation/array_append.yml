@@ -1,0 +1,59 @@
+# Name of the helper function
+name: array_append
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both # includes values or references (their names start with $)
+
+# adding elements of different type of target_field is not allowed
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: string
+
+test:
+  - arguments:
+      1: 5
+      target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5]
+    description: The type of the value matches the type of the elements of the array
+  - arguments:
+      1: hello
+      target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: The type of the value does not match the type of the array elements
+  - arguments:
+      1: [1,2]
+      target_field: [1,2,3,4]
+    should_pass: false
+    expected: [1,2,3,4]
+    description: The type of the value does not match the type of the array elements
+  # TODO: should not happen since a real is not within the set of integers
+  # - arguments:
+  #     1: 2.5
+  #     target_field: [1,2,3,4]
+  #   should_pass: false
+  #   expected: [1,2,3,4,2.5]
+  #   description: The type of the value does match the type of the array elements
+  - arguments:
+      1: 2
+      target_field: [1.2,2.3,3.5,4.9]
+    should_pass: true
+    expected: [1.2,2.3,3.5,4.9,2]
+    description: The type of the value does match the type of the array elements

@@ -1,0 +1,37 @@
+name: integration/wazuh-core/0
+
+decoders:
+  - decoder/ciscat/0
+  - decoder/core-ciscat/0
+  - decoder/core-dbsync/0
+  - decoder/core-hostinfo/0
+  - decoder/core-localfile/0
+  - decoder/core-rootcheck/0
+  - decoder/core-rsyslog/0
+  - decoder/core-sca/0
+  - decoder/core-secure/0
+  - decoder/core-syscheck/0
+  - decoder/core-syscollector/0
+  - decoder/core-upgrade/0
+  - decoder/core-wazuh-message/0
+  - decoder/dbsync-host-data/0
+  - decoder/dbsync/0
+  - decoder/fim-event/0
+  - decoder/fim-scan/0
+  - decoder/fim/0
+  - decoder/integrations/0
+  - decoder/kvdb-agent-update/0
+  - decoder/rootcheck/0
+  - decoder/sca/0
+  - decoder/syscollector-base/0
+  - decoder/syscollector-dbsync-host-data/0
+  - decoder/syscollector-dbsync/0
+  - decoder/upgrade/0
+  - decoder/core-windows/0
+
+rules:
+  - rule/enrichment/0 
+
+outputs:
+  - output/file-output-wazuh-core/0
+  - output/file-output-integrations/0

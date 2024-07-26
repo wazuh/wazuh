@@ -1,0 +1,25 @@
+# Name of the helper function
+name: is_boolean
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: boolean
+  generate: boolean
+
+test:
+  - arguments:
+      target_field: true
+    should_pass: true
+    description: Is boolean
+  - arguments:
+      target_field: false
+    should_pass: true
+    description: Is boolean
+  - arguments:
+      target_field: "false"
+    should_pass: false
+    description: Not is boolean

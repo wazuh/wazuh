@@ -1,0 +1,106 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "code": "4663",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-09-18T22:13:54.770429700Z"
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "An attempt was made to access an object",
+    "process": {
+      "pid": 1112
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "AccessList": "%%4417 %%4418",
+        "AccessMask": "0x6",
+        "AccessMaskList": [
+          "Delete Child",
+          "List Contents"
+        ],
+        "HandleId": "0x1bc",
+        "ObjectName": "C:\\\\Documents\\\\HBI Data.txt",
+        "ObjectServer": "Security",
+        "ObjectType": "File",
+        "ProcessId": "0x458",
+        "ProcessName": "C:\\\\Windows\\\\System32\\\\notepad.exe",
+        "ResourceAttributes": "S:AI(RA;ID;;;;WD;(\"Impact\\_MS\",TI,0x10020,3000))",
+        "SubjectDomainName": "CONTOSO",
+        "SubjectLogonId": "0x4367b",
+        "SubjectUserName": "dadmin",
+        "SubjectUserSid": "S-1-5-21-3457937927-2839227994-823803824-1104"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4663"
+        },
+        "EventRecordID": {
+          "#text": "273866"
+        },
+        "Execution": {
+          "@ProcessID": "516",
+          "@ThreadID": "524"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "12800"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-09-18T22:13:54.770429700Z"
+        },
+        "Version": {
+          "#text": "1"
+        }
+      },
+      "logon": {
+        "id": "0x4367b"
+      }
+    }
+  }
+]

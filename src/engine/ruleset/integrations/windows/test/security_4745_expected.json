@@ -1,0 +1,119 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "changed-distribution-group-account",
+      "category": [
+        "iam"
+      ],
+      "code": "4745",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2020-10-22T12:34:56.123456Z",
+      "type": [
+        "group",
+        "change"
+      ]
+    },
+    "group": {
+      "domain": "TESTD",
+      "id": "S-1-5-21-1717121054-434620538-60925301-2903",
+      "name": "localUser"
+    },
+    "host": {
+      "id": "001",
+      "name": "TestLC.TESTD"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A security-disabled local group was changed",
+    "related": {
+      "user": [
+        "sUser"
+      ]
+    },
+    "user": {
+      "domain": "TESTD",
+      "id": "S-1-5-21-1717121054-434620538-60925301-2794",
+      "name": "sUser"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "PrivilegeList": "-",
+        "SamAccountName": "localUser",
+        "SidHistory": "-",
+        "SubjectDomainName": "TESTD",
+        "SubjectLogonId": "0x2e67800",
+        "SubjectUserName": "sUser",
+        "SubjectUserSid": "S-1-5-21-1717121054-434620538-60925301-2794",
+        "TargetDomainName": "TESTD",
+        "TargetSid": "S-1-5-21-1717121054-434620538-60925301-2903",
+        "TargetUserName": "localUser"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "TestLC.TESTD"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4745"
+        },
+        "EventRecordID": {
+          "#text": "3700000"
+        },
+        "Execution": {
+          "@ProcessID": "492",
+          "@ThreadID": "1076"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "54849625-5478-4994-A5BA-3E3B0328C30D",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "13827"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2020-10-22T12:34:56.123456Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      },
+      "logon": {
+        "id": "0x2e67800"
+      }
+    }
+  }
+]

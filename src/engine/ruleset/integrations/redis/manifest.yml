@@ -1,0 +1,3 @@
+decoders:
+- decoder/redis/0
+name: integration/redis/0

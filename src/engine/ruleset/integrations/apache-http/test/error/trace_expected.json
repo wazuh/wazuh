@@ -1,0 +1,49 @@
+[
+    {
+        "agent": {
+            "id": "001",
+            "name": "wazuh-agent-1",
+            "type": "wazuh-agent"
+        },
+        "event": {
+            "category": [
+                "web"
+            ],
+            "created": "2021-10-20T19:20:59.121Z",
+            "dataset": "apache-error",
+            "kind": "event",
+            "module": "apache-http",
+            "original": "[Wed Oct 20 19:20:59.121211 2021] [rewrite:trace3] [pid 121591:tid 140413273032448] mod_rewrite.c(470): [client 10.121.192.8:38350] 10.121.192.8 - - [dev.elastic.co/sid#55a374e851c8][rid#7fb438083ac0/initial] applying pattern '^/import/?(.*)$' to uri '/'",
+            "type": [
+                "info"
+            ]
+        },
+        "host": {
+            "id": "001"
+        },
+        "log": {
+            "level": "trace3",
+            "logger": "rewrite"
+        },
+        "message": "mod_rewrite.c(470): [client 10.121.192.8:38350] 10.121.192.8 - - [dev.elastic.co/sid#55a374e851c8][rid#7fb438083ac0/initial] applying pattern '^/import/?(.*)$' to uri '/'",
+        "process": {
+            "pid": 121591,
+            "thread": {
+                "id": 140413273032448
+            }
+        },
+        "service": {
+            "type": "apache"
+        },
+        "wazuh": {
+            "decoders": [
+                "apache-error"
+            ],
+            "location": "[001] (wazuh-agent-1) any->/var/log/apache2/error.log",
+            "origin": "/var/log/apache2/error.log",
+            "queue": 49,
+            "registered_ip": "any",
+            "source": "logcollector"
+        }
+    }
+]

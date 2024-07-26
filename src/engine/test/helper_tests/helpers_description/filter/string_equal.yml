@@ -1,0 +1,37 @@
+# Name of the helper function
+name: string_equal
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  1:
+    type: string  # Expected type is integer
+    generate: string
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: string
+  generate: string
+
+# Indicates whether the helper function supports a variable number of arguments
+variadic: false
+
+test:
+  - arguments:
+      1: hello world!
+      target_field: hello
+    should_pass: false
+    description: Compare two different strings
+  - arguments:
+      1: hello world!
+      target_field: hello world!
+    should_pass: true
+    description: Compare two equals strings

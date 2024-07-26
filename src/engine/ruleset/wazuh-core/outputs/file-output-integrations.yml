@@ -1,0 +1,16 @@
+name: output/file-output-integrations/0
+
+metadata:
+  title: file output event
+  description: Output integrations events to a file
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    date: 2022/11/08
+
+check: not_exists($wazuh.noIndexing) OR $wazuh.noIndexing == false
+
+outputs:
+  - file:
+      path: /var/ossec/logs/alerts/alerts-ECS.json
