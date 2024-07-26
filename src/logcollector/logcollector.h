@@ -36,9 +36,6 @@
 #define OS_LOGCOLLECTOR_JSON_HASH       "hash"
 #define OS_LOGCOLLECTOR_JSON_OFFSET     "offset"
 
-///< JSON field which will contain a non-json event, notice that "event" is an object that contains the field "original"
-#define LOGCOLLECTOR_JSON_EVENT_FIELD   "event.original"
-
 #include "shared.h"
 #include "../config/localfile-config.h"
 #include "../config/config.h"
