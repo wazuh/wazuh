@@ -65,5 +65,3 @@ def main():
                 generate_documentation(parser, exporter, file, output_dir)
     else:
         sys.exit("It is necessary to indicate a file or directory that contains a configuration yaml")
-
-    print("Success validation")
