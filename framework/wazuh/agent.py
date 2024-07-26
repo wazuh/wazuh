@@ -1080,7 +1080,7 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=f"version!={manager.version}" + (';' + q if q else ''),
+                                query=f"version!={manager.version}" + (f";({q})" if q else ''),
                                 **rbac_filters) as db_query:
             data = db_query.run()
 
