@@ -1,6 +1,15 @@
 # Name of the helper function
 name: active_response_send
 
+metadata:
+  description: |
+    Sends a message through the active response queue and updates the field with the result of the execution
+    if the message could be sent without any problem it will be set to true, if not to false.
+    Thre result value doesn`t mean that it checks the correct execution of the Active response.
+    This helper function is typically used in the map stage.
+  keywords:
+    - to define
+
 helper_type: map
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +17,7 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  ar-message:
     type: string # Expected type is string
     generate: string
     source: both # Includes values or references (their names start with $)
@@ -17,10 +26,14 @@ arguments:
 skipped:
   - success_cases
 
+output:
+  type: string
+  subset: string
+
 test:
   # The database is not created
   - arguments:
-      1: "new request to active response"
+      ar-message: "new request to active response"
     skipped: true
     should_pass: true
     expected: ""

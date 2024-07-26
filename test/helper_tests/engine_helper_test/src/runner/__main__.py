@@ -501,7 +501,7 @@ def delete_kvdb(api_client: APIClient):
     send_recv(api_client, request, api_engine.GenericStatus_Response())
 
 
-def generate_report(successful_tests: list, failed_tests: list):
+def generate_report(successful_tests: list, failed_tests: list) -> str:
     """
     Generates a report of the test results.
 
@@ -531,8 +531,7 @@ def generate_report(successful_tests: list, failed_tests: list):
                 report += f"   - Helper: {failed_test['helper']}\n"
                 report += f"   - Id: {failed_test['id']}\n"
                 report += f"   - Description: {failed_test['description']}\n"
-
-    print(report)
+    return report
 
 
 def build_asset_request(asset: dict) -> api_catalog.ResourcePost_Request:
@@ -780,10 +779,11 @@ def run_test_cases_executor(api_client: APIClient, kvdb_path: str):
     else:
         sys.exit("It is necessary to indicate a file or directory that contains a configuration yaml")
 
-    generate_report(result_evaluator.successful, result_evaluator.failure)
+    report = generate_report(result_evaluator.successful, result_evaluator.failure)
 
     if len(result_evaluator.failure) != 0:
-        sys.exit(1)
+        sys.exit(report)
+    print(report)
 
 
 def main():

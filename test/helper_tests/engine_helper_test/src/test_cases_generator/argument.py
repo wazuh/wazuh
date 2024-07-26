@@ -141,7 +141,7 @@ class Argument:
         elif self.subset == Regex:
             return json.dumps(Regex("^(bye pcre\\d)$").__str__())
         else:
-            return "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(1, 10)))
+            return "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(2, 10)))
 
     def generate_random_boolean(self):
         """
