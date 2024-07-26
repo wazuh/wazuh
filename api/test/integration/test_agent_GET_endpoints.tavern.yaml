@@ -4408,6 +4408,23 @@ stages:
           failed_items: []
           total_affected_items: 4
           total_failed_items: 0
+  
+  - name: Filter agents by id
+    request:
+      verify: False
+      <<: *agents_outdated_request
+      params:
+        q: id=002,id=004,id=006
+    response:
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items:
+            - id: '006'
+          failed_items: []
+          total_affected_items: 1
+          total_failed_items: 0
 
   - name: Try show agents with bad query
     request:
