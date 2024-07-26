@@ -89,26 +89,6 @@ public:
     }
 
     /**
-     * @brief Sets the init index callback.
-     *
-     * @param callback New callback.
-     */
-    void setInitIndexCallback(std::function<void(const std::string&)> callback)
-    {
-        m_initIndexCallback = std::move(callback);
-    }
-
-    /**
-     * @brief Sets the init template callback.
-     *
-     * @param callback New callback.
-     */
-    void setInitTemplateCallback(std::function<void(const std::string&)> callback)
-    {
-        m_initTemplateCallback = std::move(callback);
-    }
-
-    /**
      * @brief Returns the indexer initialized flag.
      *
      * @return True if initialized, false otherwise.
@@ -139,47 +119,6 @@ public:
                 ss << "1694645550 22:52:30 opensearch-cluster " << m_health << " 2 2 true 14 7 0 0 0 0 - 100.0%\n";
                 res.set_content(ss.str(), "text/plain");
             });
-
-        // Endpoint where the index is initialized.
-        m_server.Put("/" + m_indexName,
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         try
-                         {
-                             if (m_initIndexCallback)
-                             {
-                                 m_initIndexCallback(req.body);
-                             }
-                             m_indexerInitialized = true;
-                             res.status = 200;
-                             res.set_content("Index initialized", "text/plain");
-                         }
-                         catch (const std::exception& e)
-                         {
-                             res.status = 500;
-                             res.set_content(e.what(), "text/plain");
-                         }
-                     });
-
-        // Endpoint where the template is initialized.
-        m_server.Put("/_index_template/" + m_indexName + "_template",
-                     [this](const httplib::Request& req, httplib::Response& res)
-                     {
-                         try
-                         {
-                             if (m_initTemplateCallback)
-                             {
-                                 m_initTemplateCallback(req.body);
-                             }
-                             res.status = 200;
-                             res.set_content("Template initialized", "text/plain");
-                         }
-                         catch (const std::exception& e)
-                         {
-                             res.status = 500;
-                             res.set_content(e.what(), "text/plain");
-                         }
-                     });
 
         // Endpoint where the publications are made into.
         m_server.Post("/_bulk",

@@ -272,56 +272,8 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
     }
 }
 
-void IndexerConnector::initialize(const nlohmann::json& templateData,
-                                  const std::shared_ptr<ServerSelector>& selector,
-                                  const SecureCommunication& secureCommunication)
-{
-    // Define the error callback
-    auto onError = [](const std::string& error, const long statusCode)
-    {
-        if (statusCode != 400) // Assuming 400 is for bad requests which we expect to handle differently
-        {
-            std::string errorMessage = error;
-            if (statusCode != NOT_USED)
-            {
-                errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
-            }
-
-            throw std::runtime_error(errorMessage);
-        }
-    };
-
-    // Define the success callback
-    auto onSuccess = [](const std::string&)
-    {
-        // Not used
-    };
-
-    // Initialize template.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
-                                templateData,
-                                onSuccess,
-                                onError,
-                                "",
-                                DEFAULT_HEADERS,
-                                secureCommunication);
-
-    // Initialize Index.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/" + m_indexName),
-                                templateData.at("template"),
-                                onSuccess,
-                                onError,
-                                "",
-                                DEFAULT_HEADERS,
-                                secureCommunication);
-
-    m_initialized = true;
-    logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
-}
-
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
-    const std::string& templatePath,
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
@@ -344,14 +296,6 @@ IndexerConnector::IndexerConnector(
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
-
-    // Read template file.
-    std::ifstream templateFile(templatePath);
-    if (!templateFile.is_open())
-    {
-        throw std::runtime_error("Could not open template file: " + templatePath);
-    }
-    nlohmann::json templateData = nlohmann::json::parse(templateFile);
 
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
@@ -449,45 +393,6 @@ IndexerConnector::IndexerConnector(
         },
         SYNC_WORKERS,
         SYNC_QUEUE_LIMIT);
-
-    m_initializeThread = std::thread(
-        // coverity[copy_constructor_call]
-        [this, templateData, selector, secureCommunication]()
-        {
-            auto sleepTime = std::chrono::seconds(START_TIME);
-            std::unique_lock lock(m_mutex);
-            auto warningPrinted {false};
-            do
-            {
-                try
-                {
-                    sleepTime *= DOUBLE_FACTOR;
-                    if (sleepTime.count() > MAX_WAIT_TIME)
-                    {
-                        sleepTime = std::chrono::seconds(MAX_WAIT_TIME);
-                    }
-
-                    initialize(templateData, selector, secureCommunication);
-                }
-                catch (const std::exception& e)
-                {
-                    logDebug1(IC_NAME,
-                              "Unable to initialize IndexerConnector for index '%s': %s. Retrying in %ld "
-                              "seconds.",
-                              m_indexName.c_str(),
-                              e.what(),
-                              sleepTime.count());
-                    if (!warningPrinted)
-                    {
-                        logWarn(IC_NAME,
-                                "IndexerConnector initialization failed for index '%s', retrying until the connection "
-                                "is successful.",
-                                m_indexName.c_str());
-                        warningPrinted = true;
-                    }
-                }
-            } while (!m_initialized && !m_cv.wait_for(lock, sleepTime, [this]() { return m_stopping.load(); }));
-        });
 }
 
 IndexerConnector::~IndexerConnector()
