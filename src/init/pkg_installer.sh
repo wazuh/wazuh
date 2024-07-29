@@ -47,7 +47,7 @@ if [[ "$OS" == "Darwin" ]]; then
 elif [[ "$OS" == "Linux" ]]; then
     if find ./var/upgrade/ -mindepth 1 -maxdepth 1 -type f -name "*.rpm" | read; then
         if command -v rpm >/dev/null 2>&1; then
-            rpm -Uvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
+            rpm -UFvh ./var/upgrade/wazuh-agent* >> ./logs/upgrade.log 2>&1
         else
             echo "$(date +"%Y/%m/%d %H:%M:%S") - Upgrade failed. RPM package found but rpm command not found." >> ./logs/upgrade.log
             echo -ne "2" > ./var/upgrade/upgrade_result
