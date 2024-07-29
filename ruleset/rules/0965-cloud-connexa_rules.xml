@@ -11,7 +11,7 @@
 -->
 ​
 <group name="cloud-connexa.json">
-    <rule id="93000" level="2">
+    <rule id="96500" level="2">
       <decoded_as>json</decoded_as>
       <field name="CloudConnexaLogVersion">1</field>
       <description>CloudConnexa $(cloudId) INFO: $(initiator) (publicIp:'$(publicIp)') performed '$(eventName)' from category '$(category)' at $(timestamp)</description>
@@ -37,8 +37,8 @@
         "aws": {"log_info": {"aws_account_alias": "", "log_file": "CloudConnexa/tenantname/2023-07-06-13-01-abcf.jsonl.gz", "s3bucket": "log-streaming-2-wazuh"}, "source": "CloudConnexa"}
         }
     -->
-    <rule id="93001" level="3">
-      <if_sid>93000</if_sid>
+    <rule id="96501" level="3">
+      <if_sid>96500</if_sid>
       <field name="eventName">^test-message$</field>
       <description>CloudConnexa $(cloudId) INFO: $(initiator):$(initiatorRole) (publicIp:'$(publicIp)') sent a Test message at $(timestamp)</description>
     </rule>
@@ -77,10 +77,10 @@
       "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/2023-08-04-10-19-J3DU.jsonl.gz"},"source": "CloudConnexa"}
     }
   -->
-    <rule id="93002" level="8">
-      <if_sid>93000</if_sid>
+    <rule id="96502" level="8">
+      <if_sid>96500</if_sid>
       <field name="eventName">^traffic-blocked$</field>
-      <description>CloudConnexa $(cloudId) BLOCKED: $(initiator) Cyber Shield Traffic Filtering blocked traffic to $(log.destinationIp):$(log.destinationPort) from $(log.sourceIp):$(log.sourcePort) over $(log.protocol) for categoty '$(log.category)' priority '$(log.priority)', classification '$(log.classification)' rule $(log.signatureId):$(log.eventName) </description>
+      <description>CloudConnexa $(cloudId) BLOCKED: $(initiator) Cyber Shield Traffic Filtering blocked traffic to $(log.destinationIp):$(log.destinationPort) from $(log.sourceIp):$(log.sourcePort) over $(log.protocol) for category '$(log.category)' priority '$(log.priority)', classification '$(log.classification)' rule $(log.signatureId):$(log.eventName) </description>
     </rule>
 
   <!-- 
@@ -110,8 +110,8 @@
       "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/2023-07-24-14-58-dxKH.jsonl.gz"},"source": "CloudConnexa"}
     }
   -->
-    <rule id="93003" level="8">
-      <if_sid>93000</if_sid>
+    <rule id="96503" level="8">
+      <if_sid>96500</if_sid>
       <field name="eventName">^domain-blocked$</field>
       <description>CloudConnexa $(cloudId) BLOCKED: $(initiator) Cyber Shield Domain Filtering blocked domain '$(log.domain)' from category '$(log.category)', resolved over $(log.protocol) with query type $(log.queryType)</description>
     </rule>
@@ -138,8 +138,8 @@
       "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/2023-08-28-14-27-yw7e.jsonl.gz"},"source": "CloudConnexa"}
     }
   -->
-  <rule id="93020" level="2">
-      <if_sid>93000</if_sid>
+  <rule id="96520" level="2">
+      <if_sid>96500</if_sid>
       <field name="eventName">^log-stream-started$</field>
       <description>CloudConnexa $(cloudId) AUDIT: $(initiator) (publicIp:'$(publicIp)') Log stream started for to write to aws s3 bucket '$(log.aws-s3-bucket)' in region '$(log.aws-region)'</description>
     </rule>
@@ -166,8 +166,8 @@
       "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/2023-08-28-14-27-yw7e.jsonl.gz"},"source": "CloudConnexa"}
     }
   -->
-  <rule id="93021" level="2">
-      <if_sid>93000</if_sid>
+  <rule id="96521" level="2">
+      <if_sid>96500</if_sid>
       <field name="eventName">^log-stream-paused$</field>
       <description>CloudConnexa $(cloudId) AUDIT: $(initiator) (publicIp:'$(publicIp)') Log stream paused for to write to aws s3 bucket '$(log.aws-s3-bucket)' in region '$(log.aws-region)'</description>
     </rule>
@@ -206,8 +206,8 @@
       "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/2023-08-01-12-04-odBZ.jsonl.gz"},"source": "CloudConnexa"},"timestamp": "2023-08-01T12:04:18.000000Z"
     }
   -->
-  <rule id="93030" level="8">
-      <if_sid>93000</if_sid>
+  <rule id="96530" level="8">
+      <if_sid>96500</if_sid>
       <field name="eventName">^client-connected$</field>
       <description>CloudConnexa $(cloudId) CONNECTED: $(initiator):$(initiatorName) (publicIp:'$(publicIp)') Client connected to '$(log.gatewayRegionName)' over $(log.sessionProtocol). Client details: $(log.clientOsType):$(log.clientOsVersion) with client UUID '$(log.clientUUID)'</description>
       <group>authentication_success</group>
@@ -253,8 +253,8 @@
       "aws": {"log_info": {"s3bucket": "s3-bucket","log_file": "CloudConnexa/my-cloud-connexa/2023-08-04-12-08-nmAD.jsonl.gz"}, "source": "CloudConnexa"
       }
   -->
-    <rule id="93031" level="8">
-      <if_sid>93000</if_sid>
+    <rule id="96531" level="8">
+      <if_sid>96500</if_sid>
       <field name="eventName">^client-disconnected$</field>
       <description>CloudConnexa $(cloudId) DISCONNECTED: $(initiator):$(initiatorName) (publicIp:'$(publicIp)') Client disconnected from '$(log.gatewayRegionName)' after $(log.sessionDurationSeconds) seconds because of '$(log.sessionDisconnectReason)':'$(log.sessionDisconnectReasonDescription)'. Client details: $(log.clientOsType):$(log.clientOsVersion) with client UUID '$(log.clientUUID)'</description>
     </rule>
@@ -321,8 +321,8 @@
       }
     }
   -->
-    <rule id="93040" level="2">
-      <if_sid>93000</if_sid>
+    <rule id="96540" level="2">
+      <if_sid>96500</if_sid>
       <field name="eventName">^audit-log$</field>
       <description>CloudConnexa $(cloudId) AUDIT: $(initiator) (publicIp:'$(publicIp)') An entity $(log.entityType):$(log.entityId) was $(log.operation).</description>
     </rule>
@@ -370,15 +370,15 @@
     }
     }
   -->
-    <rule id="93041" level="3">
-      <if_sid>93000</if_sid>
+    <rule id="96541" level="3">
+      <if_sid>96500</if_sid>
       <field name="eventName">^flow-established$</field>
       <description>CloudConnexa $(cloudId) FLOW: From $(log.sourceParentType):$(log.sourceParentName) $(log.sourceEntityType):$(log.sourceEntityName) $(log.sourceGatewayRegionName) $(log.sourceIp) -> $(log.destinationParentType):$(log.destinationParentName) $(log.destinationEntityType):$(log.destinationEntityName) $(log.destinationEntityIp):$(log.destinationPort):$(log.protocolName) blocked=$(log.allowed).</description>
     </rule>
 
     <!-- Rule to flag sessions that downloaded more than -->
-    <rule id="93050" level="3" >
-      <if_sid>93031</if_sid>
+    <rule id="96550" level="3" >
+      <if_sid>96531</if_sid>
       
       <!-- 100Kb - 102,400 bytes --> 
       <!-- <field name="log.sessionBytesIn" type="pcre2">"^([1-9][0-9]{6,9999})|([2-9][0-9]{5})|([1-9][1-9][0-9]{4})|([1-9][0-9][3-9][0-9]{3})|([1-9][0-9][2-9][4-9][0-9]{2})$"</field> -->
@@ -393,8 +393,8 @@
     </rule>
 
     <!-- Rule to flag sessions that uploaded more than -->
-    <rule id="93051" level="3">
-      <if_sid>93031</if_sid>
+    <rule id="96551" level="3">
+      <if_sid>96531</if_sid>
       
       <!-- 100Kb - 102,400 bytes --> 
       <!-- <field name="log.sessionBytesOut" type="pcre2">"^([1-9][0-9]{6,9999})|([2-9][0-9]{5})|([1-9][1-9][0-9]{4})|([1-9][0-9][3-9][0-9]{3})|([1-9][0-9][2-9][4-9][0-9]{2})$</field> -->
@@ -409,15 +409,15 @@
     </rule>
 
     <!-- Frequently connecting client -->
-    <rule id="93052" level="10" frequency="10" timeframe="60">
-      <if_matched_sid>93030</if_matched_sid>
+    <rule id="96552" level="10" frequency="10" timeframe="60">
+      <if_matched_sid>96530</if_matched_sid>
       <same_field>initiator</same_field>
       <description>CloudConnexa $(cloudId) WARN: $(initiator) Client connected more than 10 times during 60 seconds. Client UUID '$(log.clientUUID)'</description>
     </rule>
 
     <!-- Frequent IDS events with priority 1 -->
-    <rule id="93060" level="10" frequency="10" timeframe="60">
-      <if_matched_sid>93002</if_matched_sid>
+    <rule id="96560" level="10" frequency="10" timeframe="60">
+      <if_matched_sid>96502</if_matched_sid>
       <same_field>initiator</same_field>
       <same_field>log.signatureId</same_field>
       <field name="log.priority">1</field>
