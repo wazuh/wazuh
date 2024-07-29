@@ -77,7 +77,8 @@ function BuildWazuhMsi(){
             "..\shared_modules\dbsync\build\bin\dbsync.dll",
             "..\shared_modules\rsync\build\bin\rsync.dll",
             "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
-            "..\syscheckd\build\bin\libfimdb.dll"
+            "..\syscheckd\build\bin\libfimdb.dll",
+            "..\win32\do_upgrade.ps1"
         )
 
         # Sign the files
