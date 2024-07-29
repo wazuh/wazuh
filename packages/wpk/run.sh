@@ -133,8 +133,11 @@ main() {
         CURRENT_DIR=$(pwd)
         echo "wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1"
         cd ${OUTDIR}
-        cp ${CURRENT_DIR}/src/win32/{upgrade.bat,do_upgrade.ps1} .
         cp /var/pkg/${PKG_NAME} ${OUTDIR} 2>/dev/null
+        cp ${CURRENT_DIR}/src/win32/upgrade.bat .
+        # Extract the signed do_upgrade.ps1 from the MSI
+        msiextract ${PKG_NAME} -C /tmp
+        cp "/tmp/Program Files/ossec-agent/upgrade/do_upgrade.ps1" .
         wpkpack ${OUTPUT} ${WPKCERT} ${WPKKEY} ${PKG_NAME} upgrade.bat do_upgrade.ps1
         rm -f upgrade.bat do_upgrade.ps1 ${PKG_NAME}
     elif [ "${HAVE_PKG_NAME_MAC}" == true ] || [ "${HAVE_PKG_NAME_LINUX}" == true ]; then

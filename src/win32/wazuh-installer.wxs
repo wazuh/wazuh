@@ -463,8 +463,8 @@
                     <Directory Id="SYSCHECK" Name="syscheck" />
                     <Directory Id="INCOMING" Name="incoming" />
                     <Directory Id="UPGRADE" Name="upgrade">
-                        <Component Id="DO_UPGRADE" DiskId="1" Guid="37D0E724-F330-4897-8B2E-F751D84AD61C">
-                            <File Id="DO_UPGRADE" Name="do_upgrade.ps1" Source="do_upgrade.ps1" />
+                        <Component Id="DO_UPGRADE.PS1" DiskId="1" Guid="37D0E724-F330-4897-8B2E-F751D84AD61C" Permanent="yes">
+                            <File Id="DO_UPGRADE.PS1" Name="do_upgrade.ps1" Source="do_upgrade.ps1" KeyPath="yes" />
                         </Component>
                     </Directory>
                 </Directory>
@@ -615,6 +615,7 @@
         <Feature Id="MainFeature" Title="Wazuh Agent" Description="Install the Wazuh Agent program files" ConfigurableDirectory="APPLICATIONFOLDER" InstallDefault="local" TypicalDefault="install" AllowAdvertise="no" Absent="disallow">
             <ComponentRef Id="REGISTRY_INSTALL_DIR" />
             <ComponentRef Id="AGENT_AUTH.EXE" />
+            <ComponentRef Id="DO_UPGRADE.PS1" />
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="FIMDB_DLL" />
