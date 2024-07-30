@@ -45,6 +45,7 @@ add_library(base STATIC
     ${SRC_DIR}/expression.cpp
     ${SRC_DIR}/parseEvent.cpp
     ${SRC_DIR}/json.cpp
+    ${SRC_DIR}/logging.cpp
 )
 target_include_directories(base
     PUBLIC
