@@ -629,10 +629,24 @@ void fim_checker(const char *path,
     directory_t *configuration;
     int depth;
 
+    /* Validate the path before processing further */
+
+    // Path is valid UTF8 String
     if (!w_utf8_valid(path)) {
         mwarn(FIM_INVALID_FILE_NAME, path);
         return;
     }
+
+    // Path is not on a skipped filesystem
+    if (HasFilesystem(path, syscheck.skip_fs)) {
+        return;
+    }
+
+    // Path is not ignored
+    if (fim_check_ignore(path) == 1) {
+        return;
+    }
+
 
 #ifdef WIN32
     // Ignore the recycle bin.
@@ -714,14 +728,6 @@ void fim_checker(const char *path,
         }
     }
 #endif
-
-    if (HasFilesystem(path, syscheck.skip_fs)) {
-        return;
-    }
-
-    if (fim_check_ignore(path) == 1) {
-        return;
-    }
 
     switch (evt_data->statbuf.st_mode & S_IFMT) {
 #ifndef WIN32
