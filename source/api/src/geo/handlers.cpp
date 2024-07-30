@@ -2,7 +2,7 @@
 
 #include <eMessages/eMessage.h>
 #include <eMessages/geo.pb.h>
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 #include <api/adapter.hpp>
 

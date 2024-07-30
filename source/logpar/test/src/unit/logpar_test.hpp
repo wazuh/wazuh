@@ -7,7 +7,7 @@
 
 #include <fmt/format.h>
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <logpar/logpar.hpp>
 
 #include <schemf/mockSchema.hpp>

@@ -5,10 +5,10 @@
 #include <thread>
 #include <unistd.h>
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <kvdb/ikvdbmanager.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include "fakeMetric.hpp"
 
 namespace

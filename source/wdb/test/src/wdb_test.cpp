@@ -4,7 +4,7 @@
 
 #include <gtest/gtest.h>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <sockiface/mockSockFactory.hpp>
 #include <sockiface/mockSockHandler.hpp>
 

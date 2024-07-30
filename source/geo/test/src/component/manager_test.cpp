@@ -9,8 +9,8 @@
 
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
-#include <json/json.hpp>
-#include <logging/logging.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
 #include <store/mockStore.hpp>
 
 using namespace store::mocks;

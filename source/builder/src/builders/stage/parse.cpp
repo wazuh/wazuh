@@ -1,6 +1,6 @@
 #include "parse.hpp"
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 #include "syntax.hpp"
 

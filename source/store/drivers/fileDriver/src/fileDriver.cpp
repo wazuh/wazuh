@@ -1,7 +1,7 @@
 #include "store/drivers/fileDriver.hpp"
 
 #include <fmt/format.h>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace store::drivers
 {

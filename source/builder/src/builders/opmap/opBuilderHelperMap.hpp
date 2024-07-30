@@ -1,7 +1,7 @@
 #ifndef _OP_BUILDER_HELPER_MAP_H
 #define _OP_BUILDER_HELPER_MAP_H
 
-#include <utils/stringUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 #include "builders/types.hpp"
 

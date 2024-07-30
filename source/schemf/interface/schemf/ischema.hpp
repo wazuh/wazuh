@@ -3,7 +3,7 @@
 
 #include <base/dotPath.hpp>
 #include <base/error.hpp>
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <schemf/type.hpp>
 
 namespace schemf

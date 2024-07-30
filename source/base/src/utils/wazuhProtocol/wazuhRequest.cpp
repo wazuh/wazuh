@@ -1,6 +1,6 @@
-#include "wazuhRequest.hpp"
+#include "utils/wazuhProtocol/wazuhRequest.hpp"
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace base::utils::wazuhProtocol
 {

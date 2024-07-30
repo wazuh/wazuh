@@ -7,8 +7,8 @@
 #include <tuple>
 #include <variant>
 
-#include <logging/logging.hpp>
-#include <utils/stringUtils.hpp>
+#include <base/logging.hpp>
+#include <base/utils/stringUtils.hpp>
 
 namespace
 {

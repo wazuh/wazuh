@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <base/test/behaviour.hpp>
+#include <base/behaviour.hpp>
 #include <defs/mockDefinitions.hpp>
 
 #include "expressionCmp.hpp"

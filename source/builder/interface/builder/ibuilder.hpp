@@ -4,9 +4,9 @@
 #include <memory>
 
 #include <builder/ipolicy.hpp>
-#include <error.hpp>
-#include <expression.hpp>
-#include <name.hpp>
+#include <base/error.hpp>
+#include <base/expression.hpp>
+#include <base/name.hpp>
 
 namespace builder
 {

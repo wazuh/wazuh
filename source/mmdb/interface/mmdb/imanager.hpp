@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 
-#include <error.hpp>
+#include <base/error.hpp>
 
 #include <mmdb/ihandler.hpp>
 

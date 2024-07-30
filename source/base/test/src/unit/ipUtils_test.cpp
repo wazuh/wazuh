@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <utils/ipUtils.hpp>
+#include <base/utils/ipUtils.hpp>
 
 TEST(IPv4ToUInt, Invalid_format)
 {

@@ -10,7 +10,7 @@
 #include <system_error>
 
 #include <cmds/details/kbhit.hpp>
-#include <name.hpp>
+#include <base/name.hpp>
 
 #include <eMessages/catalog.pb.h>
 
@@ -18,7 +18,7 @@
 #include "utils.hpp"
 #include <cmds/apiExcept.hpp>
 #include <cmds/apiclnt/client.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace cmd::catalog
 {

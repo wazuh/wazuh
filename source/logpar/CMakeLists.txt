@@ -10,7 +10,7 @@ PUBLIC
 PRIVATE
   include/logpar
 )
-target_link_libraries(logpar PUBLIC hlp fmt json schemf::ischema parsec)
+target_link_libraries(logpar PUBLIC hlp fmt base schemf::ischema parsec)
 
 # Tests
 if(ENGINE_BUILD_TEST)

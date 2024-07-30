@@ -8,7 +8,7 @@ set(DRIVER_DIR ${CMAKE_CURRENT_LIST_DIR}/drivers)
 ## Interface
 add_library(store_istore INTERFACE)
 target_include_directories(store_istore INTERFACE ${IFACE_DIR})
-target_link_libraries(store_istore INTERFACE fmt base json)
+target_link_libraries(store_istore INTERFACE fmt base)
 add_library(store::istore ALIAS store_istore)
 
 ## File driver

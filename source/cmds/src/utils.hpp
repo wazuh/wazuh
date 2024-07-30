@@ -7,7 +7,7 @@
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <eMessages/eMessage.h>
 #include <eMessages/engine.pb.h>
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 #include <cmds/apiclnt/client.hpp>
 

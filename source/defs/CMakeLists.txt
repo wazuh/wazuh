@@ -2,7 +2,7 @@ add_library(defs_idefinitions INTERFACE)
 target_include_directories(defs_idefinitions INTERFACE
   ${CMAKE_CURRENT_LIST_DIR}/interface
 )
-target_link_libraries(defs_idefinitions INTERFACE json)
+target_link_libraries(defs_idefinitions INTERFACE base)
 add_library(defs::idefinitions ALIAS defs_idefinitions)
 
 
@@ -16,7 +16,7 @@ PRIVATE
   ${CMAKE_CURRENT_LIST_DIR}/src
   ${CMAKE_CURRENT_LIST_DIR}/include/defs
 )
-target_link_libraries(defs defs::idefinitions json base)
+target_link_libraries(defs defs::idefinitions base)
 
 if(ENGINE_BUILD_TEST)
 

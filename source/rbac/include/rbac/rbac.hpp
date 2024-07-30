@@ -10,7 +10,7 @@
 #include <rbac/irbac.hpp>
 #include <rbac/model.hpp>
 #include <store/istore.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace rbac
 {
@@ -63,7 +63,7 @@ private:
             if (base::isError(role))
             {
                 return base::getError(role);
-            }   
+            }
             m_roles[roleName] = std::get<Role>(role);
         }
 

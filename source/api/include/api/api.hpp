@@ -3,7 +3,7 @@
 
 #include "registry.hpp"
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <rbac/irbac.hpp>
 
 namespace api
@@ -70,7 +70,7 @@ public:
 
     /**
      * @brief Processes a raw string request and invokes a callback function with the response.
-     * 
+     *
      * @param message Raw string request
      * @param callbackFn Callback function that will be invoked with the generated response
      */

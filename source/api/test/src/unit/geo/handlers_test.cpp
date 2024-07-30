@@ -9,10 +9,10 @@
 #include <gtest/gtest.h>
 
 #include <api/geo/handlers.hpp>
-#include <base/test/behaviour.hpp>
+#include <base/behaviour.hpp>
 #include <eMessages/geo.pb.h>
 #include <geo/mockManager.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 using namespace ::geo::mocks;
 using namespace base::test;

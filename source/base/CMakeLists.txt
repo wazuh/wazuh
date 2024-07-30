@@ -1,4 +1,3 @@
-# FIXME: Base should be refactored to be an OBJECT library so other modules can simply include what they need.
 ####################################################################################################
 # logging
 ####################################################################################################
@@ -32,56 +31,50 @@ CPMAddPackage(
     DOWNLOAD_ONLY YES
     )
 
+####################################################################################################
+# BASE
+####################################################################################################
+# Defs
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
+
 add_library(base STATIC
-    logging/logging.hpp
-    utils/wazuhProtocol/wazuhResponse.hpp
-    utils/wazuhProtocol/wazuhRequest.hpp
-    utils/wazuhProtocol/wazuhRequest.cpp
-    utils/baseMacros.hpp
-    utils/baseMacros.cpp
-    utils/ipUtils.cpp
-    utils/ipUtils.hpp
-    utils/stringUtils.cpp
-    utils/stringUtils.hpp
-    result.hpp
-    baseTypes.hpp
-    expression.cpp
-    error.hpp
-    parseEvent.cpp
-    parseEvent.hpp
-    name.hpp
-    )
-
-if(PROFILE_BUILD)
-    target_link_libraries(base
-        PUBLIC
-        profile
-        )
-endif()
-
-target_link_libraries(base
-    PUBLIC
-    dl
-    fmt
-    spdlog
-    json
-    )
-
+    ${SRC_DIR}/utils/wazuhProtocol/wazuhRequest.cpp
+    ${SRC_DIR}/utils/ipUtils.cpp
+    ${SRC_DIR}/utils/stringUtils.cpp
+    ${SRC_DIR}/expression.cpp
+    ${SRC_DIR}/parseEvent.cpp
+    ${SRC_DIR}/json.cpp
+)
 target_include_directories(base
     PUBLIC
-    ${CMAKE_CURRENT_LIST_DIR}
+    ${INC_DIR}
     ${spdlog_SOURCE_DIR}/include
     ${rapidjson_SOURCE_DIR}/include
-    ${ENGINE_SOURCE_DIR}/json
-    ${ENGINE_SOURCE_DIR}/base
-    ${ENGINE_SOURCE_DIR} # TODO remove when BUILDER is updated (#include <builder/builder.hpp)
+
+    PRIVATE
+    ${INC_DIR}/base
+    ${SRC_DIR}
+)
+target_link_libraries(base
+    PUBLIC
+    fmt
+
+    PRIVATE
+    spdlog
 )
 
 # Tests
+
 if(ENGINE_BUILD_TEST)
 
+set(TEST_DIR ${CMAKE_CURRENT_LIST_DIR}/test)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+
+add_library(base_test INTERFACE)
+target_include_directories(base_test INTERFACE ${TEST_DIR}/include)
+add_library(base::test ALIAS base_test)
 
 add_executable(base_utest
     ${UNIT_SRC_DIR}/stringUtils_test.cpp
@@ -93,13 +86,18 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/utils/wazuhProtocol/wazuhResponse_test.cpp
     ${UNIT_SRC_DIR}/parseEvent_test.cpp
     ${UNIT_SRC_DIR}/dotPath_test.cpp
+    ${UNIT_SRC_DIR}/json_test.cpp
 )
 target_include_directories(base_utest
     PRIVATE
     ${TEST_SRC_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}
+    ${SRC_DIR}
+    ${INC_DIR}/base
 )
 target_link_libraries(base_utest
+    PUBLIC
+    base::test
+
     PRIVATE
     base
     gtest_main
@@ -113,7 +111,7 @@ add_executable(base_logger_utest
 target_include_directories(base_logger_utest
     PRIVATE
     ${TEST_SRC_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}
+    ${INC_DIR}/base
 )
 target_link_libraries(base_logger_utest
     PRIVATE

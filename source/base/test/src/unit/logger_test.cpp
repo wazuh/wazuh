@@ -4,7 +4,7 @@
 #include <gtest/gtest.h>
 #include <regex>
 
-#include "logging/logging.hpp"
+#include <base/logging.hpp>
 
 std::string readFileContents(const std::string& filePath)
 {

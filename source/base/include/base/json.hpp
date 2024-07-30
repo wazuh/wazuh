@@ -17,7 +17,7 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
-#include <error.hpp>
+#include <base/error.hpp>
 
 namespace json
 {

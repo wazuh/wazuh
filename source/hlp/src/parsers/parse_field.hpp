@@ -1,7 +1,7 @@
 #ifndef WAZUH_ENGINE_PARSE_FIELD_HPP
 #define WAZUH_ENGINE_PARSE_FIELD_HPP
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <optional>
 #include <string_view>
 #include <tuple>

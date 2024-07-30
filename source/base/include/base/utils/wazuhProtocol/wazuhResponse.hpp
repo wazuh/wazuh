@@ -1,8 +1,8 @@
 #ifndef _BASE_UTILS_WAZUH_RESPONSE_HPP
 #define _BASE_UTILS_WAZUH_RESPONSE_HPP
 
-#include <json/json.hpp>
-#include <logging/logging.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
 
 namespace base::utils::wazuhProtocol
 {

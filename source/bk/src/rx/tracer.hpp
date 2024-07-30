@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 #include <bk/icontroller.hpp>
-#include <error.hpp>
+#include <base/error.hpp>
 
 namespace bk::rx::detail
 {

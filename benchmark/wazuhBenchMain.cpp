@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 int main(int argc, char **argv)
 {

@@ -7,7 +7,7 @@
 #include <CLI/CLI.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <cmds/apiclnt/client.hpp>
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 namespace cmd::catalog
 {

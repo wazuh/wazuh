@@ -4,7 +4,7 @@
 #include <list>
 #include <set>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace
 {
