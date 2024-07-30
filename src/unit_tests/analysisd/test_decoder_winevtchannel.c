@@ -137,9 +137,8 @@ void test_winevt_failXML_parse(void ** state) {
     /********************** EVENT ***********************/
     // Get event
 
-    cJSON event = {0};
-    event.valuestring = strdup("test");
-    will_return(__wrap_cJSON_GetObjectItem, &event);
+    will_return(__wrap_cJSON_GetObjectItem, (cJSON *) 0x1);
+    will_return(__wrap_cJSON_PrintUnformatted, (char *) strdup("test"));
 
     // Fail read xml
     will_return(__wrap_OS_ReadXMLString, -1);
@@ -171,7 +170,6 @@ void test_winevt_failXML_parse(void ** state) {
 
     int ret = DecodeWinevt(lf);
     assert_int_equal(ret, SUCCESS_DECODE);
-    os_free(event.valuestring);
 }
 
 void test_winevt_dec_systemNode_ok(void ** state) {
@@ -184,10 +182,8 @@ void test_winevt_dec_systemNode_ok(void ** state) {
 
     /********************** EVENT ***********************/
     // Get event
-
-    cJSON event = {0};
-    event.valuestring = strdup("test");
-    will_return(__wrap_cJSON_GetObjectItem, &event);
+    will_return(__wrap_cJSON_GetObjectItem, (cJSON *) 0x1);
+    will_return(__wrap_cJSON_PrintUnformatted, (char *) strdup("test"));
 
     // Read xml ok
     will_return(__wrap_OS_ReadXMLString, 0);
@@ -372,7 +368,6 @@ void test_winevt_dec_systemNode_ok(void ** state) {
 
     int ret = DecodeWinevt(lf);
     assert_int_equal(ret, SUCCESS_DECODE);
-    os_free(event.valuestring);
 }
 
 void test_winevt_dec_eventDataNode_ok(void ** state) {
@@ -385,10 +380,8 @@ void test_winevt_dec_eventDataNode_ok(void ** state) {
 
     /********************** EVENT ***********************/
     // Get event
-
-    cJSON event = {0};
-    event.valuestring = strdup("test");
-    will_return(__wrap_cJSON_GetObjectItem, &event);
+    will_return(__wrap_cJSON_GetObjectItem, (cJSON *) 0x1);
+    will_return(__wrap_cJSON_PrintUnformatted, (char *) strdup("test"));
 
     // Read xml ok
     will_return(__wrap_OS_ReadXMLString, 0);
@@ -490,7 +483,6 @@ void test_winevt_dec_eventDataNode_ok(void ** state) {
 
     int ret = DecodeWinevt(lf);
     assert_int_equal(ret, SUCCESS_DECODE);
-    os_free(event.valuestring);
 }
 
 void test_winevt_dec_long_log_ok(void ** state) {
@@ -503,9 +495,8 @@ void test_winevt_dec_long_log_ok(void ** state) {
 
     /********************** EVENT ***********************/
     // Get event
-    cJSON event = {0};
-    event.valuestring = strdup("test");
-    will_return(__wrap_cJSON_GetObjectItem, &event);
+    will_return(__wrap_cJSON_GetObjectItem, (cJSON *) 0x1);
+    will_return(__wrap_cJSON_PrintUnformatted, (char *) strdup("test"));
 
     // Read xml ok
     will_return(__wrap_OS_ReadXMLString, 0);
@@ -574,7 +565,6 @@ void test_winevt_dec_long_log_ok(void ** state) {
 
     int ret = DecodeWinevt(lf);
     assert_int_equal(ret, SUCCESS_DECODE);
-    os_free(event.valuestring);
 }
 
 int main() {
