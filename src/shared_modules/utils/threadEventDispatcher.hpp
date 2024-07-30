@@ -25,7 +25,7 @@
 template<typename T,
          typename U,
          typename Functor,
-         int TNumberOfThreads = 1,
+         uint8_t TNumberOfThreads = 1,
          typename TQueueType = RocksDBQueue<T, U>,
          typename TSafeQueueType = Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>>
 class TThreadEventDispatcher
@@ -339,7 +339,7 @@ private:
     const uint64_t m_bulkSize;
 };
 
-template<typename Type, typename Functor, int NumberOfThreads = 1>
+template<typename Type, typename Functor, uint8_t NumberOfThreads = 1>
 using ThreadEventDispatcher = TThreadEventDispatcher<Type, Type, Functor, NumberOfThreads>;
 
 #endif // _THREAD_EVENT_DISPATCHER_HPP
