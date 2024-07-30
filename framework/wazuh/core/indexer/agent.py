@@ -1,3 +1,4 @@
+from dataclasses import asdict
 from opensearchpy import exceptions
 from uuid6 import uuid7
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
@@ -10,23 +11,46 @@ PASSWORD_KEY = 'password'
 SOURCE_KEY = '_source'
 
 
-class AgentsListIndex(BaseIndex):
-    """Set of methods to interact with `agents_list` index."""
+class AgentsIndex(BaseIndex):
+    """Set of methods to interact with `agents` index."""
 
-    INDEX = 'agents_list'
+    INDEX = 'agents'
 
-    async def add(self, uuid: uuid7, password: str, name: str) -> Agent:
+    async def create(self, id: uuid7, key: str, name: str) -> Agent:
+        """Create a new agent.
+
+        Parameters
+        ----------
+        id : uuid7
+            Identifier of the new agent.
+        key : str
+            Key of the new agent.
+        name : str
+            Name of the new agent.
+
+        Returns
+        -------
+        Agent
+            The created agent instance.
+
+        Raises
+        ------
+        WazuhError (1708)
+            When already exists an agent with the provided id.
+        """
+        doc = Agent(id=id, key=key, name=name)
         try:
-            self._client.index(
+            await self._client.index(
                 index=self.INDEX,
-                id=uuid,
-                body={'name': name, 'password': password},
+                id=doc.id,
+                body=asdict(doc),
                 op_type='create',
+                refresh='wait_for'
             )
         except exceptions.ConflictError:
-            raise WazuhError(1708, extra_message=uuid)
-        finally:
-            return Agent(uuid=uuid, password=password, name=name)
+            raise WazuhError(1708, extra_message=id)
+        else:
+            return doc
 
     async def get(self, uuid: uuid7) -> Agent:
         try:

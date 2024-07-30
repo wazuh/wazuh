@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 from uuid6 import uuid7
 
@@ -7,6 +8,11 @@ from uuid6 import uuid7
 class Agent:
     """Representation of a Wazuh Agent."""
 
-    uuid: uuid7
-    password: str
+    id: uuid7
     name: str
+    key: str
+    groups: str = None
+    type: str = None
+    version: str = None
+    last_login: datetime = None
+    persistent_connection_node: str = None

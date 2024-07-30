@@ -7,6 +7,7 @@ import operator
 from os import chmod, path, listdir
 from typing import Union
 
+from uuid6 import uuid7
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
@@ -15,6 +16,7 @@ from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Wazu
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
+from wazuh.core.indexer import get_indexer_client
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
     full_copy
@@ -519,22 +521,17 @@ def delete_agents(agent_list: list = None, purge: bool = False, filters: dict = 
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str = 'any',
-              force: dict = None) -> WazuhResult:
+async def add_agent(id: uuid7, name: str, key: str) -> WazuhResult:
     """Add a new Wazuh agent.
 
     Parameters
     ----------
+    id : uuid7
+        ID of the new agent.
     name : str
         Name of the new agent.
-    agent_id : str
-        ID of the new agent.
     key : str
         Key of the new agent.
-    ip : str
-        IP of the new agent. It can be an IP, IP/NET or "any".
-    force : dict
-        Remove old agent with the same name or IP if conditions are met.
 
     Raises
     ------
@@ -550,7 +547,9 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
-    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
+    indexer = await get_indexer_client()
+
+    new_agent = await indexer.agents.create(id=id, name=name, key=key)
 
     return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
 

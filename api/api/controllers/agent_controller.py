@@ -215,14 +215,15 @@ async def add_agent(pretty: bool = False, wait_for_complete: bool = False) -> Co
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
     f_kwargs = await AgentAddedModel.get_kwargs(request)
 
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.add_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request.context['token_info']['rbac_policies']
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -865,7 +866,7 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID for which the specified component's stats are got. All possible values 
+        Agent ID for which the specified component's stats are got. All possible values
         from 000 onwards.
     component : str
         Selected agent's component which stats are got.
@@ -1280,7 +1281,7 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
 
 
 async def get_group_files(group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, 
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None,
                           q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get the files placed under the group directory.
 
