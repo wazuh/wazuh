@@ -12,6 +12,7 @@
 #include "testtoolArgsParser.hpp"
 #include "keyStore.hpp"
 #include <iostream>
+#include <functional>
 
 namespace Log
 {
