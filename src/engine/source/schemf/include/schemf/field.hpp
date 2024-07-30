@@ -5,10 +5,10 @@
 #include <optional>
 #include <string>
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <schemf/type.hpp>
 
-#include "error.hpp"
+#include <base/error.hpp>
 
 namespace schemf
 {

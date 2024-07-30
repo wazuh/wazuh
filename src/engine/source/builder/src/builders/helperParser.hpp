@@ -11,8 +11,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 
-#include <error.hpp>
-#include <json/json.hpp>
+#include <base/error.hpp>
+#include <base/json.hpp>
 #include <parsec/parsec.hpp>
 
 #include "syntax.hpp"

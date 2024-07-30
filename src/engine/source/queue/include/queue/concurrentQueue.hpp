@@ -14,7 +14,7 @@
 #include <blockingconcurrentqueue.h>
 #include <queue/iqueue.hpp>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <metrics/iMetricsManager.hpp>
 #include <metrics/iMetricsScope.hpp>
 

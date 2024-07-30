@@ -9,9 +9,6 @@
 #include <vector>
 
 #include <kvdb/ikvdbhandler.hpp>
-
-#include <utils/baseMacros.hpp>
-
 namespace kvdbManager
 {
 

@@ -5,7 +5,7 @@
 #include <exception>
 #include <functional>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace cmd::details
 {

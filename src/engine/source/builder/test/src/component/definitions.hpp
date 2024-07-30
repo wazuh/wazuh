@@ -8,7 +8,7 @@
 #include <schemf/mockSchema.hpp>
 #include <sockiface/mockSockFactory.hpp>
 #include <store/mockStore.hpp>
-#include <test/behaviour.hpp>
+#include <base/behaviour.hpp>
 
 using namespace base::test;
 using namespace store::mocks;

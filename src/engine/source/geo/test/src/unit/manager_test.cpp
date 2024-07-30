@@ -5,7 +5,7 @@
 #include <fstream>
 #include <iostream>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <store/mockStore.hpp>
 
 #include "manager.hpp"

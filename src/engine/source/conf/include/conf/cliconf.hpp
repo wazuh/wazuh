@@ -7,7 +7,7 @@
 
 #include <CLI/CLI.hpp>
 
-#include <utils/stringUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 /**
  * @brief Namespace for the configuration manager.

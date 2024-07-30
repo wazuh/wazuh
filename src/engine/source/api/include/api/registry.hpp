@@ -6,7 +6,7 @@
 #include <shared_mutex>
 #include <string>
 
-#include <utils/wazuhProtocol/wazuhProtocol.hpp>
+#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 
 namespace api
 {

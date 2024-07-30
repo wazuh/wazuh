@@ -1,8 +1,8 @@
 #include <kvdb/kvdbHandler.hpp>
 
 #include <fmt/format.h>
-#include <json/json.hpp>
-#include <logging/logging.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
 #include <rocksdb/db.h>
 
 namespace kvdbManager

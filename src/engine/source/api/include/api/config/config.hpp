@@ -6,7 +6,7 @@
 #include <exception>
 
 #include <conf/iconf.hpp>
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <eMessages/config.pb.h>
 
 #include <api/api.hpp>

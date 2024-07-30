@@ -1,8 +1,8 @@
 #ifndef _BUILDER_SYNTAX_HPP
 #define _BUILDER_SYNTAX_HPP
 
-#include <json/json.hpp>
-#include <name.hpp>
+#include <base/json.hpp>
+#include <base/name.hpp>
 
 /**
  * @brief Defines syntax elements.

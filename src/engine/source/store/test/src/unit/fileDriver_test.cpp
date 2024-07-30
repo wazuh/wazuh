@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 static const std::filesystem::path TEST_PATH = "/tmp/fileDriver_test";
 static const std::filesystem::path TEST_FILE_PATH = TEST_PATH / "__test_file__";

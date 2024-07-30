@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <fmt/format.h>
-#include <utils/stringUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 #include "tokenizer.hpp"
 

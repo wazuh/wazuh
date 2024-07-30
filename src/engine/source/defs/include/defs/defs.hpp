@@ -6,7 +6,7 @@
 #include <string_view>
 
 #include <defs/idefinitions.hpp>
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 /**
  * @brief Namespace for the component definitions

@@ -5,7 +5,7 @@
 
 #include <CLI/CLI.hpp>
 #include <cmds/apiclnt/client.hpp>
-#include <utils/wazuhProtocol/wazuhProtocol.hpp>
+#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 
 namespace cmd::kvdb
 {

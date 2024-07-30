@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <memory>
 
-#include <json/json.hpp>
-#include <logging/logging.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
 #include <metrics/metricsManager.hpp>
 
 using namespace metricsManager;

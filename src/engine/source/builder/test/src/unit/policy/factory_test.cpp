@@ -3,7 +3,7 @@
 #include <sstream>
 
 #include <store/mockStore.hpp>
-#include <test/behaviour.hpp>
+#include <base/behaviour.hpp>
 
 #include "expressionCmp.hpp"
 #include "factory_test.hpp"

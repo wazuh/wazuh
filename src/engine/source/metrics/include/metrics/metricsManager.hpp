@@ -5,8 +5,6 @@
 #include <mutex>
 #include <unordered_map>
 
-#include <utils/baseMacros.hpp>
-
 #include <metrics/iMetricsManager.hpp>
 #include <metrics/iMetricsManagerAPI.hpp>
 #include <metrics/dataHub.hpp>

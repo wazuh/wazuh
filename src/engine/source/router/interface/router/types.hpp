@@ -8,11 +8,11 @@
 #include <tuple>
 #include <unordered_set>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
-#include <baseTypes.hpp>
-#include <error.hpp>
-#include <name.hpp>
+#include <base/baseTypes.hpp>
+#include <base/error.hpp>
+#include <base/name.hpp>
 
 namespace router
 {

@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 class MockEndpoint : public engineserver::Endpoint {
 public:

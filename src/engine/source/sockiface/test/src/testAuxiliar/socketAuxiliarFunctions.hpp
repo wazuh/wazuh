@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 enum UnixSocketErrorCodes
 {

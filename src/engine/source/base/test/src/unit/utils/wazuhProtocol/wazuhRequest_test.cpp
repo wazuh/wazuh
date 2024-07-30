@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <utils/wazuhProtocol/wazuhRequest.hpp>
-#include <json/json.hpp>
-#include <logging/logging.hpp>
+#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
 
 class WazuhRequest_validate : public ::testing::Test
 {

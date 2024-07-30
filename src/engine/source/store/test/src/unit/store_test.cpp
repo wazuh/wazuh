@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <store/mockDriver.hpp>
 #include <store/store.hpp>
 

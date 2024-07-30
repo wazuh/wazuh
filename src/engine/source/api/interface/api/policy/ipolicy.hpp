@@ -3,8 +3,8 @@
 
 #include <list>
 
-#include <error.hpp>
-#include <name.hpp>
+#include <base/error.hpp>
+#include <base/name.hpp>
 #include <store/namespaceId.hpp>
 
 namespace api::policy

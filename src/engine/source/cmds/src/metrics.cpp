@@ -6,7 +6,7 @@
 #include "utils.hpp"
 #include <cmds/apiclnt/client.hpp>
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <metrics/metricsManager.hpp>
 
 namespace

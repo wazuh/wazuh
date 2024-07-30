@@ -1,5 +1,6 @@
 #include "downloader.hpp"
 
+#include <algorithm>
 #include <curl/curl.h>
 #include <iomanip>
 #include <openssl/evp.h>

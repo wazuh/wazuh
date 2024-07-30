@@ -7,7 +7,7 @@
 #include "rocksdb/options.h"
 
 #include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <metrics/metricsManager.hpp>
 
 namespace kvdbManager

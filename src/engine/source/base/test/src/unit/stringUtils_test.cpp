@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <utils/stringUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 TEST(split, null_del)
 {

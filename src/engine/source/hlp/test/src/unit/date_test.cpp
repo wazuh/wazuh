@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "hlp_test.hpp"
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 auto constexpr NAME = "dateParser";
 static const std::string TARGET = "/TargetField";

@@ -3,7 +3,7 @@
 
 #include <eMessages/catalog.pb.h>
 #include <eMessages/eMessage.h>
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 #include <api/adapter.hpp>
 

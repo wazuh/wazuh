@@ -6,8 +6,8 @@
 
 #include <eMessages/eMessage.h>
 #include <eMessages/engine.pb.h>
-#include <utils/wazuhProtocol/wazuhRequest.hpp>
-#include <utils/wazuhProtocol/wazuhResponse.hpp>
+#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
+#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
 
 namespace api::adapter
 {

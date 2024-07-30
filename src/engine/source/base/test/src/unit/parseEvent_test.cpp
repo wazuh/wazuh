@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include <parseEvent.hpp>
+#include <base/parseEvent.hpp>
 
 constexpr char TEST_QUEUE_ID {0x01};
 constexpr char TEST_AGENT_ID[] {"404"};

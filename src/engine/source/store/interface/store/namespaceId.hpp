@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include <name.hpp>
+#include <base/name.hpp>
 
 namespace store
 {

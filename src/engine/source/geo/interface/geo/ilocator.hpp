@@ -3,9 +3,9 @@
 
 #include <string>
 
-#include <dotPath.hpp>
-#include <error.hpp>
-#include <json/json.hpp>
+#include <base/dotPath.hpp>
+#include <base/error.hpp>
+#include <base/json.hpp>
 
 namespace geo
 {

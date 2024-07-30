@@ -5,7 +5,7 @@
 #include <string>
 #include <variant>
 
-#include <utils/stringUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 namespace builder::builders::opmap
 {
