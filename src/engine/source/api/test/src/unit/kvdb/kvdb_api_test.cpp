@@ -43,13 +43,6 @@ const std::string valueKeyD {fmt::format("{{\"keyDA\":\"{}\",\"keyDB\":{},\"keyD
 const std::string rCommand {"dummy cmd"};
 const std::string rOrigin {"Dummy org module"};
 
-void Setup()
-{
-    logging::testInit();
-}
-
-void TearDown() {}
-
 class KVDBApiTest : public ::testing::Test
 {
 protected:
@@ -58,13 +51,11 @@ protected:
 
     void SetUp() override
     {
-        ::Setup();
+        logging::testInit();
 
         spMetrics = std::make_shared<MetricsManager>();
         kvdbManager = std::make_shared<MockKVDBManager>();
     };
-
-    void TearDown() override { ::TearDown(); };
 
     api::wpRequest getWRequest(const bool& mustBeLoaded)
     {
@@ -1041,9 +1032,7 @@ template<typename T>
 class DumpTest : public ::testing::TestWithParam<T>
 {
 protected:
-    void SetUp() override { ::Setup(); }
-
-    void TearDown() override { ::TearDown(); };
+    void SetUp() override { logging::testInit(); }
 };
 
 using DumpParameters = DumpTest<std::tuple<std::string, std::string>>;
@@ -1118,9 +1107,7 @@ template<typename T>
 class SearchTest : public ::testing::TestWithParam<T>
 {
 protected:
-    void SetUp() override { ::Setup(); }
-
-    void TearDown() override { ::TearDown(); };
+    void SetUp() override { logging::testInit(); }
 };
 
 using SearchTestParameters = SearchTest<std::tuple<std::string, std::string>>;

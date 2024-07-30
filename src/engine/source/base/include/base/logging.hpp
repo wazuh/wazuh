@@ -166,92 +166,36 @@ struct LoggingConfig
     const uint32_t flushInterval {DEFAULT_LOG_FLUSH_INTERVAL}; ///< Flush interval in milliseconds.
     const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};     ///< Number of dedicated threads.
     const uint32_t queueSize {DEFAULT_LOG_THREADS_QUEUE_SIZE}; ///< Size of the log queue for dedicated threads.
-    bool truncate; ///< If true, the log file will be deleted for each start of the engine.
+    bool truncate {false}; ///< If true, the log file will be deleted for each start of the engine.
 };
 
 /**
  * @brief Retrieves the default logger.
  * @return Shared pointer to the default logger.
  */
-inline std::shared_ptr<spdlog::logger> getDefaultLogger()
-{
-    auto logger = spdlog::get("default");
-    if (!logger)
-    {
-        throw std::runtime_error("The 'default' logger is not initialized.");
-    }
-
-    return logger;
-}
+std::shared_ptr<spdlog::logger> getDefaultLogger();
 
 /**
  * @brief Sets the log level.
  * @param levelStr The log level as a string.
  */
-inline void setLevel(Level level)
-{
-    getDefaultLogger()->set_level(SEVERITY_LEVEL.at(level));
-
-    if (level <= Level::Debug)
-    {
-        getDefaultLogger()->set_pattern(LOG_DEBUG_HEADER);
-    }
-    else
-    {
-        getDefaultLogger()->set_pattern(DEFAULT_LOG_HEADER);
-    }
-}
+void setLevel(Level level);
 
 /**
  * @brief Starts logging with the given configuration.
  * @param cfg Logging configuration parameters.
  */
-inline void start(const LoggingConfig& cfg)
-{
-    std::shared_ptr<spdlog::logger> logger;
-
-    if (0 < cfg.dedicatedThreads)
-    {
-        spdlog::init_thread_pool(cfg.queueSize, cfg.dedicatedThreads);
-    }
-
-    if (cfg.filePath == STD_ERR_PATH)
-    {
-        logger = spdlog::stderr_color_mt("default");
-    }
-    else if (cfg.filePath == STD_OUT_PATH)
-    {
-        logger = spdlog::stdout_color_mt("default");
-    }
-    else
-    {
-        logger = spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
-    }
-
-    setLevel(cfg.level);
-    logger->flush_on(spdlog::level::trace);
-}
+void start(const LoggingConfig& cfg);
 
 /**
  * @brief Stops logging.
  */
-inline void stop()
-{
-    spdlog::shutdown();
-}
+void stop();
 
-inline void testInit()
-{
-    static bool initialized = false;
-
-    if (!initialized)
-    {
-        LoggingConfig logConfig;
-        logConfig.level = Level::Off;
-        start(logConfig);
-        initialized = true;
-    }
-}
+/**
+ * @brief Initializes the logger for testing purposes.
+ */
+void testInit();
 
 } // namespace logging
 
@@ -274,4 +218,4 @@ inline void testInit()
     logging::getDefaultLogger()->log(                                                                                  \
         spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::critical, msg, ##__VA_ARGS__)
 
-#endif
+#endif // _H_LOGGING
