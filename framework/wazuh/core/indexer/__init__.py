@@ -7,9 +7,20 @@ from opensearchpy import AsyncOpenSearch
 from wazuh.core.exception import WazuhIndexerError
 
 logger = getLogger('wazuh')
+_indexer_client = None
 
 HOST_KEY = 'host'
 PORT_KEY = 'port'
+
+# This constants are temporary until we have a centralized configration
+
+INDEXER_HOST = os.getenv('INDEXER_HOST', '')
+INDEXER_USER = os.getenv('INDEXER_USER', '')
+INDEXER_PASSWORD = os.getenv('INDEXER_PASSWORD', '')
+INDEXER_USE_SSL = os.getenv('INDEXER_USE_SSL', 'True') == 'True'
+INDEXER_CLIENT_CERT_PATH = os.getenv('INDEXER_CLIENT_CERT_PATH', '')
+INDEXER_CLIENT_KEY_PATH = os.getenv('INDEXER_CLIENT_KEY_PATH', '')
+INDEXER_CA_CERTS_PATH = os.getenv('INDEXER_CA_CERTS_PATH', '')
 
 
 class Indexer:
@@ -142,3 +153,22 @@ async def create_indexer(
             logger.info(f'Sleeping {wait}s until next try.')
             await sleep(wait)
             retries_count += 1
+
+
+async def get_indexer_client() -> Indexer:
+    """Create and return the indexer client."""
+
+    global _indexer_client
+
+    if _indexer_client is None:
+        _indexer_client = await create_indexer(
+            host=INDEXER_HOST,
+            user=INDEXER_USER,
+            password=INDEXER_PASSWORD,
+            use_ssl=INDEXER_USE_SSL,
+            client_cert_path=INDEXER_CLIENT_CERT_PATH,
+            client_key_path=INDEXER_CLIENT_KEY_PATH,
+            ca_certs_path=INDEXER_CA_CERTS_PATH
+        )
+
+    return _indexer_client
