@@ -114,13 +114,14 @@ class Validator:
                             f"Helper {self.parser.get_name()}: Name {name} in 'general_restrictions' is not defined in arguments")
 
         tests = self.parser.get_tests()
-        for test in tests:
-            count = 0
-            for argument in test["arguments"]:
-                if argument in self.parser.get_name_id_arguments():
-                    count += 1
-            if count < self.parser.get_minimum_arguments():
-                sys.exit(f"Helper {self.parser.get_name()}: There are arguments in 'test' that were not defined")
+        if tests:
+            for test in tests:
+                count = 0
+                for argument in test["arguments"]:
+                    if argument in self.parser.get_name_id_arguments():
+                        count += 1
+                if count < self.parser.get_minimum_arguments():
+                    sys.exit(f"Helper {self.parser.get_name()}: There are arguments in 'test' that were not defined")
 
     def verify_output(self):
         output = self.parser.get_output()
@@ -155,45 +156,48 @@ class Validator:
                         f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
 
         tests = self.parser.get_tests()
-        for test in tests:
-            if "expected" in test:
-                if new_subset == int:
-                    if not isinstance(test["expected"], int):
-                        sys.exit(
-                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' and output type '{new_subset}'")
-                if new_subset == str:
-                    if not isinstance(test["expected"], str):
-                        sys.exit(
-                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_subset}'")
-                if new_type_ == Object:
-                    if not isinstance(test["expected"], dict):
-                        sys.exit(
-                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
-                if new_type_ == list:
-                    if not isinstance(test["expected"], list):
-                        sys.exit(
-                            f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
+        if tests:
+            for test in tests:
+                if "expected" in test:
+                    if new_subset == int:
+                        if not isinstance(test["expected"], int):
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' and output type '{new_subset}'")
+                    if new_subset == str:
+                        if not isinstance(test["expected"], str):
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_subset}'")
+                    if new_type_ == Object:
+                        if not isinstance(test["expected"], dict):
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
+                    if new_type_ == list:
+                        if not isinstance(test["expected"], list):
+                            sys.exit(
+                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
 
     def verify_variadic_in_test(self):
-        for number_test, test in enumerate(self.parser.get_tests()):
-            arguments_list = list(test["arguments"].items())
-            if not self.parser.is_variadic():
-                if self.parser.get_minimum_arguments() < len(arguments_list):
-                    sys.exit(
-                        f"Helper {self.parser.get_name()}: has an error in test number '{number_test + 1}': it is not a variadic function")
+        tests = self.parser.get_tests()
+        if tests:
+            for number_test, test in enumerate(tests):
+                arguments_list = list(test["arguments"].items())
+                if not self.parser.is_variadic():
+                    if self.parser.get_minimum_arguments() < len(arguments_list):
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: has an error in test number '{number_test + 1}': it is not a variadic function")
 
-            # Delete the keys that are in id_name_order
-            id_name_order = self.parser.get_name_id_arguments()
-            filtered_arguments_list = [(k, v) for k, v in arguments_list if k not in id_name_order]
+                # Delete the keys that are in id_name_order
+                id_name_order = self.parser.get_name_id_arguments()
+                filtered_arguments_list = [(k, v) for k, v in arguments_list if k not in id_name_order]
 
-            # Verify that the remaining keys meet the criteria
-            if filtered_arguments_list:
-                last_id_name = sorted(id_name_order.items(), key=lambda x: x[1])[-1][0]
-                pattern = re.compile(rf'^{last_id_name}_\d+$')
+                # Verify that the remaining keys meet the criteria
+                if filtered_arguments_list:
+                    last_id_name = sorted(id_name_order.items(), key=lambda x: x[1])[-1][0]
+                    pattern = re.compile(rf'^{last_id_name}_\d+$')
 
-                for k, _ in filtered_arguments_list:
-                    if not pattern.match(k):
-                        sys.exit(f"Argument '{k}' does not match the required pattern '{last_id_name}_<number>'")
+                    for k, _ in filtered_arguments_list:
+                        if not pattern.match(k):
+                            sys.exit(f"Argument '{k}' does not match the required pattern '{last_id_name}_<number>'")
 
     def verify_metadata(self):
         metadata = self.parser.get_metadata()
