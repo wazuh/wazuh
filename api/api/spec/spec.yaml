@@ -8297,7 +8297,7 @@ paths:
                 allOf:
                 - $ref: '#/components/schemas/ApiResponse'
               example:
-                message: "Agent has permission to be uninstalled."
+                message: "User has permission to be uninstalled."
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
