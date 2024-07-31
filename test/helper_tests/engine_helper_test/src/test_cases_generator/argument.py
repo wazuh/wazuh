@@ -171,10 +171,11 @@ class Argument:
             dict: lambda: {"key": "value"}
         }
 
-        if self.subset not in subset_value_mapping:
-            sys.exit("Subset is not supported for array")
-
-        return [subset_value_mapping.get(self.subset)()]
+        if self.subset != "all":
+            if self.subset not in subset_value_mapping:
+                sys.exit("Subset is not supported for array")
+            return [subset_value_mapping.get(self.subset)()]
+        return [subset_value_mapping.get(random.choice([int, float, Double, str, dict, bool]))()]
 
     def generate_random_object(self):
         """

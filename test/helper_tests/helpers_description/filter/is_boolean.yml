@@ -1,6 +1,14 @@
 # Name of the helper function
 name: is_boolean
 
+metadata:
+  description: |
+    Checks if the value stored in field is of type boolean.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - to define
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -11,15 +19,12 @@ target_field:
   generate: boolean
 
 test:
-  - arguments:
-      target_field: true
+  - target_field: true
     should_pass: true
     description: Is boolean
-  - arguments:
-      target_field: false
+  - target_field: false
     should_pass: true
     description: Is boolean
-  - arguments:
-      target_field: "false"
+  - target_field: "false"
     should_pass: false
     description: Not is boolean

@@ -18,6 +18,9 @@ class ExporterFactory():
 
 
 def parse_yaml_to_documentation(parser: Parser):
+    output = None
+    target_field = None
+
     metadata = Metadata(
         parser.get_metadata()["description"],
         parser.get_metadata()["keywords"])
@@ -25,7 +28,11 @@ def parse_yaml_to_documentation(parser: Parser):
     arguments = {name: Argument(parser.get_types()[index], parser.get_sources()[index], parser.get_subset(
     )[index], parser.get_restrictions()[index]) for index, (name, arg_info) in enumerate(parser.get_arguments().items())}
 
-    output = Output(parser.get_output()["type"], parser.get_output().get("subset"))
+    if parser.get_helper_type() == "map":
+        output = Output(parser.get_output()["type"], parser.get_output().get("subset"))
+
+    if parser.get_helper_type() != "map":
+        target_field = TargetField(parser.get_target_field_type(), parser.get_target_field_subset())
 
     # TODO: Implement this
     # examples = [
@@ -43,6 +50,7 @@ def parse_yaml_to_documentation(parser: Parser):
         metadata=metadata,
         arguments=arguments,
         output=output,
+        target_field=target_field,
         general_restrictions=parser.get_general_restrictions_details(),
         examples=[]
     )

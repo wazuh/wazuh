@@ -1,6 +1,18 @@
 # Name of the helper function
 name: ip_cidr_match
 
+metadata:
+  description: |
+    Checks if the IP address stored in field belongs to a given CIDR notation range.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    IPv4: support address in dotted-decimal format, "ddd.ddd.ddd.ddd" where ddd is a decimal number of up
+    to three digits in the range  0  to  255.
+    Mask: Support “dd”  where ddd is a decimal number of up to 2 digits in the range  0  to  32 or “ddd.ddd.ddd.ddd"
+    where ddd is a decimal number of up to three digits in the range  0  to  255.
+    This helper function is typically used in the check stage
+  keywords:
+    - to define
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,11 +20,11 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  subnet:
     type: string
     generate: ip
     source: value # includes values
-  2:
+  mask:
     type: string
     generate: ip  # Expected type is string of type ip
     source: value # includes values
@@ -27,14 +39,14 @@ target_field:
 
 test:
   - arguments:
-      1: 192.168.0.0
-      2: 192.168.0.11
-      target_field: 192.168.1.5
+      subnet: 192.168.0.0
+      mask: 192.168.0.11
+    target_field: 192.168.1.5
     should_pass: true
     description: Match IP CIDR
   - arguments:
-      1: 192.168.0.0
-      2: 192.168.0.11
-      target_field: 111.111.1.11
+      subnet: 192.168.0.0
+      mask: 192.168.0.11
+    target_field: 111.111.1.11
     should_pass: false
     description: Don't match IP CIDR

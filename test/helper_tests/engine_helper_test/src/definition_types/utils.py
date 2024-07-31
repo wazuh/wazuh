@@ -29,7 +29,9 @@ def convert_string_to_subset(subset: str) -> type:
     Returns:
         type: The corresponding subset type.
     """
-    return SUBSET_MAPPING.get(subset)
+    if subset != "all":
+        return SUBSET_MAPPING.get(subset)
+    return subset
 
 
 def convert_string_to_source(source: str) -> Source:

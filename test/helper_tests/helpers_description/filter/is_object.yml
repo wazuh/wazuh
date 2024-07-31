@@ -1,6 +1,15 @@
 # Name of the helper function
 name: is_object
 
+metadata:
+  description: |
+    Checks if the value stored in field is of type object.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+
+  keywords:
+    - to define
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -11,16 +20,13 @@ target_field:
   generate: object
 
 test:
-  - arguments:
-      target_field:
-        key: value
+  - target_field:
+      key: value
     should_pass: true
     description: Is object
-  - arguments:
-      target_field: [1,2,3,4]
+  - target_field: [1,2,3,4]
     should_pass: false
     description: Is object
-  - arguments:
-      target_field: hello
+  - target_field: hello
     should_pass: false
     description: Not is object
