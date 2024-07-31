@@ -90,6 +90,7 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/json_test.cpp
     ${UNIT_SRC_DIR}/error_test.cpp
     ${UNIT_SRC_DIR}/timer_test.cpp
+    ${UNIT_SRC_DIR}/expression_test.cpp
 )
 target_include_directories(base_utest
     PRIVATE
