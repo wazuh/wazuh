@@ -4,25 +4,24 @@ import os
 import signal
 import ssl
 from argparse import ArgumentParser, Namespace
+from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from functools import partial
+from gunicorn.app.base import BaseApplication
 from sys import exit
 from typing import Any, Callable, Dict
-
-from fastapi import FastAPI
-from gunicorn.app.base import BaseApplication
 
 from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
 from api.constants import COMMS_API_LOG_PATH
-from routers import router
+from api.middlewares import SecureHeadersMiddleware
+from comms_api.routers.router import router
+from comms_api.middlewares.logging import LoggingMiddleware
+from comms_api.middlewares.timeout import TimeoutMiddleware
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
 
 MAIN_PROCESS = 'wazuh-comms-apid'
-
-app = FastAPI()
-app.include_router(router.router)
-
 
 def setup_logging(foreground_mode: bool) -> dict:
     """Sets up the logging module and returns the configuration used.
@@ -147,7 +146,6 @@ def get_script_arguments() -> Namespace:
 
     return parser.parse_args()
 
-
 class StandaloneApplication(BaseApplication):
     def __init__(self, app: Callable, options: Dict[str, Any] = None):
         self.options = options or {}
@@ -165,7 +163,6 @@ class StandaloneApplication(BaseApplication):
 
     def load(self):
         return self.app
-
 
 if __name__ == '__main__':
     args = get_script_arguments()
@@ -199,6 +196,13 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     try:
+        app = FastAPI()
+        app.add_middleware(SecureHeadersMiddleware)
+        # TODO: decide whether to use GZip or Brotli (latter requires https://github.com/fullonic/brotli-asgi)
+        app.add_middleware(GZipMiddleware)
+        app.add_middleware(TimeoutMiddleware)
+        app.add_middleware(LoggingMiddleware)
+        app.include_router(router)
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
