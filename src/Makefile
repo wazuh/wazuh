@@ -31,11 +31,6 @@ endif
 
 HAS_CHECKMODULE = $(shell command -v checkmodule > /dev/null && echo YES)
 HAS_SEMODULE_PACKAGE = $(shell command -v semodule_package > /dev/null && echo YES)
-CHECK_ARCHLINUX := $(shell sh -c 'grep "Arch Linux" /etc/os-release > /dev/null && echo YES || echo not')
-CHECK_CENTOS5 := $(shell sh -c 'grep "CentOS release 5." /etc/redhat-release 2>&1 > /dev/null && echo YES || echo not')
-CHECK_ALPINE := $(shell sh -c 'grep "Alpine Linux" /etc/os-release 2>&1 > /dev/null && echo YES || echo not')
-
-ARCH_FLAGS =
 
 ROUTE_PATH := $(shell pwd)
 EXTERNAL_JSON=external/cJSON/
@@ -137,17 +132,9 @@ DEFINES+=-D${uname_S}
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
 		DEFINES+=-DINOTIFY_ENABLED -D_XOPEN_SOURCE=600 -D_GNU_SOURCE
-ifeq (${CHECK_CENTOS5},YES)
-		OSSEC_CFLAGS+=-pthread
-else
 		OSSEC_CFLAGS+=-pthread -I${EXTERNAL_PACMAN}lib/libalpm/ -I${EXTERNAL_LIBARCHIVE}libarchive
-endif
 		OSSEC_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../lib'
 		AR_LDFLAGS+='-Wl,-rpath,$$ORIGIN/../../lib'
-ifeq (${CHECK_ALPINE},YES)
-		OSSEC_LIBS+=-lintl
-		DEFINES+=-DALPINE
-endif
 		OSSEC_LIBS+=-lrt -ldl -lm
 		OSSEC_LDFLAGS+=-pthread -lrt -ldl
 		AR_LDFLAGS+=-pthread -lrt -ldl
@@ -156,11 +143,6 @@ endif
 		CC=gcc
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 		OSSEC_CFLAGS+=-I$(EXTERNAL_AUDIT)lib
-endif
-ifeq (${CHECK_ARCHLINUX},YES)
-		ARCH_FLAGS+=-lnghttp2 -lbrotlidec -lpsl
-		OSSEC_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
-		AR_LDFLAGS+=-lnghttp2 -lbrotlidec -lpsl
 endif
 endif # Linux
 
@@ -294,7 +276,6 @@ endif # USE_GEOIP
 
 SYSINFO_LIB+=-lsysinfo
 
-OSSEC_LDFLAGS+=
 OSSEC_LDFLAGS+=-L${SYSINFO}build/lib
 
 MI :=
@@ -563,17 +544,11 @@ EXTERNAL_LIBS := $(JSON_LIB) $(ZLIB_LIB) $(OPENSSL_LIB) $(CRYPTO_LIB) $(SQLITE_L
 EXTERNAL_LIBS_NO_WHOLE += $(ROCKSDB_LIB) $(FLATBUFFERS_LIB)
 
 ifeq (${uname_S},Linux)
-ifneq ($(CHECK_CENTOS5),YES)
 EXTERNAL_LIBS +=  ${LUA_LIB} ${RPM_LIB} ${POPT_LIB}
-endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 EXTERNAL_LIBS += ${AUDIT_LIB}
 endif
-ifeq ($(CHECK_CENTOS5),YES)
-EXTERNAL_LIBS += $(PROCPS_LIB)
-else
 EXTERNAL_LIBS += $(PROCPS_LIB) $(LIBALPM_LIB) $(LIBARCHIVE_LIB)
-endif
 endif
 
 
@@ -717,12 +692,9 @@ PROCPS_INCLUDE=-I./${EXTERNAL_PROCPS}
 
 procps_c := $(wildcard ${EXTERNAL_PROCPS}*.c)
 procps_o := $(procps_c:.c=.o)
-ifeq (${CHECK_ALPINE},YES)
-ALPINE_DEBUG := "-DPATH_MAX=4096"
-endif
 
 ${EXTERNAL_PROCPS}%.o: ${EXTERNAL_PROCPS}%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${ALPINE_DEBUG} -fPIC -c $^ -o $@
+	${OSSEC_CC} ${OSSEC_CFLAGS} -fPIC -c $^ -o $@
 
 $(PROCPS_LIB): ${procps_o}
 	${OSSEC_LINK} $@ $^
@@ -802,19 +774,7 @@ $(MSGPACK_LIB): ${msgpack_o}
 
 
 $(LIBPCRE2_LIB):
-ifeq (${uname_S},SunOS)
-ifeq (${uname_R},5.10)
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=no --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-else
 	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-endif
-else
-ifeq (${CHECK_CENTOS5},YES)
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=no --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-else
-	cd $(EXTERNAL_LIBPCRE2) && CFLAGS=-fPIC ./configure --enable-jit=auto --disable-shared && mkdir -p include && cp src/pcre2.h include/pcre2.h && ${MAKE}
-endif
-endif
 
 ### popt lib ###
 
@@ -906,35 +866,6 @@ endif
 endif
 endif
 endif
-else
-ifneq (,$(filter ${uname_S},SunOS AIX))
-	cpu_arch := ${uname_P}
-ifeq (${cpu_arch},powerpc)
-	PRECOMPILED_ARCH := /powerpc
-else
-ifneq (,$(filter ${cpu_arch},sparc sun4u))
-	PRECOMPILED_ARCH := /sparc
-else
-ifneq (,$(filter ${cpu_arch},i386 i86pc))
-	PRECOMPILED_ARCH := /i386
-else
-	PRECOMPILED_ARCH := /${uname_M}
-endif
-endif
-endif
-else
-    cpu_arch := ${uname_M}
-ifneq (,$(filter ${cpu_arch},unknown Unknown not))
-	cpu_arch := ${uname_P}
-endif
-	PRECOMPILED_ARCH := /${cpu_arch}
-endif
-endif
-
-ifeq ($(CHECK_CENTOS5),YES)
-PRECOMPILED_OS := el5
-# Avoid the linkage of incompatible libraries in Data Provider for CentOS 5 and Red Hat 5
-SYSINFO_OS+=-DCMAKE_CHECK_CENTOS5=1
 endif
 
 ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
@@ -1104,15 +1035,6 @@ wrappers_libc_o := $(wrappers_libc_c:.c=.o)
 wrappers_linux_c := $(wildcard unit_tests/wrappers/linux/*.c)
 wrappers_linux_o := $(wrappers_linux_c:.c=.o)
 
-wrappers_macos_c := $(wildcard unit_tests/wrappers/macos/*.c)
-wrappers_macos_o := $(wrappers_macos_c:.c=.o)
-
-wrappers_macos_libc_c := $(wildcard unit_tests/wrappers/macos/libc/*.c)
-wrappers_macos_libc_o := $(wrappers_macos_libc_c:.c=.o)
-
-wrappers_macos_posix_c := $(wildcard unit_tests/wrappers/macos/posix/*.c)
-wrappers_macos_posix_o := $(wrappers_macos_posix_c:.c=.o)
-
 wrappers_posix_c := $(wildcard unit_tests/wrappers/posix/*.c)
 wrappers_posix_o := $(wrappers_posix_c:.c=.o)
 
@@ -1122,18 +1044,8 @@ wrappers_wazuh_o := $(wrappers_wazuh_c:.c=.o)
 wrappers_wazuh_os_crypto_c := $(wildcard unit_tests/wrappers/wazuh/os_crypto/*.c)
 wrappers_wazuh_os_crypto_o := $(wrappers_wazuh_os_crypto_c:.c=.o)
 
-
 wrappers_data_provider_c := $(wildcard unit_tests/wrappers/wazuh/data_provider/*.c)
 wrappers_data_provider_o := $(wrappers_data_provider_c:.c=.o)
-
-wrappers_windows_c := $(wildcard unit_tests/wrappers/windows/*.c)
-wrappers_windows_o := $(wrappers_windows_c:.c=.o)
-
-wrappers_windows_lib_c := $(wildcard unit_tests/wrappers/windows/libc/*.c)
-wrappers_windows_lib_o := $(wrappers_windows_lib_c:.c=.o)
-
-wrappers_windows_posix_c := $(wildcard unit_tests/wrappers/windows/posix/*.c)
-wrappers_windows_posix_o := $(wrappers_windows_posix_c:.c=.o)
 
 wrappers_wazuh_shared_modules_c := $(wildcard unit_tests/wrappers/wazuh/shared_modules/*.c)
 wrappers_wazuh_shared_modules_o := $(wrappers_wazuh_shared_modules_c:.c=.o)
@@ -1158,11 +1070,9 @@ ifneq (,$(filter ${TEST},YES yes y Y 1))
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_regex_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_os_xml_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_data_provider_o}
-
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_audit_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_externals_procpc_o}
 	UNIT_TEST_WRAPPERS+=${wrappers_linux_o}
-
 	UNIT_TEST_WRAPPERS+=${wrappers_wazuh_shared_modules_o}
 	
 endif #TEST
@@ -1262,7 +1172,7 @@ ifeq (,${INSTALLDIR})
 endif
 
 ifeq (,$(wildcard ${EXTERNAL_CPYTHON}/python))
-	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" LDFLAGS="${ARCH_FLAGS} -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
+	export WPATH_LIB="'\$$\$$ORIGIN/../../../lib'" && export SOURCE_PATH=${ROUTE_PATH} && export WAZUH_FFI_PATH=${EXTERNAL_LIBFFI} && export LD_LIBRARY_PATH=${ROUTE_PATH} && cd ${EXTERNAL_CPYTHON} && ./configure --prefix="${WPYTHON_DIR}" --libdir="${WPYTHON_DIR}/lib" --enable-shared --with-openssl="${ROUTE_PATH}/${EXTERNAL_OPENSSL}" -L${ROUTE_PATH} -lwazuhext -Wl,-rpath,'\$$\$$ORIGIN/../../../lib',--disable-new-dtags" CPPFLAGS="-I${ROUTE_PATH}/${EXTERNAL_OPENSSL}" $(CPYTHON_FLAGS) && ${MAKE}
 endif
 
 build_python: $(WAZUHEXT_LIB)
@@ -1339,12 +1249,6 @@ unit_tests/wrappers/libc/%.o: unit_tests/wrappers/libc/%.c
 unit_tests/wrappers/linux/%.o: unit_tests/wrappers/linux/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
-unit_tests/wrappers/macos/%.o: unit_tests/wrappers/macos/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/macos/libc/%.o: unit_tests/wrappers/macos/libc/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
 unit_tests/wrappers/posix/%.o: unit_tests/wrappers/posix/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
@@ -1355,15 +1259,6 @@ unit_tests/wrappers/wazuh/os_crypto/%.o: unit_tests/wrappers/wazuh/os_crypto/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 unit_tests/wrappers/wazuh/os_regex/%.o: unit_tests/wrappers/wazuh/os_regex/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/wazuh/monitord/%.o: unit_tests/wrappers/wazuh/monitord/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/windows/%.o: unit_tests/wrappers/windows/%.c
-	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
-
-unit_tests/wrappers/windows/libc/%.o: unit_tests/wrappers/windows/libc/%.c
 	${OSSEC_CC} ${OSSEC_CFLAGS} ${DEFINES_EVENTCHANNEL} -c $^ -o $@
 
 .PHONY: test
@@ -1440,7 +1335,6 @@ clean-deps:
 
 clean-internals: clean-unit-tests
 	rm -f $(BUILD_SERVER)
-	rm -f $(BUILD_AGENT)
 	rm -f $(BUILD_LIBS)
 	rm -f ${os_zlib_o}
 	rm -f ${os_xml_o}
@@ -1474,18 +1368,11 @@ clean-unit-tests:
 	rm -f ${wrappers_externals_pcre2_o}
 	rm -f ${wrappers_libc_o}
 	rm -f ${wrappers_linux_o}
-	rm -f ${wrappers_macos_o}
-	rm -f ${wrappers_macos_libc_o}
-	rm -f ${wrappers_macos_posix_o}
 	rm -f ${wrappers_posix_o}
 	rm -f ${wrappers_wazuh_o}
 	rm -f ${wrappers_wazuh_os_crypto_o}
 	rm -f ${wrappers_wazuh_os_regex_o}
 	rm -f ${wrappers_wazuh_os_xml_o}
-	rm -f ${wrappers_windows_o}
-	rm -f ${wrappers_windows_lib_o}
-	rm -f ${wrappers_windows_posix_o}
-	rm -f ${wrappers_macos_o}
 	rm -f ${wrappers_data_provider_o}
 
 clean-framework:
