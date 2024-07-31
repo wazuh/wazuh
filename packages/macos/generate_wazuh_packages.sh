@@ -204,7 +204,7 @@ function build_package() {
         rm -rf "${DESTINATION}/symbols"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
-            shasum -a512 "${DESTINATION}/${pkg_name}.pkg" > "${DESTINATION}/${pkg_name}.pkg.sha512"
+            shasum -a512 "${DESTINATION}/${pkg_name}.pkg" > "${DESTINATION}/${pkg_name}.sha512"
         fi
         clean_and_exit 0
     else
@@ -224,7 +224,7 @@ function help() {
     echo "    -j, --jobs <number>           [Optional] Number of parallel jobs when compiling."
     echo "    -r, --revision <rev>          [Optional] Package revision that append to version e.g. x.x.x-rev"
     echo "    -d, --debug                   [Optional] Build the binaries with debug symbols. By default: no."
-    echo "    -c, --checksum <path>         [Optional] Generate checksum on the desired path (by default, if no path is specified it will be generated on the same directory than the package)."
+    echo "    -c, --checksum                [Optional] Generate checksum on the store path."
     echo "    --is_stage                    [Optional] Use release name in package"
     echo "    -nc, --not-compile            [Optional] Set whether or not to compile the code."
     echo "    -h, --help                    [  Util  ] Show this help."
