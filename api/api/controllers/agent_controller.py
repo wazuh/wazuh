@@ -1686,9 +1686,9 @@ async def get_agent_uninstall_permission(pretty: bool = False, wait_for_complete
     Parameters
     ----------
     pretty : bool
-        Show results in human-readable format
+        Show results in human-readable format.
     wait_for_complete : bool
-        Disable timeout response
+        Disable timeout response.
 
     Returns
     -------
@@ -1697,7 +1697,7 @@ async def get_agent_uninstall_permission(pretty: bool = False, wait_for_complete
     """
     f_kwargs = {}
 
-    dapi = DistributedAPI(f=agent.agent_check_uninstall_permission,
+    dapi = DistributedAPI(f=agent.check_uninstall_permission,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

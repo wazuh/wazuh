@@ -1196,7 +1196,7 @@ async def test_get_agent_summary_os(mock_exc, mock_dapi, mock_remove, mock_dfunc
 async def test_get_agent_uninstall_permission(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'get_agent_uninstall_permission' endpoint is working as expected."""
     result = await get_agent_uninstall_permission()
-    mock_dapi.assert_called_once_with(f=agent.agent_check_uninstall_permission,
+    mock_dapi.assert_called_once_with(f=agent.check_uninstall_permission,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
                                       is_async=False,
