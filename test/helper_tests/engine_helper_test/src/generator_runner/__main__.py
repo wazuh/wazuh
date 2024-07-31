@@ -44,12 +44,6 @@ def parse_arguments():
     config.output = args.output
 
 
-def is_temp_path(path_str):
-    path = Path(path_str).resolve()
-    temp_dir = Path(tempfile.gettempdir()).resolve()
-    return str(path).startswith(str(temp_dir))
-
-
 def main():
     parse_arguments()
     input = Path(config.input).resolve()

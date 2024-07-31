@@ -57,6 +57,10 @@ class MarkdownGenerator(IExporter):
                     row.append("Any string")
                 elif info.generate == "ip":
                     row.append("Any IP")
+                elif info.generate == "regex":
+                    row.append("Any regex")
+                elif info.generate == "boolean":
+                    row.append("Any boolean")
 
             rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
@@ -90,6 +94,8 @@ class MarkdownGenerator(IExporter):
             row.append("Any string")
         elif output.subset == "ip":
             row.append("Any IP")
+        elif output.subset == "boolean":
+            row.append("Any boolean")
         rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 
@@ -105,9 +111,10 @@ class MarkdownGenerator(IExporter):
         self.content.append(f"## Signature\n")
         self.create_signature(doc)
 
-        self.content.append(f"## Arguments\n")
-        headers = ["parameter", "Type", "Source", "Accepted values"]
-        self.create_table(doc.arguments, headers)
+        if len(doc.arguments) > 0:
+            self.content.append(f"## Arguments\n")
+            headers = ["parameter", "Type", "Source", "Accepted values"]
+            self.create_table(doc.arguments, headers)
 
         self.content.append(f"## Outputs\n")
         headers = ["Type", "Posible values"]

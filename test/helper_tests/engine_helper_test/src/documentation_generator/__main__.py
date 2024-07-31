@@ -38,8 +38,8 @@ def parse_arguments() -> argparse.Namespace:
     return args
 
 
-def is_temp_path(path_str):
-    path = Path(path_str).resolve()
+def is_temp_path(path: Path):
+    path = path.resolve()
     temp_dir = Path(tempfile.gettempdir()).resolve()
     return str(path).startswith(str(temp_dir))
 
@@ -56,6 +56,8 @@ def main():
     parser = Parser()
     exporter_type = args.exporter if args.exporter else "mark_down"
     output_dir = Path(args.output_path if args.output_path else "/tmp/documentation")
+    if not is_temp_path(output_dir):
+        sys.exit("the output directory must be a temporary one")
     exporter = ExporterFactory.get_exporter(exporter_type)
     if args.input_file_path:
         generate_documentation(parser, exporter, Path(args.input_file_path), output_dir)

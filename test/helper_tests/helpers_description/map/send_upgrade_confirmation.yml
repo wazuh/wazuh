@@ -1,6 +1,14 @@
 # Name of the helper function
 name: send_upgrade_confirmation
 
+metadata:
+  description: |
+    Receives a JSON object that must contain the agent id, error field and message among other mandatory fields and
+    send it throug the UPGRADE socket. The result of the communication will be return as a boolean value
+    being true when sent ok and false otherwise. This helper function is typically used in the map stage.
+  keywords:
+    - to define
+
 helper_type: map
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +16,7 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  json:
     type: object # Expected type is string
     generate: object
     source: reference # Includes values or references (their names start with $)
@@ -17,11 +25,15 @@ arguments:
 skipped:
   - success_cases
 
+output:
+  type: boolean
+  subset: boolean
+
 test:
   - arguments:
-      1:
+      json:
         key: value
     skipped: true
     should_pass: true
-    expected: ""
-    description: Success upgrade configuration
+    expected: false
+    description: Failure upgrade configuration.
