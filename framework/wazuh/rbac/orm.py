@@ -1041,7 +1041,22 @@ class AuthenticationManager(RBACManager):
         return user_ids
 
     def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
-                     to_id: Optional[int] = None):
+                     to_id: Optional[int] = None) -> None:
+        """Get the users from the `source` database filtering by IDs and insert them into the `target` database.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
         old_users = manager.get_data(source, User, User.id, from_id=from_id, to_id=to_id)
 
         for user in old_users:
@@ -1265,8 +1280,23 @@ class RolesManager(RBACManager):
             return SecurityError.ALREADY_EXIST
 
     def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
-                     to_id: Optional[int] = None):
-        # This is to avoid an error when trying to update default users roles, policies and rules
+                     to_id: Optional[int] = None) -> None:
+        """Get the roles from the `source` database filtering by IDs and insert them into the `target` database.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
             return
 
@@ -1497,8 +1527,24 @@ class RulesManager(RBACManager):
             return SecurityError.ALREADY_EXIST
 
     def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
-                     to_id: Optional[int] = None):
-        # This is to avoid an error when trying to update default users roles, policies and rules
+                     to_id: Optional[int] = None) -> None:
+        """Get the rules from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
             return
 
@@ -1778,8 +1824,24 @@ class PoliciesManager(RBACManager):
             return SecurityError.ALREADY_EXIST
 
     def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
-                     to_id: Optional[int] = None):
-        # This is to avoid an error when trying to update default users roles, policies and rules
+                     to_id: Optional[int] = None) -> None:
+        """Get the policies from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
             return
 
@@ -2145,8 +2207,24 @@ class UserRolesManager(RBACManager):
         return False
 
     def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
-                     to_id: Optional[int] = None):
-        # This is to avoid an error when trying to update default users roles, policies and rules
+                     to_id: Optional[int] = None) -> None:
+        """Get the user roles from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
             return
 
@@ -2557,8 +2635,24 @@ class RolesPoliciesManager(RBACManager):
         return False
 
     def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
-                     to_id: Optional[int] = None):
-        # This is to avoid an error when trying to update default users roles, policies and rules
+                     to_id: Optional[int] = None) -> None:
+        """Get the roles policies from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
             return
 
@@ -2862,8 +2956,24 @@ class RolesRulesManager(RBACManager):
         return False
 
     def migrate_data(self, manager, source: str, target: str, from_id: Optional[int] = None,
-                     to_id: Optional[int] = None):
-        # This is to avoid an error when trying to update default users roles, policies and rules
+                     to_id: Optional[int] = None) -> None:
+        """Get the role rules from the `source` database filtering by IDs and insert them into the `target` database.
+        This function will adapt the relationship between problematic resources if needed.
+
+        Parameters
+        ----------
+        manager: RBACManager
+            The manager in charge of the table data.
+        source : str
+            Path to the database to migrate data from.
+        target : str
+            Path to the database where data will be migrated to.
+        from_id : id
+            ID which the resources will be migrated from.
+        to_id : id
+            ID which the resources will be migrated to.
+        """
+        # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
             return
 
@@ -3093,7 +3203,7 @@ class DatabaseManager:
 
         return result
 
-    def migrate_data(self, source: str, target: str, from_id: int = None, to_id: int = None):
+    def migrate_data(self, source: str, target: str, from_id: int = None, to_id: int = None) -> None:
         """Get the resources from the `source` database filtering by IDs and insert them into the `target` database.
         This function will adapt the relationship between problematic resources if needed.
 
@@ -3108,7 +3218,6 @@ class DatabaseManager:
         to_id : id
             ID which the resources will be migrated to.
         """
-
         list_of_resources = [AuthenticationManager, RolesManager, RulesManager, PoliciesManager, UserRolesManager,
                              RolesPoliciesManager, RolesRulesManager]
 
