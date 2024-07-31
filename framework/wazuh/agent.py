@@ -1528,4 +1528,4 @@ def check_uninstall_permission() -> WazuhResult:
         WazuhResult object containing a message indicating if the
         user has the permission to uninstall agents.
     """
-    return WazuhResult({'message': "User has permission to be uninstalled"})
+    return WazuhResult({'message': 'User has permission to uninstall agents'})
