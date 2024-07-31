@@ -1298,6 +1298,7 @@ class RolesManager(RBACManager):
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+            logger.warning(f"User {from_id} and {to_id } are part of the default users and can't be updated")
             return
 
         old_roles = manager.get_data(source, Roles, Roles.id, from_id=from_id, to_id=to_id)
@@ -1546,6 +1547,7 @@ class RulesManager(RBACManager):
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
             return
 
         old_rules = manager.get_data(source, Rules, Rules.id, from_id=from_id, to_id=to_id)
@@ -1843,6 +1845,7 @@ class PoliciesManager(RBACManager):
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
             return
 
         old_policies = manager.get_data(source, Policies, Policies.id, from_id=from_id, to_id=to_id)
@@ -2226,6 +2229,7 @@ class UserRolesManager(RBACManager):
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
             return
 
         old_user_roles = manager.get_data(source, UserRoles, UserRoles.user_id, UserRoles.role_id, from_id=from_id,
@@ -2654,6 +2658,7 @@ class RolesPoliciesManager(RBACManager):
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
             return
 
         old_roles_policies = manager.get_data(source, RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id,
@@ -2975,6 +2980,7 @@ class RolesRulesManager(RBACManager):
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
         if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
+            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
             return
 
         old_roles_rules = manager.get_data(source, RolesRules, RolesRules.role_id, RolesRules.rule_id, from_id=from_id,
