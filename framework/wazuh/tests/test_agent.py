@@ -1598,6 +1598,6 @@ def test_check_uninstall_permission():
     """Check that agent_check_uninstall_permission returns the expected msg"""
 
     result = check_uninstall_permission()
-    expected = WazuhResult({'message': "User has permission to be uninstalled"})
+    expected = WazuhResult({'message': 'User has permission to uninstall agents'})
 
     assert result == expected

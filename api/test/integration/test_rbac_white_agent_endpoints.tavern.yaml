@@ -1875,5 +1875,5 @@ stages:
     response:
       status_code: 200
       json:
-        message: "User has permission to be uninstalled"
+        message: "User has permission to uninstall agents"
         error: 0
