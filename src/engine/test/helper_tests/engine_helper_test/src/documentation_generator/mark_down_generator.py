@@ -49,8 +49,6 @@ class MarkdownGenerator(IExporter):
             else:
                 if info.arg_type == "object":
                     row.append("Any object")
-                elif info.arg_type == "array":
-                    row.append("Any array")
                 elif info.generate == "integer":
                     row.append("Integers between `-2^63` and `2^63-1`")
                 elif info.generate == "string":
@@ -59,9 +57,12 @@ class MarkdownGenerator(IExporter):
                     row.append("Any IP")
                 elif info.generate == "regex":
                     row.append("Any regex")
+                elif info.generate == "hexadecimal":
+                    row.append("Any hexadecimal")
                 elif info.generate == "boolean":
                     row.append("Any boolean")
-
+                elif info.generate == "all":
+                    row.append("[number, string, boolean, object, array]")
             rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 
@@ -83,19 +84,25 @@ class MarkdownGenerator(IExporter):
         # Create the data rows
         rows = []
         row = []  # Create a new list for each argument
-        row.append(output.type_)
-        if output.type_ == "object":
-            row.append("Any object")
-        elif output.type_ == "array":
-            row.append("Any array")
-        elif output.subset == "integer":
-            row.append("Integers between `-2^63` and `2^63-1`")
-        elif output.subset == "string":
-            row.append("Any string")
-        elif output.subset == "ip":
-            row.append("Any IP")
-        elif output.subset == "boolean":
-            row.append("Any boolean")
+        if isinstance(output.type_, list):
+            row.append(f"[{', '.join(output.type_)}]")
+            row.append("-")
+        else:
+            row.append(output.type_)
+            if output.type_ == "object":
+                row.append("Any object")
+            elif output.type_ == "array":
+                row.append("Any array")
+            elif output.subset == "integer":
+                row.append("Integers between `-2^63` and `2^63-1`")
+            elif output.subset == "string":
+                row.append("Any string")
+            elif output.subset == "ip":
+                row.append("Any IP")
+            elif output.subset == "boolean":
+                row.append("Any boolean")
+            elif output.subset == "hexadecimal":
+                row.append("Any hexadecimal")
         rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 
@@ -116,9 +123,15 @@ class MarkdownGenerator(IExporter):
             headers = ["parameter", "Type", "Source", "Accepted values"]
             self.create_table(doc.arguments, headers)
 
-        self.content.append(f"## Outputs\n")
-        headers = ["Type", "Posible values"]
-        self.create_output_table(doc.output, headers)
+        if doc.target_field:
+            self.content.append(f"## Target Field\n")
+            headers = ["Type", "Posible values"]
+            self.create_output_table(doc.target_field, headers)
+
+        if doc.output:
+            self.content.append(f"## Outputs\n")
+            headers = ["Type", "Posible values"]
+            self.create_output_table(doc.output, headers)
 
         self.content.append(f"## Description\n")
         self.content.append(f"{doc.description}\n")

@@ -43,8 +43,9 @@ class Validator:
         Verifies if all subsets in the parser are valid.
         """
         for subset in self.parser.get_subset():
-            if subset not in SUBSET_MAPPING:
-                sys.exit(f"Helper {self.parser.get_name()}: Subset '{subset}' is not supported")
+            if subset != "all":
+                if subset not in SUBSET_MAPPING:
+                    sys.exit(f"Helper {self.parser.get_name()}: Subset '{subset}' is not supported")
 
     def verify_source(self):
         """
@@ -117,7 +118,7 @@ class Validator:
         if tests:
             for test in tests:
                 count = 0
-                for argument in test["arguments"]:
+                for argument in test.get("arguments", []):
                     if argument in self.parser.get_name_id_arguments():
                         count += 1
                 if count < self.parser.get_minimum_arguments():
@@ -138,48 +139,51 @@ class Validator:
         """
         Checks consistency between output and expected type.
         """
-        output = self.parser.get_output()
-        new_type_ = convert_string_to_type(output["type"])
-        new_subset = convert_string_to_subset(output.get("subset"))
-        if not isinstance(new_type_, list):
-            if new_type_ == Number:
-                if new_subset is not int and new_subset is not float and new_subset is not Double:
-                    sys.exit(
-                        f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
-            if new_type_ == String:
-                if new_subset is not Hexadecimal and new_subset is not Regex and new_subset is not Ip and new_subset is not str:
-                    sys.exit(
-                        f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
-            if new_type_ == bool:
-                if len(new_subset) != 0:
-                    sys.exit(
-                        f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
+        if self.parser.get_helper_type() == "map":
+            output = self.parser.get_output()
+            new_type_ = convert_string_to_type(output["type"])
+            new_subset = convert_string_to_subset(output.get("subset"))
+            if not isinstance(new_type_, list):
+                if new_type_ == Number:
+                    if new_subset is not int and new_subset is not float and new_subset is not Double:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
+                if new_type_ == String:
+                    if new_subset is not Hexadecimal and new_subset is not Regex and new_subset is not Ip and new_subset is not str:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
+                if new_type_ == bool:
+                    if len(new_subset) != 0:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: There is no consistency between type '{new_type_}' and subset '{new_subset}'")
 
-        tests = self.parser.get_tests()
-        if tests:
-            for test in tests:
-                if "expected" in test:
-                    if new_subset == int:
-                        if not isinstance(test["expected"], int):
-                            sys.exit(
-                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' and output type '{new_subset}'")
-                    if new_subset == str:
-                        if not isinstance(test["expected"], str):
-                            sys.exit(
-                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_subset}'")
-                    if new_type_ == Object:
-                        if not isinstance(test["expected"], dict):
-                            sys.exit(
-                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
-                    if new_type_ == list:
-                        if not isinstance(test["expected"], list):
-                            sys.exit(
-                                f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
+            tests = self.parser.get_tests()
+            if tests:
+                for test in tests:
+                    if "expected" in test:
+                        if new_subset == int:
+                            if not isinstance(test["expected"], int):
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' and output type '{new_subset}'")
+                        if new_subset == str:
+                            if not isinstance(test["expected"], str):
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_subset}'")
+                        if new_type_ == Object:
+                            if not isinstance(test["expected"], dict):
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
+                        if new_type_ == list:
+                            if not isinstance(test["expected"], list):
+                                sys.exit(
+                                    f"Helper {self.parser.get_name()}: There is no consistency between expected type '{type(test['expected'])}' output type '{new_type_}'")
 
     def verify_variadic_in_test(self):
         tests = self.parser.get_tests()
         if tests:
             for number_test, test in enumerate(tests):
+                if "arguments" not in test:
+                    continue
                 arguments_list = list(test["arguments"].items())
                 if not self.parser.is_variadic():
                     if self.parser.get_minimum_arguments() < len(arguments_list):
@@ -234,6 +238,15 @@ class Validator:
                             sys.exit(
                                 f"Helper {self.parser.get_name()}: The forbidden value '{forbidden}' do not have the same type as the argument")
 
+    def verify_target_field(self):
+        if self.parser.get_helper_type() != "map":
+            tests = self.parser.get_tests()
+            if tests:
+                for test in tests:
+                    if 'target_field' not in test:
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: 'target_field' atributte is requeried into 'test' for filter and transformation helpers")
+
     def evaluator(self, file_path: Path):
         """
         Evaluates the configuration file.
@@ -248,6 +261,7 @@ class Validator:
         self.verify_type()
         self.verify_subset()
         self.verify_source()
+        self.verify_target_field()
         self.check_consistency_between_type_and_subset()
         self.verify_arguments_names_in_all_places()
         self.verify_output()

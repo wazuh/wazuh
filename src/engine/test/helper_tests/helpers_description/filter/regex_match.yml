@@ -1,5 +1,17 @@
 name: regex_match
 
+metadata:
+  description: |
+    Checks if the given target field contains a string that matches the regex passed.
+    Evaluates to true if the regex matches, otherwise if it does not match or the target field
+    does not exist or the target field is not of type string, evaluates to false.
+    Keep in mind that we need to escape reserved Yaml characters depending on the string input mode of Yaml.
+    RE2 syntax: https://github.com/google/re2/wiki/Syntax
+    This helper function is typically used in the check stage.
+
+  keywords:
+    - to define
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -7,7 +19,7 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  regxp:
     type: string  # Expected type is re2
     generate: regex
     source: value # includes values
@@ -17,17 +29,17 @@ skipped:
   - success_cases
 
 target_field:
-  type: number
-  generate: integer
+  type: string
+  generate: string
 
 test:
   - arguments:
-      1: "^(bye pcre\\d)$"
-      target_field: bye pcre2
+      regxp: "^(bye pcre\\d)$"
+    target_field: bye pcre2
     should_pass: true
     description: Match regular expression
   - arguments:
-      1: "^(bye pcre\\d)$"
-      target_field: ye pcre2
+      regxp: "^(bye pcre\\d)$"
+    target_field: ye pcre2
     should_pass: false
     description: Don't match regular expression

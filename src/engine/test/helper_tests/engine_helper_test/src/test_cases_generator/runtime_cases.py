@@ -661,11 +661,15 @@ class RuntimeCases:
             return
 
         template = Template(self.parser)
+        arguments_list = []
 
         for test in self.parser.get_tests():
-            arguments = list(test["arguments"].items())
-            arguments_list = self.order_argument_list(arguments)
+            if "arguments" in test:
+                arguments = list(test["arguments"].items())
+                arguments_list = self.order_argument_list(arguments)
             sources = self.parser.get_sources()
+
+            target_field = test.get("target_field", None)
 
             if self.parser.get_minimum_arguments() < len(arguments_list):
                 diff = len(arguments_list) - self.parser.get_minimum_arguments()
@@ -680,23 +684,23 @@ class RuntimeCases:
                     combined = list(itertools.zip_longest(arguments_list, case, fillvalue=None))
                     all_arguments = []
                     input = {}
+                    target_field_value = None
                     for (id, value), source in combined:
-                        target_field_value = None
-                        if id != "target_field":
-                            argument = Argument(value)
-                            argument.configure_only_value(source)
-                            val = argument.get()
+                        argument = Argument(value)
+                        argument.configure_only_value(source)
+                        val = argument.get()
 
-                            if argument.is_reference(val):
-                                input[f"{val['name']}"] = val['value']
-                                all_arguments.append(f"$eventJson.{val['name']}")
-                            elif source == "value":
-                                all_arguments.append(val)
+                        if argument.is_reference(val):
+                            input[f"{val['name']}"] = val['value']
+                            all_arguments.append(f"$eventJson.{val['name']}")
+                        elif source == "value":
+                            all_arguments.append(val)
+
+                    if target_field != None:
+                        if isinstance(target_field, list):
+                            target_field_value = list(target_field)
                         else:
-                            if isinstance(value, list):
-                                target_field_value = list(value)
-                            else:
-                                target_field_value = value
+                            target_field_value = target_field
 
                     self.test_data.create_asset_for_runtime(all_arguments, target_field_value)
                     self.test_data.push_test_data_for_runtime_deprecated(
@@ -705,8 +709,10 @@ class RuntimeCases:
                         skip=test.get("skipped", False),
                         expected=test.get("expected", None))
 
+        arguments_list = []
         for test in self.parser.get_tests():
-            arguments_list = list(test["arguments"].items())
+            if "arguments" in test:
+                arguments_list = list(test["arguments"].items())
             if any(isinstance(item[1], dict) for item in arguments_list):
                 all_arguments = []
                 input = {}

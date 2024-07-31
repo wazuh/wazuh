@@ -18,6 +18,12 @@ class Output:
         self.subset = subset
 
 
+class TargetField:
+    def __init__(self, type_: str, subset: str):
+        self.type_ = type_
+        self.subset = subset
+
+
 class Restriction:
     def __init__(self, brief, arguments, details):
         self.brief = brief
@@ -37,7 +43,7 @@ class Example:
 class Documentation:
     def __init__(
             self, name: str, helper_type: str, is_variadic: bool, metadata: Metadata, arguments: dict, output: Output,
-            general_restrictions, examples):
+            target_field: TargetField, general_restrictions, examples):
         self.name = name
         self.helper_type = helper_type
         self.is_variadic = is_variadic
@@ -47,5 +53,6 @@ class Documentation:
 
         self.arguments = arguments
         self.output = output
+        self.target_field = target_field
         self.general_restrictions = general_restrictions
         self.examples = examples
