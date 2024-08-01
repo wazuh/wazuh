@@ -1,6 +1,7 @@
-import logging
 import json
+import logging
 import time
+
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
@@ -22,8 +23,8 @@ async def log_request(request: Request, response: Response, start_time: time) ->
     elapsed_time = time.time() - start_time
     host = request.client.host if hasattr(request, 'client') else ''
     path = request.scope.get('path', '') if hasattr(request, 'scope') else ''
-    method = request.method if hasattr(request, 'method') else ''
-    query = dict(request.query_params) if hasattr(request, 'query_params') else {}
+    method = getattr(request, 'method', '')
+    query = dict(getattr(request, 'query_params', {}))
     body = await request.json() if hasattr(request, '_json') else {}
     status_code = response.status_code
 

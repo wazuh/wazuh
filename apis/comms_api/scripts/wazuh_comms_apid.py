@@ -4,12 +4,13 @@ import os
 import signal
 import ssl
 from argparse import ArgumentParser, Namespace
-from fastapi import FastAPI
-from fastapi.middleware.gzip import GZipMiddleware
 from functools import partial
-from gunicorn.app.base import BaseApplication
 from sys import exit
 from typing import Any, Callable, Dict
+
+from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
+from gunicorn.app.base import BaseApplication
 
 from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate

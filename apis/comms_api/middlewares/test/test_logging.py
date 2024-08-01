@@ -1,9 +1,10 @@
 import json
-import pytest
 from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, call, patch
+
+import pytest
 from freezegun import freeze_time
 from starlette.applications import Starlette
-from unittest.mock import AsyncMock, MagicMock, call, patch
 
 from comms_api.middlewares.logging import LoggingMiddleware, log_request
 

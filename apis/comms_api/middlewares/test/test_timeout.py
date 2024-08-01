@@ -1,8 +1,9 @@
 import asyncio
+from unittest.mock import MagicMock, patch
+
 import pytest
 from starlette.applications import Starlette
 from starlette.status import HTTP_408_REQUEST_TIMEOUT
-from unittest.mock import MagicMock, patch
 
 from comms_api.middlewares.timeout import DEFAULT_TIMEOUT, TimeoutMiddleware
 
