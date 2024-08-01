@@ -1,8 +1,9 @@
 import json
-from fastapi import Response
 from typing import Any
 
-class Error(Response):
+from fastapi import Response
+
+class ErrorResponse(Response):
     """Error response model."""
 
     def __init__(self, message: str, code: int = None, status_code = 500):

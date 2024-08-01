@@ -1,11 +1,12 @@
 import asyncio
 import re
+
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
 from starlette.status import HTTP_408_REQUEST_TIMEOUT
 
-from comms_api.models.error import Error
+from comms_api.models.error import ErrorResponse
 
 DEFAULT_TIMEOUT = 10
 
@@ -37,12 +38,12 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
             Endpoint response.
         """
         path = re.sub(r'/api/.*/', '/', request.url.path)
-        timeout = timeouts[path] if path in timeouts else DEFAULT_TIMEOUT
+        timeout = timeouts.get(path, DEFAULT_TIMEOUT)
 
         try:
             return await asyncio.wait_for(call_next(request), timeout=timeout)
         except asyncio.TimeoutError:
-            return Error(
+            return ErrorResponse(
                 message='Request exceeded the processing time limit',
                 status_code=HTTP_408_REQUEST_TIMEOUT,
             )
