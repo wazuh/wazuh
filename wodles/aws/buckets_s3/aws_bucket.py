@@ -85,7 +85,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
     def __init__(self, db_table_name, bucket, reparse, profile, iam_role_arn,
                  only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
-                 region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None):
+                 region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration=None, waf_acls=None):
         # common SQL queries
         self.sql_already_processed = """
             SELECT
@@ -209,6 +209,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
         self.prefix_regex = re.compile(r"^\d{12}$")
         self.check_prefix = False
+        self.waf_acls = waf_acls
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
@@ -397,7 +398,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     **kwargs
                 })
             try:
-                filter_marker = query_last_key.fetchone()[0]
+                if self.waf_acls: 
+                    filter_marker = query_last_key.fetchone()[1]
+                else:
+                    filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError):
                 # if DB is empty for a region
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
