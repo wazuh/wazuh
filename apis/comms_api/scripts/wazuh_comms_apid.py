@@ -16,13 +16,24 @@ from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
 from api.constants import COMMS_API_LOG_PATH
 from api.middlewares import SecureHeadersMiddleware
-from comms_api.routers.router import router
+from comms_api.models.error import HTTPError
+from comms_api.routers.router import router, http_error_handler
 from comms_api.middlewares.logging import LoggingMiddleware
-from comms_api.middlewares.timeout import TimeoutMiddleware
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
 
 MAIN_PROCESS = 'wazuh-comms-apid'
+
+
+def create_app() -> FastAPI:
+    """Creates a FastAPI application instance and adds middlewares, exceptions handlers and routers to it."""
+    app = FastAPI()
+    app.add_middleware(SecureHeadersMiddleware)
+    app.add_middleware(BrotliMiddleware)
+    app.add_middleware(LoggingMiddleware)
+    app.add_exception_handler(HTTPError, http_error_handler)
+    app.include_router(router)
+    return app
 
 
 def setup_logging(foreground_mode: bool) -> dict:
@@ -204,12 +215,7 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     try:
-        app = FastAPI()
-        app.add_middleware(SecureHeadersMiddleware)
-        app.add_middleware(BrotliMiddleware)
-        app.add_middleware(TimeoutMiddleware)
-        app.add_middleware(LoggingMiddleware)
-        app.include_router(router)
+        app = create_app()
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
