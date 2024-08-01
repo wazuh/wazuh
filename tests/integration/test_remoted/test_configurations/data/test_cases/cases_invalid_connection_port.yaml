@@ -1,9 +1,0 @@
-- name: Command config wazuh manager for invalid port connection
-  description: Command config wazuh manager for invalid port connection
-  configuration_parameters:
-    PORT: '99999'
-    PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
-  metadata:
-    invalid: ".*ERROR: \\(\\d+\\): Invalid port number: '99999'.*"
-    port_number: '99999'

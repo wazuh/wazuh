@@ -1,4 +1,0 @@
-- name: parser_type_missing_in_service
-  description: Parser type missing in service configurations
-  configuration_parameters: []
-  metadata: []

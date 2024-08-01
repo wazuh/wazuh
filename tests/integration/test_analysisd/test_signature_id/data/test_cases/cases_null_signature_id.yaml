@@ -1,5 +1,0 @@
-- name: Null Signature ID
-  description: Check that if a Signature ID inserted does not exist a rule will be ignored
-  configuration_parameters:
-  metadata:
-    rules_file: null_signature_id_rules.xml

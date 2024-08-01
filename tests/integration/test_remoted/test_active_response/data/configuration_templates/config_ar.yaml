@@ -1,9 +1,0 @@
-- sections:
-    - section: remote
-      elements:
-        - connection:
-            value: 'secure'
-        - port:
-            value: PORT
-        - protocol:
-            value: PROTOCOL

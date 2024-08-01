@@ -1,4 +1,0 @@
-- name: parser_bucket_and_service_missing
-  description: Parser bucket and service missing configurations
-  configuration_parameters: []
-  metadata: []
