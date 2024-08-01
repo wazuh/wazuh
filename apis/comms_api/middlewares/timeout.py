@@ -1,10 +1,10 @@
 import asyncio
 import re
 
+from fastapi import status
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.status import HTTP_408_REQUEST_TIMEOUT
 
 from comms_api.models.error import ErrorResponse
 
@@ -46,5 +46,5 @@ class TimeoutMiddleware(BaseHTTPMiddleware):
         except asyncio.TimeoutError:
             return ErrorResponse(
                 message='Request exceeded the processing time limit',
-                status_code=HTTP_408_REQUEST_TIMEOUT,
+                status_code=status.HTTP_408_REQUEST_TIMEOUT,
             )
