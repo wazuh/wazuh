@@ -16,7 +16,7 @@
 #include "fakeMetric.hpp"
 #include <server/endpoints/unixStream.hpp>
 #include <server/protocolHandler.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 using namespace engineserver;
 using namespace engineserver::endpoint;

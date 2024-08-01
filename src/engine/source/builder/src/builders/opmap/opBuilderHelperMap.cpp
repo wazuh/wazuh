@@ -14,8 +14,8 @@
 #include <openssl/sha.h>
 #include <re2/re2.h>
 
-#include <utils/ipUtils.hpp>
-#include <utils/stringUtils.hpp>
+#include <base/utils/ipUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 #include "syntax.hpp"
 

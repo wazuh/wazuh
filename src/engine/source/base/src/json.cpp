@@ -1,4 +1,4 @@
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 #include <exception>
 #include <unordered_set>
@@ -6,7 +6,7 @@
 #include "rapidjson/schema.h"
 
 #include <fmt/format.h>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace
 {
@@ -613,7 +613,7 @@ bool Json::isFloat(std::string_view path) const
         {
             return value->IsFloat();
         }
-        
+
         return false;
     }
 

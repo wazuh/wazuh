@@ -2,7 +2,7 @@
 
 #include <unistd.h> // Unlink
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace engineserver
 {

@@ -4,7 +4,7 @@
 #include <string>
 #include <variant>
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <rbac/irbac.hpp>
 
 namespace rbac

@@ -6,8 +6,8 @@
 
 #include <maxminddb.h>
 
-#include <error.hpp>
-#include <logging/logging.hpp>
+#include <base/error.hpp>
+#include <base/logging.hpp>
 
 #include <mmdb/ihandler.hpp>
 

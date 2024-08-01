@@ -3,7 +3,7 @@
 
 #include <api/api.hpp>
 #include <api/registry.hpp>
-#include <utils/wazuhProtocol/wazuhProtocol.hpp>
+#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 
 using namespace base::utils::wazuhProtocol;
 

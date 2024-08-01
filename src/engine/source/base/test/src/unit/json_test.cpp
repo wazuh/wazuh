@@ -4,8 +4,8 @@
 #include <limits>
 #include <string>
 
-#include <json/json.hpp>
-#include <logging/logging.hpp>
+#include <base/json.hpp>
+#include <base/logging.hpp>
 
 #define GTEST_COUT std::cerr << "[          ] [ INFO ] "
 

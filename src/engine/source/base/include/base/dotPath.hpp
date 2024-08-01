@@ -9,7 +9,7 @@
 #include <fmt/core.h>
 #include <fmt/format.h>
 
-#include <utils/stringUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 /**
  * @brief A dot-separated path, used to navigate nested field structures.

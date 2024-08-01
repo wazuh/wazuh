@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <variant>
 
-#include <error.hpp>
+#include <base/error.hpp>
 #include <google/protobuf/message.h>
 #include <google/protobuf/struct.pb.h>
 #include <google/protobuf/stubs/common.h>

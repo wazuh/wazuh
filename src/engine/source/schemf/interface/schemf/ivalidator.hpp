@@ -5,7 +5,7 @@
 #include <memory>
 
 #include <base/error.hpp>
-#include <json/json.hpp>
+#include <base/json.hpp>
 #include <schemf/ischema.hpp>
 #include <schemf/type.hpp>
 

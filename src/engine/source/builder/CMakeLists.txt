@@ -110,7 +110,7 @@ add_executable(builder_ctest
     ${COMPONENT_SRC_DIR}/builder_test.cpp
     ${COMPONENT_SRC_DIR}/validator_test.cpp
 )
-target_link_libraries(builder_ctest PRIVATE builder gtest_main schemf::mocks store::mocks defs::mocks sockiface::mocks)
+target_link_libraries(builder_ctest PRIVATE builder gtest_main schemf::mocks store::mocks defs::mocks sockiface::mocks base::test)
 gtest_discover_tests(builder_ctest)
 
 ## Unit tests
@@ -182,6 +182,7 @@ target_link_libraries(builder_utest
     sockiface::mocks
     wdb::mocks
     geo::mocks
+    base::test
 )
 gtest_discover_tests(builder_utest)
 

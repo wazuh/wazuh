@@ -4,7 +4,7 @@
 #include <store/store.hpp>
 #include <store/drivers/fileDriver.hpp>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 using namespace store;
 static const std::filesystem::path TEST_PATH = "/tmp/store_test";

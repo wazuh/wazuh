@@ -28,11 +28,11 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
-#include <parseEvent.hpp>
+#include <base/parseEvent.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>

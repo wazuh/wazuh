@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include <base/test/behaviour.hpp>
+#include <base/behaviour.hpp>
 
 #include "builders/types.hpp"
 #include "mockBuildCtx.hpp"

@@ -1,7 +1,7 @@
 #include "api/catalog/catalog.hpp"
 
 #include <fmt/format.h>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 #include <store/utils.hpp>
 #include <yml/yml.hpp>

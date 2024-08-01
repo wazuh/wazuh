@@ -3,9 +3,9 @@
 
 #include <gtest/gtest.h>
 
-#include <expression.hpp>
+#include <base/expression.hpp>
 #include <fmt/format.h>
-#include <utils/stringUtils.hpp>
+#include <base/utils/stringUtils.hpp>
 
 namespace bk::test
 {
@@ -142,7 +142,7 @@ public:
             "Expected {} to be an object but got:\n{}", m_name, data.prettyStr());
         ASSERT_EQ(data.size(m_name), m_steps.size())
             << fmt::format("Expected {} to have {} items but got:\n{}", m_name, m_steps.size(), data.prettyStr());
-        
+
         if (m_ordered)
         {
             auto asObject = data.getObject(m_name).value();

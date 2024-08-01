@@ -1,8 +1,8 @@
 #ifndef _BUILDER2_IVALIDATOR_HPP
 #define _BUILDER2_IVALIDATOR_HPP
 
-#include <error.hpp>
-#include <json/json.hpp>
+#include <base/error.hpp>
+#include <base/json.hpp>
 
 namespace builder
 {

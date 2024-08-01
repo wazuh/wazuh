@@ -3,7 +3,7 @@
 
 #include <gtest/gtest.h>
 
-#include <expression.hpp>
+#include <base/expression.hpp>
 
 namespace builder::test
 {

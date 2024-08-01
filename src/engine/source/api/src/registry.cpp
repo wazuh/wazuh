@@ -1,6 +1,6 @@
 #include "api/registry.hpp"
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace api
 {

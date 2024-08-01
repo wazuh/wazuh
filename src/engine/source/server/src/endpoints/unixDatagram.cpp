@@ -6,7 +6,7 @@
 #include <sys/un.h>     // Unix socket datagram bind
 #include <unistd.h>     // Unix socket datagram bind
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <uvw.hpp>
 
 namespace

@@ -5,7 +5,7 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 
 add_library(geo_igeo INTERFACE)
 target_include_directories(geo_igeo INTERFACE ${IFACE_DIR})
-target_link_libraries(geo_igeo INTERFACE json base)
+target_link_libraries(geo_igeo INTERFACE base)
 add_library(geo::igeo ALIAS geo_igeo)
 
 CPMAddPackage(

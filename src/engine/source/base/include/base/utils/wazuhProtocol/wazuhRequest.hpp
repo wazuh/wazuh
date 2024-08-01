@@ -1,7 +1,7 @@
 #ifndef _BASE_UTILS_WAZUH_REQUEST_HPP
 #define _BASE_UTILS_WAZUH_REQUEST_HPP
 
-#include <json/json.hpp>
+#include <base/json.hpp>
 
 namespace base::utils::wazuhProtocol
 {

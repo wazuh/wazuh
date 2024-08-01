@@ -7,8 +7,8 @@
 #include <utility>
 #include <variant>
 
-#include <error.hpp>
-#include <json/json.hpp>
+#include <base/error.hpp>
+#include <base/json.hpp>
 
 namespace kvdbManager
 {

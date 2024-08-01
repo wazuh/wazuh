@@ -8,7 +8,7 @@
 
 #include <exception>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace
 { /**

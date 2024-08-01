@@ -1,9 +1,9 @@
 #ifndef _MMDB_IRESULT_HPP
 #define _MMDB_IRESULT_HPP
 
-#include <dotPath.hpp>
-#include <error.hpp>
-#include <json/json.hpp>
+#include <base/dotPath.hpp>
+#include <base/error.hpp>
+#include <base/json.hpp>
 
 namespace mmdb
 {

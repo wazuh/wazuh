@@ -1,6 +1,6 @@
 #include <fmt/format.h>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 #include <kvdb/kvdbHandlerCollection.hpp>
 

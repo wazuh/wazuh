@@ -13,8 +13,8 @@
 
 #include <api/catalog/resource.hpp>
 #include <builder/ivalidator.hpp>
-#include <error.hpp>
-#include <name.hpp>
+#include <base/error.hpp>
+#include <base/name.hpp>
 #include <store/istore.hpp>
 
 namespace api::catalog

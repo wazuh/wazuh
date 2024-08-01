@@ -8,7 +8,7 @@
 #include <fmt/format.h>
 
 #include <eMessages/catalog.pb.h>
-#include <name.hpp>
+#include <base/name.hpp>
 
 namespace api::catalog
 {

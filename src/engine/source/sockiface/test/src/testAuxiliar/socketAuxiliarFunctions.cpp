@@ -7,7 +7,7 @@
 #include <sys/un.h>
 #include <unistd.h>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 #include <sockiface/unixDatagram.hpp>
 

@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <utils/wazuhProtocol/wazuhResponse.hpp>
+#include <base/utils/wazuhProtocol/wazuhResponse.hpp>
 
 TEST(WazuhResponse, constructor)
 {

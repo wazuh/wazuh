@@ -9,7 +9,7 @@
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
 
-#include <error.hpp>
+#include <base/error.hpp>
 
 #include <kvdb/ikvdbmanager.hpp>
 #include <kvdb/kvdbHandler.hpp>
@@ -42,9 +42,12 @@ struct KVDBManagerOptions
  */
 class KVDBManager final : public IKVDBManager
 {
-    WAZUH_DISABLE_COPY_ASSIGN(KVDBManager);
-
 public:
+    KVDBManager(const KVDBManager&) = delete;
+    KVDBManager(KVDBManager&&) = delete;
+    const KVDBManager& operator=(const KVDBManager&) = delete;
+    void operator=(KVDBManager&&) = delete;
+
     /**
      * @brief Construct a new KVDBManager object
      *

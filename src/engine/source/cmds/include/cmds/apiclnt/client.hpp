@@ -11,7 +11,7 @@
 #include <uvw/timer.hpp>
 
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
-#include <error.hpp>
+#include <base/error.hpp>
 
 #include <cmds/apiExcept.hpp>
 

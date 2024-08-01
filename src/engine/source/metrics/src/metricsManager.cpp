@@ -1,7 +1,7 @@
 #include <metrics/metricsManager.hpp>
 #include <metrics/metricsScope.hpp>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 namespace metricsManager
 {

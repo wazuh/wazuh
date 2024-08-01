@@ -4,9 +4,9 @@
 #include <optional>
 #include <variant>
 
-#include <error.hpp>
-#include <json/json.hpp>
-#include <name.hpp>
+#include <base/error.hpp>
+#include <base/json.hpp>
+#include <base/name.hpp>
 
 namespace store
 {

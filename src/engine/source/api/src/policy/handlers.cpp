@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <eMessages/policy.pb.h>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 #include <api/adapter.hpp>
 #include <api/policy/handlers.hpp>

@@ -6,7 +6,7 @@
 #include <schemf/ivalidator.hpp>
 #include <schemf/schema.hpp>
 
-#include <base/test/behaviour.hpp>
+#include <base/behaviour.hpp>
 
 #define GFAIL_CASE "[   CASE   ]"
 

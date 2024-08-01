@@ -1,10 +1,10 @@
-#include <name.hpp>
+#include <base/name.hpp>
 
 #include <gtest/gtest.h>
 
 #include <numeric>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 class NameTest : public ::testing::Test
 {

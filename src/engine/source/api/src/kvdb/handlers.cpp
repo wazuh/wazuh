@@ -7,8 +7,8 @@
 #include <api/adapter.hpp>
 #include <eMessages/eMessage.h>
 #include <eMessages/kvdb.pb.h>
-#include <json/json.hpp>
-#include <utils/stringUtils.hpp>
+#include <base/json.hpp>
+#include <base/utils/stringUtils.hpp>
 
 namespace api::kvdb::handlers
 {

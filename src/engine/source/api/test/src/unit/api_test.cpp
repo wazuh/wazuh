@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <api/api.hpp>
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 
 using namespace api;
 

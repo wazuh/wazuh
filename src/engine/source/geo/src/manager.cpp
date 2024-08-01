@@ -7,7 +7,7 @@
 #include <fmt/format.h>
 #include <maxminddb.h>
 
-#include <logging/logging.hpp>
+#include <base/logging.hpp>
 #include <store/istore.hpp>
 
 #include "dbEntry.hpp"
