@@ -10,6 +10,7 @@ from copy import deepcopy
 from unittest.mock import patch, MagicMock, ANY, call
 
 from connexion.exceptions import Unauthorized
+from cryptography.hazmat.primitives.asymmetric import ec
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
@@ -74,14 +75,15 @@ async def test_check_user(mock_raise_if_exc, mock_distribute_function, mock_dapi
     mock_raise_if_exc.assert_called_once()
 
 
+@pytest.mark.parametrize('curve', [ec.SECP256R1(), ec.SECP521R1()])
 @patch('api.authentication.change_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                           '-----BEGIN PUBLIC KEY-----'))
 @patch('os.chmod')
 @patch('os.chown')
 @patch('builtins.open')
-def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair):
+def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair, curve):
     """Verify correct params when calling open method inside generate_keypair"""
-    result = authentication.generate_keypair()
+    result = authentication.generate_keypair(curve)
     assert result == ('-----BEGIN PRIVATE KEY-----',
                       '-----BEGIN PUBLIC KEY-----')
 
@@ -93,7 +95,7 @@ def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair
     mock_chmod.assert_has_calls(calls)
 
     with patch('os.path.exists', return_value=True):
-        authentication.generate_keypair()
+        authentication.generate_keypair(curve)
         calls = [call(authentication._private_key_path, mode='r'),
                  call(authentication._public_key_path, mode='r')]
         mock_open.assert_has_calls(calls, any_order=True)
@@ -104,13 +106,14 @@ def test_generate_keypair_ko():
     with patch('builtins.open'):
         with patch('os.chmod'):
             with patch('os.chown', side_effect=PermissionError):
-                assert authentication.generate_keypair()
+                assert authentication.generate_keypair(ec.SECP521R1())
 
 
+@pytest.mark.parametrize('curve', [ec.SECP256R1(), ec.SECP521R1()])
 @patch('builtins.open')
-def test_change_keypair(mock_open):
+def test_change_keypair(mock_open, curve):
     """Verify correct params when calling open method inside change_keypair"""
-    result = authentication.change_keypair()
+    result = authentication.change_keypair(curve)
     assert isinstance(result[0], str)
     assert isinstance(result[1], str)
     calls = [call(authentication._private_key_path, mode='w'),
