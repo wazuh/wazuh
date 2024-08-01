@@ -8,8 +8,8 @@ from functools import partial
 from sys import exit
 from typing import Any, Callable, Dict
 
+from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI
-from fastapi.middleware.gzip import GZipMiddleware
 from gunicorn.app.base import BaseApplication
 
 from api.alogging import set_logging
@@ -199,8 +199,7 @@ if __name__ == '__main__':
     try:
         app = FastAPI()
         app.add_middleware(SecureHeadersMiddleware)
-        # TODO: decide whether to use GZip or Brotli (latter requires https://github.com/fullonic/brotli-asgi)
-        app.add_middleware(GZipMiddleware)
+        app.add_middleware(BrotliMiddleware)
         app.add_middleware(TimeoutMiddleware)
         app.add_middleware(LoggingMiddleware)
         app.include_router(router)
