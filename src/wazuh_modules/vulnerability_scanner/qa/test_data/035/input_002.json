@@ -1,0 +1,25 @@
+{
+  "agent_info": {
+    "agent_id": "035"
+  },
+  "data_type": "dbsync_packages",
+  "data": {
+    "format": "win",
+    "name": "GrafanaOSS",
+    "vendor": "Grafana Labs",
+    "install_time": "2024/05/14 03:22:57",
+    "version": "8.5.5",
+    "architecture": "x86_64",
+    "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
+    "description": "Grafana",
+    "size": 334,
+    "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
+    "location": " ",
+    "multiarch": " ",
+    "priority": " ",
+    "scan_time": "2024/05/28 02:01:07",
+    "source": " ",
+    "groups": " "
+  },
+  "operation": "INSERTED"
+}
