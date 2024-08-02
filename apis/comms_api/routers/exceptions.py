@@ -34,7 +34,6 @@ async def http_error_handler(request: Request, exc: HTTPError) -> JSONResponse:
         content={'message': exc.message, 'code': exc.code},
     )
 
-
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """API request validation errors handler.
     
