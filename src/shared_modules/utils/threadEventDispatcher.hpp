@@ -97,7 +97,7 @@ public:
 
     void push(const T& value)
     {
-        if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        if constexpr (!isTSafeMultiQueue)
         {
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
             {
@@ -107,14 +107,13 @@ public:
         else
         {
             // static assert to avoid compilation
-            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                          "This method is not supported for this queue type");
+            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
         }
     }
 
     void push(std::string_view prefix, const T& value)
     {
-        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        if constexpr (isTSafeMultiQueue)
         {
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
             {
@@ -124,22 +123,20 @@ public:
         else
         {
             // static assert to avoid compilation
-            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                          "This method is not supported for this queue type");
+            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
         }
     }
 
     void clear(std::string_view prefix = "")
     {
-        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        if constexpr (isTSafeMultiQueue)
         {
             m_queue->clear(prefix);
         }
         else
         {
             // static assert to avoid compilation
-            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                          "This method is not supported for this queue type");
+            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
         }
     }
 
@@ -157,46 +154,56 @@ public:
 
     size_t size() const
     {
-        if constexpr (!std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        if constexpr (!isTSafeMultiQueue)
         {
             return m_queue->size();
         }
         else
         {
-            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                          "This method is not supported for this queue type");
+            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
         }
     }
 
     size_t size(std::string_view prefix) const
     {
-        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        if constexpr (isTSafeMultiQueue)
         {
             return m_queue->size(prefix);
         }
         else
         {
             // static assert to avoid compilation
-            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                          "This method is not supported for this queue type");
+            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
         }
     }
 
     void postpone(std::string_view prefix, const std::chrono::seconds& time) noexcept
     {
-        if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+        if constexpr (isTSafeMultiQueue)
         {
             m_queue->postpone(prefix, time);
         }
         else
         {
             // static assert to avoid compilation
-            static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                          "This method is not supported for this queue type");
+            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
         }
     }
 
 private:
+    /**
+     * @brief Check if the queue type is a `TSafeMultiQueue`.
+     *
+     */
+    static constexpr bool isTSafeMultiQueue =
+        std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>;
+
+    /**
+     * @brief Check if the queue type is a `TSafeQueue`.
+     *
+     */
+    static constexpr bool isTSafeQueue = std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>;
+
     /**
      * @brief Dispatch function to handle queue processing based on the number of threads.
      *
@@ -234,7 +241,7 @@ private:
     {
         try
         {
-            if constexpr (std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>)
+            if constexpr (isTSafeQueue)
             {
                 std::queue<U> data = m_queue->getBulk(m_bulkSize);
                 const auto size = data.size();
@@ -245,7 +252,7 @@ private:
                     m_queue->popBulk(size);
                 }
             }
-            else if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+            else if constexpr (isTSafeMultiQueue)
             {
                 std::pair<U, std::string> data = m_queue->front();
                 if (!data.second.empty())
@@ -257,9 +264,7 @@ private:
             else
             {
                 // static assert to avoid compilation for unsupported queue types
-                static_assert(std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType> ||
-                                  std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                              "This method is not supported for this queue type");
+                static_assert(isTSafeQueue || isTSafeMultiQueue, "This method is not supported for this queue type");
             }
         }
         catch (const std::exception& ex)
@@ -280,7 +285,7 @@ private:
         std::queue<U> data; // Declare data outside the try block to ensure scope in catch block
         try
         {
-            if constexpr (std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>)
+            if constexpr (isTSafeQueue)
             {
                 data = m_queue->getBulkAndPop(m_bulkSize);
                 const auto size = data.size();
@@ -290,7 +295,7 @@ private:
                     m_functor(data);
                 }
             }
-            else if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
+            else if constexpr (isTSafeMultiQueue)
             {
                 auto dataPair = m_queue->front();
                 if (!dataPair.second.empty())
@@ -302,20 +307,30 @@ private:
             else
             {
                 // static assert to avoid compilation for unsupported queue types
-                static_assert(std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType> ||
-                                  std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
-                              "This method is not supported for this queue type");
+                static_assert(isTSafeQueue || isTSafeMultiQueue, "This method is not supported for this queue type");
             }
         }
         catch (const std::exception& ex)
         {
             // Reinsert elements in the queue in case of exception on the functor.
-            while (!data.empty())
+            if constexpr (isTSafeQueue)
             {
-                m_queue->push(data.front());
-                data.pop();
+                while (!data.empty())
+                {
+                    m_queue->push(data.front());
+                    data.pop();
+                }
+                std::cerr << "Dispatch handler error. Elements reinserted: " << ex.what() << "\n";
             }
-            std::cerr << "Dispatch handler error. Elements reinserted: " << ex.what() << "\n";
+            else if constexpr (isTSafeMultiQueue)
+            {
+                while (!data.empty())
+                {
+                    m_queue->push(data.front());
+                    data.pop();
+                }
+                std::cerr << "Dispatch handler error. Elements reinserted: " << ex.what() << "\n";
+            }
         }
     }
 
