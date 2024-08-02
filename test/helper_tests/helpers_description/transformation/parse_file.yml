@@ -1,6 +1,13 @@
 # Name of the helper function
 name: parse_file
 
+metadata:
+  description: |
+    Checks whether an input contains a valid file path and, if so,  it evaluates to true and the extracted data contained
+    in a JSON object is then stored on the field, otherwise it evaluates to false.
+  keywords:
+    - to define
+
 helper_type: transformation
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,13 +15,13 @@ is_variadic: true
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  input_field:
     type: string  # Accept only string
     generate: string
     source: reference # includes only references (their names start with $)
 
 skipped:
-  - success_cases # parser failed
+  - success_cases # parser failed - string generation is random
 
 # Its type is not evaluated, therefore it takes all by default
 target_field:
@@ -27,8 +34,8 @@ target_field:
 
 test:
   - arguments:
-      1: C:\Windows\System32\program.exe
-      target_field: any_value
+      input_field: C:\Windows\System32\program.exe
+    target_field: any_value
     should_pass: true
     expected:
       path: C:\Windows\System32

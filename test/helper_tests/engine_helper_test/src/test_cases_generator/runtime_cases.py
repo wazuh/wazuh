@@ -662,6 +662,7 @@ class RuntimeCases:
 
         template = Template(self.parser)
         arguments_list = []
+        target_field_value = None
 
         for test in self.parser.get_tests():
             if "arguments" in test:
@@ -684,7 +685,6 @@ class RuntimeCases:
                     combined = list(itertools.zip_longest(arguments_list, case, fillvalue=None))
                     all_arguments = []
                     input = {}
-                    target_field_value = None
                     for (id, value), source in combined:
                         argument = Argument(value)
                         argument.configure_only_value(source)
@@ -711,6 +711,7 @@ class RuntimeCases:
 
         arguments_list = []
         for test in self.parser.get_tests():
+            target_field = test.get("target_field", None)
             if "arguments" in test:
                 arguments_list = list(test["arguments"].items())
             if any(isinstance(item[1], dict) for item in arguments_list):
@@ -727,11 +728,12 @@ class RuntimeCases:
                             all_arguments.append(f"$eventJson.{val['name']}")
                         else:
                             all_arguments.append(val)
-                    else:
-                        if isinstance(data, list):
-                            target_field_value = list(data)
+
+                    if target_field != None:
+                        if isinstance(target_field, list):
+                            target_field_value = list(target_field)
                         else:
-                            target_field_value = data
+                            target_field_value = target_field
 
                 if len(all_arguments) == 0:
                     break

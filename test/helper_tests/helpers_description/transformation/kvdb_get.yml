@@ -1,6 +1,13 @@
 # Name of the helper function
 name: kvdb_get
 
+metadata:
+  description: |
+    Gets the value of a given key in the DB named db-name and if its successful it stores it in the given field.
+    Key value type can be string, number, object, array or null. This helper function is typically used in the map stage
+  keywords:
+    - to define
+
 helper_type: transformation
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,23 +15,18 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  db-name:
     type: string  # Accept only object
     generate: string
     source: value # Includes only values
-    restrictions:
-      allowed:
-        - testing
-  2:
+  key:
     type: string  # Accept only string
     generate: string
     source: both # Includes values or references (their names start with $)
-    restrictions:
-      allowed:
-        - test
 
+# Database not exists
 skipped:
-  - allowed
+  - success_cases # key indicate by target_field not found
 
 target_field:
   type:
@@ -33,16 +35,16 @@ target_field:
 
 test:
   - arguments:
-      1: testing
-      2: NON-EXIST-KEY
-      target_field: true
+      db-name: testing
+      key: NON-EXIST-KEY
+    target_field: true
     should_pass: false
     expected: false
     description: Try get non exist key
   - arguments:
-      1: testing
-      2: test
-      target_field: true
+      db-name: testing
+      key: test
+    target_field: true
     should_pass: true
     expected: false
     description: Get an exist key
