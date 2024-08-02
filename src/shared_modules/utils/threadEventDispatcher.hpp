@@ -49,7 +49,7 @@ public:
         }
         else
         {
-            static_assert(isSameType,"T and U are not the same type");
+            static_assert(isSameType, "T and U are not the same type");
             for (unsigned int i = 0; i < TNumberOfThreads; ++i)
             {
                 m_threads.push_back(std::thread {
@@ -289,7 +289,7 @@ private:
      */
     void multiAndUnordered()
     {
-        static_assert(isSameType,"T and U are not the same type");
+        static_assert(isSameType, "T and U are not the same type");
         std::queue<U> data; // Declare data outside the try block to ensure scope in catch block
         try
         {
