@@ -45,7 +45,7 @@ on:
         required: false
       debug:
         description: |
-          Build the binaries with debug symbols.
+          Build the binaries as debug (without optimizations).
           By default: false
         type: boolean
         required: false
@@ -129,7 +129,7 @@ jobs:
           echo "generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a amd64 --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
-          if [ "${{ inputs.system}}" == "deb" ]; then 
+          if [ "${{ inputs.system }}" == "deb" ]; then 
             SYMBOLS_TAG="dbg"
           else
             SYMBOLS_TAG="debuginfo"

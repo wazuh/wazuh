@@ -22,4 +22,5 @@ Section: debug
 Priority: optional
 Architecture: any
 Depends: wazuh-agent
-Description: Debug symbols for wazuh-agent, this package contains debug symbols for debugging wazuh-agent.
+Description: Debug symbols for wazuh-agent.
+  This package contains debug symbols for debugging wazuh-agent.

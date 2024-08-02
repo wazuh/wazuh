@@ -119,7 +119,7 @@ help() {
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
-    echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
+    echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package. By default: no."
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
