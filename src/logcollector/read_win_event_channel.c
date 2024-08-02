@@ -141,6 +141,7 @@ STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
     DWORD size = 0;
     wchar_t *buffer = NULL;
     int result = 0;
+    DWORD lastError;
 
     publisher = EvtOpenPublisherMetadata(NULL,
                                          provider_name,
@@ -174,11 +175,35 @@ STATIC char *get_message(EVT_HANDLE evt, LPCWSTR provider_name, DWORD flags)
                               0,
                               NULL,
                               &size);
-    if (result != FALSE || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+
+    if (result) {
+        // We expect failure here because the buffer is null
+        merror(
+            "Could not EvtFormatMessage() to determine buffer size with flags (%lu): unexpected result",
+            flags);
+        goto cleanup;
+    }
+
+    lastError = GetLastError();
+
+    switch (lastError) {
+    case ERROR_INSUFFICIENT_BUFFER:             // 122
+        // Expected case
+        break;
+
+    case ERROR_EVT_MESSAGE_NOT_FOUND:           // 15027
+    case ERROR_EVT_MESSAGE_LOCALE_NOT_FOUND:    // 15033
+         mdebug1(
+            "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
+            flags,
+            lastError);
+        goto cleanup;
+
+    default:
         merror(
             "Could not EvtFormatMessage() to determine buffer size with flags (%lu) which returned (%lu)",
             flags,
-            GetLastError());
+            lastError);
         goto cleanup;
     }
 
@@ -482,7 +507,7 @@ void send_channel_event(EVT_HANDLE evt, os_channel *channel)
         wprovider_name = convert_unix_string(provider_name);
 
         if (wprovider_name && (msg_from_prov = get_message(evt, wprovider_name, EvtFormatMessageEvent)) == NULL) {
-            merror(
+            mdebug1(
                 "Could not get message for (%s)",
                 channel->evt_log);
         }

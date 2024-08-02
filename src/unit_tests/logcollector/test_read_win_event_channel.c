@@ -72,7 +72,7 @@ void test_get_message_get_publisher_fail(void ** state) {
     assert_null(get_message(data->evt, data->provider_name, EvtFormatMessageEvent));
 }
 
-void test_get_message_get_size_fail(void ** state) {
+void test_get_message_result_true(void ** state) {
     test_struct_t *data  = (test_struct_t *)*state;
 
     expect_value(wrap_EvtOpenPublisherMetadata, Session, NULL);
@@ -84,13 +84,71 @@ void test_get_message_get_size_fail(void ** state) {
 
     will_return(wrap_EvtFormatMessage, strlen(data->message));
     will_return(wrap_EvtFormatMessage, TRUE);
-    will_return(wrap_GetLastError, ERROR_INSUFFICIENT_BUFFER);
-    expect_string(__wrap__merror, formatted_msg, "Could not EvtFormatMessage() to determine buffer size with flags (1) which returned (122)");
+    expect_string(__wrap__merror, formatted_msg, "Could not EvtFormatMessage() to determine buffer size with flags (1): unexpected result");
 
     will_return(wrap_EvtClose, TRUE);
 
     assert_null(get_message(data->evt, data->provider_name, EvtFormatMessageEvent));
+}
 
+void test_get_message_not_found(void ** state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(wrap_EvtOpenPublisherMetadata, Session, NULL);
+    expect_string(wrap_EvtOpenPublisherMetadata, PublisherId, data->provider_name);
+    expect_value(wrap_EvtOpenPublisherMetadata, LogFilePath, NULL);
+    expect_value(wrap_EvtOpenPublisherMetadata, Locale, 0);
+    expect_value(wrap_EvtOpenPublisherMetadata, Flags, 0);
+    will_return(wrap_EvtOpenPublisherMetadata, 1);
+
+    will_return(wrap_EvtFormatMessage, strlen(data->message));
+    will_return(wrap_EvtFormatMessage, FALSE);
+    will_return(wrap_GetLastError, ERROR_EVT_MESSAGE_NOT_FOUND);
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not EvtFormatMessage() to determine buffer size with flags (1) which returned (15027)");
+
+    will_return(wrap_EvtClose, TRUE);
+
+    assert_null(get_message(data->evt, data->provider_name, EvtFormatMessageEvent));
+}
+
+void test_get_message_locale_not_found(void ** state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(wrap_EvtOpenPublisherMetadata, Session, NULL);
+    expect_string(wrap_EvtOpenPublisherMetadata, PublisherId, data->provider_name);
+    expect_value(wrap_EvtOpenPublisherMetadata, LogFilePath, NULL);
+    expect_value(wrap_EvtOpenPublisherMetadata, Locale, 0);
+    expect_value(wrap_EvtOpenPublisherMetadata, Flags, 0);
+    will_return(wrap_EvtOpenPublisherMetadata, 1);
+
+    will_return(wrap_EvtFormatMessage, strlen(data->message));
+    will_return(wrap_EvtFormatMessage, FALSE);
+    will_return(wrap_GetLastError, ERROR_EVT_MESSAGE_LOCALE_NOT_FOUND);
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not EvtFormatMessage() to determine buffer size with flags (1) which returned (15033)");
+
+    will_return(wrap_EvtClose, TRUE);
+
+    assert_null(get_message(data->evt, data->provider_name, EvtFormatMessageEvent));
+}
+
+void test_get_message_error(void ** state) {
+    test_struct_t *data  = (test_struct_t *)*state;
+
+    expect_value(wrap_EvtOpenPublisherMetadata, Session, NULL);
+    expect_string(wrap_EvtOpenPublisherMetadata, PublisherId, data->provider_name);
+    expect_value(wrap_EvtOpenPublisherMetadata, LogFilePath, NULL);
+    expect_value(wrap_EvtOpenPublisherMetadata, Locale, 0);
+    expect_value(wrap_EvtOpenPublisherMetadata, Flags, 0);
+    will_return(wrap_EvtOpenPublisherMetadata, 1);
+
+    will_return(wrap_EvtFormatMessage, strlen(data->message));
+    will_return(wrap_EvtFormatMessage, FALSE);
+    will_return(wrap_GetLastError, 0);
+    expect_string(__wrap__merror, formatted_msg, "Could not EvtFormatMessage() to determine buffer size with flags (1) which returned (0)");
+
+    will_return(wrap_EvtClose, TRUE);
+
+    assert_null(get_message(data->evt, data->provider_name, EvtFormatMessageEvent));
 }
 
 void test_get_message_format_fail(void ** state) {
@@ -170,7 +228,10 @@ void test_get_message_success(void ** state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_get_message_get_publisher_fail, test_setup, test_teardown),
-        cmocka_unit_test_setup_teardown(test_get_message_get_size_fail, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_get_message_result_true, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_get_message_not_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_get_message_locale_not_found, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_get_message_error, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_message_format_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_message_convert_string_fail, test_setup, test_teardown),
         cmocka_unit_test_setup_teardown(test_get_message_success, test_setup, test_teardown)
