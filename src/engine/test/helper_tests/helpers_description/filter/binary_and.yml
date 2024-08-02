@@ -6,7 +6,7 @@ metadata:
     Transforms the hexadecimal value into an unsigned integer and performs the AND bit by bit with the field hexadecimal
     transformed to unsigned int. If it is other than 0x0 then the operation evaluates to true.
   keywords:
-    - to define
+    - undefined
 
 helper_type: filter
 

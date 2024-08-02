@@ -6,7 +6,7 @@ metadata:
     Moves existing “input_field” to the field name provided (field). Replace if field exist.
     This helper function is used in the map stage.
   keywords:
-    - to define
+    - undefined
 
 helper_type: transformation
 

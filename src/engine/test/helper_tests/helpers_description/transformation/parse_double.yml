@@ -8,7 +8,7 @@ metadata:
     as double-precision floating-point numbers are capable of representing a wide range of decimal numbers with
     significant precision.
   keywords:
-    - to define
+    - undefined
 
 helper_type: transformation
 

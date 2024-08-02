@@ -8,7 +8,7 @@ metadata:
     Checks whether an input contains a valid URI format and, if so, it evaluates to true and transforms
     it to a ECS url object encoded as a JSON string which is then stored on the field, otherwise it evaluates to false.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

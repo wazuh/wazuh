@@ -6,7 +6,7 @@ metadata:
     Transforms a number into a string with that number.
     This helper function is typically used in the map stage
   keywords:
-    - to define
+    - undefined
 
 helper_type: map
 

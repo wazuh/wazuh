@@ -8,7 +8,7 @@ metadata:
     If it was able to insert the value, then map `true` into field, if not, then map `false` into field.
     Value type can be string, number, object, array or null. This helper function is typically used in the map stage
   keywords:
-    - to define
+    - kvdb
 
 helper_type: transformation
 

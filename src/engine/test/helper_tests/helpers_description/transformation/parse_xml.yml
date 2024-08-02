@@ -7,7 +7,7 @@ metadata:
     It preserves the structure of the original XML in the default mode and provides a specialized
     transformation for Windows Event Log XML when the optional "windows" argument is used.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

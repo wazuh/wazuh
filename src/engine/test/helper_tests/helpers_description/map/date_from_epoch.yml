@@ -7,7 +7,7 @@ metadata:
     Remember epoch, understood as UNIX epoch, is the seconds passed since january first of 1970, so it will fail on negative values.
     Floating points numbers will be converted to integers.
   keywords:
-    - to define
+    - undefined
 
 helper_type: map
 

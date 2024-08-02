@@ -12,7 +12,7 @@ metadata:
     will always be taken or, failing that, the type of the first element to be added.
 
   keywords:
-    - to define
+    - array
 
 helper_type: transformation
 

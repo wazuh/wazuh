@@ -17,7 +17,7 @@ metadata:
     This helper function is typically used in the check stage
 
   keywords:
-    - to define
+    - undefined
 
 helper_type: filter
 

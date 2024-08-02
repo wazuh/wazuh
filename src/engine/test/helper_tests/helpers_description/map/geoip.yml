@@ -18,7 +18,7 @@ metadata:
       - region_iso_code: mapping of the 'subdivisions.0.iso_code' field of the mmdb entry.
       - region_name: mapping of the 'subdivisions.0.names.en' field of the mmdb entry.
   keywords:
-    - to define
+    - max_min_db
 
 helper_type: map
 

@@ -6,7 +6,7 @@ metadata:
     Checks whether an input contains a valid file path and, if so,  it evaluates to true and the extracted data contained
     in a JSON object is then stored on the field, otherwise it evaluates to false.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

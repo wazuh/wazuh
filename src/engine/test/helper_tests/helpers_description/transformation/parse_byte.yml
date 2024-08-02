@@ -7,7 +7,7 @@ metadata:
     If the numeric value is within the range of -128 to 127 (inclusive)
     it truncates the number to fit into a byte data type and stores the result in `field`. The operation is case-sensitive.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

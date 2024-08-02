@@ -10,7 +10,7 @@ metadata:
     It directly maps this string to `field` without any modification or parsing.
     This function is particularly useful for logging or analyzing user agent strings in their original format.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

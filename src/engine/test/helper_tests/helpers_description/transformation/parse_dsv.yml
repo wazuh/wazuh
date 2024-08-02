@@ -13,7 +13,7 @@ metadata:
     The “escaping” character is used to escape the “quoting” characters that are intended to be used as literal characters.
     This helper function is typically used in the map stage.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

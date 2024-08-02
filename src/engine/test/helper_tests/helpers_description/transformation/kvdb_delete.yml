@@ -7,7 +7,7 @@ metadata:
     If it was able to be removed, then map `true` into the field. This helper function is typically used in the map stage
 
   keywords:
-    - to define
+    - kvdb
 
 helper_type: transformation
 

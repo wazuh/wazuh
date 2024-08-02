@@ -9,7 +9,7 @@ metadata:
       - IPv4: support address in dotted-decimal format, "ddd.ddd.ddd.ddd" where ddd is a decimal number of up to three digits in the range  0  to  255
       - IPv6: support RFC 2373 representation of addresses
   keywords:
-    - to define
+    - ip
 
 helper_type: map
 

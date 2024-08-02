@@ -8,7 +8,7 @@ metadata:
     Thre result value doesn`t mean that it checks the correct execution of the Active response.
     This helper function is typically used in the map stage.
   keywords:
-    - to define
+    - undefined
 
 helper_type: map
 

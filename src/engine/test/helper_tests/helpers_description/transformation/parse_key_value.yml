@@ -14,7 +14,7 @@ metadata:
     This helper function is typically used in the map stage.
     Checks whether an input fits a keys-values list format and, if it does, such pairs of keys and values are stored as new fields of the event.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

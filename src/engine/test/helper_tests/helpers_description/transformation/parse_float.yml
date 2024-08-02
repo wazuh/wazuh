@@ -6,7 +6,7 @@ metadata:
     Evaluates if the content of the input field is a string that can be successfully converted into a floating-point number.
     It converts and stores the floating-point number in `field`, as floating-point numbers inherently support decimals.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

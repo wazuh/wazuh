@@ -7,7 +7,7 @@ metadata:
     with the `end` delimiter. If so, it extracts the text found between these delimiters
     and stores this extracted substring in `field`
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 
