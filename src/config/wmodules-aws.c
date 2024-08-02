@@ -275,7 +275,10 @@ int wm_aws_read(const OS_XML *xml, xml_node **nodes, wmodule *module)
                             os_strdup(children[j]->content, cur_bucket->only_logs_after);
                         }
                     } else if (!strcmp(children[j]->element, XML_WAF_ACLS)) {
-                        if (strlen(children[j]->content) != 0) {
+                        if (strlen(children[j]->content) == 0) {
+                            mwarn("Empty content for tag '%s' at module '%s'.", XML_WAF_ACLS, WM_AWS_CONTEXT.name);
+                        }
+                        else if (strlen(children[j]->content) != 0) {
                             free(cur_bucket->waf_acls);
                             os_strdup(children[j]->content, cur_bucket->waf_acls);
                         }

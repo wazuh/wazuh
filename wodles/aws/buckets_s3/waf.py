@@ -99,19 +99,19 @@ class AWSWAFBucket(AWSCustomBucket):
         if self.type == WAF_NATIVE:
             if self.waf_acls:
                 return AWSLogsBucket.get_full_prefix(self, account_id, account_region, self.waf_acls)
-            else: 
-                bucket_path = self.client.list_objects_v2(Bucket=self.bucket)
-                if 'Contents' in bucket_path:
-                    contents = bucket_path.get('Contents')
-                    # Retrieves the last key of the contents
-                    log_key = contents[-1]['Key']
-                    parts = log_key.split("/")
-                    try:
-                        acl_name = parts[parts.index("WAFLogs") + 2]
-                    except (ValueError, IndexError):
-                        raise ValueError("Could not find ACL name in the object.")
+            
+            bucket_path = self.client.list_objects_v2(Bucket=self.bucket)
+            if 'Contents' in bucket_path:
+                contents = bucket_path.get('Contents')
+                # Retrieves the last key of the contents
+                log_key = contents[-1]['Key']
+                parts = log_key.split("/")
+                try:
+                    acl_name = parts[parts.index("WAFLogs") + 2]
+                except (ValueError, IndexError):
+                    raise ValueError("Could not find ACL name in the object.")
                     
-                    return AWSLogsBucket.get_full_prefix(self, account_id, account_region, acl_name)
+                return AWSLogsBucket.get_full_prefix(self, account_id, account_region, acl_name)
         else:
             return self.prefix
 
