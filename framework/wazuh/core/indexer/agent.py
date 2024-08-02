@@ -2,13 +2,14 @@ from dataclasses import asdict
 from typing import List
 
 from opensearchpy import exceptions
-from wazuh.core.exception import WazuhError
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
 from .base import BaseIndex
 from .constants import (
     BODY_KEY,
     INDEX_KEY,
     QUERY_KEY,
+    SOURCE_KEY,
     TERMS_KEY,
 )
 from .models import Agent
@@ -42,10 +43,14 @@ class AgentsIndex(BaseIndex):
         WazuhError (1708)
             When already exists an agent with the provided id.
         """
-        agent = Agent(id=id, name=name, raw_key=key)
+        agent = Agent(id=id, key=key, name=name)
         try:
             await self._client.index(
-                index=self.INDEX, id=agent.id, body=asdict(agent), op_type='create', refresh='wait_for'
+                index=self.INDEX,
+                id=agent.id,
+                body=asdict(agent),
+                op_type='create',
+                refresh='wait_for'
             )
         except exceptions.ConflictError:
             raise WazuhError(1708, extra_message=id)
@@ -88,3 +93,24 @@ class AgentsIndex(BaseIndex):
         """
         parameters = {INDEX_KEY: self.INDEX, BODY_KEY: query}
         return await self._client.search(**parameters)
+
+    async def get(self, id: str) -> Agent:
+        """Get an agent.
+
+        Parameters
+        ----------
+        id : str
+            Agent ID.
+
+        Returns
+        -------
+        Agent
+            Agent instance.
+        """
+        try:
+            data = self._client.get(index=self.INDEX, id=self.id)
+        except exceptions.NotFoundError:
+            raise WazuhResourceNotFound(1701)
+        finally:
+            return Agent(uuid=id, **data[SOURCE_KEY])
+

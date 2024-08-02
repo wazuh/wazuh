@@ -43,7 +43,7 @@ class Agent:
 
     id: str
     name: str
-    key: str = None
+    key: str
     groups: str = None
     type: str = None
     version: str = None
