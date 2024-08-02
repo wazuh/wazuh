@@ -49,6 +49,7 @@ public:
         }
         else
         {
+            static_assert(isSameType,"T and U are not the same type");
             for (unsigned int i = 0; i < TNumberOfThreads; ++i)
             {
                 m_threads.push_back(std::thread {
@@ -205,6 +206,12 @@ private:
     static constexpr bool isTSafeQueue = std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>;
 
     /**
+     * @brief Check if the queue value are the same type. This is crucial for the `multiAndUnordered` method.
+     *
+     */
+    static constexpr bool isSameType = std::is_same_v<T, U>;
+
+    /**
      * @brief Dispatch function to handle queue processing based on the number of threads.
      *
      * This function enters a loop that runs while the dispatcher is active. Depending on the number of threads,
@@ -282,6 +289,7 @@ private:
      */
     void multiAndUnordered()
     {
+        static_assert(isSameType,"T and U are not the same type");
         std::queue<U> data; // Declare data outside the try block to ensure scope in catch block
         try
         {
