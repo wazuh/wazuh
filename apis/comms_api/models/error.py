@@ -13,5 +13,5 @@ class ErrorResponse(JSONResponse):
         self.code = code if code is not None else status_code
         super().__init__(content=None, status_code=status_code)
 
-    def render(self, content: Any = None) -> str:
-        return json.dumps({'error': {'message': self.message, 'code': self.code}})
+    def render(self, content: Any = None) -> bytes:
+        return json.dumps({'error': {'message': self.message, 'code': self.code}}).encode('utf-8')
