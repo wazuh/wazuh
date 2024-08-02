@@ -47,7 +47,9 @@ class MarkdownGenerator(IExporter):
                 row.append(', '.join(info.restrictions["allowed"]) if isinstance(
                     info.restrictions["allowed"], list) else str(info.restrictions["allowed"]))
             else:
-                if info.arg_type == "object":
+                if isinstance(info.arg_type, list):
+                    row.append("Any object")
+                elif info.arg_type == "object":
                     row.append("Any object")
                 elif info.generate == "integer":
                     row.append("Integers between `-2^63` and `2^63-1`")
@@ -91,8 +93,6 @@ class MarkdownGenerator(IExporter):
             row.append(output.type_)
             if output.type_ == "object":
                 row.append("Any object")
-            elif output.type_ == "array":
-                row.append("Any array")
             elif output.subset == "integer":
                 row.append("Integers between `-2^63` and `2^63-1`")
             elif output.subset == "string":
@@ -103,6 +103,8 @@ class MarkdownGenerator(IExporter):
                 row.append("Any boolean")
             elif output.subset == "hexadecimal":
                 row.append("Any hexadecimal")
+            elif output.subset == "all":
+                row.append("[number, string, boolean, object, array]")
         rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 

@@ -8,6 +8,7 @@ from .documentation import *
 from .exporter import IExporter
 from .types import *
 import tempfile
+import subprocess
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -60,10 +61,20 @@ def main():
         sys.exit("the output directory must be a temporary one")
     exporter = ExporterFactory.get_exporter(exporter_type)
     if args.input_file_path:
+        command = f'engine-helper-test-validator --input_file_path {args.input_file_path}'
+        try:
+            subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.stderr)
         generate_documentation(parser, exporter, Path(args.input_file_path), output_dir)
     elif args.folder_path:
         for file in Path(args.folder_path).iterdir():
             if file.is_file() and (file.suffix in ['.yml', '.yaml']):
+                command = f'engine-helper-test-validator --folder_path {args.folder_path}'
+                try:
+                    subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE)
+                except subprocess.CalledProcessError as e:
+                    sys.exit(e.stderr)
                 generate_documentation(parser, exporter, file, output_dir)
     else:
         sys.exit("It is necessary to indicate a file or directory that contains a configuration yaml")

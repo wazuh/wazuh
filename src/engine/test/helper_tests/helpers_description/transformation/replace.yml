@@ -1,6 +1,14 @@
 # Name of the helper function
 name: replace
 
+metadata:
+  description: |
+    The operation replaces in “field”, all occurrences of the given string by the new string.
+    In case of errors “field” will not be modified.
+    This helper function is typically used in the map stage
+  keywords:
+    - to define
+
 helper_type: transformation
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,11 +16,11 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  old:
     type: string  # Accept only string
     generate: string
     source: value # includes only values
-  2:
+  new:
     type: string  # Accept only string
     generate: string
     source: value # includes only values
@@ -22,16 +30,16 @@ target_field:
 
 test:
   - arguments:
-      1: hello
-      2: hi
-      target_field: hello world!
+      old: hello
+      new: hi
+    target_field: hello world!
     should_pass: true
     expected: hi world!
     description: The value to replace was found
   - arguments:
-      1: non exist
-      2: hi
-      target_field: hello world!
+      old: non exist
+      new: hi
+    target_field: hello world!
     should_pass: true
     expected: hello world!
     description: The value to replace was not found

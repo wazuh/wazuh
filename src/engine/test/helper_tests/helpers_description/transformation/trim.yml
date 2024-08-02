@@ -1,6 +1,14 @@
 # Name of the helper function
 name: trim
 
+metadata:
+  description: |
+    The operation removes characters (0 or more) from the start, end or start and end of the field.
+    The result of the trim (trim) operation is mapped to “field”. In case of errors “field” will not be modified.
+    This helper function is typically used in the map stage
+  keywords:
+    - to define
+
 helper_type: transformation
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +16,7 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  trim_place:
     type: string  # Accept only string
     source: value # includes only values
     restrictions:
@@ -16,38 +24,35 @@ arguments:
         - begin
         - end
         - both
-  2:
+  character:
     type: string  # Accept only string
     source: value # includes only values
-    restrictions:
-      allowed:
-        - '-'
 
 skipped:
-  - allowed # sometimes a character comes and is valid
+  - success_cases # string generation is random
 
 target_field:
   type: string
 
 test:
   - arguments:
-      1: end
-      2: '-'
-      target_field: -- Hi wazuh! --
+      trim_place: end
+      character: '-'
+    target_field: -- Hi wazuh! --
     should_pass: true
     expected: "-- Hi wazuh! "
     description: Success trim
   - arguments:
-      1: begin
-      2: '-'
-      target_field: -- Hi wazuh! --
+      trim_place: begin
+      character: '-'
+    target_field: -- Hi wazuh! --
     should_pass: true
     expected: " Hi wazuh! --"
     description: Success trim
   - arguments:
-      1: both
-      2: '-'
-      target_field: -- Hi wazuh! --
+      trim_place: both
+      character: '-'
+    target_field: -- Hi wazuh! --
     should_pass: true
     expected: " Hi wazuh! "
     description: Success trim
