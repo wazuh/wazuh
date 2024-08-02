@@ -8,7 +8,7 @@ metadata:
     Evaluates the content of the input field to extract text that is enclosed in the specified `quoted` character
     considering any `escape` characters used to include the quotation character within the quoted text.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

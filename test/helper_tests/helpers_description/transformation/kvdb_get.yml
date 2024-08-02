@@ -6,7 +6,7 @@ metadata:
     Gets the value of a given key in the DB named db-name and if its successful it stores it in the given field.
     Key value type can be string, number, object, array or null. This helper function is typically used in the map stage
   keywords:
-    - to define
+    - kvdb
 
 helper_type: transformation
 

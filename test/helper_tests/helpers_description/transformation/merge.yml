@@ -11,7 +11,7 @@ metadata:
     and will be not duplicated.
     This helper function is typically used in the map stage
   keywords:
-    - to define
+    - undefined
 
 helper_type: transformation
 

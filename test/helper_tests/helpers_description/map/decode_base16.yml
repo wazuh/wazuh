@@ -6,7 +6,7 @@ metadata:
     The operation transforms a string of hexa digits into an ASCII string. The result of the operation is mapped to “field”.
     If the “field” already exists, then it will be replaced. In case of errors “field” will not be modified.
   keywords:
-    - to define
+    - undefined
 
 helper_type: map
 

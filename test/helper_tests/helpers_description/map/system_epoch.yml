@@ -6,7 +6,7 @@ metadata:
     Get unix epoch time in seconds from system clock. The result operation is mapped to “field”.
     If the “field” already exists, then it will be replaced.
   keywords:
-    - to define
+    - time
 
 helper_type: map
 

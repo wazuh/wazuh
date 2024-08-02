@@ -10,7 +10,7 @@ metadata:
     it will be added to the target field.
 
   keywords:
-    - to define
+    - array
 
 helper_type: transformation
 

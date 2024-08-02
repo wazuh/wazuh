@@ -6,7 +6,7 @@ metadata:
     Checks if an input is the “true” or “false” string and store a boolean value in field according to the string value.
     The operation es key insensitive Fail if other value is store in $inField or not exist.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

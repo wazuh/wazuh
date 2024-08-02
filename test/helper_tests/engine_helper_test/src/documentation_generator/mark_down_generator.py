@@ -1,10 +1,12 @@
 from .types import Documentation
 from .exporter import *
+from collections import defaultdict
 
 
 class MarkdownGenerator(IExporter):
     def __init__(self):
         self.content = []
+        self.all_contents = defaultdict(lambda: defaultdict(list))  # Structure to organize by type and keyword
         self.helper_name = ""
 
     def create_signature(self, doc: Documentation):
@@ -159,7 +161,33 @@ class MarkdownGenerator(IExporter):
         #         self.content.append(f"  - **Expected**: `{example.expected}`")
         #     self.content.append(f"  - **Description**: {example.description}\n")
 
+        # Organiza el contenido por tipo de helper y luego por keyword
+        for keyword in doc.keywords:
+            self.all_contents[doc.helper_type][keyword].append('\n'.join(self.content))
+
     def save(self, output_dir: Path):
         output_dir.mkdir(parents=True, exist_ok=True)
-        with open((output_dir / self.helper_name).as_posix() + ".md", 'w') as file:
-            file.write('\n'.join(self.content))
+
+        home_file = output_dir / "index.md"
+        with open(home_file, 'w') as file:
+            file.write("# Helper Types\n")
+            for helper_type in sorted(self.all_contents.keys()):
+                file.write(f"- [{helper_type}](./{helper_type}/index.md)\n")
+
+        for helper_type, keywords in self.all_contents.items():
+            type_dir = output_dir / helper_type
+            type_dir.mkdir(parents=True, exist_ok=True)
+
+            type_index_file = type_dir / "index.md"
+            with open(type_index_file, 'w') as file:
+                file.write(f"# {helper_type}\n")
+                file.write(f"## Keywords\n")
+                for keyword in sorted(keywords.keys()):
+                    file.write(f"- [{keyword}](./{keyword}.md)\n")
+
+            for keyword, docs in keywords.items():
+                keyword_file = type_dir / f"{keyword}.md"
+                with open(keyword_file, 'w') as file:
+                    for doc in docs:
+                        file.write(doc)
+                        file.write("\n---\n")

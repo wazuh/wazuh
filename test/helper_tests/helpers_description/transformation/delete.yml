@@ -7,7 +7,7 @@ metadata:
     This helper function is typically used in the map stage.
 
   keywords:
-    - to define
+    - delete
 
 helper_type: transformation
 

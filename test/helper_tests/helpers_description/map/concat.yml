@@ -6,7 +6,7 @@ metadata:
     The function receives two or more operands and concatenates them in the order they are provided.
     The result of the concatenation is stored in the field `field`.
   keywords:
-    - different types
+    - different_types
 
 
 helper_type: map

@@ -7,7 +7,8 @@ metadata:
     If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
     This helper function is typically used in the check stage
   keywords:
-    - to define
+    - integer
+    - comparison
 
 helper_type: filter
 

@@ -10,7 +10,7 @@ metadata:
     and the correct format for IPv6 (eight groups of four hexadecimal digits separated by colons).
     If the string is a valid IP address, it stores the same string in `field` without modification.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

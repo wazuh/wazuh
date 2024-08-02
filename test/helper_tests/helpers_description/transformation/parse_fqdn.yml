@@ -8,7 +8,7 @@ metadata:
     Checks whether an input contains a valid domain name format and, if so, it evaluates to true and is then
     stored on the field, otherwise it evaluates to false.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

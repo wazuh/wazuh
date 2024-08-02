@@ -6,7 +6,7 @@ metadata:
     Checks if a given key exist in the DB named db-name. This helper function is typically used in the check stage.
 
   keywords:
-    - to define
+    - kvdb
 
 helper_type: filter
 

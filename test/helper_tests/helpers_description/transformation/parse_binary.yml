@@ -7,7 +7,7 @@ metadata:
     It checks the string for compliance with the base64 encoding standards, including character set and padding.
     If the string is a valid base64 encoded string, it stores the same string in `field` without modification.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

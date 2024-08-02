@@ -25,7 +25,7 @@ metadata:
         If the resulting array is empty, the function fails, and it neither creates nor overwrites the value of field.
 
   keywords:
-    - to define
+    - kvdb
 
 helper_type: transformation
 

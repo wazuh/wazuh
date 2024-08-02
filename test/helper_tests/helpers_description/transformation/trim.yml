@@ -7,7 +7,7 @@ metadata:
     The result of the trim (trim) operation is mapped to “field”. In case of errors “field” will not be modified.
     This helper function is typically used in the map stage
   keywords:
-    - to define
+    - string
 
 helper_type: transformation
 

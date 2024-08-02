@@ -11,7 +11,7 @@ metadata:
     RE2 syntax: https://github.com/google/re2/wiki/Syntax
     This helper function is used in the map stage
   keywords:
-    - to define
+    - undefined
 
 helper_type: map
 

@@ -9,7 +9,7 @@ metadata:
     value type hold by field. This helper function is typically used in the map stage.
 
   keywords:
-    - to define
+    - kvdb
 
 helper_type: transformation
 

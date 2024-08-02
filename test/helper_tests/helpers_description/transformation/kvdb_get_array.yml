@@ -7,7 +7,7 @@ metadata:
     Best effort, if a key is not present in the DB, skip it.
 
   keywords:
-    - to define
+    - kvdb
 
 helper_type: transformation
 

@@ -9,7 +9,7 @@ metadata:
     If the validation is successful, the input is transformed into a JSON object
     which is then assigned to the specified field. If the input is not valid JSON, the parser does not modify the output.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 

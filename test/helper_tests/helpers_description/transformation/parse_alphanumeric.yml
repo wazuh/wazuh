@@ -6,7 +6,7 @@ metadata:
     Checks if an input matches an alphanumeric string, and if so, it evaluates to true and the extracted data
     contained in a JSON object is stored in the output field; otherwise, it evaluates to false.
   keywords:
-    - to define
+    - parser
 
 helper_type: transformation
 
