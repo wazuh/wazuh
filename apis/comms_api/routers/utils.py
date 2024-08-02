@@ -4,7 +4,6 @@ from functools import wraps
 
 from fastapi import status
 
-from comms_api.models.error import ErrorResponse
 from comms_api.routers.exceptions import HTTPError
 
 logger = logging.getLogger('wazuh-comms-api')

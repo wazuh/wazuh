@@ -10,14 +10,15 @@ from typing import Any, Callable, Dict
 
 from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from gunicorn.app.base import BaseApplication
 
 from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
 from api.constants import COMMS_API_LOG_PATH
 from api.middlewares import SecureHeadersMiddleware
-from comms_api.models.error import HTTPError
-from comms_api.routers.router import router, http_error_handler
+from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler
+from comms_api.routers.router import router
 from comms_api.middlewares.logging import LoggingMiddleware
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
     app.add_middleware(BrotliMiddleware)
     app.add_middleware(LoggingMiddleware)
     app.add_exception_handler(HTTPError, http_error_handler)
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.include_router(router)
     return app
 
@@ -52,7 +54,7 @@ def setup_logging(foreground_mode: bool) -> dict:
     log_config_dict = set_logging(log_filepath=COMMS_API_LOG_PATH,
                                   log_level='INFO',
                                   foreground_mode=foreground_mode)
-    
+
     for handler in log_config_dict['handlers'].values():
         if 'filename' in handler:
             utils.assign_wazuh_ownership(handler['filename'])
