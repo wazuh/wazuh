@@ -26,7 +26,7 @@ on:
           required: false
       debug:
         description: |
-          Build the binaries with debug symbols.
+          Build the binaries as debug (without optimizations).
           By default: false
         type: boolean
         required: false

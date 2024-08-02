@@ -23,4 +23,5 @@ Section: debug
 Priority: optional
 Architecture: any
 Depends: wazuh-manager
-Description: Debug symbols for wazuh-manager, this package contains debug symbols for debugging wazuh-manager.
+Description: Debug symbols for wazuh-manager.
+  This package contains debug symbols for debugging wazuh-manager.
