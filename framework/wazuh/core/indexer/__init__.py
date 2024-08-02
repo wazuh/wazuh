@@ -10,6 +10,7 @@ from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 
 logger = getLogger('wazuh')
+_indexer_client = None
 
 HOST_KEY = 'host'
 PORT_KEY = 'port'
