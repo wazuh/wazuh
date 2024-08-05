@@ -41,7 +41,10 @@ namespace Utils
                     if (patternPos + 1 < pattern.size() && pattern.at(patternPos + 1) == entryName.at(i))
                     {
                         ++patternPos;
-                        --i;
+                        if (i > 0)
+                        {
+                            --i;
+                        }
                     }
                     // '*' matches one or more characters
                     else if (patternPos + 1 == pattern.size())
