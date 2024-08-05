@@ -1605,7 +1605,7 @@ components:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: numbers_or_all
+      format: uuid
 
     NodeID:
       type: string
@@ -7311,20 +7311,6 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list_all'
-        - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusDeleteAgentParam'
-        - $ref: '#/components/parameters/older_than'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/os.platform'
-        - $ref: '#/components/parameters/os.version'
-        - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
-        - $ref: '#/components/parameters/version'
-        - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/ip'
-        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Delete agents"

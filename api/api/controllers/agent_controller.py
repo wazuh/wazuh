@@ -25,10 +25,9 @@ from wazuh.core.results import AffectedItemsWazuhResult
 logger = logging.getLogger('wazuh-api')
 
 
-async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
-                        purge: bool = False, status: str = None, q: str = None, older_than: str = None,
-                        manager: str = None, version: str = None, group: str = None, node_name: str = None,
-                        name: str = None, ip: str = None) -> ConnexionResponse:
+async def delete_agents(
+        pretty: bool = False, wait_for_complete: bool = False, agents_list: list = None
+) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
     Parameters
@@ -39,64 +38,22 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
         Disable timeout response.
     agents_list : str
         List of agents IDs. If the 'all' keyword is indicated, all the agents are deleted.
-    purge : bool
-        Delete an agent from the key store.
-    status : str
-        Filter by agent status. Use commas to filter by multiple statuses.
-    q : str
-        Query to filter agents by.
-    older_than : str
-        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    manager : str
-        Filter by the name of the manager to which agents are connected.
-    version : str
-        Filter by agents version.
-    group : str
-        Filter by group of agents.
-    node_name : str
-        Filter by node name.
-    name : str
-        Filter by agent name.
-    ip : str
-        Filter by agent IP.
-
     Returns
     -------
     ConnexionResponse
         Agents which have been deleted.
     """
-    if 'all' in agents_list:
-        agents_list = None
-    f_kwargs = {'agent_list': agents_list,
-                'purge': purge,
-                'filters': {
-                    'status': status,
-                    'older_than': older_than,
-                    'manager': manager,
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query_params.get('registerIP', None)
-                },
-                'q': q
-                }
 
-    # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
-    for field in nested:
-        f_kwargs['filters'][field] = request.query_params.get(field, None)
+    dapi = DistributedAPI(
+        f=agent.delete_agents,
+        f_kwargs=remove_nones_to_dict({'agent_list': agents_list}),
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request.context['token_info']['rbac_policies']
+    )
 
-    dapi = DistributedAPI(f=agent.delete_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)

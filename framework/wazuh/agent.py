@@ -440,82 +440,32 @@ def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
-def delete_agents(agent_list: list = None, purge: bool = False, filters: dict = None,
-                  q: str = None) -> AffectedItemsWazuhResult:
+async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
     """Delete a list of agents.
 
     Parameters
     ----------
     agent_list : list
         List of agents ID's to be deleted.
-    purge : bool
-        Delete definitely from key store.
-    filters : dict
-        Define required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
-    q : str
-        Define query to filter in DB.
-
-    Raises
-    ------
-    WazuhError(1726)
-        Authd is not running.
 
     Returns
     -------
     AffectedItemsWazuhResult
         Result with affected agents.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected agents were deleted',
-                                      some_msg='Some agents were not deleted',
-                                      none_msg='No agents were deleted'
-                                      )
-    if agent_list:
-        system_agents = get_agents_info()
-        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
-                                        filters=filters)
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected agents were deleted',
+        some_msg='Some agents were not deleted',
+        none_msg='No agents were deleted'
+    )
 
-        with WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters) as db_query:
-            data = db_query.run()
+    indexer = await get_indexer_client()
 
-        can_purge_agents = set(map(operator.itemgetter('id'), data['items']))
-        agent_list = set(agent_list)
+    data = await indexer.agents.delete(agent_list)
 
-        try:
-            agent_list.remove('000')
-            result.add_failed_item('000', WazuhError(1703))
-        except KeyError:
-            pass
+    result.affected_items = data
 
-        # Add not existing agents to failed_items
-        not_found_agents = agent_list - system_agents
-        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhResourceNotFound(1701)), not_found_agents))
-
-        # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - can_purge_agents
-        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhError(
-            1731,
-            extra_message="some of the requirements are not met -> {}".format(
-                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
-                (f', q: {q}' if q else '')
-            )
-        )), non_eligible_agents))
-
-        for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
-            try:
-                my_agent = Agent(agent_id)
-                my_agent.remove(purge=purge)
-                result.affected_items.append(agent_id)
-            except WazuhError as e:
-                if e.code == 1726:
-                    raise e
-
-                result.add_failed_item(id_=agent_id, error=e)
-
-        # Clear temporary cache
-        clear_temporary_caches()
-
-        result.total_affected_items = len(result.affected_items)
-        result.affected_items.sort(key=int)
+    result.total_affected_items = len(result.affected_items)
 
     return result
 
