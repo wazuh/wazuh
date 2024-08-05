@@ -129,3 +129,9 @@ def delete_child_pids(name: str, ppid: int, logger: logging.Logger):
                 except OSError:
                     pass
                 filenames.remove(filename)
+
+def exit_handler(signum, frame, process_name: str, logger: logging.Logger) -> None:
+    """Try to kill API child processes and remove their PID files."""
+    pid = os.getpid()
+    delete_child_pids(process_name, pid, logger)
+    delete_pid(process_name, pid)

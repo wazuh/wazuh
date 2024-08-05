@@ -441,6 +441,12 @@ class WazuhException(Exception):
         2200: {'message': 'Could not connect to the indexer'},
         2201: {'message': 'Indexer credentials not provided'},
 
+        # Agent comms API
+        2700: {'message': 'Private key does not match with the certificate'},
+        2701: {'message': 'PEM phrase is not correct'},
+        2702: {'message': 'Ensure the certificates have the correct permissions'},
+        2703: {'message': 'Wazuh comms API SSL error. Please, ensure the configuration is correct'},
+
         # Cluster
         3000: 'Cluster',
         3001: 'Error creating zip file',
@@ -808,6 +814,12 @@ class WazuhHAPHelperError(WazuhClusterError):
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
 
+class WazuhCommsAPIError(WazuhInternalError):
+    """
+    This type of exception is raised inside the Agent comms API.
+    """
+    _default_type = "about:blank"
+    _default_title = "Agent comms API Error"
 
 class WazuhIndexerError(WazuhInternalError):
     """
