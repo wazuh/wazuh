@@ -97,14 +97,10 @@ async def lifespan_handler(_: ConnexionMiddleware):
     # Log the initial server startup message.
     logger.info(f'Listening on {configuration.api_conf["host"]}:{configuration.api_conf["port"]}.')
 
-    indexer_client = await get_indexer_client()
-
-    yield {'indexer_client': indexer_client}
+    yield
 
     for task in tasks:
         task.cancel()
         await task
-
-    await indexer_client.close()
 
     logger.info('Shutdown wazuh-apid server.')

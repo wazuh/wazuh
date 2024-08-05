@@ -459,9 +459,8 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
         none_msg='No agents were deleted'
     )
 
-    indexer = await get_indexer_client()
-
-    data = await indexer.agents.delete(agent_list)
+    async with get_indexer_client() as indexer:
+        data = await indexer.agents.delete(agent_list)
 
     result.affected_items = data
 
@@ -497,9 +496,8 @@ async def add_agent(id: uuid7, name: str, key: str) -> WazuhResult:
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
-    indexer = await get_indexer_client()
-
-    new_agent = await indexer.agents.create(id=id, name=name, key=key)
+    async with get_indexer_client() as indexer:
+        new_agent = await indexer.agents.create(id=id, name=name, key=key)
 
     return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
 
