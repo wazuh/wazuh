@@ -244,10 +244,10 @@ function help() {
 
 function testdep() {
 
-    if command -v packagesbuild ; then
+    if [[ $(munkipkg --version 2>/dev/null) =~ [0-9] ]]; then
         return 0
     else
-        echo "Error: packagesbuild not found. Download and install dependencies."
+        echo "Error: munkipkg not found. Download and install dependencies."
         echo "Use $0 -i for install it."
         exit 1
     fi
