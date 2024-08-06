@@ -481,7 +481,14 @@ public:
                 // First read the header.
                 if (SocketStatus::HEADER == m_status)
                 {
-                    ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
+                    if (m_readSize > 0)
+                    {
+                        ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
+                    }
+                    else
+                    {
+                        throw std::runtime_error {"Invalid read size"};
+                    }
 
                     if (ret == SOCKET_ERROR)
                     {
@@ -530,7 +537,14 @@ public:
 
                 if (SocketStatus::BODY == m_status)
                 {
-                    ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
+                    if (m_readSize > 0)
+                    {
+                        ret = T::recv(m_sock, (char*)(m_recvDataBuffer.data() + m_readPosition), m_readSize, 0);
+                    }
+                    else
+                    {
+                        throw std::runtime_error {"Invalid read size"};
+                    }
 
                     if (ret == SOCKET_ERROR)
                     {
