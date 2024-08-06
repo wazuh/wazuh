@@ -690,8 +690,8 @@ public:
         }
         else
         {
-            // Send the data.
-            while (bufferSize != amountSent)
+            // Send the data. The loop should only be executed when there is pending data to be sent.
+            while (bufferSize > amountSent)
             {
                 const auto ret =
                     T::send(m_sock, m_sendDataBuffer.data() + amountSent, bufferSize - amountSent, MSG_NOSIGNAL);
