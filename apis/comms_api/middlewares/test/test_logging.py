@@ -8,6 +8,7 @@ from starlette.applications import Starlette
 
 from comms_api.middlewares.logging import LoggingMiddleware, log_request
 
+
 @freeze_time(datetime(1970, 1, 1, 0, 0, 0))
 async def test_log_request():
     """Test log request calls."""
@@ -45,6 +46,7 @@ async def test_log_request():
                     f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status_code}'
         log_info_mock.info.has_calls([call(log_info, {'log_type': 'log'}),
                                       call(json_info, {'log_type': 'json'})])
+
 
 @pytest.mark.asyncio
 @freeze_time(datetime(1970, 1, 1, 0, 0, 0))

@@ -19,6 +19,7 @@ timeouts = {
     '/files': 15
 }
 
+
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Middleware to set endpoint-specific timeouts."""
 

@@ -3,6 +3,7 @@ from typing import Any
 
 from fastapi.responses import JSONResponse
 
+
 class ErrorResponse(JSONResponse):
     """Error response model."""
 

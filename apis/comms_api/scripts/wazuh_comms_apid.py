@@ -24,6 +24,7 @@ from wazuh.core.exception import WazuhCommsAPIError
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 
+
 def setup_logging(foreground_mode: bool) -> dict:
     """Sets up the logging module and returns the configuration used.
 
@@ -49,6 +50,7 @@ def setup_logging(foreground_mode: bool) -> dict:
     logging.config.dictConfig(log_config_dict)
 
     return log_config_dict
+
 
 def configure_ssl(keyfile: str, certfile: str) -> None:
     """Generate SSL key file and self-siged certificate if they do not exist.
@@ -77,6 +79,7 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
         else:
             raise WazuhCommsAPIError(2703, extra_message=str(exc))
 
+
 def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
     """Returns the default SSL context with a custom minimum version.
 
@@ -88,6 +91,7 @@ def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
     context = default_ssl_context_factory()
     context.minimum_version = ssl.TLSVersion.MINIMUM_SUPPORTED
     return context
+
 
 def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict) -> dict:
     """Get the gunicorn app configuration options.
@@ -130,6 +134,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'user': os.getuid()
     }
 
+
 def get_script_arguments() -> Namespace:
     """Get script arguments.
 
@@ -146,6 +151,7 @@ def get_script_arguments() -> Namespace:
     parser.add_argument('-t', action='store_true', dest='test_config', help='Test configuration')
 
     return parser.parse_args()
+
 
 class StandaloneApplication(BaseApplication):
     def __init__(self, app: Callable, options: Dict[str, Any] = None):
@@ -164,6 +170,7 @@ class StandaloneApplication(BaseApplication):
 
     def load(self):
         return self.app
+
 
 if __name__ == '__main__':
     args = get_script_arguments()

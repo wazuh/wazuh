@@ -7,6 +7,7 @@ from starlette.status import HTTP_408_REQUEST_TIMEOUT
 
 from comms_api.middlewares.timeout import DEFAULT_TIMEOUT, TimeoutMiddleware
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("endpoint,expected_timeout", [
     ('/authentication', 20), 
@@ -28,6 +29,7 @@ async def test_timeout_middleware(endpoint, expected_timeout):
     with patch('asyncio.wait_for') as wait_for_mock:
         _ = await middleware.dispatch(request=mock_req, call_next=call_next_mock)
         wait_for_mock.assert_called_once_with(call_next_mock(mock_req), timeout=expected_timeout)
+
 
 @pytest.mark.asyncio
 async def test_timeout_middleware_ko():
