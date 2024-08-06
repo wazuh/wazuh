@@ -676,15 +676,19 @@ public:
         }
         else
         {
-            // Send the data.
-            while (bufferSize != amountSent)
+            // Send the data. The loop should only be executed when there is pending data to be sent.
+            while (bufferSize > amountSent)
             {
                 const auto ret =
                     T::send(m_sock, m_sendDataBuffer.data() + amountSent, bufferSize - amountSent, MSG_NOSIGNAL);
 
                 if (ret <= 0)
                 {
-                    m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, bufferSize - amountSent);
+                    // Ensure that amountSent is not greater than bufferSize before inserting into the queue.
+                    if (static_cast<uint32_t>(amountSent) <= bufferSize)
+                    {
+                        m_unsentPacketList.emplace(m_sendDataBuffer.data() + amountSent, bufferSize - amountSent);
+                    }
                     throw std::runtime_error {"Error sending data to socket: " + std::string(std::strerror(errno))};
                 }
                 else
