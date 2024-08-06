@@ -22,7 +22,7 @@ target_link_libraries(cmds
     router::router
     store
     api
-    uv_a
+    libuv::uv_a
     kvdb
     conf::cliconf
     conf::iconf
@@ -39,10 +39,8 @@ target_link_libraries(cmds
 target_include_directories(cmds
     PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${uvw_SOURCE_DIR}/src/ # TODO For the each client shared the client
     PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}/src
-    ${CLI11_SOURCE_DIR}/include
 )
 
 # Tests
@@ -59,13 +57,13 @@ target_include_directories(cmds_utest
     PRIVATE
     ${TEST_SRC_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/src
-    ${CLI11_SOURCE_DIR}/include
 )
 target_link_libraries(cmds_utest
     PRIVATE
-    gtest_main
+    GTest::gtest_main
     cmds
     base
+    CLI11::CLI11
 )
 gtest_discover_tests(cmds_utest)
 

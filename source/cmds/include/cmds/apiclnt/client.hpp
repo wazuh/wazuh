@@ -7,11 +7,11 @@
 #include <variant>
 #include <vector>
 
-#include <uvw/pipe.hpp>
-#include <uvw/timer.hpp>
+#include <uvw/pipe.h>
+#include <uvw/timer.h>
 
-#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <base/error.hpp>
+#include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 
 #include <cmds/apiExcept.hpp>
 
@@ -117,14 +117,10 @@ public:
             {
                 error = "Connection closed by server";
                 gracefullEnd(handle);
-
             });
 
-        clientHandle->once<uvw::CloseEvent>(
-            [gracefullEnd](const uvw::CloseEvent&, uvw::PipeHandle& handle)
-            {
-                gracefullEnd(handle);
-            });
+        clientHandle->once<uvw::CloseEvent>([gracefullEnd](const uvw::CloseEvent&, uvw::PipeHandle& handle)
+                                            { gracefullEnd(handle); });
 
         timer->on<uvw::TimerEvent>(
             [wClientHandle, gracefullEnd, &error](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
@@ -144,11 +140,7 @@ public:
                 error = errorUvw.what();
             });
 
-        timer->on<uvw::CloseEvent>(
-            [](const uvw::CloseEvent&, uvw::TimerHandle& timer)
-            {
-            });
-
+        timer->on<uvw::CloseEvent>([](const uvw::CloseEvent&, uvw::TimerHandle& timer) {});
 
         // Stablish connection
         clientHandle->connect(m_socketPath);

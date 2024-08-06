@@ -8,21 +8,12 @@ target_include_directories(geo_igeo INTERFACE ${IFACE_DIR})
 target_link_libraries(geo_igeo INTERFACE base)
 add_library(geo::igeo ALIAS geo_igeo)
 
-CPMAddPackage(
-    NAME libmaxminddb
-    GITHUB_REPOSITORY maxmind/libmaxminddb
-    GIT_TAG 1.9.1
-    OPTIONS
-    "BUILD_SHARED_LIBS OFF"
-    "BUILD_TESTING OFF"
-)
 set(SRCS
     ${SRC_DIR}/manager.cpp
     ${SRC_DIR}/downloader.cpp
     ${SRC_DIR}/locator.cpp
 )
 set(PRIVATE_LINKS
-    maxminddb::maxminddb
     CURL::libcurl
 )
 set(PUBLIC_LINKS
@@ -46,6 +37,9 @@ target_link_libraries(geo
 
     PRIVATE
     ${PRIVATE_LINKS}
+
+    INTERFACE
+    maxminddb::maxminddb
 )
 
 # Tests
@@ -75,6 +69,7 @@ target_include_directories(geo_utest
 )
 target_link_libraries(geo_utest
     PRIVATE
+    geo
     geo::mocks # Ensure it compiles
     ${PRIVATE_LINKS}
     ${PUBLIC_LINKS}

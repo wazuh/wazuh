@@ -11,7 +11,7 @@
 #include <string>
 #include <type_traits>
 
-#include <blockingconcurrentqueue.h>
+#include <concurrentqueue/blockingconcurrentqueue.h>
 #include <queue/iqueue.hpp>
 
 #include <base/logging.hpp>

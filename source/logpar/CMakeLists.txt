@@ -10,7 +10,7 @@ PUBLIC
 PRIVATE
   include/logpar
 )
-target_link_libraries(logpar PUBLIC hlp fmt base schemf::ischema parsec)
+target_link_libraries(logpar PUBLIC hlp base schemf::ischema parsec)
 
 # Tests
 if(ENGINE_BUILD_TEST)
@@ -20,6 +20,6 @@ set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 add_executable(logpar_utest
     ${UNIT_SRC_DIR}/logpar_test.cpp
 )
-target_link_libraries(logpar_utest PRIVATE logpar gtest_main schemf::mocks)
+target_link_libraries(logpar_utest PRIVATE logpar GTest::gtest_main schemf::mocks)
 
 endif(ENGINE_BUILD_TEST)

@@ -1,14 +1,4 @@
 # Add google benchmark as CPM dependency
-include(../cmake/CPM.cmake)
-CPMAddPackage(
-  NAME benchmark
-  GITHUB_REPOSITORY google/benchmark
-  VERSION 1.6.1
-  OPTIONS
-   "BENCHMARK_ENABLE_TESTING Off"
-  EXCLUDE_FROM_ALL YES
-)
-
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release"
         AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message(WARNING

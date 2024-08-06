@@ -1,37 +1,4 @@
 ####################################################################################################
-# logging
-####################################################################################################
-CPMAddPackage(
-  NAME fmt
-  GITHUB_REPOSITORY fmtlib/fmt
-  GIT_TAG "8.1.1"
-  OPTIONS "FMT_HEADER_ONLY ON"
-)
-
-CPMAddPackage(
-  NAME spdlog
-  GITHUB_REPOSITORY gabime/spdlog
-  GIT_TAG "v1.11.0"
-  OPTIONS "SPDLOG_FMT_EXTERNAL_HO ON"
-)
-
-add_dependencies(spdlog fmt)
-
-####################################################################################################
-# json
-####################################################################################################
-CPMAddPackage(
-    NAME rapidjson
-    GITHUB_REPOSITORY Tencent/rapidjson
-    GIT_TAG 8261c1ddf43f10de00fd8c9a67811d1486b2c784 # Latest master commit from 21/03/2022
-    OPTIONS
-    "RAPIDJSON_BUILD_DOC OFF"
-    "RAPIDJSON_BUILD_EXAMPLES OFF"
-    "RAPIDJSON_BUILD_TESTS OFF"
-    DOWNLOAD_ONLY YES
-    )
-
-####################################################################################################
 # BASE
 ####################################################################################################
 # Defs
@@ -50,8 +17,6 @@ add_library(base STATIC
 target_include_directories(base
     PUBLIC
     ${INC_DIR}
-    ${spdlog_SOURCE_DIR}/include
-    ${rapidjson_SOURCE_DIR}/include
 
     PRIVATE
     ${INC_DIR}/base
@@ -59,10 +24,8 @@ target_include_directories(base
 )
 target_link_libraries(base
     PUBLIC
-    fmt
-
-    PRIVATE
-    spdlog
+    fmt::fmt-header-only
+    spdlog::spdlog
 )
 
 # Tests
@@ -104,7 +67,7 @@ target_link_libraries(base_utest
 
     PRIVATE
     base
-    gtest_main
+    GTest::gtest_main
 )
 gtest_discover_tests(base_utest)
 
@@ -120,7 +83,7 @@ target_include_directories(base_logger_utest
 target_link_libraries(base_logger_utest
     PRIVATE
     base
-    gtest_main
+    GTest::gtest_main
 )
 gtest_discover_tests(base_logger_utest)
 

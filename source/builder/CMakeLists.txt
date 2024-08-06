@@ -15,16 +15,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_compile_definitions(RE2_ON_VALGRIND)
 endif()
 
-CPMAddPackage(
-  NAME RE2
-  GITHUB_REPOSITORY google/re2
-  GIT_TAG 2022-02-01
-  VERSION release 2022-02-01
-  EXCLUDE_FROM_ALL YES
-  OPTIONS
-    "RE2_BUILD_TESTING OFF"
-)
-
 ## Lib
 SET(BUILDER_PUB_INCS
     ${INC_DIR}
@@ -86,7 +76,7 @@ target_link_libraries(builder
     logpar
 
     PRIVATE
-    re2
+    re2::re2
     logicexpr
     date::date
 )
@@ -102,7 +92,7 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 ## Mocks
 add_library(builder_mocks INTERFACE)
 target_include_directories(builder_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(builder_mocks INTERFACE gmock builder::ibuilder)
+target_link_libraries(builder_mocks INTERFACE GTest::gmock builder::ibuilder)
 add_library(builder::mocks ALIAS builder_mocks)
 
 ## Component test
@@ -110,7 +100,7 @@ add_executable(builder_ctest
     ${COMPONENT_SRC_DIR}/builder_test.cpp
     ${COMPONENT_SRC_DIR}/validator_test.cpp
 )
-target_link_libraries(builder_ctest PRIVATE builder gtest_main schemf::mocks store::mocks defs::mocks sockiface::mocks base::test)
+target_link_libraries(builder_ctest PRIVATE builder GTest::gtest_main schemf::mocks store::mocks defs::mocks sockiface::mocks base::test)
 gtest_discover_tests(builder_ctest)
 
 ## Unit tests

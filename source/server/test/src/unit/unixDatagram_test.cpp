@@ -225,7 +225,9 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
                 LOG_INFO("Unblock the worker id: {}", idstr);
             }
             processedMessages++;
-            LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+            LOG_INFO("Processing message [{}]: {}",
+                     static_cast<std::size_t>(processedMessages),
+                     data.substr(0, 100).c_str());
         },
         std::make_shared<FakeMetricScope>(),
         std::make_shared<FakeMetricScope>(),
@@ -266,7 +268,9 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
             for (std::size_t i = 0; i < numMessagesToSend; ++i)
             {
                 std::string message = "Message " + std::to_string(i);
-                LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
+                LOG_INFO("Sending message [{}]: {}",
+                         static_cast<std::size_t>(sendedMessages),
+                         message.substr(0, 100).c_str());
                 sendUnixDatagram(clientFD, message);
                 sendedMessages++;
             }
@@ -370,7 +374,9 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
                 LOG_INFO("Unblock the worker id: {}", idstr);
             }
             processedMessages++;
-            LOG_INFO("Processing message [{}]: {}", processedMessages, data.substr(0, 100).c_str());
+            LOG_INFO("Processing message [{}]: {}",
+                     static_cast<std::size_t>(processedMessages),
+                     data.substr(0, 100).c_str());
         },
         std::make_shared<FakeMetricScope>(),
         std::make_shared<FakeMetricScope>(),
@@ -403,7 +409,7 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     for (std::size_t i = 0; i < taskQueueSize; ++i)
     {
         std::string message = "Message " + std::to_string(i);
-        LOG_INFO("Sending message [{}]: {}", sendedMessages, message.substr(0, 100).c_str());
+        LOG_INFO("Sending message [{}]: {}", static_cast<std::size_t>(sendedMessages), message.substr(0, 100).c_str());
         sendUnixDatagram(clientFD, message);
         sendedMessages++;
     }

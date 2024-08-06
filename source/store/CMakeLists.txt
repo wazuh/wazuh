@@ -8,7 +8,7 @@ set(DRIVER_DIR ${CMAKE_CURRENT_LIST_DIR}/drivers)
 ## Interface
 add_library(store_istore INTERFACE)
 target_include_directories(store_istore INTERFACE ${IFACE_DIR})
-target_link_libraries(store_istore INTERFACE fmt base)
+target_link_libraries(store_istore INTERFACE base)
 add_library(store::istore ALIAS store_istore)
 
 ## File driver
@@ -43,14 +43,14 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 ## Mocks
 add_library(store_mocks INTERFACE)
 target_include_directories(store_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(store_mocks INTERFACE gmock store::istore)
+target_link_libraries(store_mocks INTERFACE GTest::gmock store::istore)
 add_library(store::mocks ALIAS store_mocks)
 
 ## File driver tests
 add_executable(store_fileDriver_unit_test
     ${UNIT_SRC_DIR}/fileDriver_test.cpp
 )
-target_link_libraries(store_fileDriver_unit_test gtest_main store::fileDriver)
+target_link_libraries(store_fileDriver_unit_test GTest::gtest_main store::fileDriver)
 gtest_discover_tests(store_fileDriver_unit_test)
 
 # TODO FIX THIS CMAKE (Separe unit tests from component tests)
@@ -58,13 +58,13 @@ gtest_discover_tests(store_fileDriver_unit_test)
 add_executable(store_ctest
     ${COMPONENT_SRC_DIR}/store_test.cpp
 )
-target_link_libraries(store_ctest gtest_main store::fileDriver store)
+target_link_libraries(store_ctest GTest::gtest_main store::fileDriver store)
 gtest_discover_tests(store_ctest)
 
 add_executable(store_utest
     ${UNIT_SRC_DIR}/store_test.cpp
 )
-target_link_libraries(store_utest gtest_main store::mocks store)
+target_link_libraries(store_utest GTest::gtest_main store::mocks store)
 gtest_discover_tests(store_utest)
 
 endif(ENGINE_BUILD_TEST)
