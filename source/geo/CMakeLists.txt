@@ -73,7 +73,7 @@ target_link_libraries(geo_utest
     geo::mocks # Ensure it compiles
     ${PRIVATE_LINKS}
     ${PUBLIC_LINKS}
-    gtest_main
+    GTest::gtest_main
     store::mocks
 )
 target_compile_definitions(geo_utest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
@@ -81,7 +81,7 @@ target_compile_definitions(geo_utest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
 add_executable(geo_ctest
     ${COMPONENT_SRC_DIR}/manager_test.cpp
 )
-target_link_libraries(geo_ctest PRIVATE geo gtest_main store::mocks)
+target_link_libraries(geo_ctest PRIVATE geo GTest::gtest_main store::mocks)
 target_compile_definitions(geo_ctest PRIVATE MMDB_PATH_TEST="${MMDB_PATH_TEST}")
 gtest_discover_tests(geo_ctest)
 

@@ -160,7 +160,7 @@ add_executable(builder_utest
 target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
 target_link_libraries(builder_utest
     PUBLIC
-    gtest_main
+    GTest::gtest_main
 
     PRIVATE
     builder
