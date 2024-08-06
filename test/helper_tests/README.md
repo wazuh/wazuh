@@ -483,5 +483,5 @@ engine-helper-test-documentation --folder_path test/helper_tests/helpers_descrip
 ```
 ## Generate documentation for all helper functions
 ```bash
-engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/ -o test/helper_tests/documentation
+engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/ -o docs/helpers/
 ```
