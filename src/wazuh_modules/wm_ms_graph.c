@@ -199,6 +199,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
     time_t now;
     bool fail;
     bool next_page;
+    bool inventory = false;
 
     for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
 
@@ -210,37 +211,46 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
             for (e = 0; ms_graph->auth_config[e]; e++) {
                 it = ms_graph->auth_config[e];
 
-                snprintf(relationship_state_name, OS_SIZE_1024 -1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name,
-                    it->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
-
-                memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
-
-                // Load state for tenant-resource-relationship
-                if (wm_state_io(relationship_state_name, WM_IO_READ, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
-                    memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
-                }
-
-                now = time(0);
-
-                if ((initial_scan && (!relationship_state_struc.next_time || ms_graph->only_future_events)) ||
-                    (!initial_scan && !relationship_state_struc.next_time)) {
-                    relationship_state_struc.next_time = now;
-                    if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
-                        mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
-                    } else if (isDebug()) {
-                        gmtime_r(&now, &tm_aux);
-                        strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
-                        mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
-                            start_time_str, it->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
+                if (!strcmp(ms_graph->resources[resource_num].name, WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT)) {
+                    // If not auditEvents, treat as inventory
+                    if (strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS)) {
+                        inventory = true;
                     }
-                    continue;
                 }
 
-                gmtime_r(&relationship_state_struc.next_time, &tm_aux);
-                strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+                if (!inventory) {
+                    snprintf(relationship_state_name, OS_SIZE_1024 -1, "%s-%s-%s-%s", WM_MS_GRAPH_CONTEXT.name,
+                        it->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num]);
 
-                gmtime_r(&now, &tm_aux);
-                strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+                    memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
+
+                    // Load state for tenant-resource-relationship
+                    if (wm_state_io(relationship_state_name, WM_IO_READ, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
+                        memset(&relationship_state_struc, 0, sizeof(relationship_state_struc));
+                    }
+
+                    now = time(0);
+
+                    if ((initial_scan && (!relationship_state_struc.next_time || ms_graph->only_future_events)) ||
+                        (!initial_scan && !relationship_state_struc.next_time)) {
+                        relationship_state_struc.next_time = now;
+                        if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
+                            mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
+                        } else if (isDebug()) {
+                            gmtime_r(&now, &tm_aux);
+                            strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+                            mtdebug1(WM_MS_GRAPH_LOGTAG, "Bookmark updated to '%s' for tenant '%s' resource '%s' and relationship '%s', waiting '%d' seconds to run first scan.",
+                                start_time_str, it->tenant_id, ms_graph->resources[resource_num].name, ms_graph->resources[resource_num].relationships[relationship_num], ms_graph->scan_config.interval);
+                        }
+                        continue;
+                    }
+
+                    gmtime_r(&relationship_state_struc.next_time, &tm_aux);
+                    strftime(start_time_str, sizeof(start_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+
+                    gmtime_r(&now, &tm_aux);
+                    strftime(end_time_str, sizeof(end_time_str), "%Y-%m-%dT%H:%M:%SZ", &tm_aux);
+                }
 
                 snprintf(auth_header, OS_SIZE_8192 - 1, "Authorization: Bearer %s", it->access_token);
                 os_strdup(auth_header, headers[0]);
@@ -348,7 +358,7 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                     }
                 }
 
-                if (!fail) {
+                if (!inventory && !fail) {
                     relationship_state_struc.next_time = now;
                     if (wm_state_io(relationship_state_name, WM_IO_WRITE, &relationship_state_struc, sizeof(relationship_state_struc)) < 0) {
                         mterror(WM_MS_GRAPH_LOGTAG, "Couldn't save running state.");
