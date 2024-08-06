@@ -17,7 +17,7 @@ add_executable(logicexpr_test
     ${TEST_SRC_DIR}/evaluator_test.cpp
     ${TEST_SRC_DIR}/logicexpr_test.cpp
 )
-target_link_libraries(logicexpr_test logicexpr gtest_main)
+target_link_libraries(logicexpr_test logicexpr GTest::gtest_main)
 gtest_discover_tests(logicexpr_test)
 
 

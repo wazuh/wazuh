@@ -1,26 +1,3 @@
-# Dependencies
-CPMAddPackage(
-  NAME taskflow
-  GITHUB_REPOSITORY taskflow/taskflow
-  GIT_TAG v3.6.0
-  VERSION 3.6.0
-  EXCLUDE_FROM_ALL YES
-  OPTIONS
-    "TF_BUILD_TESTS OFF"
-    "TF_BUILD_EXAMPLES OFF"
-)
-
-CPMAddPackage(
-    NAME RxCpp
-    GITHUB_REPOSITORY ReactiveX/RxCpp
-    GIT_TAG v4.1.1
-    VERSION 4.1.1
-    OPTIONS
-    "RXCPP_DISABLE_TESTS_AND_EXAMPLES"
-    EXCLUDE_FROM_ALL YES
-    DOWNLOAD_ONLY
-)
-
 # Defs
 set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
@@ -79,14 +56,14 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 ## Mocks
 add_library(bk_mocks INTERFACE)
 target_include_directories(bk_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(bk_mocks INTERFACE gmock bk::ibk)
+target_link_libraries(bk_mocks INTERFACE GTest::gmock bk::ibk)
 add_library(bk::mocks ALIAS bk_mocks)
 
 ## Backend component test
 add_executable(bk_ctest
     ${COMPONENT_SRC_DIR}/bk_test.cpp
 )
-target_link_libraries(bk_ctest gtest_main bk::taskf bk::rx bk::mocks)
+target_link_libraries(bk_ctest GTest::gtest_main bk::taskf bk::rx bk::mocks)
 gtest_discover_tests(bk_ctest)
 
 endif(ENGINE_BUILD_TEST)

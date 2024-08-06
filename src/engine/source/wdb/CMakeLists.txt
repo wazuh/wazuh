@@ -27,12 +27,12 @@ set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 add_executable(wdb_test
     ${TEST_SRC_DIR}/wdb_test.cpp
 )
-target_link_libraries(wdb_test gtest_main base wdb sockiface::mocks)
+target_link_libraries(wdb_test GTest::gtest_main base wdb sockiface::mocks)
 gtest_discover_tests(wdb_test)
 
 add_library(wdb_mocks INTERFACE)
 target_include_directories(wdb_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(wdb_mocks INTERFACE gmock wdb::iwdb)
+target_link_libraries(wdb_mocks INTERFACE GTest::gmock wdb::iwdb)
 add_library(wdb::mocks ALIAS wdb_mocks)
 
 endif(ENGINE_BUILD_TEST)

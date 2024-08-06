@@ -52,7 +52,7 @@ if(ENGINE_BUILD_TEST)
     # Mocks
     add_library(router_mocks INTERFACE)
     target_include_directories(router_mocks INTERFACE ${TEST_MOCK_DIR})
-    target_link_libraries(router_mocks INTERFACE gmock router::irouter)
+    target_link_libraries(router_mocks INTERFACE GTest::gmock router::irouter)
     add_library(router::mocks ALIAS router_mocks)
 
     # Router component test
@@ -62,7 +62,7 @@ if(ENGINE_BUILD_TEST)
     )
     target_include_directories(router_ctest PRIVATE ${SRC_DIR})
     target_link_libraries(router_ctest
-        gtest_main
+        GTest::gtest_main
         base
         router::router
         builder::mocks
@@ -84,7 +84,7 @@ if(ENGINE_BUILD_TEST)
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
     target_link_libraries(router_utest
-        gtest_main
+        GTest::gtest_main
         base
         router::router
         # router::mocks # Todo delete

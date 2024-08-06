@@ -28,7 +28,7 @@ set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 
 add_library(sockiface_mocks INTERFACE)
 target_include_directories(sockiface_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(sockiface_mocks INTERFACE gmock sockiface::isock)
+target_link_libraries(sockiface_mocks INTERFACE GTest::gmock sockiface::isock)
 add_library(sockiface::mocks ALIAS sockiface_mocks)
 
 add_executable(sockiface_test
@@ -44,6 +44,6 @@ target_include_directories(sockiface_test
     ${TEST_SRC_DIR}/testAuxiliar/
 )
 
-target_link_libraries(sockiface_test gtest_main base sockiface)
+target_link_libraries(sockiface_test GTest::gtest_main base sockiface)
 gtest_discover_tests(sockiface_test)
 endif(ENGINE_BUILD_TEST)

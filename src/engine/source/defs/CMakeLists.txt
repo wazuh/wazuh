@@ -45,7 +45,7 @@ target_link_libraries(defs_utest
   PRIVATE
   defs::mocks
   defs
-  gtest_main
+  GTest::gtest_main
 )
 
 endif(ENGINE_BUILD_TEST)
