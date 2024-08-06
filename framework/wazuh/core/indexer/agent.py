@@ -64,7 +64,7 @@ class AgentsIndex(BaseIndex):
         WazuhError (1708)
             When already exists an agent with the provided id.
         """
-        doc = Agent(id=id, key=key, name=name)
+        doc = Agent(id=id, name=name, raw_key=key)
         try:
             await self._client.index(
                 index=self.INDEX, id=doc.id, body=asdict(doc), op_type='create', refresh='wait_for'
