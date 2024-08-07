@@ -2212,7 +2212,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2366,7 +2366,7 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2452,7 +2452,7 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2538,7 +2538,7 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2624,7 +2624,7 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2720,7 +2720,7 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2825,7 +2825,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2873,6 +2873,124 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     wm_ms_graph_scan_relationships(module_data, initial);
 }
 
+void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) {
+    /*
+    <enabled>yes</enabled>
+    <only_future_events>no</only_future_events>
+    <curl_max_size>1M</curl_max_size>
+    <run_on_start>yes</run_on_start>
+    <version>v1.0</version>
+    <api_auth>
+      <client_id>example_client</client_id>
+      <tenant_id>example_tenant</tenant_id>
+      <secret_value>example_secret</secret_value>
+      <api_type>global</api_type>
+    </api_auth>
+    <resource>
+      <name>deviceManagement</name>
+      <relationship>managedDevices</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    module_data->enabled = true;
+    module_data->only_future_events = false;
+    module_data->curl_max_size = 1024L;
+    module_data->run_on_start = true;
+    module_data->scan_config.interval = 60;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
+    os_strdup("deviceManagement", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
+    os_strdup("managedDevices", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    size_t max_size = OS_SIZE_8192;
+    bool initial = false;
+    curl_response* response;
+    curl_response* response2;
+    wm_max_eps = 1;
+
+    os_calloc(1, sizeof(curl_response), response);
+    response->status_code = 200;
+    response->max_size_reached = false;
+    os_strdup("{\"@odata.nextLink\":\"next_page_url\",\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
+    os_strdup("test", response->header);
+
+    os_calloc(1, sizeof(curl_response), response2);
+    response2->status_code = 200;
+    response2->max_size_reached = false;
+    os_strdup("{\"value\":[{\"full_log\":\"log3\"}]}", response2->body);
+    os_strdup("test2", response2->header);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/managedDevices?$top=100'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+
+    queue_fd = 0;
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+    will_return(__wrap_wm_sendmsg, -1);
+
+    will_return(__wrap_strerror, "Error");
+
+    expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+    will_return(__wrap_wm_sendmsg, 1);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'next_page_url'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response2);
+
+    expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+
+    queue_fd = 0;
+    expect_value(__wrap_wm_sendmsg, usec, 1000000);
+    expect_value(__wrap_wm_sendmsg, queue, queue_fd);
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+    expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
+    expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
+    will_return(__wrap_wm_sendmsg, 1);
+
+    wm_ms_graph_scan_relationships(module_data, initial);
+}
+
 void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **state) {
     /*
     <enabled>yes</enabled>
@@ -2891,8 +3009,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
       <relationship>alerts_v2</relationship>
     </resource>
     <resource>
-      <name>auditlogs</name>
-      <relationship>signIns</relationship>
+      <name>deviceManagement</name>
+      <relationship>auditEvents</relationship>
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
@@ -2954,7 +3072,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3011,7 +3129,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_strftime, 20);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/auditEvents?$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/auditEvents?$top=100&$filter=activityDateTime+ge+2023-02-08T12:24:56Z+and+activityDateTime+lt+2023-02-08T12:25:56Z'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -3109,6 +3227,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_no_logs, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_one_log, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_logs, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_pages, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_success_two_resources, setup_conf, teardown_conf)
     };
     int result = 0;
