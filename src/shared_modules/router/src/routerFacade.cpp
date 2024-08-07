@@ -70,12 +70,7 @@ void RouterFacade::destroy()
         throw std::runtime_error("Not initialized");
     }
     m_remoteSubscribers.clear();
-
-    {
-        std::unique_lock<std::mutex> lockRemoteProviders(m_remoteProvidersMutex);
-        m_remoteProviders.clear();
-    }
-
+    m_remoteProviders.clear();
     m_providerRegistrationServer.reset();
 
     {
