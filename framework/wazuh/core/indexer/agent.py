@@ -1,10 +1,10 @@
 from dataclasses import asdict
 from opensearchpy import exceptions
-from uuid6 import uuid7
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from uuid6 import UUID
 
 from .base import BaseIndex
 from .models import Agent
+from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
 NAME_KEY = 'name'
 PASSWORD_KEY = 'password'
@@ -12,16 +12,16 @@ SOURCE_KEY = '_source'
 
 
 class AgentsIndex(BaseIndex):
-    """Set of methods to interact with `agents` index."""
+    """Set of methods to interact with the `agents` index."""
 
     INDEX = 'agents'
 
-    async def create(self, id: uuid7, key: str, name: str) -> Agent:
+    async def create(self, id: UUID, key: str, name: str) -> Agent:
         """Create a new agent.
 
         Parameters
         ----------
-        id : uuid7
+        id : UUID
             Identifier of the new agent.
         key : str
             Key of the new agent.
@@ -35,10 +35,10 @@ class AgentsIndex(BaseIndex):
 
         Raises
         ------
-        WazuhError (1708)
+        WazuhError(1708)
             When already exists an agent with the provided id.
         """
-        doc = Agent(id=id, key=key, name=name)
+        doc = Agent(id=id, raw_key=key, name=name)
         try:
             await self._client.index(
                 index=self.INDEX,
@@ -51,16 +51,68 @@ class AgentsIndex(BaseIndex):
         else:
             return doc
 
-    async def get(self, uuid: uuid7) -> Agent:
+    async def get(self, uuid: str) -> Agent:
+        """Retrieve an agent information.
+
+        Parameters
+        ----------
+        uuid : str
+            Agent unique identifier.
+        
+        Raises
+        ------
+        WazuhResourceNotFound(1701)
+            If no agents exist with the uuid provided.
+        
+        Returns
+        -------
+        Agent
+            Agent object.
+        """
         try:
-            data = self._client.get(index=self.INDEX, id=self.uuid)
+            data = await self._client.get(index=self.INDEX, id=uuid)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
-        finally:
-            return Agent(uuid=uuid, **data[SOURCE_KEY])
 
-    async def delete(self, uuid: uuid7):
+        return Agent(**data[SOURCE_KEY])
+
+    async def delete(self, uuid: str) -> None:
+        """Remove an agent.
+
+        Parameters
+        ----------
+        uuid : str
+            Agent unique identifier.
+        
+        Raises
+        ------
+        WazuhResourceNotFound(1701)
+            If no agents exist with the uuid provided.
+        """
         try:
-            self._client.delete(id=uuid)
+            await self._client.delete(id=uuid)
+        except exceptions.NotFoundError:
+            raise WazuhResourceNotFound(1701)
+
+    async def update(self, uuid: str, agent: Agent) -> None:
+        """Update an agent.
+
+        Parameters
+        ----------
+        uuid : str
+            Agent unique identifier.
+        agent : Agent
+            Agent fields. Only specified fields are updated.
+
+        Raises
+        ------
+        WazuhResourceNotFound(1701)
+            If no agents exist with the uuid provided.
+        """
+        try:
+            # Convert to a dictionary removing empty values to avoid updating them
+            agent_dict = asdict(agent, dict_factory=lambda x: {k: v for (k, v) in x if v is not None})
+            body = {'doc': agent_dict}
+            await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)

@@ -4,7 +4,7 @@ from dataclasses import InitVar, dataclass
 from datetime import datetime
 from hmac import compare_digest
 
-from uuid6 import uuid7
+from uuid6 import UUID
 
 ITERATIONS = 100_000
 HASH_ALGO = 'sha256'
@@ -21,7 +21,7 @@ def _generate_salt() -> bytes:
     return os.urandom(16)
 
 
-def _hash_key(key: str, salt: bytes) -> str:
+def _hash_key(key: str, salt: bytes) -> bytes:
     """Hash the given key using the provided salt.
 
     Parameters
@@ -33,7 +33,7 @@ def _hash_key(key: str, salt: bytes) -> str:
 
     Returns
     -------
-    str
+    bytes
         The hashed key.
     """
     return hashlib.pbkdf2_hmac(HASH_ALGO, key.encode('utf-8'), salt, ITERATIONS)
@@ -43,8 +43,8 @@ def _hash_key(key: str, salt: bytes) -> str:
 class Agent:
     """Representation of a Wazuh Agent."""
 
-    id: uuid7
-    name: str
+    id: UUID = None
+    name: str = None
     key: str = None
     groups: str = None
     type: str = None
@@ -77,7 +77,7 @@ class Agent:
         return salt + key_hash
 
     def check_key(self, key: str) -> bool:
-        """Validate the given key with the stored hash key
+        """Validate the given key with the stored hash key.
 
         Parameters
         ----------
@@ -91,5 +91,4 @@ class Agent:
         """
         stored_key = self.key.encode('latin-1')
         salt, key_hash = stored_key[:16], stored_key[16:]
-
         return compare_digest(key_hash, _hash_key(key, salt))
