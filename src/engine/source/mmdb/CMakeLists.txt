@@ -3,18 +3,6 @@ set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
 set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
 set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 
-####################################################################################################
-# Dependencies -- assuming cpm is available
-####################################################################################################
-CPMAddPackage(
-    NAME libmaxminddb
-    GITHUB_REPOSITORY maxmind/libmaxminddb
-    GIT_TAG 1.9.1
-    OPTIONS
-    "BUILD_SHARED_LIBS OFF"
-    "BUILD_TESTING OFF"
-)
-
 # Interface
 add_library(mmdb_immdb INTERFACE)
 target_include_directories(mmdb_immdb INTERFACE ${IFACE_DIR})
@@ -57,7 +45,7 @@ if(ENGINE_BUILD_TEST)
     # Mocks
     add_library(mmdb_mocks INTERFACE)
     target_include_directories(mmdb_mocks INTERFACE ${TEST_MOCK_DIR})
-    target_link_libraries(mmdb_mocks INTERFACE gmock mmdb::immdb)
+    target_link_libraries(mmdb_mocks INTERFACE Gtest::gmock mmdb::immdb)
     add_library(mmdb::mocks ALIAS mmdb_mocks)
 
     # mmdb component test
@@ -69,7 +57,7 @@ if(ENGINE_BUILD_TEST)
     target_include_directories(mmdb_ctest PRIVATE ${SRC_DIR})
     target_link_libraries(mmdb_ctest
         PUBLIC
-        gtest_main
+        GTest::gtest_main
         base
         mmdb::mmdb
 
@@ -87,7 +75,7 @@ if(ENGINE_BUILD_TEST)
     target_include_directories(mmdb_utest PRIVATE ${SRC_DIR})
     target_link_libraries(mmdb_utest
         PUBLIC
-        gtest_main
+        GTest::gtest_main
         mmdb::mmdb
 
         PRIVATE

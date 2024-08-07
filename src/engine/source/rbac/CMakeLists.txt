@@ -27,7 +27,7 @@ set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 add_library(rbac_mocks INTERFACE)
 
 target_include_directories(rbac_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(rbac_mocks INTERFACE gmock rbac::irbac)
+target_link_libraries(rbac_mocks INTERFACE GTest::gmock rbac::irbac)
 add_library(rbac::mocks ALIAS rbac_mocks)
 
 add_executable(rbac_test
@@ -41,7 +41,7 @@ target_include_directories(rbac_test
     ${TEST_SRC_DIR}
 )
 
-target_link_libraries(rbac_test gtest_main base rbac store::mocks)
+target_link_libraries(rbac_test GTest::gtest_main base rbac store::mocks)
 gtest_discover_tests(rbac_test)
 
 endif(ENGINE_BUILD_TEST)

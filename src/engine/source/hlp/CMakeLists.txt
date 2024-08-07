@@ -1,15 +1,5 @@
 
 CPMAddPackage(
-        NAME CURL
-        GITHUB_REPOSITORY curl/curl
-        GIT_TAG curl-7_83_1
-        VERSION 7.83_1
-        EXCLUDE_FROM_ALL YES
-        GIT_SHALLOW TRUE
-        DOWNLOAD_ONLY
-)
-
-CPMAddPackage(
         NAME date
         # Live at head
         # https://github.com/HowardHinnant/date/issues/828#issuecomment-2184283807
@@ -22,13 +12,6 @@ CPMAddPackage(
         GITHUB_REPOSITORY fastfloat/fast_float
         VERSION 3.8.0
         GIT_SHALLOW TRUE
-)
-
-CPMAddPackage(
-  NAME pugixml
-  GITHUB_REPOSITORY zeux/pugixml
-  GIT_TAG v1.12.1
-  VERSION 1.12.1
 )
 
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
@@ -103,7 +86,7 @@ add_executable(hlp_utest
   ${UNIT_SRC_DIR}/dsv_csv_test.cpp
 )
 
-target_link_libraries(hlp_utest PRIVATE hlp gtest_main)
+target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main)
 gtest_discover_tests(hlp_utest)
 
 endif(ENGINE_BUILD_TEST)

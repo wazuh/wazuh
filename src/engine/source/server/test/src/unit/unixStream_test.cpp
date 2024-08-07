@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -7,16 +8,15 @@
 #include <tuple>
 #include <typeinfo>
 #include <unistd.h>
-#include <filesystem>
 
 #include <condition_variable>
 #include <gtest/gtest.h>
 #include <uvw.hpp>
 
 #include "fakeMetric.hpp"
+#include <base/logging.hpp>
 #include <server/endpoints/unixStream.hpp>
 #include <server/protocolHandler.hpp>
-#include <base/logging.hpp>
 
 using namespace engineserver;
 using namespace engineserver::endpoint;
@@ -285,23 +285,19 @@ startLoopThread(std::shared_ptr<uvw::Loop> loop, std::shared_ptr<ResourceCounter
         [loop, resourceCounter](const uvw::AsyncEvent&, uvw::AsyncHandle& handle)
         {
             resourceCounter->reset();
-            loop->walk([resourceCounter](const uvw::BaseHandle& handle) {
-                auto type = handle.type();
+            loop->walk(
+                [resourceCounter](const auto& handle)
+                {
+                    auto type = handle.type();
 
-                switch (type) {
-                    case uvw::details::UVHandleType::PIPE:
-                        resourceCounter->clients.fetch_add(1);
-                        break;
-                    case uvw::details::UVHandleType::ASYNC:
-                        resourceCounter->asyncs.fetch_add(1);
-                        break;
-                    case uvw::details::UVHandleType::TIMER:
-                        resourceCounter->timers.fetch_add(1);
-                        break;
-                    default:
-                        break;
-                }
-            });
+                    switch (type)
+                    {
+                        case uvw::details::UVHandleType::PIPE: resourceCounter->clients.fetch_add(1); break;
+                        case uvw::details::UVHandleType::ASYNC: resourceCounter->asyncs.fetch_add(1); break;
+                        case uvw::details::UVHandleType::TIMER: resourceCounter->timers.fetch_add(1); break;
+                        default: break;
+                    }
+                });
         });
 
     return {stopHandler, std::move(loopThread), counterHandler};
@@ -875,15 +871,15 @@ TEST_F(UnixStreamTest, ClouseResourcePerAbruptClosure)
     counterHandler->send();
 
     attempts = 0;
-    while(!counters->isReady.load() && attempts < maxAttempts)
+    while (!counters->isReady.load() && attempts < maxAttempts)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         ASSERT_LT(attempts++, maxAttempts) << "Counters not ready";
     }
 
-    EXPECT_EQ(counters->asyncs.load(), 2); // An async for closure and another that performs the counting
+    EXPECT_EQ(counters->asyncs.load(), 2);  // An async for closure and another that performs the counting
     EXPECT_EQ(counters->clients.load(), 2); // Server And Client
-    EXPECT_EQ(counters->timers.load(), 1); // Timer created for the client
+    EXPECT_EQ(counters->timers.load(), 1);  // Timer created for the client
 
     shutdown(clientSockfd, SHUT_WR);
     close(clientSockfd);
@@ -893,15 +889,15 @@ TEST_F(UnixStreamTest, ClouseResourcePerAbruptClosure)
     attempts = 0;
     counterHandler->send();
 
-    while(!counters->isReady.load() && attempts < maxAttempts)
+    while (!counters->isReady.load() && attempts < maxAttempts)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         ASSERT_LT(attempts++, maxAttempts) << "Counters not ready";
     }
 
-    EXPECT_EQ(counters->asyncs.load(), 2); // Both asyncs still exist
+    EXPECT_EQ(counters->asyncs.load(), 2);  // Both asyncs still exist
     EXPECT_EQ(counters->clients.load(), 1); // Only the server remains. The client has been deleted
-    EXPECT_EQ(counters->timers.load(), 0); // Timer has been deleted
+    EXPECT_EQ(counters->timers.load(), 0);  // Timer has been deleted
 
     counterHandler->close();
     server.close();
@@ -952,26 +948,26 @@ TEST_F(UnixStreamTest, ClouseResourcePerTimeout)
     counterHandler->send();
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
-    EXPECT_EQ(counters->asyncs.load(), 2); // An async for closure and another that performs the counting
+    EXPECT_EQ(counters->asyncs.load(), 2);  // An async for closure and another that performs the counting
     EXPECT_EQ(counters->clients.load(), 2); // Server And Client
-    EXPECT_EQ(counters->timers.load(), 1); // Timer created for the client
+    EXPECT_EQ(counters->timers.load(), 1);  // Timer created for the client
 
     // Timeout genereted
-    std::this_thread::sleep_for(std::chrono::milliseconds(timeout*2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(timeout * 2));
 
     counters->reset();
     attempts = 0;
     counterHandler->send();
 
-    while(!counters->isReady.load() && attempts < maxAttempts)
+    while (!counters->isReady.load() && attempts < maxAttempts)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
         ASSERT_LT(attempts++, maxAttempts) << "Counters not ready";
     }
 
-    EXPECT_EQ(counters->asyncs.load(), 2); // Both asyncs still exist
+    EXPECT_EQ(counters->asyncs.load(), 2);  // Both asyncs still exist
     EXPECT_EQ(counters->clients.load(), 1); // Only the server remains. The client has been deleted
-    EXPECT_EQ(counters->timers.load(), 0); // Timer has been deleted
+    EXPECT_EQ(counters->timers.load(), 0);  // Timer has been deleted
 
     counterHandler->close();
     server.close();

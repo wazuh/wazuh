@@ -1,0 +1,106 @@
+{
+  "dependencies": [
+    "benchmark",
+    "cli11",
+    "concurrentqueue",
+    "curl",
+    "date",
+    "fmt",
+    "gtest",
+    "libmaxminddb",
+    "opentelemetry-cpp",
+    "protobuf",
+    "pugixml",
+    "rapidjson",
+    "re2",
+    "rocksdb",
+    "rxcpp",
+    "spdlog",
+    "taskflow",
+    "uvw",
+    "yaml-cpp",
+    "libuv"
+  ],
+  "overrides":[
+      {
+          "name": "libuv",
+          "version": "1.48.0#0"
+      },
+      {
+          "name": "spdlog",
+          "version": "1.14.1#0"
+      },
+      {
+          "name": "gtest",
+          "version": "1.15.0#0"
+      },
+      {
+          "name": "benchmark",
+          "version": "1.8.5#0"
+      },
+      {
+          "name": "cli11",
+          "version": "2.2.0#0"
+      },
+      {
+          "name": "concurrentqueue",
+          "version": "1.0.4#0"
+      },
+      {
+          "name": "curl",
+          "version": "8.9.1#0"
+      },
+      {
+          "name": "libmaxminddb",
+          "version": "1.9.1#0"
+      },
+      {
+          "name": "yaml-cpp",
+          "version": "0.8.0#0"
+      },
+      {
+          "name": "uvw",
+          "version": "2.12.1#2"
+      },
+      {
+          "name": "opentelemetry-cpp",
+          "version": "1.8.3#6"
+      },
+      {
+          "name": "protobuf",
+          "version": "3.21.12#4"
+      },
+      {
+          "name": "date",
+          "version": "2024-05-14#0"
+      },
+      {
+          "name": "pugixml",
+          "version": "1.14#0"
+      },
+      {
+          "name": "rapidjson",
+          "version": "2023-07-17#1"
+      },
+      {
+          "name": "re2",
+          "version": "2024-06-01#0"
+      },
+      {
+          "name": "rocksdb",
+          "version": "9.2.1#0"
+      },
+      {
+          "name": "rxcpp",
+          "version": "4.1.1#1"
+      },
+      {
+          "name": "taskflow",
+          "version": "3.7.0#0"
+      },
+      {
+          "name": "fmt",
+          "version": "8.1.1#2"
+      }
+  ]
+}

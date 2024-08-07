@@ -33,20 +33,20 @@ set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
 add_library(schemf_mocks INTERFACE)
 target_include_directories(schemf_mocks INTERFACE ${TEST_MOCK_DIR})
-target_link_libraries(schemf_mocks INTERFACE gmock schemf::ischema)
+target_link_libraries(schemf_mocks INTERFACE GTest::gmock schemf::ischema)
 add_library(schemf::mocks ALIAS schemf_mocks)
 
 add_executable(schemf_utest
     ${UNIT_SRC_DIR}/field_test.cpp
 )
-target_link_libraries(schemf_utest PRIVATE schemf gtest_main)
+target_link_libraries(schemf_utest PRIVATE schemf GTest::gtest_main)
 gtest_discover_tests(schemf_utest)
 
 add_executable(schemf_ctest
     ${COMPONENT_SRC_DIR}/schema_test.cpp
     ${COMPONENT_SRC_DIR}/validator_test.cpp
 )
-target_link_libraries(schemf_ctest PRIVATE schemf gtest_main schemf::mocks base::test)
+target_link_libraries(schemf_ctest PRIVATE schemf GTest::gtest_main schemf::mocks base::test)
 gtest_discover_tests(schemf_ctest)
 
 endif(ENGINE_BUILD_TEST)

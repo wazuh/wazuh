@@ -50,13 +50,20 @@ jobs:
         pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
         pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
 
+    - name: Setup VCPKG
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgDirectory: '${{env.ENGINE_DIR}}/vcpkg'
+        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
+        vcpkgJsonGlob: '${{env.ENGINE_DIR}}/vcpkg.json'
+
     - name: Configure CMake
       # Configure the CMake build system with the specified build type
-      run: cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -S ${{env.ENGINE_DIR}} -B ${{env.ENGINE_DIR}}/build
+      run: cmake --preset=default --no-warn-unused-cli -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -S ${{env.ENGINE_DIR}}
 
     - name: Build
       # Build the specified target using CMake
-      run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target main -j2
+      run: cmake --build ${{env.ENGINE_DIR}}/build --config ${{env.BUILD_TYPE}} --target main -j$(nproc)
 
     - name: Setup environment
       # Set Engine Configuration

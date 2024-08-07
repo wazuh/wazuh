@@ -6,7 +6,7 @@
 #include <string>
 
 #include <uvw.hpp>
-#include <uvw/async.hpp>
+#include <uvw/async.h>
 
 #include <server/endpoint.hpp>
 
@@ -35,9 +35,9 @@ class EngineServer
     };
 
 private:
-    std::shared_ptr<uvw::Loop> m_loop; ///< The main loop of the application.
-    Status m_status; ///< The status of the server.
-    std::shared_ptr<uvw::AsyncHandle> m_stopHandle; ///< The handle used to stop the server.
+    std::shared_ptr<uvw::Loop> m_loop;                                      ///< The main loop of the application.
+    Status m_status;                                                        ///< The status of the server.
+    std::shared_ptr<uvw::AsyncHandle> m_stopHandle;                         ///< The handle used to stop the server.
     std::unordered_map<std::string, std::shared_ptr<Endpoint>> m_endpoints; ///< The endpoints of the server.
 
     void stop();
@@ -75,9 +75,8 @@ public:
      * server.
      */
     void request_stop();
-
 };
 
-} // namespace server
+} // namespace engineserver
 
 #endif // _SERVER_SERVER_H

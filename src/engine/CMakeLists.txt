@@ -1,6 +1,6 @@
 # Minimum 3.14 required by googletest discover tests
-# Todo find wich component is not working properly until 3.24 version
-cmake_minimum_required(VERSION 3.24 FATAL_ERROR)
+# Todo find wich component is not working properly until 3.22.1 version
+cmake_minimum_required(VERSION 3.22.1 FATAL_ERROR)
 
 # Set c++17
 set(CMAKE_CXX_STANDARD 17)
@@ -108,56 +108,63 @@ include(${CPM_DOWNLOAD_LOCATION})
 ####################################################################################################
 include(cmake/CPM.cmake)
 
-# Concurrent Queue
-CPMAddPackage(
-  NAME CameronQueue
-  GITHUB_REPOSITORY cameron314/concurrentqueue
-  GIT_TAG v1.0.3
-  VERSION 1.0.3
-  EXCLUDE_FROM_ALL YES
-)
-
-CPMAddPackage(
-  NAME RxCpp
-  GITHUB_REPOSITORY ReactiveX/RxCpp
-  GIT_TAG v4.1.1
-  VERSION 4.1.1
-  EXCLUDE_FROM_ALL YES
-)
-
-CPMAddPackage(
-  NAME CLI11
-  GITHUB_REPOSITORY CLIUtils/CLI11
-  GIT_TAG v2.2.0
-  VERSION 2.2.0
-  DOWNLOAD_ONLY YES
-)
+function(find_and_create_imported_target package_name target_name)
+    find_package(${package_name} CONFIG REQUIRED)
+    if (${package_name}_FOUND)
+        if (NOT TARGET ${target_name})
+            add_library(${target_name} INTERFACE IMPORTED)
+            set_target_properties(${target_name} PROPERTIES
+                INTERFACE_INCLUDE_DIRECTORIES "${${package_name}_INCLUDE_DIRS}")
+            message(STATUS "Created imported target ${target_name}")
+        else()
+            message(STATUS "Target ${target_name} already exists")
+        endif()
+    else()
+        message(FATAL_ERROR "${package_name} not found!")
+    endif()
+endfunction()
 
 # Build test
 if(ENGINE_BUILD_TEST)
 enable_testing()
-CPMAddPackage(
-    NAME googletest
-    GITHUB_REPOSITORY google/googletest
-    GIT_TAG release-1.11.0
-    VERSION 1.11.0
-    OPTIONS
-    "INSTALL_GTEST OFF"
-    EXCLUDE_FROM_ALL YES
-)
+find_and_create_imported_target("GTest" "GTest::gtest")
+find_and_create_imported_target("GTest" "GTest::gtest_main")
+find_and_create_imported_target("GTest" "GTest::gmock")
+find_and_create_imported_target("GTest" "GTest::gmock_main")
 include(GoogleTest)
 endif(ENGINE_BUILD_TEST)
+
+find_and_create_imported_target("RapidJSON" "RapidJSON::RapidJSON")
+find_and_create_imported_target("rxcpp" "RxCpp::RxCpp")
+# yaml-cpp::yaml-cpp vs yaml-cpp #FIXME 70 stars on github
+find_and_create_imported_target("yaml-cpp" "yaml-cpp::yaml-cpp")
+find_and_create_imported_target("spdlog" "spdlog::spdlog")
+find_and_create_imported_target("fmt" "fmt::fmt-header-only")
+find_and_create_imported_target("RocksDB" "RocksDB::rocksdb")
+find_and_create_imported_target("Taskflow" "Taskflow::Taskflow")
+find_and_create_imported_target("unofficial-concurrentqueue" "unofficial-concurrentqueue::concurrentqueue")
+find_and_create_imported_target("CLI11" "CLI11::CLI11")
+find_and_create_imported_target("re2" "re2::re2")
+find_and_create_imported_target("CURL" "CURL::libcurl")
+find_and_create_imported_target("maxminddb" "maxminddb::maxminddb")
+find_and_create_imported_target("benchmark" "benchmark::benchmark")
+find_and_create_imported_target("pugixml" "pugixml::pugixml")
+
+find_and_create_imported_target("libuv" "libuv::libuv")
+find_and_create_imported_target("uvw" "uvw::uvw")
+
+find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::api")
+find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::sdk")
+find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::logs")
+find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics")
+
+find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
 
 ####################################################################################################
 # Targets
 ####################################################################################################
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
-
-target_include_directories(main
-    PRIVATE
-    ${CLI11_SOURCE_DIR}/include
-)
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/sockiface)
@@ -184,25 +191,8 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/metrics)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/queue)
 
-
 #TODO isolate rxcpp
-target_link_libraries(main base cmds api)
-
-# Build test
-if(ENGINE_BUILD_TEST)
-# Add googletest as CPM dependency
-CPMAddPackage(
-    NAME googletest
-    GITHUB_REPOSITORY google/googletest
-    GIT_TAG release-1.11.0
-    VERSION 1.11.0
-    OPTIONS
-    "INSTALL_GTEST OFF"
-    EXCLUDE_FROM_ALL YES
-)
-
-include(GoogleTest)
-endif(ENGINE_BUILD_TEST)
+target_link_libraries(main base cmds api CLI11::CLI11)
 
 # Build benchmark
 if(ENGINE_BUILD_BENCHMARK)
