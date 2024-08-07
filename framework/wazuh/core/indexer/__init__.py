@@ -10,7 +10,6 @@ from wazuh.core.exception import WazuhIndexerError
 from wazuh.core.indexer.agent import AgentsIndex
 
 logger = getLogger('wazuh')
-_indexer_client = None
 
 HOST_KEY = 'host'
 PORT_KEY = 'port'
@@ -86,8 +85,8 @@ class Indexer:
                 2201,
                 extra_message=(
                     'Some type of authentication must be provided, `user` and `password` for BASIC_HTTP_AUTH '
-                    'or the client certificates `client_cert_path` and `client_key_path`.'
-                ),
+                    'or the client certificates `client_cert_path` and `client_key_path`.',
+                )
             )
 
         return AsyncOpenSearch(**parameters)
@@ -159,21 +158,21 @@ async def create_indexer(
             retries_count += 1
 
 
-async def get_indexer_client() -> Indexer:
+@asynccontextmanager
+async def get_indexer_client() -> AsyncIterator[Indexer]:
     """Create and return the indexer client."""
 
-    global _indexer_client
+    client = await create_indexer(
+        host=INDEXER_HOST,
+        user=INDEXER_USER,
+        password=INDEXER_PASSWORD,
+        use_ssl=INDEXER_USE_SSL,
+        client_cert_path=INDEXER_CLIENT_CERT_PATH,
+        client_key_path=INDEXER_CLIENT_KEY_PATH,
+        ca_certs_path=INDEXER_CA_CERTS_PATH,
+    )
 
-    if _indexer_client is None:
-        _indexer_client = await create_indexer(
-            host=INDEXER_HOST,
-            user=INDEXER_USER,
-            password=INDEXER_PASSWORD,
-            use_ssl=INDEXER_USE_SSL,
-            client_cert_path=INDEXER_CLIENT_CERT_PATH,
-            client_key_path=INDEXER_CLIENT_KEY_PATH,
-            ca_certs_path=INDEXER_CA_CERTS_PATH,
-            retries=1
-        )
-
-    return _indexer_client
+    try:
+        yield client
+    finally:
+        await client.close()
