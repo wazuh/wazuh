@@ -11,7 +11,6 @@ from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.events import EventsIndex
 
 logger = getLogger('wazuh')
-_indexer_client = None
 
 HOST_KEY = 'host'
 PORT_KEY = 'port'
