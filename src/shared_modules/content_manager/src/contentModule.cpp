@@ -28,10 +28,10 @@ void ContentModule::stop()
     ContentModuleFacade::instance().stop();
 }
 
-ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters)
+ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters, const std::atomic<bool>* shouldRun)
     : m_name {std::move(name)}
 {
-    ContentModuleFacade::instance().addProvider(m_name, parameters);
+    ContentModuleFacade::instance().addProvider(m_name, parameters, shouldRun);
 
     if (parameters.contains("interval"))
     {
@@ -50,6 +50,11 @@ ContentRegister::ContentRegister(std::string name, const nlohmann::json& paramet
 void ContentRegister::changeSchedulerInterval(const size_t newInterval)
 {
     ContentModuleFacade::instance().changeSchedulerInterval(m_name, newInterval);
+}
+
+void ContentRegister::wakeUpThread()
+{
+    ContentModuleFacade::instance().wakeUpThread(m_name);
 }
 
 // LCOV_EXCL_START

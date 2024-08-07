@@ -31,7 +31,9 @@ void ContentModuleFacade::stop()
     m_providers.clear();
 }
 
-void ContentModuleFacade::addProvider(const std::string& name, const nlohmann::json& parameters)
+void ContentModuleFacade::addProvider(const std::string& name,
+                                      const nlohmann::json& parameters,
+                                      const std::atomic<bool>* shouldRun)
 {
     std::lock_guard<std::shared_mutex> lock {m_mutex};
     // If already exist throw exception
@@ -40,7 +42,7 @@ void ContentModuleFacade::addProvider(const std::string& name, const nlohmann::j
         throw std::runtime_error("Provider already exist");
     }
 
-    m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters));
+    m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters, shouldRun));
 }
 
 void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
@@ -78,5 +80,18 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
     catch (const std::exception& e)
     {
         logError(WM_CONTENTUPDATER, "Couldn't change scheduled interval: %s.", e.what());
+    }
+}
+
+void ContentModuleFacade::wakeUpThread(const std::string& name)
+{
+    std::shared_lock<std::shared_mutex> lock {m_mutex};
+    try
+    {
+        m_providers.at(name)->wakeUpThread();
+    }
+    catch (const std::exception& e)
+    {
+        logError(WM_CONTENTUPDATER, "Couldn't wake up scheduled action thread: %s.", e.what());
     }
 }

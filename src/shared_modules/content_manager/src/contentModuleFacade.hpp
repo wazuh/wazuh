@@ -52,8 +52,9 @@ public:
      *
      * @param name Provider name.
      * @param parameters Provider parameters.
+     * @param shouldRun Condition to run or not an action.
      */
-    void addProvider(const std::string& name, const nlohmann::json& parameters);
+    void addProvider(const std::string& name, const nlohmann::json& parameters, const std::atomic<bool>* shouldRun);
 
     /**
      * @brief Starts action scheduler.
@@ -77,6 +78,13 @@ public:
      * @param interval New scheduler interval.
      */
     void changeSchedulerInterval(const std::string& name, size_t interval);
+
+    /**
+     * @brief Wakes up scheduled action thread.
+     *
+     * @param name Provider name.
+     */
+    void wakeUpThread(const std::string& name);
 };
 
 #endif //_CONTENT_MODULE_IMPLEMENTATION_HPP

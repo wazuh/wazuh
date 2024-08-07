@@ -30,6 +30,9 @@ protected:
 
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Pointer to FakeServer class
 
+    std::unique_ptr<std::atomic<bool>> m_shouldRun =
+        std::make_unique<std::atomic<bool>>(true); ///< Condition to run or not an action.
+
     /**
      * @brief Sets initial conditions for each test case.
      */

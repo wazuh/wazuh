@@ -40,8 +40,11 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters Object parameters, including interval and ondemand.
+     * @param shouldRun Condition to run or not an action.
      */
-    explicit ContentRegister(std::string topicName, const nlohmann::json& parameters);
+    explicit ContentRegister(std::string topicName,
+                             const nlohmann::json& parameters,
+                             const std::atomic<bool>* shouldRun);
     ~ContentRegister() = default;
 
     /**
@@ -50,6 +53,12 @@ public:
      * @param newInterval New value to set.
      */
     void changeSchedulerInterval(size_t newInterval);
+
+    /**
+     * @brief Wakes up action thread.
+     *
+     */
+    void wakeUpThread();
 };
 
 #endif // _CONTENT_REGISTER_HPP

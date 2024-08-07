@@ -37,7 +37,7 @@ TEST_F(ActionTest, TestInstantiation)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
-    EXPECT_NO_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters));
+    EXPECT_NO_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get()));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -54,7 +54,8 @@ TEST_F(ActionTest, TestInstantiationWhitoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, parameters), std::invalid_argument);
+    EXPECT_THROW(std::make_shared<Action>(m_spRouterProvider, topicName, parameters, m_shouldRun.get()),
+                 std::invalid_argument);
 }
 
 /*
@@ -69,7 +70,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawData)
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -106,7 +107,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -143,7 +144,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
     const auto& interval {m_parameters.at("interval").get_ref<const size_t&>()};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -172,7 +173,7 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
 
     m_parameters["ondemand"] = true;
 
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -197,8 +198,9 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
 
     m_parameters["ondemand"] = true;
 
-    auto action1 {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
-    auto action2 {std::make_shared<Action>(m_spRouterProvider, topicName, parametersWithoutDatabasePath)};
+    auto action1 {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
+    auto action2 {
+        std::make_shared<Action>(m_spRouterProvider, topicName, parametersWithoutDatabasePath, m_shouldRun.get())};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -223,7 +225,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
     const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/3-" + fileName};
     const auto downloadPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/3-" + fileName};
 
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -262,7 +264,7 @@ TEST_F(ActionTest, ActionOnStartExecution)
     interval = ACTION_INTERVAL;
 
     // Init action.
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     // Check output folder existence.
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -293,7 +295,7 @@ TEST_F(ActionTest, OnDemandActionCatchException)
 
     // Init action.
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     // Trigger action. No exceptions are expected despite the error.
     ASSERT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
@@ -317,7 +319,7 @@ TEST_F(ActionTest, ScheduledActionCatchException)
 
     // Init action.
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters)};
+    auto action {std::make_shared<Action>(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
 
     // Start scheduling. First action execution.
     const auto& interval {m_parameters.at("interval").get_ref<size_t&>()};
@@ -343,7 +345,7 @@ TEST_F(ActionTest, RunActionOnDemandOffsetUpdate)
     m_parameters["ondemand"] = true;
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
 
-    auto action {Action(m_spRouterProvider, topicName, m_parameters)};
+    auto action {Action(m_spRouterProvider, topicName, m_parameters, m_shouldRun.get())};
     action.registerActionOnDemand();
 
     constexpr auto OFFSET {1000};
@@ -365,8 +367,7 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     m_parameters["ondemand"] = true;
     m_parameters.at("configData").at("contentSource") = "offline";
     m_parameters.at("configData").at("url") = "file://" + (INPUT_FILES_DIR / SAMPLE_TXT_FILENAME).string();
-
-    auto action {Action(spMockRouterProvider, topicName, m_parameters)};
+    auto action {Action(spMockRouterProvider, topicName, m_parameters, m_shouldRun.get())};
     action.registerActionOnDemand();
 
     // Download file twice without hash update: Two publications are expected.

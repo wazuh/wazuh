@@ -37,8 +37,12 @@ public:
      * @param channel Router provider.
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
+     * @param shouldRun Condition to run or not an action.
      */
-    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters)
+    explicit Action(const std::shared_ptr<IRouterProvider> channel,
+                    std::string topicName,
+                    nlohmann::json parameters,
+                    const std::atomic<bool>* shouldRun)
         : m_channel {channel}
         , m_actionInProgress {false}
         , m_cv {}
@@ -46,6 +50,7 @@ public:
         , m_interval {0}
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
         , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition)}
+        , m_shouldRun {shouldRun}
     {
         m_parameters = std::move(parameters);
     }
@@ -97,13 +102,21 @@ public:
 
                 // Run action on start, independently of the interval time.
                 runActionScheduled();
-
                 while (m_schedulerRunning)
                 {
                     m_cv.wait_for(lock, std::chrono::seconds(this->m_interval));
                     if (m_schedulerRunning)
                     {
-                        runActionScheduled();
+                        //  Normal execution
+                        if (m_shouldRun && m_shouldRun->load())
+                        {
+                            runActionScheduled();
+                        }
+                        else
+                        {
+                            // Action skipped, sleep for interval time.
+                            logDebug2(WM_CONTENTUPDATER, "Scheduled request postponed.");
+                        }
                     }
                 }
             });
@@ -189,6 +202,15 @@ public:
     void changeSchedulerInterval(size_t interval)
     {
         m_interval = interval;
+        wakeUpThread();
+    }
+
+    /**
+     * @brief Wakes up scheduled action thread.
+     *
+     */
+    void wakeUpThread()
+    {
         m_cv.notify_one();
     }
 
@@ -197,6 +219,7 @@ private:
     std::thread m_schedulerThread;
     std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;
+    const std::atomic<bool>* m_shouldRun;
     std::atomic<size_t> m_interval;
     std::mutex m_mutex;
     std::condition_variable m_cv;
