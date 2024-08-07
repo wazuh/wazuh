@@ -80,6 +80,15 @@ public:
     {
         m_action->changeSchedulerInterval(interval);
     }
+
+    /**
+     * @brief Wakes up scheduled action thread.
+     *
+     */
+    void wakeUpThread()
+    {
+        m_action->wakeUpThread();
+    }
 };
 
 #endif //_CONTENT_PROVIDER_HPP

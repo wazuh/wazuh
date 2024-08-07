@@ -95,54 +95,28 @@ public:
             {
                 // Use while with condition variable to avoid spurious wakeups.
                 std::unique_lock<std::mutex> lock(m_mutex);
-                size_t sleepInterval = m_interval;
-                bool isActionPostponed = false;
 
                 // Run action on start, independently of the interval time.
                 runActionScheduled();
 
                 while (m_schedulerRunning)
                 {
-                    m_cv.wait_for(lock, std::chrono::seconds(sleepInterval));
+                    m_cv.wait_for(lock, std::chrono::seconds(this->m_interval));
                     if (m_schedulerRunning)
                     {
-                        if (isActionPostponed)
+                        //  Normal execution
+                        if (shouldRun.load())
                         {
-                            // If the postponed event was executed, the interval time is restored to its original value.
-                            sleepInterval = m_interval;
+                            runActionScheduled();
                         }
-
-                        isActionPostponed = postponeActionScheduledRun(shouldRun, sleepInterval);
+                        else
+                        {
+                            // Action skipped, sleep for interval time.
+                            logDebug2(WM_CONTENTUPDATER, "Scheduled request postponed.");
+                        }
                     }
                 }
             });
-    }
-
-    /**
-     * @brief Logic to skip scheduled action if condition is not met.
-     *
-     * @param shouldRun Condition to skip or net the scheduled action.
-     * @param sleepInterval Sleep time.
-     */
-    bool postponeActionScheduledRun(const std::atomic<bool>& shouldRun, size_t& sleepInterval)
-    {
-        const size_t defaultPostponeWait = 900; // 15 minutes.
-        bool ret = false;
-
-        // Normal execution
-        if (shouldRun.load())
-        {
-            runActionScheduled();
-        }
-        else
-        {
-            // Action skipped, next sleep interval set to 15 minutes.
-            sleepInterval = defaultPostponeWait;
-            ret = true;
-            logDebug2(WM_CONTENTUPDATER, "Scheduled request postponed by '%d' minutes", sleepInterval / 60);
-        }
-
-        return ret;
     }
 
     /**
@@ -225,6 +199,15 @@ public:
     void changeSchedulerInterval(size_t interval)
     {
         m_interval = interval;
+        wakeUpThread();
+    }
+
+    /**
+     * @brief Wakes up scheduled action thread.
+     *
+     */
+    void wakeUpThread()
+    {
         m_cv.notify_one();
     }
 

@@ -78,6 +78,13 @@ public:
      * @param interval New scheduler interval.
      */
     void changeSchedulerInterval(const std::string& name, size_t interval);
+
+    /**
+     * @brief Wakes up scheduled action thread.
+     *
+     * @param name Provider name.
+     */
+    void wakeUpThread(const std::string& name);
 };
 
 #endif //_CONTENT_MODULE_IMPLEMENTATION_HPP

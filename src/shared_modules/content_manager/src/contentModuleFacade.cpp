@@ -80,3 +80,16 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
         logError(WM_CONTENTUPDATER, "Couldn't change scheduled interval: %s.", e.what());
     }
 }
+
+void ContentModuleFacade::wakeUpThread(const std::string& name)
+{
+    std::shared_lock<std::shared_mutex> lock {m_mutex};
+    try
+    {
+        m_providers.at(name)->wakeUpThread();
+    }
+    catch (const std::exception& e)
+    {
+        logError(WM_CONTENTUPDATER, "Couldn't wake up scheduled action thread: %s.", e.what());
+    }
+}
