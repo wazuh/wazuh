@@ -33,11 +33,12 @@
 #define WM_MS_GRAPH_DOD_API_QUERY_FQDN "dod-graph.microsoft.us"
 
 
-#define WM_MS_GRAPH_API_URL "https://%s/%s/%s/%s"
-#define WM_MS_GRAPH_API_URL_FILTER_CREATED_DATE WM_MS_GRAPH_API_URL "?$filter=createdDateTime+ge+%s+and+createdDateTime+lt+%s"
-#define WM_MS_GRAPH_API_URL_FILTER_ACTIVITY_DATE WM_MS_GRAPH_API_URL "?$filter=activityDateTime+ge+%s+and+activityDateTime+lt+%s"
+#define WM_MS_GRAPH_API_URL "https://%s/%s/%s/%s?$top=%d"
+#define WM_MS_GRAPH_API_URL_FILTER_CREATED_DATE WM_MS_GRAPH_API_URL "&$filter=createdDateTime+ge+%s+and+createdDateTime+lt+%s"
+#define WM_MS_GRAPH_API_URL_FILTER_ACTIVITY_DATE WM_MS_GRAPH_API_URL "&$filter=activityDateTime+ge+%s+and+activityDateTime+lt+%s"
 #define WM_MS_GRAPH_ACCESS_TOKEN_URL "https://%s/%s/oauth2/v2.0/token"
 #define WM_MS_GRAPH_ACCESS_TOKEN_PAYLOAD "scope=https://%s/.default&grant_type=client_credentials&client_id=%s&client_secret=%s"
+#define WM_MS_GRAPH_ITEM_PER_PAGE 100
 
 // MDM Intune
 #define WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT "deviceManagement"
