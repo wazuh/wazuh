@@ -14,8 +14,8 @@ class BatcherClient:
     router : MuxDemuxQueue
         The MuxDemuxQueue instance used to route messages.
     """
-    def __init__(self, router: MuxDemuxQueue, frequency_of_wait: int = 0.1):
-        self.router = router
+    def __init__(self, queue: MuxDemuxQueue, frequency_of_wait: int = 0.1):
+        self.queue = queue
         self.frequency_of_wait = frequency_of_wait
 
     def send_event(self, event) -> uuid.UUID:
@@ -33,7 +33,7 @@ class BatcherClient:
             The unique identifier assigned to the event.
         """
         assigned_uid = uuid.uuid4()
-        return self.router.send_to_mux(assigned_uid, event)
+        return self.queue.send_to_mux(assigned_uid, event)
 
     async def get_response(self, uid: uuid.UUID) -> Optional[dict]:
         """
@@ -50,8 +50,8 @@ class BatcherClient:
             The response dictionary if available, None otherwise.
         """
         while True:
-            if not self.router.is_response_pending(uid):
-                result = self.router.receive_from_demux(uid)
+            if not self.queue.is_response_pending(uid):
+                result = self.queue.receive_from_demux(uid)
                 return result
             else:
                 await asyncio.sleep(self.frequency_of_wait)
