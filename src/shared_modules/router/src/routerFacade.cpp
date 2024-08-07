@@ -77,11 +77,7 @@ void RouterFacade::destroy()
     }
 
     m_providerRegistrationServer.reset();
-
-    {
-        std::unique_lock<std::shared_mutex> lockLocalProviders(m_providersMutex);
-        m_providers.clear();
-    }
+    m_providers.clear();
 }
 
 void RouterFacade::initProviderLocal(const std::string& endpointName)
