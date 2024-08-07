@@ -93,7 +93,11 @@ get_package_and_checksum(){
 
     if [[ "${checksum}" == "yes" ]]; then
         cd "${rpm_build_dir}/RPMS" && sha512sum $RPM_NAME > /var/local/wazuh/$RPM_NAME.sha512
-        sha512sum $SYMBOLS_NAME > /var/local/wazuh/$SYMBOLS_NAME.sha512
+        # Legacy RPMs do not have symbols
+        if [ -n "${SYMBOLS_NAME}" ]; then
+            sha512sum $SYMBOLS_NAME > /var/local/wazuh/$SYMBOLS_NAME.sha512
+        fi
+
         if [[ "${src}" == "yes" ]]; then
             cd "${rpm_build_dir}/SRPMS" && sha512sum $SRC_NAME > /var/local/wazuh/$SRC_NAME.sha512
         fi
