@@ -36,6 +36,38 @@ def _hash_key(key: str, salt: bytes) -> str:
     """
     return hashlib.pbkdf2_hmac(HASH_ALGO, key.encode('utf-8'), salt, ITERATIONS)
 
+ITERATIONS = 100_000
+HASH_ALGO = 'sha256'
+
+
+def _generate_salt() -> bytes:
+    """Generate a random salt value.
+
+    Returns
+    -------
+    bytes
+        Random salt.
+    """
+    return os.urandom(16)
+
+
+def _hash_key(key: str, salt: bytes) -> str:
+    """Hash the given key using the provided salt.
+
+    Parameters
+    ----------
+    key : str
+        Value to hash.
+    salt : bytes
+        Value to use within derivation function.
+
+    Returns
+    -------
+    str
+        The hashed key.
+    """
+    return hashlib.pbkdf2_hmac(HASH_ALGO, key.encode('utf-8'), salt, ITERATIONS)
+
 
 @dataclass
 class Agent:
