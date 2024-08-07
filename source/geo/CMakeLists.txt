@@ -15,11 +15,19 @@ set(SRCS
 )
 set(PRIVATE_LINKS
     CURL::libcurl
+    maxminddb::maxminddb
 )
 set(PUBLIC_LINKS
     geo::igeo
     store::istore
 )
+
+# Patch the maxminddb target
+set_target_properties(maxminddb::maxminddb 
+  PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES ""
+)
+
 add_library(geo
       ${SRCS}
 )
@@ -37,9 +45,6 @@ target_link_libraries(geo
 
     PRIVATE
     ${PRIVATE_LINKS}
-
-    INTERFACE
-    maxminddb::maxminddb
 )
 
 # Tests
