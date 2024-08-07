@@ -883,6 +883,12 @@
         <description>MS Graph message: MDM Intune audit event.</description>
     </rule>
 
+    <rule id="99653" level="3">
+        <if_sid>99651</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.relationship">managedDevices</field>
+        <description>MS Graph message: MDM Intune device.</description>
+    </rule>
 
 <!--MDM Intune 99651-99700-->
 
