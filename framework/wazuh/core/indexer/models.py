@@ -51,7 +51,7 @@ def _generate_salt() -> bytes:
     return os.urandom(16)
 
 
-def _hash_key(key: str, salt: bytes) -> str:
+def _hash_key(key: str, salt: bytes) -> bytes:
     """Hash the given key using the provided salt.
 
     Parameters
@@ -63,7 +63,7 @@ def _hash_key(key: str, salt: bytes) -> str:
 
     Returns
     -------
-    str
+    bytes
         The hashed key.
     """
     return hashlib.pbkdf2_hmac(HASH_ALGO, key.encode('utf-8'), salt, ITERATIONS)
