@@ -28,14 +28,14 @@ void ContentModule::stop()
     ContentModuleFacade::instance().stop();
 }
 
-ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters)
+ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters, const std::atomic<bool>& shouldRun)
     : m_name {std::move(name)}
 {
     ContentModuleFacade::instance().addProvider(m_name, parameters);
 
     if (parameters.contains("interval"))
     {
-        ContentModuleFacade::instance().startScheduling(m_name, parameters.at("interval").get<size_t>());
+        ContentModuleFacade::instance().startScheduling(m_name, parameters.at("interval").get<size_t>(), shouldRun);
     }
 
     if (parameters.contains("ondemand"))

@@ -60,8 +60,9 @@ public:
      *
      * @param name Provider name.
      * @param interval Scheduler interval.
+     * @param shouldRun Condition to run or not an action.
      */
-    void startScheduling(const std::string& name, size_t interval);
+    void startScheduling(const std::string& name, size_t interval, const std::atomic<bool>& shouldRun);
 
     /**
      * @brief Starts ondeman action.
