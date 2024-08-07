@@ -1,6 +1,7 @@
 from .types import Documentation
 from .exporter import *
 from collections import defaultdict
+from pathlib import Path
 
 
 class MarkdownGenerator(IExporter):
@@ -24,17 +25,14 @@ class MarkdownGenerator(IExporter):
         :param arguments: Dictionary of arguments.
         :return: Table string in Markdown format.
         """
-        # Create the header row
         header_row = '| ' + ' | '.join(headers) + ' |'
         separator_row = '| ' + ' | '.join(['-' * len(header) for header in headers]) + ' |'
 
-        # Create the data rows
         rows = []
         for name, info in arguments.items():
-            row = []  # Create a new list for each argument
+            row = []
             row.append(name)
 
-            # Handle arg_type being a list or a string
             if isinstance(info.arg_type, list):
                 row.append(', '.join(info.arg_type))
             else:
@@ -70,7 +68,6 @@ class MarkdownGenerator(IExporter):
             rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 
-        # Merge all rows
         self.content.append('\n'.join([header_row, separator_row] + data_rows))
         self.content.append("\n")
 
@@ -81,13 +78,11 @@ class MarkdownGenerator(IExporter):
         :param arguments: Dictionary of arguments.
         :return: Table string in Markdown format.
         """
-        # Create the header row
         header_row = '| ' + ' | '.join(headers) + ' |'
         separator_row = '| ' + ' | '.join(['-' * len(header) for header in headers]) + ' |'
 
-        # Create the data rows
         rows = []
-        row = []  # Create a new list for each argument
+        row = []
         if isinstance(output.type_, list):
             row.append(f"[{', '.join(output.type_)}]")
             row.append("-")
@@ -110,11 +105,21 @@ class MarkdownGenerator(IExporter):
         rows.append(row)
         data_rows = ['| ' + ' | '.join(row) + ' |' for row in rows]
 
-        # Merge all rows
         self.content.append('\n'.join([header_row, separator_row] + data_rows))
         self.content.append("\n")
 
     def create_document(self, doc: Documentation):
+        """
+        Creates a Markdown document for a given helper function's documentation.
+
+        This method is responsible for generating a detailed Markdown documentation
+        for a helper function, including its signature, arguments, target field, outputs,
+        description, keywords, and general notes. The content generated is stored in
+        the `all_contents` dictionary, categorized by helper type and name.
+
+        :param doc: An instance of the Documentation class, containing all necessary
+                    information about the helper function to document.
+        """
         self.content = []
         self.helper_name = doc.name
         self.content.append(f"# {doc.name}\n")
@@ -129,12 +134,12 @@ class MarkdownGenerator(IExporter):
 
         if doc.target_field:
             self.content.append(f"## Target Field\n")
-            headers = ["Type", "Posible values"]
+            headers = ["Type", "Possible values"]
             self.create_output_table(doc.target_field, headers)
 
         if doc.output:
             self.content.append(f"## Outputs\n")
-            headers = ["Type", "Posible values"]
+            headers = ["Type", "Possible values"]
             self.create_output_table(doc.output, headers)
 
         self.content.append(f"## Description\n")
@@ -148,46 +153,52 @@ class MarkdownGenerator(IExporter):
             for general_restriction in doc.general_restrictions:
                 self.content.append(f"- {general_restriction}\n")
 
-        # self.content.append("\n### Examples\n")
-        # for idx, example in enumerate(doc.examples, start=1):
-        #     self.content.append(f"**Example {idx}**:")
-        #     self.content.append("  - **Arguments**:")
-        #     for arg, value in example.arguments.items():
-        #         self.content.append(f"    - `{arg}`: `{value}`")
-        #     self.content.append(f"  - **Should Pass**: `{example.should_pass}`")
-        #     if example.skipped:
-        #         self.content.append(f"  - **Skipped**: `{example.skipped}`")
-        #     if example.expected is not None:
-        #         self.content.append(f"  - **Expected**: `{example.expected}`")
-        #     self.content.append(f"  - **Description**: {example.description}\n")
-
-        # Organiza el contenido por tipo de helper y luego por keyword
-        for keyword in doc.keywords:
-            self.all_contents[doc.helper_type][keyword].append('\n'.join(self.content))
+        self.all_contents[doc.helper_type][doc.name] = {
+            "keywords": doc.keywords,
+            "content": '\n'.join(self.content)
+        }
 
     def save(self, output_dir: Path):
+        """
+        Saves all generated documentation to Markdown files.
+
+        This method writes the summary, index, and detailed documentation of all
+        helper functions to a specified output directory. It also creates a separate
+        file that organizes helpers by their associated keywords.
+
+        :param output_dir: A Path object representing the directory where the
+                        documentation files should be saved.
+        """
         output_dir.mkdir(parents=True, exist_ok=True)
+        documentation_file = output_dir / "documentation.md"
 
-        home_file = output_dir / "index.md"
-        with open(home_file, 'w') as file:
-            file.write("# Helper Types\n")
-            for helper_type in sorted(self.all_contents.keys()):
-                file.write(f"- [{helper_type}](./{helper_type}/index.md)\n")
+        with open(documentation_file, 'w') as file:
+            file.write("# Summary\n")
+            file.write(
+                "This documentation provides an overview of the auxiliary functions available. "
+                "Auxiliary functions are modular components designed to perform specific operations on "
+                "decoders or rules. Depending on their purpose, they are categorized "
+                "into transformation, filter, or mapping functions.\n\n"
+            )
+            file.write("# Index\n")
 
-        for helper_type, keywords in self.all_contents.items():
-            type_dir = output_dir / helper_type
-            type_dir.mkdir(parents=True, exist_ok=True)
+            for helper_type, helpers in sorted(self.all_contents.items()):
+                file.write(f"## {helper_type.capitalize()}\n")
+                for helper_name in sorted(helpers.keys()):
+                    file.write(f"- [{helper_name}](#{helper_name.lower()})\n")
 
-            type_index_file = type_dir / "index.md"
-            with open(type_index_file, 'w') as file:
-                file.write(f"# {helper_type}\n")
-                file.write(f"## Keywords\n")
-                for keyword in sorted(keywords.keys()):
-                    file.write(f"- [{keyword}](./{keyword}.md)\n")
+            for helper_type, helpers in sorted(self.all_contents.items()):
+                for helper_name, helper_info in sorted(helpers.items()):
+                    file.write(helper_info["content"])
+                    file.write("\n---\n")
 
-            for keyword, docs in keywords.items():
-                keyword_file = type_dir / f"{keyword}.md"
-                with open(keyword_file, 'w') as file:
-                    for doc in docs:
-                        file.write(doc)
-                        file.write("\n---\n")
+        keyword_file = output_dir / "keyword_table.md"
+        with open(keyword_file, 'w') as file:
+            file.write("# By Keyword\n")
+            file.write("| Helper | Keywords |\n")
+            file.write("| ------ | -------- |\n")
+
+            for helper_type, helpers in sorted(self.all_contents.items()):
+                for helper_name, helper_info in sorted(helpers.items()):
+                    keywords = ', '.join(sorted(set(helper_info["keywords"])))
+                    file.write(f"| [{helper_name}](documentation.md#{helper_name.lower()}) | {keywords} |\n")
