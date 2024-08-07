@@ -57,7 +57,7 @@ public:
      * @param interval Scheduler interval.
      * @param shouldRun Condition to run or not an action.
      */
-    void startActionScheduler(const size_t interval, const std::atomic<bool>& shouldRun)
+    void startActionScheduler(const size_t interval, const std::atomic<bool>& shouldRun = true)
     {
         m_action->startActionScheduler(interval, shouldRun);
     }
