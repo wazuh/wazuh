@@ -5,6 +5,13 @@
 
 constexpr auto TEST_DB = "test.db";
 
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+        GLOBAL_LOG_FUNCTION;
+};
+
 static void pushBenchmark(benchmark::State& state)
 {
     std::error_code ec;

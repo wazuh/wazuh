@@ -12,6 +12,7 @@
 #ifndef _ROCKS_DB_WRAPPER_HPP
 #define _ROCKS_DB_WRAPPER_HPP
 
+#include "loggerHelper.h"
 #include "rocksDBColumnFamily.hpp"
 #include "rocksDBIterator.hpp"
 #include "rocksDBOptions.hpp"
@@ -65,8 +66,10 @@ namespace Utils
          *
          * @param dbPath Path to the RocksDB database.
          * @param enableWal Whether to enable WAL or not.
+         * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
+         *                        WARNING: this process might not recover all data.
          */
-        explicit TRocksDBWrapper(std::string dbPath, const bool enableWal = true)
+        explicit TRocksDBWrapper(std::string dbPath, const bool enableWal = true, const bool repairIfCorrupt = true)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
         {
@@ -88,9 +91,20 @@ namespace Utils
             {
                 // Read columns names.
                 std::vector<std::string> columnsNames;
-                if (const auto listStatus {T::ListColumnFamilies(options, m_path, &columnsNames)}; !listStatus.ok())
+                if (auto listStatus {T::ListColumnFamilies(options, m_path, &columnsNames)}; !listStatus.ok())
                 {
-                    throw std::runtime_error("Failed to list columns: " + std::string {listStatus.getState()});
+                    if (!repairIfCorrupt)
+                    {
+                        throw std::runtime_error("Failed to list columns, '" + m_path +
+                                                 "' won't be repaired: " + std::string {listStatus.getState()});
+                    }
+                    repairDB(listStatus);
+                    listStatus = T::ListColumnFamilies(options, m_path, &columnsNames);
+                    if (!listStatus.ok())
+                    {
+                        throw std::runtime_error("Failed to list columns after repair: " +
+                                                 std::string {listStatus.getState()});
+                    }
                 }
 
                 // Create a set of column descriptors. This includes the default column.
@@ -115,29 +129,49 @@ namespace Utils
             // Compare if T is a rocksdb::DB or rocksdb::TransactionDB.
             if constexpr (std::is_same_v<T, rocksdb::DB>)
             {
-                if (const auto status {T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr)};
-                    !status.ok())
+                if (auto status {T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr)}; !status.ok())
                 {
-                    throw std::runtime_error("Failed to open RocksDB database. Reason: " +
-                                             std::string {status.getState()});
+                    if (!repairIfCorrupt)
+                    {
+                        throw std::runtime_error("Failed to open RocksDB, '" + m_path +
+                                                 "' won't be repaired: " + std::string {status.getState()});
+                    }
+
+                    repairDB(status);
+                    status = T::Open(options, m_path, columnsDescriptors, &columnHandles, &dbRawPtr);
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Failed to open RocksDB database after repair. Reason: " +
+                                                 std::string {status.getState()});
+                    }
                 }
             }
             else
             {
-                if (const auto status {T::Open(options,
-                                               rocksdb::TransactionDBOptions(),
-                                               m_path,
-                                               columnsDescriptors,
-                                               &columnHandles,
-                                               &dbRawPtr)};
+                if (auto status {T::Open(options,
+                                         rocksdb::TransactionDBOptions(),
+                                         m_path,
+                                         columnsDescriptors,
+                                         &columnHandles,
+                                         &dbRawPtr)};
                     !status.ok())
                 {
-                    throw std::runtime_error("Failed to open RocksDB database. Reason: " +
-                                             std::string {status.getState()});
+                    repairDB(status);
+                    status = T::Open(options,
+                                     rocksdb::TransactionDBOptions(),
+                                     m_path,
+                                     columnsDescriptors,
+                                     &columnHandles,
+                                     &dbRawPtr);
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Failed to open Transaction RocksDB database after repair. Reason: " +
+                                                 std::string {status.getState()});
+                    }
                 }
             }
-            // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete the
-            // allocated RocksDB instance.
+            // Assigns the raw pointer to the unique_ptr. When db goes out of scope, it will automatically delete
+            // the allocated RocksDB instance.
             m_db.reset(dbRawPtr);
 
             // Create a RAII wrapper for each column handle.
@@ -657,6 +691,31 @@ namespace Utils
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
+
+        /**
+         * @brief Will try to repair the database if it is corrupt or throw exception if something failed.
+         *
+         * @param errorStatus The status of the failed operation.
+         */
+        void repairDB(const rocksdb::Status& errorStatus)
+        {
+            if (errorStatus.code() == rocksdb::Status::kIOError || errorStatus.code() == rocksdb::Status::kCorruption)
+            {
+                rocksdb::Options options;
+                if (const auto repairStatus {rocksdb::RepairDB(m_path, options)}; !repairStatus.ok())
+                {
+                    throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
+                                             std::string {repairStatus.getState()});
+                }
+                logWarn(LOGGER_DEFAULT_TAG, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
+            }
+            else
+            {
+                throw std::runtime_error("Failed to open RocksDB database, repair not tried because the error "
+                                         "wasn't corruption. Code: " +
+                                         std::to_string(errorStatus.code()) + " Reason: " + errorStatus.getState());
+            }
+        }
 
         /**
          * @brief Returns the column family handle identified by its name.

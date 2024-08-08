@@ -12,6 +12,7 @@
 #ifndef _ROCKSDB_QUEUE_HPP
 #define _ROCKSDB_QUEUE_HPP
 
+#include "loggerHelper.h"
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
@@ -38,8 +39,11 @@ public:
         rocksdb::Options options;
         options.table_factory.reset(NewBlockBasedTableFactory(tableOptions));
         options.create_if_missing = true;
-        options.keep_log_file_num = 1;
-        options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+        // Setting INFO level for the info log. We'll have up to 10 files of 10MB each.
+        options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL;
+        options.keep_log_file_num = 10;
+        options.max_log_file_size = 10 * 1024 * 1024;
+        options.recycle_log_file_num = 10;
         options.max_open_files = 64;
         options.write_buffer_manager = m_writeManager;
         options.num_levels = 4;
@@ -52,9 +56,34 @@ public:
         // Create directories recursively if they do not exist
         std::filesystem::create_directories(std::filesystem::path(connectorName));
 
-        if (const auto status = rocksdb::DB::Open(options, connectorName, &db); !status.ok())
+        if (auto status = rocksdb::DB::Open(options, connectorName, &db); !status.ok())
         {
-            throw std::runtime_error("Failed to open RocksDB database. Reason: " + std::string {status.getState()});
+            if (status.IsCorruption() || status.IsIOError())
+            {
+                rocksdb::Options repairOptions;
+                if (const auto repairStatus {rocksdb::RepairDB(connectorName, repairOptions)}; !repairStatus.ok())
+                {
+                    throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
+                                             std::string {repairStatus.getState()});
+                }
+                else
+                {
+                    status = rocksdb::DB::Open(options, connectorName, &db);
+                    if (!status.ok())
+                    {
+                        throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
+                                                 std::string {status.getState()});
+                    }
+                    logWarn(LOGGER_DEFAULT_TAG,
+                            "Database '%s' was repaired because it was corrupt.",
+                            connectorName.c_str());
+                }
+            }
+            else
+            {
+                throw std::runtime_error("Failed to open RocksDB database, not repairable. Reason: " +
+                                         std::string {status.getState()});
+            }
         }
 
         m_db.reset(db);
