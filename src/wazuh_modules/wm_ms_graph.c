@@ -265,6 +265,13 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, const bool initial_sc
                         WM_MS_GRAPH_ITEM_PER_PAGE,
                         start_time_str,
                         end_time_str);
+                    } else if (!strcmp(ms_graph->resources[resource_num].relationships[relationship_num], WM_MS_GRAPH_RELATIONSHIP_DETECTED_APPS)) {
+                        snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL_EXPAND_DEVICES,
+                        it->query_fqdn,
+                        ms_graph->version,
+                        WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT,
+                        ms_graph->resources[resource_num].relationships[relationship_num],
+                        WM_MS_GRAPH_ITEM_PER_PAGE);
                     } else {
                         snprintf(url, OS_SIZE_8192 - 1, WM_MS_GRAPH_API_URL,
                         it->query_fqdn,
