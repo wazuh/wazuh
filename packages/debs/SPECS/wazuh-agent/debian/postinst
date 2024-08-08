@@ -170,8 +170,6 @@ case "$1" in
                 systemctl restart wazuh-agent.service > /dev/null 2>&1
             elif command -v service > /dev/null 2>&1 ; then
                 service wazuh-agent restart > /dev/null 2>&1
-            else
-                ${DIR}/bin/wazuh-control restart > /dev/null 2>&1
             fi
         fi
     fi

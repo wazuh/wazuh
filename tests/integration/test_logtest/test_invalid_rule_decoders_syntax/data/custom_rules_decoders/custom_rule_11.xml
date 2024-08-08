@@ -1,9 +1,0 @@
-<!-- Test: non existing group in if_group -->
-<group name="testing">
-
-    <rule id="100002" level="3">
-    <if_group>non_existing_group</if_group>
-    <description>Non existing group description</description>
-    </rule>
-
-</group>

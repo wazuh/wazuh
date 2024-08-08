@@ -752,25 +752,8 @@ InstallCommon()
     WAZUH_GROUP='wazuh'
     WAZUH_USER='wazuh'
     INSTALL="install"
-
-    if [ ${INSTYPE} = 'server' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
-        OSSEC_CONF_SRC='../etc/ossec-server.conf'
-    elif [ ${INSTYPE} = 'agent' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
-        OSSEC_CONF_SRC='../etc/ossec-agent.conf'
-    elif [ ${INSTYPE} = 'local' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
-        OSSEC_CONF_SRC='../etc/ossec-local.conf'
-    fi
-
-    if [ ${DIST_NAME} = "sunos" ]; then
-        INSTALL="ginstall"
-    elif [ ${DIST_NAME} = "HP-UX" ]; then
-        INSTALL="/usr/local/coreutils/bin/install"
-   elif [ ${DIST_NAME} = "AIX" ]; then
-        INSTALL="/opt/freeware/bin/install"
-    fi
+    OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
+    OSSEC_CONF_SRC='../etc/ossec-server.conf'
 
     ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 

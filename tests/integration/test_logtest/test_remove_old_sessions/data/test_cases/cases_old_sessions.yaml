@@ -1,8 +1,0 @@
-- name: Remove old sessions
-  description:
-  configuration_parameters:
-    MAX_SESSIONS: '3'
-    TIMEOUT: '300'
-  metadata:
-    max_sessions: '3'
-    timeout: '300'

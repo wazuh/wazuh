@@ -1,3 +1,4 @@
+
 #! /bin/bash
 # By Spransy, Derek" <DSPRANS () emory ! edu> and Charlie Scott
 # Modified by Wazuh, Inc. <info@wazuh.com>.
@@ -30,15 +31,6 @@ if [ -d "${DIR}" ]; then
     fi
 
     # Stops the agent before upgrading it
-    if ${DIR}/bin/wazuh-control status | grep "is running" > /dev/null 2>&1; then
-        touch "${DIR}/WAZUH_RESTART"
-        ${DIR}/bin/wazuh-control stop
-        restart="true"
-    elif ${DIR}/bin/ossec-control status | grep "is running" > /dev/null 2>&1; then
-        touch "${DIR}/WAZUH_RESTART"
-        ${DIR}/bin/ossec-control stop
-        restart="true"
-    fi
 
     echo "Backing up configuration files to ${DIR}/config_files/"
     mkdir -p ${DIR}/config_files/

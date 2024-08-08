@@ -1,4 +1,0 @@
-- name: parser_mutiple_bucket_and_service_tags
-  description: Parser multiple bucket and service tags configurations
-  configuration_parameters: []
-  metadata: []

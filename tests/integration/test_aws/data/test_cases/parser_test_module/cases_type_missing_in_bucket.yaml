@@ -1,4 +1,0 @@
-- name: parser_type_missing_in_bucket
-  description: Parser type missing in bucket configurations
-  configuration_parameters: []
-  metadata: []

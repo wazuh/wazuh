@@ -1,4 +1,0 @@
-#define ID_MANIFEST 1
-#define RT_MANIFEST 24
-
-ID_MANIFEST RT_MANIFEST "route-null.exe.manifest"
