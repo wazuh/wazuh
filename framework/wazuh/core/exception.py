@@ -447,6 +447,11 @@ class WazuhException(Exception):
         2702: {'message': 'Ensure the certificates have the correct permissions'},
         2703: {'message': 'Wazuh comms API SSL error. Please, ensure the configuration is correct'},
 
+        # Engine API client
+        2800: {'message': 'The engine client connection timeout has been exceeded'},
+        2801: {'message': 'Invalid request URL scheme'},
+        2802: {'message': 'Invalid unix socket path'},
+
         # Cluster
         3000: 'Cluster',
         3001: 'Error creating zip file',
@@ -814,12 +819,22 @@ class WazuhHAPHelperError(WazuhClusterError):
     _default_type = "about:blank"
     _default_title = "HAProxy Helper Error"
 
+
 class WazuhCommsAPIError(WazuhInternalError):
     """
     This type of exception is raised inside the Agent comms API.
     """
     _default_type = "about:blank"
     _default_title = "Agent comms API Error"
+
+
+class WazuhEngineError(WazuhInternalError):
+    """
+    This type of exception is raised inside the engine.
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Engine Error"
+
 
 class WazuhIndexerError(WazuhInternalError):
     """
