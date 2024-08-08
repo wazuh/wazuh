@@ -1,8 +1,9 @@
 import asyncio
-import sys
-from typing import List, Optional
+from typing import List
 from multiprocessing import Process
 
+from buffer import Buffer
+from timer import TimerManager
 from mux_demux import MuxDemuxQueue, Message
 
 
@@ -38,12 +39,9 @@ class Batcher:
     """
     def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig):
         self.q: MuxDemuxQueue = queue
-        self.config: BatcherConfig = config
 
-        self._buffer: List[Message] = []
-
-        self._timeout_event = asyncio.Event()
-        self._timeout_task: Optional[asyncio.Future] = None
+        self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
+        self._timer: TimerManager = TimerManager(max_time_seconds=config.max_time_seconds)
 
     async def _get_from_queue(self) -> Message:
         """
@@ -56,51 +54,6 @@ class Batcher:
         """
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self.q.receive_from_mux)
-
-    def get_buffer_len(self) -> int:
-        """
-        Gets the current length of the buffer.
-
-        Returns
-        -------
-        int
-            The number of messages currently in the buffer.
-        """
-        return len(self._buffer)
-
-    def add_message_to_buffer(self, event: Message):
-        """
-        Adds a message to the buffer.
-
-        Parameters
-        ----------
-        event : Message
-            The message to be added to the buffer.
-        """
-        self._buffer.append(event)
-
-    def check_buffer_count_limit(self) -> bool:
-        """
-        Checks if the buffer has reached the maximum number of messages.
-
-        Returns
-        -------
-        bool
-            True if the buffer has reached the maximum number of messages, False otherwise.
-        """
-        return self.get_buffer_len() >= self.config.max_elements
-
-    def check_buffer_size_limit(self) -> bool:
-        """
-        Checks if the buffer has reached the maximum size in bytes.
-
-        Returns
-        -------
-        bool
-            True if the buffer has reached the maximum size, False otherwise.
-        """
-        total_size = sum(sys.getsizeof(msg.msg) for msg in self._buffer)
-        return total_size >= self.config.max_size
 
     async def _send_buffer(self, events: List[Message]):
         """
@@ -121,35 +74,7 @@ class Batcher:
         Creates an asynchronous task to send the current buffer's messages and resets the buffer.
         """
         asyncio.create_task(self._send_buffer(self._buffer.copy()))
-        self.reset_buffer()
-
-    async def _event_timer(self):
-        """
-        Asynchronous timer that waits for the configured max time before setting the timeout event.
-        """
-        await asyncio.sleep(self.config.max_time_seconds)
-        self._timeout_event.set()
-
-    def create_timer_task(self):
-        """
-        Creates an asynchronous task to start the event timer.
-        """
-        self._timeout_task = asyncio.create_task(self._event_timer())
-
-    def reset_timer(self):
-        """
-        Resets the timer by canceling the current timer task (if any) and clearing the timeout event.
-        """
-        if self._timeout_task is not None:
-            self._timeout_task.cancel()
-            self._timeout_task = None
-        self._timeout_event.clear()
-
-    def reset_buffer(self):
-        """
-        Clears the buffer.
-        """
-        self._buffer.clear()
+        self._buffer.reset()
 
     async def run(self):
         """
@@ -158,7 +83,7 @@ class Batcher:
         while True:
             print("Batcher - Waiting from queue")
             done, pending = await asyncio.wait(
-                [self._get_from_queue(), self._timeout_event.wait()],
+                [self._get_from_queue(), self._timer.wait_timeout_event()],
                 return_when=asyncio.FIRST_COMPLETED
             )
 
@@ -171,23 +96,23 @@ class Batcher:
                         p_task.cancel()
 
                     self.create_flush_buffer_task()
-                    self.reset_timer()
+                    self._timer.reset_timer()
                 else:
                     message = task.result()
                     print(f"Batcher - Got message {message}")
 
                     # First message of the batch
-                    if self.get_buffer_len() == 0:
-                        self.create_timer_task()
+                    if self._buffer.get_length() == 0:
+                        self._timer.create_timer_task()
 
                     print(f"Batcher - Added message {message}")
-                    self.add_message_to_buffer(message)
+                    self._buffer.add_message(message)
 
                     # Check if one of the conditions was met
-                    if self.check_buffer_size_limit() or self.check_buffer_count_limit():
+                    if self._buffer.check_count_limit() or self._buffer.check_size_limit():
                         print(f"Batcher - Condition met")
                         self.create_flush_buffer_task()
-                        self.reset_timer()
+                        self._timer.reset_timer()
 
 
 class BatcherProcess(Process):
