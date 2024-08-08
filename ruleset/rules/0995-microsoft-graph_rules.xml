@@ -890,6 +890,13 @@
         <description>MS Graph message: MDM Intune device.</description>
     </rule>
 
+    <rule id="99654" level="3">
+        <if_sid>99651</if_sid>
+        <options>no_full_log</options>
+        <field name="ms-graph.relationship">detectedApps</field>
+        <description>MS Graph message: MDM Intune app.</description>
+    </rule>
+
 <!--MDM Intune 99651-99700-->
 
 </group>
