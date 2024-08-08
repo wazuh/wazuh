@@ -11,7 +11,7 @@ class BatcherClient:
 
     Parameters
     ----------
-    router : MuxDemuxQueue
+    queue : MuxDemuxQueue
         The MuxDemuxQueue instance used to route messages.
     """
     def __init__(self, queue: MuxDemuxQueue, frequency_of_wait: int = 0.1):
