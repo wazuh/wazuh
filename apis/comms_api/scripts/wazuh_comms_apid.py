@@ -8,20 +8,21 @@ from functools import partial
 from sys import exit
 from typing import Any, Callable, Dict
 
+from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI
 from gunicorn.app.base import BaseApplication
 
 from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
 from api.constants import COMMS_API_LOG_PATH
-from routers import router
+from api.middlewares import SecureHeadersMiddleware
+from comms_api.routers.router import router
+from comms_api.middlewares.logging import LoggingMiddleware
+from comms_api.middlewares.timeout import TimeoutMiddleware
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
 
 MAIN_PROCESS = 'wazuh-comms-apid'
-
-app = FastAPI()
-app.include_router(router.router)
 
 
 def setup_logging(foreground_mode: bool) -> dict:
@@ -50,6 +51,7 @@ def setup_logging(foreground_mode: bool) -> dict:
 
     return log_config_dict
 
+
 def configure_ssl(keyfile: str, certfile: str) -> None:
     """Generate SSL key file and self-siged certificate if they do not exist.
 
@@ -77,6 +79,7 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
         else:
             raise WazuhCommsAPIError(2703, extra_message=str(exc))
 
+
 def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
     """Returns the default SSL context with a custom minimum version.
 
@@ -88,6 +91,7 @@ def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
     context = default_ssl_context_factory()
     context.minimum_version = ssl.TLSVersion.MINIMUM_SUPPORTED
     return context
+
 
 def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict) -> dict:
     """Get the gunicorn app configuration options.
@@ -129,6 +133,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'logconfig_dict': log_config_dict,
         'user': os.getuid()
     }
+
 
 def get_script_arguments() -> Namespace:
     """Get script arguments.
@@ -199,6 +204,12 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     try:
+        app = FastAPI()
+        app.add_middleware(SecureHeadersMiddleware)
+        app.add_middleware(BrotliMiddleware)
+        app.add_middleware(TimeoutMiddleware)
+        app.add_middleware(LoggingMiddleware)
+        app.include_router(router)
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:

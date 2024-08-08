@@ -11,6 +11,8 @@ azure-storage-blob==12.20.0
 azure-storage-common==2.1.0
 boto3==1.34.135
 botocore==1.34.135
+brotli==1.1.0
+brotli-asgi==1.4.0
 cachetools==4.1.0
 certifi==2023.7.22
 cffi==1.15.1

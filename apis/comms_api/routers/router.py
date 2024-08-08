@@ -1,7 +1,6 @@
 from fastapi import APIRouter, status
 from fastapi.responses import Response
 
-
 router = APIRouter(prefix='/api/v1')
 
 
