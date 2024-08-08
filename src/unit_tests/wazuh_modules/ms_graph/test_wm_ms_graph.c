@@ -2768,15 +2768,13 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
       <api_type>global</api_type>
     </api_auth>
     <resource>
-      <name>security</name>
-      <relationship>alerts_v2</relationship>
+      <name>deviceManagement</name>
+      <relationship>detectedApps</relationship>
     </resource>
     */
     wm_ms_graph* module_data = (wm_ms_graph *)*state;
-    wm_ms_graph_state_t relationship_state_struc;
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
     os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
-    relationship_state_struc.next_time = 10;
     module_data->enabled = true;
     module_data->only_future_events = false;
     module_data->curl_max_size = 1024L;
@@ -2789,10 +2787,10 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
     os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
     os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
-    os_strdup("security", module_data->resources[0].name);
+    os_strdup("deviceManagement", module_data->resources[0].name);
     module_data->num_resources = 1;
     os_malloc(sizeof(char*), module_data->resources[0].relationships);
-    os_strdup("alerts_v2", module_data->resources[0].relationships[0]);
+    os_strdup("detectedApps", module_data->resources[0].relationships[0]);
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
     bool initial = false;
@@ -2805,27 +2803,8 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_strdup("{\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
     os_strdup("test", response->header);
 
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
-    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
-    expect_any(__wrap_wm_state_io, state);
-    expect_any(__wrap_wm_state_io, size);
-    will_return(__wrap_wm_state_io, 0);
-    will_return(__wrap_wm_state_io, (void *)&relationship_state_struc);
-
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:24:56Z");
-    will_return(__wrap_strftime, 20);
-
-#ifndef WIN32
-    will_return(__wrap_gmtime_r, 1);
-#endif
-    will_return(__wrap_strftime,"2023-02-08T12:25:56Z");
-    will_return(__wrap_strftime, 20);
-
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/security/alerts_v2?$top=100&$filter=createdDateTime+ge+2023-02-08T12:24:56Z+and+createdDateTime+lt+2023-02-08T12:25:56Z'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=100&$expand=managedDevices($select=id)'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2836,12 +2815,12 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, -1);
@@ -2852,23 +2831,14 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"security\",\"relationship\":\"alerts_v2\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
-
-    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
-    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
-    expect_any(__wrap_wm_state_io, state);
-    expect_any(__wrap_wm_state_io, size);
-    will_return(__wrap_wm_state_io, 1);
-
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
     wm_ms_graph_scan_relationships(module_data, initial);
 }
