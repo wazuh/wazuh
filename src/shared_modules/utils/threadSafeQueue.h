@@ -139,6 +139,43 @@ namespace Utils
             }
         }
 
+        std::queue<U> getBulkAndPop(const uint64_t elementsQuantity,
+                              const std::chrono::seconds& timeout = std::chrono::seconds(5))
+        {
+            std::unique_lock<std::mutex> lock {m_mutex};
+            std::queue<U> bulkQueue;
+
+            // If we have less elements than requested, wait for more elements to be pushed.
+            // coverity[missing_lock]
+            if (m_queue.size() < elementsQuantity)
+            {
+                m_cv.wait_for(lock,
+                              timeout,
+                              [this, elementsQuantity]()
+                              {
+                                  // coverity[missing_lock]
+                                  return m_canceled.load() || m_queue.size() >= elementsQuantity;
+                              });
+            }
+
+            // If the queue is not canceled, get the elements.
+            if (!m_canceled)
+            {
+                for (auto i = 0; i < elementsQuantity && i < m_queue.size(); ++i)
+                {
+                    bulkQueue.push(std::move(m_queue.at(i)));
+                }
+            }
+
+            // Pop the elements from the queue after getting them.
+            for (auto i = 0; i < elementsQuantity && !m_queue.empty(); ++i)
+            {
+                m_queue.pop();
+            }
+
+            return bulkQueue;
+        }
+
         bool empty() const
         {
             std::lock_guard<std::mutex> lock {m_mutex};
