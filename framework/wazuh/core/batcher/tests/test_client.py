@@ -4,7 +4,7 @@ from unittest.mock import patch, AsyncMock, call
 from ..client import BatcherClient
 
 
-@patch("wazuh.core.batcher.queue.MuxDemuxQueue")
+@patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 @patch("uuid.uuid4")
 def test_send_event(uuid_mock, queue_mock):
     """
@@ -24,7 +24,7 @@ def test_send_event(uuid_mock, queue_mock):
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.batcher.queue.MuxDemuxQueue")
+@patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 async def test_get_response(queue_mock):
     """
     Test getting a response asynchronously through the BatcherClient.
@@ -45,7 +45,7 @@ async def test_get_response(queue_mock):
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.batcher.queue.MuxDemuxQueue")
+@patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 @patch("asyncio.sleep", new_callable=AsyncMock)
 async def test_get_response_wait(sleep_mock, queue_mock):
     """

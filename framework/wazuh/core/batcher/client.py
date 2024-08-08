@@ -2,7 +2,7 @@ import uuid
 import asyncio
 from typing import Optional
 
-from .queue import MuxDemuxQueue
+from mux_demux import MuxDemuxQueue
 
 
 class BatcherClient:
@@ -35,6 +35,7 @@ class BatcherClient:
         assigned_uid = uuid.uuid4()
         return self.queue.send_to_mux(assigned_uid, event)
 
+    # TODO - Investigate possibility of changing it to run_in_executor
     async def get_response(self, uid: uuid.UUID) -> Optional[dict]:
         """
         Asynchronously waits for a response to become available and retrieves it.
