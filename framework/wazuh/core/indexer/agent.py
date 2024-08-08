@@ -1,39 +1,22 @@
 from dataclasses import asdict
+
 from opensearchpy import exceptions
 from uuid6 import uuid7
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
 from .base import BaseIndex
+from .constants import (
+    BODY_KEY,
+    DELETED_KEY,
+    FAILURES_KEY,
+    ID_KEY,
+    INDEX_KEY,
+    QUERY_KEY,
+    SOURCE_KEY,
+    TERMS_KEY,
+)
 from .models import Agent
-
-NAME_KEY = 'name'
-PASSWORD_KEY = 'password'
-SOURCE_KEY = '_source'
-QUERY_KEY = 'query'
-TERMS_KEY = 'terms'
-INDEX_KEY = 'index'
-BODY_KEY = 'body'
-ID_KEY = 'id'
-HITS_KEY = 'hits'
-TOTAL_KEY = 'total'
-DELETED_KEY = 'deleted'
-FAILURES_KEY = 'failures'
-
-
-def _get_source_items(search_result: dict) -> list:
-    """Extract the elements from a search query.
-
-    Parameters
-    ----------
-    search_result : dict
-        Data to extract the elements.
-
-    Returns
-    -------
-    list
-        Obtained items.
-    """
-    return [item[SOURCE_KEY] for item in search_result[HITS_KEY][HITS_KEY]]
+from .utils import get_source_items
 
 
 class AgentsIndex(BaseIndex):
@@ -109,8 +92,24 @@ class AgentsIndex(BaseIndex):
         elif response[FAILURES_KEY]:
             ids_after_delete = {
                 item[ID_KEY]
-                for item in _get_source_items(await self._client.search(**parameters, _source_includes=ID_KEY))
+                for item in get_source_items(await self._client.search(**parameters, _source_includes=ID_KEY))
             }
             deleted_ids = list(set(ids) & ids_after_delete)
 
         return deleted_ids
+
+    async def search(self, query: dict) -> dict:
+        """Perform a search operation with the given query.
+
+        Parameters
+        ----------
+        query : dict
+            DSL query.
+
+        Returns
+        -------
+        dict
+            The search result.
+        """
+        parameters = {INDEX_KEY: self.INDEX, BODY_KEY: query}
+        return (await self._client.search(**parameters))

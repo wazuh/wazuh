@@ -8,6 +8,11 @@ from typing import Union
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
+from wazuh import agent, stats
+from wazuh.core.cluster.control import get_system_nodes
+from wazuh.core.cluster.dapi.dapi import DistributedAPI
+from wazuh.core.common import DATABASE_LIMIT
+from wazuh.core.results import AffectedItemsWazuhResult
 
 from api.controllers.util import JSON_CONTENT_TYPE, json_response
 from api.models.agent_added_model import AgentAddedModel
@@ -16,11 +21,6 @@ from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
 from api.validator import check_component_configuration_pair
-from wazuh import agent, stats
-from wazuh.core.cluster.control import get_system_nodes
-from wazuh.core.cluster.dapi.dapi import DistributedAPI
-from wazuh.core.common import DATABASE_LIMIT
-from wazuh.core.results import AffectedItemsWazuhResult
 
 logger = logging.getLogger('wazuh-api')
 
@@ -43,6 +43,8 @@ async def delete_agents(
     ConnexionResponse
         Agents which have been deleted.
     """
+    if 'all' in agents_list:
+        agents_list = []
 
     dapi = DistributedAPI(
         f=agent.delete_agents,
