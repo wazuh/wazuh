@@ -2,7 +2,7 @@ import uuid
 import asyncio
 from typing import Optional
 
-from mux_demux import MuxDemuxQueue
+from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue
 
 
 class BatcherClient:

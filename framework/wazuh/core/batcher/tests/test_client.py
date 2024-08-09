@@ -1,7 +1,7 @@
 import pytest
 from unittest.mock import patch, AsyncMock, call
 
-from ..client import BatcherClient
+from framework.wazuh.core.batcher.client import BatcherClient
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
