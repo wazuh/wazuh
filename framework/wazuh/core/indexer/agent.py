@@ -7,16 +7,12 @@ from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from .base import BaseIndex
 from .constants import (
     BODY_KEY,
-    DELETED_KEY,
-    FAILURES_KEY,
-    ID_KEY,
     INDEX_KEY,
     QUERY_KEY,
     SOURCE_KEY,
     TERMS_KEY,
 )
 from .models import Agent
-from .utils import get_source_items
 
 
 class AgentsIndex(BaseIndex):
@@ -81,22 +77,11 @@ class AgentsIndex(BaseIndex):
         """
         indexes = ','.join([self.INDEX, *self.SECONDARY_INDEXES])
         body = {QUERY_KEY: {TERMS_KEY: {'_id': ids}}}
-        parameters = {INDEX_KEY: indexes, BODY_KEY: body}
+        parameters = {INDEX_KEY: indexes, BODY_KEY: body, 'conflicts': 'proceed'}
 
-        deleted_ids = []
+        await self._client.delete_by_query(**parameters, refresh='true')
 
-        response = await self._client.delete_by_query(**parameters, refresh='true')
-
-        if len(ids) == response[DELETED_KEY]:
-            deleted_ids = ids
-        elif response[FAILURES_KEY]:
-            ids_after_delete = {
-                item[ID_KEY]
-                for item in get_source_items(await self._client.search(**parameters, _source_includes=ID_KEY))
-            }
-            deleted_ids = list(set(ids) & ids_after_delete)
-
-        return deleted_ids
+        return ids
 
     async def search(self, query: dict) -> dict:
         """Perform a search operation with the given query.
@@ -112,4 +97,4 @@ class AgentsIndex(BaseIndex):
             The search result.
         """
         parameters = {INDEX_KEY: self.INDEX, BODY_KEY: query}
-        return (await self._client.search(**parameters))
+        return await self._client.search(**parameters)
