@@ -23,7 +23,7 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
 # Options
 option(ENGINE_BUILD_TEST "Generate tests" ON)
-option(ENGINE_BUILD_ASAN "Enable address sanitizer" OFF)
+option(ENGINE_BUILD_ASAN "Enable address sanitizer" ON)
 option(ENGINE_BUILD_TSAN "Enable thread sanitizer" OFF)
 option(ENGINE_BUILD_UBSAN "Enable undefined behavior sanitizer" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
