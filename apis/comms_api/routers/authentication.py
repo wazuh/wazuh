@@ -18,7 +18,7 @@ async def authentication(credentials: Credentials) -> TokenResponse:
     ----------
     credentials : Credentials
         Agent credentials.
-    
+
     Raises
     ------
     HTTPError
@@ -41,7 +41,7 @@ async def authentication(credentials: Credentials) -> TokenResponse:
             body = Agent(last_login=get_utc_now())
             _ = await indexer_client.agents.update(credentials.uuid, body)
     except WazuhIndexerError as exc:
-        raise HTTPError(message=f'Couldn\'t connect to the indexer: {exc}', status_code=status.HTTP_403_FORBIDDEN)
+        raise HTTPError(message=f'Couldn\'t connect to the indexer: {str(exc)}', status_code=status.HTTP_403_FORBIDDEN)
     except WazuhResourceNotFound:
         raise HTTPError(message='Agent does not exist', status_code=status.HTTP_403_FORBIDDEN)
     except WazuhInternalError as exc:

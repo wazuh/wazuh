@@ -20,7 +20,24 @@ class JWTBearer(HTTPBearer):
     def __init__(self):
         super(JWTBearer, self).__init__(auto_error=True)
 
-    async def __call__(self, request: Request):
+    async def __call__(self, request: Request) -> str:
+        """Get JWT token from the request header and validate it.
+
+        Parameters
+        ----------
+        request : Request
+            HTTP request.
+        
+        Raises
+        ------
+        HTTPError
+            Invalid token error.
+
+        Returns
+        -------
+        str
+            HTTP Authorization header credentials.        
+        """
         try:
             credentials: Optional[HTTPAuthorizationCredentials] = await super(JWTBearer, self).__call__(request)
             payload = decode_token(credentials.credentials)
