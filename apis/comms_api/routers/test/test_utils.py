@@ -6,6 +6,7 @@ from fastapi import status
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import DEFAULT_TIMEOUT, timeout
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('timeout_seconds,sleep_seconds', [
     (1, 0.1),
@@ -29,6 +30,5 @@ async def test_timeout(timeout_seconds, sleep_seconds):
     else:
         with pytest.raises(HTTPError) as exc:
             _ = await f()
-            assert exc.message == 'Request exceeded the processing time limit'
-            assert exc.code == status.HTTP_408_REQUEST_TIMEOUT
-            assert exc.status_code == status.HTTP_408_REQUEST_TIMEOUT
+        
+        assert str(exc.value) == f'{status.HTTP_408_REQUEST_TIMEOUT}: Request exceeded the processing time limit'

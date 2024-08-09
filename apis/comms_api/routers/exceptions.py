@@ -9,6 +9,10 @@ class HTTPError(HTTPException):
         self.message = message
         self.code = code if code is not None else status_code
         self.status_code = status_code
+    
+    def __str__(self) -> str:
+        return f"{self.code}: {self.message}"
+
 
 async def http_error_handler(request: Request, exc: HTTPError) -> JSONResponse:
     """API internal errors handler.
@@ -29,6 +33,7 @@ async def http_error_handler(request: Request, exc: HTTPError) -> JSONResponse:
         status_code=exc.status_code,
         content={'message': exc.message, 'code': exc.code},
     )
+
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """API request validation errors handler.
