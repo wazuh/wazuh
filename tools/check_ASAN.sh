@@ -2,20 +2,21 @@
 
 # Function to display help message
 usage() {
-    echo "Usage: $0 [options] [test_directory] [regex_pattern] [output_file]"
+    echo "Usage: $0 [options] [arguments]"
     echo
     echo "Options:"
     echo "  -h, --help          Show this help message"
-    echo "  -e, --exclude DIRS  Colon-separated list of directories to exclude (applies only when using default test directory)"
-    echo
-    echo "Arguments:"
-    echo "  test_directory      Directory to search for tests (default: build directory)"
-    echo "  regex_pattern       Optional regular expression to filter tests (default: no filtering)"
-    echo "  output_file         Optional file to redirect output (default: stdout)"
+    echo "  -e, --exclude DIRS  Colon-separated list of directories to exclude"
+    echo "  -t, --test-dir DIR  Directory to search for tests (default: build directory)"
+    echo "  -r, --regex PATTERN Optional regular expression to filter tests (default: no filtering)"
+    echo "  -o, --output FILE   File to redirect output (default: ${SCRIPT_DIR}/valgrindReport.log)"
 }
 
 # Initialize variables
 EXCLUDE_DIRS=""
+TEST_DIR=""
+REGEX_FILTER=""
+OUTPUT_FILE=""
 
 # Parse command-line options
 while [[ "$1" == -* ]]; do
@@ -28,6 +29,18 @@ while [[ "$1" == -* ]]; do
             EXCLUDE_DIRS=$2
             shift 2
             ;;
+        -t|--test-dir)
+            TEST_DIR=$2
+            shift 2
+            ;;
+        -r|--regex)
+            REGEX_FILTER=$2
+            shift 2
+            ;;
+        -o|--output)
+            OUTPUT_FILE=$2
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
             usage
@@ -36,14 +49,20 @@ while [[ "$1" == -* ]]; do
     esac
 done
 
-# Search the test directory
+# Set default values if not provided
 SCRIPT_DIR=$(dirname $(readlink -f $0))
 BUILD_DIR=$SCRIPT_DIR/../build
 BUILD_SRC_DIR=$(realpath "${BUILD_DIR}/source")
 
-echo "SCRIPT DIR: ${SCRIPT_DIR}"
-echo "BUILD DIR: $(readlink -f ${BUILD_DIR})"
-echo "BUILD SRC DIR: ${BUILD_SRC_DIR}"
+# If no test directory is specified, use the default build directory
+if [ -z "$TEST_DIR" ]; then
+    TEST_DIR=$BUILD_DIR
+fi
+
+# If no output file is specified, use the default
+if [ -z "$OUTPUT_FILE" ]; then
+    OUTPUT_FILE="${SCRIPT_DIR}/valgrindReport.log"
+fi
 
 # Check if the directories exist
 if [ ! -d "${BUILD_DIR}" ]; then
@@ -53,28 +72,6 @@ fi
 if [ ! -d "${BUILD_SRC_DIR}" ]; then
     echo "Build source directory does not exist"
     exit 1
-fi
-
-# Handle test directory argument
-if [ "$#" -gt 0 ]; then
-    TEST_DIR=$1
-    shift
-else
-    # Default to the build directory if no argument is provided
-    TEST_DIR=$BUILD_DIR
-fi
-
-# Handle regex argument for ctest
-REGEX=""
-if [ "$#" -gt 0 ]; then
-    REGEX="--tests-regex $1"
-    shift
-fi
-
-# Handle output file argument
-OUTPUT_FILE=""
-if [ "$#" -gt 0 ]; then
-    OUTPUT_FILE=$1
 fi
 
 # Function to check if a directory is in the exclude list
@@ -92,6 +89,7 @@ is_excluded() {
 
 # Get file lists
 TEST_LIST=""
+TEST_DIRS=()
 if [[ "$TEST_DIR" == "$BUILD_DIR" ]]; then
     # Search for test files with exclusion if using default directory
     while IFS= read -r dir; do
@@ -100,6 +98,7 @@ if [[ "$TEST_DIR" == "$BUILD_DIR" ]]; then
             files=$(find "$dir" \( -iname '*_ctest' -o -iname '*_utest' \) -type f)
             if [[ -n "$files" ]]; then
                 TEST_LIST+="$files"$'\n'
+                TEST_DIRS+=("$dir")
             fi
         fi
     done < <(find "${BUILD_SRC_DIR}" -type d)
@@ -107,8 +106,9 @@ else
     TEST_LIST=$(find "${TEST_DIR}" \( -iname '*_ctest' -o -iname '*_utest' \) -type f)
 fi
 
+# Get filist
+TEST_LIST=$(find "${TEST_SRC_DIR}" -iname '*_test' -type f)
 LIBS_LIST=$(find "${BUILD_SRC_DIR}" -iname '*.a' -type f)
-
 # Split the list into an array
 IFS=$'\n' read -d '' -r -a test_arr <<< "${TEST_LIST}"
 IFS=$'\n' read -d '' -r -a lib_arr <<< "${LIBS_LIST}"
@@ -117,25 +117,32 @@ IFS=$'\n' read -d '' -r -a lib_arr <<< "${LIBS_LIST}"
 bin_arr=("${test_arr[@]}" "${lib_arr[@]}")
 bin_arr+=("${BUILD_DIR}/main")
 
+# Check if the binary was compiled with ASAN
 for testAbs in "${bin_arr[@]}"
 do
     relativePath=$(realpath --relative-to="${BUILD_DIR}" "${testAbs}")
-    nm -an $testAbs | grep -q '__asan\|__tsan'
+    nm -an $testAbs | grep -q '__asan\|__tsan\|__msan'
     if [ $? -eq 0 ]; then
-        if [[ "$testAbs" == *test ]]; then
-            echo "🟢 $relativePath"
-        fi
+        echo "🟢 $relativePath"
     else
-        if [[ "$relativePath" == *.a ]]; then
-            echo "🔴 $relativePath failed, no compile with asan"
-            exit 1
-        fi
+        echo "🔴 $relativePath failed, no compile with asan"
+        exit 1
     fi
 done
 
-# Run ctest and handle output redirection
-if [ -n "$OUTPUT_FILE" ]; then
-    ctest --test-dir "${TEST_DIR}" --output-on-failure "${REGEX}" -V > "$OUTPUT_FILE"
+# Run ctest for each test file and handle output redirection
+if [[ "$TEST_DIR" == "$BUILD_DIR" ]]; then
+    for test in "${TEST_DIRS}"; do
+        if [ -n "$OUTPUT_FILE" ]; then
+            ctest --test-dir "${test}" --output-on-failure "${REGEX}" -V >> "$OUTPUT_FILE"
+        else
+            ctest --test-dir "${test}" --output-on-failure "${REGEX}" -V
+        fi
+    done
 else
-    ctest --test-dir "${TEST_DIR}" --output-on-failure "${REGEX}" -V
+    if [ -n "$OUTPUT_FILE" ]; then
+        ctest --test-dir "${TEST_DIR}" --output-on-failure "${REGEX}" -V > "$OUTPUT_FILE"
+    else
+        ctest --test-dir "${TEST_DIR}" --output-on-failure "${REGEX}" -V
+    fi
 fi
