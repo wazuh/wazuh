@@ -16,7 +16,7 @@ pip install -e wazuh/src/engine/tools/engine-suite[dev]
 Once installed the following scripts are available in the path:
 - [engine-schema](src/engine_schema/README.md)
 - engine-decoder
-- engine-integration
+- [engine-integration](src/engine_integration/README.md)
 - engine-diff
 - engine-clear
 - engine-test
