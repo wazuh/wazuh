@@ -3,7 +3,7 @@ from queue import Queue
 from multiprocessing import Process
 from multiprocessing.managers import SyncManager
 
-from ..mux_demux import MuxDemuxQueue, Message, MuxDemuxManager
+from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message, MuxDemuxManager
 
 
 def test_send_to_mux():
