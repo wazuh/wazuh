@@ -17,7 +17,6 @@ from wazuh.core.results import AffectedItemsWazuhResult
 from api.controllers.util import JSON_CONTENT_TYPE, json_response
 from api.models.agent_added_model import AgentAddedModel
 from api.models.agent_group_added_model import GroupAddedModel
-from api.models.agent_inserted_model import AgentInsertedModel
 from api.models.base_model_ import Body
 from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
 from api.validator import check_component_configuration_pair
@@ -851,39 +850,6 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     return json_response(data, pretty=pretty)
 
 
-async def post_new_agent(agent_name: str, pretty: bool = False,
-                         wait_for_complete: bool = False) -> ConnexionResponse:
-    """Add agent (quick method).
-
-    Parameters
-    ----------
-    agent_name : str
-        Name used to register the agent.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = await AgentAddedModel.get_kwargs({'name': agent_name})
-
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def delete_multiple_agent_single_group(group_id: str, agents_list: str = None, pretty: bool = False,
                                              wait_for_complete: bool = False) -> ConnexionResponse:
     """Remove agents assignment from a specified group.
@@ -1392,38 +1358,6 @@ async def restart_agents_by_group(group_id: str, pretty: bool = False,
                           rbac_permissions=request.context['token_info']['rbac_policies']
                           )
 
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def insert_agent(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Insert a new agent.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    # Get body parameters
-    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    f_kwargs = await AgentInsertedModel.get_kwargs(request)
-
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
