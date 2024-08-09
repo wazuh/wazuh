@@ -13,7 +13,6 @@ All notable changes to this project will be documented in this file.
 - Enhanced vulnerability scanner logging to be more expressive. ([#24536](https://github.com/wazuh/wazuh/pull/24536))
 - The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
 - Added the HAProxy helper to manage load balancer configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
-- Added helper to manage HAProxy configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
 - Added a validation to avoid killing processes from external services. ([#23222](https://github.com/wazuh/wazuh/pull/23222))
 - Enabled ceritificates validation in the requests to the HAProxy helper using the default CA bundle. ([#23996](https://github.com/wazuh/wazuh/pull/23996))
 
@@ -96,6 +95,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 - Improved XML validation to match the Wazuh internal XML validator. ([#20507](https://github.com/wazuh/wazuh/pull/20507))
 - Fixed bug in `GET /groups`. ([#22428](https://github.com/wazuh/wazuh/pull/22428))
+- Fixed the `GET /agents/outdated` endpoint query. ([#24946](https://github.com/wazuh/wazuh/pull/24946))
 
 #### Removed
 - Removed the `cache` configuration option from the Wazuh API. ([#22416](https://github.com/wazuh/wazuh/pull/22416))
