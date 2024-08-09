@@ -18,7 +18,7 @@ logger = logging.getLogger('wazuh-api')
 
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
-
+WARNING = 'WARNING'
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
@@ -82,7 +82,7 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
         log_record['data'] = record.message
 
 
-def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
+def set_logging(log_filepath, log_level = 'INFO', foreground_mode = False) -> dict:
     """Set up logging for API.
     
     This function creates a logging configuration dictionary, configure the wazuh-api logger
@@ -206,14 +206,14 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
             log_config_dict['handlers'][handler] = d
 
     # Configure the uvicorn loggers. They will be created by the uvicorn server.
-    log_config_dict['loggers']['uvicorn'] = {"handlers": hdls, "level": 'WARNING', "propagate": False}
-    log_config_dict['loggers']['uvicorn.error'] = {"handlers": hdls, "level": 'WARNING', "propagate": False}
-    log_config_dict['loggers']['uvicorn.access'] = {'level': 'WARNING'}
+    log_config_dict['loggers']['uvicorn'] = {"handlers": hdls, "level": WARNING, "propagate": False}
+    log_config_dict['loggers']['uvicorn.error'] = {"handlers": hdls, "level": WARNING, "propagate": False}
+    log_config_dict['loggers']['uvicorn.access'] = {'level': WARNING}
 
     # Configure the gunicorn loggers. They will be created by the gunicorn process.
-    log_config_dict['loggers']['gunicorn'] = {"handlers": hdls, "level": log_level, "propagate": False}
-    log_config_dict['loggers']['gunicorn.error'] = {"handlers": hdls, "level": log_level, "propagate": False}
-    log_config_dict['loggers']['gunicorn.access'] = {'level': log_level}
+    log_config_dict['loggers']['gunicorn'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
+    log_config_dict['loggers']['gunicorn.error'] = {'handlers': hdls, 'level': WARNING, 'propagate': False}
+    log_config_dict['loggers']['gunicorn.access'] = {'level': WARNING}
 
     return log_config_dict
 

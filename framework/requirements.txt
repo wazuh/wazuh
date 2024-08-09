@@ -103,6 +103,7 @@ tabulate==0.8.9
 typing-extensions==4.12.2
 typing-inspect==0.7.1
 urllib3==2.2.2
+uuid6==2024.07.10
 uvloop==0.17.0
 uvicorn==0.24.0.post1
 websocket-client==0.57.0

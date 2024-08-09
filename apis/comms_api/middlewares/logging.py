@@ -23,17 +23,20 @@ async def log_request(request: Request, response: Response, start_time: time) ->
         Time at the start of the request.
     """
     elapsed_time = time.time() - start_time
-    host = request.client.host if hasattr(request, 'client') else ''
+    agent_uuid = request.state.agent_uuid if hasattr(request.state, 'agent_uuid') else None
     path = request.scope.get('path', '') if hasattr(request, 'scope') else ''
     method = getattr(request, 'method', '')
     query = dict(getattr(request, 'query_params', {}))
     body = await request.json() if hasattr(request, '_json') else {}
     status_code = response.status_code
 
-    log_info = f'{host} "{method} {path}" with parameters {json.dumps(query)} and body ' \
-        f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status_code}'
+    if 'key' in body and '/authentication' in path:
+        body['key'] = '***'
+
+    log_info = f'({agent_uuid}) ' if agent_uuid is not None else ''
+    log_info += f'"{method} {path}" with parameters {json.dumps(query)} and body '
+    log_info += f'{json.dumps(body)} done in {elapsed_time:.3f}s: {status_code}'
     json_info = {
-        'ip': host,
         'http_method': method,
         'uri': f'{method} {path}',
         'parameters': query,
@@ -41,6 +44,8 @@ async def log_request(request: Request, response: Response, start_time: time) ->
         'time': f'{elapsed_time:.3f}s',
         'status_code': status_code
     }
+    if agent_uuid is not None:
+        json_info['agent_uuid'] = agent_uuid
 
     logger.info(log_info, extra={'log_type': 'log'})
     logger.info(json_info, extra={'log_type': 'json'})
