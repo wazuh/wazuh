@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 
 from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('message,code,status_code', [
     ('value', 1001, status.HTTP_400_BAD_REQUEST),
@@ -24,6 +25,7 @@ async def test_http_error_handler(message, code, status_code):
     assert result.status_code == status_code
     assert body['message'] == message
     assert body['code'] == code
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('loc,msg,expected_msg', [
