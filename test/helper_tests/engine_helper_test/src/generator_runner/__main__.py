@@ -44,12 +44,6 @@ def parse_arguments():
     config.output = args.output
 
 
-def is_temp_path(path_str):
-    path = Path(path_str).resolve()
-    temp_dir = Path(tempfile.gettempdir()).resolve()
-    return str(path).startswith(str(temp_dir))
-
-
 def main():
     parse_arguments()
     input = Path(config.input).resolve()
@@ -59,15 +53,18 @@ def main():
         output_directory.mkdir(parents=True, exist_ok=True)
         outputs.append(output_directory)
         command = f'engine-helper-test-generator --folder_path {subdir} -o {output_directory.as_posix()}'
-        subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        try:
+            subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE)
+        except subprocess.CalledProcessError as e:
+            sys.exit(e.stderr)
 
     environment = Path(config.environment_directory).as_posix()
     binary = Path(config.binary_path).resolve()
     for output in outputs:
         for file in output.iterdir():
             command = f'engine-helper-test-runner -e {environment} -b {binary} --input_file_path {file} --failure_cases'
+            print(f"Executing - {file.name}")
             try:
-                print(f"Executing - {file.name}")
-                subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                subprocess.run(command, check=True, shell=True, stdout=subprocess.PIPE)
             except subprocess.CalledProcessError as e:
-                sys.exit(e.stdout.decode())
+                sys.exit(e.stderr)

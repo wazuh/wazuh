@@ -141,7 +141,7 @@ class Argument:
         elif self.subset == Regex:
             return json.dumps(Regex("^(bye pcre\\d)$").__str__())
         else:
-            return "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(1, 10)))
+            return "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(2, 10)))
 
     def generate_random_boolean(self):
         """
@@ -163,7 +163,7 @@ class Argument:
             int: lambda: random.randint(0, 9),
             float: lambda: random.uniform(0, 9),
             Double: lambda: float(format(random.uniform(0, 9), '.2f')),
-            str: lambda: "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(1, 10))),
+            str: lambda: "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(2, 10))),
             Hexadecimal: lambda: Hexadecimal.random_hex().__str__(),
             Ip: lambda: Ip(random.choice(["111.111.1.11", "222.222.2.22"])).__str__(),
             Regex: lambda: json.dumps(Regex("^(bye pcre\\d)$").__str__()),
@@ -171,10 +171,11 @@ class Argument:
             dict: lambda: {"key": "value"}
         }
 
-        if self.subset not in subset_value_mapping:
-            sys.exit("Subset is not supported for array")
-
-        return [subset_value_mapping.get(self.subset)()]
+        if self.subset != "all":
+            if self.subset not in subset_value_mapping:
+                sys.exit("Subset is not supported for array")
+            return [subset_value_mapping.get(self.subset)()]
+        return [subset_value_mapping.get(random.choice([int, float, Double, str, dict, bool]))()]
 
     def generate_random_object(self):
         """

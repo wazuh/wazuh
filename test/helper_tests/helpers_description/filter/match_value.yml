@@ -1,6 +1,16 @@
 # Name of the helper function
 name: match_value
 
+metadata:
+  description: |
+    Checks if the target field value is present in the specified array.
+    This parameter must be a definition array or a reference to a field containing the array.
+    If the array contains the value, then the function will evaluate to true, otherwise it will be false.
+    This helper function is typically used in the check stage.
+
+  keywords:
+    - undefined
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,9 +18,9 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  array:
     type: array  # Expected type is array
-    generate: integer
+    generate: all
     source: both # includes values or references (their names start with $)
 
 # Value not found
@@ -27,12 +37,26 @@ target_field:
 
 test:
   - arguments:
-      1: [1,2,3,4]
-      target_field: 10
+      array: [1,2,3,4]
+    target_field: 10
     should_pass: false
-    description: Compare two different integers
+    description: Value is in array
   - arguments:
-      1: [22]
-      target_field: 22
+      array: [hello]
+    target_field: wazuh
+    should_pass: false
+    description: Value not is in array
+  - arguments:
+      array:
+        - key: value
+    target_field:
+      key: value
     should_pass: true
-    description: Compare two equals integers
+    description: Value is in array
+  - arguments:
+      array:
+        - [true, hello, 2]
+    target_field:
+      [true, hello, 2]
+    should_pass: true
+    description: Value is in array

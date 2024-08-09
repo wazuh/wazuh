@@ -1,6 +1,15 @@
 # Name of the helper function
 name: int_equal
 
+metadata:
+  description: |
+    Checkers whether the integer number stored in field is equal to the one provided.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - integer
+    - comparison
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +17,7 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  any_number:
     type: number  # Expected type is integer
     generate: integer
     source: both # includes values or references (their names start with $)
@@ -23,12 +32,12 @@ target_field:
 
 test:
   - arguments:
-      1: 22
-      target_field: 2
+      any_number: 22
+    target_field: 2
     should_pass: false
     description: Compare two different integers
   - arguments:
-      1: 22
-      target_field: 22
+      any_number: 22
+    target_field: 22
     should_pass: true
     description: Compare two equals integers

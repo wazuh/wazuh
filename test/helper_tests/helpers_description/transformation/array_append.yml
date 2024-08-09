@@ -1,6 +1,19 @@
 # Name of the helper function
 name: array_append
 
+metadata:
+  description: |
+    Adds the values or references of any Json type to the target array field.
+    This helper function is normally used in the map stage.
+    If the target field exists and is not an array it will be overridden, if it does not exist it will be created.
+    Currently this operations will fails as soon as one reference parameter is not found.
+    As it is an array, only elements of the same type can be added.
+    The type of the first element contained in the array will always be taken or, failing that, the type of the first
+    element to be added.
+
+  keywords:
+    - array
+
 helper_type: transformation
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +21,7 @@ is_variadic: true
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  any_object:
     type:
       - number
       - string
@@ -23,24 +36,24 @@ skipped:
 
 target_field:
   type: array
-  generate: string
+  generate: all
 
 test:
   - arguments:
-      1: 5
-      target_field: [1,2,3,4]
+      any_object: 5
+    target_field: [1,2,3,4]
     should_pass: true
     expected: [1,2,3,4,5]
     description: The type of the value matches the type of the elements of the array
   - arguments:
-      1: hello
-      target_field: [1,2,3,4]
+      any_object: hello
+    target_field: [1,2,3,4]
     should_pass: false
     expected: [1,2,3,4]
     description: The type of the value does not match the type of the array elements
   - arguments:
-      1: [1,2]
-      target_field: [1,2,3,4]
+      any_object: [1,2]
+    target_field: [1,2,3,4]
     should_pass: false
     expected: [1,2,3,4]
     description: The type of the value does not match the type of the array elements
@@ -52,8 +65,8 @@ test:
   #   expected: [1,2,3,4,2.5]
   #   description: The type of the value does match the type of the array elements
   - arguments:
-      1: 2
-      target_field: [1.2,2.3,3.5,4.9]
+      any_object: 2
+    target_field: [1.2,2.3,3.5,4.9]
     should_pass: true
     expected: [1.2,2.3,3.5,4.9,2]
     description: The type of the value does match the type of the array elements

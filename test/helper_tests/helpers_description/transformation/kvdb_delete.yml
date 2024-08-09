@@ -1,6 +1,14 @@
 # Name of the helper function
 name: kvdb_delete
 
+metadata:
+  description: |
+    Removes a key of the database. If the key does not exist, it returns an error.
+    If it was able to be removed, then map `true` into the field. This helper function is typically used in the map stage
+
+  keywords:
+    - kvdb
+
 helper_type: transformation
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,22 +16,20 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  db-name:
     type: string  # Accept only object
     generate: string
     source: value # Includes only values
-    restrictions:
-      allowed:
-        - testing
-  2:
+  key:
     type: string  # Accept only string
     generate: string
     source: both # Includes values or references (their names start with $)
 
-# ToDo:
 # target_field type not comprobed
+# Database not exists
 skipped:
   - different_target_field_type
+  - success_cases
 
 target_field:
   type: boolean
@@ -31,9 +37,9 @@ target_field:
 
 test:
   - arguments:
-      1: testing
-      2: key1
-      target_field: true
+      db-name: testing
+      key: key1
+    target_field: true
     should_pass: true
     expected: false
     description: Succes kvdb delete key
