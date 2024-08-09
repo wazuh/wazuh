@@ -92,8 +92,9 @@ class Template:
                 new_comb_list = []
                 for partial_comb in comb_list:
                     new_partial_comb = list(partial_comb)
-                    for arg_index, value in condition.items():
-                        new_partial_comb[arg_index - 1] = (value, new_partial_comb[arg_index - 1])
+                    for arg_name, value in condition.items():
+                        arg_index = self.parser.get_name_id_arguments()[arg_name]
+                        new_partial_comb[arg_index] = (value, new_partial_comb[arg_index])
                     new_comb_list.append(new_partial_comb)
                 comb_list = new_comb_list
             processed_combinations.extend([tuple(comb) for comb in comb_list])

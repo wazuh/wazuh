@@ -1,11 +1,21 @@
 name: int_calculate
 
+metadata:
+  description: |
+    The function `int_calculate` performs basic arithmetic operations on integers.
+    The function receives an operator and two or more operands.
+    The function applies the operator to the first two operands and then applies the result to the next operand.
+    The result of the operation is stored in the field `field`.
+    The function supports the following operators: `sum` (addition), `sub` (subtraction), `mul` (multiplication), and `div` (division).
+  keywords:
+    - math
+
 helper_type: map
 
 is_variadic: True
 
 arguments:
-  1:
+  operator:
     type: string  # Accept only string
     source: value # Includes values or references (their names start with $)
     generate: string
@@ -15,11 +25,11 @@ arguments:
         - div
         - sub
         - sum
-  2:
+  operand_left:
     type: number # Accept only object
     generate: integer
     source: both # Includes only values
-  3:
+  operand_right:
     type: number # Accept only object
     generate: integer
     source: both # Includes only values
@@ -29,61 +39,65 @@ skipped:
   - success_cases # the generator can generate a 0 in the numerator
 
 general_restrictions:
-  - brief: Division by zero
-    arguments:
-      1: div
-      3: 0
-    details: The function raises an error when attempting to divide by zero.
+  - arguments:
+      operator: div
+      operand_right: 0
+    details: Division by zero is not allowed (the function will fail).
+  - details: The limit for a 64-bit integer is 2^63-1 and -2^63.
+
+output:
+  type: number
+  subset: integer
 
 test:
   - arguments:
-      1: sum
-      2: 1
-      3: 9223372036854775807
+      operator: sum
+      operand_left: 1
+      operand_right: 9223372036854775807
     should_pass: false
     description: Sum that produces overflow. the limit for a 64-bit integer is exceeded
   - arguments:
-      1: sum
-      2: -1
-      3: -9223372036854775808
+      operator: sum
+      operand_left: -1
+      operand_right: -9223372036854775808
     should_pass: false
     description: Sum that produces overflow. the limit for a 64-bit integer is exceeded
   - arguments:
-      1: sub
-      2: 9223372036854775807
-      3: -1
+      operator: sub
+      operand_left: 9223372036854775807
+      operand_right: -1
     should_pass: false
     description: Sub that produces overflow. the limit for a 64-bit integer is exceeded
   - arguments:
-      1: sub
-      2: -9223372036854775808
-      3: 1
+      operator: sub
+      operand_left: -9223372036854775808
+      operand_right: 1
     should_pass: false
     description: Sub that produces overflow. the limit for a 64-bit integer is exceeded
   - arguments:
-      1: mul
-      2: 4611686018427387904
-      3: 2
+      operator: mul
+      operand_left: 4611686018427387904
+      operand_right: 2
     should_pass: false
     description: Mul that produces overflow. the limit for a 64-bit integer is exceeded
   - arguments:
-      1: mul
-      2: 3074457345618258603
-      3: -3
+      operator: mul
+      operand_left: 3074457345618258603
+      operand_right: -3
     should_pass: false
     description: Mul that produces overflow. the limit for a 64-bit integer is exceeded
   # TODO: It should not fail with a 0 in the numerator
   - arguments:
-      1: div
-      2: 0
-      3: 8
+      operator: div
+      operand_left: 0
+      operand_right: 8
     should_pass: true
     skipped: True
     expected: 0
     description: Any division with a numerator equal to zero results in zero as long as the denominator is different from 0.
   - arguments:
-      1: div
-      2: 5
-      3: 0
+      operator: div
+      operand_left: 5
+      operand_right: 0
     should_pass: false
     description: Any division with a denominator equal to zero is an indeterminate operation.

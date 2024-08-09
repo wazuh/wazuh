@@ -1,6 +1,14 @@
 # Name of the helper function
 name: is_not_object
 
+metadata:
+  description: |
+    Checks if the value stored in field is not of type object.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+  keywords:
+    - undefined
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -12,17 +20,15 @@ target_field:
     - array
     - string
     - boolean
+
 test:
-  - arguments:
-      target_field:
-        key: value
+  - target_field:
+      key: value
     should_pass: false
     description: Is object
-  - arguments:
-      target_field: 234
+  - target_field: 234
     should_pass: true
     description: Not is object
-  - arguments:
-      target_field: [1,2,3,4]
+  - target_field: [1,2,3,4]
     should_pass: true
     description: Not is object

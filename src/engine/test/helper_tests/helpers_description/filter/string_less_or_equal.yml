@@ -1,6 +1,16 @@
 # Name of the helper function
 name: string_less_or_equal
 
+metadata:
+  description: |
+    Checkers whether the value stored in field is lexicographically less than or equeal to the one provided.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+
+  keywords:
+    - string
+    - comparison
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +18,7 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  any_string:
     type: string  # Expected type is integer
     generate: string
     source: both # includes values or references (their names start with $)
@@ -23,17 +33,17 @@ target_field:
 
 test:
   - arguments:
-      1: wazuh
-      target_field: hello world!
+      any_string: wazuh
+    target_field: hello world!
     should_pass: true
     description: Success string less or equal
   - arguments:
-      1: hello world!
-      target_field: wazuh
+      any_string: hello world!
+    target_field: wazuh
     should_pass: false
     description: Failure string less or equal
   - arguments:
-      1: hello world!
-      target_field: hello world!
+      any_string: hello world!
+    target_field: hello world!
     should_pass: true
     description: Success string less or equal

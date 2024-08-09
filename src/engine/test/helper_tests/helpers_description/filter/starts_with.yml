@@ -1,6 +1,14 @@
 # Name of the helper function
 name: starts_with
 
+metadata:
+  description: |
+    Checks if the value stored in the field starts with the value provided.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+
+  keywords:
+    - undefined
+
 helper_type: filter
 
 # Indicates whether the helper function supports a variable number of arguments
@@ -8,7 +16,7 @@ is_variadic: false
 
 # Arguments expected by the helper function
 arguments:
-  1:
+  conteined:
     type: string  # Expected type is string
     generate: string
     source: both # includes values or references (their names start with $)
@@ -23,17 +31,17 @@ target_field:
 
 test:
   - arguments:
-      1: hello
-      target_field: hello wazuh!
+      conteined: hello
+    target_field: hello wazuh!
     should_pass: true
     description: Success start with
   - arguments:
-      1: hello!
-      target_field: hello wazuh!
+      conteined: hello!
+    target_field: hello wazuh!
     should_pass: false
     description: Failure start with
   - arguments:
-      1: wazuh!
-      target_field: hello wazuh!
+      conteined: wazuh!
+    target_field: hello wazuh!
     should_pass: false
     description: Failure start with

@@ -7,6 +7,7 @@
     1. [engine-helper-test-validator](#engine-helper-test-validator)
     1. [engine-helper-test-generator](#engine-helper-test-generator)
     1. [engine-helper-test-generate-runner](#engine-helper-test-generate-runner)
+    1. [engine-helper-test-documentation](#engine-helper-test-documentation)
 1. [How to run all the tests](#how-to-run-all-the-tests)
 1. [How to create an output in particular and in general](#how-to-create-an-output-in-particular-and-in-general)
     1. [Create an output for a given helper function](#create-an-output-for-a-given-helper-function)
@@ -24,6 +25,10 @@
     4. [Target field property](#target-field-property)
     5. [Skipped property](#skipped-property)
     6. [Test property](#test-property)
+1. [How generate helper functions documentation](#how-generate-helper-functions-documentation)
+    1. [Generate documentation for a particular helper function](#generate-documentation-for-a-particular-helper-function)
+    2. [Generate documentation for a particular type of helper function](#generate-documentation-for-a-particular-type-of-helper-function)
+    3. [Generate documentation for all helper functions](#generate-documentation-for-all-helper-functions)
 
 
 # End to end tests for helper functions
@@ -67,6 +72,15 @@ helper/
 |       └── template.py
 |       └── test_data.py
 |       └── validator.py
+|     └── documentation_generator
+|       └── __init__.py
+|       └── __main__.py
+|       └── documentation.py
+|       └── exporter.py
+|       └── html_generator.py
+|       └── mark_down_generator.py
+|       └── pdf_generator.py
+|       └── types.py
 |    └── .gitignore
 |    └── pyproject.toml
 |    └── setup.cfg
@@ -184,6 +198,23 @@ optional arguments:
                         Absolute or relative path where of the directory where the helper configurations are located
   -o OUTPUT, --output OUTPUT
                         Absolute or relative path where the test cases were generated
+```
+
+## engine-helper-test-documentation
+```bash
+usage: engine-helper-test-documentation [-h] [--input_file_path INPUT_FILE_PATH] [--folder_path FOLDER_PATH] [--exporter EXPORTER] [-o OUTPUT_PATH]
+
+Generates files containing documentation for a given helper
+
+options:
+  -h, --help            show this help message and exit
+  --input_file_path INPUT_FILE_PATH
+                        Absolute or relative path where the description of the helper function is located
+  --folder_path FOLDER_PATH
+                        Absolute or relative path where the directory that contains the descriptions of the auxiliary functions is located
+  --exporter EXPORTER   Absolute or relative path of the directory where the generated test files will be located
+  -o OUTPUT_PATH, --output_path OUTPUT_PATH
+                        Absolute or relative path of the directory where the generated documentation files will be located
 ```
 
 # How to run all the tests
@@ -429,4 +460,28 @@ test:
     should_pass: whether or not it should happen
     expected: any_value
     description: any description
+```
+
+# How generate helper functions documentation
+By default, if a directory is not specified to store the created documentation, it will be saved in `/tmp/documentation`.
+Likewise, the default exporter type if one is not specified will be `markdown`.
+The commands below use absolute paths to the engine directory.
+
+## Generate documentation for a particular helper function
+```bash
+engine-helper-test-documentation --input_file_path test/helper_tests/helpers_description/map/int_calculate.yml -o test/helper_tests/documentation
+```
+## Generate documentation for a particular type of helper function
+```bash
+engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/map -o test/helper_tests/documentation
+```
+```bash
+engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/filter -o test/helper_tests/documentation
+```
+```bash
+engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/transformation -o test/helper_tests/documentation
+```
+## Generate documentation for all helper functions
+```bash
+engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/ -o docs/helpers/
 ```
