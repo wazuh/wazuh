@@ -71,15 +71,18 @@ runs:
           if [[ ${{ inputs.test }} == "false" ]]; then
             echo "Skipping tests"
           else
-            cd ${{ inputs.path }}/build
-
             if [[ "${{ inputs.asan }}" != "false" ]]; then
               # Run for ASAN
               echo "Running tests for ASAN"
+              cd ${{ inputs.path }}/build
               ctest --output-on-failure
             else
+              # Create baseline for coverage
+              cd ${{ inputs.path }}
+              lcov --no-external  --capture --initial --directory ./ --output-file build/coverage_base.info
               # Run for valgrind and coverage
               echo "Running tests for valgrind and coverage"
+              cd build
               valgrind ctest --output-on-failure
             fi
           fi
