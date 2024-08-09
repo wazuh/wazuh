@@ -84,13 +84,14 @@ public:
      * @brief Action scheduler start.
      *
      * @param interval Scheduler interval.
+     * @param shouldRun Condition to skip or net the scheduled action.
      */
-    void startActionScheduler(const size_t interval)
+    void startActionScheduler(const size_t interval, const std::atomic<bool>& shouldRun = true)
     {
         m_schedulerRunning = true;
         m_interval = interval;
         m_schedulerThread = std::thread(
-            [this]()
+            [this, &shouldRun]()
             {
                 // Use while with condition variable to avoid spurious wakeups.
                 std::unique_lock<std::mutex> lock(m_mutex);
@@ -103,7 +104,16 @@ public:
                     m_cv.wait_for(lock, std::chrono::seconds(this->m_interval));
                     if (m_schedulerRunning)
                     {
-                        runActionScheduled();
+                        //  Normal execution
+                        if (shouldRun.load())
+                        {
+                            runActionScheduled();
+                        }
+                        else
+                        {
+                            // Action skipped, sleep for interval time.
+                            logDebug2(WM_CONTENTUPDATER, "Scheduled request postponed.");
+                        }
                     }
                 }
             });
@@ -189,6 +199,15 @@ public:
     void changeSchedulerInterval(size_t interval)
     {
         m_interval = interval;
+        wakeUpThread();
+    }
+
+    /**
+     * @brief Wakes up scheduled action thread.
+     *
+     */
+    void wakeUpThread()
+    {
         m_cv.notify_one();
     }
 

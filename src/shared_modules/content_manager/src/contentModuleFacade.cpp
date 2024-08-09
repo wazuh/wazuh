@@ -43,12 +43,12 @@ void ContentModuleFacade::addProvider(const std::string& name, const nlohmann::j
     m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters));
 }
 
-void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
+void ContentModuleFacade::startScheduling(const std::string& name, size_t interval, const std::atomic<bool>& shouldRun)
 {
     std::shared_lock<std::shared_mutex> lock {m_mutex};
     try
     {
-        m_providers.at(name)->startActionScheduler(interval);
+        m_providers.at(name)->startActionScheduler(interval, shouldRun);
     }
     catch (const std::exception& e)
     {
@@ -78,5 +78,18 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
     catch (const std::exception& e)
     {
         logError(WM_CONTENTUPDATER, "Couldn't change scheduled interval: %s.", e.what());
+    }
+}
+
+void ContentModuleFacade::wakeUpThread(const std::string& name)
+{
+    std::shared_lock<std::shared_mutex> lock {m_mutex};
+    try
+    {
+        m_providers.at(name)->wakeUpThread();
+    }
+    catch (const std::exception& e)
+    {
+        logError(WM_CONTENTUPDATER, "Couldn't wake up scheduled action thread: %s.", e.what());
     }
 }

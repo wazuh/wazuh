@@ -55,10 +55,11 @@ public:
      * @brief Starts action scheduler.
      *
      * @param interval Scheduler interval.
+     * @param shouldRun Condition to run or not an action.
      */
-    void startActionScheduler(const size_t interval)
+    void startActionScheduler(const size_t interval, const std::atomic<bool>& shouldRun = true)
     {
-        m_action->startActionScheduler(interval);
+        m_action->startActionScheduler(interval, shouldRun);
     }
 
     /**
@@ -78,6 +79,15 @@ public:
     void changeSchedulerInterval(const size_t interval)
     {
         m_action->changeSchedulerInterval(interval);
+    }
+
+    /**
+     * @brief Wakes up scheduled action thread.
+     *
+     */
+    void wakeUpThread()
+    {
+        m_action->wakeUpThread();
     }
 };
 
