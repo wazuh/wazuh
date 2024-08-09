@@ -27,7 +27,6 @@ Please, visit the following link for the full WPK packages building documentatio
 
 There are workflows to generate both the necessary Docker images and to generate the WPKs of each of the operating systems:
 
-- packages-upload-wpk-images.yml
 It is responsible for building and uploading the images necessary for the WPK script to our ghcr bucket. The image name for all systems it is 'common_wpk_builder'. The parameters it accepts are:
   - docker_image_tag:
           Tag name of the Docker image to be uploaded.
