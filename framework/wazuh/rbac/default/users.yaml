@@ -10,3 +10,8 @@ default_users:
     description: Superuser of Wazuh UI
     password: wazuh-wui
     allow_run_as: True
+
+  agent-init:
+    description: User to be used to register new agents.
+    password: agent-init
+    allow_run_as: False
