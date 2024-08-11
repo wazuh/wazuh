@@ -8,3 +8,4 @@ pytest-asyncio==0.18.1
 pytest-html==2.1.1
 pytest-trio==0.7.0
 tavern==1.23.5
+aiohttp>=3.10.2 # not directly required, pinned by Snyk to avoid a vulnerability
