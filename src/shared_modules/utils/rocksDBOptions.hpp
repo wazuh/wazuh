@@ -87,8 +87,11 @@ namespace Utils
             options.create_if_missing = true;
             // If true, log files will be kept around to restore the database
             options.keep_log_file_num = 1;
-            // Log level for the info log.
-            options.info_log_level = rocksdb::InfoLogLevel::FATAL_LEVEL;
+            // Setting INFO level for the info log. We'll have up to 10 files of 10MB each.
+            options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL;
+            options.keep_log_file_num = 10;
+            options.max_log_file_size = 10 * 1024 * 1024;
+            options.recycle_log_file_num = 10;
             // The maximum number of files to keep open at the same time.
             options.max_open_files = ROCKSDB_MAX_OPEN_FILES;
             // The maximum levels of compaction to allow.

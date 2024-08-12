@@ -42,9 +42,16 @@ def opensearch():
 
 def test_opensearch_health(opensearch):
     url = 'http://localhost:9200/_cluster/health'
-    response = requests.get(url)
-    assert response.status_code == 200
-    assert response.json()['status'] == 'green'
+    attempts = 10
+    while attempts > 0:
+        response = requests.get(url)
+        LOGGER.debug(f"Status: {response.text}")
+        if response.status_code == 200:
+            if response.json()['status'] == 'green':
+                break
+        time.sleep(1)
+        attempts -= 1
+    assert response.json()['status'] == 'green', f"Error: {response.text}"
 
 def test_initialize_indexer_connector(opensearch):
     os.chdir(Path(__file__).parent.parent.parent.parent)
@@ -317,5 +324,3 @@ def test_add_bulk_indexer_connector(opensearch):
 
     assert counter < 10, "The document was not resynced"
     process.terminate()
-
-

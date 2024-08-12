@@ -22,6 +22,8 @@
 #include <thread>
 #include <unordered_map>
 
+auto constexpr LOGGER_DEFAULT_TAG {"logger-helper"};
+
 // We can't use std::source_location until C++20
 #define LogEndl                                                                                                        \
     Log::SourceFile                                                                                                    \
@@ -43,7 +45,6 @@ namespace Log
     auto constexpr LOGLEVEL_WARNING {2};
     auto constexpr LOGLEVEL_INFO {1};
     auto constexpr LOGLEVEL_DEBUG {0};
-
     struct SourceFile
     {
         const char* file;
@@ -63,7 +64,7 @@ namespace Log
 
     /**
      * @brief Assign the global log function.
-     *        
+     *
      * @param logFunction callback function that is going to be called on every message logging operation.
      */
     static void assignLogFunction(const std::function<void(const int,
@@ -83,14 +84,15 @@ namespace Log
     /**
      * @brief Deassign the global log function.
      *        Use it with care!
-     *        Take into account that running it, you will disable the previous set logging functionality in the running executable.
+     *        Take into account that running it, you will disable the previous set logging functionality in the running
+     *        executable.
      *
      */
     static void deassignLogFunction()
     {
         GLOBAL_LOG_FUNCTION = nullptr;
     }
-    
+
 #pragma GCC diagnostic pop
 
     /**
@@ -114,7 +116,13 @@ namespace Log
                 std::va_list args;
                 va_start(args, msg);
 
-                GLOBAL_LOG_FUNCTION(LOGLEVEL_INFO, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_INFO,
+                                    tag ? tag : LOGGER_DEFAULT_TAG,
+                                    sourceFile.file,
+                                    sourceFile.line,
+                                    sourceFile.func,
+                                    msg,
+                                    args);
 
                 va_end(args);
             }
@@ -134,8 +142,13 @@ namespace Log
                 std::va_list args;
                 va_start(args, msg);
 
-                GLOBAL_LOG_FUNCTION(
-                    LOGLEVEL_WARNING, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_WARNING,
+                                    tag ? tag : LOGGER_DEFAULT_TAG,
+                                    sourceFile.file,
+                                    sourceFile.line,
+                                    sourceFile.func,
+                                    msg,
+                                    args);
 
                 va_end(args);
             }
@@ -155,7 +168,13 @@ namespace Log
                 std::va_list args;
                 va_start(args, msg);
 
-                GLOBAL_LOG_FUNCTION(LOGLEVEL_DEBUG, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_DEBUG,
+                                    tag ? tag : LOGGER_DEFAULT_TAG,
+                                    sourceFile.file,
+                                    sourceFile.line,
+                                    sourceFile.func,
+                                    msg,
+                                    args);
 
                 va_end(args);
             }
@@ -175,8 +194,13 @@ namespace Log
                 std::va_list args;
                 va_start(args, msg);
 
-                GLOBAL_LOG_FUNCTION(
-                    LOGLEVEL_DEBUG_VERBOSE, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_DEBUG_VERBOSE,
+                                    tag ? tag : LOGGER_DEFAULT_TAG,
+                                    sourceFile.file,
+                                    sourceFile.line,
+                                    sourceFile.func,
+                                    msg,
+                                    args);
 
                 va_end(args);
             }
@@ -196,7 +220,13 @@ namespace Log
                 std::va_list args;
                 va_start(args, msg);
 
-                GLOBAL_LOG_FUNCTION(LOGLEVEL_ERROR, tag, sourceFile.file, sourceFile.line, sourceFile.func, msg, args);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_ERROR,
+                                    tag ? tag : LOGGER_DEFAULT_TAG,
+                                    sourceFile.file,
+                                    sourceFile.line,
+                                    sourceFile.func,
+                                    msg,
+                                    args);
 
                 va_end(args);
             }
