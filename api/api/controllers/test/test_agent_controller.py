@@ -14,23 +14,46 @@ with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
-        from api.controllers.agent_controller import (
-            add_agent, delete_agents, delete_groups,
-            delete_multiple_agent_single_group,
-            delete_single_agent_multiple_groups,
-            delete_single_agent_single_group, get_agent_config,
-            get_agent_fields, get_agent_key, get_agent_no_group,
-            get_agent_outdated, get_agent_summary_os, get_agent_summary_status,
-            get_agent_upgrade, get_agents, get_agents_in_group, get_daemon_stats,
-            get_component_stats, get_group_config, get_group_file, get_group_files,
-            get_list_group, get_sync_agent, insert_agent, post_group,
-            post_new_agent, put_agent_single_group, put_group_config,
-            put_multiple_agent_single_group, put_upgrade_agents,
-            put_upgrade_custom_agents, reconnect_agents, restart_agent,
-            restart_agents, restart_agents_by_group, restart_agents_by_node)
         from wazuh import agent, stats
         from wazuh.core.common import DATABASE_LIMIT
         from wazuh.tests.util import RBAC_bypasser
+
+        from api.controllers.agent_controller import (
+            add_agent,
+            delete_agents,
+            delete_groups,
+            delete_multiple_agent_single_group,
+            delete_single_agent_multiple_groups,
+            delete_single_agent_single_group,
+            get_agent_config,
+            get_agent_fields,
+            get_agent_key,
+            get_agent_no_group,
+            get_agent_outdated,
+            get_agent_summary_os,
+            get_agent_summary_status,
+            get_agent_upgrade,
+            get_agents,
+            get_agents_in_group,
+            get_component_stats,
+            get_daemon_stats,
+            get_group_config,
+            get_group_file,
+            get_group_files,
+            get_list_group,
+            get_sync_agent,
+            post_group,
+            put_agent_single_group,
+            put_group_config,
+            put_multiple_agent_single_group,
+            put_upgrade_agents,
+            put_upgrade_custom_agents,
+            reconnect_agents,
+            restart_agent,
+            restart_agents,
+            restart_agents_by_group,
+            restart_agents_by_node,
+        )
 
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
         del sys.modules['wazuh.rbac.orm']
@@ -42,39 +65,26 @@ with patch('wazuh.common.wazuh_uid'):
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-@pytest.mark.parametrize('mock_alist', ['001', 'all'])
-async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_alist,
-                            mock_request):
+@pytest.mark.parametrize('mock_alist', (['0191480e-7f67-7fd3-8c52-f49a3176360b'], ['all']))
+async def test_delete_agents(
+    mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_alist,mock_request
+):
     """Verify 'delete_agents' endpoint is working as expected."""
+
     result = await delete_agents(agents_list=mock_alist)
     if 'all' in mock_alist:
-        mock_alist = None
-    f_kwargs = {'agent_list': mock_alist,
-                'purge': False,
-                'filters': {
-                    'status': None,
-                    'older_than': None,
-                    'manager': None,
-                    'version': None,
-                    'group': None,
-                    'node_name': None,
-                    'name': None,
-                    'ip': None,
-                    'registerIP': mock_request.query_params.get('registerIP', None)
-                },
-                'q': None
-                }
-    nested = ['os.version', 'os.name', 'os.platform']
-    for field in nested:
-        f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
-    mock_dapi.awaited_once_with(f=agent.delete_agents,
-                                f_kwargs=mock_remove.return_value,
-                                request_type='local_master',
-                                is_async=False,
-                                wait_for_complete=False,
-                                logger=ANY,
-                                rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                )
+        mock_alist = []
+    f_kwargs = {'agent_list': mock_alist}
+
+    mock_dapi.awaited_once_with(
+        f=agent.delete_agents,
+        f_kwargs=mock_remove.return_value,
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=False,
+        logger=ANY,
+        rbac_permissions=mock_request.context['token_info']['rbac_policies']
+    )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, ConnexionResponse)
@@ -140,14 +150,15 @@ async def test_add_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
         with patch('api.controllers.agent_controller.AgentAddedModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await add_agent()
-            mock_dapi.assert_called_once_with(f=agent.add_agent,
-                                              f_kwargs=mock_remove.return_value,
-                                              request_type='local_master',
-                                              is_async=False,
-                                              wait_for_complete=False,
-                                              logger=ANY,
-                                              rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                              )
+            mock_dapi.assert_called_once_with(
+                f=agent.add_agent,
+                f_kwargs=mock_remove.return_value,
+                request_type='local_any',
+                is_async=True,
+                wait_for_complete=False,
+                logger=ANY,
+                rbac_permissions=mock_request.context['token_info']['rbac_policies']
+            )
             mock_exc.assert_called_once_with(mock_dfunc.return_value)
             mock_remove.assert_called_once_with(mock_getkwargs.return_value)
             assert isinstance(result, ConnexionResponse)
@@ -626,42 +637,6 @@ async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc,
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_post_new_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
-    """Verify 'post_new_agent' endpoint is working as expected."""
-    result = await post_new_agent(
-                                  agent_name='agent_name_value')
-    # `ip` and `force` come from the API model
-    f_kwargs = {
-        'name': 'agent_name_value',
-        'ip': None,
-        'force': {
-            'enabled': False,
-            'disconnected_time': {
-                'enabled': True,
-                'value': '1h'
-            },
-            'after_registration_time': '1h'
-        }
-    }
-    mock_dapi.assert_called_once_with(f=agent.add_agent,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
 @patch('api.configuration.api_conf')
 @patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
@@ -1022,31 +997,6 @@ async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_d
             assert mock_exc.call_count == 2
             mock_remove.assert_called_once_with(f_kwargs)
         assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@patch('api.controllers.agent_controller.AgentInsertedModel.get_kwargs')
-@patch('api.controllers.agent_controller.Body.validate_content_type')
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_insert_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp,
-                            mock_valid, mock_getkwargs, mock_request):
-    """Verify 'insert_agent' endpoint is working as expected."""
-    result = await insert_agent()
-    mock_dapi.assert_called_once_with(f=agent.add_agent,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies'])
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(mock_getkwargs.return_value)
-    assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio
