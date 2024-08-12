@@ -1,8 +1,8 @@
 import os
 import random
 from asyncio import sleep
-from logging import getLogger
 from contextlib import asynccontextmanager
+from logging import getLogger
 from typing import AsyncIterator
 
 from opensearchpy import AsyncOpenSearch
@@ -170,6 +170,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         client_cert_path=INDEXER_CLIENT_CERT_PATH,
         client_key_path=INDEXER_CLIENT_KEY_PATH,
         ca_certs_path=INDEXER_CA_CERTS_PATH,
+        retries=1
     )
 
     try:

@@ -1,15 +1,13 @@
 from dataclasses import asdict
 
 from opensearchpy import exceptions
-from uuid6 import uuid7
-from wazuh.core.exception import WazuhError, WazuhResourceNotFound
+from wazuh.core.exception import WazuhError
 
 from .base import BaseIndex
 from .constants import (
     BODY_KEY,
     INDEX_KEY,
     QUERY_KEY,
-    SOURCE_KEY,
     TERMS_KEY,
 )
 from .models import Agent
@@ -21,12 +19,12 @@ class AgentsIndex(BaseIndex):
     INDEX = 'agents'
     SECONDARY_INDEXES = []
 
-    async def create(self, id: uuid7, key: str, name: str) -> Agent:
+    async def create(self, id: str, key: str, name: str) -> Agent:
         """Create a new agent.
 
         Parameters
         ----------
-        id : uuid7
+        id : str
             Identifier of the new agent.
         key : str
             Key of the new agent.
@@ -43,23 +41,15 @@ class AgentsIndex(BaseIndex):
         WazuhError (1708)
             When already exists an agent with the provided id.
         """
-        doc = Agent(id=id, name=name, raw_key=key)
+        agent = Agent(id=id, name=name, raw_key=key)
         try:
             await self._client.index(
-                index=self.INDEX, id=doc.id, body=asdict(doc), op_type='create', refresh='wait_for'
+                index=self.INDEX, id=agent.id, body=asdict(agent), op_type='create', refresh='wait_for'
             )
         except exceptions.ConflictError:
             raise WazuhError(1708, extra_message=id)
         else:
-            return doc
-
-    async def get(self, uuid: uuid7) -> Agent:
-        try:
-            data = self._client.get(index=self.INDEX, id=self.uuid)
-        except exceptions.NotFoundError:
-            raise WazuhResourceNotFound(1701)
-        finally:
-            return Agent(uuid=uuid, **data[SOURCE_KEY])
+            return agent
 
     async def delete(self, ids: list[str]) -> list:
         """Delete multiple agents that match with the given parameters.

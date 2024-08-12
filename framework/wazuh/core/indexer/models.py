@@ -3,8 +3,6 @@ import os
 from dataclasses import InitVar, dataclass
 from datetime import datetime
 
-from uuid6 import uuid7
-
 ITERATIONS = 100_000
 HASH_ALGO = 'sha256'
 
@@ -42,7 +40,7 @@ def _hash_key(key: str, salt: bytes) -> str:
 class Agent:
     """Representation of a Wazuh Agent."""
 
-    id: uuid7
+    id: str
     name: str
     key: str = None
     groups: str = None

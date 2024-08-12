@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from opensearchpy import AsyncOpenSearch
 from wazuh.core.exception import WazuhIndexerError
-from wazuh.core.indexer import Indexer, create_indexer
+from wazuh.core.indexer import Indexer, create_indexer, get_indexer_client
 
 
 @pytest.fixture
@@ -99,3 +99,24 @@ async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
         assert instance_mock.connect.call_count == retries + 1
         instance_mock.close.assert_called_once()
         assert sleep_mock.call_count == retries
+
+
+@mock.patch('wazuh.core.indexer.create_indexer')
+async def test_get_indexer_client(create_indexer_mock):
+    """Check the correct function of `get_indexer_client`"""
+
+    client_mock = mock.AsyncMock()
+    create_indexer_mock.return_value = client_mock
+    async with get_indexer_client() as indexer:
+        create_indexer_mock.assert_called_once_with(
+            host='',
+            user='',
+            password='',
+            use_ssl=True,
+            client_cert_path='',
+            client_key_path='',
+            ca_certs_path='',
+            retries=1,
+        )
+        assert indexer == client_mock
+    client_mock.close.assert_called_once()
