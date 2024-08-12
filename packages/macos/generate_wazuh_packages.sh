@@ -172,9 +172,11 @@ function build_package() {
         cp -R "${WAZUH_PATH}/src/symbols"  "${DESTINATION}"
         zip -r "${DESTINATION}/${symbols_pkg_name}.zip" "${DESTINATION}/symbols"
         rm -rf "${DESTINATION}/symbols"
+        pkg_name+=".pkg"
         sign_pkg
         if [[ "${CHECKSUM}" == "yes" ]]; then
-            shasum -a512 "${DESTINATION}/${pkg_name}.pkg" > "${DESTINATION}/${pkg_name}.sha512"
+            shasum -a512 "${DESTINATION}/${pkg_name}" > "${DESTINATION}/${pkg_name}.sha512"
+            shasum -a512 "${DESTINATION}/${symbols_pkg_name}.zip" > "${DESTINATION}/${symbols_pkg_name}.sha512"
         fi
         clean_and_exit 0
     else
