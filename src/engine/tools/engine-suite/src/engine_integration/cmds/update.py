@@ -76,9 +76,8 @@ def run(args, resource_handler: rs.ResourceHandler):
             return -1
 
         for entry in path.rglob('*.yml'):
-            if entry.is_file():
-                name, original = resource_handler.load_original_asset(
-                    entry)
+            name, original = resource_handler.load_original_asset(
+                entry)
             if name in manifest[type_name]:
                 # Create task to add asset
                 if type_name not in current_manifest or name not in current_manifest[type_name]:
