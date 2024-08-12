@@ -18,6 +18,13 @@
 // Healt check interval for the servers
 constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {5u};
 
+namespace Log
+{
+    std::function<void(
+        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
+        GLOBAL_LOG_FUNCTION;
+}; // namespace Log
+
 /**
  * @brief Test instantiation and check the availability of valid servers.
  *
