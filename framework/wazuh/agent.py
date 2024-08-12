@@ -7,7 +7,6 @@ import operator
 from os import chmod, listdir, path
 from typing import Union
 
-from uuid6 import uuid7
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
     GROUP_FIELDS,
@@ -505,12 +504,12 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-async def add_agent(id: uuid7, name: str, key: str) -> WazuhResult:
+async def add_agent(id: str, name: str, key: str) -> WazuhResult:
     """Add a new Wazuh agent.
 
     Parameters
     ----------
-    id : uuid7
+    id : str
         ID of the new agent.
     name : str
         Name of the new agent.

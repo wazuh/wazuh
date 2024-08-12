@@ -117,8 +117,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - POST /agents
-          - POST /agents/insert
-          - POST /agents/insert/quick
       agent:modify_group:
         description: Change the group of agents
         resources:
