@@ -9,7 +9,7 @@ usage() {
     echo "  -e, --exclude DIRS  Colon-separated list of directories to exclude"
     echo "  -t, --test-dir DIR  Directory to search for tests (default: build directory)"
     echo "  -r, --regex PATTERN Optional regular expression to filter tests (default: no filtering)"
-    echo "  -o, --output FILE   File to redirect output (default: ${SCRIPT_DIR}/valgrindReport.log)"
+    echo "  -o, --output FILE   File to redirect output (default: stdout)"
 }
 
 # Initialize variables
@@ -59,11 +59,6 @@ if [ -z "$TEST_DIR" ]; then
     TEST_DIR=$BUILD_DIR
 fi
 
-# If no output file is specified, use the default
-if [ -z "$OUTPUT_FILE" ]; then
-    OUTPUT_FILE="${SCRIPT_DIR}/valgrindReport.log"
-fi
-
 # Check if the directories exist
 if [ ! -d "${BUILD_DIR}" ]; then
     echo "Build directory does not exist"
@@ -96,6 +91,7 @@ if [[ "$TEST_DIR" == "$BUILD_DIR" ]]; then
         if ! is_excluded "$dir" && [[ ! "$dir" == *source ]]; then
             # Search for files ending in _ctest or _utest
             files=$(find "$dir" \( -iname '*_ctest' -o -iname '*_utest' \) -type f)
+            # echo "${files}"
             if [[ -n "$files" ]]; then
                 TEST_LIST+="$files"$'\n'
                 TEST_DIRS+=("$dir")
@@ -107,7 +103,6 @@ else
 fi
 
 # Get filist
-TEST_LIST=$(find "${TEST_SRC_DIR}" -iname '*_test' -type f)
 LIBS_LIST=$(find "${BUILD_SRC_DIR}" -iname '*.a' -type f)
 # Split the list into an array
 IFS=$'\n' read -d '' -r -a test_arr <<< "${TEST_LIST}"
@@ -131,18 +126,30 @@ do
 done
 
 # Run ctest for each test file and handle output redirection
+build_ctest_cmd() {
+    local test_dir="$1"
+    local regex_filter="$2"
+    local output_file="$3"
+    
+    cmd="ctest --test-dir \"$test_dir\" --output-on-failure -V"
+    
+    if [ -n "$regex_filter" ]; then
+        cmd+=" --tests-regex \"$regex_filter\""
+    fi
+
+    if [ -n "$output_file" ]; then
+        cmd+=" >> \"$output_file\""
+    fi
+
+    echo "$cmd"
+}
+
 if [[ "$TEST_DIR" == "$BUILD_DIR" ]]; then
-    for test in "${TEST_DIRS}"; do
-        if [ -n "$OUTPUT_FILE" ]; then
-            ctest --test-dir "${test}" --output-on-failure "${REGEX}" -V >> "$OUTPUT_FILE"
-        else
-            ctest --test-dir "${test}" --output-on-failure "${REGEX}" -V
-        fi
+    for test in ${TEST_DIRS}; do
+        cmd=$(build_ctest_cmd "${test}" "$REGEX_FILTER" "$OUTPUT_FILE")
+        eval $cmd
     done
 else
-    if [ -n "$OUTPUT_FILE" ]; then
-        ctest --test-dir "${TEST_DIR}" --output-on-failure "${REGEX}" -V > "$OUTPUT_FILE"
-    else
-        ctest --test-dir "${TEST_DIR}" --output-on-failure "${REGEX}" -V
-    fi
+    cmd=$(build_ctest_cmd "${TEST_DIR}" "$REGEX_FILTER" "$OUTPUT_FILE")
+    eval $cmd
 fi

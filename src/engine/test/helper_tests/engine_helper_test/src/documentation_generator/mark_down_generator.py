@@ -170,7 +170,7 @@ class MarkdownGenerator(IExporter):
                         documentation files should be saved.
         """
         output_dir.mkdir(parents=True, exist_ok=True)
-        documentation_file = output_dir / "documentation.md"
+        documentation_file = output_dir / "README.md"
 
         with open(documentation_file, 'w') as file:
             file.write("# Summary\n")

@@ -1,16 +1,17 @@
 # Engine development enviroment
 
 1. [Project structure](#structure)
-1. [Adding tests](#addtest)
-1. [Adding benchmarks](#addbench)
-1. [Cmake dependencies](#cmakedep)
-1. [Visual studio code integration](#VSC)
-    1. [CMake and c++](#CMAKECPP)
-    1. [Astyle formatter](#astyle)
-    1. [Gtest integration](#gtest)
-    1. [Debugging main with gdb](#debug)
-1. [Documentation generation](#docxygen)
-1. [Building manually](#buildmanual)
+    1. [Benchamarck](#benchamarck)
+    1. [Build](#build)
+    1. [Docs](#docs)
+    1. [Source](#source)
+    1. [Test](#test)
+    1. [Tools](#tools)
+1. [Directory description](#directory-description)
+1. [Engine Compilation](#engine-compilation)
+    1. [Install cmake](#install-cmake)
+    1. [Install vcpkg](#install-vcpkg)
+    1. [Building engine](#building-engine)
 1. [License](#license)
 
 <a name="structure"></a>
@@ -18,34 +19,18 @@
 ```bash
 engine/
 ├── benchmark
-│   ├── CMakeLists.txt
-│   └── source
-│       └── dummy_benchmark.cpp
 ├── build
 |   └── ...
 ├── CMakeLists.txt
 ├── docs
-│   ├── Doxyfile.in
-│   └── ...
-├── README.md
 ├── source
-│   ├── main.cpp
-│   ├── shared
-|   ├── sub_module_0
-|   └── sub_module_n
-└── test
-    ├── CMakeLists.txt
-    └── source
-        └── dummy_test.cpp
+├── test
+├── tools
 ```
 
-<a name="addtest"></a>
-## Adding tests
-Test are located inside `<root_dir>/test/source` folder, to add tests simply create new cpp file inside said folder. Check [google/gtest](https://github.com/google/googletest) documentation in order to build tests using gtest.
+## Benchamarck
 
-<a name="addbench"></a>
-## Adding benchmarks
-Test are located inside `<root_dir>/benchmark/source` folder, to add benchmarks simply create new cpp file inside said folder. Check [google/benchmark](https://github.com/google/benchmark) documentation in order to build micro-benchmarks using google benchmark.
+Dedicated to the implementation of performance tests and benchmarking. Contains source code files necessary to evaluate the performance of various system components. The tests developed in this folder allow identifying bottlenecks and optimizing the efficiency of operations, contributing to the continuous improvement of the system.
 
 <a name="VSC"></a>
 ## Visual studio code integration
@@ -177,10 +162,6 @@ cmake --preset=release
 cmake --build build -j$(nproc)
 ```
 
-To run tests:
-```bash
-ctest --test-dir build --output-on-failure
-```
 <a name="license"></a>
 ## License
 Wazuh Engine is distributed under the AGPLv3 license. See [LICENSE-engine](LICENSE-engine) and [COPYING-engine](COPYING-engine) for more details.
