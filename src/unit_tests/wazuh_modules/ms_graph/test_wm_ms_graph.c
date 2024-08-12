@@ -2086,7 +2086,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void **state) {
@@ -2145,7 +2145,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response(void **state) {
@@ -2225,7 +2225,7 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "No response received when attempting to get relationship 'alerts_v2' from resource 'security' on API version 'v1.0'.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **state) {
@@ -2294,7 +2294,7 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run first scan.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **state) {
@@ -2379,7 +2379,7 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Received unsuccessful status code when attempting to get relationship 'alerts_v2' logs: Status code was '400' & response was '{\"error\":\"bad_request\"}'");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) {
@@ -2465,7 +2465,7 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Reached maximum CURL size when attempting to get relationship 'alerts_v2' logs. Consider increasing the value of 'curl_max_size'.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
@@ -2551,7 +2551,7 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtwarn, formatted_msg, "Failed to parse relationship 'alerts_v2' JSON body.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
@@ -2646,7 +2646,7 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
@@ -2751,7 +2751,7 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:25:56Z' for tenant 'example_tenant' resource 'security' and relationship 'alerts_v2', waiting '60' seconds to run next scan.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
@@ -2804,7 +2804,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_strdup("test", response->header);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=100&$expand=managedDevices($select=id)'");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=100'");
 
     expect_any(__wrap_wurl_http_request, method);
     expect_any(__wrap_wurl_http_request, header);
@@ -2815,12 +2815,12 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, -1);
@@ -2831,16 +2831,16 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) {
@@ -2958,7 +2958,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **state) {
@@ -3129,7 +3129,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
 
-    wm_ms_graph_scan_relationships(module_data, initial);
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
 
 int main(void) {

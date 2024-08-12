@@ -41,11 +41,12 @@
 #define WM_MS_GRAPH_ITEM_PER_PAGE 100
 
 // MDM Intune
+#define WM_MS_GRAPH_API_URL_DEVICES_EXPANDED "https://%s/%s/%s/%s/%s/%s?$top=%d"
+#define WM_MS_GRAPH_API_URL_FILTER_DEVICE_FIELDS WM_MS_GRAPH_API_URL_DEVICES_EXPANDED "&$select=id,deviceName"
 #define WM_MS_GRAPH_RESOURCE_DEVICE_MANAGEMENT "deviceManagement"
 #define WM_MS_GRAPH_RELATIONSHIP_AUDIT_EVENTS "auditEvents"
 #define WM_MS_GRAPH_RELATIONSHIP_MANAGED_DEVICES "managedDevices"
 #define WM_MS_GRAPH_RELATIONSHIP_DETECTED_APPS "detectedApps"
-#define WM_MS_GRAPH_API_URL_EXPAND_DEVICES WM_MS_GRAPH_API_URL "&$expand=" WM_MS_GRAPH_RELATIONSHIP_MANAGED_DEVICES "($select=id)"
 
 typedef struct wm_ms_graph_state_t {
 	time_t next_time;
