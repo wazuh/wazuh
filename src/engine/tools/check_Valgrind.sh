@@ -118,7 +118,7 @@ for testAbs in "${bin_arr[@]}"
 do
     relativePath=$(realpath --relative-to="${BUILD_DIR}" "${testAbs}")
     nm -an $testAbs | grep -q '__asan\|__tsan'
-    if [ $? -eq 1 ]; then
+    if [ $? -eq 0 ]; then
         if [[ "$testAbs" == *test ]]; then
             echo "🟢 $relativePath"
         fi
@@ -136,21 +136,35 @@ echo "**************************************************************************
 echo "                Valgrind report on $(date)" |& tee -a ${OUTPUT_FILE}
 echo "**************************************************************************" |& tee -a ${OUTPUT_FILE}
 
-# Run Valgrind on all test
+# Function to build Valgrind command
+build_valgrind_cmd() {
+    local test="$1"
+    local regex_filter="$2"
+    
+    # Base command for Valgrind
+    cmd="valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes \"$test\""
+    
+    # Append --gtest_filter if regex_filter is set
+    if [ -n "$regex_filter" ]; then
+        cmd+=" --gtest_filter=\"$regex_filter\""
+    fi
+    
+    echo "$cmd"
+}
+
+# Run Valgrind on all tests
 for test in "${test_arr[@]}"
 do
-    echo "==========================================================================="  |& tee -a ${OUTPUT_FILE}
+    echo "===========================================================================" |& tee -a "${OUTPUT_FILE}"
     relativePath=$(realpath --relative-to="${TEST_DIR}" "${test}")
-    echo "Running Valgrind on ${relativePath}: " |& tee -a ${OUTPUT_FILE}
-    echo "--------------------------------------------------------------------------"  |& tee -a ${OUTPUT_FILE}
-    if [ -z "$REGEX_FILTER" ]; then
-        echo "cmd: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ${test}" |& tee -a ${OUTPUT_FILE}
-        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes "${test}" |& tee -a ${OUTPUT_FILE}
-    else
-        echo "cmd: valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ${test} ${REGEX_FILTER}" |& tee -a ${OUTPUT_FILE}
-        valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes "${test}" ${REGEX_FILTER} |& tee -a ${OUTPUT_FILE}
-    fi
+    echo "Running Valgrind on ${relativePath}: " |& tee -a "${OUTPUT_FILE}"
+    echo "--------------------------------------------------------------------------" |& tee -a "${OUTPUT_FILE}"
+    
+    cmd=$(build_valgrind_cmd "${test}" "${REGEX_FILTER}")
+    
+    echo "cmd: ${cmd}" |& tee -a "${OUTPUT_FILE}"
+    eval $cmd |& tee -a "${OUTPUT_FILE}"
 
-    echo "==========================================================================="  |& tee -a ${OUTPUT_FILE}
-    echo -e "\n\n\n" |& tee -a ${OUTPUT_FILE}
+    echo "===========================================================================" |& tee -a "${OUTPUT_FILE}"
+    echo -e "\n\n\n" |& tee -a "${OUTPUT_FILE}"
 done
