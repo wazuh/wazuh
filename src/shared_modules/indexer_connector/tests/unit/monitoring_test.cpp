@@ -40,6 +40,20 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
     EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
 
+    Log::assignLogFunction(
+        [](const int,
+           const std::string& tag,
+           const std::string& file,
+           const int line,
+           const std::string&,
+           const std::string& str,
+           va_list args)
+        {
+            char formattedStr[MAXLEN] = {0};
+            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
+            EXPECT_STREQ(formattedStr, "Cluster health status: 'RED'");
+        });
+
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
@@ -112,4 +126,37 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 
     // It throws an exception because this is an unregistered server
     EXPECT_THROW(m_monitoring->isAvailable(unregisteredServer), std::out_of_range);
+}
+
+TEST_F(MonitoringTest, TestHTTPError)
+{
+    const auto invalidServer {"http://localhost:9211"};
+
+    m_servers.clear();
+    m_servers.emplace_back(invalidServer);
+
+    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+
+    Log::assignLogFunction(
+        [](const int,
+           const std::string& tag,
+           const std::string& file,
+           const int line,
+           const std::string&,
+           const std::string& str,
+           va_list args)
+        {
+            char formattedStr[MAXLEN] = {0};
+            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
+            EXPECT_STREQ(formattedStr, "HTTP response code said error (Status code: 503)");
+        });
+
+    // All servers are available the first time
+    EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
+
+    // Interval to check the health of the servers
+    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
+
+    // It's false because the server isn't valid
+    EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
 }

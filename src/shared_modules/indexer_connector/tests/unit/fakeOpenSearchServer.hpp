@@ -78,6 +78,10 @@ public:
                 ss << "epoch      timestamp cluster            status node.total node.data discovered_cluster_manager "
                       "shards pri relo init unassign pending_tasks max_task_wait_time active_shards_percent\n";
                 ss << "1694645550 22:52:30 opensearch-cluster " << m_health << " 2 2 true 14 7 0 0 0 0 - 100.0%\n";
+                if (m_health.empty())
+                {
+                    res.status = 503;
+                }
                 res.set_content(ss.str(), "text/plain");
             });
         m_server.set_keep_alive_max_count(1);

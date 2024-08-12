@@ -31,6 +31,9 @@ protected:
     inline static std::unique_ptr<FakeOpenSearchServer>
         m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
 
+    inline static std::unique_ptr<FakeOpenSearchServer>
+        m_fakeOpenSearchHTTPErrorServer; ///< pointer to FakeOpenSearchServer class
+
     std::shared_ptr<Monitoring> m_monitoring; ///< pointer to Monitoring class
 
     std::vector<std::string> m_servers; ///< Servers
@@ -45,6 +48,14 @@ protected:
         m_servers.emplace_back("http://localhost:9209");
         // Register the host and port of the red server
         m_servers.emplace_back("http://localhost:9210");
+    }
+
+    /**
+     * @brief Destroy initial conditions for each test case.
+     */
+    void TearDown() override
+    {
+        Log::deassignLogFunction();
     }
 
     /**
@@ -64,6 +75,11 @@ protected:
         {
             m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>(host, 9210, "red");
         }
+
+        if (!m_fakeOpenSearchHTTPErrorServer)
+        {
+            m_fakeOpenSearchHTTPErrorServer = std::make_unique<FakeOpenSearchServer>(host, 9211, "");
+        }
     }
 
     /**
@@ -74,6 +90,7 @@ protected:
     {
         m_fakeOpenSearchGreenServer.reset();
         m_fakeOpenSearchRedServer.reset();
+        m_fakeOpenSearchHTTPErrorServer.reset();
     }
 };
 
