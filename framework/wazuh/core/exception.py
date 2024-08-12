@@ -446,6 +446,8 @@ class WazuhException(Exception):
         2701: {'message': 'PEM phrase is not correct'},
         2702: {'message': 'Ensure the certificates have the correct permissions'},
         2703: {'message': 'Wazuh comms API SSL error. Please, ensure the configuration is correct'},
+        2704: {'message': 'Invalid file name, it must not be a directory'},
+        2705: {'message': 'Invalid file name, it must not contain directories'},
 
         # Cluster
         3000: 'Cluster',
