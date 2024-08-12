@@ -65,9 +65,8 @@ def run(args, resource_handler: rs.ResourceHandler):
             return -1
         added_kvdbs_paths = []
         for entry in path.rglob('*.yml'):
-            if entry.is_file():
-                name, original = resource_handler.load_original_asset(
-                    entry)
+            name, original = resource_handler.load_original_asset(
+                entry)
             if name in manifest[type_name]:
                 # Find if kvdbs are present in the same folder and it are not alrready added
                 if entry.parent.as_posix() not in added_kvdbs_paths:
