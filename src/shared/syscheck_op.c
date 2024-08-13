@@ -581,7 +581,7 @@ char *get_user(int uid) {
             mdebug2("User with uid '%d' not found.\n", uid);
         }
         else {
-            mdebug2("Failed getting user_name (%d): '%s'\n", errno, strerror(errno));
+            mdebug2("Failed getting user_name for uid %d: (%d): '%s'\n", uid, errno, strerror(errno));
         }
     } else {
         os_strdup(pwd.pw_name, user_name);
@@ -612,7 +612,7 @@ char *get_group(int gid) {
         if (errno == 0) {
             mdebug2("Group with gid '%d' not found.\n", gid);
         } else {
-            mdebug2("Failed getting group_name (%d): '%s'\n", errno, strerror(errno));
+            mdebug2("Failed getting group_name for gid %d: (%d): '%s'\n", gid, errno, strerror(errno));
         }
     } else {
         os_strdup(grp.gr_name, group_name);
