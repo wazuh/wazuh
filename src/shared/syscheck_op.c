@@ -563,7 +563,7 @@ char *get_user(int uid) {
     int errno;
 
     bufsize = sysconf(_SC_GETPW_R_SIZE_MAX);
-    if (bufsize == -1) {
+    if (bufsize < 16384) {
         bufsize = 16384;
     }
 
@@ -600,7 +600,7 @@ char *get_group(int gid) {
     int bufsize;
 
     bufsize = sysconf(_SC_GETGR_R_SIZE_MAX);
-    if (bufsize == -1) {
+    if (bufsize < 16384) {
         bufsize = 16384;
     }
 
