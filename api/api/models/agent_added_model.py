@@ -7,9 +7,7 @@
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
-from typing import List, Dict  # noqa: F401
-
-from uuid6 import uuid7
+from typing import Dict, List  # noqa: F401
 
 from api.models.base_model_ import Body, Model
 
@@ -91,7 +89,7 @@ class AgentForce(Model):
 
 class AgentAddedModel(Body):
 
-    def __init__(self, id: uuid7 = None, name: str = None, key: str = None):
+    def __init__(self, id: str = None, name: str = None, key: str = None):
         self.swagger_types = {
             'id': str,
             'name': str,

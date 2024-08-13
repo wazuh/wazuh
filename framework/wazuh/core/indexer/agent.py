@@ -56,7 +56,7 @@ class AgentsIndex(BaseIndex):
 
         Parameters
         ----------
-        ids : list[uuid7]
+        ids : list[str]
             Agent ids to delete.
 
         Returns
