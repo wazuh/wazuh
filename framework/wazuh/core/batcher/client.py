@@ -18,12 +18,14 @@ class BatcherClient:
         self.queue = queue
         self.frequency_of_wait = frequency_of_wait
 
-    def send_event(self, event) -> uuid.UUID:
+    def send_event(self, uid: str, event) -> uuid.UUID:
         """
         Sends an event through the RouterQueue with a newly assigned unique identifier.
 
         Parameters
         ----------
+        uid : str
+            The unique identifier for the message.
         event : any
             The event to be sent.
 
@@ -32,17 +34,16 @@ class BatcherClient:
         uuid.UUID
             The unique identifier assigned to the event.
         """
-        assigned_uid = uuid.uuid4()
-        return self.queue.send_to_mux(assigned_uid, event)
+        return self.queue.send_to_mux(uid, event)
 
     # TODO - Investigate possibility of changing it to run_in_executor
-    async def get_response(self, uid: uuid.UUID) -> Optional[dict]:
+    async def get_response(self, uid: str) -> Optional[dict]:
         """
         Asynchronously waits for a response to become available and retrieves it.
 
         Parameters
         ----------
-        uid : uuid.UUID
+        uid : str
             The unique identifier for the response.
 
         Returns

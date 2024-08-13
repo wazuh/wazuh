@@ -5,8 +5,7 @@ from framework.wazuh.core.batcher.client import BatcherClient
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
-@patch("uuid.uuid4")
-def test_send_event(uuid_mock, queue_mock):
+def test_send_event(queue_mock):
     """
     Test sending an event through the BatcherClient.
     Ensures that the event is sent to the mux queue with a unique identifier.
@@ -16,10 +15,9 @@ def test_send_event(uuid_mock, queue_mock):
     event = {"data": "test event"}
     expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
 
-    uuid_mock.return_value = expected_uid
     queue_mock.send_to_mux.return_value = expected_uid
 
-    result_uid = batcher.send_event(event)
+    result_uid = batcher.send_event(expected_uid, event)
     queue_mock.send_to_mux.assert_called_once_with(result_uid, event)
 
 
