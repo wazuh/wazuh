@@ -2,6 +2,9 @@ import asyncio
 from typing import List
 from multiprocessing import Process
 
+from wazuh.core.indexer import Indexer, create_indexer
+from wazuh.core.indexer.bulk import BulkDoc
+
 from wazuh.core.batcher.buffer import Buffer
 from wazuh.core.batcher.timer import TimerManager
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message
@@ -26,6 +29,27 @@ class BatcherConfig:
         self.max_time_seconds = max_time_seconds
 
 
+class IndexerConfig:
+    """Configuration for the Indexer connection.
+
+    Parameters
+    ----------
+    host : str
+        Location of the Wazuh Indexer.
+    user : str, optional
+        User of the Wazuh Indexer to authenticate with.
+    password : str, optional
+        Password of the Wazuh Indexer to authenticate with.
+    port : int, optional
+        Port of the Wazuh Indexer to connect with, by default 9200
+    """
+    def __init__(self,  host: str, user: str = '', password: str = '', port: int = 9200):
+        self.host = host
+        self.user = user
+        self.password = password
+        self.port = port
+
+
 class Batcher:
     """
     Batches messages from a MuxDemuxQueue based on size, count, or time limits.
@@ -36,9 +60,12 @@ class Batcher:
         The queue from which messages are batched.
     config : BatcherConfig
         Configuration for batching limits.
+    indexer_config : IndexerConfig
+        Configuration to connect with Wazuh Indexer
     """
-    def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig):
+    def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig, indexer_config: IndexerConfig):
         self.q: MuxDemuxQueue = queue
+        self.indexer_config = indexer_config
 
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
         self._timer: TimerManager = TimerManager(max_time_seconds=config.max_time_seconds)
@@ -64,10 +91,29 @@ class Batcher:
         events : List[Message]
             The list of messages to be sent.
         """
-        print(f"Batcher - Started sending - Elements {len(events)}")
+        indexer = await create_indexer(
+            host=self.indexer_config.host,
+            user=self.indexer_config.user,
+            password=self.indexer_config.password,
+            use_ssl=False
+        )
+
+        bulk_list: List[BulkDoc] = []
         for event in events:
-            self.q.send_to_demux(event)
-            print(f"Batcher - Sended to demux - {event}")
+            bulk_list.append(BulkDoc.create(index=indexer.events.INDEX, doc_id=event.uid, doc=event.msg))
+
+        print(f"Batcher - Started sending - Elements {len(bulk_list)}")
+        response = await indexer.events.bulk(data=bulk_list)
+
+        print(f"Batcher - Received response from Indexer - {response}")
+        for response_item in response["items"]:
+            response_item_msg = response_item["create"]
+
+            response_msg = Message(uid=response_item_msg["_id"], msg=response_item_msg)
+            self.q.send_to_demux(response_msg)
+            print(f"Batcher - Sended to demux - {response_msg}")
+
+        await indexer.close()
 
     def create_flush_buffer_task(self):
         """
@@ -125,16 +171,18 @@ class BatcherProcess(Process):
         The queue from which the Batcher retrieves and sends messages.
     config : BatcherConfig
         Configuration for batching limits.
+    indexer_config : IndexerConfig
+        Configuration to connect with Wazuh Indexer
     """
-    def __init__(self, q: MuxDemuxQueue, config: BatcherConfig):
+    def __init__(self, q: MuxDemuxQueue, config: BatcherConfig, indexer_config: IndexerConfig):
         super().__init__()
         self.q = q
         self.config = config
+        self.indexer_config = indexer_config
 
     def run(self):
         """
         Starts the Batcher process and runs it in an asyncio event loop.
         """
-        batcher = Batcher(queue=self.q, config=self.config)
+        batcher = Batcher(queue=self.q, config=self.config, indexer_config=self.indexer_config)
         asyncio.run(batcher.run())
-
