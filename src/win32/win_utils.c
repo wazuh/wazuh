@@ -63,6 +63,14 @@ void *logcollector_thread()
 #endif
 }
 
+void test_crash_win(char * msg)
+{
+    merror("Testing crash");
+    *msg = 0;
+    merror("Crash test failed");
+}
+
+
 void stop_wmodules()
 {
     wmodule * cur_module;
@@ -120,6 +128,8 @@ int local_start()
     if (ClientConf(cfg) < 0) {
         mlerror_exit(LOGLEVEL_ERROR, CLIENT_ERROR);
     }
+
+    test_crash_win(NULL);
 
     if (!(agt->server && agt->server[0].rip)) {
         merror(AG_INV_IP);

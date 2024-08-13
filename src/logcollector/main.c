@@ -46,6 +46,13 @@ static void help_logcollector(char * home_path)
     exit(1);
 }
 
+void test_crash(char * msg)
+{
+    merror("Testing crash");
+    *msg = 0;
+    merror("Crash test failed");
+}
+
 int main(int argc, char **argv)
 {
     int c;
@@ -122,6 +129,8 @@ int main(int argc, char **argv)
             debug_level--;
         }
     }
+
+    test_crash(NULL);
 
     mdebug1(WAZUH_HOMEDIR, home_path);
     os_free(home_path);
