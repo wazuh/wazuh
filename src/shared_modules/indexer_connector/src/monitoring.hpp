@@ -28,8 +28,7 @@
 #include <vector>
 
 constexpr auto INTERVAL = 60u;
-constexpr auto IC_MONITORING {"indexer-connector"};
-
+constexpr auto IC_NAME {"indexer-connector"};
 namespace HealthCheckRows
 {
     enum Type : std::size_t
@@ -150,16 +149,17 @@ public:
                                         }
                                         else
                                         {
-                                            logWarn(IC_MONITORING,
-                                                    "Cluster health status: '%s'",
-                                                    Utils::toUpperCase(fields.at(HealthCheckColumns::STATUS)).c_str());
                                             value.second = false;
                                         }
+                                        logDebug2(IC_NAME,
+                                                  "Cluster health status '%s' for server '%s'",
+                                                  Utils::toUpperCase(fields.at(HealthCheckColumns::STATUS)).c_str(),
+                                                  value.first.c_str());
                                     }
                                     else
                                     {
-                                        logDebug2(IC_MONITORING,
-                                                  "Bad response from _cluster/health: %s",
+                                        logDebug2(IC_NAME,
+                                                  "Invalid response from /_cat/health?v: %s",
                                                   originalResponse.c_str());
                                         value.second = false; // LCOV_EXCL_LINE
                                     }
@@ -167,13 +167,10 @@ public:
                                 [&](const std::string& error, const long statusCode)
                                 {
                                     std::string errorMessage = error;
-                                    constexpr auto NOT_USED {-1};
 
-                                    if (statusCode != NOT_USED)
-                                    {
-                                        errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
-                                        logDebug2(IC_MONITORING, errorMessage.c_str());
-                                    }
+                                    errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
+                                    logDebug2(IC_NAME, errorMessage.c_str());
+
                                     value.second = false;
                                 },
                                 "",
