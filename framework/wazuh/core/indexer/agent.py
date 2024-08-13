@@ -11,7 +11,7 @@ from .constants import (
     SOURCE_KEY,
     TERMS_KEY,
 )
-from .models import Agent
+from .models.agent import Agent
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
 
