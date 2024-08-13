@@ -263,7 +263,8 @@ main() {
         set -x
     fi
 
-    if [ -z "${CUSTOM_CODE_VOL}" ]; then
+    # Add a default source only if neither the branch nor a custom code volume is defined.
+    if [ -z "${CUSTOM_CODE_VOL}" ] && [ -z "${BRANCH}" ]; then
         CUSTOM_CODE_VOL="-v $WAZUH_PATH:/wazuh-local-src:Z"
     fi
 
