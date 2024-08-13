@@ -62,10 +62,10 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     EXPECT_EQ(serverLogs.size(), 2);
     EXPECT_TRUE(std::find(serverLogs.begin(),
                           serverLogs.end(),
-                          "Cluster health status 'GREEN' for server 'http://localhost:9209'") != serverLogs.end());
+                          "Cluster health status 'green' for server 'http://localhost:9209'") != serverLogs.end());
     EXPECT_TRUE(std::find(serverLogs.begin(),
                           serverLogs.end(),
-                          "Cluster health status 'RED' for server 'http://localhost:9210'") != serverLogs.end());
+                          "Cluster health status 'red' for server 'http://localhost:9210'") != serverLogs.end());
 
     // It's true because the green server is available
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
@@ -120,7 +120,7 @@ TEST_F(MonitoringTest, TestInvalidServer)
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
-    EXPECT_STREQ(logMessage.c_str(), "Couldn't connect to server (Status code: -1)");
+    EXPECT_STREQ(logMessage.c_str(), "Couldn't connect to server. Status code: -1");
 
     // It's false because the server isn't valid
     EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
@@ -189,7 +189,7 @@ TEST_F(MonitoringTest, TestHTTPError)
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
 
-    EXPECT_STREQ(logMessage.c_str(), "HTTP response code said error (Status code: 503)");
+    EXPECT_STREQ(logMessage.c_str(), "HTTP response code said error. Status code: 503");
 
     // It's false because the server isn't valid
     EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));

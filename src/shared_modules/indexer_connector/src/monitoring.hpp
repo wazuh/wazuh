@@ -153,7 +153,7 @@ public:
                                         }
                                         logDebug2(IC_NAME,
                                                   "Cluster health status '%s' for server '%s'",
-                                                  Utils::toUpperCase(fields.at(HealthCheckColumns::STATUS)).c_str(),
+                                                  fields.at(HealthCheckColumns::STATUS).c_str(),
                                                   value.first.c_str());
                                     }
                                     else
@@ -166,9 +166,8 @@ public:
                                 },
                                 [&](const std::string& error, const long statusCode)
                                 {
-                                    std::string errorMessage = error;
-
-                                    errorMessage += " (Status code: " + std::to_string(statusCode) + ")";
+                                    const std::string errorMessage =
+                                        error + ". Status code: " + std::to_string(statusCode);
                                     logDebug2(IC_NAME, errorMessage.c_str());
 
                                     value.second = false;
