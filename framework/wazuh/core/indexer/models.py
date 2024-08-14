@@ -2,6 +2,7 @@ import hashlib
 import os
 from dataclasses import InitVar, dataclass
 from datetime import datetime
+from hmac import compare_digest
 
 ITERATIONS = 100_000
 HASH_ALGO = 'sha256'
@@ -74,7 +75,7 @@ class Agent:
         return salt + key_hash
 
     def check_key(self, key: str) -> bool:
-        """Validate the given key with the stored hash key
+        """Validate the given key with the stored hash key.
 
         Parameters
         ----------
@@ -89,4 +90,4 @@ class Agent:
         stored_key = self.key.encode('latin-1')
         salt, key_hash = stored_key[:16], stored_key[16:]
 
-        return key_hash == _hash_key(key, salt)
+        return compare_digest(key_hash, _hash_key(key, salt))

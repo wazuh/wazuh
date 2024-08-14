@@ -110,7 +110,7 @@ class AgentAddedModel(Body):
     def id(self) -> str:
         """
         :return: Agent id value
-        :rtype: srt
+        :rtype: str
         """
         return self._id
 
@@ -147,6 +147,6 @@ class AgentAddedModel(Body):
     @key.setter
     def key(self, key):
         """
-        :param name: Agent key
+        :param key: Agent key
         """
         self._key = key

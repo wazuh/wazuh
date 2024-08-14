@@ -1,4 +1,5 @@
 from dataclasses import asdict
+from typing import List
 
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError
@@ -51,19 +52,18 @@ class AgentsIndex(BaseIndex):
         else:
             return agent
 
-    async def delete(self, ids: list[str]) -> list:
+    async def delete(self, ids: List[str]) -> list:
         """Delete multiple agents that match with the given parameters.
 
         Parameters
         ----------
-        ids : list[str]
+        ids : List[str]
             Agent ids to delete.
 
         Returns
         -------
         list
             Ids of the deleted agents.
-
         """
         indexes = ','.join([self.INDEX, *self.SECONDARY_INDEXES])
         body = {QUERY_KEY: {TERMS_KEY: {'_id': ids}}}

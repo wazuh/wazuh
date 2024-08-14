@@ -61,7 +61,7 @@ default_policies:
         effect: allow
 
   agents_create:
-    description: Allow register new agents.
+    description: Allow registering new agents.
     policies:
       resourceless:
         actions:

@@ -824,7 +824,7 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID for which the specified component's stats are got. All possible values
+        Agent ID for which the specified component's stats are obtained. Accepted values
         from 000 onwards.
     component : str
         Selected agent's component which stats are got.

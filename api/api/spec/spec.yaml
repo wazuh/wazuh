@@ -7495,7 +7495,7 @@ paths:
                       $ref: '#/components/schemas/AgentIdKey'
               example:
                 data:
-                  id: "7b8276c3bf96aff5709346d368f04fed"
+                  id: "019008da-1575-7375-b54f-ef43e393517ef"
                   key: "\u00d6v\u0086\u00a8v\r\u008c\u00f5V\b\u00ba^\u00d4n\u00b1\u0090\u00a4<)\u00ef\u00f4\u00c7\u0016\u0005\u00b3mY\u0093YR5\u00f1L\u00d6wj\u0015\u00d7\u0006'\f@\u00c3a\u0094>g\u001e"
                 error: 0
         '400':
