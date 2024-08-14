@@ -16,11 +16,11 @@ from wazuh.core.exception import WazuhEngineError
     ],
 )
 def test_engine_init(params: dict):
-    """Check the correct initalization of the `Engine` class."""
+    """Check the correct initialization of the `Engine` class."""
     engine = Engine(socket_path='/test.sock', **params)
 
     assert isinstance(engine._client, AsyncClient)
-    assert engine._client.is_closed == False
+    assert not engine._client.is_closed
 
     if 'retries' in params:
         assert engine._client._transport._pool._retries == params['retries']
@@ -34,7 +34,7 @@ def test_engine_init(params: dict):
 
 
 @pytest.mark.asyncio
-async def test_close():
+async def test_engine_close():
     """Check the correct functionality of the `close` method."""
     engine = Engine(socket_path='/test.sock', retries=5, timeout=10)
     engine._client = mock.AsyncMock()
@@ -47,9 +47,9 @@ async def test_close():
 async def test_get_engine_client():
     """Check the correct behavior of the `get_engine_client` function."""
     async with get_engine_client() as engine:
-        assert engine._client.is_closed == False
+        assert not engine._client.is_closed
 
-    assert engine._client.is_closed == True
+    assert engine._client.is_closed
 
 
 @pytest.mark.asyncio
