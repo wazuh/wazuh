@@ -461,7 +461,7 @@ def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
 async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
-    """Delete a list of agents.
+    """Delete a list of agents or all of them if receive an empty list.
 
     Parameters
     ----------
