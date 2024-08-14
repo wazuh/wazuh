@@ -1,11 +1,11 @@
-from enum import Enum
 import logging
+from enum import Enum
 from typing import Any, Dict, List, Tuple
 
 from opensearchpy import AsyncOpenSearch
 
 
-class Key(Enum):
+class Key(str, Enum):
     """Opensearch API request fields keys."""
     _INDEX = '_index'
     _ID = '_id'
@@ -17,6 +17,9 @@ class Key(Enum):
     DELETE = 'delete'
     INDEX = 'index'
     UPDATE = 'update'
+    BOOL = 'bool'
+    MUST = 'must'
+    HITS = 'hits'
 
 
 class BaseIndex:

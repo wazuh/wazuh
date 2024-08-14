@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional
+from dataclasses import asdict
+from typing import List, Optional
 
-from opensearchpy import helpers
+from opensearchpy import NotFoundError
 from uuid6 import UUID
 
-from .base import BaseIndex, Key
+from .base import BaseIndex, Key, remove_empty_values
 from wazuh.core.indexer.models.commands import Command, Status
 from wazuh.core.exception import WazuhResourceNotFound
 
@@ -16,7 +17,7 @@ class CommandsIndex(BaseIndex):
 
     INDEX = 'commands'
 
-    async def get(self, uuid: UUID, status: Status) -> Optional[Dict[str, Command]]:
+    async def get(self, uuid: UUID, status: Status) -> Optional[List[Command]]:
         """Get commands with the provided status from an specific agent.
 
         Parameters
@@ -28,29 +29,38 @@ class CommandsIndex(BaseIndex):
 
         Returns
         -------
-        Optional[Dict[str, Command]]
-            Dictionary with document IDs and commands, or None.
+        Optional[ListCommand]
+            Commands list or None.
         """
         body = {
             Key.QUERY: {
-                Key.MATCH: {
-                   AGENT_ID_KEY: uuid,
-                   STATUS_KEY: status,
-                } 
+                Key.BOOL: {
+                    Key.MUST: [
+                        {Key.MATCH: {AGENT_ID_KEY: uuid}},
+                        {Key.MATCH: {STATUS_KEY: status}},
+                    ]
+                }
             }
         }
-        # TODO: format response or return None
-        return await self._client.search(index=self.INDEX, body=body)
 
-    async def update(self, document_ids: List[str], status: Status) -> None:
-        """Update commands status by their document ID.
+        response = await self._client.search(index=self.INDEX, body=body)
+        hits = response[Key.HITS][Key.HITS]
+        if len(hits) == 0:
+            return None
+
+        commands = []
+        for data in hits:
+            commands.append(Command.from_dict(data[Key._ID], data[Key._SOURCE]))
+
+        return commands
+
+    async def update(self, commands: List[Command]) -> None:
+        """Update commands.
         
         Parameters
         ----------
-        document_ids : str
-            Documents IDs.
-        status : Status
-            New command status.
+        commands : List[Command]
+            List of commands to update.
 
         Raises
         ------
@@ -58,16 +68,12 @@ class CommandsIndex(BaseIndex):
             If no document exists with the id provided.
         """
         actions = []
-        for document_id in document_ids:
-            actions.append({
-                Key.UPDATE: {
-                    Key._INDEX: self.INDEX, 
-                    Key._ID: document_id,
-                    STATUS_KEY: status
-                }
-            })
+        for command in commands:
+            actions.append({Key.UPDATE: {Key._INDEX: self.INDEX, Key._ID: command.id}})
+            command_dict = asdict(command, dict_factory=remove_empty_values)
+            actions.append({Key.DOC: command_dict})
 
         try:
-            await helpers.async_bulk(self._client, actions=actions, stats_only=True)
-        except helpers.BulkIndexError:
+            await self._client.bulk(actions, self.INDEX)
+        except NotFoundError:
             raise WazuhResourceNotFound(2202)
