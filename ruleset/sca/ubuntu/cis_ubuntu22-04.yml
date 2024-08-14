@@ -738,7 +738,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat /boot/grub/grub.cfg -> r:Access:\s*\t*\(0400/-r--------\) && r:Uid:\s*\t*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\t*\(\s*\t*0/\s*\t*root\)'
+      - 'c:stat /boot/grub/grub.cfg -> r:Access: \(0400/-r--------\) && r:Uid:\s+\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s+\t*\(\s*\t*0/\s*\t*root\)'
 
   # 1.4.3 Ensure authentication required for single user mode. (Automated)
   - id: 28529
@@ -759,7 +759,8 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - "f:/etc/shadow -> r:^root:\\$\\d+"
+      - "c:passwd --status root -> r:^root P"
+      - "not c:passwd --status root -> r:^root NP"
 
   # 1.5.1 Ensure address space layout randomization (ASLR) is enabled (Automated) - Not implemented
 
@@ -803,11 +804,13 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition: all
+    condition: any
     rules:
       - "c:systemctl is-enabled apport.service -> r:disabled"
-      - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
-      - "not c:systemctl is-active apport.service -> r:active"
+      - "c:systemctl is-enabled apport.service -> r:No such file or directory"
+      - "c:systemctl is-active apport.service -> r:inactive"
+      - "f:/etc/default/apport -> r:No such file or directory"
+      - "f:/etc/default/apport -> n:enabled=(\\d+) compare = 0"
 
   # 1.5.4 Ensure core dumps are restricted. (Automated)
   - id: 28532
@@ -876,10 +879,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
+      - "f:/etc/default/grub -> r:security=apparmor"
+      - "f:/etc/default/grub -> r:apparmor=1"
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
   - id: 28535
@@ -1501,7 +1502,7 @@ checks:
     condition: all
     rules:
       - "c:dpkg-query -s samba -> r:package 'samba' is not installed"
-      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:no packages found matching samba|deinstall|not-installed"
+      - "c:dpkg-query -W -f='${binary:Package}\\t${Status}\\t${db:Status-Status}\\n' samba -> r:no packages found matching sambad|deinstall|not-installed"
 
   # 2.2.12 Ensure HTTP Proxy Server is not installed. (Automated)
   - id: 28562
@@ -3819,8 +3820,8 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
     condition: all
     rules:
-      - "c:sshd -T -> -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
-      - "c:sshd -T -> -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
 
   # 5.3.1 Ensure sudo is installed. (Automated)
   - id: 28654
