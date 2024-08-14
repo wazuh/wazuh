@@ -3,12 +3,11 @@ from typing import List
 
 from opensearchpy import exceptions
 
-from .base import BaseIndex, remove_empty_values
+from .base import BaseIndex, Key, remove_empty_values
 from .constants import (
     BODY_KEY,
     INDEX_KEY,
     QUERY_KEY,
-    SOURCE_KEY,
     TERMS_KEY,
 )
 from .models.agent import Agent
@@ -117,7 +116,7 @@ class AgentsIndex(BaseIndex):
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
 
-        return Agent(**data[SOURCE_KEY])
+        return Agent(**data[Key._SOURCE])
 
     async def update(self, uuid: str, agent: Agent) -> None:
         """Update an agent.
@@ -137,7 +136,7 @@ class AgentsIndex(BaseIndex):
         try:
             # Convert to a dictionary removing empty values to avoid updating them
             agent_dict = asdict(agent, dict_factory=remove_empty_values)
-            body = {'doc': agent_dict}
+            body = {Key.DOC: agent_dict}
             await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)

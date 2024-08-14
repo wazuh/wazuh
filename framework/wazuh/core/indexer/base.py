@@ -1,7 +1,22 @@
+from enum import Enum
 import logging
 from typing import Any, Dict, List, Tuple
 
 from opensearchpy import AsyncOpenSearch
+
+
+class Key(Enum):
+    """Opensearch API request fields keys."""
+    _INDEX = '_index'
+    _ID = '_id'
+    _SOURCE = '_source'
+    DOC = 'doc'
+    MATCH = 'match'
+    QUERY = 'query'
+    CREATE = 'create'
+    DELETE = 'delete'
+    INDEX = 'index'
+    UPDATE = 'update'
 
 
 class BaseIndex:
