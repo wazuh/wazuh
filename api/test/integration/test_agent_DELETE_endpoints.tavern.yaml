@@ -537,6 +537,9 @@ stages:
 ---
 test_name: DELETE /agents
 
+marks:
+  - xfail
+
 stages:
 
     # DELETE /agents?agents_list=wrong

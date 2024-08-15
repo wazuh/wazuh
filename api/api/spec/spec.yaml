@@ -1455,17 +1455,22 @@ components:
     AgentAddBody:
       type: object
       properties:
+        id:
+          description: "Agent id"
+          type: string
+          format: uuid
         name:
           description: "Agent name"
           type: string
           format: names
-        ip:
-          description: "If this is not included, the API will get the IP automatically. Allowed values:
-          IP, IP/NET, ANY"
+        key:
+          description: "Agent authentication key"
           type: string
           format: alphanumeric_symbols
       required:
+      - id
       - name
+      - key
 
     AgentGroup:
       type: object
@@ -1505,32 +1510,6 @@ components:
         key:
           type: string
           format: base64
-
-    AgentInsertBody:
-      type: object
-      properties:
-        id:
-          $ref: '#/components/schemas/AgentID'
-        key:
-          type: string
-          maxLength: 64
-          minLength: 64
-          format: wazuh_key
-          description: "Key to use when communicating with the manager. The agent must have the same key on
-          its `client.keys` file"
-        name:
-          description: "Agent name"
-          type: string
-          format: names
-        ip:
-          description: "If this is not included, the API will get the IP automatically. Allowed values:
-          IP, IP/NET, ANY"
-          type: string
-          format: alphanumeric_symbols
-        force:
-          $ref: '#/components/schemas/AgentInsertForce'
-      required:
-        - name
 
     AgentStatus:
       type: string
@@ -1605,7 +1584,7 @@ components:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: numbers_or_all
+      format: uuid
 
     NodeID:
       type: string
@@ -7311,20 +7290,6 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list_all'
-        - $ref: '#/components/parameters/purge'
-        - $ref: '#/components/parameters/statusDeleteAgentParam'
-        - $ref: '#/components/parameters/older_than'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/os.platform'
-        - $ref: '#/components/parameters/os.version'
-        - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
-        - $ref: '#/components/parameters/version'
-        - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/ip'
-        - $ref: '#/components/parameters/registerIP'
       responses:
         '200':
           description: "Delete agents"
@@ -7341,9 +7306,9 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '001'
-                    - '002'
-                    - '003'
+                    - '019008da-1575-7375-b54f-ef43e393517ef'
+                    - '019008da-1575-7375-b54f-ef43e393517eg'
+                    - '019008da-1575-7375-b54f-ef43e393517eh'
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -7513,8 +7478,9 @@ paths:
             schema:
               $ref: '#/components/schemas/AgentAddBody'
             example:
+              id: 019008da-1575-7375-b54f-ef43e393517ef
               name: NewHost_2
-              ip: 10.0.10.11
+              key: 7b8276c3bf96aff5709346d368f04fed
       responses:
         '200':
           description: "Add an agent"
@@ -7529,9 +7495,8 @@ paths:
                       $ref: '#/components/schemas/AgentIdKey'
               example:
                 data:
-                  id: "009"
-                  key: "MDA5IE5ld0hvc3RfMiAxMC4wLjEwLjExIDhkNjllMzRiYTM2ZjcwMzgzZmVkNTIyNzk4MzFiZDg2NWQzZGRkZjJhMTkwZWR
-                    jMjY5YmRhOTY1ODU4M2JkMjg="
+                  id: "019008da-1575-7375-b54f-ef43e393517ef"
+                  key: "\u00d6v\u0086\u00a8v\r\u008c\u00f5V\b\u00ba^\u00d4n\u00b1\u0090\u00a4<)\u00ef\u00f4\u00c7\u0016\u0005\u00b3mY\u0093YR5\u00f1L\u00d6wj\u0015\u00d7\u0006'\f@\u00c3a\u0094>g\u001e"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8415,110 +8380,6 @@ paths:
           $ref: '#/components/responses/PermissionDeniedResponse'
         '404':
           $ref: '#/components/responses/ResourceNotFoundResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/insert:
-    post:
-      tags:
-        - Agents
-      summary: "Add agent full"
-      description: "Add an agent specifying its name, ID and IP. If an agent with the same name, the same ID or the
-      same IP already exists, replace it using the `force` parameter"
-      operationId: api.controllers.agent_controller.insert_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:create'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AgentInsertBody'
-            example:
-              name: NewHost_2
-              ip: 10.0.10.11
-              id: "123"
-              key: 1abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghi64
-              force:
-                enabled: True
-                disconnected_time:
-                  enabled: True
-                  value: "30m"
-                after_registration_time: "2h"
-      responses:
-        '200':
-          description: "Insert new agent"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AgentIdKey'
-              example:
-                data:
-                  id: "010"
-                  key: "MDEwIHRlc3RfYWdlbnRfd2F6dWhfIDE3Mi4xNi4xNi4xNyBmZTNhYzUyYmUxMDc2MDgwOGI4Y2JiZTczNzFjZDIzMWJjYjF
-                    jZjUyMDVjYjMzNTI1YzhjZDEwZGIwYTkyM2E4"
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '406':
-          $ref: '#/components/responses/WrongContentTypeResponse'
-        '413':
-          $ref: '#/components/responses/RequestTooLargeResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /agents/insert/quick:
-    post:
-      tags:
-        - Agents
-      summary: "Add agent quick"
-      description: "Add a new agent with name `agent_name`. This agent will use `any` as IP"
-      operationId: api.controllers.agent_controller.post_new_agent
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:create'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_name'
-      responses:
-        '200':
-          description: "Agent added"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AgentIdKey'
-              example:
-                data:
-                  id: "011"
-                  key: "MDExIHRlc3Rfd2F6dWhfcXVpY2sgYW55IDc3ZjNhY2RmMzBhN2ZlNzY0ODVmZTQ3YjUzMzc5ZWQ3ZDA1NDVhYzIyZDQ1NGY
-                  4YzcyZTZhNDU1MjVjYzY3OTM="
-                error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
         '405':
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':

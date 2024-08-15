@@ -60,6 +60,16 @@ default_policies:
           - agent:id:*
         effect: allow
 
+  agents_create:
+    description: Allow registering new agents.
+    policies:
+      resourceless:
+        actions:
+          - agent:create
+        resources:
+          - '*:*:*'
+        effect: allow
+
   security_all:
     description: Provide full access to all security related functionalities.
     policies:

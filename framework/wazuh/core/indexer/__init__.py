@@ -1,15 +1,28 @@
 import os
 import random
 from asyncio import sleep
+from contextlib import asynccontextmanager
 from logging import getLogger
+from typing import AsyncIterator
 
 from opensearchpy import AsyncOpenSearch
 from wazuh.core.exception import WazuhIndexerError
+from wazuh.core.indexer.agent import AgentsIndex
 
 logger = getLogger('wazuh')
 
 HOST_KEY = 'host'
 PORT_KEY = 'port'
+
+# This constants are temporary until we have a centralized configration
+
+INDEXER_HOST = os.getenv('INDEXER_HOST', '')
+INDEXER_USER = os.getenv('INDEXER_USER', '')
+INDEXER_PASSWORD = os.getenv('INDEXER_PASSWORD', '')
+INDEXER_USE_SSL = os.getenv('INDEXER_USE_SSL', 'True') == 'True'
+INDEXER_CLIENT_CERT_PATH = os.getenv('INDEXER_CLIENT_CERT_PATH', '')
+INDEXER_CLIENT_KEY_PATH = os.getenv('INDEXER_CLIENT_KEY_PATH', '')
+INDEXER_CA_CERTS_PATH = os.getenv('INDEXER_CA_CERTS_PATH', '')
 
 
 class Indexer:
@@ -40,6 +53,7 @@ class Indexer:
         self._client = self._get_opensearch_client()
 
         # Register index clients here
+        self.agents = AgentsIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:
         """Get a new OpenSearch client instance.
@@ -72,7 +86,7 @@ class Indexer:
                 extra_message=(
                     'Some type of authentication must be provided, `user` and `password` for BASIC_HTTP_AUTH '
                     'or the client certificates `client_cert_path` and `client_key_path`.'
-                )
+                ),
             )
 
         return AsyncOpenSearch(**parameters)
@@ -142,3 +156,24 @@ async def create_indexer(
             logger.info(f'Sleeping {wait}s until next try.')
             await sleep(wait)
             retries_count += 1
+
+
+@asynccontextmanager
+async def get_indexer_client() -> AsyncIterator[Indexer]:
+    """Create and return the indexer client."""
+
+    client = await create_indexer(
+        host=INDEXER_HOST,
+        user=INDEXER_USER,
+        password=INDEXER_PASSWORD,
+        use_ssl=INDEXER_USE_SSL,
+        client_cert_path=INDEXER_CLIENT_CERT_PATH,
+        client_key_path=INDEXER_CLIENT_KEY_PATH,
+        ca_certs_path=INDEXER_CA_CERTS_PATH,
+        retries=1
+    )
+
+    try:
+        yield client
+    finally:
+        await client.close()

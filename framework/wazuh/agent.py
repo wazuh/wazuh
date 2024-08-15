@@ -4,20 +4,42 @@
 
 import hashlib
 import operator
-from os import chmod, path, listdir
+from os import chmod, listdir, path
 from typing import Union
 
 from wazuh.core import common, configuration
-from wazuh.core.InputValidator import InputValidator
-from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, WazuhDBQueryMultigroups, Agent, \
-    WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
-    GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
+from wazuh.core.agent import (
+    GROUP_FIELDS,
+    GROUP_FILES_FIELDS,
+    GROUP_FILES_REQUIRED_FIELDS,
+    GROUP_REQUIRED_FIELDS,
+    Agent,
+    WazuhDBQueryAgents,
+    WazuhDBQueryGroup,
+    WazuhDBQueryGroupByAgents,
+    create_upgrade_tasks,
+    get_agents_info,
+    get_groups,
+    get_rbac_filters,
+    send_restart_command,
+)
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
-from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
-from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
-from wazuh.core.utils import chmod_r, chown_r, get_hash, mkdir_with_mode, md5, process_array, clear_temporary_caches, \
-    full_copy
+from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
+from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.constants import ID_KEY, QUERY_KEY, TERMS_KEY, WILDCARD_KEY
+from wazuh.core.indexer.utils import get_source_items_id
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
+from wazuh.core.utils import (
+    chmod_r,
+    chown_r,
+    full_copy,
+    get_hash,
+    md5,
+    mkdir_with_mode,
+    process_array,
+)
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
 
@@ -438,103 +460,61 @@ def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
-def delete_agents(agent_list: list = None, purge: bool = False, filters: dict = None,
-                  q: str = None) -> AffectedItemsWazuhResult:
-    """Delete a list of agents.
+async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
+    """Delete a list of agents or all of them if receive an empty list.
 
     Parameters
     ----------
     agent_list : list
         List of agents ID's to be deleted.
-    purge : bool
-        Delete definitely from key store.
-    filters : dict
-        Define required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
-    q : str
-        Define query to filter in DB.
-
-    Raises
-    ------
-    WazuhError(1726)
-        Authd is not running.
 
     Returns
     -------
     AffectedItemsWazuhResult
         Result with affected agents.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected agents were deleted',
-                                      some_msg='Some agents were not deleted',
-                                      none_msg='No agents were deleted'
-                                      )
-    if agent_list:
-        system_agents = get_agents_info()
-        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
-                                        filters=filters)
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected agents were deleted',
+        some_msg='Some agents were not deleted',
+        none_msg='No agents were deleted'
+    )
 
-        with WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters) as db_query:
-            data = db_query.run()
-
-        can_purge_agents = set(map(operator.itemgetter('id'), data['items']))
-        agent_list = set(agent_list)
-
-        try:
-            agent_list.remove('000')
-            result.add_failed_item('000', WazuhError(1703))
-        except KeyError:
-            pass
-
-        # Add not existing agents to failed_items
-        not_found_agents = agent_list - system_agents
-        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhResourceNotFound(1701)), not_found_agents))
-
-        # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - can_purge_agents
-        list(map(lambda ag: result.add_failed_item(id_=ag, error=WazuhError(
-            1731,
-            extra_message="some of the requirements are not met -> {}".format(
-                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
-                (f', q: {q}' if q else '')
+    async with get_indexer_client() as indexer:
+        if len(agent_list) != 0:
+            available_agents = get_source_items_id(
+                await indexer.agents.search(query={QUERY_KEY: {TERMS_KEY: {'_id': agent_list}}})
             )
-        )), non_eligible_agents))
+            not_found_agents = set(agent_list) - set(available_agents)
 
-        for agent_id in agent_list.intersection(system_agents).intersection(can_purge_agents):
-            try:
-                my_agent = Agent(agent_id)
-                my_agent.remove(purge=purge)
-                result.affected_items.append(agent_id)
-            except WazuhError as e:
-                if e.code == 1726:
-                    raise e
+            for not_found_id in not_found_agents:
+                result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
 
-                result.add_failed_item(id_=agent_id, error=e)
+            agent_list = available_agents
+        else:
+            agent_list = get_source_items_id(
+                await indexer.agents.search(query={QUERY_KEY: {WILDCARD_KEY: {ID_KEY: '*'}}})
+            )
 
-        # Clear temporary cache
-        clear_temporary_caches()
+        deleted_items = await indexer.agents.delete(agent_list)
 
-        result.total_affected_items = len(result.affected_items)
-        result.affected_items.sort(key=int)
+    result.affected_items = deleted_items
+    result.total_affected_items = len(result.affected_items)
 
     return result
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str = 'any',
-              force: dict = None) -> WazuhResult:
+async def add_agent(id: str, name: str, key: str) -> WazuhResult:
     """Add a new Wazuh agent.
 
     Parameters
     ----------
+    id : str
+        ID of the new agent.
     name : str
         Name of the new agent.
-    agent_id : str
-        ID of the new agent.
     key : str
         Key of the new agent.
-    ip : str
-        IP of the new agent. It can be an IP, IP/NET or "any".
-    force : dict
-        Remove old agent with the same name or IP if conditions are met.
 
     Raises
     ------
@@ -550,7 +530,8 @@ def add_agent(name: str = None, agent_id: str = None, key: str = None, ip: str =
     if len(name) > common.AGENT_NAME_LEN_LIMIT:
         raise WazuhError(1738)
 
-    new_agent = Agent(name=name, ip=ip, id=agent_id, key=key, force=force)
+    async with get_indexer_client() as indexer:
+        new_agent = await indexer.agents.create(id=id, name=name, key=key)
 
     return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
 

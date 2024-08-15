@@ -10,6 +10,10 @@ relationships:
       role_ids:
         - administrator
 
+    agent-init:
+      role_ids:
+        - agent_register
+
   roles:
     administrator:
       policy_ids:
@@ -71,4 +75,9 @@ relationships:
     cluster_admin:
       policy_ids:
         - cluster_all
+      rule_ids: []
+
+    agent_register:
+      policy_ids:
+        - agents_create
       rule_ids: []

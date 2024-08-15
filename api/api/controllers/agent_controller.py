@@ -8,27 +8,25 @@ from typing import Union
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
-
-from api.controllers.util import JSON_CONTENT_TYPE, json_response
-from api.models.agent_added_model import AgentAddedModel
-from api.models.agent_group_added_model import GroupAddedModel
-from api.models.agent_inserted_model import AgentInsertedModel
-from api.models.base_model_ import Body
-from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
-from api.validator import check_component_configuration_pair
 from wazuh import agent, stats
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
 from wazuh.core.common import DATABASE_LIMIT
 from wazuh.core.results import AffectedItemsWazuhResult
 
+from api.controllers.util import JSON_CONTENT_TYPE, json_response
+from api.models.agent_added_model import AgentAddedModel
+from api.models.agent_group_added_model import GroupAddedModel
+from api.models.base_model_ import Body
+from api.util import deprecate_endpoint, parse_api_param, raise_if_exc, remove_nones_to_dict
+from api.validator import check_component_configuration_pair
+
 logger = logging.getLogger('wazuh-api')
 
 
-async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, agents_list: str = None,
-                        purge: bool = False, status: str = None, q: str = None, older_than: str = None,
-                        manager: str = None, version: str = None, group: str = None, node_name: str = None,
-                        name: str = None, ip: str = None) -> ConnexionResponse:
+async def delete_agents(
+        pretty: bool = False, wait_for_complete: bool = False, agents_list: list = None
+) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
     Parameters
@@ -39,64 +37,24 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
         Disable timeout response.
     agents_list : str
         List of agents IDs. If the 'all' keyword is indicated, all the agents are deleted.
-    purge : bool
-        Delete an agent from the key store.
-    status : str
-        Filter by agent status. Use commas to filter by multiple statuses.
-    q : str
-        Query to filter agents by.
-    older_than : str
-        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    manager : str
-        Filter by the name of the manager to which agents are connected.
-    version : str
-        Filter by agents version.
-    group : str
-        Filter by group of agents.
-    node_name : str
-        Filter by node name.
-    name : str
-        Filter by agent name.
-    ip : str
-        Filter by agent IP.
-
     Returns
     -------
     ConnexionResponse
         Agents which have been deleted.
     """
     if 'all' in agents_list:
-        agents_list = None
-    f_kwargs = {'agent_list': agents_list,
-                'purge': purge,
-                'filters': {
-                    'status': status,
-                    'older_than': older_than,
-                    'manager': manager,
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query_params.get('registerIP', None)
-                },
-                'q': q
-                }
+        agents_list = []
 
-    # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
-    for field in nested:
-        f_kwargs['filters'][field] = request.query_params.get(field, None)
+    dapi = DistributedAPI(
+        f=agent.delete_agents,
+        f_kwargs=remove_nones_to_dict({'agent_list': agents_list}),
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request.context['token_info']['rbac_policies']
+    )
 
-    dapi = DistributedAPI(f=agent.delete_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
@@ -215,14 +173,15 @@ async def add_agent(pretty: bool = False, wait_for_complete: bool = False) -> Co
     Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
     f_kwargs = await AgentAddedModel.get_kwargs(request)
 
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
+    dapi = DistributedAPI(
+        f=agent.add_agent,
+        f_kwargs=remove_nones_to_dict(f_kwargs),
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=wait_for_complete,
+        logger=logger,
+        rbac_permissions=request.context['token_info']['rbac_policies']
+    )
 
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -865,7 +824,7 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     wait_for_complete : bool
         Disable timeout response.
     agent_id : str
-        Agent ID for which the specified component's stats are got. All possible values 
+        Agent ID for which the specified component's stats are obtained. Accepted values
         from 000 onwards.
     component : str
         Selected agent's component which stats are got.
@@ -881,39 +840,6 @@ async def get_component_stats(pretty: bool = False, wait_for_complete: bool = Fa
     dapi = DistributedAPI(f=stats.get_agents_component_stats_json,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def post_new_agent(agent_name: str, pretty: bool = False,
-                         wait_for_complete: bool = False) -> ConnexionResponse:
-    """Add agent (quick method).
-
-    Parameters
-    ----------
-    agent_name : str
-        Name used to register the agent.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = await AgentAddedModel.get_kwargs({'name': agent_name})
-
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
                           is_async=False,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
@@ -1280,7 +1206,7 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
 
 
 async def get_group_files(group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                          offset: int = 0, limit: int = None, sort: str = None, search: str = None, 
+                          offset: int = 0, limit: int = None, sort: str = None, search: str = None,
                           q: str = None, select: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get the files placed under the group directory.
 
@@ -1432,38 +1358,6 @@ async def restart_agents_by_group(group_id: str, pretty: bool = False,
                           rbac_permissions=request.context['token_info']['rbac_policies']
                           )
 
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def insert_agent(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Insert a new agent.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    # Get body parameters
-    Body.validate_content_type(request, expected_content_type=JSON_CONTENT_TYPE)
-    f_kwargs = await AgentInsertedModel.get_kwargs(request)
-
-    dapi = DistributedAPI(f=agent.add_agent,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)

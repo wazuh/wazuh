@@ -7,7 +7,7 @@
 from __future__ import absolute_import
 
 from datetime import date, datetime  # noqa: F401
-from typing import List, Dict  # noqa: F401
+from typing import Dict, List  # noqa: F401
 
 from api.models.base_model_ import Body, Model
 
@@ -89,22 +89,37 @@ class AgentForce(Model):
 
 class AgentAddedModel(Body):
 
-    def __init__(self, name: str = None, ip: str = None):
+    def __init__(self, id: str = None, name: str = None, key: str = None):
         self.swagger_types = {
+            'id': str,
             'name': str,
-            'ip': str,
-            'force': AgentForce
+            'key': str,
         }
 
         self.attribute_map = {
+            'id': 'id',
             'name': 'name',
-            'ip': 'ip',
-            'force': 'force'
+            'key': 'key'
         }
 
         self._name = name
-        self._ip = ip
-        self._force = AgentForce(enabled=False)
+        self._id = id
+        self._key = key
+
+    @property
+    def id(self) -> str:
+        """
+        :return: Agent id value
+        :rtype: str
+        """
+        return self._id
+
+    @id.setter
+    def id(self, id):
+        """
+        :param id: Agent id.
+        """
+        self._id = id
 
     @property
     def name(self) -> str:
@@ -122,24 +137,16 @@ class AgentAddedModel(Body):
         self._name = name
 
     @property
-    def ip(self) -> str:
+    def key(self):
         """
-        :return: Agent IP value
-        :rtype: srt
+        :return: Agent key
+        :rtype: str
         """
-        return self._ip
+        return self._key
 
-    @ip.setter
-    def ip(self, ip):
+    @key.setter
+    def key(self, key):
         """
-        :param ip: Agent IP.
+        :param key: Agent key
         """
-        self._ip = ip
-
-    @property
-    def force(self):
-        return self._force
-
-    @force.setter
-    def force(self, force):
-        self._force = force
+        self._key = key

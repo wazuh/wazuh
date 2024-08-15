@@ -84,7 +84,7 @@ async def get_update_information() -> None:
 
 @contextlib.asynccontextmanager
 async def lifespan_handler(_: ConnexionMiddleware):
-    """Logs the API startup/shutdown messages and register background tasks."""
+    """Logs the API startup/shutdown messages, register background tasks and initialize indexer client."""
 
     tasks: list[asyncio.Task] = []
 
