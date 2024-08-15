@@ -3231,7 +3231,6 @@ class DatabaseManager:
             with manager(self.sessions[target]) as resource_manager:
                 resource_manager.migrate_data(self, source, target, from_id=from_id, to_id=to_id)
 
-
     def rollback(self, database: str):
         """Abort any pending change for the current session.
 

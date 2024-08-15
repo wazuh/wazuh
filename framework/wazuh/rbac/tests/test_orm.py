@@ -17,8 +17,8 @@ from sqlalchemy.sql import text
 
 from wazuh.core.utils import get_utc_now
 from wazuh.rbac.tests.utils import init_db, MockRolePolicy, MockedUserRole, MockRoleRules
-from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User, SecurityError, Roles, Policies, \
-    UserRoles, RolesPolicies, RolesRules
+from wazuh.rbac.orm import WAZUH_USER_ID, WAZUH_WUI_USER_ID, MAX_ID_RESERVED, User, SecurityError, Roles, Rules, \
+    Policies, UserRoles, RolesPolicies, RolesRules
 
 test_path = os.path.dirname(os.path.realpath(__file__))
 test_data_path = os.path.join(test_path, 'data')
@@ -1217,6 +1217,64 @@ def test_roles_manager_migrate_data_with_reserved_ids(db_setup):
                                           from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
 
                 mock_add_role.assert_not_called()
+
+
+@pytest.mark.parametrize('rules_data',
+                         [
+                             {'rules': Rules("example_name", '{}', 1001), 'status': True},
+                             {'rules': Rules("example_name", '{}', 1001), 'status': SecurityError.ALREADY_EXIST},
+                         ]
+                         )
+def test_rules_manager_migrate_data(db_setup, rules_data):
+    """Test migrate_data method for the RulesManager class."""
+    rule = rules_data['rules']
+    status = rules_data['status']
+
+    # Mock RolesRules object
+    mock_roles_rules = MagicMock()
+    mock_roles_rules.rule_id = rule.id
+    mock_roles_rules.id = 1
+    mock_roles_rules.created_at = None
+
+    with db_setup.RulesManager() as rule_manager:
+        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[rule]):
+            with patch('wazuh.rbac.orm.db_manager.sessions', autospec=True) as mock_sessions:
+                with patch("wazuh.rbac.orm.RulesManager.add_rule", side_effect=[status, status]) as mock_add_rule:
+                    with patch("wazuh.rbac.orm.db_manager.get_table") as mock_get_table:
+                        with patch("wazuh.rbac.orm.RolesRulesManager.add_rule_to_role") as mock_add_rule_to_role:
+                            # Mock get_table to return a list of mocked RolesRules objects
+                            mock_get_table.return_value.filter.return_value.order_by.return_value.all.return_value = [
+                                mock_roles_rules]
+                            # Mock the manager session
+                            mock_query = mock_sessions.return_value.query.return_value
+                            mock_filter_by = mock_query.filter_by.return_value
+                            mock_first = mock_filter_by.first.return_value
+                            mock_first.id = rule.id
+
+                            rule_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
+                                                      from_id='someId', to_id='otherId')
+
+                            expected_calls = [call.add_rule(name=rule.name, rule=json.loads(rule.rule),
+                                                            created_at=rule.created_at,
+                                                            rule_id=rule.id, check_default=False)]
+
+                            if status == SecurityError.ALREADY_EXIST:
+                                mock_add_rule_to_role.assert_called()
+
+                            mock_add_rule.assert_has_calls(expected_calls)
+
+
+def test_rules_manager_migrate_data_with_reserved_ids(db_setup):
+    """Test migrate_data method with reserved ids for the RulesManager class."""
+    rule = Rules("example_name", '{}', 1001)
+
+    with db_setup.RulesManager() as rule_manager:
+        with patch("wazuh.rbac.orm.db_manager.get_data", return_value=[rule]):
+            with patch("wazuh.rbac.orm.RulesManager.add_rule") as mock_add_rule:
+                rule_manager.migrate_data(db_setup.db_manager, source=db_setup.DB_FILE, target=db_setup.DB_FILE,
+                                          from_id=WAZUH_USER_ID, to_id=WAZUH_WUI_USER_ID)
+
+                mock_add_rule.assert_not_called()
 
 
 @pytest.mark.parametrize('policy_data',
