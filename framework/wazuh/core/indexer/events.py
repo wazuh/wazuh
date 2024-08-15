@@ -7,7 +7,7 @@ from wazuh.core.indexer.models.events import Events
 class EventsIndex(BaseIndex):
     """Set of methods to interact with the stateful events indices."""
 
-    async def post(self, events: Events) -> dict:
+    async def index(self, events: Events) -> dict:
         """Post new events to the indexer.
 
         Parameters
