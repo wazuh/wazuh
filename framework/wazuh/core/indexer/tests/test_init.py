@@ -103,7 +103,7 @@ async def test_create_indexer_ko(indexer_mock: mock.AsyncMock, retries: int):
 
 @mock.patch('wazuh.core.indexer.create_indexer')
 async def test_get_indexer_client(create_indexer_mock):
-    """Check the correct function of `get_indexer_client`"""
+    """Check the correct function of `get_indexer_client`."""
 
     client_mock = mock.AsyncMock()
     create_indexer_mock.return_value = client_mock

@@ -482,7 +482,7 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
     async with get_indexer_client() as indexer:
         if len(agent_list) != 0:
             available_agents = get_source_items_id(
-                await indexer.agents.search(query={QUERY_KEY:{TERMS_KEY:{'_id':agent_list}}})
+                await indexer.agents.search(query={QUERY_KEY: {TERMS_KEY: {'_id': agent_list}}})
             )
             not_found_agents = set(agent_list) - set(available_agents)
 
@@ -492,7 +492,7 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
             agent_list = available_agents
         else:
             agent_list = get_source_items_id(
-                await indexer.agents.search(query={QUERY_KEY:{WILDCARD_KEY:{ID_KEY:'*'}}})
+                await indexer.agents.search(query={QUERY_KEY: {WILDCARD_KEY: {ID_KEY: '*'}}})
             )
 
         deleted_items = await indexer.agents.delete(agent_list)

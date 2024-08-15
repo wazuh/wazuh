@@ -26,7 +26,7 @@ class TestAgentIndex:
         return self.index_class(client=client_mock)
 
     async def test_create(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
-        """Check the correct function of `create` method"""
+        """Check the correct function of `create` method."""
         new_agent = await index_instance.create(**self.create_params)
 
         assert isinstance(new_agent, Agent)
@@ -35,7 +35,7 @@ class TestAgentIndex:
         )
 
     async def test_create_ko(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
-        """Check the correct raise of `create` method"""
+        """Check the correct raise of `create` method."""
         client_mock.index.side_effect = exceptions.ConflictError
 
         with pytest.raises(WazuhError, match='.*1708.*'):
@@ -55,7 +55,7 @@ class TestAgentIndex:
         )
 
     async def test_search(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
-        """Check the correct function of `search` method"""
+        """Check the correct function of `search` method."""
         query = {'foo': 1, 'bar': 2}
         search_result = {'baz': 3}
         client_mock.search.return_value = search_result

@@ -14,7 +14,6 @@ from wazuh.core import common
 from wazuh.core.cluster.utils import running_in_master_node
 from wazuh.core.configuration import update_check_is_enabled
 from wazuh.core.manager import query_update_check_service
-from wazuh.core.indexer import get_indexer_client
 
 from api import configuration
 from api.constants import (
