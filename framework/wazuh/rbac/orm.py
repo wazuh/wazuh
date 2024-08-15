@@ -1297,8 +1297,7 @@ class RolesManager(RBACManager):
             ID which the resources will be migrated to.
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
-            logger.warning(f"User {from_id} and {to_id } are part of the default users and can't be updated")
+        if manager.check_if_reserved_id(from_id, to_id):
             return
 
         old_roles = manager.get_data(source, Roles, Roles.id, from_id=from_id, to_id=to_id)
@@ -1546,8 +1545,7 @@ class RulesManager(RBACManager):
             ID which the resources will be migrated to.
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
-            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
+        if manager.check_if_reserved_id(from_id, to_id):
             return
 
         old_rules = manager.get_data(source, Rules, Rules.id, from_id=from_id, to_id=to_id)
@@ -1844,8 +1842,7 @@ class PoliciesManager(RBACManager):
             ID which the resources will be migrated to.
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
-            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
+        if manager.check_if_reserved_id(from_id, to_id):
             return
 
         old_policies = manager.get_data(source, Policies, Policies.id, from_id=from_id, to_id=to_id)
@@ -2228,8 +2225,7 @@ class UserRolesManager(RBACManager):
             ID which the resources will be migrated to.
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
-            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
+        if manager.check_if_reserved_id(from_id, to_id):
             return
 
         old_user_roles = manager.get_data(source, UserRoles, UserRoles.user_id, UserRoles.role_id, from_id=from_id,
@@ -2657,8 +2653,7 @@ class RolesPoliciesManager(RBACManager):
             ID which the resources will be migrated to.
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
-            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
+        if manager.check_if_reserved_id(from_id, to_id):
             return
 
         old_roles_policies = manager.get_data(source, RolesPolicies, RolesPolicies.role_id, RolesPolicies.policy_id,
@@ -2979,8 +2974,7 @@ class RolesRulesManager(RBACManager):
             ID which the resources will be migrated to.
         """
         # This is to avoid an error when trying to update default users, roles, policies and rules
-        if from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID:
-            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
+        if manager.check_if_reserved_id(from_id, to_id):
             return
 
         old_roles_rules = manager.get_data(source, RolesRules, RolesRules.role_id, RolesRules.rule_id, from_id=from_id,
@@ -3069,6 +3063,23 @@ class DatabaseManager:
             Database version.
         """
         return str(self.sessions[database].execute(text("pragma user_version")).first()[0])
+
+    def check_if_reserved_id(self, from_id: str | None, to_id: str | None):
+        """Checks if the ids are reserved ones
+
+        Parameters
+        ----------
+        from_id : str | None
+            ID which the resources will be migrated from.
+        to_id : str | None
+            ID which the resources will be migrated to.
+
+        Returns
+        -------
+        bool
+            Condition result
+        """
+        return from_id == WAZUH_USER_ID and to_id == WAZUH_WUI_USER_ID
 
     def insert_default_resources(self, database: str):
         """Insert default security resources into the given database.
@@ -3226,6 +3237,9 @@ class DatabaseManager:
         """
         list_of_resources = [AuthenticationManager, RolesManager, RulesManager, PoliciesManager, UserRolesManager,
                              RolesPoliciesManager, RolesRulesManager]
+
+        if self.check_if_reserved_id(from_id=from_id, to_id=to_id):
+            logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
 
         for manager in list_of_resources:
             with manager(self.sessions[target]) as resource_manager:
