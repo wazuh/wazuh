@@ -2855,13 +2855,27 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     size_t max_size = OS_SIZE_8192;
     bool initial = false;
     curl_response* response;
+    curl_response* response2;
+    curl_response* response3;
     wm_max_eps = 1;
 
     os_calloc(1, sizeof(curl_response), response);
     response->status_code = 200;
     response->max_size_reached = false;
-    os_strdup("{\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
+    os_strdup("{\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\",\"id\":\"12345\"}]}", response->body);
     os_strdup("test", response->header);
+
+    os_calloc(1, sizeof(curl_response), response2);
+    response2->status_code = 200;
+    response2->max_size_reached = false;
+    os_strdup("{\"@odata.nextLink\":\"next_page_url\",\"value\":[{\"id\":\"2345\"},{\"name\":\"test\"}]}", response2->body);
+    os_strdup("test2", response2->header);
+
+    os_calloc(1, sizeof(curl_response), response3);
+    response3->status_code = 200;
+    response3->max_size_reached = false;
+    os_strdup("{\"value\":[{\"id\":\"3456\"}]}", response3->body);
+    os_strdup("test3", response3->header);
 
 #ifdef TEST_WINAGENT
     will_return_count(__wrap_os_random, 12345, 2);
@@ -2904,19 +2918,41 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
 
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps/12345/managedDevices?$top=100&$select=id,deviceName'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response2);
+
+    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'next_page_url'");
+
+    expect_any(__wrap_wurl_http_request, method);
+    expect_any(__wrap_wurl_http_request, header);
+    expect_any(__wrap_wurl_http_request, url);
+    expect_any(__wrap_wurl_http_request, payload);
+    expect_any(__wrap_wurl_http_request, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    will_return(__wrap_wurl_http_request, response3);
+
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
 #ifdef TEST_WINAGENT
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 #else
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
 #endif
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
 #ifdef TEST_WINAGENT
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #else
-    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"id\":\"12345\",\"managedDevices\":[{\"id\":\"2345\"},{\"name\":\"test\"},{\"id\":\"3456\"}],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
 #endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
