@@ -1145,7 +1145,7 @@ def test_migrate_data(db_setup, from_id, to_id, users):
                          ]
                          )
 def test_authentication_manager_migrate_data(db_setup, user_data):
-    """Test `migrate_data for the Authentication Manager"""
+    """Test migrate_data method for the AuthenticationManager class."""
     user = user_data['user']
     expected_update = user_data['expected_update']
     status = user_data['status']
@@ -1182,8 +1182,8 @@ def test_authentication_manager_migrate_data(db_setup, user_data):
                              {'user': Roles(101, 'wazuh'), 'status': SecurityError.ALREADY_EXIST},
                          ]
                          )
-def test_role_manager_migrate_data(db_setup, role_data):
-    """Test `migrate_data for the Role Manager"""
+def test_roles_manager_migrate_data(db_setup, role_data):
+    """Test migrate_data method for the RolesManager class."""
     role = role_data['user']
     status = role_data['status']
 
@@ -1206,8 +1206,8 @@ def test_role_manager_migrate_data(db_setup, role_data):
                 mock_add_role.assert_has_calls(expected_calls)
 
 
-def test_role_manager_migrate_data_ko(db_setup):
-    """Test `migrate_data for the Role Manager with reserved ids"""
+def test_roles_manager_migrate_data_with_reserved_ids(db_setup):
+    """Test migrate_data method with reserved ids for the RolesManager class."""
     role = Roles(WAZUH_USER_ID, 'wazuh')
 
     with db_setup.RolesManager() as role_manager:
@@ -1226,8 +1226,8 @@ def test_role_manager_migrate_data_ko(db_setup):
                               'status': SecurityError.ALREADY_EXIST},
                          ]
                          )
-def test_policy_manager_migrate_data(db_setup, policy_data):
-    """Test `migrate_data for the Policy Manager"""
+def test_policies_manager_migrate_data(db_setup, policy_data):
+    """Test migrate_data method for the PoliciesManager class."""
     policy = policy_data['policy']
     status = policy_data['status']
 
@@ -1253,8 +1253,8 @@ def test_policy_manager_migrate_data(db_setup, policy_data):
                             mock_get_table.assert_called()
 
 
-def test_policies_manager_migrate_data_ko(db_setup):
-    """Test `migrate_data for the Policy Manager with reserved ids"""
+def test_policies_manager_migrate_data_with_reserved_ids(db_setup):
+    """Test migrate_data method with reserved ids for the PoliciesManager class."""
     policy = Policies('wazuh', 'some_policy')
 
     with db_setup.PoliciesManager() as policy_manager:
@@ -1274,7 +1274,7 @@ def test_policies_manager_migrate_data_ko(db_setup):
                              MockedUserRole(MAX_ID_RESERVED, MAX_ID_RESERVED, 'someDate', 4)
                          ])
 def test_user_roles_manager_migrate_data(db_setup, user_role_data):
-    """Test `migrate_data for the User Roles Manager"""
+    """Test migrate_data method for the UserRolesManager class."""
     user_role = user_role_data
     role_id = user_role_data.role_id
     user_id = user_role_data.user_id
@@ -1305,8 +1305,8 @@ def test_user_roles_manager_migrate_data(db_setup, user_role_data):
                             mock_add_role_to_user.assert_called()
 
 
-def test_user_roles_manager_migrate_data_ko(db_setup):
-    """Test `migrate_data for the User Roles Manager with reserved ids"""
+def test_user_roles_manager_migrate_data_with_reserved_ids(db_setup):
+    """Test migrate_data method with reserved ids for the UserRolesManager class."""
     user_role = UserRoles()
 
     with db_setup.UserRolesManager() as user_roles_manager:
@@ -1327,7 +1327,7 @@ def test_user_roles_manager_migrate_data_ko(db_setup):
                          ]
                          )
 def test_roles_policies_manager_migrate_data(db_setup, role_policies_data):
-    """Test `migrate_data for the Roles Policies Manager"""
+    """Test migrate_data method for the RolesPoliciesManager class."""
     role_policies = role_policies_data
     role_id = role_policies.role_id
     policy_id = role_policies.policy_id
@@ -1357,8 +1357,8 @@ def test_roles_policies_manager_migrate_data(db_setup, role_policies_data):
                             mock_add_policy_to_role.assert_called()
 
 
-def test_roles_policies_manager_migrate_data_ko(db_setup):
-    """Test `migrate_data for the Roles Policies Manager with reserved ids"""
+def test_roles_policies_manager_migrate_data_with_reserved_ids(db_setup):
+    """Test migrate_data method with reserved ids for the RolesPoliciesManager class."""
     user_role = RolesPolicies()
 
     with db_setup.RolesPoliciesManager() as role_policies_manager:
@@ -1380,7 +1380,7 @@ def test_roles_policies_manager_migrate_data_ko(db_setup):
                          ]
                          )
 def test_roles_rules_manager_migrate_data(db_setup, role_rules_data):
-    """Test `migrate_data for the Roles Rules Manager"""
+    """Test migrate_data method for the RolesRulesManager class."""
     role_rules = role_rules_data
     role_id = role_rules.role_id
     rule_id = role_rules.rule_id
@@ -1410,8 +1410,8 @@ def test_roles_rules_manager_migrate_data(db_setup, role_rules_data):
                             mock_add_rule_to_role.assert_called()
 
 
-def test_roles_rules_manager_migrate_data_ko(db_setup):
-    """Test `migrate_data for the Roles Rules Manager with reserved ids"""
+def test_roles_rules_manager_migrate_data_with_reserved_ids(db_setup):
+    """Test migrate_data method with reserved ids for the RolesRulesManager class."""
     user_role = RolesRules()
 
     with db_setup.RolesRulesManager() as roles_rules_manager:
