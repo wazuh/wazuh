@@ -1361,6 +1361,12 @@ void test_main_relationships(void **state) {
 
     will_return(__wrap_FOREVER, 1);
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     expect_string(__wrap_wm_state_io, tag, "ms-graph");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_value(__wrap_wm_state_io, state, &module_data->state);
@@ -2063,6 +2069,12 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no(void **state) {
     size_t max_size = OS_SIZE_8192;
     bool initial = true;
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
@@ -2130,6 +2142,12 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     size_t max_size = OS_SIZE_8192;
     bool initial = true;
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
@@ -2191,6 +2209,12 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     module_data->resources[0].num_relationships = 1;
     size_t max_size = OS_SIZE_8192;
     bool initial = true;
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -2271,6 +2295,12 @@ void test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp(void **s
     size_t max_size = OS_SIZE_8192;
     bool initial = false;
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
@@ -2345,6 +2375,12 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     response->status_code = 400;
     os_strdup("{\"error\":\"bad_request\"}", response->body);
     os_strdup("test", response->header);
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -2432,6 +2468,12 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     os_strdup("{\"error\":\"bad_request\"}", response->body);
     os_strdup("test", response->header);
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
@@ -2518,6 +2560,12 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     os_strdup("no json", response->body);
     os_strdup("test", response->header);
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
     expect_any(__wrap_wm_state_io, state);
@@ -2603,6 +2651,12 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     response->max_size_reached = false;
     os_strdup("{\"value\":[]}", response->body);
     os_strdup("test", response->header);
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -2699,6 +2753,12 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     response->max_size_reached = false;
     os_strdup("{\"value\":[{\"full_log\":\"log1\"}]}", response->body);
     os_strdup("test", response->header);
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);
@@ -2803,6 +2863,12 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     os_strdup("{\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
     os_strdup("test", response->header);
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
     expect_string(__wrap__mtdebug1, formatted_msg, "Microsoft Graph API Log URL: 'https://graph.microsoft.com/v1.0/deviceManagement/detectedApps?$top=100'");
 
@@ -2815,12 +2881,20 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+#else
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+#endif
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+#else
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+#endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, -1);
@@ -2831,11 +2905,19 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+#else
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}'");
+#endif
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+#else
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"managedDevices\":[],\"resource\":\"deviceManagement\",\"relationship\":\"detectedApps\"}}");
+#endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
@@ -2893,6 +2975,12 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     os_strdup("{\"@odata.nextLink\":\"next_page_url\",\"value\":[{\"full_log\":\"log1\"},{\"full_log\":\"log2\"}]}", response->body);
     os_strdup("test", response->header);
 
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
     os_calloc(1, sizeof(curl_response), response2);
     response2->status_code = 200;
     response2->max_size_reached = false;
@@ -2911,12 +2999,20 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     will_return(__wrap_wurl_http_request, response);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#else
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#endif
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#else
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log1\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, -1);
@@ -2927,11 +3023,19 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     expect_string(__wrap__mterror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'Error'");
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#else
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#endif
 
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#else
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log2\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
@@ -2948,12 +3052,20 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     will_return(__wrap_wurl_http_request, response2);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#else
+    expect_string(__wrap__mtdebug2, formatted_msg, "Sending log: '{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}'");
+#endif
 
     queue_fd = 0;
     expect_value(__wrap_wm_sendmsg, usec, 1000000);
     expect_value(__wrap_wm_sendmsg, queue, queue_fd);
-    expect_string(__wrap_wm_sendmsg, message, "{\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#ifdef TEST_WINAGENT
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":1234512345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#else
+    expect_string(__wrap_wm_sendmsg, message, "{\"scan_id\":12345,\"integration\":\"ms-graph\",\"ms-graph\":{\"full_log\":\"log3\",\"resource\":\"deviceManagement\",\"relationship\":\"managedDevices\"}}");
+#endif
     expect_string(__wrap_wm_sendmsg, locmsg, "ms-graph");
     expect_value(__wrap_wm_sendmsg, loc, LOCALFILE_MQ);
     will_return(__wrap_wm_sendmsg, 1);
@@ -3021,6 +3133,12 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     response->max_size_reached = false;
     os_strdup("{\"value\":[{\"full_log\":\"log1\"}]}", response->body);
     os_strdup("test", response->header);
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
 
     expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-alerts_v2");
     expect_value(__wrap_wm_state_io, op, WM_IO_READ);

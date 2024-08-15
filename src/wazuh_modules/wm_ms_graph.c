@@ -202,6 +202,21 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
     bool next_page;
     bool inventory = false;
 
+#ifndef WIN32
+    int id = os_random();
+    if (id < 0) {
+        id = -id;
+    }
+#else
+    char random_id[RANDOM_LENGTH];
+    snprintf(random_id, RANDOM_LENGTH - 1, "%u%u", os_random(), os_random());
+    int id = atoi(random_id);
+
+    if (id < 0) {
+        id = -id;
+    }
+#endif
+
     for (unsigned int resource_num = 0; resource_num < ms_graph->num_resources; resource_num++) {
 
         for (unsigned int relationship_num = 0; relationship_num < ms_graph->resources[resource_num].num_relationships; relationship_num++) {
@@ -319,6 +334,10 @@ void wm_ms_graph_scan_relationships(wm_ms_graph* ms_graph, wm_ms_graph_auth* aut
 
                                         cJSON_AddStringToObject(log, "resource", ms_graph->resources[resource_num].name);
                                         cJSON_AddStringToObject(log, "relationship", ms_graph->resources[resource_num].relationships[relationship_num]);
+
+                                        if (inventory) {
+                                            cJSON_AddNumberToObject(full_log, "scan_id", id);
+                                        }
                                         cJSON_AddStringToObject(full_log, "integration", WM_MS_GRAPH_CONTEXT.name);
                                         cJSON_AddItemToObject(full_log, WM_MS_GRAPH_CONTEXT.name, cJSON_Duplicate(log, true));
 
