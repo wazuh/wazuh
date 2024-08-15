@@ -7,7 +7,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import decode, encode
 from jwt.exceptions import PyJWTError
 
-from api.authentication import generate_keypair, JWT_ISSUER, EXPIRED_TOKEN, INVALID_TOKEN
+from api.authentication import get_keypair, JWT_ISSUER, EXPIRED_TOKEN, INVALID_TOKEN
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.utils import get_utc_now
 
@@ -68,7 +68,7 @@ def decode_token(token: str) -> dict:
         Dictionary with the token payload.
     """
     try:
-        _, public_key = generate_keypair(ec.SECP256R1())
+        _, public_key = get_keypair(ec.SECP256R1())
         payload = decode(token, public_key, algorithms=[JWT_ALGORITHM], audience=JWT_AUDIENCE)
 
         if (payload['exp'] - payload['iat']) != JWT_EXPIRATION:
@@ -104,6 +104,6 @@ def generate_token(uuid: str) -> str:
         'exp': timestamp + JWT_EXPIRATION,
         'uuid': uuid,
     }
-    private_key, _ = generate_keypair(ec.SECP256R1())
+    private_key, _ = get_keypair(ec.SECP256R1())
 
     return encode(payload, private_key, algorithm=JWT_ALGORITHM)

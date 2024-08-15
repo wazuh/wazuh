@@ -94,7 +94,7 @@ _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
 
-def generate_keypair(curve: ec.EllipticCurve) -> Tuple[str, str]:
+def get_keypair(curve: ec.EllipticCurve) -> Tuple[str, str]:
     """Generate key files to keep safe or load existing public and private keys.
 
     Parameters
@@ -219,7 +219,7 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
               } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(),
                                                          digest_size=16).hexdigest()}
                    if auth_context is not None else {})
-    private_key, _ = generate_keypair(ec.SECP521R1())
+    private_key, _ = get_keypair(ec.SECP521R1())
 
     return jwt.encode(payload, private_key, algorithm=JWT_ALGORITHM)
 
@@ -287,7 +287,7 @@ def decode_token(token: str) -> dict:
     """
     try:
         # Decode JWT token with local secret
-        _, public_key = generate_keypair(ec.SECP521R1())
+        _, public_key = get_keypair(ec.SECP521R1())
         payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node

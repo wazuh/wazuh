@@ -23,7 +23,7 @@ from wazuh.core.utils import get_utc_now
 
 from api import configuration
 from api.alogging import custom_logging
-from api.authentication import generate_keypair, JWT_ALGORITHM
+from api.authentication import get_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.configuration import default_api_configuration
 
@@ -85,7 +85,7 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
             if auth_type == 'basic':
                 user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
             elif auth_type == 'bearer':
-                _, public_key = generate_keypair(ec.SECP521R1())
+                _, public_key = get_keypair(ec.SECP521R1())
                 s = jwt.decode(user_passw, public_key,
                             algorithms=[JWT_ALGORITHM],
                             audience='Wazuh API REST',
