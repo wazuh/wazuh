@@ -859,7 +859,7 @@ stages:
           affected_items:
             - node_name: "master-node"
               node_api_config: &default_api_config
-                host: !anystr
+                host: !anylist
                 port: !anyint
                 https:
                   enabled: !anybool
