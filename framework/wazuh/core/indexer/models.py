@@ -41,8 +41,8 @@ def _hash_key(key: str, salt: bytes) -> str:
 class Agent:
     """Representation of a Wazuh Agent."""
 
-    id: str
-    name: str
+    id: str = None
+    name: str = None
     key: str = None
     groups: str = None
     type: str = None
@@ -89,5 +89,4 @@ class Agent:
         """
         stored_key = self.key.encode('latin-1')
         salt, key_hash = stored_key[:16], stored_key[16:]
-
         return compare_digest(key_hash, _hash_key(key, salt))

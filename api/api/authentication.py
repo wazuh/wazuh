@@ -9,7 +9,7 @@ import jwt
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
-from typing import Union
+from typing import Tuple, Union
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -94,8 +94,20 @@ _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 
 
-def generate_keypair():
+def get_keypair(curve: ec.EllipticCurve) -> Tuple[str, str]:
     """Generate key files to keep safe or load existing public and private keys.
+
+    Parameters
+    ----------
+    curve : ec.EllipticCurve
+        Elliptic curve type.
+
+    Returns
+    -------
+    private_key : str
+        Private key.
+    public_key : str
+        Public key.
 
     Raises
     ------
@@ -104,7 +116,7 @@ def generate_keypair():
     """
     try:
         if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
-            private_key, public_key = change_keypair()
+            private_key, public_key = change_keypair(curve)
             try:
                 os.chown(_private_key_path, wazuh_uid(), wazuh_gid())
                 os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
@@ -123,9 +135,22 @@ def generate_keypair():
     return private_key, public_key
 
 
-def change_keypair():
-    """Generate key files to keep safe."""
-    key_obj = ec.generate_private_key(ec.SECP521R1())
+def change_keypair(curve: ec.EllipticCurve) -> Tuple[str, str]:
+    """Generate key files to keep safe.
+    
+    Parameters
+    ----------
+    curve : ec.EllipticCurve
+        Elliptic curve type.
+    
+    Returns
+    -------
+    private_key : str
+        Private key.
+    public_key : str
+        Public key.
+    """
+    key_obj = ec.generate_private_key(curve)
     private_key = key_obj.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
@@ -194,8 +219,9 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
               } | ({"hash_auth_context": hashlib.blake2b(json.dumps(auth_context).encode(),
                                                          digest_size=16).hexdigest()}
                    if auth_context is not None else {})
+    private_key, _ = get_keypair(ec.SECP521R1())
 
-    return jwt.encode(payload, generate_keypair()[0], algorithm=JWT_ALGORITHM)
+    return jwt.encode(payload, private_key, algorithm=JWT_ALGORITHM)
 
 
 @rbac_utils.token_cache(rbac_utils.tokens_cache)
@@ -261,7 +287,8 @@ def decode_token(token: str) -> dict:
     """
     try:
         # Decode JWT token with local secret
-        payload = jwt.decode(token, generate_keypair()[1], algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
+        _, public_key = get_keypair(ec.SECP521R1())
+        payload = jwt.decode(token, public_key, algorithms=[JWT_ALGORITHM], audience='Wazuh API REST')
 
         # Check token and add processed policies in the Master node
         dapi = DistributedAPI(f=check_token,

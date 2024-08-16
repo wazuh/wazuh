@@ -198,8 +198,8 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
                   if isinstance(sec_header[1], str) else '') as mock_b64decode, \
         patch('api.middlewares.jwt.decode',
               return_value=sec_header[1])  as mock_jwt_decode, \
-        patch('api.middlewares.generate_keypair',
-              return_value=(None, None)) as mock_generate_keypair, \
+        patch('api.middlewares.get_keypair',
+              return_value=(None, None)) as mock_get_keypair, \
         patch('api.middlewares.logger.warning',
               return_value=(None, None)) as mock_log_warning, \
         patch('api.middlewares.AbstractSecurityHandler.get_auth_header_value',
@@ -214,7 +214,7 @@ async def test_access_log(json_body, q_password, b_password, b_key, c_user,
             if sec_header[0] == 'basic':
                 mock_b64decode.assert_called_once_with(sec_header[1])
             elif sec_header[0] == 'bearer':
-                mock_generate_keypair.assert_called_once()
+                mock_get_keypair.assert_called_once()
                 mock_jwt_decode.assert_called_once_with(sec_header[1], None, [JWT_ALGORITHM])
 
         if not hash and endpoint == RUN_AS_LOGIN_ENDPOINT:

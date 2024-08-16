@@ -85,8 +85,8 @@ class Indexer:
                 2201,
                 extra_message=(
                     'Some type of authentication must be provided, `user` and `password` for BASIC_HTTP_AUTH '
-                    'or the client certificates `client_cert_path` and `client_key_path`.'
-                ),
+                    'or the client certificates `client_cert_path` and `client_key_path`.',
+                )
             )
 
         return AsyncOpenSearch(**parameters)
@@ -170,7 +170,6 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
         client_cert_path=INDEXER_CLIENT_CERT_PATH,
         client_key_path=INDEXER_CLIENT_KEY_PATH,
         ca_certs_path=INDEXER_CA_CERTS_PATH,
-        retries=1
     )
 
     try:

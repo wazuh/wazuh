@@ -10,21 +10,20 @@ import logging
 import base64
 import jwt
 
-from starlette.requests import Request
-from starlette.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
-
 from connexion.exceptions import OAuthProblem
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
-
+from cryptography.hazmat.primitives.asymmetric import ec
 from secure import Secure, ContentSecurityPolicy, XFrameOptions, Server
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
 from wazuh.core.utils import get_utc_now
 
 from api import configuration
 from api.alogging import custom_logging
-from api.authentication import generate_keypair, JWT_ALGORITHM
+from api.authentication import get_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.configuration import default_api_configuration
 
@@ -86,7 +85,8 @@ async def access_log(request: ConnexionRequest, response: Response, prev_time: t
             if auth_type == 'basic':
                 user, _ = base64.b64decode(user_passw).decode("latin1").split(":", 1)
             elif auth_type == 'bearer':
-                s = jwt.decode(user_passw, generate_keypair()[1],
+                _, public_key = get_keypair(ec.SECP521R1())
+                s = jwt.decode(user_passw, public_key,
                             algorithms=[JWT_ALGORITHM],
                             audience='Wazuh API REST',
                             options={'verify_exp': False})
