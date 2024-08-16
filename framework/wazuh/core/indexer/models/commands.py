@@ -4,7 +4,7 @@ from typing import List
 
 
 @dataclass
-class Agent:
+class CommandAgent:
     """Agent data model in the context of commands."""
     # TODO(25121): this should be a UUID, but pydantic supports up to v5 only.
     # Related to https://github.com/python/cpython/issues/89083.
@@ -24,7 +24,7 @@ class Command:
     """Command data model."""
     id: str = None # Document ID
     args: List[str] = None
-    agent: Agent = None
+    agent: CommandAgent = None
     status: Status = None
     info: str = None
 
@@ -47,7 +47,7 @@ class Command:
         return cls(
             id=id,
             args=data.get('args'),
-            agent=Agent(id=data.get('agent').get('id')),
+            agent=CommandAgent(id=data.get('agent').get('id')),
             status=Status(data.get('status')),
             info=data.get('info'),
         )
