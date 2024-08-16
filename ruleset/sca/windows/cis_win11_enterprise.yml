@@ -4924,65 +4924,102 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> RequirePlatformSecurityFeatures -> 3'
 
+ # 18.9.5.3 (L1) Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'. (Automated)
   - id: 26228
     title: "Ensure 'Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity' is set to 'Enabled with UEFI lock'."
     description: "This setting enables virtualization based protection of Kernel Mode Code Integrity. When this is enabled, kernel mode memory protections are enforced and the Code Integrity validation path is protected by the Virtualization Based Security feature. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
     rationale: "The Enabled with UEFI lock option ensures that Virtualization Based Protection of Code Integrity cannot be disabled remotely."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
+    impact: "Note: This setting was moved from the Next Generation (NG) profile to the Level 1 (L1) profile for the Windows 11 Operating System only. NG profile settings were isolated from the L1 profile due to potential hardware compatibility issues. The Windows 11 Operating System is dependent on the same hardware as the NG settings, so hardware compatibility is no longer an issue. Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Once this setting is turned on and active, Virtualization Based Security cannot be disabled solely via GPO or any other remote method. After removing the setting from GPO, the features must also be manually disabled locally at the machine using the steps provided at this link: Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Virtualization Based Protection of Code Integrity Note: This Group Policy path is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.8.5.3"]
-      - cis_csc: ["10.5"]
+      - cis: ["18.9.5.3"]
+      - cis_csc_v8: ["10.5"]
+      - cis_csc_v7: ["8.3"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HypervisorEnforcedCodeIntegrity -> 1'
 
+ # 18.9.5.4 (L1) Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'. (Automated)
   - id: 26229
     title: "Ensure 'Turn On Virtualization Based Security: Require UEFI Memory Attributes Table' is set to 'True (checked)'."
     description: "This option will only enable Virtualization Based Protection of Code Integrity on devices with UEFI firmware support for the Memory Attributes Table. Devices without the UEFI Memory Attributes Table may have firmware that is incompatible with Virtualization Based Protection of Code Integrity which in some cases can lead to crashes or data loss or incompatibility with certain plug-in cards. If not setting this option the targeted devices should be tested to ensure compatibility. The recommended state for this setting is: True (checked). Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
     rationale: "This setting will help protect this control from being enabled on a system that is not compatible which could lead to a crash or data loss."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Require UEFI Memory Attributes Table. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
+    impact: "Note: This setting was moved from the Next Generation (NG) profile to the Level 1 (L1) profile for the Windows 11 Operating System only. NG profile settings were isolated from the L1 profile due to potential hardware compatibility issues. The Windows 11 Operating System is dependent on the same hardware as the NG settings, so hardware compatibility is no longer an issue. Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to TRUE: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Require UEFI Memory Attributes Table Note: This Group Policy path is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.8.5.4"]
-      - cis_csc: ["10.5"]
+      - cis: ["18.9.5.4"]
+      - cis_csc_v8: ["10.5"]
+      - cis_csc_v7: ["8.3"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> HVCIMATRequired -> 1'
 
+ # 18.9.5.5 (L1) Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock'. (Automated)
   - id: 26230
     title: "Ensure 'Turn On Virtualization Based Security: Credential Guard Configuration' is set to 'Enabled with UEFI lock'."
-    description: 'This setting lets users turn on Credential Guard with virtualization-based security to help protect credentials. The "Enabled with UEFI lock" option ensures that Credential Guard cannot be disabled remotely. In order to disable the feature, you must set the Group Policy to "Disabled" as well as remove the security functionality from each computer, with a physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs.'
+    description: "This setting lets users turn on Credential Guard with virtualization-based security to help protect credentials. The \"Enabled with UEFI lock\" option ensures that Credential Guard cannot be disabled remotely. In order to disable the feature, you must set the Group Policy to \"Disabled\" as well as remove the security functionality from each computer, with a physically present user, in order to clear configuration persisted in UEFI. The recommended state for this setting is: Enabled with UEFI lock. Note: Virtualization Based Security requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMD-V) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
     rationale: "The Enabled with UEFI lock option ensures that Credential Guard cannot be disabled remotely."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Credential Guard Configuration. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
+    impact: "Note: This setting was moved from the Next Generation (NG) profile to the Level 1 (L1) profile for the Windows 11 Operating System only. NG profile settings were isolated from the L1 profile due to potential hardware compatibility issues. The Windows 11 Operating System is dependent on the same hardware as the NG settings, so hardware compatibility is no longer an issue. Warning: All drivers on the system must be compatible with this feature or the system may crash. Ensure that this policy setting is only deployed to computers which are known to be compatible. Warning #2: Once this setting is turned on and active, Credential Guard cannot be disabled solely via GPO or any other remote method. After removing the setting from GPO, the features must also be manually disabled locally at the machine using the steps provided at this link: Manage Windows Defender Credential Guard (Windows 10) | Microsoft Docs."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled with UEFI lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Credential Guard Configuration Note: This Group Policy path is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.8.5.5"]
-      - cis_csc: ["10.5"]
+      - cis: ["18.9.5.5"]
+      - cis_csc_v8: ["10.5"]
+      - cis_csc_v7: ["8.3"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> LsaCfgFlags -> 1'
 
+ # 18.9.5.7 (L1) Ensure 'Turn On Virtualization Based Security: Kernel-mode Hardware-enforced Stack Protection' is set to 'Enabled: Enabled in enforcement mode' (Automated)
   - id: 26231
-    title: "Ensure 'Turn On Virtualization Based Security: Secure Launch Configuration' is set to 'Enabled'."
-    description: "Secure Launch protects the Virtualization Based Security environment from exploited vulnerabilities in device firmware. The recommended state for this setting is: Enabled. Note: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
-    rationale: "Secure Launch changes the way Windows boots to use Intel Trusted Execution Technology (TXT) and Runtime BIOS Resilience features to prevent firmware exploits from being able to impact the security of the Windows Virtualization Based Security environment."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Secure Launch Configuration. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
+    title: "Ensure 'Turn On Virtualization Based Security: Kernel-mode Hardware-enforced Stack Protection' is set to 'Enabled: Enabled in enforcement mode'."
+    description: "This policy setting enables Hardware-enforced Stack Protection for kernel-mode code. Kernel-mode data stacks are hardened with hardware-based shadow stacks, which store intended return address targets to ensure that program control flow is not tampered. The recommended state for this setting is: Enabled: Enabled in enforcement mode. Note: Virtualization Based Security (VBS) requires a 64-bit version of Windows with Secure Boot enabled, which in turn requires that Windows was installed with a UEFI BIOS configuration, not a Legacy BIOS configuration. In addition, if running Windows on a virtual machine, the hardware-assisted CPU virtualization feature (Intel VT-x or AMDV) must be exposed by the host to the guest VM. More information on system requirements for this feature can be found at Windows Defender Credential Guard Requirements (Windows 10) | Microsoft Docs Note #2: This specific security feature of VBS is only compatible with Windows 11 Release 22H2 (or newer). Note #3: Only Intel CPUs from Tiger Lake and beyond or AMD CPUs Zen3 and beyond (both were release in fall 2020) are compatible with this security feature. Note #4: Credential Guard and Device Guard are not currently supported when using Azure IaaS VMs."
+    rationale: "This setting stores a copy of the apps shadow stack (intended code execution flow) in the hardware-based (CPU) security feature VBS. This can prevent malware from hijacking an apps code by exploiting memory bugs such as stack buffer overflows, dangling pointers, or uninitialized variables. This allows VBS to shut down any exploit attempts via the modification of the intended code execution flow."
+    impact: "This setting is dependent upon Virtualization Based Protection of Code Integrity (aka HVCI) first being enabled, in addition to CPU hardware support for shadow stacks. If either HVCI is not enabled or hardware-based shadow stacks are not supported, this setting will have no effect. If this setting is successfully enabled, shadow stack violations will be fatal. Note: This setting was moved from the Next Generation (NG) profile to the Level 1 (L1) profile for the Windows 11 Operating System only. NG profile settings were isolated from the L1 profile due to potential hardware compatibility issues. The Windows 11 Operating System is dependent on the same hardware as the NG settings, so hardware compatibility is no longer an issue."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Enabled in enforcement mode Computer Configuration\\Policies\\Administrative Templates\\System\\Device Guard\\Turn On Virtualization Based Security: Kernel-mode Hardware-enforced Stack Protection Note: This Group Policy path is provided by the Group Policy template DeviceGuard.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
+    references:
+      - 'https://techcommunity.microsoft.com/t5/windows-os-platform-blog/understandinghardware-enforced-stack-protection/ba-p/1247815'
+      - 'https://support.microsoft.com/en-us/windows/a-driver-can-t-load-on-this-device8eea34e5-ff4b-16ec-870d-61a4a43b3dd5'
     compliance:
-      - cis: ["18.8.5.6"]
-      - cis_csc: ["10.5"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis: ["18.9.5.7"]
+      - cis_csc_v8: ["10.5"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureSystemGuardLaunch'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureSystemGuardLaunch -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureKernelShadowStacksLaunch'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceGuard -> ConfigureKernelShadowStacksLaunch -> 1'
+
+ # 18.9.7.1.1 (BL) Ensure 'Prevent installation of devices that match any of these device IDs' is set to 'Enabled'. (Automated)
+  - id: 18761
+    title: "Ensure 'Prevent installation of devices that match any of these device IDs' is set to 'Enabled'."
+    description: "This policy setting allows you to specify a list of Plug and Play hardware IDs and compatible IDs for devices that Windows is prevented from installing. This policy setting takes precedence over any other policy setting that allows Windows to install a device. If you enable this policy setting, Windows is prevented from installing a device whose hardware ID or compatible ID appears in the list you create. If you enable this policy setting on a remote desktop server, the policy setting affects redirection of the specified devices from a remote desktop client to the remote desktop server. If you disable or do not configure this policy setting, devices can be installed and updated as allowed or prevented by other policy settings. The recommended state for this setting is: Enabled. Note: In versions of Windows 10 Release 1803 (or newer), there is a new control named Enumeration policy for external devices incompatible with Kernel DMA Protection available that mitigates much of the risk for malicious devices that may perform Direct Memory Access (DMA) attacks. The newer control is also now part of the Windows 10 CIS benchmark, in section 18.8.26. However, if your environment still contains any Windows 10 Release 1709 (or older) workstations, then the newer control will not work, so this setting remains important to disable Thunderbolt devices on those systems."
+    rationale: "A BitLocker-protected computer may be vulnerable to Direct Memory Access (DMA) attacks when the computer is turned on or is in the Standby power state - this includes when the workstation is locked. BitLocker with TPM-only authentication lets a computer enter the power-on state without any pre-boot authentication. Therefore, an attacker may be able to perform DMA attacks. This issue is documented in Microsoft Knowledge Base article 2516445: Blocking the SBP-2 driver and Thunderbolt controllers to reduce 1394 DMA and Thunderbolt DMA threats to BitLocker."
+    impact: "Devices matching the specified device IDs will be prevented from installation."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Device Installation\\Device Installation Restrictions\\Prevent installation of devices that match any of these device IDs Note: This Group Policy path is provided by the Group Policy template DeviceInstallation.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    compliance:
+      - cis: ["18.9.7.1.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions -> DenyDeviceIDs'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\DeviceInstall\Restrictions:DenyDeviceIDs -> 1'
 
   - id: 26232
     title: "Ensure 'Prevent device metadata retrieval from the Internet' is set to 'Enabled'."
