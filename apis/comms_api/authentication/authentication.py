@@ -48,6 +48,8 @@ class JWTBearer(HTTPBearer):
             raise HTTPError(message=str(exc), status_code=status.HTTP_403_FORBIDDEN)
         except WazuhCommsAPIError as exc:
             raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_403_FORBIDDEN)
+        except Exception as exc:
+            raise HTTPError(message=str(exc), status_code=status.HTTP_403_FORBIDDEN)
 
         return credentials.credentials
 

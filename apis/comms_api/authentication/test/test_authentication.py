@@ -10,6 +10,7 @@ from api.authentication import INVALID_TOKEN, JWT_ISSUER
 from comms_api.authentication.authentication import decode_token, generate_token, JWTBearer, JWT_AUDIENCE, \
     JWT_EXPIRATION
 from comms_api.routers.exceptions import HTTPError
+from wazuh.core.exception import WazuhCommsAPIError
 
 payload = {
     'iss': JWT_ISSUER,
@@ -49,7 +50,7 @@ async def test_jwt_bearer_ko():
 
 
 @pytest.mark.asyncio
-@patch('comms_api.authentication.authentication.decode_token', side_effect=Exception('message'))
+@patch('comms_api.authentication.authentication.decode_token', side_effect=WazuhCommsAPIError(2706))
 async def test_jwt_bearer_decode_ko(decode_token_mock):
     """Validate that the `JWTBearer` class handles decode exceptions successfully."""
     mock_req = MagicMock()
@@ -59,7 +60,7 @@ async def test_jwt_bearer_decode_ko(decode_token_mock):
     with pytest.raises(HTTPError) as exc:
         _ = await jwt(mock_req)
 
-    assert str(exc.value) == f'{status.HTTP_403_FORBIDDEN}: message'
+    assert str(exc.value) == '2706: Invalid authentication token'
 
 
 @pytest.mark.asyncio
