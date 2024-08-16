@@ -1,7 +1,7 @@
 from fastapi import status
 from fastapi.responses import JSONResponse
 
-from comms_api.core.events import index_stateful_events
+from comms_api.core.events import create_stateful_events
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhError
@@ -28,7 +28,7 @@ async def post_stateful_events(events: Events) -> JSONResponse:
         Indexer response.
     """
     try:
-        response =  await index_stateful_events(events)
+        response = await create_stateful_events(events)
         return JSONResponse(response)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)

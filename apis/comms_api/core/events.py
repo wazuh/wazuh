@@ -2,8 +2,8 @@ from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.events import Events
 
 
-async def index_stateful_events(events: Events) -> dict:
-    """Index stateful events.
+async def create_stateful_events(events: Events) -> dict:
+    """Post new events to the indexer.
     
     Parameters
     ----------
@@ -16,4 +16,4 @@ async def index_stateful_events(events: Events) -> dict:
         Dictionary with the indexer response.
     """
     async with get_indexer_client() as indexer_client:
-       return await indexer_client.events.index(events)
+        return await indexer_client.events.create(events)

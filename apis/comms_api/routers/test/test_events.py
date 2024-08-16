@@ -9,7 +9,7 @@ from wazuh.core.exception import WazuhError
 
 
 @pytest.mark.asyncio
-@patch('comms_api.routers.events.index_stateful_events', return_value={'foo': 'bar'})
+@patch('comms_api.routers.events.create_stateful_events', return_value={'foo': 'bar'})
 async def test_post_stateful_events(post_stateful_events_mock):
     """Verify that the `post_stateful_events` handler works as expected."""
     events = ['test']
@@ -26,7 +26,7 @@ async def test_post_stateful_events_ko():
     code = status.HTTP_400_BAD_REQUEST
     exception = WazuhError(2200)
 
-    with patch('comms_api.routers.events.index_stateful_events', MagicMock(side_effect=exception)):
+    with patch('comms_api.routers.events.create_stateful_events', MagicMock(side_effect=exception)):
         with pytest.raises(HTTPError) as exc:
             _ = await post_stateful_events('')
 
