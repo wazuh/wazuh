@@ -68,7 +68,7 @@ async def test_jwt_bearer_decode_ko(decode_token_mock):
 @patch('comms_api.authentication.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                             '-----BEGIN PUBLIC KEY-----'))
 async def test_generate_token(mock_get_keypair, mock_encode):
-    """Verify that the `generate_token` function works as expected"""
+    """Verify that the `generate_token` function works as expected."""
     result = generate_token(uuid=payload['uuid'])
     assert result == 'test_token'
 
@@ -94,7 +94,7 @@ def test_decode_token(mock_get_keypair, mock_decode):
 @patch('comms_api.authentication.authentication.get_keypair', return_value=('-----BEGIN PRIVATE KEY-----',
                                                                                  '-----BEGIN PUBLIC KEY-----'))
 def test_decode_token_ko(mock_get_keypair):
-    """Assert exceptions are handled as expected inside the `decode_token` function"""
+    """Assert exceptions are handled as expected inside the `decode_token` function."""
     with pytest.raises(Exception) as exc:
         _ = decode_token(token='test_token')
         assert str(exc) == INVALID_TOKEN
