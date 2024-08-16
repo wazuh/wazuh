@@ -9,7 +9,7 @@ from wazuh.core.indexer.models.events import Events
 
 
 @timeout(30)
-async def index_stateful_events(events: Events) -> JSONResponse:
+async def post_stateful_events(events: Events) -> JSONResponse:
     """Post stateful events handler.
 
     Parameters

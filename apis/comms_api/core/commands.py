@@ -7,8 +7,7 @@ from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.commands import Command, Status
 
 
-
-async def get_commands(uuid: UUID) -> List[Command]:
+async def pull_commands(uuid: UUID) -> List[Command]:
     """Get commands from the indexer and mark them as sent.
 
     Parameters
@@ -25,6 +24,7 @@ async def get_commands(uuid: UUID) -> List[Command]:
         while True:
             commands = await indexer_client.commands.get(uuid, Status.PENDING)
             if commands is None:
+                # TODO(#25121): get sleep time from the configuration?
                 await asyncio.sleep(5)
                 continue
 
