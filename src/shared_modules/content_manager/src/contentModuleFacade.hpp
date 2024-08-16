@@ -52,9 +52,8 @@ public:
      *
      * @param name Provider name.
      * @param parameters Provider parameters.
-     * @param shouldRun Condition to run or not an action.
      */
-    void addProvider(const std::string& name, const nlohmann::json& parameters, const std::atomic<bool>* shouldRun);
+    void addProvider(const std::string& name, const nlohmann::json& parameters);
 
     /**
      * @brief Starts action scheduler.

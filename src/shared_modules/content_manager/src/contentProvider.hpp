@@ -37,15 +37,12 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters Action orchestrator parameters.
-     * @param shouldRun Condition to run or not an action.
      */
-    explicit ContentProvider(const std::string& topicName,
-                             const nlohmann::json& parameters,
-                             const std::atomic<bool>* shouldRun)
+    explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters)
         : m_routerProvider(std::make_shared<RouterProvider>(topicName))
     {
         m_routerProvider->start();
-        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters, shouldRun);
+        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters);
     }
 
     ~ContentProvider()

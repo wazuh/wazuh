@@ -28,7 +28,7 @@
 #include <thread>
 #include <unistd.h>
 
-constexpr auto INVALID_SOCKET {-1};
+constexpr auto _INVALID_SOCKET {-1};
 constexpr auto SOCKET_ERROR {-1};
 using PacketFieldType = uint32_t;
 using HeaderFieldType = uint32_t;
@@ -390,7 +390,7 @@ private:
     std::mutex m_mutex;
 
 public:
-    explicit Socket(const int sock = INVALID_SOCKET)
+    explicit Socket(const int sock = _INVALID_SOCKET)
         : m_sock {sock}
         , m_status {SocketStatus::HEADER}
         , m_readPosition {0}
@@ -433,14 +433,14 @@ public:
     void connect(const SocketAddress& connInfo, int type = (SOCK_STREAM | SOCK_NONBLOCK))
     {
         // Close socket if it was already initialized.
-        if (m_sock != INVALID_SOCKET)
+        if (m_sock != _INVALID_SOCKET)
         {
             T::close(m_sock);
         }
 
         // Create socket.
         m_sock = T::socket(connInfo.type == SocketType::UNIX ? AF_UNIX : AF_INET, type, 0);
-        if (m_sock != INVALID_SOCKET)
+        if (m_sock != _INVALID_SOCKET)
         {
             if (T::connect(m_sock, connInfo.addr, connInfo.addrSize) < 0)
             {
@@ -474,7 +474,7 @@ public:
         ssize_t ret;
         bool dataToRead = true;
 
-        if (m_sock != INVALID_SOCKET)
+        if (m_sock != _INVALID_SOCKET)
         {
             while (dataToRead)
             {
@@ -594,7 +594,7 @@ public:
         socklen_t socketLength = sizeof(addr);
 
         auto sock = T::accept(m_sock, (struct sockaddr*)&addr, &socketLength);
-        if (sock == INVALID_SOCKET)
+        if (sock == _INVALID_SOCKET)
         {
             throw std::runtime_error {"Failed to accept socket" + std::string(std::strerror(errno))};
         }
@@ -697,7 +697,7 @@ public:
 
     void listen(const SocketAddress& connectInfo)
     {
-        if (m_sock != INVALID_SOCKET)
+        if (m_sock != _INVALID_SOCKET)
         {
             throw std::runtime_error {"Socket already initialized"};
         }
@@ -705,7 +705,7 @@ public:
         const auto connectType = connectInfo.type == SocketType::UNIX ? AF_UNIX : AF_INET;
         m_sock = T::socket(connectType, SOCK_STREAM | SOCK_NONBLOCK, 0);
 
-        if (m_sock != INVALID_SOCKET)
+        if (m_sock != _INVALID_SOCKET)
         {
             int reuse = 1;
             if (T::setsockopt(m_sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse)) < 0)
@@ -777,14 +777,14 @@ public:
 
     void closeSocket() noexcept
     {
-        if (m_sock != INVALID_SOCKET)
+        if (m_sock != _INVALID_SOCKET)
         {
             if (-1 == T::shutdown(m_sock, SHUT_WR))
             {
                 std::cerr << "Shutdown error: " << errno << std::endl;
             }
             T::close(m_sock);
-            m_sock = INVALID_SOCKET;
+            m_sock = _INVALID_SOCKET;
         }
     }
 };

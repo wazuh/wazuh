@@ -12,6 +12,7 @@
 #ifndef _ACTION_MODULE_HPP
 #define _ACTION_MODULE_HPP
 
+#include "UNIXSocketRequest.hpp"
 #include "actionOrchestrator.hpp"
 #include "conditionSync.hpp"
 #include "iRouterProvider.hpp"
@@ -23,6 +24,8 @@
 #include <filesystem>
 #include <thread>
 #include <utility>
+
+constexpr auto FILE_PROCESSING_STATUS_SOCK {"queue/sockets/file-processing-status"};
 
 /**
  * @brief Action class.
@@ -37,12 +40,8 @@ public:
      * @param channel Router provider.
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
-     * @param shouldRun Condition to run or not an action.
      */
-    explicit Action(const std::shared_ptr<IRouterProvider> channel,
-                    std::string topicName,
-                    nlohmann::json parameters,
-                    const std::atomic<bool>* shouldRun)
+    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters)
         : m_channel {channel}
         , m_actionInProgress {false}
         , m_cv {}
@@ -50,7 +49,6 @@ public:
         , m_interval {0}
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
         , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition)}
-        , m_shouldRun {shouldRun}
     {
         m_parameters = std::move(parameters);
     }
@@ -86,6 +84,21 @@ public:
     }
 
     /**
+     * @brief Check if there is a file processing in progress.
+     *
+     */
+    void checkFileProcessingStatus()
+    {
+        const std::string url = "http://localhost/status";
+        UNIXSocketRequest::instance().get(
+            HttpUnixSocketURL(FILE_PROCESSING_STATUS_SOCK, url),
+            [&](const std::string& msg)
+            { msg.compare("Active") == 0 ? m_shouldStop.store(true) : m_shouldStop.store(false); },
+            [](const std::string& msg, const long responseCode)
+            { logError(WM_CONTENTUPDATER, "%s: %ld.", msg.c_str(), responseCode); });
+    }
+
+    /**
      * @brief Action scheduler start.
      *
      * @param interval Scheduler interval.
@@ -107,15 +120,15 @@ public:
                     m_cv.wait_for(lock, std::chrono::seconds(this->m_interval));
                     if (m_schedulerRunning)
                     {
-                        //  Normal execution
-                        if (m_shouldRun && m_shouldRun->load())
+                        checkFileProcessingStatus();
+                        if (this->m_shouldStop)
                         {
-                            runActionScheduled();
+                            // Action skipped, sleep for interval time.
+                            logDebug2(WM_CONTENTUPDATER, "File processing in progress, scheduled request postponed.");
                         }
                         else
                         {
-                            // Action skipped, sleep for interval time.
-                            logDebug2(WM_CONTENTUPDATER, "Scheduled request postponed.");
+                            runActionScheduled();
                         }
                     }
                 }
@@ -219,7 +232,7 @@ private:
     std::thread m_schedulerThread;
     std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;
-    const std::atomic<bool>* m_shouldRun;
+    std::atomic<bool> m_shouldStop = false;
     std::atomic<size_t> m_interval;
     std::mutex m_mutex;
     std::condition_variable m_cv;

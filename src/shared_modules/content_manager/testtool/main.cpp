@@ -140,8 +140,7 @@ int main()
     {
         const std::string topic_name = CONFIG_PARAMETERS.at("topicName").get<std::string>();
         // Client -> Vulnerability detector
-        std::unique_ptr<std::atomic<bool>> shouldRun = std::make_unique<std::atomic<bool>>(true);
-        ContentRegister registerer {topic_name, CONFIG_PARAMETERS, shouldRun.get()};
+        ContentRegister registerer {topic_name, CONFIG_PARAMETERS};
         std::this_thread::sleep_for(std::chrono::seconds(5));
 
         // Run offset update if specified.

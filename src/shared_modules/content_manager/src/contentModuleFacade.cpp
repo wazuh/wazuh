@@ -31,9 +31,7 @@ void ContentModuleFacade::stop()
     m_providers.clear();
 }
 
-void ContentModuleFacade::addProvider(const std::string& name,
-                                      const nlohmann::json& parameters,
-                                      const std::atomic<bool>* shouldRun)
+void ContentModuleFacade::addProvider(const std::string& name, const nlohmann::json& parameters)
 {
     std::lock_guard<std::shared_mutex> lock {m_mutex};
     // If already exist throw exception
@@ -42,7 +40,7 @@ void ContentModuleFacade::addProvider(const std::string& name,
         throw std::runtime_error("Provider already exist");
     }
 
-    m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters, shouldRun));
+    m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters));
 }
 
 void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
