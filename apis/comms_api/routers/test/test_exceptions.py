@@ -5,7 +5,7 @@ import pytest
 from fastapi import status
 from fastapi.exceptions import RequestValidationError
 
-from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler
+from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler, exception_handler
 
 
 @pytest.mark.asyncio
@@ -42,3 +42,15 @@ async def test_validation_exception_handler(loc, msg, expected_msg):
     assert result.status_code == status.HTTP_400_BAD_REQUEST
     assert body['message'] == expected_msg
     assert body['code'] == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.asyncio
+async def test_exception_handler():
+    mock_req = MagicMock()
+    exc_message = 'message'
+    exc = Exception(exc_message)
+    result = await exception_handler(mock_req, exc)
+    body = json.loads(result.body)
+
+    assert result.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+    assert body['message'] == exc_message

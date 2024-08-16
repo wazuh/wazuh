@@ -17,7 +17,8 @@ from api.alogging import set_logging
 from api.configuration import generate_private_key, generate_self_signed_certificate
 from api.constants import COMMS_API_LOG_PATH
 from api.middlewares import SecureHeadersMiddleware
-from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler
+from comms_api.routers.exceptions import HTTPError, http_error_handler, validation_exception_handler, \
+    exception_handler
 from comms_api.routers.router import router
 from comms_api.middlewares.logging import LoggingMiddleware
 from wazuh.core import common, pyDaemonModule, utils
@@ -34,6 +35,7 @@ def create_app() -> FastAPI:
     app.add_middleware(LoggingMiddleware)
     app.add_exception_handler(HTTPError, http_error_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    app.add_exception_handler(Exception, exception_handler)
     app.include_router(router)
     return app
 

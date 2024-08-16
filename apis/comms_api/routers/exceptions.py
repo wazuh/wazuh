@@ -35,6 +35,7 @@ async def http_error_handler(request: Request, exc: HTTPError) -> JSONResponse:
         content={'message': exc.message, 'code': exc.code},
     )
 
+
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """API request validation errors handler.
     
@@ -56,4 +57,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={'message': f'{key} {message}', 'code': status.HTTP_400_BAD_REQUEST},
+    )
+
+
+async def exception_handler(request: Request, exc: Exception):
+    """API global errors handler.
+    
+    Parameters
+    ----------
+    request : Request
+        Client request.
+    exc : Exception
+        Base exception raised.
+    
+    Returns
+    -------
+    JSONResponse
+        JSON response containing an error description and code.
+    """
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={'message': f'{str(exc)}', 'code': status.HTTP_500_INTERNAL_SERVER_ERROR},
     )
