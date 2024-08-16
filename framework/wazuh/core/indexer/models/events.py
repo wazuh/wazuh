@@ -132,7 +132,7 @@ class BuildInfo:
 
 
 @dataclass
-class Agent:
+class EventAgent:
     """Agent data model in relation to events."""
     build: BuildInfo
     ephemeral_id: str
@@ -190,7 +190,7 @@ class Wazuh:
 @dataclass
 class VulnerabilityEvent(BaseModel):
     """Vulnerability events data model."""
-    agent: Agent
+    agent: EventAgent
     host: Host
     message: str
     package: Package
