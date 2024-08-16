@@ -36,9 +36,6 @@ protected:
                                                "ActionOrchestratorTest"}; ///< Path used to store the RocksDB database.
     const unsigned int INITIAL_OFFSET {1}; ///< Initial offset to be inserted on the database.
 
-    std::unique_ptr<std::atomic<bool>> m_shouldRun =
-        std::make_unique<std::atomic<bool>>(true); ///< Condition to run or not an action.
-
     /**
      * @brief Sets initial conditions for each test case.
      */
