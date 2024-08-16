@@ -16,11 +16,11 @@ from setuptools import setup, find_namespace_packages
 setup(
     name='comms_api',
     version='5.0.0',
-    description='Agent communications API',
+    description='Communications API',
     author_email='hello@wazuh.com',
     author='Wazuh',
     url='https://github.com/wazuh',
-    keywords=['Agent communications API', 'Agent comms API'],
+    keywords=['Communications API', 'Comms API'],
     install_requires=[],
     packages=find_namespace_packages(exclude=['*.test', '*.test.*', 'test.*', 'test']),
     package_data={},
@@ -28,6 +28,6 @@ setup(
     zip_safe=False,
     license='GPLv2',
     long_description="""
-    The Agent communications API is an open source RESTful API that allows for interaction with the Wazuh agents.
+    The Communications API is an open source RESTful API that allows Wazuh agents to interact with the server.
     """
 )

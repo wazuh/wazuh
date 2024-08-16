@@ -442,7 +442,7 @@ class WazuhException(Exception):
         2201: {'message': 'Indexer credentials not provided'},
         2202: {'message': 'Command does not exist'},
 
-        # Communicationsomms API
+        # Communications API
         2700: {'message': 'Private key does not match with the certificate'},
         2701: {'message': 'PEM phrase is not correct'},
         2702: {'message': 'Ensure the certificates have the correct permissions'},
