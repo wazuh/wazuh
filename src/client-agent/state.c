@@ -66,6 +66,9 @@ int write_state() {
     struct tm tm = { .tm_sec = 0 };
     const char * status;
     char path[PATH_MAX - 8];
+
+    char path_temp[PATH_MAX + 1];
+    char path_backup[PATH_MAX + 9];  // Backup path
     char last_keepalive[1024] = "";
     char last_ack[1024] = "";
     int buffered_event;
@@ -80,16 +83,21 @@ int write_state() {
     buffered_event = w_agentd_get_buffer_lenght();
     w_mutex_lock(&state_mutex);
 
+
+    // Define paths for Windows and Linux
 #ifdef WIN32
     snprintf(path, sizeof(path), "%s.state", __local_name);
+    snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
+    snprintf(path_backup, sizeof(path_backup), "%s.backup", path);
 
-    if (fp = wfopen(path, "w"), !fp) {
-        merror(FOPEN_ERROR, path, errno, strerror(errno));
+
+    if (fp = wfopen(path_temp, "w"), !fp) {
+        merror(FOPEN_ERROR, path_temp, errno, strerror(errno));
         w_mutex_unlock(&state_mutex);
         return -1;
     }
 #else
-    char path_temp[PATH_MAX + 1];
+
     snprintf(path, sizeof(path), OS_PIDFILE "/%s.state", __local_name);
     snprintf(path_temp, sizeof(path_temp), "%s.temp", path);
 
@@ -138,15 +146,42 @@ int write_state() {
         , __local_name, agt->notify_time, agt->max_time_reconnect_try, status,
         last_keepalive, last_ack, agent_state.msg_count, agent_state.msg_sent);
 
-        if (buffered_event >= 0) {
-            fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "='%i'\n", buffered_event);
-        } else {
-            fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
-        }
+    if (buffered_event >= 0) {
+        fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "='%i'\n", buffered_event);
+    } else {
+        fprintf(fp, W_AGENTD_FIELD_MSG_BUFF "=''\n");
+    }
 
     fclose(fp);
 
-#ifndef WIN32
+#ifdef WIN32
+    // Rename the original file to a backup before attempting to overwrite it
+    if (rename(path, path_backup) < 0 && errno != ENOENT) {
+        merror("Renaming original state file %s to backup %s: %s", path, path_backup, strerror(errno));
+        unlink(path_temp); // Delete the temp file if renaming fails
+        w_mutex_unlock(&state_mutex);
+        return -1;
+    }
+
+
+    // Rename the temporary file to the final state file
+    if (rename(path_temp, path) < 0) {
+        merror("Renaming %s to %s: %s", path_temp, path, strerror(errno));
+
+        // Attempt to restore the original file in case of failure
+        if (rename(path_backup, path) < 0) {
+            merror("Restoring backup %s to original %s failed: %s", path_backup, path, strerror(errno));
+        }
+
+        unlink(path_temp); // Delete the temp file if renaming fails
+        w_mutex_unlock(&state_mutex);
+        return -1;
+    }
+
+    // Delete the backup file if everything went well
+    unlink(path_backup);
+
+#else
     if (rename(path_temp, path) < 0) {
         merror("Renaming %s to %s: %s", path_temp, path, strerror(errno));
 
