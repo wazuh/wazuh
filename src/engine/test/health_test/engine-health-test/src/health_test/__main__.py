@@ -24,6 +24,8 @@ def parse_args() -> Namespace:
                              help='Specify the path to the ruleset directory', required=True)
     init_parser.add_argument(
         '-t', '--test-dir', help='Specify the path to the test directory', required=True)
+    init_parser.add_argument('--stop-on-warning', action='store_true',
+                             help='Stop the initialization process if a warning is encountered when creating the policy')
     init_parser.set_defaults(func=init_run)
 
     # test subcommand
