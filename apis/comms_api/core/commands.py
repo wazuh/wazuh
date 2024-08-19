@@ -3,6 +3,7 @@ from typing import List
 
 from uuid6 import UUID
 
+from comms_api.models.commands import Result
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.commands import Command, Status
 
@@ -34,3 +35,15 @@ async def pull_commands(uuid: UUID) -> List[Command]:
             await indexer_client.commands.update(commands)
 
             return commands
+
+
+async def post_results(results: List[Result]) -> None:
+    """Post commands results to the indexer.
+
+    Parameters
+    ----------
+    results : List[Result]
+        Commands results.
+    """
+    async with get_indexer_client() as indexer_client:
+        await indexer_client.commands.update(results)
