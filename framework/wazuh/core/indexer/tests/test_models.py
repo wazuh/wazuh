@@ -1,7 +1,7 @@
 from unittest import mock
 
 import pytest
-from wazuh.core.indexer.models import HASH_ALGO, ITERATIONS, Agent
+from wazuh.core.indexer.models.agent import HASH_ALGO, ITERATIONS, Agent
 
 
 class TestAgent:
