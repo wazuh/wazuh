@@ -119,7 +119,7 @@ def load_integrations(ruleset_path: Path, engine_handler: EngineHandler) -> None
         print(f"Integration loaded.")
 
 
-def load_policy(ruleset_path: Path, engine_handler: EngineHandler) -> None:
+def load_policy(ruleset_path: Path, engine_handler: EngineHandler, stop_on_warn: bool) -> None:
     # Create policy
     request = api_policy.StorePost_Request()
     request.policy = "policy/wazuh/0"
@@ -145,7 +145,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler) -> None:
         response, api_policy.DefaultParentPost_Response())
     if parsed_response.status == api_engine.ERROR:
         raise Exception(parsed_response.error)
-    if len(parsed_response.warning) > 0:
+    if len(parsed_response.warning) > 0 and stop_on_warn:
         raise Exception(parsed_response.warning)
     print("Default parent set.")
 
@@ -161,7 +161,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler) -> None:
         response, api_policy.DefaultParentPost_Response())
     if parsed_response.status == api_engine.ERROR:
         raise Exception(parsed_response.error)
-    if len(parsed_response.warning) > 0:
+    if len(parsed_response.warning) > 0 and stop_on_warn:
         raise Exception(parsed_response.warning)
     print("Default parent set.")
 
@@ -177,7 +177,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler) -> None:
     parsed_response = ParseDict(response, api_policy.AssetPost_Response())
     if parsed_response.status == api_engine.ERROR:
         raise Exception(parsed_response.error)
-    if len(parsed_response.warning) > 0:
+    if len(parsed_response.warning) > 0 and stop_on_warn:
         raise Exception(parsed_response.warning)
     print("wazuh-core added.")
 
@@ -199,7 +199,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler) -> None:
             response, api_policy.AssetPost_Response())
         if parsed_response.status == api_engine.ERROR:
             raise Exception(parsed_response.error)
-        if len(parsed_response.warning) > 0:
+        if len(parsed_response.warning) > 0 and stop_on_warn:
             raise Exception(parsed_response.warning)
         print(f"{integration_name} added.")
 
@@ -220,7 +220,7 @@ def load_policy(ruleset_path: Path, engine_handler: EngineHandler) -> None:
     print("Environment loaded.")
 
 
-def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: Path) -> None:
+def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: Path, stop_on_warn: bool) -> None:
     engine_handler: Optional[EngineHandler] = None
 
     try:
@@ -257,7 +257,7 @@ def init(env_path: Path, bin_path: Path, ruleset_path: Path, health_test_path: P
         load_integrations(ruleset_path, engine_handler)
 
         # Create policy
-        load_policy(ruleset_path, engine_handler)
+        load_policy(ruleset_path, engine_handler, stop_on_warn)
 
         print("Stopping the engine...")
         engine_handler.stop()
@@ -280,5 +280,6 @@ def run(args):
     bin_path = Path(args['binary']).resolve()
     ruleset_path = Path(args['ruleset']).resolve()
     health_test_path = Path(args['test_dir']).resolve()
+    stop_on_warning = args.get('stop_on_warning', False)
 
-    init(env_path, bin_path, ruleset_path, health_test_path)
+    init(env_path, bin_path, ruleset_path, health_test_path, stop_on_warning)
