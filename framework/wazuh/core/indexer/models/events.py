@@ -207,6 +207,6 @@ class VulnerabilityEvent(BaseModel):
         return VULNERABILITY_INDEX
 
 
-class Events(BaseModel):
-    """Object holding a list of events of any type."""
+class StatefulEvents(BaseModel):
+    """Object holding a list of stateful events of any type."""
     events: List[Union[FIMEvent, InventoryEvent, SCAEvent, VulnerabilityEvent]]
