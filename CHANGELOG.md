@@ -3,6 +3,11 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.8.2]
 
+### Manager
+
+#### Fixed
+
+- Backport fix when remoted fails to read a message. ([#25225](https://github.com/wazuh/wazuh/issues/25225))
 
 ## [v4.8.1]
 
