@@ -3,6 +3,8 @@ from logging import getLogger
 from typing import AsyncIterator
 
 from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, TimeoutException, UnsupportedProtocol
+
+from wazuh.core.engine.events import EventsModule
 from wazuh.core.exception import WazuhEngineError
 
 logger = getLogger('wazuh')
@@ -26,6 +28,7 @@ class Engine:
         self._client = AsyncClient(transport=transport, timeout=Timeout(timeout))
 
         # Register Engine modules here
+        self.events = EventsModule(client=self._client)
 
     async def close(self) -> None:
         """Close the Engine client."""
