@@ -100,13 +100,11 @@ class EXPORTED Syscollector final
         void scan();
         void sync();
         void syncLoop(std::unique_lock<std::mutex>& lock);
-        void syncAlgorithm();
         std::shared_ptr<ISysInfo>                                               m_spInfo;
         std::function<void(const std::string&)>                                 m_reportDiffFunction;
         std::function<void(const std::string&)>                                 m_reportSyncFunction;
         std::function<void(const modules_log_level_t, const std::string&)>      m_logFunction;
-        std::chrono::seconds                                                       m_intervalValue;
-        std::chrono::seconds                                                       m_currentIntervalValue;
+        unsigned int m_intervalValue;
         bool                                                                    m_scanOnStart;
         bool                                                                    m_hardware;
         bool                                                                    m_os;
@@ -124,7 +122,6 @@ class EXPORTED Syscollector final
         std::mutex                                                              m_mutex;
         std::unique_ptr<SysNormalizer>                                          m_spNormalizer;
         std::string                                                             m_scanTime;
-        std::chrono::seconds                                           m_lastSyncMsg;
 };
 
 
