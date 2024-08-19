@@ -26,6 +26,7 @@
 #include <utility>
 
 constexpr auto FILE_PROCESSING_STATUS_SOCK {"queue/sockets/file-processing-status"};
+constexpr auto FILE_PROCESSING_ACTIVE_STATUS {"Active"};
 
 /**
  * @brief Action class.
@@ -93,7 +94,7 @@ public:
         UNIXSocketRequest::instance().get(
             HttpUnixSocketURL(FILE_PROCESSING_STATUS_SOCK, url),
             [&](const std::string& msg)
-            { msg.compare("Active") == 0 ? m_shouldStop.store(true) : m_shouldStop.store(false); },
+            { msg.compare(FILE_PROCESSING_ACTIVE_STATUS) == 0 ? m_shouldRun.store(false) : m_shouldRun.store(true); },
             [](const std::string& msg, const long responseCode)
             { logError(WM_CONTENTUPDATER, "%s: %ld.", msg.c_str(), responseCode); });
     }
@@ -121,7 +122,7 @@ public:
                     if (m_schedulerRunning)
                     {
                         checkFileProcessingStatus();
-                        if (this->m_shouldStop)
+                        if (!this->m_shouldRun)
                         {
                             // Action skipped, sleep for interval time.
                             logDebug2(WM_CONTENTUPDATER, "File processing in progress, scheduled request postponed.");
@@ -232,7 +233,7 @@ private:
     std::thread m_schedulerThread;
     std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;
-    std::atomic<bool> m_shouldStop = false;
+    std::atomic<bool> m_shouldRun = true;
     std::atomic<size_t> m_interval;
     std::mutex m_mutex;
     std::condition_variable m_cv;
