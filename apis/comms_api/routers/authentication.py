@@ -6,7 +6,7 @@ from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhInternalError, WazuhIndexerError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.models import Agent
+from wazuh.core.indexer.models.agent import Agent
 from wazuh.core.utils import get_utc_now
 
 

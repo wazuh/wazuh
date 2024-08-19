@@ -123,7 +123,7 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
     dict
         Gunicorn configuration options.
     """
-    # TODO: get values from the configuration
+    # TODO(#25121): get values from the configuration
     keyfile = '/var/ossec/api/configuration/ssl/server.key'
     certfile = '/var/ossec/api/configuration/ssl/server.crt'
     configure_ssl(keyfile, certfile)
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     # The bash script that starts all services first executes them using the `-t` flag to check the configuration.
     # We don't have a configuration yet, but it will be added in the future, so we just exit successfully for now.
     #
-    # TODO: check configuration
+    # TODO(#25121): check configuration
     if args.test_config:
         exit(0)
 

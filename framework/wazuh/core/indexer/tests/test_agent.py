@@ -6,7 +6,7 @@ from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.agent import AgentsIndex
 from wazuh.core.indexer.constants import QUERY_KEY, TERMS_KEY
-from wazuh.core.indexer.models import Agent
+from wazuh.core.indexer.models.agent import Agent
 
 
 class TestAgentIndex:

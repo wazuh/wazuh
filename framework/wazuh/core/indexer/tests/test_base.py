@@ -3,7 +3,7 @@ from dataclasses import asdict
 from unittest import mock
 
 from wazuh.core.indexer.base import BaseIndex, remove_empty_values
-from wazuh.core.indexer.models import Agent
+from wazuh.core.indexer.models.agent import Agent
 
 
 def test_base_index_init():

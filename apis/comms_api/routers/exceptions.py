@@ -2,6 +2,7 @@ from fastapi import HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+
 class HTTPError(HTTPException):
     """HTTP error exception model."""
 
@@ -34,7 +35,6 @@ async def http_error_handler(request: Request, exc: HTTPError) -> JSONResponse:
         content={'message': exc.message, 'code': exc.code},
     )
 
-
 async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """API request validation errors handler.
     
@@ -52,7 +52,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     """
     error = exc.errors()[0]
     key = '.'.join(error['loc'])
-    message = error['msg']
+    message = error['msg'].lower()
     return JSONResponse(
         status_code=status.HTTP_400_BAD_REQUEST,
         content={'message': f'{key} {message}', 'code': status.HTTP_400_BAD_REQUEST},

@@ -9,7 +9,7 @@ from comms_api.models.authentication import Credentials, TokenResponse
 from comms_api.routers.authentication import authentication
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.exception import WazuhInternalError, WazuhIndexerError, WazuhResourceNotFound
-from wazuh.core.indexer.models import Agent
+from wazuh.core.indexer.models.agent import Agent
 from wazuh.core.utils import get_utc_now
 
 
