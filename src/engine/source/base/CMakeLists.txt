@@ -9,6 +9,7 @@ add_library(base STATIC
     ${SRC_DIR}/utils/wazuhProtocol/wazuhRequest.cpp
     ${SRC_DIR}/utils/ipUtils.cpp
     ${SRC_DIR}/utils/stringUtils.cpp
+    ${SRC_DIR}/utils/timeUtils.cpp
     ${SRC_DIR}/expression.cpp
     ${SRC_DIR}/parseEvent.cpp
     ${SRC_DIR}/json.cpp
