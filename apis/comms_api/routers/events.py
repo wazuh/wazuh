@@ -28,7 +28,7 @@ async def stateful_events(events: Events) -> JSONResponse:
         Indexer response.
     """
     try:
-        response =  await post_stateful_events(events)
+        response = await post_stateful_events(events)
         return JSONResponse(response)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)

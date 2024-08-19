@@ -16,4 +16,4 @@ async def post_stateful_events(events: Events) -> dict:
         Dictionary with the indexer response.
     """
     async with get_indexer_client() as indexer_client:
-       return await indexer_client.events.post(events)
+        return await indexer_client.events.create(events)
