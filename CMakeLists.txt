@@ -159,6 +159,8 @@ find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::logs")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics")
 
 find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
+find_and_create_imported_target("flatbuffers" "flatbuffers::flatbuffers")
+find_and_create_imported_target("httplib" "httplib::httplib")
 
 ####################################################################################################
 # Targets
@@ -166,6 +168,8 @@ find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
 # Build main
 add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
+add_subdirectory(${ENGINE_SOURCE_DIR}/feedmanager)
+add_subdirectory(${ENGINE_SOURCE_DIR}/vdscanner)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/sockiface)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)

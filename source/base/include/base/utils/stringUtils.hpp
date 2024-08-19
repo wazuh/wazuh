@@ -1,6 +1,7 @@
 #ifndef _STRING_UTILS_H
 #define _STRING_UTILS_H
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -103,7 +104,6 @@ inline bool startsWith(std::string_view str, std::string_view prefix)
     return str.substr(0, prefix.size()) == prefix;
 }
 
-
 /**
  * @brief Unescapes a string by removing escape characters and replacing escaped characters with their original values.
  *
@@ -126,8 +126,25 @@ unescapeString(std::string_view str, char escapeChar, const char escapedChar, co
     return unescapeString(str, escapeChar, std::string(1, escapedChar), strictMode);
 }
 
-
 // TODO Add scape string with char. Implement on test handler location.
+// TODO: Add doxygen documentation.
+std::string toUpperCase(std::string_view str);
+
+std::string toLowerCase(std::string_view str);
+
+bool replaceFirst(std::string& data, const std::string& toSearch, const std::string& toReplace);
+
+std::string leftTrim(const std::string& str, const std::string& args = " ");
+
+std::string rightTrim(const std::string& str, const std::string& args = " ");
+
+std::string trim(const std::string& str, const std::string& args = " ");
+
+std::string toSentenceCase(const std::string& str);
+
+bool isNumber(const std::string& str);
+
+bool replaceAll(std::string& data, std::string_view toSearch, std::string_view toReplace);
 
 } // namespace base::utils::string
 

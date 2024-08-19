@@ -111,4 +111,109 @@ unescapeString(std::string_view str, char escapeChar, const std::string& escaped
     return result;
 }
 
+std::string toUpperCase(std::string_view str)
+{
+    std::string temp {str};
+    std::transform(std::begin(temp),
+                   std::end(temp),
+                   std::begin(temp),
+                   [](std::string::value_type character) { return std::toupper(character); });
+    return temp;
+}
+
+std::string toLowerCase(std::string_view str)
+{
+    std::string temp {str};
+    std::transform(std::begin(temp),
+                   std::end(temp),
+                   std::begin(temp),
+                   [](std::string::value_type character) { return std::tolower(character); });
+    return temp;
+}
+
+bool replaceFirst(std::string& data, const std::string& toSearch, const std::string& toReplace)
+{
+    auto pos {data.find(toSearch)};
+    auto ret {false};
+
+    if (std::string::npos != pos)
+    {
+        data.replace(pos, toSearch.size(), toReplace);
+        ret = true;
+    }
+
+    return ret;
+}
+
+std::string leftTrim(const std::string& str, const std::string& args)
+{
+    const auto pos {str.find_first_not_of(args)};
+
+    if (pos != std::string::npos)
+    {
+        return str.substr(pos);
+    }
+    else
+    {
+        return "";
+    }
+
+    return str;
+}
+
+std::string rightTrim(const std::string& str, const std::string& args)
+{
+    const auto pos {str.find_last_not_of(args)};
+
+    if (pos != std::string::npos)
+    {
+        return str.substr(0, pos + 1);
+    }
+    else
+    {
+        return "";
+    }
+
+    return str;
+}
+
+std::string trim(const std::string& str, const std::string& args)
+{
+    return leftTrim(rightTrim(str, args), args);
+}
+
+std::string toSentenceCase(const std::string& str)
+{
+    std::string temp;
+    if (!str.empty())
+    {
+        temp = toLowerCase(str);
+        *temp.begin() = static_cast<char>(std::toupper(*str.begin()));
+    }
+    return temp;
+}
+
+bool isNumber(const std::string& str)
+{
+    std::string::const_iterator it = str.begin();
+
+    while (it != str.end() && std::isdigit(*it)) ++it;
+
+    return !str.empty() && it == str.end();
+}
+
+bool replaceAll(std::string& data, const std::string_view toSearch, const std::string_view toReplace)
+{
+    auto pos {data.find(toSearch)};
+    const auto ret {std::string::npos != pos};
+
+    while (std::string::npos != pos)
+    {
+        data.replace(pos, toSearch.size(), toReplace);
+        pos = data.find(toSearch, pos + toReplace.size());
+    }
+
+    return ret;
+}
+
 } // namespace base::utils::string
