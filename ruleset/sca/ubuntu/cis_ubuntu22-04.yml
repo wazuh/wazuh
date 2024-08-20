@@ -996,7 +996,7 @@ checks:
     condition: any
     rules:
       - "not c: dpkg-query -s autofs -> r:autofs is installed"
-      - 'not c: sh -c "systemctl is-enabled autofs.service & systemctl is-active autofs.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled autofs.service & systemctl is-active autofs.service" -> r:^active$|^enabled$'
 
   # 2.1.2 Ensure avahi daemon services are not in use. (Automated)
   - id: 18564
@@ -1020,7 +1020,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s avahi-daemon -> r:avahi-daemon is installed"
-      - 'not c: sh -c "systemctl is-enabled avahi-daemon.socket avahi-daemon.service & systemctl is-active avahi-daemon.socket avahi-daemon.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled avahi-daemon.socket avahi-daemon.service & systemctl is-active avahi-daemon.socket avahi-daemon.service" -> r:^active$|^enabled$'
 
   # 2.1.3 Ensure dhcp server services are not in use. (Automated)
   - id: 18565
@@ -1046,7 +1046,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s isc-dhcp-server -> r:isc-dhcp-server is installed"
-      - 'not c: sh -c "systemctl is-enabled isc-dhcp-server.service isc-dhcp-server6.service & systemctl is-active isc-dhcp-server.service isc-dhcp-server6.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled isc-dhcp-server.service isc-dhcp-server6.service & systemctl is-active isc-dhcp-server.service isc-dhcp-server6.service" -> r:^active$|^enabled$'
 
   # 2.1.4 Ensure dns server services are not in use. (Automated)
   - id: 18566
@@ -1070,7 +1070,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s bind9 -> r:bind9 is installed"
-      - 'not c: sh -c "systemctl is-enabled bind9.service & systemctl is-active bind9.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled bind9.service & systemctl is-active bind9.service" -> r:^active$|^enabled$'
 
   # 2.1.5 Ensure dnsmasq services are not in use. (Automated)
   - id: 18567
@@ -1094,7 +1094,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s dnsmasq -> r:dnsmasq is installed"
-      - 'not c: sh -c "systemctl is-enabled dnsmasq.service & systemctl is-active dnsmasq.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled dnsmasq.service & systemctl is-active dnsmasq.service" -> r:^active$|^enabled$'
 
   # 2.1.6 Ensure ftp server services are not in use. (Automated)
   - id: 18568
@@ -1118,7 +1118,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s vsftpd -> r:vsftpd is installed"
-      - 'not c: sh -c "systemctl is-enabled dnsmasq.service & systemctl is-active dnsmasq.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled dnsmasq.service & systemctl is-active dnsmasq.service" -> r:^active$|^enabled$'
 
   # 2.1.7 Ensure ldap server services are not in use. (Automated)
   - id: 18569
@@ -1144,7 +1144,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s slapd -> r:slapd is installed"
-      - 'not c: sh -c "systemctl is-enabled slapd.service & systemctl is-active slapd.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled slapd.service & systemctl is-active slapd.service" -> r:^active$|^enabled$'
 
   # 2.1.8 Ensure message access server services are not in use. (Automated)
   - id: 18570
@@ -1168,7 +1168,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s dovecot-imapd dovecot-pop3d -> r:dovecot-imapd is installed|dovecot-pop3d is installed"
-      - 'not c: sh -c "systemctl is-enabled dovecot.socket dovecot.service & systemctl is-active dovecot.socket dovecot.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled dovecot.socket dovecot.service & systemctl is-active dovecot.socket dovecot.service" -> r:^active$|^enabled$'
 
   # 2.1.9 Ensure network file system services are not in use. (Automated)
   - id: 18571
@@ -1192,7 +1192,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s nfs-kernel-server -> r:nfs-kernel-server is installed"
-      - 'not c: sh -c "systemctl is-enabled nfs-server.service & systemctl is-active nfs-server.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled nfs-server.service & systemctl is-active nfs-server.service" -> r:^active$|^enabled$'
 
   # 2.1.10 Ensure nis server services are not in use. (Automated)
   - id: 18572
@@ -1216,7 +1216,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s ypserv -> r:ypserv is installed"
-      - 'not c: sh -c "systemctl is-enabled ypserv.service & systemctl is-active ypserv.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled ypserv.service & systemctl is-active ypserv.service" -> r:^active$|^enabled$'
 
   # 2.1.11 Ensure print server services are not in use. (Automated)
   - id: 18573
@@ -1242,7 +1242,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s cups -> r:cups is installed"
-      - 'not c: sh -c "systemctl is-enabled cups.socket cups.service & systemctl is-active cups.socket cups.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled cups.socket cups.service & systemctl is-active cups.socket cups.service" -> r:^active$|^enabled$'
 
   # 2.1.12 Ensure rpcbind services are not in use. (Automated)
   - id: 18574
@@ -1266,7 +1266,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s rpcbind -> r:rpcbind is installed"
-      - 'not c: sh -c "systemctl is-enabled rpcbind.socket rpcbind.service & systemctl is-active rpcbind.socket rpcbind.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled rpcbind.socket rpcbind.service & systemctl is-active rpcbind.socket rpcbind.service" -> r:^active$|^enabled$'
 
   # 2.1.13 Ensure rsync services are not in use. (Automated)
   - id: 18575
@@ -1290,7 +1290,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s rsync -> r:rsync is installed"
-      - 'not c: sh -c "systemctl is-enabled rsync.service & systemctl is-active rsync.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled rsync.service & systemctl is-active rsync.service" -> r:^active$|^enabled$'
 
   # 2.1.14 Ensure samba file server services are not in use. (Automated)
   - id: 18576
@@ -1313,7 +1313,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s samba -> r:samba is installed"
-      - 'not c: sh -c "systemctl is-enabled smbd.service & systemctl is-active smbd.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled smbd.service & systemctl is-active smbd.service" -> r:^active$|^enabled$'
 
   # 2.1.15 Ensure snmp services are not in use. (Automated)
   - id: 18577
@@ -1337,7 +1337,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s snmpd -> r:snmpd is installed"
-      - 'not c: sh -c "systemctl is-enabled snmpd.service & systemctl is-active snmpd.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled snmpd.service & systemctl is-active snmpd.service" -> r:^active$|^enabled$'
 
   # 2.1.16 Ensure tftp server services are not in use. (Automated)
   - id: 18578
@@ -1361,7 +1361,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s tftpd-hpa -> r:tftpd-hpa is installed"
-      - 'not c: sh -c "systemctl is-enabled tftpd-hpa.service & systemctl is-active tftpd-hpa.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled tftpd-hpa.service & systemctl is-active tftpd-hpa.service" -> r:^active$|^enabled$'
 
   # 2.1.17 Ensure web proxy server services are not in use. (Automated)
   - id: 18579
@@ -1385,7 +1385,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s squid -> r:squid is installed"
-      - 'not c: sh -c "systemctl is-enabled squid.service & systemctl is-active squid.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled squid.service & systemctl is-active squid.service" -> r:^active$|^enabled$'
 
   # 2.1.18 Ensure web server services are not in use. (Automated)
   - id: 18580
@@ -1409,7 +1409,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s apache2 nginx -> r:apache2 is installed|nginx is installed"
-      - 'not c: sh -c "systemctl is-enabled apache2.socket apache2.service nginx.service & systemctl is-active apache2.socket apache2.service nginx.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled apache2.socket apache2.service nginx.service & systemctl is-active apache2.socket apache2.service nginx.service" -> r:^active$|^enabled$'
 
   # 2.1.19 Ensure xinetd services are not in use. (Automated)
   - id: 18581
@@ -1433,7 +1433,7 @@ checks:
     condition: any
     rules:
       - "not c:dpkg-query -s xinetd -> r:xinetd is installed"
-      - 'not c: sh -c "systemctl is-enabled xinetd.service & systemctl is-active xinetd.service" -> r:^active$|^enabled$'
+      - 'not c:sh -c "systemctl is-enabled xinetd.service & systemctl is-active xinetd.service" -> r:^active$|^enabled$'
 
   # 2.1.20 Ensure X window server services are not in use. (Automated)
   - id: 18582
@@ -1501,14 +1501,15 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -s nis -> r:nis is installed"
 
   # 2.2.2 Ensure rsh client is not installed. (Automated)
   - id: 18586
     title: "Ensure rsh client is not installed."
     description: "The rsh-client package contains the client commands for the rsh services."
-    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh-client package removes the clients for rsh , rcp and rlogin ."
+    rationale: "These legacy clients contain numerous security exposures and have been replaced with the more secure SSH package. Even if the server is removed, it is best to ensure the clients are also removed to prevent users from inadvertently attempting to use these commands and therefore exposing their credentials. Note that removing the rsh-client package removes the clients for rsh, rcp and rlogin."
     impact: "Many insecure service clients are used as troubleshooting tools and in testing environments. Uninstalling them can inhibit capability to test and troubleshoot. If they are required it is advisable to remove the clients after use to prevent accidental or intentional misuse."
     remediation: "Uninstall rsh: # apt purge rsh-client."
     compliance:
@@ -1523,8 +1524,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -s rsh-client -> r:rsh-client is installed"
 
   # 2.2.3 Ensure talk client is not installed. (Automated)
   - id: 18587
@@ -1545,8 +1547,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -s talk -> r:talk is installed"
 
   # 2.2.4 Ensure telnet client is not installed. (Automated)
   - id: 18588
@@ -1567,8 +1570,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -s telnet -> r:telnet is installed"
 
   # 2.2.5 Ensure ldap client is not installed. (Automated)
   - id: 18589
@@ -1589,8 +1593,9 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -s ldap-utils -> r:ldap-utils is installed"
 
   # 2.2.6 Ensure ftp client is not installed. (Automated)
   - id: 18590
@@ -1610,54 +1615,12 @@ checks:
       - pci_dss_v3.2.1: ["1.1.6", "1.2.1", "2.2.2", "2.2.5"]
       - pci_dss_v4.0: ["1.2.5", "2.2.4", "6.4.1"]
       - soc_2: ["CC6.3", "CC6.6"]
-    condition:
+    condition: all
     rules:
+      - "not c:dpkg-query -s ftp -> r:ftp is installed"
 
-  # 2.3.1.1 Ensure a single time synchronization daemon is in use. (Automated)
-  - id: 18591
-    title: "Ensure a single time synchronization daemon is in use."
-    description: "System time should be synchronized between all systems in an environment. This is typically done by establishing an authoritative time server or set of servers and having all systems synchronize their clocks to them. Notes: - On virtual systems where host based time synchronization is available consult your virtualization software documentation and verify that host based synchronization is in use and follows local site policy. In this scenario, this section should be skipped - Only one time synchronization method should be in use on the system. Configuring multiple time synchronization methods could lead to unexpected or unreliable results."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and ensures log files have consistent time records across the enterprise, which aids in forensic investigations."
-    remediation: "On physical systems, and virtual systems where host based time synchronization is not available. Select one of the two time synchronization daemons; chrony (1) or systemd-timesyncd (2) and following the remediation procedure for the selected daemon. Note: enabling more than one synchronization daemon could lead to unexpected or unreliable results: 1. chrony Run the following command to install chrony: # apt install chrony Run the following commands to stop and mask the systemd-timesyncd daemon: # systemctl stop systemd-timesyncd.service # systemctl mask systemd-timesyncd.service Note: - Subsection: Configure chrony should be followed - Subsection: Configure systemd-timesyncd should be skipped 2. systemd-timesyncd Run the following command to remove the chrony package: # apt purge chrony # apt autoremove chrony Note: - Subsection: Configure systemd-timesyncd should be followed - Subsection: Configure chrony should be skipped."
-    compliance:
-      - cis: ["2.3.1.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - mitre_tactics: ["TA0005"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
-    condition:
-    rules:
-
-  # 2.3.2.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated)
-  - id: 18592
-    title: "Ensure systemd-timesyncd configured with authorized timeserver."
-    description: "NTP= - A space-separated list of NTP server host names or IP addresses. During runtime this list is combined with any per-interface NTP servers acquired from systemd-networkd.service(8). systemd-timesyncd will contact all configured system or per-interface servers in turn, until one responds. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. This setting defaults to an empty list. FallbackNTP= - A space-separated list of NTP server host names or IP addresses to be used as the fallback NTP servers. Any per-interface NTP servers obtained from systemd-networkd.service(8) take precedence over this setting, as do any servers set via NTP= above. This setting is hence only relevant if no other NTP server information is known. When the empty string is assigned, the list of NTP servers is reset, and all prior assignments will have no effect. If this option is not given, a compiled-in list of NTP servers is used."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations Internal Only - General."
-    remediation: "Set NTP and/or FallbackNPT parameters to local site approved authoritative time server(s) in /etc/systemd/timesyncd.conf or a file in /etc/systemd/timesyncd.conf.d/ ending in .conf in the [Time] section: Example file: [Time] NTP=time.nist.gov # Uses the generic name for NIST's time servers FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov # Space separated list of NIST time servers Example script to create systemd drop-in file: #!/usr/bin/env bash { [ ! -d /etc/systemd/timesyncd.conf.d/ ] && mkdir /etc/systemd/timesyncd.conf.d/ printf '%s\\n' \"[Time]\" \"NTP=time.nist.gov\" \"FallbackNTP=time-a-g.nist.gov time-b-g.nist.gov time-c-g.nist.gov\" >> /etc/systemd/timesyncd.conf.d/60- timesyncd.conf } Note: If this setting appears in a canonically later file, or later in the same file, the setting will be overwritten Run to following command to update the parameters in the service: # systemctl reload-or-restart systemd-journald."
-    references:
-      - "https://www.freedesktop.org/software/systemd/man/timesyncd.conf.html"
-      - "https://tf.nist.gov/tf-cgi/servers.cgi"
-    compliance:
-      - cis: ["2.3.2.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
-    condition:
-    rules:
+  # 2.3.1.1 Ensure a single time synchronization daemon is in use. (Automated) - Not Implemented
+  # 2.3.2.1 Ensure systemd-timesyncd configured with authorized timeserver. (Automated) - Not Implemented
 
   # 2.3.2.2 Ensure systemd-timesyncd is enabled and running. (Manual)
   - id: 18593
@@ -1678,30 +1641,12 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:systemctl is-enabled systemd-timesyncd.service" -> r:^enabled$'
+      - 'c:"systemctl is-active systemd-timesyncd.service" -> r:^active$'
 
-  # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Manual)
-  - id: 18594
-    title: "Ensure chrony is configured with authorized timeserver."
-    description: "- server o The server directive specifies an NTP server which can be used as a time source. The client-server relationship is strictly hierarchical: a client might synchronize its system time to that of the server, but the server’s system time will never be influenced by that of a client. o This directive can be used multiple times to specify multiple servers. o The directive is immediately followed by either the name of the server, or its IP address. - pool o The syntax of this directive is similar to that for the server directive, except that it is used to specify a pool of NTP servers rather than a single NTP server. The pool name is expected to resolve to multiple addresses which might change over time. o This directive can be used multiple times to specify multiple pools. o All options valid in the server directive can be used in this directive too."
-    rationale: "Time synchronization is important to support time sensitive security mechanisms and to ensure log files have consistent time records across the enterprise to aid in forensic investigations Internal Only - General."
-    remediation: "Edit /etc/chrony/chrony.conf or a file ending in .sources in /etc/chrony/sources.d/ and add or edit server or pool lines as appropriate according to local site policy: <[server|pool]> <[remote-server|remote-pool]> Examples: pool directive: pool time.nist.gov iburst maxsources 4 #The maxsources option is unique to the pool directive server directive: server time-a-g.nist.gov iburst server 132.163.97.3 iburst server time-d-b.nist.gov iburst Run one of the following commands to load the updated time sources into chronyd running config: # systemctl restart chronyd - OR if sources are in a .sources file - # chronyc reload sources - OR - If another time synchronization service is in use on the system, run the following command to remove chrony from the system: # apt purge chrony # apt autoremove chrony."
-    compliance:
-      - cis: ["2.3.3.1"]
-      - cis_csc_v8: ["8.4"]
-      - cis_csc_v7: ["6.1"]
-      - cmmc_v2.0: ["AU.L2-3.3.7"]
-      - iso_27001-2013: ["A.12.4.4"]
-      - mitre_mitigations: ["M1022"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1070", "T1070.002", "T1562", "T1562.001"]
-      - nist_sp_800-53: ["AU-7"]
-      - pci_dss_v3.2.1: ["10.4"]
-      - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
-      - soc_2: ["CC4.1", "CC5.2"]
-    condition:
-    rules:
+  # 2.3.3.1 Ensure chrony is configured with authorized timeserver. (Manual) - Not Implemented
 
   # 2.3.3.2 Ensure chrony is running as user _chrony. (Automated)
   - id: 18595
@@ -1722,8 +1667,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: any
     rules:
+      - 'c:ps -ef -> r:_chrony\.+chronyd'
+      - "f:/etc/chrony/chrony.conf -> r:^user _chrony"
 
   # 2.3.3.3 Ensure chrony is enabled and running. (Automated)
   - id: 18596
@@ -1744,8 +1691,10 @@ checks:
       - pci_dss_v3.2.1: ["10.4"]
       - pci_dss_v4.0: ["10.6", "10.6.1", "10.6.2", "10.6.3"]
       - soc_2: ["CC4.1", "CC5.2"]
-    condition:
+    condition: all
     rules:
+      - 'c:systemctl is-enabled chrony.service" -> r:^enabled$'
+      - 'c:"systemctl is-active chrony.service" -> r:^active$'
 
   # 2.4.1.1 Ensure cron daemon is enabled and active. (Automated)
   - id: 18597
@@ -1758,8 +1707,10 @@ checks:
       - mitre_mitigations: ["M1018"]
       - mitre_tactics: ["TA0005"]
       - mitre_techniques: ["T1562", "T1562.001"]
-    condition:
+    condition: all
     rules:
+      - "c:systemctl is-enabled cron -> r:^enabled"
+      - "c:systemctl is-active cron -> r:^active"
 
   # 2.4.1.2 Ensure permissions on /etc/crontab are configured. (Automated)
   - id: 18598
@@ -1781,8 +1732,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/crontab -> r:0 root 0 root && r:600'
 
   # 2.4.1.3 Ensure permissions on /etc/cron.hourly are configured. (Automated)
   - id: 18599
@@ -1804,8 +1756,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/cron.hourly/ -> r:0 root 0 root && r:700'
 
   # 2.4.1.4 Ensure permissions on /etc/cron.daily are configured. (Automated)
   - id: 18600
@@ -1827,8 +1780,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/cron.daily/ -> r:0 root 0 root && r:700'
 
   # 2.4.1.5 Ensure permissions on /etc/cron.weekly are configured. (Automated)
   - id: 18601
@@ -1850,8 +1804,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/cron.weekly/ -> r:0 root 0 root && r:700'
 
   # 2.4.1.6 Ensure permissions on /etc/cron.monthly are configured. (Automated)
   - id: 18602
@@ -1873,8 +1828,9 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/cron.monthly/ -> r:0 root 0 root && r:700'
 
   # 2.4.1.7 Ensure permissions on /etc/cron.d are configured. (Automated)
   - id: 18603
@@ -1896,54 +1852,12 @@ checks:
       - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
       - pci_dss_v4.0: ["1.3.1", "7.1"]
       - soc_2: ["CC5.2", "CC6.1"]
-    condition:
+    condition: all
     rules:
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/cron.d/ -> r:0 root 0 root && r:700'
 
-  # 2.4.1.8 Ensure crontab is restricted to authorized users. (Automated)
-  - id: 18604
-    title: "Ensure crontab is restricted to authorized users."
-    description: "crontab is the program used to install, deinstall, or list the tables used to drive the cron daemon. Each user can have their own crontab, and though these are files in /var/spool/cron/crontabs, they are not intended to be edited directly. If the /etc/cron.allow file exists, then you must be listed (one user per line) therein in order to be allowed to use this command. If the /etc/cron.allow file does not exist but the /etc/cron.deny file does exist, then you must not be listed in the /etc/cron.deny file in order to use this command. If neither of these files exists, then depending on site-dependent configuration parameters, only the super user will be allowed to use this command, or all users will be able to use this command. If both files exist then /etc/cron.allow takes precedence. Which means that /etc/cron.deny is not considered and your user must be listed in /etc/cron.allow in order to be able to use the crontab. Regardless of the existence of any of these files, the root administrative user is always allowed to setup a crontab. The files /etc/cron.allow and /etc/cron.deny, if they exist, must be either world-readable, or readable by group crontab. If they are not, then cron will deny access to all users until the permissions are fixed. There is one file for each user's crontab under the /var/spool/cron/crontabs directory. Users are not allowed to edit the files under that directory directly to ensure that only users allowed by the system to run periodic tasks can add them, and only syntactically correct crontabs will be written there. This is enforced by having the directory writable only by the crontab group and configuring crontab command with the setgid bid set for that specific group. Note: - Even though a given user is not listed in cron.allow, cron jobs can still be run as that user - The files /etc/cron.allow and /etc/cron.deny, if they exist, only controls administrative access to the crontab command for scheduling and modifying cron jobs Internal Only - General."
-    rationale: "On many systems, only the system administrator is authorized to schedule cron jobs. Using the cron.allow file to control who can run cron jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files."
-    remediation: '- IF - cron is installed on the system: Run the following script to: - Create /etc/cron.allow if it doesn''t exist - Change owner or user root - Change group owner to group root - Change mode to 640 or more restrictive #!/usr/bin/env bash { [ ! -e "/etc/cron.allow" ] && touch /etc/cron.allow chown root:root /etc/cron.allow chmod u-x,g-wx,o-rwx /etc/cron.allow } - IF - /etc/cron.deny exists, run the following commands to: - Change owner or user root - Change group owner to group root - Change mode to 640 or more restrictive. # [ -e "/etc/cron.deny" ] && chown root:root /etc/cron.deny # [ -e "/etc/cron.deny" ] && chmod u-x,g-wx,o-rwx /etc/cron.deny.'
-    compliance:
-      - cis: ["2.4.1.8"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1018"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1053", "T1053.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
-
-  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated)
-  - id: 18605
-    title: "Ensure at is restricted to authorized users."
-    description: "at allows fairly complex time specifications, extending the POSIX.2 standard. It accepts times of the form HH:MM to run a job at a specific time of day. (If that time is already past, the next day is assumed.) You may also specify midnight, noon, or teatime (4pm) and you can have a time-of-day suffixed with AM or PM for running in the morning or the evening. You can also say what day the job will be run, by giving a date in the form month-name day with an optional year, or giving a date of the form MMDD[CC]YY, MM/DD/[CC]YY, DD.MM.[CC]YY or [CC]YY-MM-DD. The specification of a date must follow the specification of the time of day. You can also give times like now + count time-units, where the time-units can be minutes, hours, days, or weeks and you can tell at to run the job today by suffixing the time with today and to run the job tomorrow by suffixing the time with tomorrow. The /etc/at.allow and /etc/at.deny files determine which user can submit commands for later execution via at or batch. The format of the files is a list of usernames, one on each line. Whitespace is not permitted. If the file /etc/at.allow exists, only usernames mentioned in it are allowed to use at. If /etc/at.allow does not exist, /etc/at.deny is checked, every username not mentioned in it is then allowed to use at. An empty /etc/at.deny means that every user may use at. If neither file exists, only the superuser is allowed to use at."
-    rationale: "On many systems, only the system administrator is authorized to schedule at jobs. Using the at.allow file to control who can run at jobs enforces this policy. It is easier to manage an allow list than a deny list. In a deny list, you could potentially add a user ID to the system and forget to add it to the deny files. Internal Only - General."
-    remediation: "-IF- at is installed on the system: Run the following script to: - /etc/at.allow: o Create the file if it doesn't exist o Change owner or user root o o Change mode to 640 or more restrictive If group daemon exists, change to group daemon, else change group to root - -IF- /etc/at.deny exists: o Change owner or user root o o Change mode to 640 or more restrictive If group daemon exists, change to group daemon, else change group to root #!/usr/bin/env bash { grep -Pq -- '^daemon\\b' /etc/group && l_group=\"daemon\" || l_group=\"root\" [ ! -e \"/etc/at.allow\" ] && touch /etc/at.allow chown root:\"$l_group\" /etc/at.allow chmod u-x,g-wx,o-rwx /etc/at.allow [ -e \"/etc/at.deny\" ] && chown root:\"$l_group\" /etc/at.deny [ -e \"/etc/at.deny\" ] && chmod u-x,g-wx,o-rwx /etc/at.deny }."
-    compliance:
-      - cis: ["2.4.2.1"]
-      - cis_csc_v8: ["3.3"]
-      - cis_csc_v7: ["14.6"]
-      - cmmc_v2.0: ["AC.L1-3.1.1", "AC.L1-3.1.2", "AC.L2-3.1.3", "AC.L2-3.1.5", "MP.L2-3.8.2"]
-      - hipaa: ["164.308(a)(3)(i)", "164.308(a)(3)(ii)(A)", "164.312(a)(1)"]
-      - iso_27001-2013: ["A.9.1.1"]
-      - mitre_mitigations: ["M1018"]
-      - mitre_tactics: ["TA0002"]
-      - mitre_techniques: ["T1053", "T1053.003"]
-      - nist_sp_800-53: ["AC-5", "AC-6"]
-      - pci_dss_v3.2.1: ["7.1", "7.1.1", "7.1.2", "7.1.3"]
-      - pci_dss_v4.0: ["1.3.1", "7.1"]
-      - soc_2: ["CC5.2", "CC6.1"]
-    condition:
-    rules:
+  # 2.4.1.8 Ensure crontab is restricted to authorized users. (Automated) - Not Implemented
+  # 2.4.2.1 Ensure at is restricted to authorized users. (Automated) - Not Implemented
 
   # 3.1.1 Ensure IPv6 status is identified. (Manual)
   - id: 18606
