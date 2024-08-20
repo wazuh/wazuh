@@ -32,7 +32,5 @@ async def test_get_commands_ko(decode_token_mock):
     exception = WazuhCommsAPIError(2706)
 
     with patch('comms_api.routers.commands.pull_commands', MagicMock(side_effect=exception)):
-        with pytest.raises(HTTPError) as exc:
+        with pytest.raises(HTTPError, match=fr'{exception.code}: {exception.message}'):
             _ = await get_commands('')
-
-    assert str(exc.value) == f'{exception.code}: {exception.message}'

@@ -46,7 +46,5 @@ async def test_get_files(stat_mock, file_name, media_type):
 async def test_get_files_ko(exception, message, code):
     """Verify that the `get_files` handler catches exceptions successfully."""
     with patch('comms_api.routers.files.get_file_path', MagicMock(side_effect=exception)):
-        with pytest.raises(HTTPError) as exc:
+        with pytest.raises(HTTPError, match=fr'{code}: {message}'):
             _ = await get_files('')
-
-    assert str(exc.value) == f'{code}: {message}'

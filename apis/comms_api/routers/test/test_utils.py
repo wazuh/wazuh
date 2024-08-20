@@ -28,7 +28,6 @@ async def test_timeout(timeout_seconds, sleep_seconds):
         result = await f()
         assert result == True
     else:
-        with pytest.raises(HTTPError) as exc:
+        message = 'Request exceeded the processing time limit'
+        with pytest.raises(HTTPError, match=fr'{status.HTTP_408_REQUEST_TIMEOUT}: {message}'):
             _ = await f()
-        
-        assert str(exc.value) == f'{status.HTTP_408_REQUEST_TIMEOUT}: Request exceeded the processing time limit'

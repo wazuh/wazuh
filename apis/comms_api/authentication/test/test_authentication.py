@@ -43,10 +43,9 @@ async def test_jwt_bearer_ko():
     mock_req = MagicMock()
     jwt = JWTBearer()
 
-    with pytest.raises(HTTPError) as exc:
+    message = 'not enough values to unpack \(expected 3\, got 0\)'
+    with pytest.raises(HTTPError, match=fr'{status.HTTP_403_FORBIDDEN}: {message}'):
         _ = await jwt(mock_req)
-
-    assert str(exc.value) == f'{status.HTTP_403_FORBIDDEN}: not enough values to unpack (expected 3, got 0)'
 
 
 @pytest.mark.asyncio
@@ -57,10 +56,8 @@ async def test_jwt_bearer_decode_ko(decode_token_mock):
     mock_req.headers = {'Authorization': f'Bearer token'}
     jwt = JWTBearer()
 
-    with pytest.raises(HTTPError) as exc:
+    with pytest.raises(HTTPError, match='2706: Invalid authentication token'):
         _ = await jwt(mock_req)
-
-    assert str(exc.value) == '2706: Invalid authentication token'
 
 
 @pytest.mark.asyncio
@@ -96,8 +93,7 @@ def test_decode_token(mock_get_keypair, mock_decode):
                                                                                  '-----BEGIN PUBLIC KEY-----'))
 def test_decode_token_ko(mock_get_keypair):
     """Assert exceptions are handled as expected inside the `decode_token` function."""
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(WazuhCommsAPIError, match='Error 2706 - Invalid authentication token'):
         _ = decode_token(token='test_token')
-        assert str(exc) == INVALID_TOKEN
 
     mock_get_keypair.assert_called_once()
