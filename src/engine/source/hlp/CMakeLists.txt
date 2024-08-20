@@ -7,13 +7,6 @@ CPMAddPackage(
         GIT_TAG 1ead6715dec030d340a316c927c877a3c4e5a00c
 )
 
-CPMAddPackage(
-        NAME fast_float
-        GITHUB_REPOSITORY fastfloat/fast_float
-        VERSION 3.8.0
-        GIT_SHALLOW TRUE
-)
-
 # https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
 # This works with glibc 2.28-211.el8 RHEL 8
 # add_compile_definitions(ONLY_C_LOCALE=1)
@@ -53,7 +46,8 @@ PRIVATE
   src/parsers/
   include/hlp/
 )
-target_link_libraries(hlp PUBLIC base PRIVATE fast_float date::date pthread CURL::libcurl pugixml)
+
+target_link_libraries(hlp PUBLIC base PRIVATE FastFloat::fast_float date::date pthread CURL::libcurl pugixml)
 
 # For the date library (https://howardhinnant.github.io/date/tz.html)
 target_compile_definitions(hlp PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=1)

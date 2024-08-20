@@ -5,6 +5,7 @@
     "concurrentqueue",
     "curl",
     "date",
+    "fast-float",
     "fmt",
     "gtest",
     "libmaxminddb",
@@ -101,6 +102,10 @@
       {
           "name": "fmt",
           "version": "8.1.1#2"
+      },
+      {
+        "name": "fast-float",
+        "version": "6.1.4#0"
       }
   ]
 }
