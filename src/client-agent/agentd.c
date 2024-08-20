@@ -204,9 +204,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
 }
 
-bool check_uninstall_permission(const char *token) {
+bool check_uninstall_permission(const char *token, const char *host) {
     char url[OS_SIZE_8192];
-    snprintf(url, sizeof(url), "https://localhost:55000/uninstall_permission");
+    snprintf(url, sizeof(url), "https://%s/agents/uninstall", host);
 
     char header[OS_SIZE_8192] = { '\0' };
     snprintf(header, sizeof(header), "Authorization: Bearer %s", token);
@@ -236,24 +236,17 @@ bool check_uninstall_permission(const char *token) {
     return false;
 }
 
-char* authenticate_and_get_token(const char *userpass) {
+char* authenticate_and_get_token(const char *userpass, const char *host) {
     char url[OS_SIZE_8192];
     char *token = NULL;
     char* headers[] = { NULL };
 
-    snprintf(url, sizeof(url), "https://localhost:55000/security/user/authenticate?raw=true");
+    snprintf(url, sizeof(url), "https://%s/security/user/authenticate?raw=true", host);
     curl_response *response = wurl_http_request(WURL_POST_METHOD, headers, url, userpass, OS_SIZE_8192, 30);
 
     if (response) {
         if (response->status_code == 200) {
-            cJSON *response_json = NULL;
-            if (response_json = cJSON_Parse(response->body), response_json) {
-                cJSON *token_json = cJSON_GetObjectItem(cJSON_GetObjectItem(response_json, "data"), "token");
-                if (token_json && (token_json->type == cJSON_String)) {
-                    os_strdup(token_json->valuestring, token);
-                }
-                cJSON_Delete(response_json);
-            }
+            os_strdup(response->body, token);
         } else {
             merror(AG_API_ERROR_CODE, response->status_code);
         }
@@ -265,20 +258,20 @@ char* authenticate_and_get_token(const char *userpass) {
     return token;
 }
 
-bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login) {
+bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host) {
     bool validate_result = false;
 
     minfo(AG_UNINSTALL_VALIDATION_START);
     if (uninstall_auth_token) {
-        validate_result = check_uninstall_permission(uninstall_auth_token);
+        validate_result = check_uninstall_permission(uninstall_auth_token, uninstall_auth_host);
         if (validate_result) {
             return validate_result;
         }
     }
     if (uninstall_auth_login) {
-        char *new_token = authenticate_and_get_token(uninstall_auth_login);
+        char *new_token = authenticate_and_get_token(uninstall_auth_login, uninstall_auth_host);
         if (new_token) {
-            validate_result = check_uninstall_permission(new_token);
+            validate_result = check_uninstall_permission(new_token, uninstall_auth_host);
             os_free(new_token);
         } else {
             merror(AG_TOKEN_FAIL, uninstall_auth_login);

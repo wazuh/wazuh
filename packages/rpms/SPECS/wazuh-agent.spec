@@ -467,6 +467,7 @@ if [ $1 = 0 ]; then
   # Function to validate uninstallation
   validate_uninstall() {
     local validation_command
+    . "%{_localstatedir}/etc/uninstall_validation.env"
 
     # Validate uninstallation
     if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
@@ -480,11 +481,16 @@ if [ $1 = 0 ]; then
       exit 1
     fi
 
-    if $validation_command; then
-      echo "Uninstallation not authorized, aborting..."
-      exit 1
+    if [ -n "$VALIDATION_HOST" ]; then
+      if $validation_command; then
+        echo "Uninstallation not authorized, aborting..."
+        exit 1
+      else
+        echo "Uninstallation authorized, continuing..."
+      fi
     else
-      echo "Uninstallation authorized, continuing..."
+      echo "Validation host not provided. Uninstallation cannot be continued."
+      exit 1
     fi
   }
 

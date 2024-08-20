@@ -54,6 +54,7 @@ int main(int argc, char **argv)
     const char *cfg = OSSECCONF;
     const char *uninstall_auth_login = NULL;
     const char *uninstall_auth_token = NULL;
+    const char *uninstall_auth_host = NULL;
 
     uid_t uid;
     gid_t gid;
@@ -74,7 +75,8 @@ int main(int argc, char **argv)
 
     struct option long_opts[] = {
         {"uninstall-auth-login", 1, NULL, 1},
-        {"uninstall-auth-token", 1, NULL, 2}
+        {"uninstall-auth-token", 1, NULL, 2},
+        {"uninstall-auth-host", 1, NULL, 3}
     };
 
     while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
@@ -131,6 +133,12 @@ int main(int argc, char **argv)
                 }
                 uninstall_auth_token = optarg;
                 break;
+            case 3:
+                if (!optarg) {
+                    merror_exit("--uninstall-auth-host needs an argument");
+                }
+                uninstall_auth_host = optarg;
+                break;
             default:
                 help_agentd(home_path);
                 break;
@@ -138,8 +146,8 @@ int main(int argc, char **argv)
     }
 
     /* Anti tampering functionality */
-    if (uninstall_auth_token || uninstall_auth_login) {
-        exit(package_uninstall_validation(uninstall_auth_token, uninstall_auth_login));
+    if ((uninstall_auth_token || uninstall_auth_login) && uninstall_auth_host) {
+        exit(package_uninstall_validation(uninstall_auth_token, uninstall_auth_login, uninstall_auth_host));
     }
 
     agt = (agent *)calloc(1, sizeof(agent));
