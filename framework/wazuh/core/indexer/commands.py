@@ -4,7 +4,7 @@ from typing import List, Optional
 from opensearchpy import NotFoundError
 from uuid6 import UUID
 
-from .base import BaseIndex, Key, remove_empty_values
+from .base import BaseIndex, IndexerKey, remove_empty_values
 from wazuh.core.indexer.models.commands import Command, Status
 from wazuh.core.exception import WazuhResourceNotFound
 
@@ -33,24 +33,24 @@ class CommandsIndex(BaseIndex):
             Commands list or None.
         """
         body = {
-            Key.QUERY: {
-                Key.BOOL: {
-                    Key.MUST: [
-                        {Key.MATCH: {AGENT_ID_KEY: uuid}},
-                        {Key.MATCH: {STATUS_KEY: status}},
+            IndexerKey.QUERY: {
+                IndexerKey.BOOL: {
+                    IndexerKey.MUST: [
+                        {IndexerKey.MATCH: {AGENT_ID_KEY: uuid}},
+                        {IndexerKey.MATCH: {STATUS_KEY: status}},
                     ]
                 }
             }
         }
 
         response = await self._client.search(index=self.INDEX, body=body)
-        hits = response[Key.HITS][Key.HITS]
+        hits = response[IndexerKey.HITS][IndexerKey.HITS]
         if len(hits) == 0:
             return None
 
         commands = []
         for data in hits:
-            commands.append(Command.from_dict(data[Key._ID], data[Key._SOURCE]))
+            commands.append(Command.from_dict(data[IndexerKey._ID], data[IndexerKey._SOURCE]))
 
         return commands
 
@@ -69,9 +69,9 @@ class CommandsIndex(BaseIndex):
         """
         actions = []
         for command in commands:
-            actions.append({Key.UPDATE: {Key._INDEX: self.INDEX, Key._ID: command.id}})
+            actions.append({IndexerKey.UPDATE: {IndexerKey._INDEX: self.INDEX, IndexerKey._ID: command.id}})
             command_dict = asdict(command, dict_factory=remove_empty_values)
-            actions.append({Key.DOC: command_dict})
+            actions.append({IndexerKey.DOC: command_dict})
 
         try:
             await self._client.bulk(actions, self.INDEX)

@@ -1,18 +1,22 @@
 import pytest
 from wazuh.core.indexer import utils
-from wazuh.core.indexer.constants import HITS_KEY, ID_KEY, SOURCE_KEY
+from wazuh.core.indexer.base import IndexerKey
 
 
 @pytest.fixture
 def search_result():
-    return {HITS_KEY: {HITS_KEY: [{SOURCE_KEY: {ID_KEY: 1}}, {SOURCE_KEY: {ID_KEY: 2}}, {SOURCE_KEY: {ID_KEY: 3}}]}}
+    return {IndexerKey.HITS: {IndexerKey.HITS: [
+        {IndexerKey._SOURCE: {IndexerKey._ID: 1}},
+        {IndexerKey._SOURCE: {IndexerKey._ID: 2}},
+        {IndexerKey._SOURCE: {IndexerKey._ID: 3}}
+    ]}}
 
 
 def test_get_source_items(search_result: dict):
     """Check the correct function of `get_source_items`."""
     output = [item for item in utils.get_source_items(search_result)]
 
-    assert output == [{ID_KEY: 1}, {ID_KEY: 2}, {ID_KEY: 3}]
+    assert output == [{IndexerKey._ID: 1}, {IndexerKey._ID: 2}, {IndexerKey._ID: 3}]
 
 
 def test_get_source_items_id(search_result: dict):

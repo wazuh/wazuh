@@ -27,7 +27,7 @@ from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.constants import ID_KEY, QUERY_KEY, TERMS_KEY, WILDCARD_KEY
+from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.utils import get_source_items_id
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
@@ -482,7 +482,7 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
     async with get_indexer_client() as indexer:
         if len(agent_list) != 0:
             available_agents = get_source_items_id(
-                await indexer.agents.search(query={QUERY_KEY: {TERMS_KEY: {'_id': agent_list}}})
+                await indexer.agents.search(query={IndexerKey.QUERY: {IndexerKey.TERMS: {'_id': agent_list}}})
             )
             not_found_agents = set(agent_list) - set(available_agents)
 
@@ -492,7 +492,7 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
             agent_list = available_agents
         else:
             agent_list = get_source_items_id(
-                await indexer.agents.search(query={QUERY_KEY: {WILDCARD_KEY: {ID_KEY: '*'}}})
+                await indexer.agents.search(query={IndexerKey.QUERY: {IndexerKey.WILDCARD: {IndexerKey._ID: '*'}}})
             )
 
         deleted_items = await indexer.agents.delete(agent_list)

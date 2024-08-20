@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Tuple
 from opensearchpy import AsyncOpenSearch
 
 
-class Key(str, Enum):
+class IndexerKey(str, Enum):
     """Opensearch API request fields keys."""
     _INDEX = '_index'
     _ID = '_id'
@@ -20,6 +20,13 @@ class Key(str, Enum):
     BOOL = 'bool'
     MUST = 'must'
     HITS = 'hits'
+    TOTAL = 'total'
+    DELETED = 'deleted'
+    FAILURES = 'failures'
+    WILDCARD = 'wildcard'
+    BODY = 'body'
+    TERMS = 'terms'
+    CONFLICTS = 'conflicts'
 
 
 class BaseIndex:
