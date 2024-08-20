@@ -17,7 +17,6 @@
 #include "serverSelector.hpp"
 #include <fstream>
 
-constexpr auto NOT_USED {-1};
 constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
@@ -30,20 +29,10 @@ namespace Log
         GLOBAL_LOG_FUNCTION;
 };
 constexpr auto IC_NAME {"indexer-connector"};
-constexpr auto MAX_WAIT_TIME {60};
-constexpr auto START_TIME {1};
-constexpr auto DOUBLE_FACTOR {2};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
-
-// Sync configuration
-constexpr auto SYNC_WORKERS = 1;
-constexpr auto SYNC_QUEUE_LIMIT = 4096;
-
-// Abuse control
-constexpr auto MINIMAL_SYNC_TIME {30}; // In minutes
 
 static void initConfiguration(SecureCommunication& secureCommunication, const nlohmann::json& config)
 {
@@ -116,162 +105,6 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
-bool IndexerConnector::abuseControl(const std::string& agentId)
-{
-    const auto currentTime = std::chrono::system_clock::now();
-    // If the agent is in the map, check if the last sync was less than MINIMAL_SYNC_TIME minutes ago.
-    if (const auto lastSync = m_lastSync.find(agentId); lastSync != m_lastSync.end())
-    {
-        const auto diff = std::chrono::duration_cast<std::chrono::minutes>(currentTime - lastSync->second);
-        // If the last sync was less than MINIMAL_SYNC_TIME minutes ago, return true.
-        if (diff.count() < MINIMAL_SYNC_TIME)
-        {
-            logDebug2(IC_NAME, "Agent '%s' sync omitted due to abuse control.", agentId.c_str());
-            return true;
-        }
-    }
-    // If the agent is not in the map, add it to the map with the current time.
-    m_lastSync[agentId] = currentTime;
-    return false;
-}
-
-nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
-                                                      const std::string& agentId,
-                                                      const SecureCommunication& secureCommunication) const
-{
-    nlohmann::json postData;
-    nlohmann::json responseJson;
-    constexpr auto ELEMENTS_PER_QUERY {10000}; // The max value for queries is 10000 in the wazuh-indexer.
-
-    postData["query"]["match"]["agent.id"] = agentId;
-    postData["size"] = ELEMENTS_PER_QUERY;
-    postData["_source"] = nlohmann::json::array({"_id"});
-
-    HTTPRequest::instance().post(
-        HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
-        postData.dump(),
-        [&responseJson](const std::string& response) { responseJson = nlohmann::json::parse(response); },
-        [](const std::string& error, const long) { throw std::runtime_error(error); },
-        "",
-        DEFAULT_HEADERS,
-        secureCommunication);
-
-    // If the response have more than ELEMENTS_PER_QUERY elements, we need to scroll.
-    if (responseJson.at("hits").at("total").at("value").get<int>() > ELEMENTS_PER_QUERY)
-    {
-        const auto& scrollId = responseJson.at("_scroll_id").get_ref<const std::string&>();
-        const auto scrollUrl = url + "/_search/scroll";
-        const auto scrollData = R"({"scroll":"1m","scroll_id":")" + scrollId + "\"}";
-
-        while (responseJson.at("hits").at("hits").size() < responseJson.at("hits").at("total").at("value").get<int>())
-        {
-            HTTPRequest::instance().post(
-                HttpURL(scrollUrl),
-                scrollData,
-                [&responseJson](const std::string& response)
-                {
-                    auto newResponse = nlohmann::json::parse(response);
-                    for (const auto& hit : newResponse.at("hits").at("hits"))
-                    {
-                        responseJson.at("hits").at("hits").push_back(hit);
-                    }
-                },
-                [](const std::string& error, const long) { throw std::runtime_error(error); },
-                "",
-                DEFAULT_HEADERS,
-                secureCommunication);
-        }
-    }
-
-    return responseJson;
-}
-
-void IndexerConnector::diff(const nlohmann::json& responseJson,
-                            const std::string& agentId,
-                            const SecureCommunication& secureCommunication,
-                            const std::shared_ptr<ServerSelector>& selector)
-{
-    std::vector<std::pair<std::string, bool>> status;
-    std::vector<std::pair<std::string, bool>> actions;
-
-    // Move elements to vector.
-    for (const auto& hit : responseJson.at("hits").at("hits"))
-    {
-        if (hit.contains("_id"))
-        {
-            status.emplace_back(hit.at("_id").get_ref<const std::string&>(), false);
-        }
-    }
-
-    // Iterate over the database and check if the element is in the status vector.
-    for (const auto& [key, value] : m_db->seek(agentId))
-    {
-        bool found {false};
-        for (auto& [id, data] : status)
-        {
-            // If the element is found, mark it as found.
-            if (key.compare(id) == 0)
-            {
-                data = true;
-                found = true;
-                break;
-            }
-        }
-
-        // If the element is not found, add it to the actions vector. This element will be added to the indexer.
-        if (!found)
-        {
-            actions.emplace_back(key, false);
-        }
-    }
-
-    // Iterate over the status vector and check if the element is marked as not found.
-    // This means that the element is in the indexer but not in the database. To solve this, the element will be deleted
-    for (const auto& [id, data] : status)
-    {
-        if (!data)
-        {
-            actions.emplace_back(id, true);
-        }
-    }
-
-    auto url = selector->getNext();
-    url.append("/_bulk?refresh=wait_for");
-
-    std::string bulkData;
-    // Iterate over the actions vector and build the bulk data.
-    // If the element is marked as deleted, the element will be deleted from the indexer.
-    // If the element is not marked as deleted, the element will be added to the indexer.
-    for (const auto& [id, deleted] : actions)
-    {
-        if (deleted)
-        {
-            builderBulkDelete(bulkData, id, m_indexName);
-        }
-        else
-        {
-            std::string data;
-            if (!m_db->get(id, data))
-            {
-                throw std::runtime_error("Failed to get data from the database.");
-            }
-            builderBulkIndex(bulkData, id, m_indexName, data);
-        }
-    }
-
-    if (!bulkData.empty())
-    {
-        HTTPRequest::instance().post(
-            HttpURL(url),
-            bulkData,
-            [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-            [](const std::string& error, const long statusCode) { throw std::runtime_error(error); },
-            "",
-            DEFAULT_HEADERS,
-            secureCommunication);
-    }
-}
-
 IndexerConnector::IndexerConnector(
     const nlohmann::json& config,
     const std::function<void(
@@ -292,8 +125,6 @@ IndexerConnector::IndexerConnector(
     {
         throw std::runtime_error("Index name must be lowercase.");
     }
-
-    m_db = std::make_unique<Utils::RocksDBWrapper>(std::string(DATABASE_BASE_PATH) + "db/" + m_indexName);
 
     auto secureCommunication = SecureCommunication::builder();
     initConfiguration(secureCommunication, config);
@@ -337,7 +168,6 @@ IndexerConnector::IndexerConnector(
                     {
                         builderBulkDelete(bulkData, id, m_indexName);
                     }
-                    m_db->delete_(id);
                 }
                 else
                 {
@@ -346,7 +176,6 @@ IndexerConnector::IndexerConnector(
                     {
                         builderBulkIndex(bulkData, id, m_indexName, dataString);
                     }
-                    m_db->put(id, dataString);
                 }
             }
 
@@ -370,31 +199,6 @@ IndexerConnector::IndexerConnector(
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,
         workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING : workingThreads);
-
-    m_syncQueue = std::make_unique<ThreadSyncQueue>(
-        // coverity[missing_lock]
-        [this, selector, secureCommunication](const std::string& agentId)
-        {
-            try
-            {
-                std::scoped_lock lock(m_syncMutex);
-                if (!abuseControl(agentId))
-                {
-                    logDebug2(IC_NAME, "Syncing agent '%s' with the indexer.", agentId.c_str());
-                    diff(getAgentDocumentsIds(selector->getNext(), agentId, secureCommunication),
-                         agentId,
-                         secureCommunication,
-                         selector);
-                }
-            }
-            catch (const std::exception& e)
-            {
-                logWarn(IC_NAME, "Failed to sync agent '%s' with the indexer.", agentId.c_str());
-                logDebug1(IC_NAME, "Error: %s", e.what());
-            }
-        },
-        SYNC_WORKERS,
-        SYNC_QUEUE_LIMIT);
 }
 
 IndexerConnector::~IndexerConnector()
@@ -408,9 +212,4 @@ IndexerConnector::~IndexerConnector()
 void IndexerConnector::publish(const std::string& message)
 {
     m_dispatcher->push(message);
-}
-
-void IndexerConnector::sync(const std::string& agentId)
-{
-    m_syncQueue->push(agentId);
 }
