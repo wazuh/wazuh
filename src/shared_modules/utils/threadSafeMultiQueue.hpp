@@ -84,6 +84,35 @@ namespace Utils
             return std::pair<U, std::string> {};
         }
 
+        std::pair<U, std::string> getAndPop() {
+             std::unique_lock lock {m_mutex};
+            auto queueEmpty = true;
+
+            // Wait for 10 seconds to check if the queue receive any data.
+            // If not, return an empty pair.
+            // we use wait_for instead of wait to check if some postponed data is ready to be processed in next
+            // iteration.
+            m_cv.wait_for(lock,
+                          std::chrono::seconds(QUEUE_CHECK_TIME),
+                          [&queueEmpty, this]()
+                          {
+                              // coverity[missing_lock]
+                              queueEmpty = m_queue.empty();
+                              return !queueEmpty || m_canceled;
+                          });
+
+            if (!m_canceled && !queueEmpty)
+            {
+                // coverity[missing_lock]
+                const auto& columnFamilyName = m_queue.getAvailableColumn();
+                auto data = std::make_pair(m_queue.front(columnFamilyName), columnFamilyName);
+                m_queue.pop(columnFamilyName);
+                return data;
+            }
+
+            return std::pair<U, std::string> {};
+        }
+
         void pop(std::string_view prefix)
         {
             std::scoped_lock lock {m_mutex};

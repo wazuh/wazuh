@@ -277,7 +277,8 @@ IndexerConnector::IndexerConnector(
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
-    const uint32_t& timeout)
+    const uint32_t& timeout,
+    const uint8_t workingThreads)
 {
     if (logFunction)
     {
@@ -304,12 +305,6 @@ IndexerConnector::IndexerConnector(
         [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
-
-            if (!m_initialized && m_initializeThread.joinable())
-            {
-                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-                m_initializeThread.join();
-            }
 
             if (m_stopping.load())
             {
@@ -367,7 +362,8 @@ IndexerConnector::IndexerConnector(
             }
         },
         DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK);
+        ELEMENTS_PER_BULK,
+        workingThreads);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
@@ -401,11 +397,6 @@ IndexerConnector::~IndexerConnector()
     m_cv.notify_all();
 
     m_dispatcher->cancel();
-
-    if (m_initializeThread.joinable())
-    {
-        m_initializeThread.join();
-    }
 }
 
 void IndexerConnector::publish(const std::string& message)

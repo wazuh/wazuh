@@ -41,8 +41,6 @@ class EXPORTED IndexerConnector final
      * @brief Initialized status.
      *
      */
-    std::atomic<bool> m_initialized {false};
-    std::thread m_initializeThread;
     std::condition_variable m_cv;
     std::mutex m_mutex;
     std::atomic<bool> m_stopping {false};
@@ -90,6 +88,8 @@ public:
      * @param config Indexer configuration, including database_path and servers.
      * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
+     * @param workingThreads Number of working threads used by the dispatcher. More than one results in an unordered
+     * processing.
      */
     explicit IndexerConnector(const nlohmann::json& config,
                               const std::function<void(const int,
@@ -99,7 +99,8 @@ public:
                                                        const std::string&,
                                                        const std::string&,
                                                        va_list)>& logFunction = {},
-                              const uint32_t& timeout = DEFAULT_INTERVAL);
+                              const uint32_t& timeout = DEFAULT_INTERVAL,
+                              const uint8_t workingThreads = 1);
 
     ~IndexerConnector();
 
