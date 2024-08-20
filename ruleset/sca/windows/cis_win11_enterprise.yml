@@ -5588,36 +5588,239 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Windows Error Reporting -> Disabled -> 1'
 
+ # 18.9.23.1 (L2) Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'. (Automated)
   - id: 26252
     title: "Ensure 'Support device authentication using certificate' is set to 'Enabled: Automatic'."
     description: "This policy setting allows you to set support for Kerberos to attempt authentication using the certificate for the device to the domain. Support for device authentication using certificate will require connectivity to a DC in the device account domain which supports certificate authentication for computer accounts. The recommended state for this setting is: Enabled: Automatic."
     rationale: "Having stronger device authentication with the use of certificates is strongly encouraged over standard username and password authentication. Having this set to Automatic will allow certificate based authentication to be used whenever possible."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Automatic: Computer Configuration\\Policies\\Administrative Templates\\System\\Kerberos\\Support device authentication using certificate. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Kerberos.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Automatic: Computer Configuration\\Policies\\Administrative Templates\\System\\Kerberos\\Support device authentication using certificate Note: This Group Policy path is provided by the Group Policy template Kerberos.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.8.25.1"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis: ["18.9.23.1"]
+      - cis_csc_v7: ["1.6", "1.8"]
+      - iso_27001-2013: ["A.11.2.5", "A.13.1.1", "A.9.3.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitBehavior -> 0'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\kerberos\parameters -> DevicePKInitEnabled -> 1'
 
+ # 18.9.24.1 (BL) Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'. (Automated)
   - id: 26253
     title: "Ensure 'Enumeration policy for external devices incompatible with Kernel DMA Protection' is set to 'Enabled: Block All'."
-    description: "This policy is intended to provide additional security against external DMA-capable devices. It allows for more control over the enumeration of external DMA-capable devices that are not compatible with DMA Remapping/device memory isolation and sandboxing. The recommended state for this setting is: Enabled: Block All. Note: This policy does not apply to 1394, PCMCIA or ExpressCard devices. The protection also only applies to Windows 10 R1803 or higher, and also requires a UEFI BIOS to function. Note #2: More information on this feature is available at this link: Kernel DMA Protection for Thunderbolt™ 3 (Windows 10) | Microsoft Docs."
+    description: "This policy is intended to provide additional security against external DMA-capable devices. It allows for more control over the enumeration of external DMA-capable devices that are not compatible with DMA Remapping/device memory isolation and sandboxing. The recommended state for this setting is: Enabled: Block All. Note: This policy does not apply to 1394, PCMCIA or ExpressCard devices. The protection also only applies to Windows 10 R1803 or higher and requires a UEFI BIOS to function. Note #2: More information on this feature is available at this link: Kernel DMA Protection for Thunderbolt 3 (Windows 10) | Microsoft Docs."
     rationale: "Device memory sandboxing allows the OS to leverage the I/O Memory Management Unit (IOMMU) of a device to block unpermitted I/O, or memory access, by the peripheral."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block All: Computer Configuration\\Policies\\Administrative Templates\\System\\Kernel DMA Protection\\Enumeration policy for external devices incompatible with Kernel DMA Protection. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template DmaGuard.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
+    impact: "External devices that are not compatible with DMA-remapping will not be enumerated and will not function unless/until the user has logged in successfully and has an unlocked user session. Once enumerated, these devices will continue to function, regardless of the state of the session. Devices that are compatible with DMA-remapping will be enumerated immediately, with their device memory isolated."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block All: Computer Configuration\\Policies\\Administrative Templates\\System\\Kernel DMA Protection\\Enumeration policy for external devices incompatible with Kernel DMA Protection Note: This Group Policy path is provided by the Group Policy template DmaGuard.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.8.26.1"]
-      - pci_dss: ["2.2.5"]
-      - tsc: ["CC6.3"]
+      - cis: ["18.9.24.1"]
+      - cis_csc_v7: ["1.4"]
+      - iso_27001-2013: ["A.8.1.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection -> DeviceEnumerationPolicy'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Kernel DMA Protection -> DeviceEnumerationPolicy -> 0'
+
+ # 18.9.25.1 (L1) Ensure 'Configure password backup directory' is set to 'Enabled: Active Directory' or 'Enabled: Azure Active Directory'. (Automated)
+  - id: 18787
+    title: "Ensure 'Configure password backup directory' is set to 'Enabled: Active Directory' or 'Enabled: Azure Active Directory'."
+    description: "This policy setting configures which directory Windows LAPS will use to back up the local admin account password. The recommended state for this setting is: Enabled: Active Directory or Enabled: Azure Active Directory. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory). Note #3: Windows LAPS does not support simultaneous storage of the local admin password in both directory types. Note #4: If the setting is configured and the managed device is not joined to the configured directory type, the local administrator password will not be managed by Windows LAPS."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "The passwords managed by Windows LAPS will only be retrievable from the configured directory type."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Active Directory or Enabled: Azure Active Directory: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Configure password backup directory Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.1"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> BackupDirectory -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> BackupDirectory -> 2'
+
+ # 18.9.25.2 (L1) Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled'. (Automated)
+  - id: 18788
+    title: "Ensure 'Do not allow password expiration time longer than required by policy' is set to 'Enabled'."
+    description: "This policy setting configures whether the password age dictated by the Windows LAPS \"Password Settings\" policy is enforced and cannot be extended manually (only shortened) by an authorized technician. If an expiration is detected, the password is changed immediately, and password expiration is set according to policy. The recommended state for this setting is: Enabled. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory)."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "None - this is the default behavior. Planned password expiration longer than password age dictated by \"Password Settings\" policy is NOT allowed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Do not allow password expiration time longer than required by policy Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PwdExpirationProtectionEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PwdExpirationProtectionEnabled -> 1'
+
+ # 18.9.25.3 (L1) Ensure 'Enable password encryption' is set to 'Enabled'. (Automated)
+  - id: 18789
+    title: "Ensure 'Enable password encryption' is set to 'Enabled'."
+    description: "This policy setting controls whether the Windows LAPS managed password is encrypted before being sent to Active Directory. The recommended state for this setting is: Enabled. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory). Note #3: This setting has no effect unless the password has been configured to be backed up to Active Directory, and the Active Directory domain functional level is at Windows Server 2016 or above. Note #4: This setting has no relevance (but is harmless) when storing Windows LAPS passwords to Entra ID (formerly Azure Active Directory) as it automatically encrypts all Windows LAPS passwords."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "None - this is the default behavior. If the domain functional level is set at or above Windows Server 2016, the Windows LAPS managed account password is encrypted automatically, if it is set at a lower domain functional level, the Windows LAPS managed account password will not be backed up to the directory."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Enable password encryption Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.3"]
+      - cis_csc_v8: ["3.10"]
+      - cis_csc_v7: ["14.4"]
+      - cmmc_v2.0: ["AC.L2-3.1.13", "AC.L2-3.1.17", "IA.L2-3.5.10", "SC.L2-3.13.11", "SC.L2-3.13.15", "SC.L2-3.13.8"]
+      - hipaa: ["164.312(a)(2)(iv)", "164.312(e)(1)", "164.312(e)(2)(i)", "164.312(e)(2)(ii)"]
+      - iso_27001-2013: ["A.10.1.1", "A.13.1.1"]
+      - nist_sp_800-53: ["AC-17(2)", "SC-8", "SC-8(1)"]
+      - pci_dss_v3.2.1: ["2.1.1", "4.1", "4.1.1", "8.2.1"]
+      - pci_dss_v4.0: ["2.2.7", "4.1.1", "4.2.1", "4.2.1.2", "4.2.2", "8.3.2"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> ADPasswordEncryptionEnabled'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> ADPasswordEncryptionEnabled -> 1'
+
+ # 18.9.25.4 (L1) Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters'. (Automated)
+  - id: 18790
+    title: "Ensure 'Password Settings: Password Complexity' is set to 'Enabled: Large letters + small letters + numbers + special characters'."
+    description: "This policy setting configures the Windows LAPS Password Settings policy for password complexity. Each additional character in a password increases its complexity exponentially. For instance, a seven-character, all lower-case alphabetic password would have 26 to the power of 7 (approximately 8 x 10 to the power of 9 or 8 billion) possible combinations. At 1,000,000 attempts per second (a capability of many password-cracking utilities), it would only take 133 minutes to crack. A seven-character alphabetic password with case sensitivity has 52 to the power of 7 combinations. A seven-character case-sensitive alphanumeric password without punctuation has 627 combinations. An eight-character password has 26 to the power of 8 (or 2 x 10 to the power of 11) possible combinations. Although this might seem to be a large number, at 1,000,000 attempts per second it would take only 59 hours to try all possible passwords. Remember, these times will significantly increase for passwords that use ALT characters and other special keyboard characters such as \"!\" or \"@\". Proper use of the password settings can help make it difficult to mount a brute force attack. The recommended state for this setting is: Enabled: Large letters + small letters + numbers + special characters. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory)."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Complexity option to Large letters + small letters + numbers + special characters: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Password Settings Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.4"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordComplexity'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordComplexity -> 4'
+
+ # 18.9.25.5 (L1) Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more'. (Automated)
+  - id: 18791
+    title: "Ensure 'Password Settings: Password Length' is set to 'Enabled: 15 or more'."
+    description: "This policy setting configures the Windows LAPS Password Settings policy for password length. Each additional character in a password increases its complexity exponentially. For instance, a seven-character, all lower-case alphabetic password would have 26 to the power of 7 (approximately 8 x 10 to the power of 9 or 8 billion) possible combinations. At 1,000,000 attempts per second (a capability of many password-cracking utilities), it would only take 133 minutes to crack. A seven-character alphabetic password with case sensitivity has 52 to the power of 7 combinations. A seven-character case-sensitive alphanumeric password without punctuation has 627 combinations. An eight-character password has 26 to the power of 8 (or 2 x 10 to the power of 11) possible combinations. Although this might seem to be a large number, at 1,000,000 attempts per second it would take only 59 hours to try all possible passwords. Remember, these times will significantly increase for passwords that use ALT characters and other special keyboard characters such as \"!\" or \"@\". Proper use of the password settings can help make it difficult to mount a brute force attack. The recommended state for this setting is: Enabled: 15 or more. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory)."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "Windows LAPS-generated passwords will be required to have a length of 15 characters (or more, if selected)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Length option to 15 or more: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Password Settings Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.5"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["4.4"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.9.4.3"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength -> 15'
+
+ # 18.9.25.6 (L1) Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'. (Automated)
+  - id: 18792
+    title: "Ensure 'Password Settings: Password Age (Days)' is set to 'Enabled: 30 or fewer'."
+    description: "This policy setting configures the Windows LAPS Password Settings policy for password length. Each additional character in a password increases its complexity exponentially. For instance, a seven-character, all lower-case alphabetic password would have 26 to the power of 7 (approximately 8 x 10 to the power of 9 or 8 billion) possible combinations. At 1,000,000 attempts per second (a capability of many password-cracking utilities), it would only take 133 minutes to crack. A seven-character alphabetic password with case sensitivity has 52 to the power of 7 combinations. A seven-character case-sensitive alphanumeric password without punctuation has 627 combinations. An eight-character password has 26 to the power of 8 (or 2 x 10 to the power of 11) possible combinations. Although this might seem to be a large number, at 1,000,000 attempts per second it would take only 59 hours to try all possible passwords. Remember, these times will significantly increase for passwords that use ALT characters and other special keyboard characters such as \"!\" or \"@\". Proper use of the password settings can help make it difficult to mount a brute force attack. The recommended state for this setting is: Enabled: 30 or fewer. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory)."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "None - this is the default behavior, unless set to fewer than 30 days."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Age (Days) option to 30 or fewer: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Password Settings Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.6"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["16.10"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PasswordLength -> n:^(\d+) compare <= 30'
+
+ # 18.9.25.7 (L1) Ensure 'Post-authentication actions: Grace period (hours)' is set to 'Enabled: 8 or fewer hours, but not 0'. (Automated)
+  - id: 18793
+    title: "Ensure 'Post-authentication actions: Grace period (hours)' is set to 'Enabled: 8 or fewer hours, but not 0'."
+    description: "This policy settings configures post-authentication actions which will be executed after detecting an authentication by the Windows LAPS managed account. The Grace period refers to the amount of time (hours) to wait after an authentication before executing the specified post-authentication actions. The recommended state for this setting is: Enabled: 8 or fewer hours, but not 0. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory). Note #3: If this policy is set to 0 it prevents all post-authentication actions from occurring."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "After 8 hours, the Windows LAPS managed account password will be reset and log off the system."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 8 or fewer hours, but not 0: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Post- authentication actions: Grace period (hours) Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.7"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PostAuthenticationResetDelay'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PostAuthenticationResetDelay -> n:^(\d+) compare <= 8 && n:^(\d+) compare > 0'
+
+ # 18.9.25.8 (L1) Ensure 'Post-authentication actions: Actions' is set to 'Enabled: Reset the password and logoff the managed account' or higher. (Automated)
+  - id: 18794
+    title: "Ensure 'Post-authentication actions: Actions' is set to 'Enabled: Reset the password and logoff the managed account' or higher."
+    description: "This policy settings configures post-authentication actions which will be executed after detecting an authentication by the LAPS managed account. The Action refers to actions to take upon expiry of the grace period before executing the specified post-authentication actions. Post-authentication actions: - Reset password: upon expiry of the grace period, the managed account password will be reset. - Reset the password and logoff the managed account: upon expiry of the grace period, the managed account password will be reset and any interactive logon sessions using the managed account will terminated. - Reset the password and reboot the device: upon expiry of the grace period, the managed account password will be reset and the managed device will be immediately rebooted. Warning: After an interactive logon session is terminated, other authenticated sessions using the Windows LAPS managed account may still be active. The only way to ensure that the previous password is no longer in use is to reboot the OS. The recommended state for this setting is: Enabled: Reset the password and logoff the managed account or higher. Note: Organizations that utilize third-party commercial software to manage unique & complex local Administrator passwords on domain members may opt to disregard these LAPS recommendations. Note #2: Windows LAPS does not support standalone computers - they must be joined to an Active Directory domain or Entra ID (formerly Azure Active Directory)."
+    rationale: "Due to the difficulty in managing local Administrator passwords, many organizations choose to use the same password on all workstations and/or Member Servers when deploying them. This creates a serious attack surface security risk because if an attacker manages to compromise one system and learn the password to its local Administrator account, then they can leverage that account to instantly gain access to all other computers that also use that password for their local Administrator account."
+    impact: "After the grace period expires, the Windows LAPS managed account password will be reset and logged off the system or the OS will be restarted."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Reset the password and logoff the managed account or higher: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Post- authentication actions: Actions Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+    compliance:
+      - cis: ["18.9.25.8"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PostAuthenticationActions -> 3'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\LAPS -> PostAuthenticationActions -> 5'
+
+ # 18.9.26.1 (L1) Ensure 'Allow Custom SSPs and APs to be loaded into LSASS' is set to 'Disabled'. (Automated)
+  - id: 18795
+    title: "Ensure 'Allow Custom SSPs and APs to be loaded into LSASS' is set to 'Disabled'."
+    description: "This policy setting controls the configuration under which the Local Security Authority Subsystem Service (LSASS) will load custom Security Support Provider/Authentication Package (SSP/AP). The recommended state for this setting is: Disabled."
+    rationale: "Vulnerabilities exist where attackers are able to intercept logon credentials via SSP/AP. Disabling Custom SSPs and APs to be loaded into LSASS minimizes this vulnerability."
+    impact: "Custom Security Support Provider/Authentication Packages will not be permitted to load this may impact some legitimate third-party packages."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Local Security Authority\\Allow Custom SSPs and APs to be loaded into LSASS."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/win32/secauthn/ssp-aps-versus-ssps'
+    compliance:
+      - cis: ["18.9.26.1"]
+      - cis_csc_v8: ["10.5"]
+      - cis_csc_v7: ["8.3"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCustomSSPsAPs'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\System -> AllowCustomSSPsAPs -> 0'
+
+ # 18.9.26.2 (L1) Ensure 'Configures LSASS to run as a protected process' is set to 'Enabled: Enabled with UEFI Lock'. (Automated)
+  - id: 18796
+    title: "Ensure 'Configures LSASS to run as a protected process' is set to 'Enabled: Enabled with UEFI Lock'."
+    description: "This policy setting controls whether the Local Security Authority Subservice Service (LSASS) runs in protected mode and also has the option to lock in protected mode with Unified Extensible Firmware Interface (UEFI). The Local Security Authority (LSA), which includes the LSASS process, validates users for local and remote sign-ins and enforces local security policies. The recommended state for this setting is: Enabled: Enabled with UEFI Lock. Note: This additional protection to prevent reading memory and code injection by non-protected processes is supported by Windows 8.1 (or newer)."
+    rationale: "Provides added security for the credentials that LSA stores and manages. Enabling this setting with UEFI Lock prevents the setting from being changed remotely."
+    impact: "Once this setting has been applied (Enabled), removing the group policy setting (set to Not Configured) will not reverse the impact. In order to reverse the impact, you must explicitly configure this setting to Disabled and follow Microsoft's documentation on disabling the UEFI Lock."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Enabled with UEFI Lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Local Security Authority\\Configures LSASS to run as a protected process."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-'
+      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/credential-guard/credential-guard-manage#disabling-windows-defender-credential-guard-with-uefi-lock'
+      - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn408187(v=ws.11)#to-disable-lsa-protection'
+    compliance:
+      - cis: ["18.9.26.2"]
+      - cis_csc_v8: ["10.5"]
+      - nist_sp_800-53: ["SI-16"]
+      - pci_dss_v3.2.1: ["1.4"]
+      - soc_2: ["CC6.8"]
+    condition:
+    rules:
 
   - id: 26254
     title: "Ensure 'Disallow copying of user input methods to the system account for sign-in' is set to 'Enabled'."
