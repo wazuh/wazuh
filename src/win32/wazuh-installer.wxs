@@ -428,6 +428,10 @@
                                 <File Id="SCA_WIN2012R2" Name="cis_win2012r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012r2.yml" />
                                 <Condition>VersionNT64 = 603 AND MAJORVERSION &lt;&gt; "#10" AND MsiNTProductType &gt; 1</Condition>
                             </Component>
+                            <Component Id="SCA_WIN2012NONR2" DiskId="1" Guid="4da001e3-6c60-4180-8002-58a5e6400e1c">
+                                <File Id="SCA_WIN2012NONR2" Name="cis_win2012_non_r2.yml" Source="..\..\ruleset\sca\windows\cis_win2012_non_r2.yml" />
+                                <Condition>VersionNT64 = 603 AND MAJORVERSION = 6 AND BUILDVERSION = 9200 AND MsiNTProductType &gt; 1</Condition>
+                            </Component>
                             <Component Id="SCA_WIN2016" DiskId="1" Guid="4EA82D11-D36B-4153-A6A7-8B5374296601">
                                 <File Id="SCA_WIN2016" Name="cis_win2016.yml" Source="..\..\ruleset\sca\windows\cis_win2016.yml" />
                                 <Condition>BUILDVERSION = "14393" AND MsiNTProductType &gt; 1</Condition>

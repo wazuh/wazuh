@@ -57,6 +57,7 @@ ubuntu/cis_ubuntu22-04.yml
 windows/cis_win10_enterprise.yml
 windows/cis_win11_enterprise.yml
 windows/cis_win2012r2.yml
+windows/cis_win2012_non_r2.yml
 windows/cis_win2016.yml
 windows/cis_win2019.yml
 windows/cis_win2022.yml
