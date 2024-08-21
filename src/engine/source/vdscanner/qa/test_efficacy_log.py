@@ -62,7 +62,7 @@ def send_input_files(test_folder):
     json_files = sorted(Path(test_folder).glob("input_*.json"))
     for json_file in json_files:
         LOGGER.debug(f"Running test {json_file}")
-        with open(json_file) as f:
+        with open(json_file):
             # Set the output file
             file = str(json_file)
 
@@ -176,7 +176,7 @@ def run_process_and_monitor_log(request, run_on_end):
         send_input_files(test_folder)
 
         # Wait until the scan is finished
-        if not test_folder.name == '000':
+        if test_folder.name != '000':
             regex = r"Event type: (.*) processed"
             found = find_regex_in_file(regex, log_file, LOGGER, len(expected_json_files))
             assert found, "The scan is not finished, some events were not processed"

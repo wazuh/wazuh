@@ -73,7 +73,7 @@ jobs:
       run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
 
     - name: Build
-      run: cmake --build ${{env.ENGINE_DIR}}/build -j$(nproc)
+      run: cmake --build ${{env.ENGINE_DIR}}/build --target scan_orchestrator -j$(nproc)
 
     - name: Download feed
       run: |
