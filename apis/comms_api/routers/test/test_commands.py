@@ -59,10 +59,8 @@ async def test_post_commands_results_ko():
     results = [Result(id='id', status=Status.COMPLETED)]
 
     with patch('comms_api.routers.commands.post_results', MagicMock(side_effect=exception)):
-        with pytest.raises(HTTPError) as exc:
+        with pytest.raises(HTTPError, match=fr'{exception.code}: {exception.message}'):
             _ = await post_commands_results(CommandsResults(results=results))
-
-    assert str(exc.value) == f'{exception.code}: {exception.message}'
 
 
 @pytest.mark.asyncio
