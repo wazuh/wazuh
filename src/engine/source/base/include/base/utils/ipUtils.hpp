@@ -2,6 +2,7 @@
 #define _IP_UTILS_H
 
 #include <iostream>
+#include <cstdint>
 
 namespace utils::ip
 {
