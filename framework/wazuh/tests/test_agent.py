@@ -73,8 +73,8 @@ test_multigroup_path = os.path.join(test_agent_path, 'multigroups')
 test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
 test_data = InitAgent(data_path=test_data_path)
-full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008', '009']
-short_agent_list = ['000', '001', '002', '003', '004', '005']
+full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008', '009']
+short_agent_list = ['001', '002', '003', '004', '005']
 
 
 def send_msg_to_wdb(msg, raw=False):
@@ -1066,8 +1066,8 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
 
 @pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [
     (
-            {'000', '001', '002', '003', '004', '999'},
-            {'1703': {'000'}, '1701': {'999'}, '1822': {'002'}, '1707': {'003', '004'}},
+            {'001', '002', '003', '004', '999'},
+            {'1701': {'999'}, '1822': {'002'}, '1707': {'003', '004'}},
             {'error': 0,
              'data': [{'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1},
                       {'error': 12,
@@ -1079,8 +1079,8 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
             False
     ),
     (
-            {'000', '001', '002'},
-            {'1703': {'000'}, '1731': {'001', '002'}},
+            {'001', '002'},
+            {'1731': {'001', '002'}},
             {},
             {'os.version': 'unknown_version'},
             False
@@ -1149,7 +1149,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
                 if int(error) in ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST:
                     with pytest.raises(WazuhError, match=f".* {error} .*"):
                         upgrade_agents(agent_list=list(agent_set), filters=filters)
-                elif int(error) not in (ERROR_CODES_UPGRADE_SOCKET + [1701, 1703, 1707, 1731]):
+                elif int(error) not in (ERROR_CODES_UPGRADE_SOCKET + [1701, 1707, 1731]):
                     with pytest.raises(WazuhInternalError, match=f".* {error} .*"):
                         upgrade_agents(agent_list=list(agent_set), filters=filters)
         else:
@@ -1182,8 +1182,8 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
 
 @pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [
     (
-            {'000', '001', '002', '003', '006', '999'},
-            {'1703': {'000'}, '1701': {'999'}, '1707': {'003'}, '1813': {'006'}},
+            {'001', '002', '003', '006', '999'},
+            {'1701': {'999'}, '1707': {'003'}, '1813': {'006'}},
             {'error': 0,
              'data': [
                  {'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1,
@@ -1201,8 +1201,8 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
             False
     ),
     (
-            {'000', '001', '002'},
-            {'1703': {'000'}, '1731': {'001', '002'}},
+            {'001', '002'},
+            {'1731': {'001', '002'}},
             {},
             {'os.version': 'unknown_version'},
             False

@@ -94,10 +94,10 @@ def test_rootcheck_run(close_mock, send_mock, connect_mock, agent_init__mock, ag
 
 @pytest.mark.parametrize('agent_list, expected_affected_items, expected_calls, wdb_side_effect', [
     (['002'], [], [call('agent 002 rootcheck delete')], WazuhError(2004)),
-    (['000', '001', '003'], ['000', '001'], [call('agent 000 rootcheck delete'), call('agent 001 rootcheck delete')],
+    (['001', '003'], ['001'], [call('agent 001 rootcheck delete')],
      [None, None])
 ])
-@patch('wazuh.rootcheck.get_agents_info', return_value={'000', '001', '002'})
+@patch('wazuh.rootcheck.get_agents_info', return_value={'001', '002'})
 @patch('socket.socket.connect')
 def test_clear(mock_connect, mock_info, agent_list, expected_affected_items, expected_calls, wdb_side_effect):
     """Test if function clear() returns expected result and if delete command is executed.

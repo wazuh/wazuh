@@ -221,13 +221,7 @@ def test_syscheck_last_scan(socket_mock, wdb_conn_mock, db_mock, exists_mock, ag
     (['006'], None, {'type': 'registry_key'}, True, None),
     (['007'], ['file', 'arch', 'value.name', 'value.type'], None, True, None),
     (['008'], ['file', 'value.name'], None, True, None),
-    (['009'], ['value.name'], None, True, None),
-    (['000'], ['attributes'], None, True, None),
-    (['000'], None,
-     {'file': 'HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\W32Time\\SecureTimeLimits\\RunTime'}, True,
-     None),
-    (['000'], None, None, False, "file=HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\Tcpip\\Parameters"
-                                 "\\Interfaces\\{4473f692-67de-480d-a481-6de3e4a2813b};(type=file,type=registry_key)")
+    (['009'], ['value.name'], None, True, None)
 ])
 @patch('wazuh.core.utils.path.exists', return_value=True)
 @patch('socket.socket.connect')
