@@ -10,7 +10,7 @@ from wazuh.core.exception import WazuhCommsAPIError
 
 
 @timeout(30)
-async def files(file_name: str) -> FileResponse:
+async def get_files(file_name: str) -> FileResponse:
     """Get files endpoint handler.
 
     Parameters

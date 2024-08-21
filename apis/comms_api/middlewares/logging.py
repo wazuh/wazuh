@@ -55,7 +55,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
     """Middleware to log requests information."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        """Logs Agent comms API requests.
+        """Logs Communications API requests.
 
         Parameters
         ----------

@@ -1,6 +1,6 @@
 from typing import Iterator
 
-from .constants import HITS_KEY, ID_KEY, SOURCE_KEY
+from wazuh.core.indexer.base import IndexerKey
 
 
 def get_source_items(search_result: dict) -> Iterator[str]:
@@ -17,8 +17,8 @@ def get_source_items(search_result: dict) -> Iterator[str]:
         Obtained items.
     """
 
-    for item in search_result[HITS_KEY][HITS_KEY]:
-        yield item[SOURCE_KEY]
+    for item in search_result[IndexerKey.HITS][IndexerKey.HITS]:
+        yield item[IndexerKey._SOURCE]
 
 
 def get_source_items_id(search_result: dict) -> list:
@@ -34,4 +34,4 @@ def get_source_items_id(search_result: dict) -> list:
     list
         Obtained id items.
     """
-    return [item[ID_KEY] for item in get_source_items(search_result)]
+    return [item[IndexerKey._ID] for item in get_source_items(search_result)]
