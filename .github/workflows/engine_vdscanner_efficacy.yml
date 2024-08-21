@@ -33,7 +33,7 @@ env:
 
 jobs:
   build:
-    name: Engine Integration Test
+    name: Engine VD Efficacy Test
 
     # Runs only if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
@@ -73,7 +73,7 @@ jobs:
       run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
 
     - name: Build
-      run: cmake --build ${{env.ENGINE_DIR}}/build --target vdscanner -j$(nproc)
+      run: cmake --build ${{env.ENGINE_DIR}}/build -j$(nproc)
 
     - name: Download feed
       run: |
@@ -85,7 +85,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install -r src/wazuh_modules/vulnerability_scanner/qa/requirements.txt
+        pip install -r src/engine/source/vdscanner/qa/requirements.txt
 
     - name: Create folder for test logs
       run: |
