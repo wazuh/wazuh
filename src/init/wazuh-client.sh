@@ -12,7 +12,7 @@ DIR=`dirname $PWD`;
 
 # Installation info
 VERSION="v4.9.0"
-REVISION="40905"
+REVISION="40906"
 TYPE="agent"
 
 ###  Do not modify below here ###
