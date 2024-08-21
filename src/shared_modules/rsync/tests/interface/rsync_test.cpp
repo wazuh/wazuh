@@ -26,7 +26,7 @@ constexpr auto SQL_STMT_INFO
     PRAGMA foreign_keys=OFF;
     BEGIN TRANSACTION;
     CREATE TABLE entry_path (path TEXT NOT NULL, inode_id INTEGER, mode INTEGER, last_event INTEGER, entry_type INTEGER, scanned INTEGER, options INTEGER, checksum TEXT NOT NULL, PRIMARY KEY(path));
-    INSERT INTO entry_path VALUES('/boot/grub2/fonts/unicode.pf2',1,0,1596489273,0,1,131583,'96482cde495f716fcd66a71a601fbb905c13b426');
+    INSERT INTO entry_path VALUES('/boot/grub2/font''s/unicode.pf2',1,0,1596489273,0,1,131583,'96482cde495f716fcd66a71a601fbb905c13b426');
     INSERT INTO entry_path VALUES('/boot/grub2/grubenv',2,0,1596489273,0,1,131583,'e041159610c7ec18490345af13f7f49371b56893');
     INSERT INTO entry_path VALUES('/boot/grub2/i386-pc/datehook.mod',3,0,1596489273,0,1,131583,'f83bc87319566e270fcece2fae4910bc18fe7355');
     INSERT INTO entry_path VALUES('/boot/grub2/i386-pc/gcry_whirlpool.mod',4,0,1596489273,0,1,131583,'d59ffd58d107b9398ff5a809097f056b903b3c3e');
@@ -358,7 +358,7 @@ TEST_F(RSyncTest, startSyncIntegrityGlobal)
 
     const auto expectedResult1
     {
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2")"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/font's/unicode.pf2")"
     };
 
     const auto expectedResult2
@@ -472,11 +472,11 @@ TEST_F(RSyncTest, RegisterAndPush)
     ASSERT_NE(nullptr, handle_rsync);
 
     auto expectedGlobalResponse =
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/font's/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
 
     const auto expectedResult1
     {
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/font's/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
@@ -486,7 +486,7 @@ TEST_F(RSyncTest, RegisterAndPush)
 
     const auto expectedResult3
     {
-        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/font's/unicode.pf2","scanned":1},"index":"/boot/grub2/font's/unicode.pf2","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
@@ -571,13 +571,13 @@ TEST_F(RSyncTest, RegisterAndPush)
     const std::unique_ptr<cJSON, CJsonSmartDeleter> spStartConfigStmt{ cJSON_Parse(START_CONFIG_STMT_PATH) };
     ASSERT_EQ(0, rsync_start_sync(handle_rsync, handle_dbsync, spStartConfigStmt.get(), callbackDataDiff));
 
-    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer1.data()), buffer1.size()));
 
-    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/fonts/unicode.pf2","id":1})"};
+    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/font's/unicode.pf2","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer2.data()), buffer2.size()));
 
-    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -593,7 +593,7 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     ASSERT_NE(nullptr, handle_rsync);
 
     auto expectedGlobalResponse =
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/font's/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
 
     const auto registerConfigStmt
     {
@@ -650,14 +650,14 @@ TEST_F(RSyncTest, RegisterIncorrectQueryAndPush)
     const std::unique_ptr<cJSON, CJsonSmartDeleter> spStartConfigStmt{ cJSON_Parse(START_CONFIG_STMT_PATH) };
     ASSERT_EQ(0, rsync_start_sync(handle_rsync, handle_dbsync, spStartConfigStmt.get(), callbackDataDiff));
 
-    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
 
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer1.data()), buffer1.size()));
 
-    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/fonts/unicode.pf2","id":1})"};
+    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/font's/unicode.pf2","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer2.data()), buffer2.size()));
 
-    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_EQ(0, rsync_push_message(handle_rsync, reinterpret_cast<const void*>(buffer3.data()), buffer3.size()));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -673,11 +673,11 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
     EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
 
     auto expectedGlobalResponse =
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/font's/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
 
     const auto expectedResult1
     {
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/font's/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"
     };
 
     const auto expectedResult2
@@ -687,7 +687,7 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
 
     const auto expectedResult3
     {
-        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/font's/unicode.pf2","scanned":1},"index":"/boot/grub2/font's/unicode.pf2","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
@@ -784,14 +784,14 @@ TEST_F(RSyncTest, RegisterAndPushCPP)
 
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(START_CONFIG_STMT_PATH), callbackDataDiff));
 
-    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
 
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer1.begin(), buffer1.end() }));
 
-    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/fonts/unicode.pf2","id":1})"};
+    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/font's/unicode.pf2","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer2.begin(), buffer2.end() }));
 
-    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -968,7 +968,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInode)
 
     const auto expectedResult3
     {
-        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/font's/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult4
@@ -1142,13 +1142,13 @@ TEST_F(RSyncTest, RegisterAndPushWithoutStartCPP)
 
     ASSERT_NO_THROW(remoteSync->registerSyncID("test_id", dbSync->handle(), nlohmann::json::parse(registerConfigStmt), callbackData));
 
-    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer1{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer1.begin(), buffer1.end() }));
 
-    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/fonts/unicode.pf2","id":1})"};
+    std::string buffer2{R"(test_id checksum_fail {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/font's/unicode.pf2","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer2.begin(), buffer2.end() }));
 
-    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -1166,7 +1166,7 @@ TEST_F(RSyncTest, RegisterAndPushWithNewerIDCPP)
     EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
 
     auto expectedGlobalResponse =
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/font's/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
 
     const auto registerConfigStmt
     {
@@ -1236,7 +1236,7 @@ TEST_F(RSyncTest, RegisterAndPushWithNewerIDCPP)
     };
 
     auto expectedResult1 =
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/fonts/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"_json;
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/font's/unicode.pf2","checksum":"acfe3a5baf97f842838c13b32e7e61a11e144e64","end":"/boot/grub2/grubenv","id":1,"tail":"/boot/grub2/i386-pc/datehook.mod"},"type":"integrity_check_left"})"_json;
 
     auto expectedResult2 =
         R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/datehook.mod","checksum":"891333533a9c7d989b92928d200ed8402fe67813","end":"/boot/grub2/i386-pc/gzio.mod","id":1},"type":"integrity_check_right"})"_json;
@@ -1255,7 +1255,7 @@ TEST_F(RSyncTest, RegisterAndPushWithNewerIDCPP)
     EXPECT_CALL(wrapper, callbackMock(expectedResult2.dump())).Times(1);
 
     std::string buffer1 {R"(test_id checksum_fail )"};
-    auto buffer1Json = R"({"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod"})"_json;
+    auto buffer1Json = R"({"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod"})"_json;
     buffer1Json["id"] = syncId;
     buffer1 += buffer1Json.dump();
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer1.begin(), buffer1.end() }));
@@ -1276,7 +1276,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPByInodePartialNODataRange)
 
     const auto expectedResult1
     {
-        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/font's/unicode.pf2","scanned":1},"index":1,"timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult2
@@ -1439,7 +1439,7 @@ TEST_F(RSyncTest, RegisterAndPushShutdownCPP)
     EXPECT_NO_THROW(remoteSync = std::make_unique<RemoteSync>());
 
     auto expectedGlobalResponse =
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/font's/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
 
     const auto registerConfigStmt
     {
@@ -1506,7 +1506,7 @@ TEST_F(RSyncTest, RegisterAndPushShutdownCPP)
 
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(START_CONFIG_STMT_PATH), callbackDataDiff));
 
-    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -1526,11 +1526,11 @@ TEST_F(RSyncTest, RegisterAndPushWithDoubleHandleDisconnect)
     EXPECT_NO_THROW(remoteSyncToDelete = std::make_unique<RemoteSync>());
 
     auto expectedGlobalResponse =
-        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/fonts/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
+        R"({"component":"test_id","data":{"begin":"/boot/grub2/i386-pc/gzio.mod","checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709","end":"/boot/grub2/font's/unicode.pf2","id":1696450039},"type":"integrity_check_global"})"_json;
 
     const auto expectedResult1
     {
-        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/fonts/unicode.pf2","scanned":1},"index":"/boot/grub2/fonts/unicode.pf2","timestamp":1596489273},"type":"state"})"
+        R"({"component":"test_id","data":{"attributes":{"checksum":"96482cde495f716fcd66a71a601fbb905c13b426","entry_type":0,"inode_id":1,"last_event":1596489273,"mode":0,"options":131583,"path":"/boot/grub2/font's/unicode.pf2","scanned":1},"index":"/boot/grub2/font's/unicode.pf2","timestamp":1596489273},"type":"state"})"
     };
 
     const auto expectedResult2
@@ -1670,7 +1670,7 @@ TEST_F(RSyncTest, RegisterAndPushWithDoubleHandleDisconnect)
 
     EXPECT_NO_THROW(remoteSync->startSync(dbSync->handle(), nlohmann::json::parse(START_CONFIG_STMT_PATH), callbackDataDiff));
 
-    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/fonts/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
+    std::string buffer3{R"(test_id no_data {"begin":"/boot/grub2/font's/unicode.pf2","end":"/boot/grub2/i386-pc/gzio.mod","id":1})"};
     ASSERT_NO_THROW(remoteSync->pushMessage({ buffer3.begin(), buffer3.end() }));
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -1762,7 +1762,7 @@ TEST_F(RSyncTest, RegisterAndPushCPPWithDeletedElement)
             {
                  "begin":"/boot/grub2/i386-pc/gzio.mod",
                  "checksum":"da39a3ee5e6b4b0d3255bfef95601890afd80709",
-                 "end":"/boot/grub2/fonts/unicode.pf2",
+                 "end":"/boot/grub2/font's/unicode.pf2",
                  "id":1696450039
             },
             "type":"integrity_check_global"
@@ -1840,4 +1840,3 @@ TEST_F(RSyncTest, RegisterAndPushCPPWithDeletedElement)
     std::this_thread::sleep_for(std::chrono::seconds(1));
     remoteSync.reset();
 }
-

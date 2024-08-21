@@ -155,4 +155,4 @@ def test_host_port(test_configuration, test_metadata, add_configuration, truncat
     else:
         # Wait `timeout_before_exception` seconds to make sure that the exception is thrown
         with pytest.raises(requests.exceptions.ConnectionError):
-            login(host=host, port=port, timeout=timeout_before_exception)
+            login(host=host[0], port=port, timeout=timeout_before_exception)

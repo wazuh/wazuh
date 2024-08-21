@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.10.0]
 
+## [v4.9.1]
+
 ## [v4.9.0]
 
 ### Manager
@@ -17,7 +19,6 @@ All notable changes to this project will be documented in this file.
 - Enhanced vulnerability scanner logging to be more expressive. ([#24536](https://github.com/wazuh/wazuh/pull/24536))
 - The manager now supports alert forwarding to Fluentd. ([#17306](https://github.com/wazuh/wazuh/pull/17306))
 - Added the HAProxy helper to manage load balancer configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
-- Added helper to manage HAProxy configuration and automatically balance agents. ([#23513](https://github.com/wazuh/wazuh/pull/23513))
 - Added a validation to avoid killing processes from external services. ([#23222](https://github.com/wazuh/wazuh/pull/23222))
 - Enabled ceritificates validation in the requests to the HAProxy helper using the default CA bundle. ([#23996](https://github.com/wazuh/wazuh/pull/23996))
 
@@ -47,7 +48,6 @@ All notable changes to this project will be documented in this file.
 
 - Fixed loading of whodata through timeouts and retries. ([#21455](https://github.com/wazuh/wazuh/pull/21455))
 - Avoided backup failures during WPK update by adding dependency checking for the tar package. ([#21729](https://github.com/wazuh/wazuh/pull/21729))
-- Fixed using memmove instead of memcpy to avoid unwanted behavior. ([#21595](https://github.com/wazuh/wazuh/pull/21595))
 - Fixed a crash in the agent due to a library incompatibility. ([#22210](https://github.com/wazuh/wazuh/pull/22210))
 - Fixed an error in the osquery integration on Windows that avoided loading osquery.conf. ([#21728](https://github.com/wazuh/wazuh/pull/21728))
 - Fixed a crash in the agent's Rootcheck component when using `<ignore>`. ([#22588](https://github.com/wazuh/wazuh/pull/22588))
@@ -100,6 +100,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 - Improved XML validation to match the Wazuh internal XML validator. ([#20507](https://github.com/wazuh/wazuh/pull/20507))
 - Fixed bug in `GET /groups`. ([#22428](https://github.com/wazuh/wazuh/pull/22428))
+- Fixed the `GET /agents/outdated` endpoint query. ([#24946](https://github.com/wazuh/wazuh/pull/24946))
 
 #### Removed
 - Removed the `cache` configuration option from the Wazuh API. ([#22416](https://github.com/wazuh/wazuh/pull/22416))
@@ -127,6 +128,15 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed a buffer overflow hazard in HMAC internal library. ([#19794](https://github.com/wazuh/wazuh/pull/19794))
+
+
+## [v4.8.2]
+
+### Manager
+
+#### Fixed
+
+- Fixed memory management in wazuh-remoted that might cause data corruption in incoming messages. ([#25225](https://github.com/wazuh/wazuh/issues/25225))
 
 ## [v4.8.1]
 
@@ -444,7 +454,6 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed an unexpected error by the Cluster when a worker gets restarted. ([#16683](https://github.com/wazuh/wazuh/pull/16683))
-- Fixed an issue that let the manager validate wrong XML configurations. ([#16681](https://github.com/wazuh/wazuh/pull/16681))
 - Fixed Syscollector packages multiarch values. ([#19722](https://github.com/wazuh/wazuh/issues/19722))
 - Fixed a bug that made the Windows agent crash randomly when loading RPCRT4.dll. ([#18591](https://github.com/wazuh/wazuh/issues/18591))
 

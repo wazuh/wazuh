@@ -19,6 +19,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <loggerHelper.h>
 #include <map>
 #include <mutex>
 #include <string>
@@ -27,7 +28,7 @@
 #include <vector>
 
 constexpr auto INTERVAL = 60u;
-
+constexpr auto IC_NAME {"indexer-connector"};
 namespace HealthCheckRows
 {
     enum Type : std::size_t
@@ -125,9 +126,11 @@ public:
                                 HttpURL(value.first + "/_cat/health?v"),
                                 [&](std::string response)
                                 {
+                                    const std::string originalResponse {response};
+
                                     // Remove the tabs and double spaces.
                                     Utils::replaceAll(response, "\t", " ");
-                                    Utils::replaceAll(response, "  ", " ");
+                                    response = Utils::trimRepeated(response, ' ');
                                     // Split the response by rows.
                                     const auto rows {Utils::split(response, '\n')};
 
@@ -148,13 +151,27 @@ public:
                                         {
                                             value.second = false;
                                         }
+                                        logDebug2(IC_NAME,
+                                                  "Cluster health status '%s' for server '%s'",
+                                                  fields.at(HealthCheckColumns::STATUS).c_str(),
+                                                  value.first.c_str());
                                     }
                                     else
                                     {
+                                        logDebug2(IC_NAME,
+                                                  "Invalid response from /_cat/health?v: %s",
+                                                  originalResponse.c_str());
                                         value.second = false; // LCOV_EXCL_LINE
                                     }
                                 },
-                                [&](const std::string& error, const long /*statusCode*/) { value.second = false; },
+                                [&](const std::string& error, const long statusCode)
+                                {
+                                    const std::string errorMessage =
+                                        error + ". Status code: " + std::to_string(statusCode);
+                                    logDebug2(IC_NAME, errorMessage.c_str());
+
+                                    value.second = false;
+                                },
                                 "",
                                 headers,
                                 secureCommunication);

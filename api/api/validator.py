@@ -65,7 +65,7 @@ api_config_schema = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
-        "host": {"type": "string"},
+        "host": {"type": "array", "items": {"type": "string"}},
         "port": {"type": "number"},
         "use_only_authd": {"type": "boolean"},  # Deprecated. To be removed on later versions
         "drop_privileges": {"type": "boolean"},
