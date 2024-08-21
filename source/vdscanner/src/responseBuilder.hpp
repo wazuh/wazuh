@@ -37,6 +37,70 @@ class TResponseBuilder final : public utils::patterns::AbstractHandler<std::shar
 private:
     std::shared_ptr<TDatabaseFeedManager> m_databaseFeedManager;
 
+    void buildScore(const std::string& cveId,
+                    nlohmann::json& json,
+                    const NSVulnerabilityScanner::VulnerabilityDescription* data)
+    {
+        const auto cvssVersion {data->scoreVersion()->str()};
+        const auto scoreVersion {"cvss" + cvssVersion.substr(0, 1)};
+
+        if (!cvssVersion.empty())
+        {
+            nlohmann::json vectorObj;
+            if (scoreVersion.compare("cvss2") == 0)
+            {
+                vectorObj["access_complexity"] = data->accessComplexity()->str();
+                vectorObj["authentication"] = data->authentication()->str();
+            }
+            else if (scoreVersion.compare("cvss3") == 0)
+            {
+                vectorObj["attack_vector"] = data->attackVector()->str();
+                vectorObj["privileges_required"] = data->privilegesRequired()->str();
+                vectorObj["scope"] = data->scope()->str();
+                vectorObj["user_interaction"] = data->userInteraction()->str();
+            }
+            else
+            {
+                LOG_DEBUG("CVSS version not supported: {}", cvssVersion);
+            }
+
+            vectorObj["availability"] = data->availabilityImpact()->str();
+            vectorObj["confidentiality_impact"] = data->confidentialityImpact()->str();
+            vectorObj["integrity_impact"] = data->integrityImpact()->str();
+
+            json["cvss"][scoreVersion]["vector"] = std::move(vectorObj);
+        }
+        else
+        {
+            LOG_DEBUG("CVSS version not found for CVE: {}", cveId);
+        }
+    }
+
+    void buildMatchCondition(nlohmann::json& json, const MatchCondition& condition)
+    {
+        if (condition.condition == MatchRuleCondition::LessThanOrEqual)
+        {
+            json["condition"] = "Package less than or equal to " + condition.version;
+        }
+        else if (condition.condition == MatchRuleCondition::LessThan)
+        {
+            json["condition"] = "Package less than " + condition.version;
+        }
+        else if (condition.condition == MatchRuleCondition::DefaultStatus)
+        {
+            json["condition"] = "Package default status";
+        }
+        else if (condition.condition == MatchRuleCondition::Equal)
+        {
+            json["condition"] = "Package equal to " + condition.version;
+        }
+        else
+        {
+            // If we have a match condition, the condition should be one of the above, and this is an error.
+            throw std::range_error("Invalid condition: " + std::to_string(static_cast<int>(condition.condition)));
+        }
+    }
+
 public:
     // LCOV_EXCL_START
     /**
@@ -91,59 +155,36 @@ public:
                 switch (data->scannerType())
                 {
                     case ScannerType::Package:
-                        json["wcs"]["category"] = "Packages";
-                        json["wcs"]["item_id"] = data->packageItemId();
+                        json["category"] = "Packages";
+                        json["item_id"] = data->packageItemId();
                         break;
 
-                    case ScannerType::Os: json["wcs"]["category"] = "OS"; break;
+                    case ScannerType::Os: json["category"] = "OS"; break;
 
                     default: throw std::invalid_argument("Invalid scanner type"); break;
                 }
 
                 // Status date
-                json["wcs"]["classification"] = returnData.data->classification()->str();
-                json["wcs"]["description"] = returnData.data->description()->str();
-                json["wcs"]["detected_at"] = base::utils::time::getCurrentISO8601();
-                json["wcs"]["enumeration"] = "CVE";
-                json["wcs"]["id"] = cve;
-                json["wcs"]["published_at"] = returnData.data->datePublished()->str();
-                json["wcs"]["reference"] = returnData.data->reference()->str();
-                json["wcs"]["scanner"]["vendor"] = "Wazuh";
-                json["wcs"]["score"]["base"] =
-                    base::utils::numeric::floatToDoubleRound(returnData.data->scoreBase(), 2);
-                json["wcs"]["score"]["version"] = returnData.data->scoreVersion()->str();
-                json["wcs"]["severity"] = base::utils::string::toSentenceCase(returnData.data->severity()->str());
+                json["classification"] = returnData.data->classification()->str();
+                json["description"] = returnData.data->description()->str();
+                json["detected_at"] = base::utils::time::getCurrentISO8601();
+                json["enumeration"] = "CVE";
+                json["id"] = cve;
+                json["published_at"] = returnData.data->datePublished()->str();
+                json["reference"] = returnData.data->reference()->str();
+                json["score"]["base"] = base::utils::numeric::floatToDoubleRound(returnData.data->scoreBase(), 2);
+                json["score"]["version"] = returnData.data->scoreVersion()->str();
+                json["severity"] = base::utils::string::toSentenceCase(returnData.data->severity()->str());
 
                 // Alert data
-                json["alert"]["assigner"] = returnData.data->assignerShortName()->str();
-                json["alert"]["cwe_reference"] = returnData.data->cweId()->str();
-                json["alert"]["rationale"] = returnData.data->description()->str();
-                json["alert"]["updated"] = returnData.data->dateUpdated()->str();
+                json["assigner"] = returnData.data->assignerShortName()->str();
+                json["cwe_reference"] = returnData.data->cweId()->str();
+                json["rationale"] = returnData.data->description()->str();
+                json["updated"] = returnData.data->dateUpdated()->str();
 
                 if (const auto it = data->m_matchConditions.find(cve); it != data->m_matchConditions.end())
                 {
-                    if (it->second.condition == MatchRuleCondition::LessThanOrEqual)
-                    {
-                        json["alert"]["condition"] = "Package less than or equal to " + it->second.version;
-                    }
-                    else if (it->second.condition == MatchRuleCondition::LessThan)
-                    {
-                        json["alert"]["condition"] = "Package less than " + it->second.version;
-                    }
-                    else if (it->second.condition == MatchRuleCondition::DefaultStatus)
-                    {
-                        json["alert"]["condition"] = "Package default status";
-                    }
-                    else if (it->second.condition == MatchRuleCondition::Equal)
-                    {
-                        json["alert"]["condition"] = "Package equal to " + it->second.version;
-                    }
-                    else
-                    {
-                        // If we have a match condition, the condition should be one of the above, and this is an error.
-                        throw std::range_error("Invalid condition: "
-                                               + std::to_string(static_cast<int>(it->second.condition)));
-                    }
+                    buildMatchCondition(json, it->second);
                 }
                 else
                 {
@@ -151,45 +192,11 @@ public:
                     throw std::invalid_argument("Match condition not found for CVE: " + cve);
                 }
 
-                const auto cvssVersion {returnData.data->scoreVersion()->str()};
-                const auto scoreVersion {"cvss" + cvssVersion.substr(0, 1)};
+                buildScore(cve, json, returnData.data);
 
-                if (!cvssVersion.empty())
-                {
-                    nlohmann::json vectorObj;
-                    if (scoreVersion.compare("cvss2") == 0)
-                    {
-                        vectorObj["access_complexity"] = returnData.data->accessComplexity()->str();
-                        vectorObj["authentication"] = returnData.data->authentication()->str();
-                    }
-                    else if (scoreVersion.compare("cvss3") == 0)
-                    {
-                        vectorObj["attack_vector"] = returnData.data->attackVector()->str();
-                        vectorObj["privileges_required"] = returnData.data->privilegesRequired()->str();
-                        vectorObj["scope"] = returnData.data->scope()->str();
-                        vectorObj["user_interaction"] = returnData.data->userInteraction()->str();
-                    }
-                    else
-                    {
-                        LOG_DEBUG("CVSS version not supported: {}", cvssVersion);
-                    }
-
-                    vectorObj["availability"] = returnData.data->availabilityImpact()->str();
-                    vectorObj["confidentiality_impact"] = returnData.data->confidentialityImpact()->str();
-                    vectorObj["integrity_impact"] = returnData.data->integrityImpact()->str();
-
-                    json["alert"]["cvss"][scoreVersion]["vector"] = std::move(vectorObj);
-                }
-                else
-                {
-                    LOG_DEBUG("CVSS version not found for CVE: {}", cve);
-                }
-
-                dataElements.push_back(std::move(json));
+                data->moveResponseData(json);
             }
         }
-
-        data->moveResponseData(dataElements);
 
         return utils::patterns::AbstractHandler<std::shared_ptr<TScanContext>>::handleRequest(std::move(data));
     }

@@ -24,8 +24,10 @@
  *
  */
 template<typename TPackageScanner = PackageScanner,
+         typename TOsScanner = OsScanner,
          typename TResponseBuilder = ResponseBuilder,
-         typename TOsScanner = OsScanner>
+         typename TScanContext = ScanContext,
+         typename TDatabaseFeedManager = DatabaseFeedManager>
 class TFactoryOrchestrator final
 {
 private:
@@ -37,12 +39,12 @@ public:
      *
      * @param type Scanner type.
      * @param databaseFeedManager DatabaseFeedManager object.
-     * @return std::shared_ptr<ScanContext> Abstract handler.
+     * @return std::shared_ptr<TScanContext> Abstract handler.
      */
-    static std::shared_ptr<utils::patterns::AbstractHandler<std::shared_ptr<ScanContext>>>
-    create(const ScannerType type, std::shared_ptr<DatabaseFeedManager> databaseFeedManager)
+    static std::shared_ptr<utils::patterns::AbstractHandler<std::shared_ptr<TScanContext>>>
+    create(const ScannerType type, std::shared_ptr<TDatabaseFeedManager> databaseFeedManager)
     {
-        std::shared_ptr<utils::patterns::AbstractHandler<std::shared_ptr<ScanContext>>> orchestration;
+        std::shared_ptr<utils::patterns::AbstractHandler<std::shared_ptr<TScanContext>>> orchestration;
         switch (type)
         {
             case ScannerType::Package:

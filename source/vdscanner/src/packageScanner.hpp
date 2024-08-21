@@ -85,7 +85,7 @@ private:
         auto scanPackage = [this, &data, &cnaName, &vulnerabilityScan](const PackageData& package)
         {
             LOG_DEBUG("Initiating a vulnerability scan for package '{}' ({}) ({}) with CVE Numbering Authorities (CNA)"
-                      "'{}' on Agent '{}' (ID: '{}', Version: '{}').",
+                      " '{}' on Agent '{}' (ID: '{}', Version: '{}').",
                       package.name,
                       package.format,
                       package.vendor,
@@ -498,26 +498,27 @@ private:
         auto agentRemediations = contextData->hotfixes();
         if (agentRemediations.empty())
         {
-            /*logDebug2(
-                WM_VULNSCAN_LOGTAG, "No remediations for agent '{}' have been found.", contextData->agentId().data());*/
-
+            LOG_DEBUG("No remediations for agent '{}' have been found.", contextData->agentId());
             return false;
         }
 
         for (const auto& remediation : *(remediations.data->updates()))
         {
             // Check if the remediation is installed on the agent.
-            if (agentRemediations.count(remediation->str()) != 0)
+            for (const auto& hotfix : agentRemediations)
             {
-                LOG_DEBUG("Remediation '{}' for package '{}' on agent '{}' that solves CVE '{}' has been found.",
-                          remediation->str(),
-                          package.name,
-                          contextData->agentId(),
-                          callbackData.cveId()->str());
+                if (hotfix.template get_ref<const std::string&>().compare(remediation->str()) == 0)
+                {
+                    LOG_DEBUG("Remediation '{}' for package '{}' on agent '{}' that solves CVE '{}' has been found.",
+                              remediation->str(),
+                              package.name,
+                              contextData->agentId(),
+                              callbackData.cveId()->str());
 
-                contextData->m_elements.erase(callbackData.cveId()->str());
-                contextData->m_matchConditions.erase(callbackData.cveId()->str());
-                return true;
+                    contextData->m_elements.erase(callbackData.cveId()->str());
+                    contextData->m_matchConditions.erase(callbackData.cveId()->str());
+                    return true;
+                }
             }
         }
 

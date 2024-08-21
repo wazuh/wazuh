@@ -47,7 +47,6 @@ int main(const int argc, const char* argv[])
                  [&](const httplib::Request& req, httplib::Response& res)
                  {
                      std::string response;
-                     std::cout << req.body << std::endl;
                      scanOrchestrator.processEvent(req.body, response);
                      res.set_content(response, "application/json");
                  });
@@ -63,13 +62,7 @@ int main(const int argc, const char* argv[])
 
         svr.set_logger(
             [](const auto& req, const auto& res)
-            {
-                LOG_DEBUG("Method: {} - Request: {} - Response: {} - Response status: {}",
-                          req.method,
-                          req.body,
-                          res.body,
-                          res.status);
-            });
+            { LOG_DEBUG("Method: {} - Request: {} - Response status: {}", req.method, req.body, res.status); });
 
         svr.set_address_family(AF_UNIX);
 

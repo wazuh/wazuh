@@ -42,7 +42,8 @@ public:
      */
     MOCK_METHOD(void,
                 getVulnerabilityRemediation,
-                (const std::string& cveId, FlatbufferDataPair<RemediationInfo>& dtoVulnRemediation),
+                (const std::string& cveId,
+                 FlatbufferDataPair<NSVulnerabilityScanner::RemediationInfo>& dtoVulnRemediation),
                 ());
 
     /**
@@ -100,7 +101,8 @@ public:
      */
     MOCK_METHOD(void,
                 getVulnerabiltyDescriptiveInformation,
-                (const std::string_view cveId, FlatbufferDataPair<VulnerabilityDescription>& resultContainer),
+                (const std::string_view cveId,
+                 FlatbufferDataPair<NSVulnerabilityScanner::VulnerabilityDescription>& resultContainer),
                 ());
 
     /**
@@ -125,6 +127,18 @@ public:
      *
      */
     MOCK_METHOD(std::string, getCnaNameBySource, (std::string_view source), ());
+
+    /**
+     * @brief Mock method for cpeMappings.
+     *
+     */
+    MOCK_METHOD(const nlohmann::json&, cpeMappings, (), ());
+
+    /**
+     * @brief Mock method for cnaMappings.
+     *
+     */
+    MOCK_METHOD(const nlohmann::json&, cnaMappings, (), ());
 };
 
 #endif // _MOCK_DATABASEFEEDMANAGER_HPP
