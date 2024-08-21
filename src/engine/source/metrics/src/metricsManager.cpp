@@ -6,10 +6,11 @@
 namespace metricsManager
 {
 
-MetricsManager::MetricsManager() :
-    m_statusRunning{false}
+MetricsManager::MetricsManager()
+    : m_statusRunning {false}
 {
-    opentelemetry::sdk::common::internal_log::GlobalLogHandler::SetLogLevel(opentelemetry::sdk::common::internal_log::LogLevel::Error);
+    opentelemetry::sdk::common::internal_log::GlobalLogHandler::SetLogLevel(
+        opentelemetry::sdk::common::internal_log::LogLevel::Error);
 }
 
 void MetricsManager::start()
@@ -30,7 +31,7 @@ json::Json MetricsManager::getAllMetrics()
     retValue.setNull();
 
     auto it = m_mapScopes.begin();
-    while (it!=m_mapScopes.end())
+    while (it != m_mapScopes.end())
     {
         auto scopeMetrics = it->second->getAllMetrics();
         auto path = "/" + it->first;
@@ -41,7 +42,10 @@ json::Json MetricsManager::getAllMetrics()
     return retValue;
 }
 
-std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string& metricsScopeName, bool delta, int exporterIntervalMS, int exporterTimeoutMS)
+std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string& metricsScopeName,
+                                                               bool delta,
+                                                               int exporterIntervalMS,
+                                                               int exporterTimeoutMS)
 {
     const std::lock_guard<std::mutex> lock(m_mutexScopes);
 
@@ -54,10 +58,8 @@ std::shared_ptr<IMetricsScope> MetricsManager::getMetricsScope(const std::string
     {
         LOG_INFO("MetricsManager: Created new scope: ({})", metricsScopeName);
 
-        m_mapScopes.insert(
-            std::make_pair<std::string, std::shared_ptr<MetricsScope>>(
-                std::string(metricsScopeName),
-                std::make_shared<MetricsScope>()));
+        m_mapScopes.insert(std::make_pair<std::string, std::shared_ptr<MetricsScope>>(
+            std::string(metricsScopeName), std::make_shared<MetricsScope>()));
 
         auto& retScope = m_mapScopes[metricsScopeName];
 
@@ -76,7 +78,6 @@ std::vector<std::string> MetricsManager::getScopeNames()
     }
     return scopeNames;
 }
-
 
 // API Commands
 
@@ -114,7 +115,8 @@ std::shared_ptr<MetricsScope> MetricsManager::getScope(const std::string& metric
     }
 }
 
-std::optional<base::Error> MetricsManager::enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus)
+std::optional<base::Error>
+MetricsManager::enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus)
 {
     auto scope = getScope(scopeName);
     if (scope == nullptr)
@@ -130,7 +132,8 @@ std::optional<base::Error> MetricsManager::enableCmd(const std::string& scopeNam
     return std::nullopt;
 }
 
-std::variant<std::string, base::Error> MetricsManager::getCmd(const std::string& scopeName, const std::string& instrumentName)
+std::variant<std::string, base::Error> MetricsManager::getCmd(const std::string& scopeName,
+                                                              const std::string& instrumentName)
 {
     auto scope = getScope(scopeName);
     if (scope == nullptr)
@@ -162,12 +165,12 @@ void MetricsManager::testCmd()
 
 std::variant<std::string, base::Error> MetricsManager::listCmd()
 {
-/* Generated Output - Json Array of Json Objects.
-[
-    {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
-    {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
-]
-*/
+    /* Generated Output - Json Array of Json Objects.
+    [
+        {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
+        {"scope": "kvdb", "name":"databeseCounter", "type":"counter", "status":"enable"},
+    ]
+    */
     {
         const std::lock_guard<std::mutex> lock(m_mutexScopes);
 
@@ -202,7 +205,8 @@ std::variant<std::string, base::Error> MetricsManager::listCmd()
             auto type = recordArr.value()[0].getString("/type").value();
             auto scope = getScope(key);
             auto status = scope->getEnabledStatus(keyMetric) ? "enabled" : "disabled";
-            json = "{\"scope\":\"" + key + "\",\"name\":\"" + keyMetric + "\",\"type\":\"" + type + "\",\"status\":\"" + status + "\"}";
+            json = "{\"scope\":\"" + key + "\",\"name\":\"" + keyMetric + "\",\"type\":\"" + type + "\",\"status\":\""
+                   + status + "\"}";
             json::Json element(json.c_str());
             result.appendJson(element);
         }
