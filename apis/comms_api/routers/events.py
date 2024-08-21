@@ -1,6 +1,7 @@
-from fastapi import status, Response
+from fastapi import APIRouter, Depends, status, Response
 from fastapi.responses import JSONResponse
 
+from comms_api.authentication.authentication import JWTBearer
 from comms_api.core.events import create_stateful_events, send_stateless_events
 from comms_api.models.events import StatelessEvents
 from comms_api.routers.exceptions import HTTPError
@@ -59,3 +60,8 @@ async def post_stateless_events(events: StatelessEvents) -> Response:
         return Response(status_code=status.HTTP_200_OK)
     except WazuhEngineError as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+events_router = APIRouter(prefix='/events')
+events_router.add_api_route('/stateful', post_stateful_events, dependencies=[Depends(JWTBearer())], methods=['POST'])
+events_router.add_api_route('/stateless', post_stateless_events, dependencies=[Depends(JWTBearer())], methods=['POST'])
