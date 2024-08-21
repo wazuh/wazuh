@@ -48,7 +48,5 @@ async def test_post_stateless_events_ko():
     exception = WazuhEngineError(2802)
 
     with patch('comms_api.routers.events.send_stateless_events', MagicMock(side_effect=exception)):
-        with pytest.raises(HTTPError) as exc:
+        with pytest.raises(HTTPError, match=fr'{exception.code}: {exception.message}'):
             _ = await post_stateless_events('')
-
-    assert str(exc.value) == f'{exception.code}: {exception.message}'

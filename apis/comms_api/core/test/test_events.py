@@ -16,6 +16,7 @@ INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 @patch('wazuh.core.indexer.create_indexer', return_value=INDEXER)
 @patch('wazuh.core.indexer.events.EventsIndex.create')
 async def test_create_stateful_events(events_create_mock, create_indexer_mock):
+    """Check that the `create_stateful_events` function works as expected."""
     events = StatefulEvents(events=[SCAEvent()])
     await create_stateful_events(events)
 
@@ -26,6 +27,7 @@ async def test_create_stateful_events(events_create_mock, create_indexer_mock):
 @pytest.mark.asyncio
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
 async def test_send_stateless_events(events_send_mock):
+    """Check that the `send_stateless_events` function works as expected."""
     events = StatelessEvents(events=[StatelessEvent(data='data')])
     await send_stateless_events(events)
 

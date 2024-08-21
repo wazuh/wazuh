@@ -18,6 +18,6 @@ class TestEventsModule:
         return self.module_class(client=client_mock)
 
     async def test_send(self, module_instance: EventsModule):
-        """Check the correct function of `send` method."""
+        """Check that the EventsModule `send` method works as expected."""
         events = [StatelessEvent(data='data')]
         await module_instance.send(events)
