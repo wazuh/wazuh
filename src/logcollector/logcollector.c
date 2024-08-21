@@ -578,8 +578,7 @@ void LogCollectorStart()
                         if (reload_file(current) == -1) {
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                            EVP_MD_CTX_free(old_file_status->context);
-                            os_free(old_file_status);
+                            free_files_status_data(old_file_status);
                             w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
                             current->ign++;
@@ -654,8 +653,7 @@ void LogCollectorStart()
                             if(current->exists==1){
                                 minfo(FORGET_FILE, current->file);
                                 os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                                EVP_MD_CTX_free(old_file_status->context);
-                                os_free(old_file_status);
+                                free_files_status_data(old_file_status);
                                 w_logcollector_state_delete_file(current->file);
                                 current->exists = 0;
                             }
@@ -711,8 +709,7 @@ void LogCollectorStart()
                         if(current->exists==1){
                             minfo(FORGET_FILE, current->file);
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                            EVP_MD_CTX_free(old_file_status->context);
-                            os_free(old_file_status);
+                            free_files_status_data(old_file_status);
                             w_logcollector_state_delete_file(current->file);
                             current->exists = 0;
                         }
@@ -756,8 +753,7 @@ void LogCollectorStart()
                                current->file);
 
                         os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                        EVP_MD_CTX_free(old_file_status->context);
-                        os_free(old_file_status);
+                        free_files_status_data(old_file_status);
                         w_logcollector_state_delete_file(current->file);
 
                         fclose(current->fp);
@@ -791,8 +787,7 @@ void LogCollectorStart()
 
                         /* Get new file */
                         os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                        EVP_MD_CTX_free(old_file_status->context);
-                        os_free(old_file_status);
+                        free_files_status_data(old_file_status);
                         w_logcollector_state_delete_file(current->file);
 
                         fclose(current->fp);
@@ -887,8 +882,7 @@ void LogCollectorStart()
                         if (!PathFileExists(current->file)) {
 #endif
                             os_file_status_t * old_file_status = OSHash_Delete_ex(files_status, current->file);
-                            EVP_MD_CTX_free(old_file_status->context);
-                            os_free(old_file_status);
+                            free_files_status_data(old_file_status);
                             w_logcollector_state_delete_file(current->file);
 
                             if (Remove_Localfile(&(globs[j].gfiles), i, 1, 0,&globs[j])) {
@@ -1026,7 +1020,7 @@ int handle_file(int i, int j, __attribute__((unused)) int do_fseek, int do_log)
     /* We must be able to open the file, fseek and get the
      * time of change from it.
      */
-    
+
     /* TODO: Support text mode on Windows */
     lf->fp = wfopen(lf->file, "rb");
     if (!lf->fp) {
@@ -1115,7 +1109,7 @@ error:
 
 /* Reload file: open after close, and restore position */
 int reload_file(logreader * lf) {
-    
+
     /* TODO: Support text mode on Windows */
     lf->fp = wfopen(lf->file, "rb");
 

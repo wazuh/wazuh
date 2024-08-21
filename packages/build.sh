@@ -81,7 +81,9 @@ build_dir="/build_wazuh"
 
 source helper_function.sh
 
-set -x
+if [ -n "${WAZUH_VERBOSE}" ]; then
+  set -x
+fi
 
 # Download source code if it is not shared from the local host
 if [ ! -d "/wazuh-local-src" ] ; then
