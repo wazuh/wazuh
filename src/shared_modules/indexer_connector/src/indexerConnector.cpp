@@ -34,8 +34,8 @@ constexpr auto MAX_WAIT_TIME {60};
 constexpr auto START_TIME {1};
 constexpr auto DOUBLE_FACTOR {2};
 
-// Single thread because the events needs to be processed in order.
-constexpr auto DATABASE_WORKERS = 1;
+// Single thread in case the events needs to be processed in order.
+constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
 // Sync configuration
@@ -301,6 +301,12 @@ IndexerConnector::IndexerConnector(
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
+    // Validate threads number
+    if (workingThreads <= 0)
+    {
+        logDebug1(IC_NAME, "Invalid number of working threads, using default value.");
+    }
+
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
         {
@@ -363,7 +369,7 @@ IndexerConnector::IndexerConnector(
         },
         DATABASE_BASE_PATH + m_indexName,
         ELEMENTS_PER_BULK,
-        workingThreads);
+        workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING : workingThreads);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]

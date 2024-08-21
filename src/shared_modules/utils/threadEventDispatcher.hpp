@@ -41,6 +41,11 @@ public:
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
         , m_numberOfThreads {numberOfThreads}
     {
+        if (m_numberOfThreads <= 0)
+        {
+            throw std::invalid_argument("Number of threads must be greater than 0.");
+        }
+
         m_threads.reserve(m_numberOfThreads);
 
         for (unsigned int i = 0; i < m_numberOfThreads; ++i)
@@ -59,6 +64,10 @@ public:
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
         , m_numberOfThreads {numberOfThreads}
     {
+        if (m_numberOfThreads <= 0)
+        {
+            throw std::invalid_argument("Number of threads must be greater than 0.");
+        }
     }
 
     TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
