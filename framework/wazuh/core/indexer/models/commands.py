@@ -35,14 +35,6 @@ class Result(Document):
 
 
 @dataclass
-class Agent:
-    """Agent data model in the context of commands."""
-    # TODO(25121): this should be a UUID, but pydantic supports up to v5 only.
-    # Related to https://github.com/python/cpython/issues/89083.
-    id: str
-
-
-@dataclass
 class Command(Result):
     """Command data model."""
     args: List[str] = None
