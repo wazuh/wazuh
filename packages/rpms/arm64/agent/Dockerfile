@@ -1,5 +1,9 @@
 FROM arm64v8/centos:7
 
+# CentOS 7 is EOL, so we need to change the repositories to use the vault
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*
+RUN sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+
 # Enable EPEL
 RUN yum install -y http://packages.wazuh.com/utils/pkg/epel-release-latest-7.noarch.rpm
 

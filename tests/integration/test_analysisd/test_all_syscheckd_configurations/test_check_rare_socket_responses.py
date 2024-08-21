@@ -82,8 +82,9 @@ receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 # Test function.
 @pytest.mark.parametrize('test_metadata', test_metadata, ids=test_cases_ids)
-def test_validate_rare_socket_responses(test_metadata, configure_local_internal_options, configure_sockets_environment_module,
-                                        connect_to_sockets_module, wait_for_analysisd_startup):
+def test_validate_rare_socket_responses(
+    test_metadata, configure_local_internal_options, configure_sockets_environment_module,
+        connect_to_sockets_module, wait_for_analysisd_startup):
     '''
     description: Validate each response from the 'wazuh-analysisd' daemon socket
                  to the 'wazuh-db' daemon socket using rare 'syscheck' events
@@ -131,11 +132,12 @@ def test_validate_rare_socket_responses(test_metadata, configure_local_internal_
 
     # Start monitor
     receiver_sockets[0].send(test_metadata['input'])
-    monitored_sockets[0].start(callback=callback, timeout=session_parameters.default_timeout)
+    monitored_sockets[0].start(callback=callback, timeout=session_parameters.default_timeout, encoding='utf-8')
 
     # Check that expected message appears
     for actual, expected in zip(monitored_sockets[0].callback_result, callback(test_metadata['output'])):
         try:
-            assert json.loads(actual) == json.loads(expected), 'Failed test case stage: {}'.format(test_metadata['stage'])
+            assert json.loads(actual) == json.loads(
+                expected), 'Failed test case stage: {}'.format(test_metadata['stage'])
         except json.decoder.JSONDecodeError:
             assert actual == expected, 'Failed test case stage: {}'.format(test_metadata['stage'])

@@ -8,9 +8,9 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 type: integration
 
 brief: File Integrity Monitoring (FIM) system watches selected files and triggering alerts when
-       these files are modified. Specifically, these tests will check if FIM limits the size of
-       the file monitored to generate 'diff' information to the limit set in the 'file_size' tag
-       when the 'report_changes' option is enabled.
+       these files are modified. Specifically, these tests will verify that FIM does not limit
+       the size of the 'queue/diff/local' folder where Wazuh stores the compressed files used
+       to perform the 'diff' operation when the 'disk_quota' option is enabled with specific values.
        The FIM capability is managed by the 'wazuh-syscheckd' daemon, which checks configured
        files for changes to the checksums, permissions, and ownership.
 
@@ -48,7 +48,7 @@ os_version:
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
-    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html#file-size
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html#disk-quota
 
 pytest_args:
     - fim_mode:
@@ -74,12 +74,12 @@ from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG, FILE_MAX_SIZE, RT_DELAY
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import FILE_SIZE_LIMIT_REACHED, EVENT_TYPE_REPORT_CHANGES, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED, ERROR_MSG_FILE_LIMIT_REACHED, \
-                                               DIFF_FOLDER_DELETED, ERROR_MSG_FOLDER_DELETED, EVENT_UNABLE_DIFF
+from wazuh_testing.modules.fim.patterns import DISK_QUOTA_LIMIT_REACHED, EVENT_TYPE_REPORT_CHANGES, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED, \
+                                               ERROR_MSG_FILE_LIMIT_REACHED, EVENT_UNABLE_DIFF
 from wazuh_testing.modules.fim.utils import make_diff_file_path
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.file import write_file, translate_size
-from wazuh_testing.utils.string import generate_string
+from wazuh_testing.utils.random import get_random_string
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
@@ -91,7 +91,7 @@ pytestmark = [pytest.mark.agent, pytest.mark.linux, pytest.mark.win32, pytest.ma
 
 
 # Test metadata, configuration and ids.
-cases_path = Path(TEST_CASES_PATH, 'cases_file_size_values.yaml')
+cases_path = Path(TEST_CASES_PATH, 'cases_disk_quota_values.yaml')
 config_path = Path(CONFIGS_PATH, 'configuration_diff_size.yaml')
 test_configuration, test_metadata, cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(config_path, test_configuration, test_metadata)
@@ -103,16 +103,16 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: 2, FILE_MAX_S
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_file_size_values(test_configuration, test_metadata, configure_local_internal_options,
-                                    truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler, detect_end_scan):
+def test_disk_quota_values(test_configuration, test_metadata, configure_local_internal_options,
+                           truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler, detect_end_scan):
     '''
-    description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                 'diff' information from the limit set in the 'file_size' tag. For this purpose, the test
-                 will monitor a directory, create a testing file smaller than the 'file_limit' value,
+    description: Check if the 'wazuh-syscheckd' daemon limits the size of the diff folder to generate
+                 'diff' information from a specific value of the 'disk_quota' option. For this purpose,
+                 the test will monitor a directory, create a testing file smaller than the configured quota,
                  and check if the compressed file has been created. Then, it will increase the size of
-                 the testing file. Finally, the test will verify that the FIM event related to the reached
-                 file size limit has been generated, and the compressed file in the 'queue/diff/local'
-                 directory does not exist.
+                 the testing file. Finally, the test will verify that the FIM event related to the
+                 reached quota limit has been generated with the content_changes correct message, and
+                 the compressed file in the 'queue/diff/local' directory does not exist.
 
     wazuh_min_version: 4.6.0
 
@@ -148,20 +148,20 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
             brief: Check first scan end.
 
     assertions:
-        - Verify that the 'diff' folder is created when a monitored file does not exceed the size limit.
-        - Verify that FIM events are generated indicating the size limit reached of monitored files
-          to generate 'diff' information when a limit is set in the 'file_size' tag.
+        - Verify that the 'diff' folder is created when a monitored file does not exceed the quota limit.
+        - Verify that FIM events are generated indicating the quota limit reached of monitored files
+          to generate 'diff' information when a limit is set in the 'disk_quota' tag.
         - Verify that the 'diff' folder is removed when a monitored file exceeds the size limit.
 
     input_description: An external YAML file (configuration_diff_size.yaml) includes configuration settings for the agent.
-                       Different test cases are found in the cases_file_size_values.yaml file and include parameters for
+                       Different test cases are found in the cases_disk_quota_values.yaml file and include parameters for
                        the environment setup, the requests to be made, and the expected result.
 
     expected_output:
         - r'.*Sending FIM event: .*"content_changes":"...000...".*'
         - r'.*Folder .* has been deleted.*'
-        - r'.*File .* is too big for configured maximum size to perform diff operation'
-        - r'.*"content_changes":"Unable to calculate diff due to 'file_size' limit has been reached."'
+        - r'.*The .* of the file size .* exceeds the disk_quota.*'
+        - r'.*"content_changes":"Unable to calculate diff due to 'disk_quota' limit has been reached."'
 
     tags:
         - diff
@@ -170,11 +170,11 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
     if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
         time.sleep(5)
 
-    size_limit = translate_size(test_metadata.get('file_size_limit'))
+    size_limit = translate_size(test_metadata.get('disk_quota_limit'))
     diff_file_path = make_diff_file_path(folder=test_metadata.get('folder_to_monitor'), filename=test_metadata.get('filename'))
 
     # Modify file with a smaller size than the configured value
-    to_write = "test_string" + generate_string(int(size_limit / 2), '0')
+    to_write = "test_string" + get_random_string(int(size_limit / 10))
     write_file(file_to_monitor, data=to_write)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
@@ -187,19 +187,16 @@ def test_file_size_values(test_configuration, test_metadata, configure_local_int
         pytest.raises(FileNotFoundError(f"{diff_file_path} not found. It should exist before increasing the size."))
 
     # Increase the size of the file over the configured value
-    to_write = generate_string(size_limit, '1')
-    write_file(file_to_monitor, data=to_write * 2)
+    to_write += get_random_string(int(size_limit * 3))
+    write_file(file_to_monitor, data=to_write)
 
-    wazuh_log_monitor.start(callback=generate_callback(DIFF_FOLDER_DELETED), timeout=30)
-    assert wazuh_log_monitor.callback_result, ERROR_MSG_FOLDER_DELETED
-
-    if os.path.exists(diff_file_path):
-        pytest.raises(FileExistsError(f"{diff_file_path} found. It should not exist after incresing the size."))
-
-    wazuh_log_monitor.start(callback=generate_callback(FILE_SIZE_LIMIT_REACHED), timeout=30)
+    wazuh_log_monitor.start(callback=generate_callback(DISK_QUOTA_LIMIT_REACHED), timeout=30)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FILE_LIMIT_REACHED
 
     # Check the content_changes field in the event
     wazuh_log_monitor.start(callback=generate_callback(EVENT_UNABLE_DIFF), timeout=30)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
-    assert 'Unable to calculate diff due to \'file_size\' limit has been reached.' in wazuh_log_monitor.callback_result, 'Wrong content_changes field'
+    assert 'Unable to calculate diff due to \'disk_quota\' limit has been reached.' in wazuh_log_monitor.callback_result, 'Wrong content_changes field'
+
+    if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
+        time.sleep(5)

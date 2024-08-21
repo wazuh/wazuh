@@ -65,11 +65,14 @@ tags:
 from pathlib import Path
 
 import pytest
+import time
+import sys
 
+from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.modules.agentd.configuration import AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import FILE_EXCEEDS_DISK_QUOTA
+from wazuh_testing.modules.fim.patterns import DISK_QUOTA_LIMIT_REACHED, EVENT_TYPE_REPORT_CHANGES, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils.file import write_file
 from wazuh_testing.utils.string import generate_string
@@ -96,8 +99,8 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: '2'}
 
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
-def test_disk_quota_disabled(test_configuration, test_metadata, configure_local_internal_options,
-                                    truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler):
+def test_disk_quota_disabled(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
+                             set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon limits the size of the folder where the data used
                  to perform the 'diff' operations is stored when the 'disk_quota' option is disabled.
@@ -151,11 +154,16 @@ def test_disk_quota_disabled(test_configuration, test_metadata, configure_local_
         - disk_quota
         - scheduled
     '''
+    if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
+        time.sleep(5)
+
     to_write = generate_string(test_metadata.get('string_size'), '0')
     write_file(test_metadata.get('file_to_monitor'), data=to_write)
 
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    wazuh_log_monitor.start(generate_callback(DISK_QUOTA_LIMIT_REACHED), timeout=30)
+    assert (wazuh_log_monitor.callback_result == None), f'Error, unexpected disk_quota limit event.'
 
-    wazuh_log_monitor.start(generate_callback(FILE_EXCEEDS_DISK_QUOTA), timeout=30)
-
-    assert (wazuh_log_monitor.callback_result == None), f'Error exceeds disk quota detected.'
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_REPORT_CHANGES), timeout=30)
+    assert wazuh_log_monitor.callback_result, ERROR_MSG_REPORT_CHANGES_EVENT_NOT_DETECTED
+    assert 'More changes...' in str(wazuh_log_monitor.callback_result[0]), 'Wrong content_changes field'
