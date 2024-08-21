@@ -43,9 +43,14 @@ protected:
     void TearDown() override;
 };
 
-void VersionMatcherTest::SetUp() {};
+void VersionMatcherTest::SetUp()
+{
+    logging::testInit();
+};
 
-void VersionMatcherTest::TearDown() {};
+void VersionMatcherTest::TearDown() {
+    // Clean up any resources used by the test.
+};
 
 TEST_F(VersionMatcherTest, windowsStrategy)
 {
