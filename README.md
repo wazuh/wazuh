@@ -58,13 +58,8 @@ In order to integrate CMake and c++ with VSCode we need to install the [c++ exte
 ```
 CMake: Configure
 ```
-We can select CMake build variant, targets, executable and tests on the bottom menu:
-
-![](docs/img/bottom_menu.png)
-
-We can also see build information on the dedicated CMake section on the left side menu:
-
-![](docs/img/left_menu_cmake.png)
+- We can select CMake build variant, targets, executable and tests on the bottom menu.
+- We can also see build information on the dedicated CMake section on the left side menu.
 
 <a name="astyle"></a>
 ### Astyle formatter
@@ -76,6 +71,14 @@ We need to [install astyle](http://astyle.sourceforge.net/install.html) and [c++
         "--options=${workspaceFolder}/.vscode/astyle.config"
     ]
 }
+- **Make a new directory to hold vcpkg and extract the tar.gz file**:
+```bash
+mkdir /home/$USER/engine/vcpkg
+tar xf vcpkg.tar.gz --strip-components=1 -C /home/$USER/engine/vcpkg
+```
+- **Build vcpkg**:
+```bash
+/home/$USER/engine/vcpkg/bootstrap-vcpkg.sh
 ```
 And create `astyle.config` file inside `.vscode` folder using Wazuh style guidelines:
 ```
