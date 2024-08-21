@@ -1990,7 +1990,7 @@ static void test_get_user_error(void **state) {
     will_return(__wrap_getpwuid_r, ENOENT);
 #endif
 
-    expect_string(__wrap__mdebug2, formatted_msg, "Failed getting user_name (2): 'No such file or directory'\n");
+    expect_string(__wrap__mdebug2, formatted_msg, "Failed getting user_name for uid 1: (2): 'No such file or directory'\n");
 
     user = get_user(1);
 
@@ -2044,6 +2044,26 @@ static void test_get_group_no_group(void **state) {
 
     assert_null(output);
 }
+
+static void test_get_group_error(void **state) {
+    const char *output;
+
+    errno = ENOENT;
+
+    will_return(__wrap_sysconf, 8);
+
+    expect_value(__wrap_w_getgrgid, gid, 1000);
+    will_return(__wrap_w_getgrgid, NULL);
+    will_return(__wrap_w_getgrgid, NULL); // We don't care about member buffers
+    will_return(__wrap_w_getgrgid, 0); // Fail
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Failed getting group_name for gid 1000: (2): 'No such file or directory'\n");
+
+    output = get_group(1000);
+
+    assert_null(output);
+}
+
 #else
 static void test_get_group(void **state) {
     assert_string_equal(get_group(0), "");
@@ -4725,6 +4745,7 @@ int main(int argc, char *argv[]) {
         /* get_group tests */
         cmocka_unit_test(test_get_group_success),
         cmocka_unit_test(test_get_group_no_group),
+        cmocka_unit_test_teardown(test_get_group_error, teardown_string),
 
         /* ag_send_syscheck tests */
         cmocka_unit_test(test_ag_send_syscheck_success),

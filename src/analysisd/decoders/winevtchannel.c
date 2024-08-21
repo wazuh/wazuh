@@ -131,7 +131,7 @@ int DecodeWinevt(Eventinfo *lf){
         goto cleanup;
     }
 
-    w_strdup(json_received_event->valuestring, event);
+    event = cJSON_PrintUnformatted(json_received_event);
 
     if(event){
         if (OS_ReadXMLString(event, &xml) < 0){

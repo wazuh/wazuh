@@ -1,15 +1,15 @@
-- name: Test 'file_size' information, fim_mode = scheduled
+- name: Test 'disk_quota' information, fim_mode = scheduled
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '1KB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '1KB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -18,23 +18,48 @@
     filename: 'testfile'
     fim_mode: 'scheduled'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '1KB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '1KB'
 
-- name: Test 'file_size' information, fim_mode = scheduled
+- name: Test 'disk_quota' information, fim_mode = scheduled
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
+    FILE_SIZE_LIMIT: '10KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '10KB'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
+    filename: 'testfile'
+    fim_mode: 'scheduled'
+    report_changes: 'yes'
+    file_size_enabled: 'no'
+    file_size_limit: '10KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '10KB'
+
+- name: Test 'disk_quota' information, fim_mode = scheduled
+  description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
+                'diff' information from the default value of the 'disk_quota' option.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    ATTRIBUTES:
+      - report_changes: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '100KB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '100KB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -43,23 +68,23 @@
     filename: 'testfile'
     fim_mode: 'scheduled'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '100KB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '100KB'
 
-- name: Test 'file_size' information, fim_mode = scheduled
+- name: Test 'disk_quota' information, fim_mode = scheduled
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '1MB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '1MB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -68,49 +93,24 @@
     filename: 'testfile'
     fim_mode: 'scheduled'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '1MB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '1MB'
 
-- name: Test 'file_size' information, fim_mode = scheduled
+- name: Test 'disk_quota' information, fim_mode = realtime
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
-  configuration_parameters:
-    TEST_DIRECTORIES: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir]
-    ATTRIBUTES:
-      - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
-    FILE_SIZE_LIMIT: '10MB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
-  metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir]
-    file_to_monitor: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
-    filename: 'testfile'
-    fim_mode: 'scheduled'
-    report_changes: 'yes'
-    file_size_enabled: 'yes'
-    file_size_limit: '10MB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
-
-- name: Test 'file_size' information, fim_mode = realtime
-  description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - realtime: 'yes'
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '1KB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '1KB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -119,24 +119,50 @@
     filename: 'testfile'
     fim_mode: 'realtime'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '1KB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '1KB'
 
-- name: Test 'file_size' information, fim_mode = realtime
+- name: Test 'disk_quota' information, fim_mode = realtime
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - realtime: 'yes'
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
+    FILE_SIZE_LIMIT: '10KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '10KB'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
+    filename: 'testfile'
+    fim_mode: 'realtime'
+    report_changes: 'yes'
+    file_size_enabled: 'no'
+    file_size_limit: '10KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '10KB'
+
+- name: Test 'disk_quota' information, fim_mode = realtime
+  description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
+                'diff' information from the default value of the 'disk_quota' option.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    ATTRIBUTES:
+      - realtime: 'yes'
+      - report_changes: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '100KB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '100KB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -145,24 +171,24 @@
     filename: 'testfile'
     fim_mode: 'realtime'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '100KB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '100KB'
 
-- name: Test 'file_size' information, fim_mode = realtime
+- name: Test 'disk_quota' information, fim_mode = realtime
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - realtime: 'yes'
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '1MB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '1MB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -171,50 +197,24 @@
     filename: 'testfile'
     fim_mode: 'realtime'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '1MB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '1MB'
 
-- name: Test 'file_size' information, fim_mode = realtime
+- name: Test 'disk_quota' information, fim_mode = whodata
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
-  configuration_parameters:
-    TEST_DIRECTORIES: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir]
-    ATTRIBUTES:
-      - realtime: 'yes'
-      - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
-    FILE_SIZE_LIMIT: '10MB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
-  metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir]
-    file_to_monitor: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
-    filename: 'testfile'
-    fim_mode: 'realtime'
-    report_changes: 'yes'
-    file_size_enabled: 'yes'
-    file_size_limit: '10MB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
-
-- name: Test 'file_size' information, fim_mode = whodata
-  description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - whodata: 'yes'
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '1KB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '1KB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -223,24 +223,50 @@
     filename: 'testfile'
     fim_mode: 'whodata'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '1KB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '1KB'
 
-- name: Test 'file_size' information, fim_mode = whodata
+- name: Test 'disk_quota' information, fim_mode = whodata
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - whodata: 'yes'
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
+    FILE_SIZE_LIMIT: '10KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '10KB'
+  metadata:
+    folder_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    file_to_monitor: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
+    filename: 'testfile'
+    fim_mode: 'whodata'
+    report_changes: 'yes'
+    file_size_enabled: 'no'
+    file_size_limit: '10KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '10KB'
+
+- name: Test 'disk_quota' information, fim_mode = whodata
+  description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
+                'diff' information from the default value of the 'disk_quota' option.
+  configuration_parameters:
+    TEST_DIRECTORIES: !!python/object/apply:os.path.join
+              args: [!!python/object/apply:os.getcwd [], test_dir]
+    ATTRIBUTES:
+      - whodata: 'yes'
+      - report_changes: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '100KB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '100KB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -249,24 +275,24 @@
     filename: 'testfile'
     fim_mode: 'whodata'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '100KB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '100KB'
 
-- name: Test 'file_size' information, fim_mode = whodata
+- name: Test 'disk_quota' information, fim_mode = whodata
   description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
+                'diff' information from the default value of the 'disk_quota' option.
   configuration_parameters:
     TEST_DIRECTORIES: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
     ATTRIBUTES:
       - whodata: 'yes'
       - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
+    FILE_SIZE_ENABLED: 'no'
     FILE_SIZE_LIMIT: '1MB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
+    DISK_QUOTA_ENABLED: 'yes'
+    DISK_QUOTA_LIMIT: '1MB'
   metadata:
     folder_to_monitor: !!python/object/apply:os.path.join
               args: [!!python/object/apply:os.getcwd [], test_dir]
@@ -275,33 +301,7 @@
     filename: 'testfile'
     fim_mode: 'whodata'
     report_changes: 'yes'
-    file_size_enabled: 'yes'
+    file_size_enabled: 'no'
     file_size_limit: '1MB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
-
-- name: Test 'file_size' information, fim_mode = whodata
-  description: Check if the 'wazuh-syscheckd' daemon limits the size of the monitored file to generate
-                'diff' information from the default value of the 'file_size' option.
-  configuration_parameters:
-    TEST_DIRECTORIES: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir]
-    ATTRIBUTES:
-      - whodata: 'yes'
-      - report_changes: 'yes'
-    FILE_SIZE_ENABLED: 'yes'
-    FILE_SIZE_LIMIT: '10MB'
-    DISK_QUOTA_ENABLED: 'no'
-    DISK_QUOTA_LIMIT: '2KB'
-  metadata:
-    folder_to_monitor: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir]
-    file_to_monitor: !!python/object/apply:os.path.join
-              args: [!!python/object/apply:os.getcwd [], test_dir, testfile]
-    filename: 'testfile'
-    fim_mode: 'whodata'
-    report_changes: 'yes'
-    file_size_enabled: 'yes'
-    file_size_limit: '10MB'
-    disk_quota_enabled: 'no'
-    disk_quota_limit: '2KB'
+    disk_quota_enabled: 'yes'
+    disk_quota_limit: '1MB'

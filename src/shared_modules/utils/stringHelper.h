@@ -75,7 +75,7 @@ namespace Utils
         while (std::string::npos != pos)
         {
             data.replace(pos, toSearch.size(), toReplace);
-            pos = data.find(toSearch, pos);
+            pos = data.find(toSearch, pos + toReplace.size());
         }
 
         return ret;
@@ -130,6 +130,21 @@ namespace Utils
     static std::string trim(const std::string& str, const std::string& args = " ")
     {
         return leftTrim(rightTrim(str, args), args);
+    }
+
+    static std::string trimRepeated(const std::string& str, char c = ' ')
+    {
+        auto haystack = str;
+        auto needle = std::string(2, c);
+        auto pos = haystack.find(needle);
+
+        while (std::string::npos != pos)
+        {
+            haystack.replace(pos, 2, 1, c);
+            pos = haystack.find(needle);
+        }
+
+        return haystack;
     }
 
     static std::vector<std::string> split(const std::string& str, const char delimiter)

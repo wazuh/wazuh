@@ -178,11 +178,15 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
                 f.seek(0)
                 if self.is_csv(f):
                     aws_tools.debug("+++ Log file is CSV formatted.", 2)
-                    dialect = csv.Sniffer().sniff(f.read(1024))
-                    f.seek(0)
-                    reader = csv.DictReader(f, dialect=dialect)
-                    return [dict({k: v for k, v in row.items() if v is not None},
-                                 source='custom') for row in reader]
+                    try:
+                        dialect = csv.Sniffer().sniff(f.readline())
+                        f.seek(0)
+                        reader = csv.DictReader(f, dialect=dialect)
+                        return [dict({k: v for k, v in row.items() if v is not None},
+                                     source='custom') for row in reader]
+                    except MemoryError:
+                        aws_tools.error(f"The size of the {log_path} file exceeds the available memory.")
+                        sys.exit(9)
                 else:
                     aws_tools.debug("+++ Data in the file does not seem to be CSV. Trying with plain text.", 2)
                     try:
