@@ -251,7 +251,7 @@ def test_false_positives(run_process_and_monitor_log):
     """
     # Change working directory to the root of the project parent directory.
     # This is required to run the binary.
-    os.chdir(Path(__file__).parent.parent.parent.parent)
+    os.chdir(Path(__file__).parent.parent.parent.parent.parent)
     LOGGER.info("Running false positive test")
     found_lines = run_process_and_monitor_log
     for line, found in found_lines.items():
