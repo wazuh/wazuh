@@ -1,5 +1,5 @@
-run-name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
-name: Build Wazuh manager
+run-name: Package - Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }} ${{ inputs.is_stage && '- is stage' || '' }} ${{ inputs.checksum && '- checksum' || '' }} ${{ inputs.debug && '- debug' || '' }} ${{ inputs.id }}
+name: Package - Build Wazuh manager
 
 on:
   workflow_dispatch:
@@ -120,7 +120,7 @@ jobs:
         working-directory: packages
         run: |
           REVISION=${{ inputs.revision }}
-          FLAGS="-t manager -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS="--verbose -t manager -s /tmp --dont-build-docker -j $(nproc) "
           if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi

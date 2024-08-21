@@ -160,6 +160,8 @@ def test_report_when_deleted_directories(test_configuration, test_metadata, conf
         - scheduled
     '''
     fim_mode = test_metadata.get('fim_mode')
+    if fim_mode == 'whodata':
+        time.sleep(5)
     folder = test_metadata.get('folder')
     test_file_path = os.path.join(folder, test_metadata.get('filename'))
 

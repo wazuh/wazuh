@@ -51,13 +51,13 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
                                                                  tzinfo=timezone.utc)
 
 
-@patch('wazuh_integration.botocore')
+@patch('wazuh_integration.config')
 @pytest.mark.parametrize('file_exists, options, retry_attempts, retry_mode',
                          [(True, [aws_tools.RETRY_ATTEMPTS_KEY, aws_tools.RETRY_MODE_BOTO_KEY], 5, 'standard'),
                           (True, ['other_option'], None, None),
                           (False, None, None, None)]
                          )
-def test_default_config(mock_botocore, file_exists, options, retry_attempts, retry_mode):
+def test_default_config(mock_boto_config, file_exists, options, retry_attempts, retry_mode):
     """Test if `default_config` function returns the Wazuh default Retry configuration if there is no user-defined
     configuration.
 
@@ -96,9 +96,9 @@ def test_default_config(mock_botocore, file_exists, options, retry_attempts, ret
         else:
             config = wazuh_integration.WazuhIntegration.default_config(profile=utils.TEST_AWS_PROFILE)
 
-            mock_botocore.config.Config.assert_called_with(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+            mock_boto_config.Config.assert_called_with(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
             assert 'config' in config
-            assert config['config'] == mock_botocore.config.Config(
+            assert config['config'] == mock_boto_config.Config(
                 retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
 
 
@@ -210,9 +210,9 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
 
 
 def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
-    """Test `get_client` function handles botocore.exceptions as expected."""
+    """Test `get_client` function handles exceptions as expected."""
     mock_boto_session = MagicMock()
-    mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
+    mock_boto_session.client.side_effect = wazuh_integration.exceptions.ClientError({'Error': {'Code': 1}},
                                                                                              'operation')
 
     with patch('wazuh_integration.utils.find_wazuh_path', return_value=utils.TEST_WAZUH_PATH), \
@@ -263,7 +263,7 @@ def test_wazuh_integration_get_sts_client(access_key, secret_key, profile):
 def test_wazuh_integration_get_sts_client_handles_exceptions_when_invalid_creds_provided():
     """Test `get_sts_client` function handles invalid credentials exception as expected."""
     mock_boto_session = MagicMock()
-    mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
+    mock_boto_session.client.side_effect = wazuh_integration.exceptions.ClientError({'Error': {'Code': 1}},
                                                                                              'operation')
 
     instance = utils.get_mocked_wazuh_integration(access_key=None, secret_key=None, profile=None)

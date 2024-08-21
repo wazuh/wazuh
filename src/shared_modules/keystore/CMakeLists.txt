@@ -51,4 +51,9 @@ set_target_properties(wazuh-keystore PROPERTIES
     BUILD_RPATH "$ORIGIN/../lib"
 )
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${ORIGINAL_RUNTIME_OUTPUT_DIRECTORY})
+
+if(UNIT_TEST)
+    add_subdirectory(tests)
+endif()
 add_subdirectory(testtool)

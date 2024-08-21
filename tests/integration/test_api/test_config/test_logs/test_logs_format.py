@@ -166,7 +166,7 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
         else:
             json_file_monitor.start(callback=generate_callback(API_LOGIN_REQUEST_MSG, {
                     'user': WAZUH_API_USER,
-                    'host': '127.0.0.1',
+                    'host': '::1',
                     'login_route': LOGIN_ROUTE
                 })
             )
@@ -182,7 +182,7 @@ def test_logs_formats(test_configuration, test_metadata, add_configuration, trun
         else:
             plain_file_monitor.start(callback=generate_callback(API_LOGIN_REQUEST_MSG, {
                     'user': WAZUH_API_USER,
-                    'host': '127.0.0.1',
+                    'host': '::1',
                     'login_route': LOGIN_ROUTE
                 })
             )

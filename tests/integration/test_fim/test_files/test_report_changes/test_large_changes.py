@@ -68,6 +68,7 @@ tags:
 '''
 import os
 import sys
+import time
 
 from pathlib import Path
 
@@ -167,6 +168,8 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
         - r'.*Sending FIM event: (.+)$' ('added' and 'modified' events)
         - The 'More changes' message appears in content_changes when the changes size is bigger than the set limit.
     '''
+    if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
+        time.sleep(5)
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     limit = 50000
     test_file_path = os.path.join(test_metadata.get('folder_to_monitor'), test_metadata.get('filename'))
