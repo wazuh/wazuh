@@ -26,18 +26,6 @@
   ],
   "overrides": [
     {
-      "name": "libuv",
-      "version": "1.48.0#0"
-    },
-    {
-      "name": "spdlog",
-      "version": "1.14.1#0"
-    },
-    {
-      "name": "gtest",
-      "version": "1.15.0#0"
-    },
-    {
       "name": "benchmark",
       "version": "1.8.5#0"
     },
@@ -54,16 +42,32 @@
       "version": "8.9.1#0"
     },
     {
+      "name": "date",
+      "version": "2024-05-14#0"
+    },
+    {
+      "name": "flatbuffers",
+      "version": "24.3.25#0"
+    },
+    {
+      "name": "fast-float",
+      "version": "6.1.4#0"
+    },
+    {
+      "name": "fmt",
+      "version": "8.1.1#2"
+    },
+    {
+      "name": "gtest",
+      "version": "1.15.0#0"
+    },
+    {
       "name": "libmaxminddb",
       "version": "1.9.1#0"
     },
     {
-      "name": "yaml-cpp",
-      "version": "0.8.0#0"
-    },
-    {
-      "name": "uvw",
-      "version": "2.12.1#2"
+      "name": "libuv",
+      "version": "1.48.0#0"
     },
     {
       "name": "opentelemetry-cpp",
@@ -72,10 +76,6 @@
     {
       "name": "protobuf",
       "version": "3.21.12#4"
-    },
-    {
-      "name": "date",
-      "version": "2024-05-14#0"
     },
     {
       "name": "pugixml",
@@ -98,16 +98,24 @@
       "version": "4.1.1#1"
     },
     {
+      "name": "spdlog",
+      "version": "1.14.1#0"
+    },
+    {
       "name": "taskflow",
       "version": "3.7.0#0"
     },
     {
-      "name": "fmt",
-      "version": "8.1.1#2"
+      "name": "uvw",
+      "version": "2.12.1#2"
     },
     {
-      "name": "fast-float",
-      "version": "6.1.4#0"
+      "name": "yaml-cpp",
+      "version": "0.8.0#0"
+    },
+    {
+      "name": "cpp-httplib",
+      "version": "0.16.2#0"
     }
   ]
 }
