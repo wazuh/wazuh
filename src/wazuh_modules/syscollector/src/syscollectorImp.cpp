@@ -1025,7 +1025,6 @@ Syscollector::Syscollector()
     , m_hotfixes { false }
     , m_stopping { true }
     , m_notify { false }
-    , m_lastSyncMsg { 0 }
 {}
 
 std::string Syscollector::getCreateStatement() const
