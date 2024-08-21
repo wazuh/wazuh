@@ -19,6 +19,7 @@ DatabaseFeedManager::DatabaseFeedManager(std::shared_mutex& mutex)
 {
     try
     {
+        LOG_INFO("Starting database file decompression.");
         m_feedDatabase = std::make_unique<utils::rocksdb::RocksDBWrapper>(DATABASE_PATH, false);
 
         // Try to load global maps from the database, if it fails we throw an exception to force the download of
