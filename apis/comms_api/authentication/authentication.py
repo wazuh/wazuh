@@ -7,11 +7,12 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jwt import decode, encode
 from jwt.exceptions import PyJWTError
 
-from api.authentication import get_keypair, JWT_ISSUER, EXPIRED_TOKEN, INVALID_TOKEN
+from api.authentication import get_keypair, JWT_ISSUER
 from comms_api.routers.exceptions import HTTPError
+from wazuh.core.exception import WazuhCommsAPIError
 from wazuh.core.utils import get_utc_now
 
-JWT_AUDIENCE = 'Wazuh Agent Comms API'
+JWT_AUDIENCE = 'Wazuh Communications API'
 JWT_ALGORITHM = 'ES256'
 JWT_EXPIRATION = 900
 
@@ -43,7 +44,11 @@ class JWTBearer(HTTPBearer):
             payload = decode_token(credentials.credentials)
             # Store the agent UUID in the request context
             request.state.agent_uuid = payload.get('uuid', '')
-        except (HTTPException, Exception) as exc:
+        except HTTPException as exc:
+            raise HTTPError(message=str(exc), status_code=status.HTTP_403_FORBIDDEN)
+        except WazuhCommsAPIError as exc:
+            raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_403_FORBIDDEN)
+        except Exception as exc:
             raise HTTPError(message=str(exc), status_code=status.HTTP_403_FORBIDDEN)
 
         return credentials.credentials
@@ -72,15 +77,15 @@ def decode_token(token: str) -> dict:
         payload = decode(token, public_key, algorithms=[JWT_ALGORITHM], audience=JWT_AUDIENCE)
 
         if (payload['exp'] - payload['iat']) != JWT_EXPIRATION:
-            raise Exception(INVALID_TOKEN)
+            raise WazuhCommsAPIError(2706)
 
         current_timestamp = int(get_utc_now().timestamp())
         if payload['exp'] <= current_timestamp:
-            raise Exception(EXPIRED_TOKEN)
+            raise WazuhCommsAPIError(2707)
 
         return payload
     except PyJWTError as exc:
-        raise Exception(INVALID_TOKEN) from exc
+        raise WazuhCommsAPIError(2706) from exc
 
 
 def generate_token(uuid: str) -> str:

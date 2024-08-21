@@ -440,14 +440,17 @@ class WazuhException(Exception):
         # Indexer
         2200: {'message': 'Could not connect to the indexer'},
         2201: {'message': 'Indexer credentials not provided'},
+        2202: {'message': 'Command does not exist'},
 
-        # Agent comms API
+        # Communications API
         2700: {'message': 'Private key does not match with the certificate'},
         2701: {'message': 'PEM phrase is not correct'},
         2702: {'message': 'Ensure the certificates have the correct permissions'},
         2703: {'message': 'Wazuh comms API SSL error. Please, ensure the configuration is correct'},
         2704: {'message': 'Invalid file name, it must not be a directory'},
         2705: {'message': 'Invalid file name, it must not contain directories'},
+        2706: {'message': 'Invalid authentication token'},
+        2707: {'message': 'Authentication token expired'},
 
         # Engine API client
         2800: {'message': 'The engine client connection timeout has been exceeded'},
@@ -824,10 +827,10 @@ class WazuhHAPHelperError(WazuhClusterError):
 
 class WazuhCommsAPIError(WazuhInternalError):
     """
-    This type of exception is raised inside the Agent comms API.
+    This type of exception is raised inside the Communications API.
     """
     _default_type = "about:blank"
-    _default_title = "Agent comms API Error"
+    _default_title = "Communications API Error"
 
 
 class WazuhEngineError(WazuhInternalError):

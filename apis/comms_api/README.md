@@ -1,3 +1,3 @@
-# Agent communications API
+# Communications API
 
-The Agent communications API is an open source RESTful API that allows for interaction with the Wazuh agents.
+The Communications API is an open source RESTful API that allows Wazuh agents to interact with the server.

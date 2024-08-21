@@ -4,7 +4,7 @@ import pytest
 from fastapi import status
 
 from comms_api.core.files import DIR
-from comms_api.routers.files import files
+from comms_api.routers.files import get_files
 from comms_api.routers.exceptions import HTTPError
 from wazuh.core.exception import WazuhCommsAPIError
 
@@ -25,9 +25,9 @@ class StatMock:
     ('test.so', 'application/octet-stream'),
     ('test.zip', 'application/zip'),
 ])
-async def test_files(stat_mock, file_name, media_type):
-    """Verify that the `files` handler works as expected."""
-    response = await files(file_name)
+async def test_get_files(stat_mock, file_name, media_type):
+    """Verify that the `get_files` handler works as expected."""
+    response = await get_files(file_name)
     response_dict = response.__dict__
 
     assert response_dict['path'] == f'{DIR}/{file_name}'
@@ -43,10 +43,8 @@ async def test_files(stat_mock, file_name, media_type):
     (FileNotFoundError(), 'File does not exist', status.HTTP_404_NOT_FOUND),
     (OSError('error'), 'error', status.HTTP_500_INTERNAL_SERVER_ERROR),
 ])
-async def test_files_ko(exception, message, code):
-    """Verify that the `files` handler catches exceptions successfully."""
+async def test_get_files_ko(exception, message, code):
+    """Verify that the `get_files` handler catches exceptions successfully."""
     with patch('comms_api.routers.files.get_file_path', MagicMock(side_effect=exception)):
-        with pytest.raises(HTTPError) as exc:
-            _ = await files('')
-
-    assert str(exc.value) == f'{code}: {message}'
+        with pytest.raises(HTTPError, match=fr'{code}: {message}'):
+            _ = await get_files('')

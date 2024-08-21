@@ -51,7 +51,5 @@ async def test_authentication(
 async def test_authentication_ko(exception, message):
     """Verify that the `authentication` handler catches exceptions successfully."""
     with patch('wazuh.core.indexer.create_indexer', AsyncMock(side_effect=exception)):
-        with pytest.raises(HTTPError) as exc:
+        with pytest.raises(HTTPError, match=fr'{status.HTTP_403_FORBIDDEN}: {message}'):
             _ = await authentication(Credentials(uuid='', key=''))
-
-    assert str(exc.value) == f'{status.HTTP_403_FORBIDDEN}: {message}'

@@ -221,10 +221,10 @@ if __name__ == '__main__':
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
-        logger.error(f'Error when trying to start the Wazuh Agent comms API. {e}')
+        logger.error(f'Error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     except Exception as e:
-        logger.error(f'Internal error when trying to start the Wazuh Agent comms API. {e}')
+        logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     finally:
         pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)

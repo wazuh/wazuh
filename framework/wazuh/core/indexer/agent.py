@@ -3,15 +3,8 @@ from typing import List
 
 from opensearchpy import exceptions
 
-from .base import BaseIndex, remove_empty_values
-from .constants import (
-    BODY_KEY,
-    INDEX_KEY,
-    QUERY_KEY,
-    SOURCE_KEY,
-    TERMS_KEY,
-)
-from .models.agent import Agent
+from wazuh.core.indexer.base import BaseIndex, IndexerKey, remove_empty_values
+from wazuh.core.indexer.models.agent import Agent
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 
 
@@ -71,8 +64,8 @@ class AgentsIndex(BaseIndex):
             Ids of the deleted agents.
         """
         indexes = ','.join([self.INDEX, *self.SECONDARY_INDEXES])
-        body = {QUERY_KEY: {TERMS_KEY: {'_id': ids}}}
-        parameters = {INDEX_KEY: indexes, BODY_KEY: body, 'conflicts': 'proceed'}
+        body = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
+        parameters = {IndexerKey.INDEX: indexes, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
 
         await self._client.delete_by_query(**parameters, refresh='true')
 
@@ -91,7 +84,7 @@ class AgentsIndex(BaseIndex):
         dict
             The search result.
         """
-        parameters = {INDEX_KEY: self.INDEX, BODY_KEY: query}
+        parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: query}
         return await self._client.search(**parameters)
 
     async def get(self, uuid: str) -> Agent:
@@ -117,7 +110,7 @@ class AgentsIndex(BaseIndex):
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
 
-        return Agent(**data[SOURCE_KEY])
+        return Agent(**data[IndexerKey._SOURCE])
 
     async def update(self, uuid: str, agent: Agent) -> None:
         """Update an agent.
@@ -137,7 +130,7 @@ class AgentsIndex(BaseIndex):
         try:
             # Convert to a dictionary removing empty values to avoid updating them
             agent_dict = asdict(agent, dict_factory=remove_empty_values)
-            body = {'doc': agent_dict}
+            body = {IndexerKey.DOC: agent_dict}
             await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)

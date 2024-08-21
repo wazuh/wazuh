@@ -60,7 +60,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.agent import Agent
         from wazuh.core.exception import WazuhResourceNotFound
         from wazuh.core.indexer.agent import Agent as IndexerAgent
-        from wazuh.core.indexer.constants import ID_KEY, QUERY_KEY, TERMS_KEY, WILDCARD_KEY
+        from wazuh.core.indexer.base import IndexerKey
         from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
         from wazuh.core.tests.test_agent import InitAgent
 
@@ -462,9 +462,9 @@ async def test_agent_delete_agents(
         agents_delete_mock.assert_called_once_with(available_agents)
 
     if len(agent_list) != 0:
-        agents_search_mock.assert_called_once_with(query={QUERY_KEY:{TERMS_KEY:{'_id':agent_list}}})
+        agents_search_mock.assert_called_once_with(query={IndexerKey.QUERY:{IndexerKey.TERMS:{'_id':agent_list}}})
     else:
-        agents_search_mock.assert_called_once_with(query={QUERY_KEY:{WILDCARD_KEY:{ID_KEY:'*'}}})
+        agents_search_mock.assert_called_once_with(query={IndexerKey.QUERY:{IndexerKey.WILDCARD:{IndexerKey._ID:'*'}}})
 
     assert result.affected_items == expected_items
 

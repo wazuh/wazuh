@@ -1124,7 +1124,7 @@ InstallLocal()
     ### Install Server management API
     ${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR}
 
-    ### Install Agent comms API
+    ### Install Communications API
     ${MAKEBIN} --quiet -C ../apis/comms_api install INSTALLDIR=${INSTALLDIR}
 
     ### Restore old API

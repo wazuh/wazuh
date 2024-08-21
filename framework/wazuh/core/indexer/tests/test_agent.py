@@ -5,7 +5,7 @@ import pytest
 from opensearchpy import exceptions
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.agent import AgentsIndex
-from wazuh.core.indexer.constants import QUERY_KEY, TERMS_KEY
+from wazuh.core.indexer.base import IndexerKey
 from wazuh.core.indexer.models.agent import Agent
 
 
@@ -45,7 +45,7 @@ class TestAgentIndex:
         """Check the correct function of `delete` method"""
         ids = ['0191480e-7f67-7fd3-8c52-f49a3176360b', '0191480e-7f67-7fd3-8c52-f49a3176360c']
         indexes = ','.join([index_instance.INDEX, *index_instance.SECONDARY_INDEXES])
-        query = {QUERY_KEY: {TERMS_KEY: {'_id': ids}}}
+        query = {IndexerKey.QUERY: {IndexerKey.TERMS: {IndexerKey._ID: ids}}}
 
         deleted_ids = await index_instance.delete(ids)
 
