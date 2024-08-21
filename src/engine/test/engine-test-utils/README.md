@@ -1,19 +1,20 @@
 # Engine updown
 
-A Python tool to manage instances of the Engine
+A Python library with utils for other testing scripts
 
 ## Installation
 
-You can install `engie-updown` via pip:
+You can install `engine-test-utils` via pip:
 
 ```bash
-pip install ./engine-updown
+pip install ./engine-test-utils
 ```
 
-## Usage
+## Engine updown
+### Usage
 Simply import the engine handler and make an instance:
 ```py
-from engine_updown.handler import EngineHandler
+from engine_handler.handler import EngineHandler
 
 engine_handler = EngineHandler(
             "path/to/engine", "path/to/configuration.conf")
