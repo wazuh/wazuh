@@ -893,7 +893,7 @@ stages:
           failed_items: [ ]
         message: !anystr
 
-  - name: Try to upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
+  - name: Try to upgrade a list of agents that cannot be upgraded (not existing and non active agents)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
@@ -901,7 +901,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,009,010,011,012,998,999'
+        agents_list: '009,010,011,012,998,999'
         upgrade_version: '4.0.0'
     response: &agents_not_upgraded_response
       status_code: 200
@@ -1126,7 +1126,7 @@ stages:
       json:
         <<: *error_spec
 
-  - name: Try to customly upgrade a list of agents that cannot be upgraded (000, not existing and non active agents)
+  - name: Try to customly upgrade a list of agents that cannot be upgraded (not existing and non active agents)
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade_custom"
@@ -1134,7 +1134,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,009,010,011,012,998,999'
+        agents_list: '009,010,011,012,998,999'
         file_path: "{custom_wpk_path:s}"
     response:
       <<: *agents_not_upgraded_response

@@ -1075,7 +1075,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,007,008,999'
+        agents_list: '007,008,999'
         older_than: '0s'
         status: 'all'
     response:
@@ -1092,7 +1092,7 @@ stages:
                 - '007'
                 - '999'
           total_affected_items: 1
-          total_failed_items: 3
+          total_failed_items: 2
     delay_after: !float "{global_db_delay}"
 
   - name: Try to delete all agents (Partially allowed, user agnostic)
@@ -1371,7 +1371,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "000,001,002,005"
+        agents_list: "001,002,005"
     response:
       status_code: 200
       json:
@@ -1386,7 +1386,7 @@ stages:
                 - '001'
                 - '002'
           total_affected_items: 1
-          total_failed_items: 3
+          total_failed_items: 2
     delay_after: !float "{reconnect_delay}"
 
   - name: Try to reconnect all agents (Partially allowed, user agnostic)
@@ -1435,7 +1435,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: "000,001,002,005"
+        agents_list: "001,002,005"
     response:
       verify_response_with:
         function: tavern_utils:healthcheck_agent_restart
@@ -1454,7 +1454,7 @@ stages:
                 - '001'
                 - '002'
           total_affected_items: 1
-          total_failed_items: 3
+          total_failed_items: 2
 
   - name: Try to restart all agents (Partially allowed, user agnostic)
     request:

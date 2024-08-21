@@ -309,7 +309,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: ["005","000"]
+        agents_list: ["005","001"]
     response:
       status_code: 200
       json:

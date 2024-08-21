@@ -198,8 +198,8 @@ stages:
       json:
         error: 1710
 
-    # DELETE /agents/group?group_id=group1&agents_list=000,002
-  - name: Try to remove agents 000 and 002(not assigned to group1) from group1
+    # DELETE /agents/group?group_id=group1&agents_list=002,003
+  - name: Try to remove agents 002 and 003 (not assigned to group1) from group1
     request:
       verify: False
       url: "{protocol:s}://{host:s}:{port:d}/agents/group"
@@ -207,7 +207,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: 000,002
+        agents_list: 002,003
         group_id: group1
     response:
       status_code: 200
@@ -220,8 +220,10 @@ stages:
                 code: 1734
               id:
                 - "002"
+                - "003"
           total_affected_items: 0
           total_failed_items: 2
+
 
     # DELETE /agents/group?group1&agents_list=998,999
   - name: Try to remove agents 998 and 999 from group1
