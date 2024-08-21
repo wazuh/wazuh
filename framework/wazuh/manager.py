@@ -241,41 +241,6 @@ def validation() -> AffectedItemsWazuhResult:
 
 @expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
-def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
-    """Wrapper for get_active_configuration.
-
-    Parameters
-    ----------
-    component : str
-        Selected component.
-    config : str
-        Configuration to get, written on disk.
-
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    result = AffectedItemsWazuhResult(all_msg=f"Active configuration was successfully read"
-                                              f"{' in specified node' if node_id != 'manager' else ''}",
-                                      some_msg='Could not read active configuration in some nodes',
-                                      none_msg=f"Could not read active configuration"
-                                               f"{' in specified node' if node_id != 'manager' else ''}"
-                                      )
-
-    try:
-        data = configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
-        len(data.keys()) > 0 and result.affected_items.append(data)
-    except WazuhError as e:
-        result.add_failed_item(id_=node_id, error=e)
-    result.total_affected_items = len(result.affected_items)
-
-    return result
-
-
-@expose_resources(actions=[f"{'cluster' if cluster_enabled else 'manager'}:read"],
-                  resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def read_ossec_conf(section: str = None, field: str = None, raw: bool = False,
                     distinct: bool = False) -> AffectedItemsWazuhResult:
     """Wrapper for get_ossec_conf.

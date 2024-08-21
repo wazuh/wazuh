@@ -142,7 +142,6 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
          {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
          {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
          {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
-         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '20.04.1 LTS'}},
          {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
      ]
      ),
@@ -154,7 +153,6 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
          {'id': '001', 'os': {'name': 'Ubuntu', 'version': '16.06.1 LTS'}},
          {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
          {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
-         {'id': '000', 'os': {'name': 'Ubuntu', 'version': '20.04.1 LTS'}},
          {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
          {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
          {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
@@ -167,7 +165,6 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
          {'id': '009', 'os': {'major': '10', 'minor': '00', 'platform': 'windows'}},
          {'id': '005', 'os': {'major': '18', 'minor': '08', 'platform': 'ubuntu'}},
          {'id': '001', 'os': {'major': '16', 'minor': '06', 'platform': 'ubuntu'}},
-         {'id': '000', 'os': {'major': '20', 'minor': '04', 'platform': 'ubuntu'}},
          {'id': '007', 'os': {'major': '18', 'minor': '04', 'platform': 'ubuntu'}},
          {'id': '002', 'os': {'major': '16', 'minor': '04', 'platform': 'ubuntu'}},
          {'id': '003'},
@@ -220,7 +217,6 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['001', '002'], ['001', '002'], None),
-    (['000'], [], 1703),
     (['001', '500'], ['001'], 1701)
 ])
 @patch('wazuh.core.agent.Agent.reconnect')
@@ -250,7 +246,6 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
     (['001', '002'], ['001', '002'], None),
-    (['000'], [], 1703),
     (['001', '500'], ['001'], 1701)
 ])
 @patch('wazuh.agent.send_restart_command')
@@ -279,7 +274,6 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_res
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['000', '001', '002'], ['001', '002'], 1703),
     (['001', '500'], ['001'], 1701)
 ])
 @patch('wazuh.agent.send_restart_command')
@@ -801,7 +795,6 @@ def test_assign_agents_to_group(socket_mock, group_exists_mock, send_mock, add_g
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
     (['none-1'], ['001'], WazuhResourceNotFound(1710), True),
     (['group-1'], ['100'], WazuhResourceNotFound(1701), False),
-    (['default'], ['000'], WazuhError(1703), False)
 ])
 @patch('wazuh.agent.Agent.group_exists')
 @patch('wazuh.agent.Agent.add_group_to_agent')
@@ -877,7 +870,6 @@ def test_agent_remove_agent_from_group(mock_get_agents, mock_get_groups, mock_un
 
 @pytest.mark.parametrize('group_id, agent_id, expected_error', [
     ('any-group', '100', WazuhResourceNotFound(1701)),
-    ('any-group', '000', WazuhError(1703)),
     ('group-1', '005', WazuhResourceNotFound(1710)),
 ])
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
@@ -933,7 +925,6 @@ def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_u
 
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
     (['any-group'], ['100'], WazuhResourceNotFound(1701), True),
-    (['any-group'], ['000'], WazuhError(1703), True),
     (['any-group'], ['005'], WazuhResourceNotFound(1710), False),
 ])
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
@@ -1014,8 +1005,6 @@ def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, mock_u
 
 
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['non-group'], ['000'], WazuhResourceNotFound(1710), True),
-    (['group-1'], ['000'], WazuhError(1703), False),
     (['group-1'], ['100'], WazuhResourceNotFound(1701), False),
 ])
 @patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
@@ -1370,7 +1359,6 @@ def test_agent_get_agents_sync_group(socket_mock, send_mock, get_agent_mock, age
 
 
 @pytest.mark.parametrize('agent_list, expected_error', [
-    (['000'], WazuhError(1703)),
     (['100'], WazuhResourceNotFound(1701))
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -1458,7 +1446,6 @@ def test_agent_upload_group_file(mock_upload, group_list):
 
 
 @pytest.mark.parametrize('agent_list, group_list, index_error, last_agent', [
-    (['000', '001'], ['group-2'], False, '001'),
     (['001'], ['group-2'], False, '001'),
     (['001', '002'], ['group-2', 'group-1'], False, '002'),
     (['001', '002', '003'], ['group-2', 'group-1'], False, '002'),
@@ -1604,7 +1591,6 @@ def test_unset_single_group_agent(agent_patch, set_agent_group_patch, get_groups
 
 
 @pytest.mark.parametrize('agent_id, group_id, force, expected_exc', [
-    ('000', 'whatever', False, 1703),
     ('001', 'whatever', False, 1710),
     ('001', 'not_exists', True, 1734),
     ('001', 'default', True, 1745),

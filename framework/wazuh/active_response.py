@@ -46,8 +46,6 @@ def run_command(agent_list: list = None, command: str = '', arguments: list = No
                 try:
                     if agent_id not in system_agents:
                         raise WazuhResourceNotFound(1701)
-                    if agent_id == "000":
-                        raise WazuhError(1703)
                     active_response.send_ar_message(agent_id, wq, command, arguments, alert)
                     result.affected_items.append(agent_id)
                     result.total_affected_items += 1

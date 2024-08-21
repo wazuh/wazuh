@@ -40,7 +40,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - "000"
             - "001"
             - "002"
             - "003"
@@ -554,8 +553,6 @@ stages:
                   time: !anystr
                 state: !anystr
                 tx_queue: !anyint
-            - <<: *ports_response
-              agent_id: '000'
             - <<: *ports_response
               agent_id: '001'
             - <<: *ports_response

@@ -123,10 +123,6 @@ async def get_daemons_stats_agents(daemons_list: list = None, agent_list: list =
 
             agent_list = set(agent_list)
 
-            with contextlib.suppress(KeyError):
-                agent_list.remove('000')
-                result.add_failed_item('000', exception.WazuhError(1703))
-
             # Add non-existent agents to failed_items
             not_found_agents = agent_list - system_agents
             [result.add_failed_item(id_=agent, error=exception.WazuhResourceNotFound(1701)) for agent in

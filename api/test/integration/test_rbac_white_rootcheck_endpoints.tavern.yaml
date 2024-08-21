@@ -3,23 +3,6 @@ test_name: GET /rootcheck
 
 stages:
 
-  - name: Get rootcheck scan results for agent 000 (Allow)
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/rootcheck/000"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: !anything
-          failed_items: []
-          total_affected_items: !anyint
-          total_failed_items: 0
-
   - name: Try to get rootcheck scan results for agent 002 (Deny)
     request:
       verify: False

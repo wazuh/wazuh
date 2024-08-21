@@ -51,7 +51,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - '000'
             - '002'
             - '004'
             - '006'
@@ -203,7 +202,6 @@ stages:
         error: 0
         data: &even_affected_agent_list
           affected_items:
-            - agent_id: '000'
             - agent_id: '002'
             - agent_id: '004'
             - agent_id: '006'
@@ -471,7 +469,6 @@ stages:
         data:
           affected_items:
             # The answer must include at least one item whose agent is shown below
-            - agent_id: '000'
             - agent_id: '002'
             - agent_id: '004'
             - agent_id: '006'

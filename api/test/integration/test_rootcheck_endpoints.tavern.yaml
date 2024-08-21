@@ -514,7 +514,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - "000"
             - "001"
             - "002"
             - "003"

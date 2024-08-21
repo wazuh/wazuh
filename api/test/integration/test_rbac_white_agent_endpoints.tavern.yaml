@@ -16,7 +16,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - id: '000'
             - id: '002'
             - id: '004'
             - id: '006'
@@ -1113,7 +1112,6 @@ stages:
             - error:
                 code: 4000
               id:
-                - '000'
                 - '999'
           total_affected_items: 1
           total_failed_items: 2
@@ -1447,10 +1445,6 @@ stages:
               id:
                 - '001'
             - error:
-                code: 1703
-              id:
-                - '000'
-            - error:
                 code: 4000
               id:
                 - '002'
@@ -1543,10 +1537,6 @@ stages:
                 code: 1701
               id:
                 - '001'
-            - error:
-                code: 1703
-              id:
-                - '000'
             - error:
                 code: 4000
               id:

@@ -169,7 +169,6 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        # We don't consider agent 000 in order to get the summary
         with WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
                                 distinct=True, query="id!=000", **rbac_filters) as db_query:
             query_data = db_query.run()
@@ -207,8 +206,6 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
             try:
                 if agent_id not in system_agents:
                     raise WazuhResourceNotFound(1701)
-                if agent_id == "000":
-                    raise WazuhError(1703)
                 Agent(agent_id).reconnect(wq)
                 result.affected_items.append(agent_id)
             except WazuhException as e:
@@ -241,13 +238,6 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                                       )
 
     agent_list = set(agent_list)
-
-    # Add agent with ID 000 to failed_items
-    try:
-        agent_list.remove('000')
-        result.add_failed_item('000', WazuhError(1703))
-    except KeyError:
-        pass
 
     if agent_list:
         system_agents = get_agents_info()
@@ -295,7 +285,6 @@ def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Affected items.
     """
-    '000' in agent_list and agent_list.remove('000')
     return restart_agents(agent_list=agent_list)
 
 
@@ -844,11 +833,6 @@ def assign_agents_to_group(group_list: list = None, agent_list: list = None, rep
 
     system_agents = get_agents_info()
 
-    # Check agent '000'
-    if '000' in agent_list:
-        agent_list.remove('000')
-        result.add_failed_item(id_='000', error=WazuhError(1703))
-
     agent_list = set(agent_list)
 
     # Check for non-existing agents
@@ -887,8 +871,6 @@ def remove_agent_from_group(group_list: list = None, agent_list: list = None) ->
     ------
     WazuhResourceNotFound(1701)
         Agent was not found.
-    WazuhError(1703)
-        Agent ID is 000.
     WazuhResourceNotFound(1710)
         Group was not found.
 
@@ -903,8 +885,6 @@ def remove_agent_from_group(group_list: list = None, agent_list: list = None) ->
     # Check if agent and group exist and it is not 000
     if agent_id not in get_agents_info():
         raise WazuhResourceNotFound(1701)
-    if agent_id == '000':
-        raise WazuhError(1703)
     if group_id not in get_groups():
         raise WazuhResourceNotFound(1710)
 
@@ -928,8 +908,6 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
     ------
     WazuhResourceNotFound(1701)
         Agent was not found.
-    WazuhError(1703)
-        Agent ID is 000.
 
     Returns
     -------
@@ -1054,10 +1032,6 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
                                       none_msg='No agent information was returned'
                                       )
     if agent_list:
-        # Get manager version
-        manager = Agent(id='000')
-        manager.load_info_from_db()
-
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
@@ -1128,12 +1102,6 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
         filtered_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
-
-        try:
-            agent_list.remove('000')
-            result.add_failed_item('000', WazuhError(1703))
-        except KeyError:
-            pass
 
         # Add non existent agents to failed_items
         not_found_agents = agent_list - system_agents
@@ -1233,12 +1201,6 @@ def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = N
 
         filtered_agents = set([agent['id'] for agent in data['items']])
         agent_list = set(agent_list)
-
-        try:
-            agent_list.remove('000')
-            result.add_failed_item('000', WazuhError(1703))
-        except KeyError:
-            pass
 
         # Add non existent agents to failed_items
         not_found_agents = agent_list - system_agents
@@ -1353,8 +1315,6 @@ def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     system_agents = get_agents_info()
     for agent_id in agent_list:
         try:
-            if agent_id == "000":
-                raise WazuhError(1703)
             if agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
             else:
@@ -1472,9 +1432,6 @@ def get_full_overview() -> WazuhResult:
     WazuhResult
         WazuhResult object with information about agents.
     """
-    # We don't consider agent 000 in order to get the summary
-    q = "id!=000"
-
     # Get information from different methods of Agent class
     stats_distinct_node = get_distinct_agents(fields=['node_name'], q=q).affected_items
     groups = get_agent_groups().affected_items

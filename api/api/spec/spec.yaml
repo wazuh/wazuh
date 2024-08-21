@@ -5330,7 +5330,7 @@ components:
     agent_id:
       in: path
       name: agent_id
-      description: "Agent ID. All possible values from 000 onwards"
+      description: "Agent ID. All possible values from 001 onwards"
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'
@@ -11655,7 +11655,7 @@ paths:
                       gpg13:
                         - 4.3
                     agent:
-                      id: "000"
+                      id: "001"
                       name: "wazuh-master"
                     manager:
                       name: "wazuh-master"
@@ -13510,11 +13510,10 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "000"
                     - "001"
                     - "002"
                     - "003"
-                  total_affected_items: 4
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: "Rootcheck scan was restarted on returned agents"

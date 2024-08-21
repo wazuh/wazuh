@@ -591,18 +591,10 @@ class Agent:
         -------
         str
             Agent key.
-
-        Raises
-        ------
-        WazuhError(1703)
-            Action not available for manager (000).
         """
         self.load_info_from_db()
-        if self.id != "000":
             self.key = self.compute_key()
-        else:
-            raise WazuhError(1703)
-
+        
         return self.key
 
     def reconnect(self, wq: WazuhQueue) -> str:
@@ -1093,8 +1085,6 @@ class Agent:
 
         Raises
         ------
-        WazuhError(1703)
-            Action not available for manager.
         WazuhResourceNotFound(1710)
             The group was not found.
         WazuhError(1734)
@@ -1110,9 +1100,6 @@ class Agent:
         if not force:
             # Check if agent exists, it is not 000 and the group exists
             Agent(agent_id).get_basic_information()
-
-            if agent_id == "000":
-                raise WazuhError(1703)
 
             if not Agent.group_exists(group_id):
                 raise WazuhResourceNotFound(1710)
@@ -1289,7 +1276,6 @@ def get_agents_info() -> set:
         file_content = f.read()
 
     result = set(agent_regex.findall(file_content))
-    result.add('000')
 
     return result
 
