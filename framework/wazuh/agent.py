@@ -133,8 +133,7 @@ def get_agents_summary_status(agent_list: list[str] = None) -> WazuhResult:
     if agent_list:
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
-        # We don't consider agent 000 in order to get the summary
-        with WazuhDBQueryAgents(limit=None, select=['status', 'group_config_status'], query="id!=000",
+        with WazuhDBQueryAgents(limit=None, select=['status', 'group_config_status'],
                                 **rbac_filters) as db_query:
             data = db_query.run()
 
@@ -170,7 +169,7 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(select=['os.platform'], default_sort_field='os_platform', min_select_fields=set(),
-                                distinct=True, query="id!=000", **rbac_filters) as db_query:
+                                distinct=True, **rbac_filters) as db_query:
             query_data = db_query.run()
 
         query_data['items'] = [row['os']['platform'] for row in query_data['items']]
@@ -181,14 +180,14 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
 
 
 @expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1707]})
 def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
     """Force reconnect a list of agents.
 
     Parameters
     ----------
     list or str
-        List of agent IDs. All possible values from 000 onwards. Default `*`
+        List of agent IDs. All possible values from 001 onwards. Default `*`
 
     Returns
     -------
@@ -218,7 +217,7 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1707]})
 def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
@@ -271,7 +270,7 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True})
+                  post_proc_kwargs={'exclude_codes': [1701, 1707], 'force': True})
 def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a node.
 
@@ -289,7 +288,7 @@ def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True})
+                  post_proc_kwargs={'exclude_codes': [1701, 1707], 'force': True})
 def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a group.
 
@@ -448,7 +447,7 @@ def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1731]})
 async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
     """Delete a list of agents or all of them if receive an empty list.
 
@@ -793,7 +792,7 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{replace_list}'], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1751, 1752]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1751, 1752]})
 def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
                            replace_list: list = None) -> AffectedItemsWazuhResult:
     """Assign a list of agents to a group.
@@ -882,7 +881,7 @@ def remove_agent_from_group(group_list: list = None, agent_list: list = None) ->
     group_id = group_list[0]
     agent_id = agent_list[0]
 
-    # Check if agent and group exist and it is not 000
+    # Check if agent and group exist
     if agent_id not in get_agents_info():
         raise WazuhResourceNotFound(1701)
     if group_id not in get_groups():
@@ -920,9 +919,7 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
                                       none_msg='Specified agent was not removed from any group'
                                       )
 
-    # Check if agent exists and it is not 000
-    if agent_id == '000':
-        raise WazuhError(1703)
+    # Check if agent exists
     if agent_id not in get_agents_info():
         raise WazuhResourceNotFound(1701)
 
@@ -950,7 +947,7 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
 
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1734]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1734]})
 def remove_agents_from_group(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Remove the assignations of a list of agents with a specified group.
 
@@ -985,9 +982,7 @@ def remove_agents_from_group(agent_list: list = None, group_list: list = None) -
 
     for agent_id in agent_list:
         try:
-            if agent_id == '000':
-                raise WazuhError(1703)
-            elif agent_id not in system_agents:
+            if agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
             Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(agent_id)
@@ -1035,8 +1030,7 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=f"version!={manager.version}" + (';' + q if q else ''),
-                                **rbac_filters) as db_query:
+                                query = (';' + q if q else ''), **rbac_filters) as db_query:
             data = db_query.run()
 
         result.affected_items = data['items']
@@ -1046,7 +1040,7 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
+                  post_proc_kwargs={'exclude_codes': [1701, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
 def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,
                    use_http: bool = False, package_type: str = None, file_path: str = None, installer: str = None,
                    filters: dict = None, q: str = None) -> AffectedItemsWazuhResult:
@@ -1164,7 +1158,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs=
-                  {'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT})
+                  {'exclude_codes': [1701, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT})
 def get_upgrade_result(agent_list: list = None, filters: dict = None, q: str = None) -> AffectedItemsWazuhResult:
     """Read upgrade result output from agent.
 
@@ -1289,7 +1283,7 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
+                  post_proc_kwargs={'exclude_codes': [1701]})
 def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Get agents configuration sync status.
 
@@ -1433,17 +1427,16 @@ def get_full_overview() -> WazuhResult:
         WazuhResult object with information about agents.
     """
     # Get information from different methods of Agent class
-    stats_distinct_node = get_distinct_agents(fields=['node_name'], q=q).affected_items
+    stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
     groups = get_agent_groups().affected_items
     stats_distinct_os = get_distinct_agents(fields=['os.name',
                                                     'os.platform', 'os.version'], q=q).affected_items
-    stats_version = get_distinct_agents(fields=['version'], q=q).affected_items
+    stats_version = get_distinct_agents(fields=['version']).affected_items
     agent_summary_status = get_agents_summary_status()
     summary = agent_summary_status['data'] if 'data' in agent_summary_status else dict()
     try:
         last_registered_agent = [get_agents(limit=1,
-                                            sort={'fields': ['dateAdd'], 'order': 'desc'},
-                                            q=q).affected_items[0]]
+                                            sort={'fields': ['dateAdd'], 'order': 'desc'}).affected_items[0]]
     except IndexError:  # an IndexError could happen if there are not registered agents
         last_registered_agent = []
     # combine results in an unique dictionary

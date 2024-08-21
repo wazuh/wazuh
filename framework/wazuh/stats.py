@@ -86,7 +86,7 @@ def weekly() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1707]})
 async def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None):
     """Get agents statistical information from the specified daemons.
     If the daemons list is empty, the stats from all daemons will be retrieved.

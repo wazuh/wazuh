@@ -593,8 +593,8 @@ class Agent:
             Agent key.
         """
         self.load_info_from_db()
-            self.key = self.compute_key()
-        
+        self.key = self.compute_key()
+
         return self.key
 
     def reconnect(self, wq: WazuhQueue) -> str:
@@ -1098,7 +1098,7 @@ class Agent:
             Confirmation message.
         """
         if not force:
-            # Check if agent exists, it is not 000 and the group exists
+            # Check if agent and the group exists
             Agent(agent_id).get_basic_information()
 
             if not Agent.group_exists(group_id):

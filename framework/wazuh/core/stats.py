@@ -237,7 +237,7 @@ def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
     str
         The path to the socket for communication.
     """
-        return common.REMOTED_SOCKET
+    return common.REMOTED_SOCKET
 
 
 def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool = False) -> str:
@@ -258,7 +258,7 @@ def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool
         The command to retrieve statistics.
     """
     command = None
-        command = f"{str(agent_id).zfill(3)} {daemon} getstate"
+    command = f"{str(agent_id).zfill(3)} {daemon} getstate"
 
     if next_page:
         command += " next"
