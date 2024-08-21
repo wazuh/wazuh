@@ -139,6 +139,7 @@ find_and_create_imported_target("rxcpp" "RxCpp::RxCpp")
 # yaml-cpp::yaml-cpp vs yaml-cpp #FIXME 70 stars on github
 find_and_create_imported_target("yaml-cpp" "yaml-cpp::yaml-cpp")
 find_and_create_imported_target("spdlog" "spdlog::spdlog")
+find_and_create_imported_target("FastFloat" "FastFloat::fast-float")
 find_and_create_imported_target("fmt" "fmt::fmt-header-only")
 find_and_create_imported_target("RocksDB" "RocksDB::rocksdb")
 find_and_create_imported_target("Taskflow" "Taskflow::Taskflow")

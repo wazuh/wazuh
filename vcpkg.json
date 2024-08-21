@@ -6,6 +6,7 @@
     "curl",
     "date",
     "flatbuffers",
+    "fast-float",
     "fmt",
     "gtest",
     "libmaxminddb",
@@ -26,39 +27,39 @@
   "overrides": [
     {
       "name": "libuv",
-      "version": "1.48.0"
+      "version": "1.48.0#0"
     },
     {
       "name": "spdlog",
-      "version": "1.14.1"
+      "version": "1.14.1#0"
     },
     {
       "name": "gtest",
-      "version": "1.15.0"
+      "version": "1.15.0#0"
     },
     {
       "name": "benchmark",
-      "version": "1.8.5"
+      "version": "1.8.5#0"
     },
     {
       "name": "cli11",
-      "version": "2.2.0"
+      "version": "2.2.0#0"
     },
     {
       "name": "concurrentqueue",
-      "version": "1.0.4"
+      "version": "1.0.4#0"
     },
     {
       "name": "curl",
-      "version": "8.9.1"
+      "version": "8.9.1#0"
     },
     {
       "name": "libmaxminddb",
-      "version": "1.9.1"
+      "version": "1.9.1#0"
     },
     {
       "name": "yaml-cpp",
-      "version": "0.8.0"
+      "version": "0.8.0#0"
     },
     {
       "name": "uvw",
@@ -74,11 +75,11 @@
     },
     {
       "name": "date",
-      "version": "2024-05-14"
+      "version": "2024-05-14#0"
     },
     {
       "name": "pugixml",
-      "version": "1.14"
+      "version": "1.14#0"
     },
     {
       "name": "rapidjson",
@@ -86,11 +87,11 @@
     },
     {
       "name": "re2",
-      "version": "2024-06-01"
+      "version": "2024-06-01#0"
     },
     {
       "name": "rocksdb",
-      "version": "9.2.1"
+      "version": "9.2.1#0"
     },
     {
       "name": "rxcpp",
@@ -98,11 +99,15 @@
     },
     {
       "name": "taskflow",
-      "version": "3.7.0"
+      "version": "3.7.0#0"
     },
     {
       "name": "fmt",
       "version": "8.1.1#2"
+    },
+    {
+      "name": "fast-float",
+      "version": "6.1.4#0"
     }
   ]
 }
