@@ -64,3 +64,12 @@ target_link_libraries(database_feed
         base
         )
 
+
+# Tests
+if(ENGINE_BUILD_TEST)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+
+add_library(feedmanager_mocks INTERFACE)
+target_include_directories(feedmanager_mocks INTERFACE ${TEST_MOCK_DIR})
+add_library(feedmanager::mocks ALIAS feedmanager_mocks)
+endif(ENGINE_BUILD_TEST)

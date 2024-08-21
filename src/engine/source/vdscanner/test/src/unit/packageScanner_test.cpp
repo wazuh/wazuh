@@ -10,10 +10,12 @@
  */
 
 #include "../../../../feedmanager/include/databaseFeedManager.hpp"
-//#include "MockDatabaseFeedManager.hpp"
-#include "flatbuffers/flatbuffer_builder.h"
-#include "flatbuffers/idl.h"
+#include "../../../src/packageScanner.hpp"
+#include "../../../src/scanContext.hpp"
+#include "feedmanager/mockDatabaseFeedManager.hpp"
 #include <array>
+#include <flatbuffers/flatbuffer_builder.h>
+#include <flatbuffers/idl.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
@@ -42,95 +44,122 @@ protected:
 
 namespace NSPackageScannerTest
 {
-const std::string DELTA_PACKAGES_INSERTED_MSG =
+const auto PACKAGES_MSG =
     R"(
-            {
-                "agent_info": {
-                    "agent_id": "001",
-                    "agent_ip": "192.168.33.20",
-                    "agent_name": "focal"
-                },
-                "data_type": "dbsync_packages",
-                "data": {
-                    "architecture": "amd64",
-                    "checksum": "1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce",
-                    "description": "library for GIF images library",
-                    "format": "deb",
-                    "groups": "libs",
-                    "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
-                    "multiarch": "same",
-                    "name": "libgif7",
-                    "priority": "optional",
-                    "scan_time": "2023/08/04 19:56:11",
-                    "size": 72,
-                    "source": "giflib",
-                    "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
-                    "version": "5.1.9",
-                    "install_time": "1577890801"
-                },
-                "operation": "INSERTED"
-            }
-        )";
+        {
+            "architecture": "amd64",
+            "checksum": "1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce",
+            "description": "library for GIF images library",
+            "format": "deb",
+            "groups": "libs",
+            "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+            "multiarch": "same",
+            "name": "libgif7",
+            "priority": "optional",
+            "scan_time": "2023/08/04 19:56:11",
+            "size": 72,
+            "source": "giflib",
+            "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+            "version": "5.1.9",
+            "install_time": "1577890801"
+        })"_json;
 
-const std::string DELTA_PACKAGES_INSERTED_MSG_WITHOUT_VENDOR =
-    R"(
-            {
-                "agent_info": {
-                    "agent_id": "001",
-                    "agent_ip": "192.168.33.20",
-                    "agent_name": "focal"
-                },
-                "data_type": "dbsync_packages",
-                "data": {
-                    "architecture": "amd64",
-                    "checksum": "1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce",
-                    "description": "library for GIF images library",
-                    "format": "deb",
-                    "groups": "libs",
-                    "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
-                    "multiarch": "same",
-                    "name": "libgif7",
-                    "priority": "optional",
-                    "scan_time": "2023/08/04 19:56:11",
-                    "size": 72,
-                    "source": "giflib",
-                    "vendor": " ",
-                    "version": "5.1.9",
-                    "install_time": "1577890801"
-                },
-                "operation": "INSERTED"
-            }
-        )";
+const auto AGENT_MSG =
+    R"({
+        "id": "001",
+        "ip": "192.168.33.20",
+        "name": "focal"
+    })"_json;
 
-const std::string DELTA_PACKAGES_INSERTED_MSG_WRONG_VERSION =
+const auto OS_MSG =
+    R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"osdata_majorVersion",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"osdata_platform",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
+const auto PACKAGES_WITHOUT_VENDOR_MSG =
     R"(
-            {
-                "agent_info": {
-                    "agent_id": "001",
-                    "agent_ip": "192.168.33.20",
-                    "agent_name": "focal"
-                },
-                "data_type": "dbsync_packages",
-                "data": {
-                    "architecture": "amd64",
-                    "checksum": "1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce",
-                    "description": "library for GIF images library",
-                    "format": "deb",
-                    "groups": "libs",
-                    "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
-                    "multiarch": "same",
-                    "name": "libgif7",
-                    "priority": "optional",
-                    "scan_time": "2023/08/04 19:56:11",
-                    "size": 72,
-                    "source": "giflib",
-                    "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
-                    "version": "2016",
-                    "install_time": "1577890801"
-                },
-                "operation": "INSERTED"
-            }
-        )";
+        {
+            "architecture": "amd64",
+            "checksum": "1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce",
+            "description": "library for GIF images library",
+            "format": "deb",
+            "groups": "libs",
+            "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+            "multiarch": "same",
+            "name": "libgif7",
+            "priority": "optional",
+            "scan_time": "2023/08/04 19:56:11",
+            "size": 72,
+            "source": "giflib",
+            "vendor": " ",
+            "version": "5.1.9",
+            "install_time": "1577890801"
+        })"_json;
+
+const auto PACKAGES_WRONG_VERSION_MSG =
+    R"({
+            "architecture": "amd64",
+            "checksum": "1e6ce14f97f57d1bbd46ff8e5d3e133171a1bbce",
+            "description": "library for GIF images library",
+            "format": "deb",
+            "groups": "libs",
+            "item_id": "ec465b7eb5fa011a336e95614072e4c7f1a65a53",
+            "multiarch": "same",
+            "name": "libgif7",
+            "priority": "optional",
+            "scan_time": "2023/08/04 19:56:11",
+            "size": 72,
+            "source": "giflib",
+            "vendor": "Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>",
+            "version": "2016",
+            "install_time": "1577890801"
+        })"_json;
+
+const auto CPE_MAPS = R"***(
+        {
+            "opensuse-leap": "suse:sles:15",
+            "opensuse-tumbleweed": "suse:sles:15",
+            "rhel": "redhat:enterprise_linux:$(MAJOR_VERSION)",
+            "centos": "redhat:enterprise_linux:$(MAJOR_VERSION)",
+            "fedora": "fedoraproject:fedora:$(MAJOR_VERSION)",
+            "rocky": "rocky:rocky:$(MAJOR_VERSION)",
+            "amzn": "amazon:amazon_linux:$(MAJOR_VERSION)",
+            "ol": "oracle:linux:$(MAJOR_VERSION):$(MINOR_VERSION)",
+            "sles": "suse:sles:$(VERSION_UPDATE_HYPHEN)",
+            "sled": "suse:sled:$(VERSION_UPDATE_HYPHEN)",
+            "almalinux": "almalinux:almalinux:$(MAJOR_VERSION)",
+            "Microsoft Windows Server 2003": "microsoft:windows_server_2003::$(RELEASE)::::",
+            "Microsoft Windows Server 2003 R2": "microsoft:windows_server_2003:r2:$(RELEASE)::::",
+            "Microsoft Windows XP": "microsoft:windows_xp::$(RELEASE)::::",
+            "Microsoft Windows Vista": "microsoft:windows_vista:$(RELEASE):::::",
+            "Microsoft Windows 7": "microsoft:windows_7:$(RELEASE):::::",
+            "Microsoft Windows 8": "microsoft:windows_8::::::",
+            "Microsoft Windows 8.1": "microsoft:windows_8.1::::::",
+            "Microsoft Windows 10": "microsoft:windows_10_$(DISPLAY_VERSION):$(VERSION):::::",
+            "Microsoft Windows 11": "microsoft:windows_11_$(DISPLAY_VERSION):$(VERSION):::::",
+            "Microsoft Windows Server 2008": "microsoft:windows_server_2008::$(RELEASE)::::",
+            "Microsoft Windows Server 2008 R2": "microsoft:windows_server_2008:r2:$(RELEASE)::::",
+            "Microsoft Windows Server 2012": "microsoft:windows_server_2012::::::",
+            "Microsoft Windows Server 2012 R2": "microsoft:windows_server_2012:r2:::::",
+            "Microsoft Windows Server 2012 23H2": "microsoft:windows_server_2022_23h2:*:::::",
+            "Microsoft Windows Server 2016": "microsoft:windows_server_2016:$(RELEASE):::::",
+            "Microsoft Windows Server 2019": "microsoft:windows_server_2019:$(RELEASE):::::",
+            "Microsoft Windows Server 2022": "microsoft:windows_server_2022:$(RELEASE):::::",
+            "macOS": "apple:macos:::::"
+        })***"_json;
 
 const std::string CANDIDATES_AFFECTED_LESS_THAN_INPUT =
     R"(
@@ -362,7 +391,7 @@ const std::string CANDIDATES_DEFAULT_STATUS_UNAFFECTED_INPUT =
             }
         )";
 
-const std::array<const char*, 2> INCLUDE_DIRECTORIES = {FLATBUFFER_SCHEMAS_DIR, nullptr};
+const std::vector<const char*> INCLUDE_DIRECTORIES = {FLATBUFFER_SCHEMAS_DIR, nullptr};
 
 const std::string CANDIDATES_FLATBUFFER_SCHEMA_PATH {std::string(FLATBUFFER_SCHEMAS_DIR)
                                                      + "/vulnerabilityCandidate.fbs"};
@@ -393,9 +422,15 @@ const nlohmann::json CNA_MAPPINGS = R"***(
 
 using namespace NSPackageScannerTest;
 
-void PackageScannerTest::SetUp() {}
+void PackageScannerTest::SetUp()
+{
+    logging::testInit();
+}
 
-void PackageScannerTest::TearDown() {}
+void PackageScannerTest::TearDown()
+{
+    // This method is empty because there is no teardown logic needed for this test case.
+}
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualTo)
 {
@@ -435,53 +470,36 @@ TEST_F(PackageScannerTest, TestPackageAffectedEqualTo)
             }
         }
     };
-    /*
-        Os osData {.hostName = "osdata_hostname",
-                   .architecture = "osdata_architecture",
-                   .name = "osdata_name",
-                   .codeName = "upstream",
-                   .majorVersion = "osdata_majorVersion",
-                   .minorVersion = "osdata_minorVersion",
-                   .patch = "osdata_patch",
-                   .build = "osdata_build",
-                   .platform = "osdata_platform",
-                   .version = "osdata_version",
-                   .release = "osdata_release",
-                   .displayVersion = "osdata_displayVersion",
-                   .sysName = "osdata_sysName",
-                   .kernelVersion = "osdata_kernelVersion",
-                   .kernelRelease = "osdata_kernelRelease"};
+    auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
+        .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-        auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
-        EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
-        EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
-            .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
-        EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-        ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-        auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-        EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-        TPackageScanner<MockDatabaseFeedManager, TrampolineScanContext> packageScanner(spDatabaseFeedManagerMock);
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-        std::shared_ptr<TrampolineScanContext> scanContextResult;
-        EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    ASSERT_TRUE(scanContext != nullptr);
 
-        ASSERT_TRUE(scanContextResult != nullptr);
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-        EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-        EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-        EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-        EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
-
-        auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
-        EXPECT_EQ(matchCondition.condition, MatchRuleCondition::Equal);
-        EXPECT_STREQ(matchCondition.version.c_str(), "5.1.9");
-        */
+    const auto& matchCondition = scanContext->m_matchConditions[CVEID];
+    EXPECT_EQ(matchCondition.condition, MatchRuleCondition::Equal);
+    EXPECT_STREQ(matchCondition.version.c_str(), "5.1.9");
 }
-/*
+
 TEST_F(PackageScannerTest, TestPackageUnaffectedEqualTo)
 {
     auto mockGetVulnerabilitiesCandidates =
@@ -500,12 +518,13 @@ TEST_F(PackageScannerTest, TestPackageUnaffectedEqualTo)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::array<const char*, 2> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_UNAFFECTED_EQUAL_TO_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -520,55 +539,24 @@ TEST_F(PackageScannerTest, TestPackageUnaffectedEqualTo)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    EXPECT_TRUE(scanContextResult == nullptr);
+    EXPECT_TRUE(scanContext->m_elements.empty());
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedLessThan)
@@ -589,12 +577,13 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThan)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::vector<const char*> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_AFFECTED_LESS_THAN_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -609,63 +598,32 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThan)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    const auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::LessThan);
     EXPECT_STREQ(matchCondition.version.c_str(), "5.2.0");
 }
@@ -688,12 +646,13 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMissing)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        const char* includeDirectories[] = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), &includeDirectories[0])
                  && fbParser.Parse(CANDIDATES_AFFECTED_LESS_THAN_INPUT_WITH_UBUNTU_VENDOR.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -708,55 +667,24 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMissing)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG_WITHOUT_VENDOR.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext = std::make_shared<ScanContext>(
+        ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_WITHOUT_VENDOR_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult == nullptr);
+    ASSERT_TRUE(scanContext->m_elements.empty());
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMismatch)
@@ -777,12 +705,13 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMismatch)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::array<const char*, 2> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_AFFECTED_LESS_THAN_INPUT_WITH_GENERIC_VENDOR.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -797,55 +726,24 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMismatch)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult == nullptr);
+    ASSERT_TRUE(scanContext->m_elements.empty());
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMatch)
@@ -866,12 +764,13 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMatch)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::array<const char*, 2> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_AFFECTED_LESS_THAN_INPUT_WITH_UBUNTU_VENDOR.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -886,63 +785,32 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanVendorMatch)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::LessThan);
     EXPECT_STREQ(matchCondition.version.c_str(), "5.2.0");
 }
@@ -965,12 +833,13 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanOrEqual)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::array<const char*, 2> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_AFFECTED_LESS_THAN_OR_EQUAL_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -985,63 +854,32 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanOrEqual)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::LessThanOrEqual);
     EXPECT_STREQ(matchCondition.version.c_str(), "5.2.0");
 }
@@ -1064,12 +902,13 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanWithVersionNotZero)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        const char* includeDirectories[] = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories)
                  && fbParser.Parse(CANDIDATES_AFFECTED_LESS_THAN_WITH_VERSION_NOT_ZERO_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -1084,63 +923,32 @@ TEST_F(PackageScannerTest, TestPackageAffectedLessThanWithVersionNotZero)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::LessThan);
     EXPECT_STREQ(matchCondition.version.c_str(), "5.2.0");
 }
@@ -1163,12 +971,13 @@ TEST_F(PackageScannerTest, TestPackageUnaffectedLessThan)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        const char* includeDirectories[] = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories)
                  && fbParser.Parse(CANDIDATES_UNAFFECTED_LESS_THAN_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -1183,55 +992,24 @@ TEST_F(PackageScannerTest, TestPackageUnaffectedLessThan)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    EXPECT_TRUE(scanContextResult == nullptr);
+    EXPECT_TRUE(scanContext->m_elements.empty());
 }
 
 TEST_F(PackageScannerTest, TestPackageDefaultStatusAffected)
@@ -1252,12 +1030,13 @@ TEST_F(PackageScannerTest, TestPackageDefaultStatusAffected)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        const char* includeDirectories[] = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories)
                  && fbParser.Parse(CANDIDATES_DEFAULT_STATUS_AFFECTED_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -1272,63 +1051,32 @@ TEST_F(PackageScannerTest, TestPackageDefaultStatusAffected)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::DefaultStatus);
 }
 
@@ -1350,12 +1098,13 @@ TEST_F(PackageScannerTest, TestPackageDefaultStatusUnaffected)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        const char* includeDirectories[] = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories)
                  && fbParser.Parse(CANDIDATES_DEFAULT_STATUS_UNAFFECTED_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -1370,55 +1119,24 @@ TEST_F(PackageScannerTest, TestPackageDefaultStatusUnaffected)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    EXPECT_TRUE(scanContextResult == nullptr);
+    EXPECT_TRUE(scanContext->m_elements.empty());
 }
 
 TEST_F(PackageScannerTest, TestPackageGetVulnerabilitiesCandidatesGeneratesException)
@@ -1433,398 +1151,282 @@ TEST_F(PackageScannerTest, TestPackageGetVulnerabilitiesCandidatesGeneratesExcep
         throw std::runtime_error("Invalid package/cna name.");
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    EXPECT_TRUE(scanContextResult == nullptr);
+    EXPECT_TRUE(scanContext->m_elements.empty());
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualToAlma8)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "8",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "alma",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"8",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"alma",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("alma"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("alma_8", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualToAlas1)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "2018",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "amzn",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"2018",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"amzn",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("alas"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("alas_1", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualToAlas2)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "2",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "amzn",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"2",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"amzn",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("alas"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("alas_2", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualToAlas2022)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "2022",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "amzn",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"2022",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"amzn",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("alas"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("alas_2022", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualToRedHat7)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "7",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "redhat",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"7",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"redhat",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("redhat"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("redhat_7", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualToSLED)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "15",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "sled",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"15",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"sled",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("suse"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("suse_desktop_15", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestPackageAffectedEqualToSLES)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "15",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "sles",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"15",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"sles",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("suse"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("suse_server_15", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestcheckAndTranslatePackage)
@@ -1845,12 +1447,13 @@ TEST_F(PackageScannerTest, TestcheckAndTranslatePackage)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::array<const char*, 2> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_AFFECTED_EQUAL_TO_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -1865,66 +1468,34 @@ TEST_F(PackageScannerTest, TestcheckAndTranslatePackage)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
-
     std::vector<PackageData> mockPackageData = {
         PackageData {.name = "translatedProduct", .vendor = "translatedVendor"}};
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TrampolineScanContext> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    const auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::Equal);
     EXPECT_STREQ(matchCondition.version.c_str(), "5.1.9");
 }
@@ -1947,12 +1518,13 @@ TEST_F(PackageScannerTest, TestVersionTranslation)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::array<const char*, 2> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_AFFECTED_EQUAL_TO_INPUT.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -1967,70 +1539,36 @@ TEST_F(PackageScannerTest, TestVersionTranslation)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
-
     std::vector<PackageData> mockPackageData = {
         PackageData {.name = "translatedProduct", .vendor = "translatedVendor", .version = "5.1.9"}};
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _)).WillOnce(testing::Return(mockPackageData));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG_WRONG_VERSION.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal =
-        std::make_shared<TScanContext<TrampolineOsDataCache, GlobalData, TrampolineRemediationDataCache>>(
-            syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext = std::make_shared<ScanContext>(
+        ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_WRONG_VERSION_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TScanContext<TrampolineOsDataCache, GlobalData, TrampolineRemediationDataCache>,
-                    TrampolineGlobalData>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TScanContext<TrampolineOsDataCache, GlobalData, TrampolineRemediationDataCache>> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    const auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::Equal);
     EXPECT_STREQ(matchCondition.version.c_str(), "5.1.9");
-    spGlobalDataMock.reset();
 }
 
 TEST_F(PackageScannerTest, TestVendorAndVersionTranslation)
@@ -2051,12 +1589,13 @@ TEST_F(PackageScannerTest, TestVendorAndVersionTranslation)
 
         // Parse schemas and JSON example.
         flatbuffers::Parser fbParser;
-        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), INCLUDE_DIRECTORIES)
+        std::array<const char*, 2> includeDirectories = {INCLUDE_DIRECTORIES[0], INCLUDE_DIRECTORIES[1]};
+        valid = (fbParser.Parse(candidatesFlatbufferSchemaStr.c_str(), includeDirectories.data())
                  && fbParser.Parse(CANDIDATES_AFFECTED_LESS_THAN_INPUT_WITH_GENERIC_VENDOR.c_str()));
         ASSERT_EQ(valid, true);
 
-        auto candidatesArray =
-            GetScanVulnerabilityCandidateArray(reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
+        auto candidatesArray = NSVulnerabilityScanner::GetScanVulnerabilityCandidateArray(
+            reinterpret_cast<const uint8_t*>(fbParser.builder_.GetBufferPointer()));
 
         if (candidatesArray)
         {
@@ -2071,95 +1610,58 @@ TEST_F(PackageScannerTest, TestVendorAndVersionTranslation)
         }
     };
 
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "osdata_majorVersion",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "osdata_platform",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
-
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return("cnaName"));
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(_, _, _))
         .WillOnce(testing::Invoke(mockGetVulnerabilitiesCandidates));
-
     std::vector<PackageData> mockPackageData = {
         PackageData {.name = "translatedProduct", .vendor = "testVendor", .version = "5.1.9"}};
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _)).WillOnce(testing::Return(mockPackageData));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG_WRONG_VERSION.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal =
-        std::make_shared<TScanContext<TrampolineOsDataCache, GlobalData, TrampolineRemediationDataCache>>(
-            syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext = std::make_shared<ScanContext>(
+        ScannerType::Package, AGENT_MSG, OS_MSG, PACKAGES_WRONG_VERSION_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cpeMappings()).WillOnce(testing::ReturnRef(CPE_MAPS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TScanContext<TrampolineOsDataCache, GlobalData, TrampolineRemediationDataCache>,
-                    TrampolineGlobalData>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    std::shared_ptr<TScanContext<TrampolineOsDataCache, GlobalData, TrampolineRemediationDataCache>> scanContextResult;
-    EXPECT_NO_THROW(scanContextResult = packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 
-    ASSERT_TRUE(scanContextResult != nullptr);
+    ASSERT_TRUE(scanContext != nullptr);
 
-    EXPECT_EQ(scanContextResult->m_elements.size(), 1);
-    EXPECT_NE(scanContextResult->m_elements.find(CVEID), scanContextResult->m_elements.end());
+    EXPECT_EQ(scanContext->m_elements.size(), 1);
+    EXPECT_NE(scanContext->m_elements.find(CVEID), scanContext->m_elements.end());
 
-    EXPECT_EQ(scanContextResult->m_matchConditions.size(), 1);
-    EXPECT_NE(scanContextResult->m_matchConditions.find(CVEID), scanContextResult->m_matchConditions.end());
+    EXPECT_EQ(scanContext->m_matchConditions.size(), 1);
+    EXPECT_NE(scanContext->m_matchConditions.find(CVEID), scanContext->m_matchConditions.end());
 
-    auto& matchCondition = scanContextResult->m_matchConditions[CVEID];
+    const auto& matchCondition = scanContext->m_matchConditions[CVEID];
     EXPECT_EQ(matchCondition.condition, MatchRuleCondition::LessThan);
     EXPECT_STREQ(matchCondition.version.c_str(), "5.2.0");
-    spGlobalDataMock.reset();
 }
 
 TEST_F(PackageScannerTest, TestGetCnaNameByPrefix)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "15",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "sles",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"15",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"sles",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return(""));
@@ -2168,49 +1670,37 @@ TEST_F(PackageScannerTest, TestGetCnaNameByPrefix)
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("suse_server_15", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestGetCnaNameByContains)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "15",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "sles",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"15",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"sles",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return(""));
@@ -2220,49 +1710,37 @@ TEST_F(PackageScannerTest, TestGetCnaNameByContains)
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("suse_server_15", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestGetCnaNameBySource)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "15",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "sles",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"15",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"sles",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return(""));
@@ -2272,49 +1750,37 @@ TEST_F(PackageScannerTest, TestGetCnaNameBySource)
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates("cnaName", _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
-    EXPECT_CALL(*spGlobalDataMock, cnaMappings()).WillOnce(testing::Return(CNA_MAPPINGS));
+    EXPECT_CALL(*spDatabaseFeedManagerMock, cnaMappings()).WillOnce(testing::ReturnRef(CNA_MAPPINGS));
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
 
 TEST_F(PackageScannerTest, TestGetDefaultCna)
 {
-    Os osData {.hostName = "osdata_hostname",
-               .architecture = "osdata_architecture",
-               .name = "osdata_name",
-               .codeName = "upstream",
-               .majorVersion = "15",
-               .minorVersion = "osdata_minorVersion",
-               .patch = "osdata_patch",
-               .build = "osdata_build",
-               .platform = "sles",
-               .version = "osdata_version",
-               .release = "osdata_release",
-               .displayVersion = "osdata_displayVersion",
-               .sysName = "osdata_sysName",
-               .kernelVersion = "osdata_kernelVersion",
-               .kernelRelease = "osdata_kernelRelease"};
-
-    spOsDataCacheMock = std::make_shared<MockOsDataCache>();
-    EXPECT_CALL(*spOsDataCacheMock, getOsData(_)).WillRepeatedly(testing::Return(osData));
-
-    spRemediationDataCacheMock = std::make_shared<MockRemediationDataCache>();
-    EXPECT_CALL(*spRemediationDataCacheMock, getRemediationData(_)).WillRepeatedly(testing::Return(Remediation {}));
+    const auto LOCAL_OS_MSG =
+        R"({
+            "hostname":"osdata_hostname",
+            "architecture":"osdata_architecture",
+            "name":"osdata_name",
+            "codename":"upstream",
+            "major_version":"15",
+            "minor_version":"osdata_minorVersion",
+            "patch":"osdata_patch",
+            "build":"osdata_build",
+            "platform":"sles",
+            "version":"osdata_version",
+            "release":"osdata_release",
+            "display_version":"osdata_displayVersion",
+            "sysname":"osdata_sysName",
+            "kernel_version":"osdata_kernelVersion",
+            "kernel_release":"osdata_kernelRelease"
+    })"_json;
 
     auto spDatabaseFeedManagerMock = std::make_shared<MockDatabaseFeedManager>();
     EXPECT_CALL(*spDatabaseFeedManagerMock, getCnaNameByFormat(_)).WillOnce(testing::Return(""));
@@ -2324,22 +1790,11 @@ TEST_F(PackageScannerTest, TestGetDefaultCna)
     EXPECT_CALL(*spDatabaseFeedManagerMock, getVulnerabilitiesCandidates(DEFAULT_CNA, _, _));
     EXPECT_CALL(*spDatabaseFeedManagerMock, checkAndTranslatePackage(_, _));
 
-    flatbuffers::Parser parser;
-    ASSERT_TRUE(parser.Parse(syscollector_deltas_SCHEMA));
-    ASSERT_TRUE(parser.Parse(DELTA_PACKAGES_INSERTED_MSG.c_str()));
-    uint8_t* buffer = parser.builder_.GetBufferPointer();
-    std::variant<const SyscollectorDeltas::Delta*, const SyscollectorSynchronization::SyncMsg*, const nlohmann::json*>
-        syscollectorDelta = SyscollectorDeltas::GetDelta(reinterpret_cast<const char*>(buffer));
-    auto scanContextOriginal = std::make_shared<TrampolineScanContext>(syscollectorDelta);
+    nlohmann::json response;
+    auto scanContext =
+        std::make_shared<ScanContext>(ScannerType::Package, AGENT_MSG, LOCAL_OS_MSG, PACKAGES_MSG, "{}"_json, response);
 
-    spGlobalDataMock = std::make_shared<MockGlobalData>();
+    TPackageScanner<MockDatabaseFeedManager, ScanContext> packageScanner(spDatabaseFeedManagerMock);
 
-    TPackageScanner<MockDatabaseFeedManager,
-                    TrampolineScanContext,
-                    TrampolineGlobalData,
-                    TrampolineRemediationDataCache>
-        packageScanner(spDatabaseFeedManagerMock);
-
-    EXPECT_NO_THROW(packageScanner.handleRequest(scanContextOriginal));
+    EXPECT_NO_THROW(packageScanner.handleRequest(scanContext));
 }
-*/

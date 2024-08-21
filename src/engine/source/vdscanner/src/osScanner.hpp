@@ -275,8 +275,8 @@ public:
                                 if (std::find_if(hotfixes.begin(),
                                                  hotfixes.end(),
                                                  [&](const auto& element) {
-                                                     return element.contains("hotfix")
-                                                            && element.at("hotfix") == remediation->str();
+                                                     return element.template get_ref<const std::string&>()
+                                                            == remediation->str();
                                                  })
                                     != hotfixes.end())
                                 {

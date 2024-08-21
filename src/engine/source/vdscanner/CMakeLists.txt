@@ -25,6 +25,7 @@ add_subdirectory(tool)
 # Tests
 if(ENGINE_BUILD_TEST)
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
+set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
 set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
 set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
@@ -38,8 +39,11 @@ add_executable(vdscanner_utest
     ${UNIT_SRC_DIR}/versionMatcher_test.cpp
     ${UNIT_SRC_DIR}/scannerHelper_test.cpp
     ${UNIT_SRC_DIR}/packageScanner_test.cpp
+    ${UNIT_SRC_DIR}/factoryOrchestrator_test.cpp
+    ${UNIT_SRC_DIR}/responseBuilder_test.cpp
+    ${UNIT_SRC_DIR}/scanContext_test.cpp
 )
 target_compile_definitions(vdscanner_utest PUBLIC FLATBUFFER_SCHEMAS_DIR="${CMAKE_CURRENT_LIST_DIR}/../feedmanager/schemas/")
-target_link_libraries(vdscanner_utest GTest::gtest_main scan_orchestrator)
+target_link_libraries(vdscanner_utest GTest::gmock GTest::gtest_main scan_orchestrator feedmanager::mocks)
 gtest_discover_tests(vdscanner_utest)
 endif(ENGINE_BUILD_TEST)

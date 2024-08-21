@@ -17,6 +17,8 @@ ScanOrchestrator::ScanOrchestrator(const std::string& configuration)
     {
         throw std::invalid_argument("Invalid configuration");
     }
+
+    LOG_DEBUG("Vulnerability scanner module started");
 }
 
 void ScanOrchestrator::processEvent(const std::string& request, std::string& response) const
