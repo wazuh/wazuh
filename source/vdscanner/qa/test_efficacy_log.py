@@ -112,15 +112,15 @@ def run_process_and_monitor_log(request, run_on_end):
         Path("queue/vd/inventory").rmdir()
 
     # Set the path to the binary
-    cmd = Path("build/source/vdscanner/tool/", "scan_orchestrator_testtool")
-    cmd_alt = Path("source/vdscanner/build/tool/", "scan_orchestrator_testtool")
+    cmd = Path("engine/build/source/vdscanner/tool/", "scan_orchestrator_testtool")
+    cmd_alt = Path("engine/source/vdscanner/tool/", "scan_orchestrator_testtool")
 
     # Ensure the binary exists
     if not cmd.exists():
         cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
-    args = ["-c", "source/vdscanner/qa/test_config/config.json",
+    args = ["-c", "engine/source/vdscanner/qa/test_config/config.json",
             "-l", "log.out",
             "-s", "test.sock"]
 
@@ -200,8 +200,8 @@ def run_process_and_monitor_log(request, run_on_end):
     return found_lines
 
 
-test_false_negative_folders = sorted(Path("source/vdscanner/qa/test_false_negative_data").glob(os.getenv('WAZUH_VD_TEST_FN_GLOB', '*')))
-test_false_positive_folders = sorted(Path("source/vdscanner/qa/test_false_positive_data").glob(os.getenv('WAZUH_VD_TEST_FP_GLOB', '*')))
+test_false_negative_folders = sorted(Path("engine/source/vdscanner/qa/test_false_negative_data").glob(os.getenv('WAZUH_VD_TEST_FN_GLOB', '*')))
+test_false_positive_folders = sorted(Path("engine/source/vdscanner/qa/test_false_positive_data").glob(os.getenv('WAZUH_VD_TEST_FP_GLOB', '*')))
 
 # If only variable WAZUH_VD_TEST_FN_GLOB is set, we only run the false negative tests
 if os.getenv('WAZUH_VD_TEST_FN_GLOB') and not os.getenv('WAZUH_VD_TEST_FP_GLOB'):
@@ -225,7 +225,7 @@ def test_false_negatives(run_process_and_monitor_log):
     """
     # change working directory to the root of the project parent directory
     # This is required to run the binary
-    os.chdir(Path(__file__).parent.parent.parent.parent)
+    os.chdir(Path(__file__).parent.parent.parent.parent.parent)
 
     LOGGER.info("Running false negative test")
 
