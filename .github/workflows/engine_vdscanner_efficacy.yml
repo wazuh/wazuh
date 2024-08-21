@@ -80,8 +80,7 @@ jobs:
         # Download feed
         cd src
         curl -LO https://packages.wazuh.com/deps/vulnerability_model_database/vd_1.0.0_vd_4.8.0.tar.xz
-        mkdir -p tmp
-        mv vd_1.0.0_vd_4.8.0.tar.xz tmp
+        tar -xf vd_1.0.0_vd_4.8.0.tar.xz
 
     - name: Install dependencies
       run: |
