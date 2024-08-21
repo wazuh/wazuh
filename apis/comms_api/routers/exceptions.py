@@ -1,6 +1,7 @@
 from fastapi import HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class HTTPError(HTTPException):
@@ -73,9 +74,30 @@ async def exception_handler(request: Request, exc: Exception):
     Returns
     -------
     JSONResponse
-        JSON response containing an error description and code.
+        JSON response containing an error message and code.
     """
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={'message': f'{str(exc)}', 'code': status.HTTP_500_INTERNAL_SERVER_ERROR},
+    )
+
+
+async def starlette_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Starlette HTTP exception handler.
+    
+    Parameters
+    ----------
+    request : Request
+        Client request.
+    exc : StarletteHTTPException
+        Starlette exception.
+    
+    Returns
+    -------
+    JSONResponse
+        JSON response containing an error message and code.
+    """
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={'message': exc.detail, 'code': exc.status_code},
     )
