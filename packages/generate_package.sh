@@ -13,7 +13,7 @@ CURRENT_PATH="$( cd $(dirname $0) ; pwd -P )"
 WAZUH_PATH="$(cd $CURRENT_PATH/..; pwd -P)"
 ARCHITECTURE="amd64"
 SYSTEM="deb"
-OUTDIR="${CURRENT_PATH}/output/"
+OUTDIR="${CURRENT_PATH}/output"
 BRANCH=""
 REVISION="0"
 TARGET="agent"
@@ -100,8 +100,6 @@ build_pkg() {
         ${REVISION} ${JOBS} ${DEBUG} \
         ${CHECKSUM} ${FUTURE} ${LEGACY} ${SRC}|| return 1
 
-    echo "Package $(ls -Art ${OUTDIR} | tail -n 1) added to ${OUTDIR}."
-
     return 0
 }
 
@@ -122,7 +120,7 @@ help() {
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
     echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
-    echo "    -d, --debug                [Optional] Build the binaries with debug symbols. By default: no."
+    echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package. By default: no."
     echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
@@ -220,7 +218,7 @@ main() {
             ;;
         "-s"|"--store")
             if [ -n "$2" ]; then
-                OUTDIR="$2"
+                OUTDIR=$(echo "$2" | sed 's:/*$::')
                 shift 2
             else
                 help 1

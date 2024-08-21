@@ -437,3 +437,31 @@ Private Function GetUserSID()
         GetUserSID = oWMI.SID
     End If
 End Function
+
+Public Function CreateDumpRegistryKey()
+    On Error Resume Next
+    Dim strKeyPath, oReg
+    Dim objCtx, objLocator, objServices
+    Const HKEY_LOCAL_MACHINE = &H80000002
+
+    Set objCtx = CreateObject("WbemScripting.SWbemNamedValueSet")
+    objCtx.Add "__ProviderArchitecture", 64
+    objCtx.Add "__RequiredArchitecture", True
+
+    Set objLocator = CreateObject("WbemScripting.SWbemLocator")
+    Set objServices = objLocator.ConnectServer(".", "root\default", "", "", , , , objCtx)
+    Set oReg = objServices.Get("StdRegProv")
+
+    strKeyPath = "SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\wazuh-agent.exe"
+
+    oReg.CreateKey HKEY_LOCAL_MACHINE, strKeyPath
+    oReg.SetExpandedStringValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpFolder",  "%LOCALAPPDATA%\WazuhCrashDumps"
+    oReg.SetDWORDValue HKEY_LOCAL_MACHINE, strKeyPath, "DumpType", 2
+
+    Set objCtx = Nothing
+    Set objLocator = Nothing
+    Set objServices = Nothing
+    Set oReg = Nothing
+
+    CreateDumpRegistryKey = 0
+End Function
