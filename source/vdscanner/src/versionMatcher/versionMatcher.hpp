@@ -19,7 +19,6 @@
 #include "versionObjectPEP440.hpp"
 #include "versionObjectRpm.hpp"
 #include "versionObjectSemVer.hpp"
-//#include "vulnerabilityScannerDefs.hpp"
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -107,18 +106,15 @@ private:
                 else
                 {
                     // LCOV_EXCL_STARTi
-                    // TODO: Add logDebug2 when the logger is implemented
-                    // logDebug2(WM_VULNSCAN_LOGTAG,
-                    //          "Error creating VersionObject (Unspecified). Version string doesn't match "
-                    //          "any of the specified types. Version string: %s",
-                    //          version.c_str());
+                    LOG_DEBUG("Error creating VersionObject (Unspecified). Version string doesn't match "
+                              "any of the specified types. Version string: {}",
+                              version);
                     // LCOV_EXCL_STOP
                 }
                 break;
-            // LCOV_EXCL_START
+                // LCOV_EXCL_START
             default:
-                // TODO: Add logDebug2 when the logger is implemented
-                // logDebug2(WM_VULNSCAN_LOGTAG, "Error creating VersionObject: Invalid strategy.");
+                LOG_DEBUG("Error creating VersionObject: Invalid strategy.");
                 break;
                 // LCOV_EXCL_STOP
         }
@@ -153,10 +149,9 @@ private:
                 {
                     return std::make_shared<VersionObjectCalVer>(calVer);
                 }
-                /* logDebug2(WM_VULNSCAN_LOGTAG,
-                          "Error creating VersionObject (CalVer). Version string doesn't match the specified type. "
-                          "Version string: %s",
-                          version.c_str());*/
+                LOG_DEBUG("Error creating VersionObject (CalVer). Version string doesn't match the specified type. "
+                          "Version string: {}",
+                          version);
                 break;
 
             case VersionObjectType::PEP440:
@@ -164,10 +159,9 @@ private:
                 {
                     return std::make_shared<VersionObjectPEP440>(pep440);
                 }
-                /*logDebug2(WM_VULNSCAN_LOGTAG,
-                          "Error creating VersionObject (PEP440). Version string doesn't match the specified type. "
-                          "Version string: %s",
-                          version.c_str());*/
+                LOG_DEBUG("Error creating VersionObject (PEP440). Version string doesn't match the specified type. "
+                          "Version string: {}",
+                          version);
                 break;
 
             case VersionObjectType::MajorMinor:
@@ -175,10 +169,9 @@ private:
                 {
                     return std::make_shared<VersionObjectMajorMinor>(majorMinor);
                 }
-                /*logDebug2(WM_VULNSCAN_LOGTAG,
-                          "Error creating VersionObject (MajorMinor). Version string doesn't match the specified type. "
-                          "Version string: %s",
-                          version.c_str());*/
+                LOG_DEBUG("Error creating VersionObject (MajorMinor). Version string doesn't match the specified type. "
+                          "Version string: {}",
+                          version);
                 break;
 
             case VersionObjectType::SemVer:
@@ -186,10 +179,9 @@ private:
                 {
                     return std::make_shared<VersionObjectSemVer>(semVer);
                 }
-                /*logDebug2(WM_VULNSCAN_LOGTAG,
-                          "Error creating VersionObject (SemVer). Version string doesn't match the specified type. "
-                          "Version string: %s",
-                          version.c_str());*/
+                LOG_DEBUG("Error creating VersionObject (SemVer). Version string doesn't match the specified type. "
+                          "Version string: {}",
+                          version);
                 break;
 
             case VersionObjectType::DPKG:
@@ -197,10 +189,9 @@ private:
                 {
                     return std::make_shared<VersionObjectDpkg>(dpkgVer);
                 }
-                /*logDebug2(WM_VULNSCAN_LOGTAG,
-                          "Error creating VersionObject (DPKG). Version string doesn't match the specified type. "
-                          "Version string: %s",
-                          version.c_str());*/
+                LOG_DEBUG("Error creating VersionObject (DPKG). Version string doesn't match the specified type. "
+                          "Version string: {}",
+                          version);
                 break;
 
             case VersionObjectType::RPM:
@@ -208,17 +199,14 @@ private:
                 {
                     return std::make_shared<VersionObjectRpm>(rpmVer);
                 }
-                // TODO: Add logDebug2 when the logger is implemented
-                // logDebug2(WM_VULNSCAN_LOGTAG,
-                //          "Error creating VersionObject (RPM). Version string doesn't match the specified type. "
-                //          "Version string: %s",
-                //          version.c_str());
+                LOG_DEBUG("Error creating VersionObject (RPM). Version string doesn't match the specified type. "
+                          "Version string: {}",
+                          version);
                 break;
 
             default:
                 // LCOV_EXCL_START
-                // TODO: Add logDebug2 when the logger is implemented
-                // logDebug2(WM_VULNSCAN_LOGTAG, "Error creating VersionObject: Invalid type.");
+                LOG_DEBUG("Error creating VersionObject: Invalid type.");
                 break;
                 // LCOV_EXCL_STOP
         }
@@ -247,8 +235,8 @@ private:
         else
         {
             // LCOV_EXCL_START
-            // TODO: Add logDebug2 when the logger is implemented
-            // logDebug2(WM_VULNSCAN_LOGTAG, "Error creating VersionObject: Invalid type.");
+
+            LOG_DEBUG("Error creating VersionObject: Invalid type.");
             return nullptr;
             // LCOV_EXCL_STOP
         }

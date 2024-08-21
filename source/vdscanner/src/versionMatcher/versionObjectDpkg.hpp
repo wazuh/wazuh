@@ -12,6 +12,7 @@
 #ifndef _VERSION_OBJECT_DPKG_HPP
 #define _VERSION_OBJECT_DPKG_HPP
 
+#include "base/logging.hpp"
 #include "iVersionObjectInterface.hpp"
 //#include "base/utils/stringUtils.hpp"
 //#include "vulnerabilityScannerDefs.hpp"
@@ -249,22 +250,14 @@ public:
         {
             if (!std::isdigit(*ptr) && !std::isalpha(*ptr) && strchr(".-+~:", *ptr) == nullptr)
             {
-                // TODO: Add logDebug1 when the logger is implemented
-                // logDebug1(WM_VULNSCAN_LOGTAG,
-                //          "Invalid character in revision: %s in %s.",
-                //          output.version.c_str(),
-                //          version.c_str());
+                LOG_DEBUG("Invalid character in revision: {} in {}.", output.version, version);
             }
         }
         for (ptr = output.revision.c_str(); *ptr; ptr++)
         {
             if (!std::isdigit(*ptr) && !std::isalpha(*ptr) && strchr(".+~", *ptr) == nullptr)
             {
-                // TODO: Add logDebug1 when the logger is implemented
-                // logDebug1(WM_VULNSCAN_LOGTAG,
-                //          "Invalid character in revision: %s in %s.",
-                //          output.revision.c_str(),
-                //          version.c_str());
+                LOG_DEBUG("Invalid character in revision: {} in {}.", output.revision, version);
             }
         }
 

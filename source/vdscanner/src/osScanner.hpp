@@ -202,7 +202,6 @@ public:
                 // No match found, the default status defines the package status.
                 if (callbackData.defaultStatus() == NSVulnerabilityScanner::Status::Status_affected)
                 {
-                    // TODO: Implement the following logDebug1
                     LOG_DEBUG("Match found for OS: {} for vulnerability: {} due to default status.",
                               osCPE.product,
                               callbackData.cveId()->str());

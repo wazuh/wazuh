@@ -253,11 +253,31 @@ public:
      */
     uint32_t getCacheSizeFromConfig() const;
 
-    // TODO: Add doxygen
+    /**
+     * @brief Get CNA mappings.
+     *
+     * This function retrieves the CNA mappings from the database and returns them as a JSON object.
+     *
+     * @return const nlohmann::json& CNA mappings.
+     */
     auto cnaMappings() const -> const nlohmann::json&;
 
+    /**
+     * @brief Get CPE mappings.
+     *
+     * This function retrieves the CPE mappings from the database and returns them as a JSON object.
+     *
+     * @return const nlohmann::json& Vendors map.
+     */
     auto cpeMappings() const -> const nlohmann::json&;
 
+    /**
+     * @brief Get vendors map.
+     *
+     * This function retrieves the vendors map from the database and returns them as a JSON object.
+     *
+     * @return const nlohmann::json& Vendors map.
+     */
     auto vendorsMap() const -> const nlohmann::json&;
 
 private:
