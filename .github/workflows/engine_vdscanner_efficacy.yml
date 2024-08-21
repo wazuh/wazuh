@@ -7,7 +7,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - 'src/engine/**'
-      - '.github/workflows/engine_integration_test.yml'
+      - '.github/workflows/engine_vdscanner_efficacy.yml'
 
   workflow_dispatch:
     inputs:
