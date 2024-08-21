@@ -80,34 +80,8 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
 )
 
 ####################################################################################################
-# CPM DOWNLOAD
-####################################################################################################
-
-set(CPM_DOWNLOAD_VERSION 0.35.6)
-
-if(CPM_SOURCE_CACHE)
-  set(CPM_DOWNLOAD_LOCATION "${CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
-elseif(DEFINED ENV{CPM_SOURCE_CACHE})
-  set(CPM_DOWNLOAD_LOCATION "$ENV{CPM_SOURCE_CACHE}/cpm/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
-else()
-  set(CPM_DOWNLOAD_LOCATION "${CMAKE_BINARY_DIR}/cmake/CPM_${CPM_DOWNLOAD_VERSION}.cmake")
-endif()
-
-if(NOT (EXISTS ${CPM_DOWNLOAD_LOCATION}))
-  message(STATUS "Downloading CPM.cmake to ${CPM_DOWNLOAD_LOCATION}")
-  file(DOWNLOAD
-       https://github.com/TheLartians/CPM.cmake/releases/download/v${CPM_DOWNLOAD_VERSION}/CPM.cmake
-       ${CPM_DOWNLOAD_LOCATION}
-  )
-endif()
-
-include(${CPM_DOWNLOAD_LOCATION})
-
-####################################################################################################
 # Dependencies
 ####################################################################################################
-include(cmake/CPM.cmake)
-
 function(find_and_create_imported_target package_name target_name)
     find_package(${package_name} CONFIG REQUIRED)
     if (${package_name}_FOUND)
@@ -160,6 +134,9 @@ find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::logs")
 find_and_create_imported_target("opentelemetry-cpp" "opentelemetry-cpp::metrics")
 
 find_and_create_imported_target("Protobuf" "protobuf::libprotobuf")
+
+find_and_create_imported_target("date" "date::date")
+find_and_create_imported_target("date" "date::date-tz")
 
 ####################################################################################################
 # Targets
