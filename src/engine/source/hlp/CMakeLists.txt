@@ -1,21 +1,3 @@
-
-CPMAddPackage(
-        NAME date
-        # Live at head
-        # https://github.com/HowardHinnant/date/issues/828#issuecomment-2184283807
-        GITHUB_REPOSITORY HowardHinnant/date
-        GIT_TAG 1ead6715dec030d340a316c927c877a3c4e5a00c
-)
-
-# https://github.com/HowardHinnant/date/wiki/FAQ#why-is-a-failing
-# This works with glibc 2.28-211.el8 RHEL 8
-# add_compile_definitions(ONLY_C_LOCALE=1)
-
-# https://howardhinnant.github.io/date/tz.html#Installation
-#
-# You may have to use -lpthread. If you're getting a mysterious crash on first access to the database, it is likely that
-# you aren't linking to the pthread library. The pthread library is used to assure that that library initialization
-# is thread safe in a multithreaded environment.
 add_library(hlp STATIC
   src/parsers/literal.cpp
   src/parsers/text.cpp
@@ -25,7 +7,6 @@ add_library(hlp STATIC
   src/parsers/bool.cpp
   src/parsers/between.cpp
   src/parsers/date.cpp
-  ${date_SOURCE_DIR}/src/tz.cpp
   src/parsers/encodings.cpp
   src/parsers/json.cpp
   src/parsers/ip.cpp
@@ -46,11 +27,8 @@ PRIVATE
   src/parsers/
   include/hlp/
 )
+target_link_libraries(hlp PUBLIC base PRIVATE FastFloat::fast_float date::date date::date-tz pthread CURL::libcurl pugixml)
 
-target_link_libraries(hlp PUBLIC base PRIVATE FastFloat::fast_float date::date pthread CURL::libcurl pugixml)
-
-# For the date library (https://howardhinnant.github.io/date/tz.html)
-target_compile_definitions(hlp PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=1)
 
 # Tests
 if(ENGINE_BUILD_TEST)

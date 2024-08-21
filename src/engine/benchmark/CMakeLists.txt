@@ -1,4 +1,3 @@
-# Add google benchmark as CPM dependency
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release"
         AND NOT CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     message(WARNING
