@@ -1,4 +1,5 @@
 import asyncio
+import uuid
 from typing import List
 from multiprocessing import Process
 
@@ -59,16 +60,17 @@ class Batcher:
             use_ssl=False
         )
 
+        list_of_uid: List[uuid.UUID] = [event.uid for event in events]
         bulk_list: List[BulkDoc] = []
         for event in events:
-            bulk_list.append(BulkDoc.create(index=indexer.events.INDEX, doc_id=event.uid, doc=event.msg))
+            bulk_list.append(BulkDoc.create(index=indexer.events.INDEX, doc_id=None, doc=event.msg))
 
         response = await indexer.events.bulk(data=bulk_list)
 
-        for response_item in response["items"]:
+        for response_item, uid in zip(response["items"], list_of_uid):
             response_item_msg = response_item["create"]
 
-            response_msg = Message(uid=response_item_msg["_id"], msg=response_item_msg)
+            response_msg = Message(uid=uid, msg=response_item_msg)
             self.q.send_to_demux(response_msg)
 
         await indexer.close()

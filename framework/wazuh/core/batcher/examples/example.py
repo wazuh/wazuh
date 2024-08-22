@@ -16,8 +16,7 @@ async def sender_worker(worker_id: int, client: BatcherClient):
     list_of_ids = []
     for i in range(10):
         event = {'id': worker_id, 'msg': f'Message from {worker_id} - Number {i}'}
-        uid = f'{worker_id}_{i}'
-        assigned_id = client.send_event(uid, event)
+        assigned_id = client.send_event(event)
         list_of_ids.append(assigned_id)
 
     for i in list_of_ids:

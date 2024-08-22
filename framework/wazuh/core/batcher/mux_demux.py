@@ -11,12 +11,12 @@ class Message:
 
     Parameters
     ----------
-    uid : str
+    uid : uuid.UUID
         The unique identifier for the message.
     msg : dict
         The message content as a dictionary.
     """
-    def __init__(self, uid: str, msg: dict):
+    def __init__(self, uid: uuid.UUID, msg: dict):
         self.uid = uid
         self.msg = msg
 
