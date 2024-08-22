@@ -1,9 +1,9 @@
 import asyncio
 from multiprocessing import Process
 
-from mux_demux import MuxDemuxQueue, MuxDemuxManager
-from batcher import BatcherConfig, BatcherProcess
-from client import BatcherClient
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
+from wazuh.core.batcher.batcher import BatcherConfig, BatcherProcess
+from wazuh.core.batcher.client import BatcherClient
 
 
 async def sender_worker(worker_id: int, client: BatcherClient):

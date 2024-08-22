@@ -2,9 +2,9 @@ import asyncio
 from typing import List
 from multiprocessing import Process
 
-from framework.wazuh.core.batcher.buffer import Buffer
-from framework.wazuh.core.batcher.timer import TimerManager
-from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message
+from wazuh.core.batcher.buffer import Buffer
+from wazuh.core.batcher.timer import TimerManager
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message
 
 
 class BatcherConfig:
