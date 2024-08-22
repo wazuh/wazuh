@@ -34,8 +34,8 @@ constexpr auto MAX_WAIT_TIME {60};
 constexpr auto START_TIME {1};
 constexpr auto DOUBLE_FACTOR {2};
 
-// Single thread because the events needs to be processed in order.
-constexpr auto DATABASE_WORKERS = 1;
+// Single thread in case the events needs to be processed in order.
+constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
 constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
 // Sync configuration
@@ -277,7 +277,8 @@ IndexerConnector::IndexerConnector(
     const std::function<void(
         const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
         logFunction,
-    const uint32_t& timeout)
+    const uint32_t& timeout,
+    const uint8_t workingThreads)
 {
     if (logFunction)
     {
@@ -300,16 +301,16 @@ IndexerConnector::IndexerConnector(
     // Initialize publisher.
     auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
 
+    // Validate threads number
+    if (workingThreads <= 0)
+    {
+        logDebug1(IC_NAME, "Invalid number of working threads, using default value.");
+    }
+
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
         [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
-
-            if (!m_initialized && m_initializeThread.joinable())
-            {
-                logDebug2(IC_NAME, "Waiting for initialization thread to process events.");
-                m_initializeThread.join();
-            }
 
             if (m_stopping.load())
             {
@@ -367,7 +368,8 @@ IndexerConnector::IndexerConnector(
             }
         },
         DATABASE_BASE_PATH + m_indexName,
-        ELEMENTS_PER_BULK);
+        ELEMENTS_PER_BULK,
+        workingThreads <= 0 ? SINGLE_ORDERED_DISPATCHING : workingThreads);
 
     m_syncQueue = std::make_unique<ThreadSyncQueue>(
         // coverity[missing_lock]
@@ -401,11 +403,6 @@ IndexerConnector::~IndexerConnector()
     m_cv.notify_all();
 
     m_dispatcher->cancel();
-
-    if (m_initializeThread.joinable())
-    {
-        m_initializeThread.join();
-    }
 }
 
 void IndexerConnector::publish(const std::string& message)

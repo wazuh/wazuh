@@ -25,7 +25,6 @@
 template<typename T,
          typename U,
          typename Functor,
-         uint8_t TNumberOfThreads = 1,
          typename TQueueType = RocksDBQueue<T, U>,
          typename TSafeQueueType = Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>>
 class TThreadEventDispatcher
@@ -34,38 +33,41 @@ public:
     explicit TThreadEventDispatcher(Functor functor,
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const uint8_t numberOfThreads = 1)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
+        , m_numberOfThreads {numberOfThreads}
     {
-        m_threads.reserve(TNumberOfThreads);
-
-        if constexpr (TNumberOfThreads == 1)
+        if (m_numberOfThreads <= 0)
         {
-            m_threads.push_back(std::thread {
-                &TThreadEventDispatcher<T, U, Functor, TNumberOfThreads, TQueueType, TSafeQueueType>::dispatch, this});
+            throw std::invalid_argument("Number of threads must be greater than 0.");
         }
-        else
+
+        m_threads.reserve(m_numberOfThreads);
+
+        for (unsigned int i = 0; i < m_numberOfThreads; ++i)
         {
-            static_assert(isSameType, "T and U are not the same type");
-            for (unsigned int i = 0; i < TNumberOfThreads; ++i)
-            {
-                m_threads.push_back(std::thread {
-                    &TThreadEventDispatcher<T, U, Functor, TNumberOfThreads, TQueueType, TSafeQueueType>::dispatch,
-                    this});
-            }
+            m_threads.push_back(
+                std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
         }
     }
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const uint8_t numberOfThreads = 1)
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
+        , m_numberOfThreads {numberOfThreads}
     {
+        if (m_numberOfThreads <= 0)
+        {
+            throw std::invalid_argument("Number of threads must be greater than 0.");
+        }
     }
 
     TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
@@ -78,67 +80,43 @@ public:
     void startWorker(Functor functor)
     {
         m_functor = std::move(functor);
-        m_threads.reserve(TNumberOfThreads);
+        m_threads.reserve(m_numberOfThreads);
 
-        if constexpr (TNumberOfThreads == 1)
+        for (unsigned int i = 0; i < m_numberOfThreads; ++i)
         {
-            m_threads.push_back(std::thread {
-                &TThreadEventDispatcher<T, U, Functor, TNumberOfThreads, TQueueType, TSafeQueueType>::dispatch, this});
-        }
-        else
-        {
-            for (unsigned int i = 0; i < TNumberOfThreads; ++i)
-            {
-                m_threads.push_back(std::thread {
-                    &TThreadEventDispatcher<T, U, Functor, TNumberOfThreads, TQueueType, TSafeQueueType>::dispatch,
-                    this});
-            }
+            m_threads.push_back(
+                std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this});
         }
     }
 
     void push(const T& value)
     {
-        if constexpr (!isTSafeMultiQueue)
+        // static assert to avoid compilation
+        static_assert(!isTSafeMultiQueue, "This method is not supported for this queue type");
+
+        if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
-            {
-                m_queue->push(value);
-            }
-        }
-        else
-        {
-            // static assert to avoid compilation
-            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
+            m_queue->push(value);
         }
     }
 
     void push(std::string_view prefix, const T& value)
     {
-        if constexpr (isTSafeMultiQueue)
+        // static assert to avoid compilation
+        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
+
+        if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
         {
-            if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
-            {
-                m_queue->push(prefix, value);
-            }
-        }
-        else
-        {
-            // static assert to avoid compilation
-            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
+            m_queue->push(prefix, value);
         }
     }
 
     void clear(std::string_view prefix = "")
     {
-        if constexpr (isTSafeMultiQueue)
-        {
-            m_queue->clear(prefix);
-        }
-        else
-        {
-            // static assert to avoid compilation
-            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-        }
+        // static assert to avoid compilation
+        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
+
+        m_queue->clear(prefix);
     }
 
     void cancel()
@@ -155,40 +133,26 @@ public:
 
     size_t size() const
     {
-        if constexpr (!isTSafeMultiQueue)
-        {
-            return m_queue->size();
-        }
-        else
-        {
-            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-        }
+        // static assert to avoid compilation
+        static_assert(!isTSafeMultiQueue, "This method is not supported for this queue type");
+
+        return m_queue->size();
     }
 
     size_t size(std::string_view prefix) const
     {
-        if constexpr (isTSafeMultiQueue)
-        {
-            return m_queue->size(prefix);
-        }
-        else
-        {
-            // static assert to avoid compilation
-            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-        }
+        // static assert to avoid compilation
+        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
+
+        return m_queue->size(prefix);
     }
 
     void postpone(std::string_view prefix, const std::chrono::seconds& time) noexcept
     {
-        if constexpr (isTSafeMultiQueue)
-        {
-            m_queue->postpone(prefix, time);
-        }
-        else
-        {
-            // static assert to avoid compilation
-            static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
-        }
+        // static assert to avoid compilation
+        static_assert(isTSafeMultiQueue, "This method is not supported for this queue type");
+
+        m_queue->postpone(prefix, time);
     }
 
 private:
@@ -206,12 +170,6 @@ private:
     static constexpr bool isTSafeQueue = std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>;
 
     /**
-     * @brief Check if the queue value are the same type. This is crucial for the `multiAndUnordered` method.
-     *
-     */
-    static constexpr bool isSameType = std::is_same_v<T, U>;
-
-    /**
      * @brief Dispatch function to handle queue processing based on the number of threads.
      *
      * This function enters a loop that runs while the dispatcher is active. Depending on the number of threads,
@@ -226,12 +184,12 @@ private:
         while (m_running)
         {
             // If only one thread is used, process the queue in a single-threaded, ordered manner
-            if constexpr (TNumberOfThreads == 1)
+            if (m_numberOfThreads == 1)
             {
                 singleAndOrdered();
             }
             // If multiple threads are used, process the queue in a multi-threaded, unordered manner
-            else
+            else if (m_numberOfThreads > 1)
             {
                 multiAndUnordered();
             }
@@ -289,14 +247,14 @@ private:
      */
     void multiAndUnordered()
     {
-        static_assert(isSameType, "T and U are not the same type");
-        std::queue<U> data; // Declare data outside the try block to ensure scope in catch block
+        // Declare data outside the try block to ensure scope in catch block
+        std::queue<U> data;
+        std::pair<U, std::string> dataPair;
         try
         {
             if constexpr (isTSafeQueue)
             {
                 data = m_queue->getBulkAndPop(m_bulkSize);
-                const auto size = data.size();
 
                 if (!data.empty())
                 {
@@ -305,11 +263,10 @@ private:
             }
             else if constexpr (isTSafeMultiQueue)
             {
-                auto dataPair = m_queue->front();
+                dataPair = m_queue->getAndPop();
                 if (!dataPair.second.empty())
                 {
                     m_functor(dataPair.first);
-                    m_queue->pop(dataPair.second);
                 }
             }
             else
@@ -332,12 +289,11 @@ private:
             }
             else if constexpr (isTSafeMultiQueue)
             {
-                while (!data.empty())
+                if (!dataPair.second.empty())
                 {
-                    m_queue->push(data.front());
-                    data.pop();
+                    m_queue->push(dataPair.second, dataPair.first);
                 }
-                std::cerr << "Dispatch handler error. Elements reinserted: " << ex.what() << "\n";
+                std::cerr << "Dispatch handler error. Element reinserted: " << ex.what() << "\n";
             }
         }
     }
@@ -360,9 +316,10 @@ private:
 
     const size_t m_maxQueueSize;
     const uint64_t m_bulkSize;
+    const uint8_t m_numberOfThreads;
 };
 
-template<typename Type, typename Functor, uint8_t NumberOfThreads = 1>
-using ThreadEventDispatcher = TThreadEventDispatcher<Type, Type, Functor, NumberOfThreads>;
+template<typename Type, typename Functor>
+using ThreadEventDispatcher = TThreadEventDispatcher<Type, Type, Functor>;
 
 #endif // _THREAD_EVENT_DISPATCHER_HPP
