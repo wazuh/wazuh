@@ -1,7 +1,7 @@
 import sys
 from typing import List
 
-from framework.wazuh.core.batcher.mux_demux import Message
+from wazuh.core.batcher.mux_demux import Message
 
 
 class Buffer:
