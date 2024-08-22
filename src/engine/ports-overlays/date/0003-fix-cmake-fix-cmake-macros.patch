@@ -1,0 +1,17 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 3c81ce8..47c7c74 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -122,11 +122,7 @@ if( BUILD_TZ_LIB )
+         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+         $<INSTALL_INTERFACE:include> )
+ 
+-    if ( USE_SYSTEM_TZ_DB OR MANUAL_TZ_DB )
+-      target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=0 )
+-    else()
+-      target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=1 HAS_REMOTE_API=1 )
+-    endif()
++    target_compile_definitions( date-tz PRIVATE AUTO_DOWNLOAD=0 HAS_REMOTE_API=1 )
+ 
+     if ( USE_SYSTEM_TZ_DB AND NOT WIN32 AND NOT MANUAL_TZ_DB )
+       target_compile_definitions( date-tz PRIVATE INSTALL=. PUBLIC USE_OS_TZDB=1 )
