@@ -26,7 +26,6 @@ option(ENGINE_BUILD_TEST "Generate tests" ON)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
-option(ENGINE_GENERATE_PROTOBUF "Generate code using Protocol Buffers" OFF)
 
 # TODO put this in a better place together with other global options like warnings
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
