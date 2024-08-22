@@ -26,6 +26,9 @@
 class PubSubPublisher final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
 private:
+
+    /* std::function from databaseFeedManager */
+
     /**
      * @brief Publish the content.
      *
@@ -41,7 +44,8 @@ private:
 
             logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", stringifyJson.c_str());
 
-            context.spUpdaterBaseContext->spChannel->send({stringifyJson.begin(), stringifyJson.end()});
+            //context.spUpdaterBaseContext->spChannel->send({stringifyJson.begin(), stringifyJson.end()});
+            /* std::function from databaseFeedManager */
             logDebug2(WM_CONTENTUPDATER, "Data published");
             return;
         }

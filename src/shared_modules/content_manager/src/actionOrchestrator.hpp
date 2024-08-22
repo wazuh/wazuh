@@ -132,7 +132,7 @@ public:
             executionContext->handleRequest(m_spBaseContext);
 
             // Create a updater chain
-            m_spUpdaterOrchestration = FactoryContentUpdater::create(m_spBaseContext->configData);
+            m_spUpdaterOrchestration = FactoryContentUpdater::create(m_spBaseContext->configData, /* std::function(stopActionCondition) from databaseFeedManager */);
 
             logDebug1(WM_CONTENTUPDATER, "Content updater orchestration created");
         }

@@ -38,11 +38,11 @@ public:
      * @param topicName Topic name.
      * @param parameters Action orchestrator parameters.
      */
-    explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters)
+    explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters, /* std::function from databaseFeedManager */)
         : m_routerProvider(std::make_shared<RouterProvider>(topicName))
     {
         m_routerProvider->start();
-        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters);
+        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters, /*std::function databaseFeedManager*/);
     }
 
     ~ContentProvider()

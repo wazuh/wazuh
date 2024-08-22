@@ -38,14 +38,14 @@ public:
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
      */
-    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters)
+    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters, /* std::function from databaseFeedManager */)
         : m_channel {channel}
         , m_actionInProgress {false}
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition)}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition, /* std::function from databaseFeedManager */)}
     {
         m_parameters = std::move(parameters);
     }

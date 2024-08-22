@@ -39,13 +39,13 @@ public:
      * @param config Configurations.
      * @return std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>>
      */
-    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config)
+    static std::shared_ptr<AbstractHandler<std::shared_ptr<UpdaterContext>>> create(nlohmann::json& config, /* std::function from databaseFeedManager */)
     {
         logDebug1(WM_CONTENTUPDATER, "FactoryContentUpdater - Starting process");
 
         auto factoryDownloader {FactoryDownloader::create(config)};
         auto factoryDecompressor {FactoryDecompressor::create(config)};
-        auto factoryPublisher {std::make_shared<PubSubPublisher>()};
+        auto factoryPublisher {std::make_shared<PubSubPublisher>(/* std::function from databaseFeedManager */)};
         auto factoryVersionUpdater {FactoryVersionUpdater::create(config)};
         auto factoryCleaner {FactoryCleaner::create(config)};
 

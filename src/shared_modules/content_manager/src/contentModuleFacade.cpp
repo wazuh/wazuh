@@ -40,7 +40,7 @@ void ContentModuleFacade::addProvider(const std::string& name, const nlohmann::j
         throw std::runtime_error("Provider already exist");
     }
 
-    m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters));
+    m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters, /* std::function from databaseFeedManager */));
 }
 
 void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
