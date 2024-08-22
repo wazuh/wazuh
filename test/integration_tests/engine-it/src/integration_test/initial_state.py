@@ -11,9 +11,11 @@ PLACEHOLDER = "ENV_PATH_PLACEHOLDER"
 def cpy_conf(env_path: Path, it_path: Path) -> Path:
     serv_conf_file = it_path / 'configuration_files' / 'general.conf'
     dest_conf_file = env_path / 'engine' / 'general.conf'
+    backup_dest_conf_file = env_path / 'engine' / 'general-bk.conf'
 
     conf_str = serv_conf_file.read_text().replace(PLACEHOLDER, env_path.as_posix())
     dest_conf_file.write_text(conf_str)
+    backup_dest_conf_file.write_text(conf_str)
 
     return dest_conf_file
 
@@ -54,8 +56,8 @@ name: decoder/other-test-message/0
 check: $wazuh.queue == 50 # "2"
 """)
 
-    (other_wazuh_core_test / 'filters' /
-     'allow-all.yml').write_text("name: filter/allow-all/0\n")
+    (other_wazuh_core_test / 'manifest.yml').write_text(
+        "name: integration/other-wazuh-core-test/0\ndecoders:\n- decoder/other-test-message/0\n")
 
 
 def create_dummy_integration_with_parents(env_path: Path):
@@ -74,6 +76,9 @@ name: decoder/test-message/0
 parents:
     - decoder/parent-message/0
     """)
+
+    (parent_wazuh_core_test / 'manifest.yml').write_text(
+        "name: integration/parent-wazuh-core-test/0\ndecoders:\n- decoder/parent-message/0\n")
 
 
 def init(env_path: Path, bin_path: Path, test_path: Path):
