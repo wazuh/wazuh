@@ -8,7 +8,10 @@
  * License (version 2) as published by the FSF - Free Software
  * Foundation.
  */
+#include <cstdio>
 #include <fstream>
+#include <iostream>
+#include <string>
 #include <sys/utsname.h>
 #include <unistd.h>
 
@@ -56,7 +59,21 @@ static std::string getSerialNumber()
 
 static std::string getCpuName()
 {
-    return UNKNOWN_VALUE;
+    std::string retVal { UNKNOWN_VALUE };
+    
+    FILE* fp = popen("uname -i", "r");
+    if (fp)
+    {
+        char buffer[128];
+        if (fgets(buffer, sizeof(buffer), fp) != nullptr)
+        {
+            retVal = buffer;
+            retVal.erase(retVal.find_last_not_of("\n") + 1);
+        }
+        pclose(fp);
+    }
+
+    return retVal;
 }
 
 static int getCpuMHz()
