@@ -3,10 +3,21 @@ from typing import List
 
 from .base import BaseIndex
 from wazuh.core.indexer.models.events import StatefulEvent
+from wazuh.core.indexer.models.events import Events
+from wazuh.core.indexer.bulk import MixinBulk
+
+from opensearchpy import AsyncOpenSearch
 
 
-class EventsIndex(BaseIndex):
+HARDCODED_EVENTS_INDEX_NAME = "events"
+
+
+class EventsIndex(BaseIndex, MixinBulk):
     """Set of methods to interact with the stateful events indices."""
+    INDEX = HARDCODED_EVENTS_INDEX_NAME
+
+    def __init__(self, client: AsyncOpenSearch):
+        super().__init__(client)
 
     async def create(self, events: List[StatefulEvent]) -> dict:
         """Post new events to the indexer.

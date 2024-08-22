@@ -125,7 +125,6 @@ class MuxDemuxQueue:
 
         while True:
             item = self._get_response_from_demux()
-            print(f'Router process Recv: {item.__dict__}')
             if isinstance(item, Message):
                 self._store_response(item)
 
@@ -168,13 +167,13 @@ class MuxDemuxManager:
         self.manager = SyncManager()
         self.manager.start()
 
-        self.router = self.manager.MuxDemuxQueue(
+        self.queue = self.manager.MuxDemuxQueue(
             self.manager.dict(),
             self.manager.Queue(),
             self.manager.Queue()
         )
-        self.router_process = Process(target=self.router.run, args=())
-        self.router_process.start()
+        self.queue_process = Process(target=self.queue.run, args=())
+        self.queue_process.start()
 
     def get_manager(self) -> SyncManager:
         """
@@ -187,7 +186,7 @@ class MuxDemuxManager:
         """
         return self.manager
 
-    def get_router_process(self) -> Process:
+    def get_queue_process(self) -> Process:
         """
         Returns the MuxDemuxQueue process instance.
 
@@ -196,9 +195,9 @@ class MuxDemuxManager:
         Process
             The Process instance running the MuxDemuxQueue demux.
         """
-        return self.router_process
+        return self.queue_process
 
-    def get_router(self) -> MuxDemuxQueue:
+    def get_queue(self) -> MuxDemuxQueue:
         """
         Returns the MuxDemuxQueue instance.
 
@@ -207,11 +206,11 @@ class MuxDemuxManager:
         MuxDemuxQueue
             The MuxDemuxQueue instance.
         """
-        return self.router
+        return self.queue
 
     def shutdown(self):
         """
         Terminates the MuxDemuxQueue process and shuts down the SyncManager.
         """
-        self.router_process.terminate()
+        self.queue_process.terminate()
         self.manager.shutdown()

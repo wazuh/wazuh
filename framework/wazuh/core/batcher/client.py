@@ -36,7 +36,6 @@ class BatcherClient:
         """
         return self.queue.send_to_mux(uid, event)
 
-    # TODO - Investigate possibility of changing it to run_in_executor
     async def get_response(self, uid: str) -> Optional[dict]:
         """
         Asynchronously waits for a response to become available and retrieves it.
