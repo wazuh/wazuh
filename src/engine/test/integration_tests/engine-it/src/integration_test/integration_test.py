@@ -5,16 +5,17 @@ from pathlib import Path
 from typing import Optional, List
 
 
-def run_behave_tests(test_path: Path, feature: Optional[Path]) -> int:
+def run_behave_tests(test_path: Path, feature: Optional[str]) -> int:
     result_code = 0
     if feature:
-        print(f"\n\n=====> Start Behave {feature}")
-        if not feature.is_file():
-            print(f"Error: Feature file {feature} not found.")
+        feature_path = Path(feature)
+        print(f"\n\n=====> Start Behave {feature_path}")
+        if not feature_path.is_file():
+            print(f"Error: Feature file {feature_path} not found.")
             sys.exit(1)
 
         result = subprocess.run(
-            ['behave', feature, '--tags', '~exclude', '--format', 'progress2'])
+            ['behave', feature_path.as_posix(), '--tags', '~exclude', '--format', 'progress2'])
         print(f"<===== End")
         if result.returncode != 0:
             result_code = 1
