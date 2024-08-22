@@ -23,8 +23,6 @@ engine/
 │       └── dummy_benchmark.cpp
 ├── build
 |   └── ...
-├── cmake
-│   └── CPM.cmake
 ├── CMakeLists.txt
 ├── docs
 │   ├── Doxyfile.in
@@ -48,19 +46,6 @@ Test are located inside `<root_dir>/test/source` folder, to add tests simply cre
 <a name="addbench"></a>
 ## Adding benchmarks
 Test are located inside `<root_dir>/benchmark/source` folder, to add benchmarks simply create new cpp file inside said folder. Check [google/benchmark](https://github.com/google/benchmark) documentation in order to build micro-benchmarks using google benchmark.
-
-<a name="cmakedep"></a>
-## CMake dependencies
-Dependencies are managed through [CPM](https://github.com/cpm-cmake/CPM.cmake).
-To add CPM to your current project, simply add the [latest release](https://github.com/cpm-cmake/CPM.cmake/releases/latest) of `CPM.cmake` or `get_cpm.cmake` to your project's `cmake` directory.
-The command below will perform this automatically.
-
-```bash
-mkdir -p cmake
-wget -O cmake/CPM.cmake https://github.com/cpm-cmake/CPM.cmake/releases/latest/download/get_cpm.cmake
-```
-
-To add dependencies check the [CPM wiki](https://github.com/cpm-cmake/CPM.cmake/wiki/More-Snippets).
 
 <a name="VSC"></a>
 ## Visual studio code integration
@@ -88,7 +73,7 @@ In order to integrate CMake and c++ with VSCode we need to install the [c++ exte
 ```
 CMake: Configure
 ```
-A prompt to select compiler will appear and once selected it will generate all the building files needed and download all CPM dependencies. We can select CMake build variant, targets, executable and tests on the bottom menu:
+We can select CMake build variant, targets, executable and tests on the bottom menu:
 
 ![](docs/img/bottom_menu.png)
 
