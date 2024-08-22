@@ -171,9 +171,9 @@ def test_mux_demux_manager_initialization():
     """
     manager = MuxDemuxManager()
     assert isinstance(manager.get_manager(), SyncManager)
-    assert isinstance(manager.get_router_process(), Process)
+    assert isinstance(manager.get_queue_process(), Process)
 
-    assert manager.get_router_process().is_alive()
+    assert manager.get_queue_process().is_alive()
 
 
 def test_mux_demux_manager_shutdown():
@@ -184,7 +184,7 @@ def test_mux_demux_manager_shutdown():
     manager = MuxDemuxManager()
     manager.shutdown()
 
-    assert not manager.get_router_process().is_alive()
+    assert not manager.get_queue_process().is_alive()
     with pytest.raises(AssertionError) as err:
         manager.get_manager().list()
     assert str(err.value) == "server not yet started"

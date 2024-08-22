@@ -8,7 +8,6 @@ from wazuh.core.batcher.client import BatcherClient
 
 
 INDEXER_HOST = os.environ.get('WAZUH_INDEXER_HOST', '127.0.0.1')
-INDEXER_PORT = os.environ.get('WAZUH_INDEXER_PORT', 9200)
 INDEXER_USER = os.environ.get('WAZUH_INDEXER_USER', 'admin')
 INDEXER_PASSWORD = os.environ.get('WAZUH_INDEXER_PASSWORD', 'SecretPassword1%')
 
@@ -34,10 +33,10 @@ def run_worker(worker_id: int, queue: MuxDemuxQueue):
 
 
 async def main():
-    indexer_config = IndexerConfig(host=INDEXER_HOST, user=INDEXER_USER, password=INDEXER_PASSWORD, port=INDEXER_PORT)
+    indexer_config = IndexerConfig(host=INDEXER_HOST, user=INDEXER_USER, password=INDEXER_PASSWORD)
 
     queue_manager = MuxDemuxManager()
-    queue = queue_manager.get_router()
+    queue = queue_manager.get_queue()
 
     config = BatcherConfig(max_elements=6, max_size=30000, max_time_seconds=5)
     batcher_process = BatcherProcess(q=queue, config=config, indexer_config=indexer_config)

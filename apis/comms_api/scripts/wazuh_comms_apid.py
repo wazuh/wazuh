@@ -22,8 +22,14 @@ from comms_api.routers.exceptions import HTTPError, http_error_handler, validati
     exception_handler, starlette_http_exception_handler
 from comms_api.routers.router import router
 from comms_api.middlewares.logging import LoggingMiddleware
+from comms_api.core.batcher import create_batcher_process
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
+from wazuh.core.batcher.config import BatcherConfig, IndexerConfig
+
+# TODO - Delete after centralized configuration
+from wazuh.core.indexer import INDEXER_HOST, INDEXER_USER, INDEXER_PASSWORD
+from wazuh.core.batcher.config import BATCHER_MAX_ELEMENTS, BATCHER_MAX_SIZE, BATCHER_MAX_TIME_SECONDS
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 
@@ -219,6 +225,15 @@ if __name__ == '__main__':
     pid = os.getpid()
     signal.signal(signal.SIGTERM, partial(pyDaemonModule.exit_handler, process_name=MAIN_PROCESS, logger=logger))
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+    # Creates batcher process
+    batcher_config = BatcherConfig(
+        max_elements=BATCHER_MAX_ELEMENTS,
+        max_size=BATCHER_MAX_SIZE,
+        max_time_seconds=BATCHER_MAX_TIME_SECONDS
+    )
+    indexer_config = IndexerConfig(host=INDEXER_HOST, user=INDEXER_USER, password=INDEXER_PASSWORD)
+    create_batcher_process(config=batcher_config, indexer_config=indexer_config)
 
     try:
         app = create_app()
