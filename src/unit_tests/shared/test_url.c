@@ -39,7 +39,7 @@ void test_wurl_http_request_url_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "url not defined");
 
-    response = wurl_http_request(NULL, headers, url, NULL, max_size, 0);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size, 0, NULL);
     assert_null(response);
 }
 
@@ -59,7 +59,7 @@ void test_wurl_http_request_init_failure(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl initialization failure");
 
-    response = wurl_http_request(NULL, headers, url, NULL, max_size, 0);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size, 0, NULL);
     assert_null(response);
 }
 
@@ -105,7 +105,7 @@ void test_wurl_http_request_headers_list_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl append header failure");
 
-    response = wurl_http_request(NULL, headers, url, NULL, max_size, 0);
+    response = wurl_http_request(NULL, headers, url, NULL, max_size, 0, NULL);
     assert_null(response);
 }
 
@@ -158,7 +158,7 @@ void test_wurl_http_request_headers_tmp_null(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl append custom header failure");
 
-    response = wurl_http_request(NULL, &pheaders, url, NULL, max_size, 0);
+    response = wurl_http_request(NULL, &pheaders, url, NULL, max_size, 0, NULL);
 
     assert_null(response);
 }
@@ -272,7 +272,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_headers(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
-    response = wurl_http_request(NULL, pheaders, url, NULL, max_size, 0);
+    response = wurl_http_request(NULL, pheaders, url, NULL, max_size, 0, NULL);
     os_free(pheaders);
     assert_null(response);
 }
@@ -381,7 +381,7 @@ void test_wurl_http_request_curl_easy_perform_fail_with_payload(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Access denied to remote resource");
 
-    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 0);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 0, NULL);
     assert_null(response);
 }
 
@@ -498,7 +498,7 @@ void test_wurl_http_request_curl_easy_perform_fail_timeout(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "curl_easy_perform() failed: Timeout was reached");
 
-    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 1);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 1, NULL);
     assert_null(response);
 }
 
@@ -600,7 +600,7 @@ void test_wurl_http_request_curl_easy_setopt_fail(void **state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Parameter setup error at CURL");
 
-    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 0);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 0, NULL);
     assert_null(response);
 }
 
@@ -612,6 +612,7 @@ void test_wurl_http_request_success(void **state)
     char *pheaders = NULL;
     char *url = "http://test.com";
     const char *payload = "payload test";
+    const char *userpass = "wazuh:wazuh";
     size_t max_size = 1;
 
     #ifdef TEST_WINAGENT
@@ -648,6 +649,10 @@ void test_wurl_http_request_success(void **state)
         expect_value(wrap_curl_easy_setopt, option, CURLOPT_URL);
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
+
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_USERPWD);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
         expect_value(wrap_curl_easy_setopt, curl, curl);
@@ -700,6 +705,10 @@ void test_wurl_http_request_success(void **state)
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
 
+        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_USERPWD);
+        expect_value(__wrap_curl_easy_setopt, curl, curl);
+        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+
         expect_value(__wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
         expect_value(__wrap_curl_easy_setopt, curl, curl);
         will_return(__wrap_curl_easy_setopt, CURLE_OK);
@@ -715,7 +724,7 @@ void test_wurl_http_request_success(void **state)
         expect_value(__wrap_curl_easy_cleanup, curl, curl);
     #endif
 
-    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 0);
+    response = wurl_http_request(NULL, &pheaders, url, payload, max_size, 0, userpass);
     assert_non_null(response);
     os_free(response->header);
     os_free(response->body);

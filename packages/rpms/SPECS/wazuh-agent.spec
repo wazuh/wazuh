@@ -471,11 +471,11 @@ if [ $1 = 0 ]; then
 
     # Validate uninstallation
     if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN} --uninstall-auth-login ${VALIDATION_LOGIN}"
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN} --uninstall-auth-login ${VALIDATION_LOGIN} --uninstall-auth-host ${VALIDATION_HOST}"
     elif [ -n "$VALIDATION_TOKEN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN}"
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN} --uninstall-auth-host ${VALIDATION_HOST}"
     elif [ -n "$VALIDATION_LOGIN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login ${VALIDATION_LOGIN}"
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login ${VALIDATION_LOGIN} --uninstall-auth-host ${VALIDATION_HOST}"
     else
       echo "Validation login or token not provided. Uninstallation cannot be continued."
       exit 1

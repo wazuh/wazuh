@@ -64,7 +64,7 @@ static void test_check_uninstall_permission_granted(void **state) {
     curl_response *response = *state;
     response->status_code = 200;
 
-    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response);
+    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response, NULL);
 
     expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
 
@@ -80,7 +80,7 @@ static void test_check_uninstall_permission_denied(void **state) {
     curl_response *response = *state;
     response->status_code = 403;
 
-    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response);
+    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response, NULL);
 
     expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_DENIED);
 
@@ -96,7 +96,7 @@ static void test_check_uninstall_permission_wrong_status(void **state) {
     curl_response *response = *state;
     response->status_code = 0;
 
-    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response);
+    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response, NULL);
 
     char error_log[128];
     sprintf(error_log, AG_API_ERROR_CODE, response->status_code);
@@ -112,7 +112,7 @@ static void test_check_uninstall_permission_no_response(void **state) {
     const char *token = "abcdefghijk";
     char* headers[] = { "Authorization: Bearer abcdefghijk", NULL };
 
-    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, NULL);
+    expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, NULL, NULL);
 
     expect_string(__wrap__merror, formatted_msg, AG_REQUEST_FAIL);
 
@@ -129,7 +129,7 @@ static void test_authenticate_and_get_token_successful(void **state) {
     curl_response *response = *state;
     response->status_code = 200;
 
-    expect_wrap_wurl_http_request(WURL_POST_METHOD, headers, "https://localhost:55000/security/user/authenticate?raw=true", userpass, OS_SIZE_8192, 30, response);
+    expect_wrap_wurl_http_request(WURL_POST_METHOD, headers, "https://localhost:55000/security/user/authenticate?raw=true", userpass, OS_SIZE_8192, 30, response, NULL);
 
     expect_value(__wrap_wurl_free_response, response, response);
 
@@ -148,7 +148,7 @@ static void test_authenticate_and_get_token_error_status(void **state) {
     curl_response *response = *state;
     response->status_code = 400;
 
-    expect_wrap_wurl_http_request(WURL_POST_METHOD, headers, "https://localhost:55000/security/user/authenticate?raw=true", userpass, OS_SIZE_8192, 30, response);
+    expect_wrap_wurl_http_request(WURL_POST_METHOD, headers, "https://localhost:55000/security/user/authenticate?raw=true", userpass, OS_SIZE_8192, 30, response, NULL);
 
     char error_log[128];
     sprintf(error_log, AG_API_ERROR_CODE, response->status_code);
@@ -164,7 +164,7 @@ static void test_authenticate_and_get_token_no_response(void **state) {
     const char *userpass = "user:pass";
     char* headers[] = { NULL };
 
-    expect_wrap_wurl_http_request(WURL_POST_METHOD, headers, "https://localhost:55000/security/user/authenticate?raw=true", userpass, OS_SIZE_8192, 30, NULL);
+    expect_wrap_wurl_http_request(WURL_POST_METHOD, headers, "https://localhost:55000/security/user/authenticate?raw=true", userpass, OS_SIZE_8192, 30, NULL, NULL);
 
     expect_string(__wrap__merror, formatted_msg, AG_REQUEST_FAIL);
 
@@ -185,7 +185,7 @@ static void test_package_uninstall_validation_token_success(void **state) {
 
     // check_uninstall_permission
     {
-        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response);
+        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response, NULL);
 
         expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
 
@@ -206,7 +206,7 @@ static void test_package_uninstall_validation_token_denied(void **state) {
 
     // check_uninstall_permission
     {
-        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response);
+        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response, NULL);
 
         expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_DENIED);
 
@@ -228,14 +228,14 @@ static void test_package_uninstall_validation_login_success(void **state) {
 
     // authenticate_and_get_token
     {
-        expect_wrap_wurl_http_request(WURL_POST_METHOD, empty_headers, "https://localhost:55000/security/user/authenticate?raw=true", uninstall_auth_login, OS_SIZE_8192, 30, response);
+        expect_wrap_wurl_http_request(WURL_POST_METHOD, empty_headers, "https://localhost:55000/security/user/authenticate?raw=true", uninstall_auth_login, OS_SIZE_8192, 30, response, NULL);
 
         expect_value(__wrap_wurl_free_response, response, response);
     }
 
     // check_uninstall_permission
     {
-        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response);
+        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, response, NULL);
 
         expect_string(__wrap__minfo, formatted_msg, AG_UNINSTALL_VALIDATION_GRANTED);
 
@@ -257,14 +257,14 @@ static void test_package_uninstall_validation_login_denied(void **state) {
 
     // authenticate_and_get_token
     {
-        expect_wrap_wurl_http_request(WURL_POST_METHOD, empty_headers, "https://localhost:55000/security/user/authenticate?raw=true", uninstall_auth_login, OS_SIZE_8192, 30, response);
+        expect_wrap_wurl_http_request(WURL_POST_METHOD, empty_headers, "https://localhost:55000/security/user/authenticate?raw=true", uninstall_auth_login, OS_SIZE_8192, 30, response, NULL);
 
         expect_value(__wrap_wurl_free_response, response, response);
     }
 
     // check_uninstall_permission
     {
-        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, NULL);
+        expect_wrap_wurl_http_request(WURL_GET_METHOD, headers, "https://localhost:55000/uninstall_permission", NULL, OS_SIZE_8192, 30, NULL, NULL);
 
         expect_string(__wrap__merror, formatted_msg, AG_REQUEST_FAIL);
     }
@@ -282,7 +282,7 @@ static void test_package_uninstall_validation_login_no_token(void **state) {
 
     // authenticate_and_get_token
     {
-        expect_wrap_wurl_http_request(WURL_POST_METHOD, empty_headers, "https://localhost:55000/security/user/authenticate?raw=true", uninstall_auth_login, OS_SIZE_8192, 30, NULL);
+        expect_wrap_wurl_http_request(WURL_POST_METHOD, empty_headers, "https://localhost:55000/security/user/authenticate?raw=true", uninstall_auth_login, OS_SIZE_8192, 30, NULL, NULL);
 
         expect_string(__wrap__merror, formatted_msg, AG_REQUEST_FAIL);
     }

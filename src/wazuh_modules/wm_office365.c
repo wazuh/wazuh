@@ -560,7 +560,7 @@ STATIC char* wm_office365_get_access_token(wm_office365_auth* auth, size_t max_s
     headers[0] = auth_header;
     headers[1] = NULL;
 
-    response = wurl_http_request(WURL_POST_METHOD, headers, url, auth_payload, max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    response = wurl_http_request(WURL_POST_METHOD, headers, url, auth_payload, max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT, NULL);
 
     if (response) {
         cJSON *response_json = NULL;
@@ -616,7 +616,7 @@ STATIC int wm_office365_manage_subscription(wm_office365_subscription* subscript
     headers[1] = auth_header2;
     headers[2] = NULL;
 
-    response = wurl_http_request(WURL_POST_METHOD, headers, url, "", max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    response = wurl_http_request(WURL_POST_METHOD, headers, url, "", max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT, NULL);
 
     if (response) {
         cJSON *response_json = NULL;
@@ -666,7 +666,7 @@ STATIC cJSON* wm_office365_get_content_blobs(const char* url, const char* token,
     headers[1] = auth_header2;
     headers[2] = NULL;
 
-    response = wurl_http_request(WURL_GET_METHOD, headers, url, "", max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    response = wurl_http_request(WURL_GET_METHOD, headers, url, "", max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT, NULL);
 
     if (response) {
         cJSON *response_json = NULL;
@@ -723,7 +723,7 @@ STATIC cJSON* wm_office365_get_logs_from_blob(const char* url, const char* token
     headers[1] = auth_header2;
     headers[2] = NULL;
 
-    response = wurl_http_request(WURL_GET_METHOD, headers, url, "", max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT);
+    response = wurl_http_request(WURL_GET_METHOD, headers, url, "", max_size, WM_OFFICE365_DEFAULT_CURL_REQUEST_TIMEOUT, NULL);
 
     if (response) {
         cJSON *response_json = NULL;

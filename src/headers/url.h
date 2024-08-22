@@ -51,9 +51,10 @@ char * wurl_http_get(const char * url, size_t max_size, const long timeout);
  * @param payload Request body
  * @param max_size Max response size allowed
  * @param timeout Maximum time allowed for the request
+ * @param userpass User and password in format user:pass
  * @return Request response (status_code, headers and body)
  */
-curl_response *wurl_http_request(char *method, char **headers, const char *url, const char *payload, size_t max_size, const long timeout);
+curl_response *wurl_http_request(char *method, char **headers, const char *url, const char *payload, size_t max_size, const long timeout, const char *userpass);
 
 void wurl_free_response(curl_response* response);
 #ifndef CLIENT

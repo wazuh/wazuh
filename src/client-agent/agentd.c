@@ -214,7 +214,7 @@ bool check_uninstall_permission(const char *token, const char *host) {
     char* headers[] = { NULL, NULL };
     os_strdup(header, headers[0]);
 
-    curl_response *response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, OS_SIZE_8192, 30);
+    curl_response *response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, OS_SIZE_8192, 30, NULL);
 
     if (response) {
         if (response->status_code == 200) {
@@ -242,7 +242,7 @@ char* authenticate_and_get_token(const char *userpass, const char *host) {
     char* headers[] = { NULL };
 
     snprintf(url, sizeof(url), "https://%s/security/user/authenticate?raw=true", host);
-    curl_response *response = wurl_http_request(WURL_POST_METHOD, headers, url, userpass, OS_SIZE_8192, 30);
+    curl_response *response = wurl_http_request(WURL_POST_METHOD, headers, url, NULL, OS_SIZE_8192, 30, userpass);
 
     if (response) {
         if (response->status_code == 200) {
