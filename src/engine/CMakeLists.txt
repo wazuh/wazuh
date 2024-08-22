@@ -53,6 +53,13 @@ MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
     "${CMAKE_PROJECT_NAME} requires an out of source build."
 )
 
+if(DEFINED VCPKG_TARGET_TRIPLET)
+    message(STATUS "Using VCPKG triplet: ${VCPKG_TARGET_TRIPLET}")
+else()
+    message(WARNING "VCPKG_TARGET_TRIPLET is not defined. Make sure you are using the vcpkg toolchain.")
+    FATAL_ERROR("VCPKG_TARGET_TRIPLET is not defined.")
+endif()
+
 ####################################################################################################
 # Dependencies
 ####################################################################################################
