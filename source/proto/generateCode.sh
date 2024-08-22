@@ -11,7 +11,7 @@ check_protoc_installed() {
 # Function to set up paths and variables
 initialize_variables() {
     OLD_PWD=$(pwd)
-    PROTO_DEPS_SRC_DIR=../../../build/_deps/protobuf-src/src
+    PROTO_DEPS_SRC_DIR=../../../build/vcpkg_installed/x64-linux/include/
     SCRIPT_DIR=$(dirname "$(readlink -f "$0")")
     SRC_PROTO_DIR="${SCRIPT_DIR}/src"
     CLANG_DIR="${SCRIPT_DIR}/../../"
