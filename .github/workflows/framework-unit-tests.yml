@@ -33,4 +33,4 @@ jobs:
           pip install -r framework/requirements-dev.txt --no-build-isolation
 
       - name: Run Framework tests
-        run: python -m pytest framework
+        run: python -m pytest framework --cov
