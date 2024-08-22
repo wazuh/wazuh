@@ -103,11 +103,12 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
-        "CMAKE_CXX_FLAGS": "-g -O0 --coverage -fprofile-arcs",
-        "CMAKE_C_FLAGS": "-g -O0 --coverage -fprofile-arcs",
+        "CMAKE_CXX_FLAGS": "-g -O0 --coverage -fprofile-arcs -fprofile-update=atomic",
+        "CMAKE_C_FLAGS": "-g -O0 --coverage -fprofile-arcs -fprofile-update=atomic",
         "CMAKE_EXE_LINKER_FLAGS": "--coverage -fprofile-arcs -lgcov",
         "CMAKE_SHARED_LINKER_FLAGS": "--coverage -fprofile-arcs -lgcov",
-        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays",
+        "ENABLE_COVERAGE_REPORT": "ON"
       }
     },
     {

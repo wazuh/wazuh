@@ -173,13 +173,14 @@ function(get_all_targets _result _dir)
     set(${_result} ${${_result}} ${_sub_targets} PARENT_SCOPE)
 endfunction()
 
-# Create a empty list
+# Create a empty list to store all targets
 set(ALL_TARGETS)
 set(test_targets_to_build)
 
 # Get all targets
 get_all_targets(ALL_TARGETS ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Filter test targets and add them to the test_targets_to_build list
 foreach(target ${ALL_TARGETS})
     # print all targets
     # Test end with _test _ctest or _utest
@@ -190,6 +191,23 @@ foreach(target ${ALL_TARGETS})
 endforeach()
 
 add_custom_target(all_tests DEPENDS ${test_targets_to_build})
+
+
+# Check if coverage report is enabled
+if(DEFINED ENABLE_COVERAGE_REPORT AND ENABLE_COVERAGE_REPORT)
+    message(STATUS "Coverage report generation is enabled.")
+
+    # Add coverage flags
+    add_custom_target(coverage
+        COMMAND lcov --capture --directory ${CMAKE_BINARY_DIR} --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
+        COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '/usr/*' '*/test/*' '*/build/vcpkg_installed/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
+        COMMAND genhtml ${CMAKE_BINARY_DIR}/coverage.info --output-directory ${CMAKE_BINARY_DIR}/coverage_report
+        COMMENT "Generating coverage report in ${CMAKE_BINARY_DIR}/coverage_report"
+    )
+else()
+    message(STATUS "Coverage report generation is not enabled.")
+endif()
+
 
 # Generate doc
 if(ENGINE_BUILD_DOCUMENTATION)
