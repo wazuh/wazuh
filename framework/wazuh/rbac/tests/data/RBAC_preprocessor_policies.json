@@ -52,17 +52,12 @@
       },
       {
         "actions": ["agent:read", "agent:delete", "agent:update"],
-        "resources": ["agent:id:000", "agent:group:group1", "agent:id:001"],
+        "resources": ["agent:group:group1", "agent:id:001"],
         "effect": "allow"
       },
       {
         "actions": ["agent:update"],
         "resources": ["agent:id:*"],
-        "effect": "deny"
-      },
-      {
-        "actions": ["agent:read", "agent:delete"],
-        "resources": ["agent:id:000"],
         "effect": "deny"
       }
     ],
@@ -70,14 +65,12 @@
       "agent:read": {
         "agent:id:*" : "deny",
         "agent:group:group1" : "allow",
-        "agent:id:001" : "allow",
-        "agent:id:000" : "deny"
+        "agent:id:001" : "allow"
       },
       "agent:delete": {
         "agent:id:*": "deny",
         "agent:group:group1" : "allow",
-        "agent:id:001" : "allow",
-        "agent:id:000" : "deny"
+        "agent:id:001" : "allow"
       },
       "agent:update": {
         "agent:id:*": "deny"
@@ -93,7 +86,7 @@
       },
       {
         "actions": ["agent:read","agent:delete", "agent:update"],
-        "resources": ["agent:id:000", "agent:group:group1", "agent:id:001"],
+        "resources": ["agent:group:group1", "agent:id:001"],
         "effect": "deny"
       },
       {
@@ -108,13 +101,11 @@
       },
       "agent:delete": {
         "agent:id:*" : "deny",
-        "agent:id:000" : "deny",
         "agent:group:group1" : "deny",
         "agent:id:001" : "deny"
       },
       "agent:update": {
         "agent:id:*": "deny",
-        "agent:id:000" : "deny",
         "agent:group:group1" : "deny",
         "agent:id:001" : "deny"
       }
@@ -162,16 +153,6 @@
       },
       {
         "actions": ["agent:read"],
-        "resources": ["agent:id:000"],
-        "effect": "allow"
-      },
-      {
-        "actions": ["agent:read"],
-        "resources": ["agent:id:000"],
-        "effect": "allow"
-      },
-      {
-        "actions": ["agent:read"],
         "resources": ["agent:id:001"],
         "effect": "allow"
       },
@@ -244,7 +225,6 @@
     "processed_policies": {
       "agent:read": {
         "agent:id:*": "deny",
-        "agent:id:000": "allow",
         "agent:id:001": "deny",
         "agent:id:002": "deny",
         "agent:id:003": "deny",
