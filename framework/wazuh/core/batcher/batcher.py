@@ -3,13 +3,13 @@ import uuid
 from typing import List
 from multiprocessing import Process
 
-from wazuh.core.indexer import Indexer, create_indexer
+from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.bulk import BulkDoc
 
 from wazuh.core.batcher.buffer import Buffer
 from wazuh.core.batcher.timer import TimerManager
 from wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message
-from wazuh.core.batcher.config import BatcherConfig, IndexerConfig
+from wazuh.core.batcher.config import BatcherConfig
 
 
 class Batcher:
@@ -22,12 +22,9 @@ class Batcher:
         The queue from which messages are batched.
     config : BatcherConfig
         Configuration for batching limits.
-    indexer_config : IndexerConfig
-        Configuration to connect with Wazuh Indexer
     """
-    def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig, indexer_config: IndexerConfig):
+    def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig):
         self.q: MuxDemuxQueue = queue
-        self.indexer_config = indexer_config
 
         self._buffer: Buffer = Buffer(max_elements=config.max_elements, max_size=config.max_size)
         self._timer: TimerManager = TimerManager(max_time_seconds=config.max_time_seconds)
@@ -53,27 +50,19 @@ class Batcher:
         events : List[Message]
             The list of messages to be sent.
         """
-        indexer = await create_indexer(
-            host=self.indexer_config.host,
-            user=self.indexer_config.user,
-            password=self.indexer_config.password,
-            use_ssl=False
-        )
+        async with get_indexer_client() as indexer_client:
+            list_of_uid: List[uuid.UUID] = [event.uid for event in events]
+            bulk_list: List[BulkDoc] = []
+            for event in events:
+                bulk_list.append(BulkDoc.create(index=indexer_client.events.INDEX, doc_id=None, doc=event.msg))
 
-        list_of_uid: List[uuid.UUID] = [event.uid for event in events]
-        bulk_list: List[BulkDoc] = []
-        for event in events:
-            bulk_list.append(BulkDoc.create(index=indexer.events.INDEX, doc_id=None, doc=event.msg))
+            response = await indexer_client.events.bulk(data=bulk_list)
 
-        response = await indexer.events.bulk(data=bulk_list)
+            for response_item, uid in zip(response["items"], list_of_uid):
+                response_item_msg = response_item["create"]
 
-        for response_item, uid in zip(response["items"], list_of_uid):
-            response_item_msg = response_item["create"]
-
-            response_msg = Message(uid=uid, msg=response_item_msg)
-            self.q.send_to_demux(response_msg)
-
-        await indexer.close()
+                response_msg = Message(uid=uid, msg=response_item_msg)
+                self.q.send_to_demux(response_msg)
 
     def create_flush_buffer_task(self):
         """
@@ -126,18 +115,15 @@ class BatcherProcess(Process):
         The queue from which the Batcher retrieves and sends messages.
     config : BatcherConfig
         Configuration for batching limits.
-    indexer_config : IndexerConfig
-        Configuration to connect with Wazuh Indexer
     """
-    def __init__(self, q: MuxDemuxQueue, config: BatcherConfig, indexer_config: IndexerConfig):
+    def __init__(self, q: MuxDemuxQueue, config: BatcherConfig):
         super().__init__()
         self.q = q
         self.config = config
-        self.indexer_config = indexer_config
 
     def run(self):
         """
         Starts the Batcher process and runs it in an asyncio event loop.
         """
-        batcher = Batcher(queue=self.q, config=self.config, indexer_config=self.indexer_config)
+        batcher = Batcher(queue=self.q, config=self.config)
         asyncio.run(batcher.run())

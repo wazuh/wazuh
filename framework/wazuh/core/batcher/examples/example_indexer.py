@@ -4,7 +4,6 @@ import os
 from wazuh.core.indexer import create_indexer
 
 INDEXER_HOST = os.environ.get('WAZUH_INDEXER_HOST', '127.0.0.1')
-INDEXER_PORT = os.environ.get('WAZUH_INDEXER_PORT', 9200)
 INDEXER_USER = os.environ.get('WAZUH_INDEXER_USER', 'admin')
 INDEXER_PASSWORD = os.environ.get('WAZUH_INDEXER_PASSWORD', 'SecretPassword1%')
 
