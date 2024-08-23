@@ -41,22 +41,16 @@
     ],
     "hotfixes": [],
     "os": {
-        "scan_time": "2024/08/22 20:53:55",
-        "hostname": "VAGRANT",
         "architecture": "x86_64",
-        "os_name": "Microsoft Windows Server 2019 Datacenter Evaluation",
-        "os_version": "10.0.17763.6189",
-        "os_codename": null,
-        "os_major": "10",
-        "os_minor": "0",
-        "os_patch": null,
-        "os_build": "17763.6189",
-        "os_platform": "windows",
-        "sysname": null,
-        "release": null,
-        "version": null,
-        "os_release": "1809",
         "checksum": "1724360035719382000",
-        "os_display_version": " "
+        "hostname": "VAGRANT",
+        "major_version": "10",
+        "minor_version": "0",
+        "build": "17763.6189",
+        "name": "Microsoft Windows Server 2019 Datacenter Evaluation",
+        "display_version": " ",
+        "platform": "windows",
+        "version": null,
+        "scan_time": "2024/08/22 20:53:55"
     }
 }
