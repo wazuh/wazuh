@@ -6321,147 +6321,239 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\W32Time\TimeProviders\NtpServer -> Enabled -> 0'
 
+ # 18.10.3.1 (L2) Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'. (Automated)
   - id: 26277
     title: "Ensure 'Allow a Windows app to share application data between users' is set to 'Disabled'."
     description: "Manages a Windows app's ability to share data between users who have installed the app. Data is shared through the SharedLocal folder. This folder is available through the Windows.Storage API. The recommended state for this setting is: Disabled."
     rationale: "Users of a system could accidentally share sensitive data with other users on the same system."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Package Deployment\\Allow a Windows app to share application data between users. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppxPackageManager.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Package Deployment\\Allow a Windows app to share application data between users Note: This Group Policy path is provided by the Group Policy template AppxPackageManager.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.4.1"]
-      - cis_csc: ["3.3"]
-      - pci_dss: ["4.1"]
-      - hipaa: ["164.312.a.2.IV", "164.312.e.1", "164.312.e.2.I", "164.312.e.2.II"]
-      - nist_800_53: ["SC.8"]
-      - tsc: ["CC6.1", "CC6.7", "CC7.2"]
+      - cis: ["18.10.3.1"]
+      - cis_csc_v7: ["14.6"]
+      - iso_27001-2013: ["A.9.1.1"]
     condition: any
     rules:
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager'
       - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\AppModel\StateManager -> AllowSharedLocalAppData -> 0'
 
+ # 18.10.3.2 (L1) Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'. (Automated)
   - id: 26278
     title: "Ensure 'Prevent non-admin users from installing packaged Windows apps' is set to 'Enabled'."
     description: "This setting manages non-Administrator users' ability to install Windows app packages. The recommended state for this setting is: Enabled."
     rationale: "In a corporate managed environment, application installations should be managed centrally by IT staff, not by end users."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Package Deployment\\Prevent non-admin users from installing packaged Windows apps. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppxPackageManager.admx/adml that is included with the Microsoft Windows 10 Release 2004 Administrative Templates (or newer)."
+    impact: "Non-Administrator users will not be able to install Microsoft Store app packages, unless they are explicitly permitted by other policies. If a Microsoft Store app is required for legitimate use, an Administrator will need to perform the installation from an Administrator context. This setting can prevent standard users (without Administrator access) from launching Office 365 (O365) applications, displaying the error: \"Windows cannot access the specified device, path, or file. You may not have the appropriate permissions to access the item.\"."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Package Deployment\\Prevent non-admin users from installing packaged Windows apps Note: This Group Policy path is provided by the Group Policy template AppxPackageManager.admx/adml that is included with the Microsoft Windows 10 Release 2004 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.4.2"]
-      - cis_csc: ["2.5"]
+      - cis: ["18.10.3.2"]
+      - cis_csc_v8: ["2.5"]
+      - cis_csc_v7: ["4.3"]
+      - cmmc_v2.0: ["CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "CM.L2-3.4.9"]
+      - iso_27001-2013: ["A.9.2.3"]
+      - nist_sp_800-53: ["CM-7(5)"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4"]
+      - soc_2: ["CC6.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx -> BlockNonAdminUserInstall'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Appx -> BlockNonAdminUserInstall -> 1'
 
+ # 18.10.4.1 (L1) Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'. (Automated)
   - id: 26279
     title: "Ensure 'Let Windows apps activate with voice while the system is locked' is set to 'Enabled: Force Deny'."
     description: "This policy setting specifies whether Windows apps can be activated by voice (apps and Cortana) while the system is locked. The recommended state for this setting is: Enabled: Force Deny."
     rationale: "Access to any computer resource should not be allowed when the device is locked."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Force Deny: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Privacy\\Let Windows apps activate with voice while the system is locked. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppPrivacy.admx/adml that is included with the Microsoft Windows 10 Release 1903 Administrative Templates (or newer)."
+    impact: "Users will not be able to activate apps while the computer is locked."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Force Deny: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App Privacy\\Let Windows apps activate with voice while the system is locked Note: This Group Policy path is provided by the Group Policy template AppPrivacy.admx/adml that is included with the Microsoft Windows 10 Release 1903 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.5.1"]
+      - cis: ["18.10.4.1"]
+      - cis_csc_v7: ["9.2"]
+      - iso_27001-2013: ["A.13.1.3"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy -> LetAppsActivateWithVoiceAboveLock'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy -> LetAppsActivateWithVoiceAboveLock -> 2'
 
+ # 18.10.5.1 (L1) Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'. (Automated)
   - id: 26280
     title: "Ensure 'Allow Microsoft accounts to be optional' is set to 'Enabled'."
     description: "This policy setting lets you control whether Microsoft accounts are optional for Windows Store apps that require an account to sign in. This policy only affects Windows Store apps that support it. The recommended state for this setting is: Enabled."
     rationale: "Enabling this setting allows an organization to use their enterprise user accounts instead of using their Microsoft accounts when accessing Windows store apps. This provides the organization with greater control over relevant credentials. Microsoft accounts cannot be centrally managed and as such enterprise credential security policies cannot be applied to them, which could put any information accessed by using Microsoft accounts at risk."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App runtime\\Allow Microsoft accounts to be optional. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AppXRuntime.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
+    impact: "Windows Store apps that typically require a Microsoft account to sign in will allow users to sign in with an enterprise account instead."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App runtime\\Allow Microsoft accounts to be optional Note: This Group Policy path is provided by the Group Policy template AppXRuntime.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.6.1"]
-      - cis_csc: ["5.6"]
-      - pci_dss: ["8.1"]
-      - tsc: ["CC6.1"]
+      - cis: ["18.10.5.1"]
+      - cis_csc_v8: ["5.6"]
+      - cis_csc_v7: ["16.2"]
+      - nist_sp_800-53: ["AC-2(1)"]
+      - soc_2: ["CC6.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> MSAOptional -> 1'
 
+ # 18.10.5.2 (L2) Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'. (Automated)
   - id: 26281
     title: "Ensure 'Block launching Universal Windows apps with Windows Runtime API access from hosted content.' is set to 'Enabled'."
     description: "This policy setting controls whether Microsoft Store apps with Windows Runtime API access directly from web content can be launched. The recommended state for this setting is: Enabled."
     rationale: "Blocking apps from the web with direct access to the Windows API can prevent malicious apps from being run on a system. Only system administrators should be installing approved applications."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App runtime\\Block launching Universal Windows apps with Windows Runtime API access from hosted content. Note: A reboot may be required after the setting is applied. Note #2: This Group Policy path may not exist by default. It is provided by the Group Policy template AppXRuntime.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer). Note #3: In older Microsoft Windows Administrative Templates, this setting was initially named Block launching Windows Store apps with Windows Runtime API access from hosted content., but it was renamed starting with the Windows 10 Release 1803 Administrative Templates"
+    impact: "Universal Windows apps which declare Windows Runtime API access in the ApplicationContentUriRules section of the manifest cannot be launched (Universal Windows apps which have not declared Windows Runtime API access in the manifest will not be affected)."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\App runtime\\Block launching Universal Windows apps with Windows Runtime API access from hosted content. Note: A reboot may be required after the setting is applied. Note #2: This Group Policy path is provided by the Group Policy template AppXRuntime.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer). Note #3: In older Microsoft Windows Administrative Templates, this setting was initially named Block launching Windows Store apps with Windows Runtime API access from hosted content, but it was renamed starting with the Windows 10 Release 1803 Administrative Templates."
     compliance:
-      - cis: ["18.9.6.2"]
-      - cis_csc: ["2.5"]
+      - cis: ["18.10.5.2"]
+      - cis_csc_v8: ["2.5"]
+      - cis_csc_v7: ["9.2"]
+      - cmmc_v2.0: ["CM.L2-3.4.6", "CM.L2-3.4.7", "CM.L2-3.4.8", "CM.L2-3.4.9"]
+      - iso_27001-2013: ["A.13.1.3"]
+      - nist_sp_800-53: ["CM-7(5)"]
+      - pci_dss_v4.0: ["1.2.5", "2.2.4"]
+      - soc_2: ["CC6.8"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -> BlockHostedAppAccessWinRT -> 1'
 
+ # 18.10.7.1 (L1) Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'. (Automated)
   - id: 26282
     title: "Ensure 'Disallow Autoplay for non-volume devices' is set to 'Enabled'."
     description: "This policy setting disallows AutoPlay for MTP devices like cameras or phones. The recommended state for this setting is: Enabled."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Disallow Autoplay for non-volume devices. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AutoPlay.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
+    impact: "AutoPlay will not be allowed for MTP devices like cameras or phones."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Disallow Autoplay for non-volume devices Note: This Group Policy path is provided by the Group Policy template AutoPlay.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.8.1"]
-      - cis_csc: ["10.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["18.10.7.1"]
+      - cis_csc_v8: ["10.3"]
+      - cis_csc_v7: ["8.5"]
+      - cmmc_v2.0: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.12.2.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Explorer -> NoAutoplayfornonVolume -> 1'
 
+ # 18.10.7.2 (L1) Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'. (Automated)
   - id: 26283
     title: "Ensure 'Set the default behavior for AutoRun' is set to 'Enabled: Do not execute any autorun commands'."
     description: "This policy setting sets the default behavior for Autorun commands. Autorun commands are generally stored in autorun.inf files. They often launch the installation program or other routines. The recommended state for this setting is: Enabled: Do not execute any autorun commands."
     rationale: "Prior to Windows Vista, when media containing an autorun command is inserted, the system will automatically execute the program without user intervention. This creates a major security concern as code may be executed without user's knowledge. The default behavior starting with Windows Vista is to prompt the user whether autorun command is to be run. The autorun command is represented as a handler in the Autoplay dialog."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Do not execute any autorun commands: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Set the default behavior for AutoRun. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template AutoPlay.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
+    impact: "AutoRun commands will be completely disabled."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Do not execute any autorun commands: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Set the default behavior for AutoRun Note: This Group Policy path is provided by the Group Policy template AutoPlay.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     compliance:
-      - cis: ["18.9.8.2"]
-      - cis_csc: ["10.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["18.10.7.2"]
+      - cis_csc_v8: ["10.3"]
+      - cis_csc_v7: ["8.5"]
+      - cmmc_v2.0: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.12.2.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoAutorun -> 1'
 
+ # 18.10.7.3 (L1) Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'. (Automated)
   - id: 26284
     title: "Ensure 'Turn off Autoplay' is set to 'Enabled: All drives'."
     description: "Autoplay starts to read from a drive as soon as you insert media in the drive, which causes the setup file for programs or audio media to start immediately. An attacker could use this feature to launch a program to damage the computer or data on the computer. Autoplay is disabled by default on some removable drive types, such as floppy disk and network drives, but not on CD-ROM drives. Note: You cannot use this policy setting to enable Autoplay on computer drives in which it is disabled by default, such as floppy disk and network drives. The recommended state for this setting is: Enabled: All drives."
     rationale: "An attacker could use this feature to launch a program to damage a client computer or data on the computer."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: All drives: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Turn off Autoplay. Note: This Group Policy path is provided by the Group Policy template AutoPlay.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
+    impact: "Autoplay will be disabled - users will have to manually launch setup or installation programs that are provided on removable media."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: All drives: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\AutoPlay Policies\\Turn off Autoplay Note: This Group Policy path is provided by the Group Policy template AutoPlay.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     compliance:
-      - cis: ["18.9.8.3"]
-      - cis_csc: ["10.3"]
-      - pci_dss: ["2.2.4"]
-      - nist_800_53: ["CM.1"]
-      - tsc: ["CC5.2"]
+      - cis: ["18.10.7.3"]
+      - cis_csc_v8: ["10.3"]
+      - cis_csc_v7: ["8.5"]
+      - cmmc_v2.0: ["MP.L2-3.8.7"]
+      - hipaa: ["164.310(d)(1)"]
+      - iso_27001-2013: ["A.12.2.1"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer -> NoDriveTypeAutoRun -> 255'
 
+ # 18.10.8.1.1 (L1) Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'. (Automated)
   - id: 26285
     title: "Ensure 'Configure enhanced anti-spoofing' is set to 'Enabled'."
     description: "This policy setting determines whether enhanced anti-spoofing is configured for devices which support it. The recommended state for this setting is: Enabled."
     rationale: "Enterprise managed environments are now supporting a wider range of mobile devices, increasing the security on these devices will help protect against unauthorized access on your network."
-    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing. Note: This Group Policy path may not exist by default. It is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti-spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
+    impact: "Windows will require all users on the device to use anti-spoofing for facial features, on devices which support it."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing Note: This Group Policy path is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti-spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-'
     compliance:
-      - cis: ["18.9.10.1.1"]
-      - cis_csc: ["10.5"]
-      - pci_dss: ["8.1"]
-      - tsc: ["CC6.1"]
+      - cis: ["18.10.8.1.1"]
+      - cis_csc_v7: ["8.3"]
     condition: all
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures -> EnhancedAntiSpoofing -> 1'
+
+ # 18.10.9.1.1 (BL) Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'. (Automated)
+  - id: 18831
+    title: "Ensure 'Allow access to BitLocker-protected fixed data drives from earlier versions of Windows' is set to 'Disabled'."
+    description: "This policy setting configures whether or not fixed data drives formatted with the FAT file system can be unlocked and viewed on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with Service Pack 3 (SP3), or Windows XP with Service Pack 2 (SP2) operating systems. Note: This policy setting does not apply to drives that are formatted with the NTFS file system. The recommended state for this setting is: Disabled."
+    rationale: "By default BitLocker virtualizes FAT formatted drives to permit access via the BitLocker To Go Reader on previous versions of Windows. Additionally the BitLocker To Go Reader application is applied to the unencrypted portion of the drive. The BitLocker To Go Reader application, like any other application, is subject to spoofing and could be a mechanism to propagate malware."
+    impact: "Fixed data drives formatted with the FAT file system that are BitLocker-protected cannot be unlocked on computers running Windows Server 2008 (non-R2), Windows Vista, Windows XP with SP3 or Windows XP with SP2. BitLockerToGo.exe will not be installed."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Allow access to BitLocker-protected fixed data drives from earlier versions of Windows Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.1"]
+      - cis_csc_v7: ["13.6"]
+      - iso_27001-2013: ["A.6.2.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVDiscoveryVolumeType'
+      - 'not r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVDiscoveryVolumeType -> \w+'
+
+ # 18.10.9.1.2 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'. (Automated)
+  - id: 18832
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered' is set to 'Enabled'."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The \"Allow data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected fixed data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. Select \"Omit recovery options from the BitLocker setup wizard\" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. In \"Save BitLocker recovery information to Active Directory Domain Services\" choose which BitLocker recovery information to store in AD DS for fixed data drives. If you select \"Backup recovery password and key package\", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select \"Backup recovery password only\", only the recovery password is stored in AD DS. Select the \"Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives\" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the \"Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives\" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive."
+    impact: "To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.2"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecovery'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecovery -> 1'
+
+ # 18.10.9.1.3 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'. (Automated)
+  - id: 18833
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent' is set to 'Enabled: True'."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. The \"Allow data recovery agent\" check box is used to specify whether a Data Recovery Agent can be used with BitLocker-protected fixed data drives. Before a Data Recovery Agent can be used it must be added from the Public Key Policies item in either the Group Policy Management Console or the Local Group Policy Editor. Consult the BitLocker Drive Encryption Deployment Guide on Microsoft TechNet for more information about adding Data Recovery Agents. The recommended state for this setting is: Enabled: True (checked)."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Allow data recovery agent Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.3"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVManageDRA'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVManageDRA -> 1'
 
   - id: 26286
     title: "Ensure 'Allow Use of Camera' is set to 'Disabled'."
