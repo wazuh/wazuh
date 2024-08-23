@@ -9,8 +9,7 @@ It's verified that the installation of a hotfix before the insertion of a vulner
 
 - Input events
     - [001](input_001.json)
-    - [002](input_002.json)
-    - [003](input_003.json)
+
 
 | Name                                    | Version | Feed | CVE IDs         | Expected        |
 |-----------------------------------------|---------|------|-----------------|-----------------|
