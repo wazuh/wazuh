@@ -17,3 +17,4 @@ Vulnerability detection validation for **_Bitrix24_** and **_mRemoteNG_** packag
 | bitrix24  | 15.1.21.78 | NVD  | CVE-2022-43959 | Vulnerable |
 | mremoteng | 1.76.20    | NVD  | CVE-2020-24307 | Vulnerable |
 | mremoteng | 1.76.20    | NVD  | CVE-2023-30367 | Vulnerable |
+| firefox   | 31.0       | NVD  | CVE-2014-1575  | Vulnerable |
