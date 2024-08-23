@@ -55,8 +55,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install ${{env.ENGINE_DIR}}/tools/api-communication/
-        pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
-        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
+        pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
         pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine_helper_test
 
     - name: Setup VCPKG

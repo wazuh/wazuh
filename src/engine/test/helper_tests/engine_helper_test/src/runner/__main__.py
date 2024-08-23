@@ -6,18 +6,19 @@ import os
 import re
 import subprocess
 import sys
+import yaml
 from pathlib import Path
 from typing import Optional
-
-import yaml
+from google.protobuf.json_format import MessageToJson, ParseDict
 from google.protobuf.message import Message
+
 from api_communication.client import APIClient
 from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import kvdb_pb2 as api_kvdb
 from api_communication.proto import engine_pb2 as api_engine
 from api_communication.proto import policy_pb2 as api_policy
 from api_communication.proto import tester_pb2 as api_tester
-from google.protobuf.json_format import MessageToJson, ParseDict
+from engine_handler.handler import EngineHandler
 
 POLICY_NAME = "policy/wazuh/0"
 ASSET_NAME = "decoder/test/0"
@@ -800,16 +801,14 @@ def main():
 
     api_client = APIClient(socket_path)
 
-    from handler_engine_instance import up_down
     print("Starting up_down engine")
-    up_down_engine = up_down.UpDownEngine()
-    up_down_engine.send_start_command()
+    engine_handler = EngineHandler(config.binary_path, serv_conf_file)
+    engine_handler.start()
 
     print("running test cases")
     run_test_cases_executor(api_client, str(kvdb_path))
 
-    up_down_engine.send_stop_command()
-
+    engine_handler.stop()
 
 if __name__ == "__main__":
     main()

@@ -6,15 +6,21 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from engine_handler.handler import EngineHandler
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Update configuration, create kvdbs and mmdbs"
     )
-    parser.add_argument("-e", "--environment", required=True, help="Environment directory")
-    parser.add_argument("-b", "--binary", required=True, help="Path to the binary file")
-    parser.add_argument("--mmdb", required=True, help="Directory path where the as and geo databases are located")
-    parser.add_argument("--conf", required=True, help="File path where the engine configuration file is")
+    parser.add_argument("-e", "--environment", required=True,
+                        help="Environment directory")
+    parser.add_argument("-b", "--binary", required=True,
+                        help="Path to the binary file")
+    parser.add_argument("--mmdb", required=True,
+                        help="Directory path where the as and geo databases are located")
+    parser.add_argument("--conf", required=True,
+                        help="File path where the engine configuration file is")
     return parser.parse_args()
 
 
@@ -28,7 +34,8 @@ def update_conf(conf_dir: Path, environment_dir: Path):
 
     with open(serv_conf_file_dest, "w") as f:
         for line in lines:
-            updated_line = line.replace("github_workspace", environment_dir.as_posix())
+            updated_line = line.replace(
+                "github_workspace", environment_dir.as_posix())
             f.write(updated_line)
 
 
@@ -49,7 +56,8 @@ def set_kvdb(environment_dir: Path):
 
     os.makedirs(os.path.dirname(kvdb_path), exist_ok=True)
     with open(kvdb_path, 'w') as file:
-        file.write('{"test": {"key": "value"}, "test_bitmask": {"33": "some_data"}}')
+        file.write(
+            '{"test": {"key": "value"}, "test_bitmask": {"33": "some_data"}}')
 
 
 def main():
@@ -66,14 +74,14 @@ def main():
 
     os.environ['ENV_DIR'] = ENVIRONMENT_DIR.as_posix()
     os.environ['BINARY_DIR'] = BINARY_DIR.as_posix()
-    os.environ['CONF_FILE'] = (ENVIRONMENT_DIR / 'engine' / 'general.conf').as_posix()
+    os.environ['CONF_FILE'] = (
+        ENVIRONMENT_DIR / 'engine' / 'general.conf').as_posix()
 
-    # TODO: If a binary path is added per parameter, it will be out of sync with the binary used by up_down_engine
-    from handler_engine_instance import up_down
-    up_down_engine = up_down.UpDownEngine()
-    up_down_engine.send_start_command()
+    engine_handler = EngineHandler(BINARY_DIR.as_posix(
+    ), (ENVIRONMENT_DIR / 'engine' / 'general.conf').as_posix())
+    engine_handler.start()
 
-    socket_path = str(ENVIRONMENT_DIR / "queue" / "sockets" / "engine-api")
+    socket_path = engine_handler.api_socket_path
     asn_path = str(ENVIRONMENT_DIR / "engine" / "etc" / "testdb-asn.mmdb")
     city_path = str(ENVIRONMENT_DIR / "engine" / "etc" / "testdb-city.mmdb")
 
@@ -87,7 +95,7 @@ def main():
     subprocess.run(command,
                    check=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    up_down_engine.send_stop_command()
+    engine_handler.stop()
 
 
 if __name__ == "__main__":
