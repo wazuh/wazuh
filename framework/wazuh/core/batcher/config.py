@@ -22,20 +22,3 @@ class BatcherConfig:
         self.max_elements = max_elements
         self.max_size = max_size
         self.max_time_seconds = max_time_seconds
-
-
-class IndexerConfig:
-    """Configuration for the Indexer connection.
-
-    Parameters
-    ----------
-    host : str
-        Location of the Wazuh Indexer.
-    user : str, optional
-        User of the Wazuh Indexer to authenticate with.
-    password : str, optional
-    """
-    def __init__(self,  host: str, user: str = '', password: str = ''):
-        self.host = host
-        self.user = user
-        self.password = password
