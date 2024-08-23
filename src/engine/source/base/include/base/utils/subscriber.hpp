@@ -26,12 +26,9 @@ public:
         : m_callback {callback}
     {
     }
-    virtual ~Subscriber() = default;
+    ~Subscriber() override = default;
 
-    void update(T data) override
-    {
-        m_callback(data);
-    }
+    void update(T data) override { m_callback(data); }
 };
 
 #endif // _SUBSCRIBER_HPP

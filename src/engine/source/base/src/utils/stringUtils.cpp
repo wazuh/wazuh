@@ -216,4 +216,10 @@ bool replaceAll(std::string& data, const std::string_view toSearch, const std::s
     return ret;
 }
 
+bool haveUpperCaseCharacters(const std::string& str)
+{
+    return std::any_of(
+        std::begin(str), std::end(str), [](std::string::value_type character) { return std::isupper(character); });
+}
+
 } // namespace base::utils::string

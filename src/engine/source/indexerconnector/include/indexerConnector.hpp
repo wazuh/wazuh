@@ -12,6 +12,10 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
+#include "base/utils/threadEventDispatcher.hpp"
+#include <nlohmann/json.hpp>
+#include <string>
+
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
 #else
@@ -22,10 +26,6 @@ static constexpr auto DEFAULT_INTERVAL = 60u;
 
 class ServerSelector;
 class SecureCommunication;
-
-#include "threadEventDispatcher.hpp"
-#include <json.hpp>
-#include <string>
 
 using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
 
@@ -50,21 +50,13 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including database_path and servers.
-     * @param logFunction Callback function to be called when trying to log a message.
      * @param timeout Server selector time interval.
      * @param workingThreads Number of working threads used by the dispatcher. More than one results in an unordered
      * processing.
      */
     explicit IndexerConnector(const nlohmann::json& config,
-                              const std::function<void(const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       const int,
-                                                       const std::string&,
-                                                       const std::string&,
-                                                       va_list)>& logFunction = {},
                               const uint32_t& timeout = DEFAULT_INTERVAL,
-                              const uint8_t workingThreads = 1);
+                              uint8_t workingThreads = 1);
 
     ~IndexerConnector();
 

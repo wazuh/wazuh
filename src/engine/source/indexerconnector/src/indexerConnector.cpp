@@ -11,8 +11,7 @@
 
 #include "indexerConnector.hpp"
 #include "HTTPRequest.hpp"
-#include "keyStore.hpp"
-#include "loggerHelper.h"
+#include "base/logging.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
 #include <fstream>
@@ -21,14 +20,6 @@ constexpr auto INDEXER_COLUMN {"indexer"};
 constexpr auto USER_KEY {"username"};
 constexpr auto PASSWORD_KEY {"password"};
 constexpr auto ELEMENTS_PER_BULK {1000};
-
-namespace Log
-{
-    std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>
-        GLOBAL_LOG_FUNCTION;
-};
-constexpr auto IC_NAME {"indexer-connector"};
 
 // Single thread in case the events needs to be processed in order.
 constexpr auto SINGLE_ORDERED_DISPATCHING = 1;
@@ -44,8 +35,8 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
 
     if (config.contains("ssl"))
     {
-        if (config.at("ssl").contains("certificate_authorities") &&
-            !config.at("ssl").at("certificate_authorities").empty())
+        if (config.at("ssl").contains("certificate_authorities")
+            && !config.at("ssl").at("certificate_authorities").empty())
         {
             caRootCertificate = config.at("ssl").at("certificate_authorities").front().get_ref<const std::string&>();
         }
@@ -61,20 +52,27 @@ static void initConfiguration(SecureCommunication& secureCommunication, const nl
         }
     }
 
-    Keystore::get(INDEXER_COLUMN, USER_KEY, username);
-    Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, password);
+    if (config.contains("username"))
+    {
+        username = config.at("username");
+    }
+
+    if (config.contains("password"))
+    {
+        password = config.at("password");
+    }
 
     if (username.empty() && password.empty())
     {
         username = "admin";
         password = "admin";
-        logWarn(IC_NAME, "No username and password found in the keystore, using default values.");
+        LOG_WARNING("No username and password found in the configuration, using default values.");
     }
 
     if (username.empty())
     {
         username = "admin";
-        logWarn(IC_NAME, "No username found in the keystore, using default value.");
+        LOG_WARNING("No username found in the configuration, using default value.");
     }
 
     secureCommunication.basicAuth(username + ":" + password)
@@ -105,23 +103,12 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
     bulkData.append("\n");
 }
 
-IndexerConnector::IndexerConnector(
-    const nlohmann::json& config,
-    const std::function<void(
-        const int, const std::string&, const std::string&, const int, const std::string&, const std::string&, va_list)>&
-        logFunction,
-    const uint32_t& timeout,
-    const uint8_t workingThreads)
+IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t& timeout, const uint8_t workingThreads)
 {
-    if (logFunction)
-    {
-        Log::assignLogFunction(logFunction);
-    }
-
     // Get index name.
     m_indexName = config.at("name").get_ref<const std::string&>();
 
-    if (Utils::haveUpperCaseCharacters(m_indexName))
+    if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {
         throw std::runtime_error("Index name must be lowercase.");
     }
@@ -135,7 +122,7 @@ IndexerConnector::IndexerConnector(
     // Validate threads number
     if (workingThreads <= 0)
     {
-        logDebug1(IC_NAME, "Invalid number of working threads, using default value.");
+        LOG_DEBUG("Invalid number of working threads, using default value.");
     }
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
@@ -145,7 +132,7 @@ IndexerConnector::IndexerConnector(
 
             if (m_stopping.load())
             {
-                logDebug2(IC_NAME, "IndexerConnector is stopping, event processing will be skipped.");
+                LOG_DEBUG("IndexerConnector is stopping, event processing will be skipped.");
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
@@ -182,18 +169,14 @@ IndexerConnector::IndexerConnector(
             if (!bulkData.empty())
             {
                 // Process data.
-                HTTPRequest::instance().post(
-                    HttpURL(url),
-                    bulkData,
-                    [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                    [](const std::string& error, const long statusCode)
-                    {
-                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-                        throw std::runtime_error(error);
-                    },
-                    "",
-                    DEFAULT_HEADERS,
-                    secureCommunication);
+                HTTPRequest::instance().post({HttpURL(url), bulkData, secureCommunication},
+                                             {[](const std::string& response)
+                                              { LOG_DEBUG("Response: %s", response.c_str()); },
+                                              [](const std::string& error, const long statusCode)
+                                              {
+                                                  LOG_ERROR("%s, status code: %ld.", error.c_str(), statusCode);
+                                                  throw std::runtime_error(error);
+                                              }});
             }
         },
         DATABASE_BASE_PATH + m_indexName,

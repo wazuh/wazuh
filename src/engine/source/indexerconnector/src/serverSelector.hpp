@@ -12,9 +12,9 @@
 #ifndef _SERVER_SELECTOR_HPP
 #define _SERVER_SELECTOR_HPP
 
+#include "base/utils/roundRobinSelector.hpp"
 #include "monitoring.hpp"
-#include "roundRobinSelector.hpp"
-#include "secureCommunication.hpp"
+//#include "secureCommunication.hpp"
 #include <memory>
 #include <string>
 
@@ -41,8 +41,8 @@ public:
                             const uint32_t timeout = INTERVAL,
                             const SecureCommunication& secureCommunication = {})
         : RoundRobinSelector<std::string>(values)
+        , monitoring(std::make_shared<Monitoring>(values, timeout, secureCommunication))
     {
-        monitoring = std::make_shared<Monitoring>(values, timeout, secureCommunication);
     }
 
     /**

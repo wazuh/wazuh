@@ -12,21 +12,21 @@
 #ifndef _THREAD_EVENT_DISPATCHER_HPP
 #define _THREAD_EVENT_DISPATCHER_HPP
 
-#include "commonDefs.h"
-#include "promiseFactory.h"
 #include "rocksDBQueue.hpp"
 #include "rocksDBQueueCF.hpp"
 #include "threadSafeMultiQueue.hpp"
-#include "threadSafeQueue.h"
+#include "threadSafeQueue.hpp"
 #include <atomic>
 #include <iostream>
 #include <thread>
+
+constexpr auto UNLIMITED_QUEUE_SIZE = 0;
 
 template<typename T,
          typename U,
          typename Functor,
          typename TQueueType = RocksDBQueue<T, U>,
-         typename TSafeQueueType = Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>>
+         typename TSafeQueueType = base::utils::queue::TSafeQueue<T, U, RocksDBQueue<T, U>>>
 class TThreadEventDispatcher
 {
 public:
@@ -72,10 +72,7 @@ public:
 
     TThreadEventDispatcher& operator=(const TThreadEventDispatcher&) = delete;
     TThreadEventDispatcher(TThreadEventDispatcher& other) = delete;
-    ~TThreadEventDispatcher()
-    {
-        cancel();
-    }
+    ~TThreadEventDispatcher() { cancel(); }
 
     void startWorker(Functor functor)
     {
@@ -126,10 +123,7 @@ public:
         joinThreads();
     }
 
-    bool cancelled() const
-    {
-        return !m_running;
-    }
+    bool cancelled() const { return !m_running; }
 
     size_t size() const
     {
@@ -161,13 +155,14 @@ private:
      *
      */
     static constexpr bool isTSafeMultiQueue =
-        std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>;
+        std::is_same_v<base::utils::queue::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>;
 
     /**
      * @brief Check if the queue type is a `TSafeQueue`.
      *
      */
-    static constexpr bool isTSafeQueue = std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>;
+    static constexpr bool isTSafeQueue =
+        std::is_same_v<base::utils::queue::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>;
 
     /**
      * @brief Dispatch function to handle queue processing based on the number of threads.

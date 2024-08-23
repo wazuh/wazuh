@@ -16,7 +16,7 @@
 #include "rocksdb/db.h"
 #include "rocksdb/filter_policy.h"
 #include "rocksdb/table.h"
-#include "stringHelper.h"
+#include "stringUtils.hpp"
 #include <filesystem>
 #include <stdexcept>
 #include <string>
@@ -46,7 +46,7 @@ private:
         while (it->Valid())
         {
             // Split key to get the ID and queue number.
-            const auto data = Utils::split(it->key().ToString(), '_');
+            const auto data = base::utils::string::split(it->key().ToString(), '_');
             const auto& id = data.at(ID_QUEUE);
             const auto queueNumber = std::stoull(data.at(QUEUE_NUMBER));
 
@@ -78,12 +78,14 @@ public:
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.
-        m_readCache = rocksdb::NewLRUCache(Utils::ROCKSDB_BLOCK_CACHE_SIZE);
+        m_readCache = rocksdb::NewLRUCache(utils::rocksdb::ROCKSDB_BLOCK_CACHE_SIZE);
         // Write buffer manager is used to manage the memory used for writing data to the disk.
-        m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(Utils::ROCKSDB_WRITE_BUFFER_MANAGER_SIZE);
+        m_writeManager =
+            std::make_shared<rocksdb::WriteBufferManager>(utils::rocksdb::ROCKSDB_WRITE_BUFFER_MANAGER_SIZE);
 
-        rocksdb::Options options = Utils::RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
-        rocksdb::ColumnFamilyOptions columnFamilyOptions = Utils::RocksDBOptions::buildColumnFamilyOptions(m_readCache);
+        rocksdb::Options options = utils::rocksdb::RocksDBOptions::buildDBOptions(m_writeManager, m_readCache);
+        rocksdb::ColumnFamilyOptions columnFamilyOptions =
+            utils::rocksdb::RocksDBOptions::buildColumnFamilyOptions(m_readCache);
 
         rocksdb::DB* dbRawPtr;
 
@@ -213,8 +215,8 @@ public:
                            &value)
                      .ok())
             {
-                throw std::runtime_error("Failed to get front element, id: " + std::string {id} +
-                                         " key: " + std::to_string(it->second.head));
+                throw std::runtime_error("Failed to get front element, id: " + std::string {id}
+                                         + " key: " + std::to_string(it->second.head));
             }
         }
         else
