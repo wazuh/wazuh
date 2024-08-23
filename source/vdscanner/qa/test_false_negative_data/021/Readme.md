@@ -15,4 +15,3 @@ The candidates are discarded because the OS isn't found in the platforms' array.
 | bsdutils | 1:2.37.2-4ubuntu3.4  | CANONICAL  | CVE-2018-7738  | Vulnerable  |
 | bsdutils | 1:2.37.2-4ubuntu3.4  | CANONICAL  | CVE-2021-3995  | Vulnerable  |
 | bsdutils | 1:2.37.2-4ubuntu3.4  | CANONICAL  | CVE-2021-3996  | Vulnerable  |
-
