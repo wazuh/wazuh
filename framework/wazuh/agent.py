@@ -1026,11 +1026,17 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
                                       some_msg='Some agents information was not returned',
                                       none_msg='No agent information was returned'
                                       )
+    # TODO: The GET /agents/outdated endpoint use case must be reviewed since the manager in
     if agent_list:
+        # Get manager version
+        manager = Agent(id='000')
+        manager.load_info_from_db()
+
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query = (';' + q if q else ''), **rbac_filters) as db_query:
+                                query=f"version!={manager.version}" + (';' + q if q else ''),
+                                **rbac_filters) as db_query:
             data = db_query.run()
 
         result.affected_items = data['items']
@@ -1430,7 +1436,7 @@ def get_full_overview() -> WazuhResult:
     stats_distinct_node = get_distinct_agents(fields=['node_name']).affected_items
     groups = get_agent_groups().affected_items
     stats_distinct_os = get_distinct_agents(fields=['os.name',
-                                                    'os.platform', 'os.version'], q=q).affected_items
+                                                    'os.platform', 'os.version']).affected_items
     stats_version = get_distinct_agents(fields=['version']).affected_items
     agent_summary_status = get_agents_summary_status()
     summary = agent_summary_status['data'] if 'data' in agent_summary_status else dict()

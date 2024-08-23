@@ -11655,7 +11655,6 @@ paths:
                       gpg13:
                         - 4.3
                     agent:
-                      id: "001"
                       name: "wazuh-master"
                     manager:
                       name: "wazuh-master"

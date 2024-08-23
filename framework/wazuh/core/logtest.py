@@ -29,6 +29,7 @@ def send_logtest_msg(command: str = None, parameters: dict = None) -> dict:
     full_message = create_wazuh_socket_message(origin={'name': 'Logtest', 'module': origin_module.get()},
                                                command=command,
                                                parameters=parameters)
+    # TODO: Review since the Engine will be in charge of having an API to test events
     logtest_socket = WazuhSocketJSON(LOGTEST_SOCKET)
     logtest_socket.send(full_message)
     response = logtest_socket.receive(raw=True)

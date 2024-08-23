@@ -94,24 +94,13 @@ def send_msg_to_wdb(msg, raw=False):
     return ['ok', dumps(result)] if raw else result
 
 
-def get_manager_version():
-    """
-    Get manager version
-    """
-    manager = Agent(id='000')
-    manager.load_info_from_db()
-
-    return manager.version
-
 
 def check_agent(test_data, agent):
     """Checks a single agent is correct"""
     assert all(map(lambda x: x is not None, agent.values()))
     assert 'status' in agent
     assert 'id' in agent
-    if agent['id'] == '000':
-        assert agent.keys() == test_data.manager_fields
-    elif agent['status'] == 'active':
+    if agent['status'] == 'active':
         assert agent.keys() == test_data.active_fields
     elif agent['status'] == 'disconnected':
         assert agent.keys() == test_data.disconnected_fields
@@ -350,10 +339,10 @@ def test_WazuhDBQueryGroupByAgents_format_data_into_dictionary(mock_socket_conn)
 
 
 @pytest.mark.parametrize('filter_fields, expected_response', [
-    (['os.codename'], [{'os': {'codename': 'Bionic Beaver'}, 'count': 3}, {'os': {'codename': 'Xenial'}, 'count': 1},
+    (['os.codename'], [{'os': {'codename': 'Bionic Beaver'}, 'count': 2}, {'os': {'codename': 'Xenial'}, 'count': 1},
                        {'os': {'codename': 'N/A'}, 'count': 2}, {'os': {'codename': 'XP'}, 'count': 3}]),
-    (['node_name'], [{'count': 7, 'node_name': 'node01'}, {'count': 2, 'node_name': 'unknown'}]),
-    (['status', 'os.version'], [{'os': {'version': '18.04.1 LTS'}, 'count': 2, 'status': 'active'},
+    (['node_name'], [{'count': 6, 'node_name': 'node01'}, {'count': 2, 'node_name': 'unknown'}]),
+    (['status', 'os.version'], [{'os': {'version': '18.04.1 LTS'}, 'count': 1, 'status': 'active'},
                                 {'os': {'version': '16.04.1 LTS'}, 'count': 1, 'status': 'active'},
                                 {'os': {'version': 'N/A'}, 'count': 1, 'status': 'never_connected'},
                                 {'os': {'version': 'N/A'}, 'count': 1, 'status': 'pending'},
@@ -470,7 +459,6 @@ def test_agent_to_dict():
 
 
 @pytest.mark.parametrize('id, expected_ip, expected_name, expected_codename', [
-    ('000', '127.0.0.1', 'master', 'Bionic Beaver'),
     ('001', '172.17.0.202', 'agent-1', 'Bionic Beaver'),
     ('002', '172.17.0.201', 'agent-2', 'Xenial'),
 ])
@@ -508,11 +496,8 @@ def test_agent_load_info_from_db_ko(socket_mock, send_mock):
 
 
 @pytest.mark.parametrize('id, select', [
-    (0, None),
     (3, None),
-    (0, {'id', 'ip', 'version'}),
     (5, {'id', 'ip', 'version'}),
-    (0, {'status', 'manager', 'node_name', 'dateAdd', 'lastKeepAlive'}),
     (2, {'status', 'manager', 'node_name', 'dateAdd', 'lastKeepAlive'})
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -589,21 +574,12 @@ def test_agent_get_key(socket_mock, send_mock, id, expected_key):
     assert result == expected_key, 'Result does not match with expected key'
 
 
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_key_ko(socket_mock, send_mock):
-    """Tests if method get_key raises exception when ID is 0"""
-    with pytest.raises(WazuhError, match='.* 1703 .*'):
-        agent = Agent('000')
-        agent.get_key()
-
-
 @patch('wazuh.core.agent.WazuhQueue.send_msg_to_agent')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_reconnect(socket_mock, send_mock, mock_send_msg):
     """Test if method reconnect calls send_msg method with correct params."""
-    agent_id = '000'
+    agent_id = '001'
     agent = Agent(agent_id)
     agent.reconnect(WazuhQueue(common.AR_SOCKET))
 
@@ -627,7 +603,7 @@ def test_agent_remove(mock_remove_authd):
     """Tests if method remove() works as expected."""
 
     with patch('wazuh.core.agent.get_manager_status', return_value={'wazuh-authd': 'running'}):
-        agent = Agent('000')
+        agent = Agent('001')
         result = agent.remove()
         assert result == 'Agent was successfully deleted', 'Not expected message'
 
@@ -638,17 +614,17 @@ def test_agent_remove(mock_remove_authd):
 def test_agent_remove_ko(mock_remove_authd):
     """Tests if method remove() raises expected exception"""
     with pytest.raises(WazuhError, match='.* 1726 .*'):
-        agent = Agent('000')
+        agent = Agent('001')
         agent.remove()
 
 
 @patch('wazuh.core.agent.WazuhSocketJSON')
 def test_agent_remove_authd(mock_wazuh_socket):
     """Tests if method remove_authd() works as expected"""
-    agent = Agent('000')
+    agent = Agent('001')
     agent._remove_authd(purge=True)
     mock_wazuh_socket.return_value.send.assert_called_once_with(
-        {"function": "remove", "arguments": {"id": str(0).zfill(3), "purge": True}})
+        {"function": "remove", "arguments": {"id": str(1).zfill(3), "purge": True}})
     mock_wazuh_socket.return_value.receive.assert_called_once()
     mock_wazuh_socket.return_value.close.assert_called_once()
 
@@ -766,14 +742,16 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
             agent._add_authd('test_add', '192.168.0.1')
 
 
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_get_manager_name(mock_connect, mock_send):
-    get_manager_name()
-    calls = [call('global sql select count(*) from agent where (id = 0)'),
-             call('global sql select name from agent where (id = 0) limit 1 offset 0', raw=True)]
+# TODO: Review use case. The manager name will not be stored in an internal DB nor will be related to agents.
 
-    mock_send.assert_has_calls(calls)
+# @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+# @patch('socket.socket.connect')
+# def test_get_manager_name(mock_connect, mock_send):
+#     get_manager_name()
+#     calls = [call('global sql select count(*) from agent where (id = 0)'),
+#              call('global sql select name from agent where (id = 0) limit 1 offset 0', raw=True)]
+#
+#     mock_send.assert_has_calls(calls)
 
 
 @patch('wazuh.core.agent.rmtree')
@@ -782,7 +760,7 @@ def test_get_manager_name(mock_connect, mock_send):
 def test_agent_delete_single_group(mock_exists, mock_rmtree):
     """Tests if method delete_single_group() works as expected"""
 
-    agent = Agent('000')
+    agent = Agent('001')
     group = 'test_group'
 
     result = agent.delete_single_group(group)
@@ -792,7 +770,7 @@ def test_agent_delete_single_group(mock_exists, mock_rmtree):
 
 
 @pytest.mark.parametrize("agent_id, expected_result", [
-    (0, 'Ubuntu'),
+    (1, 'Ubuntu'),
     (7, 'Windows'),
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -828,7 +806,7 @@ def test_agent_get_agents_overview_default(socket_mock, send_mock):
     agents = Agent.get_agents_overview()
 
     # check number of agents
-    assert agents['totalItems'] == 9
+    assert agents['totalItems'] == 8
     # check the return dictionary has all necessary fields
 
     for agent in agents['items']:
@@ -872,9 +850,9 @@ def test_agent_get_agents_overview_select(socket_mock, send_mock, select, status
 
 @pytest.mark.parametrize("search, totalItems", [
     ({'value': 'any', 'negation': 0}, 3),
-    ({'value': 'any', 'negation': 1}, 6),
+    ({'value': 'any', 'negation': 1}, 5),
     ({'value': 'Windows', 'negation': 0}, 3),
-    ({'value': 'Windows', 'negation': 1}, 6),
+    ({'value': 'Windows', 'negation': 1}, 5),
     ({'value': 'master', 'negation': 1}, 2),
     ({'value': '停', 'negation': 0}, 0)
 ])
@@ -944,7 +922,7 @@ def test_agent_get_agents_overview_status_olderthan(socket_mock, send_mock, stat
 
 
 @pytest.mark.parametrize("sort, first_id", [
-    ({'fields': ['dateAdd'], 'order': 'asc'}, '000'),
+    ({'fields': ['dateAdd'], 'order': 'asc'}, '005'),
     ({'fields': ['dateAdd'], 'order': 'desc'}, '004')
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -1164,11 +1142,6 @@ def test_agent_unset_single_group_agent(agent_info_mock, group_exists_mock, set_
 @patch('socket.socket.connect')
 def test_agent_unset_single_group_agent_ko(socket_mock, agent_information_mock):
     """Test if unset_single_group_agent() raises expected exceptions."""
-    # Master cannot be added to a conf group
-    with pytest.raises(WazuhError, match='.* 1703 .*'):
-        Agent.unset_single_group_agent('000', 'test_group')
-    agent_information_mock.assert_called_once()
-
     # Group does not exists
     with patch('wazuh.core.agent.Agent.group_exists', return_value=False):
         with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
@@ -1272,7 +1245,7 @@ def test_get_agents_info():
     with open(os.path.join(test_data_path, 'client.keys')) as f:
         client_keys = ''.join(f.readlines())
 
-    expected_result = {'000', '001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
+    expected_result = {'001', '002', '003', '004', '005', '006', '007', '008', '009', '010'}
 
     with patch('wazuh.core.agent.open', mock_open(read_data=client_keys)) as m:
         result = get_agents_info()

@@ -86,28 +86,26 @@ def send_msg_to_wdb(msg, raw=False):
 @pytest.mark.parametrize('fields, expected_items', [
     (
             ['os.platform'],
-            [{'os': {'platform': 'ubuntu'}, 'count': 4}, {'os': {'platform': 'N/A'}, 'count': 2}]
+            [{'os': {'platform': 'ubuntu'}, 'count': 3}, {'os': {'platform': 'N/A'}, 'count': 2}]
     ),
     (
             ['version'],
-            [{'version': 'Wazuh v3.9.0', 'count': 1}, {'version': 'Wazuh v3.8.2', 'count': 2},
+            [{'version': 'Wazuh v3.8.2', 'count': 2},
              {'version': 'Wazuh v3.6.2', 'count': 1}, {'version': 'N/A', 'count': 2}]
     ),
     (
             ['os.platform', 'os.major'],
-            [{'count': 1, 'os': {'major': '20', 'platform': 'ubuntu'}},
-             {'count': 1, 'os': {'major': '18', 'platform': 'ubuntu'}},
+            [{'count': 1, 'os': {'major': '18', 'platform': 'ubuntu'}},
              {'count': 2, 'os': {'major': '16', 'platform': 'ubuntu'}},
              {'count': 2, 'os': {'major': 'N/A', 'platform': 'N/A'}}]
     ),
     (
             ['node_name'],
-            [{'node_name': 'unknown', 'count': 2}, {'node_name': 'node01', 'count': 4}]
+            [{'node_name': 'unknown', 'count': 2}, {'node_name': 'node01', 'count': 3   }]
     ),
     (
             ['os.name', 'os.platform', 'os.version'],
-            [{'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '20.04.1 LTS'}},
-             {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.08.1 LTS'}},
+            [{'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '18.08.1 LTS'}},
              {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.06.1 LTS'}},
              {'count': 1, 'os': {'name': 'Ubuntu', 'platform': 'ubuntu', 'version': '16.04.1 LTS'}},
              {'count': 2, 'os': {'name': 'N/A', 'platform': 'N/A', 'version': 'N/A'}}]
@@ -1476,8 +1474,8 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
     """
     expected_fields = ['nodes', 'groups', 'agent_os', 'agent_status', 'agent_version', 'last_registered_agent']
 
-    def mocked_get_distinct_agents(fields, q):
-        return get_distinct_agents(agent_list=agent_list, fields=fields, q=q)
+    def mocked_get_distinct_agents(fields):
+        return get_distinct_agents(agent_list=agent_list, fields=fields)
 
     def mocked_get_agent_groups():
         return get_agent_groups(group_list=group_list)
@@ -1485,11 +1483,11 @@ def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock,
     def mocked_get_agents_summary_status():
         return get_agents_summary_status(agent_list=agent_list)
 
-    def mocked_get_agents(limit, sort, q):
+    def mocked_get_agents(limit, sort):
         if index_error:
             raise IndexError()
         else:
-            return get_agents(agent_list=agent_list, limit=limit, sort=sort, q=q)
+            return get_agents(agent_list=agent_list, limit=limit, sort=sort)
 
     distinct_mock.side_effect = mocked_get_distinct_agents
     group_mock.side_effect = mocked_get_agent_groups
@@ -1523,13 +1521,13 @@ def insert_agents_db(n_agents=100000):
 
 
 @pytest.mark.parametrize('agent_list, params, expected_ids', [
-    (range(500), {}, range(500)),
-    (range(1000), {}, range(500)),
+    (range(1, 500), {}, range(1, 500)),
+    (range(1, 1000), {}, range(1, 501)),
     (range(1000, 2000), {}, range(1000, 1500)),
-    (range(100000), {'limit': 1000}, range(1000)),
-    (range(100000), {'offset': 50000}, range(50000, 50500)),
-    (range(1000), {'limit': 100, 'offset': 500}, range(500, 600)),
-    (range(100000), {'limit': 1000, 'offset': 80000}, range(80000, 81000)),
+    (range(1, 100000), {'limit': 1000}, range(1, 1001)),
+    (range(1, 100000), {'offset': 50000}, range(50000, 50501)),
+    (range(1, 1000), {'limit': 100, 'offset': 500}, range(500, 601)),
+    (range(1, 100000), {'limit': 1000, 'offset': 80000}, range(80000, 81001)),
 ])
 @patch('wazuh.agent.get_agents_info', return_value=['test', 'test2'])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
@@ -1550,11 +1548,11 @@ def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents
     def agent_ids_format(ids_list):
         return [str(agent_id).zfill(3) for agent_id in ids_list]
 
-    with patch('wazuh.agent.get_agents_info', return_value=set(agent_ids_format(range(100000)))):
+    with patch('wazuh.agent.get_agents_info', return_value=set(agent_ids_format(range(1, 100000)))):
         result = get_agents(agent_list=agent_ids_format(agent_list), **params).render()
         expected_ids = agent_ids_format(expected_ids)
         for item in result['data']['affected_items']:
-            assert item['id'] in expected_ids, f'Received ID {item["id"]} is not within expected IDs.'
+            assert item['id'] in expected_ids, f'Received ID {item["id"]} is not within expected IDs {expected_ids}.'
 
 
 @pytest.mark.parametrize('agent_groups, agent_id, group_id', [

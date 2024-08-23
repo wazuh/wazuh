@@ -312,6 +312,8 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     dict
         Object with daemon's stats.
     """
+    if not agent_id or not daemon:
+        raise WazuhError(1307)
     dest_socket = get_stats_socket_path(agent_id=agent_id, daemon=daemon)
     command = create_stats_command(agent_id=agent_id, daemon=daemon)
 
