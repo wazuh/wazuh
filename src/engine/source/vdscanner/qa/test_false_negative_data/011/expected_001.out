@@ -1,0 +1,6 @@
+[
+    "Translation for package 'Opera Stable 108.0.5067.29' on platform 'windows' found in Level 2 cache.",
+    "Initiating a vulnerability scan for package 'opera_browser' (win) (opera) with CVE Numbering Authorities (CNA) 'nvd' on Agent '' (ID: '001', Version: '').",
+    "Vendor match for Package: opera_browser, Version: 108.0.5067.29, CVE: CVE-2008-7297, Vendor: opera",
+    "Match found, the package 'opera_browser' is vulnerable to 'CVE-2008-7297' due to default status. - Agent '' (ID: '001', Version: '')."
+]

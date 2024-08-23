@@ -6,7 +6,6 @@ Vulnerability no affecting package **_grafana_** validation.
 
 - Input events
   - [001](input_001.json)
-  - [002](input_002.json)
 
 | Name    | Version | Feed | CVE IDs       | Expected       |
 |---------|---------|------|---------------|----------------|
