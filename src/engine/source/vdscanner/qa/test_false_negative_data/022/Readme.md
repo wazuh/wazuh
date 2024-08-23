@@ -13,4 +13,3 @@ Vulnerability detection validation for **_windows_server_2008_** operating syste
 |----------------|-----------|----------------|
 | CVE-2022-26904 | N/A       | Vulnerable     |
 | CVE-2022-26904 | KB5012649 | Not Vulnerable |
-
