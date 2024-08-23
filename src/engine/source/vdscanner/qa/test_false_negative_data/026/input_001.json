@@ -1,0 +1,62 @@
+{
+    "type": "packagelist",
+    "agent": {
+        "id": "001"
+    },
+    "packages": [
+        {
+            "scan_time": "2024/08/23 15:58:29",
+            "format": "win",
+            "name": "Microsoft Silverlight",
+            "priority": " ",
+            "size": 0,
+            "vendor": "Microsoft Corporation",
+            "install_time": "2024/08/23 15:57:40",
+            "version": "4.0.60831.0",
+            "architecture": "i686",
+            "multiarch": null,
+            "source": " ",
+            "description": " ",
+            "location": "c:\\Program Files (x86)\\Microsoft Silverlight\\",
+            "checksum": "36f93723288453243581a21d14cf4f9f5a1a8e30",
+            "item_id": "7ecf3ad4c9b47f02ca8c46048f9c71acc7eb8b3d"
+        },
+        {
+            "scan_time": "2024/08/19 15:49:32",
+            "format": "win",
+            "name": "Microsoft Silverlight",
+            "priority": " ",
+            "size": 0,
+            "vendor": "Microsoft Corporation",
+            "install_time": "2021/05/11 01:00:00",
+            "version": "5.1.50918.0",
+            "architecture": "x86_64",
+            "multiarch": null,
+            "source": " ",
+            "description": " ",
+            "location": "c:\\Program Files\\Microsoft Silverlight\\",
+            "checksum": "91b63f2c12d217d4b74794d79dbcac188a22b2f8",
+            "item_id": "27b40253c46b3f0e24b355ab208948c8c058f910"
+        }
+    ],
+    "hotfixes": [],
+    "os": {
+        "scan_time": "2024/08/22 20:53:55",
+        "hostname": "VAGRANT",
+        "architecture": "x86_64",
+        "os_name": "Microsoft Windows Server 2019 Datacenter Evaluation",
+        "os_version": "10.0.17763.6189",
+        "os_codename": null,
+        "os_major": "10",
+        "os_minor": "0",
+        "os_patch": null,
+        "os_build": "17763.6189",
+        "os_platform": "windows",
+        "sysname": null,
+        "release": null,
+        "version": null,
+        "os_release": "1809",
+        "checksum": "1724360035719382000",
+        "os_display_version": " "
+    }
+}
