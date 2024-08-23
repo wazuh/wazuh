@@ -9,7 +9,6 @@ The homebrew package `wget` is installed but no results are expected because the
 
 - Input events
     - [001](input_001.json)
-    - [002](input_002.json)
 
 | Name      | Version           | Feed | CVE IDs           | Expected        |
 |-----------|-------------------|------|-------------------|-----------------|

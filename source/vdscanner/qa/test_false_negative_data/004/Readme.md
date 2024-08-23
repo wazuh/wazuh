@@ -11,10 +11,6 @@ Vulnerability detection validation for package `containerd` in different Ubuntu 
     - [002](input_002.json)
     - [003](input_003.json)
     - [004](input_004.json)
-    - [005](input_005.json)
-    - [006](input_006.json)
-    - [007](input_007.json)
-    - [008](input_008.json)
 
 
 | Name        | Version                           | Feed      | CVE IDs         | Expected    |

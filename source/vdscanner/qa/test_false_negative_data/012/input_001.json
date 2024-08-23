@@ -21,9 +21,7 @@
       "source": " "
     }
   ],
-  "hotfixes": [
-    "KB5002537"
-  ],
+  "hotfixes": [],
   "os": {
     "architecture": "x86_64",
     "checksum": "1713967856394802400",
