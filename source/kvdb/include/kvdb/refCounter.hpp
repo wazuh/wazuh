@@ -1,6 +1,7 @@
 #ifndef _KVDB_REF_COUNTER_H
 #define _KVDB_REF_COUNTER_H
 
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>

@@ -23,14 +23,9 @@ set(ENGINE_DOC_DIR ${PROJECT_SOURCE_DIR}/docs)
 
 # Options
 option(ENGINE_BUILD_TEST "Generate tests" ON)
-option(ENGINE_BUILD_ASAN "Enable address sanitizer" OFF)
-option(ENGINE_BUILD_TSAN "Enable thread sanitizer" OFF)
-option(ENGINE_BUILD_UBSAN "Enable undefined behavior sanitizer" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" ON)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" ON)
-option(ENGINE_BUILD_COVERAGE "Enables the coverage report" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
-option(ENGINE_GENERATE_PROTOBUF "Generate code using Protocol Buffers" OFF)
 
 # TODO put this in a better place together with other global options like warnings
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -41,27 +36,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_definitions ( WAZUH_DEBUG )
 endif()
 
-# Add the Sanitizers
-if (ENGINE_BUILD_ASAN)
-    add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=address -fno-omit-frame-pointer)
-endif()
-
-if (ENGINE_BUILD_TSAN)
-    add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=thread -fno-omit-frame-pointer)
-endif()
-
-if (ENGINE_BUILD_UBSAN)
-    add_compile_options(-fsanitize=undefined -fno-omit-frame-pointer)
-    add_link_options(-fsanitize=undefined -fno-omit-frame-pointer)
-endif()
-
-# Add the coverage report
-if (ENGINE_BUILD_COVERAGE)
-    add_compile_options(-g -fprofile-arcs -ftest-coverage -lgcov --coverage)
-    add_link_options(-lgcov --coverage)
-endif()
 
 # Ensures that we do an out of source build
 MACRO(MACRO_ENSURE_OUT_OF_SOURCE_BUILD MSG)
@@ -78,6 +52,13 @@ ENDMACRO(MACRO_ENSURE_OUT_OF_SOURCE_BUILD)
 MACRO_ENSURE_OUT_OF_SOURCE_BUILD(
     "${CMAKE_PROJECT_NAME} requires an out of source build."
 )
+
+if(DEFINED VCPKG_TARGET_TRIPLET)
+    message(STATUS "Using VCPKG triplet: ${VCPKG_TARGET_TRIPLET}")
+else()
+    message(WARNING "VCPKG_TARGET_TRIPLET is not defined. Make sure you are using the vcpkg toolchain.")
+    FATAL_ERROR("VCPKG_TARGET_TRIPLET is not defined.")
+endif()
 
 ####################################################################################################
 # Dependencies
@@ -100,7 +81,7 @@ endfunction()
 
 # Build test
 if(ENGINE_BUILD_TEST)
-enable_testing()
+include(CTest)
 find_and_create_imported_target("GTest" "GTest::gtest")
 find_and_create_imported_target("GTest" "GTest::gtest_main")
 find_and_create_imported_target("GTest" "GTest::gmock")
@@ -180,6 +161,53 @@ target_link_libraries(main base cmds api CLI11::CLI11)
 if(ENGINE_BUILD_BENCHMARK)
 add_subdirectory(${ENGINE_BENCHMARK_DIR})
 endif(ENGINE_BUILD_BENCHMARK)
+
+# Create a custom test target
+function(get_all_targets _result _dir)
+    get_property(_subdirs DIRECTORY "${_dir}" PROPERTY SUBDIRECTORIES)
+    foreach(_subdir IN LISTS _subdirs)
+        get_all_targets(${_result} "${_subdir}")
+    endforeach()
+
+    get_directory_property(_sub_targets DIRECTORY "${_dir}" BUILDSYSTEM_TARGETS)
+    set(${_result} ${${_result}} ${_sub_targets} PARENT_SCOPE)
+endfunction()
+
+# Create a empty list to store all targets
+set(ALL_TARGETS)
+set(test_targets_to_build)
+
+# Get all targets
+get_all_targets(ALL_TARGETS ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Filter test targets and add them to the test_targets_to_build list
+foreach(target ${ALL_TARGETS})
+    # print all targets
+    # Test end with _test _ctest or _utest
+    if(${target} MATCHES "_test$" OR ${target} MATCHES "_ctest$" OR ${target} MATCHES "_utest$")
+        list(APPEND test_targets_to_build ${target})
+        message(STATUS "Test target: ${target}")
+    endif()
+endforeach()
+
+add_custom_target(all_tests DEPENDS ${test_targets_to_build})
+
+
+# Check if coverage report is enabled
+if(DEFINED ENABLE_COVERAGE_REPORT AND ENABLE_COVERAGE_REPORT)
+    message(STATUS "Coverage report generation is enabled.")
+
+    # Add coverage flags
+    add_custom_target(coverage
+        COMMAND lcov --capture --directory ${CMAKE_BINARY_DIR} --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
+        COMMAND lcov --remove ${CMAKE_BINARY_DIR}/coverage.info '/usr/*' '*/test/*' '*/build/vcpkg_installed/*' --output-file ${CMAKE_BINARY_DIR}/coverage.info --ignore-errors mismatch
+        COMMAND genhtml ${CMAKE_BINARY_DIR}/coverage.info --output-directory ${CMAKE_BINARY_DIR}/coverage_report
+        COMMENT "Generating coverage report in ${CMAKE_BINARY_DIR}/coverage_report"
+    )
+else()
+    message(STATUS "Coverage report generation is not enabled.")
+endif()
+
 
 # Generate doc
 if(ENGINE_BUILD_DOCUMENTATION)

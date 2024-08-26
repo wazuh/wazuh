@@ -4,6 +4,7 @@
 #include <atomic>
 #include <memory>
 #include <string>
+#include <cstdint>
 
 #include <uvw.hpp>
 
