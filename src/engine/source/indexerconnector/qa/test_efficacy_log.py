@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 LOGGER = logging.getLogger(__name__)
-TEMPLATE_PATH='shared_modules/indexer_connector/qa/test_data/template.json'
+TEMPLATE_PATH='engine/source/indexerconnector/qa/test_data/template.json'
 
 def init_template_and_index():
     with open(TEMPLATE_PATH, 'r') as template_file:
@@ -60,7 +60,7 @@ def test_opensearch_health(opensearch):
     assert response.json()['status'] == 'green'
 
 def test_initialize_indexer_connector(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
+    os.chdir(Path(__file__).parent.parent.parent.parent.parent)
     LOGGER.debug(f"Current directory: {os.getcwd()}")
 
     response = requests.get('http://localhost:9200/_cat/templates')
@@ -74,8 +74,8 @@ def test_initialize_indexer_connector(opensearch):
         Path("queue/indexer/db/wazuh-states-vulnerabilities").rmdir()
 
     # Run indexer connector testtool out of the container
-    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
-    cmdAlt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    cmd = Path("engine/build/source/indexerconnector/tool/", "indexer_connector_tool")
+    cmdAlt = Path("engine/source/indexerconnector/build/tool/", "indexer_connector_tool")
 
     # Ensure the binary exists
     if not cmd.exists():
@@ -90,8 +90,8 @@ def test_initialize_indexer_connector(opensearch):
 
     LOGGER.debug(f"Running test {test_name}")
 
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-                "-w", "120"]
+    args = ["-c", "engine/source/indexerconnector/qa/test_data/" + test_name + "/config.json",
+            "-w", "120"]
 
     command = [cmd] + args
 
@@ -115,7 +115,7 @@ def test_initialize_indexer_connector(opensearch):
     assert counter < 10, "The index was not created"
 
 def test_add_bulk_indexer_connector(opensearch):
-    os.chdir(Path(__file__).parent.parent.parent.parent)
+    os.chdir(Path(__file__).parent.parent.parent.parent.parent)
     LOGGER.debug(f"Current directory: {os.getcwd()}")
 
     ## Remove folder queue/indexer/db/wazuh-states-vulnerabilities
@@ -125,8 +125,8 @@ def test_add_bulk_indexer_connector(opensearch):
         Path("queue/indexer/db/wazuh-states-vulnerabilities").rmdir()
 
     # Run indexer connector testtool out of the container
-    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
-    cmdAlt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    cmd = Path("engine/build/source/indexerconnector/tool/", "indexer_connector_tool")
+    cmdAlt = Path("engine/source/indexerconnector/build/tool/", "indexer_connector_tool")
 
     # Ensure the binary exists
     if not cmd.exists():
@@ -141,8 +141,8 @@ def test_add_bulk_indexer_connector(opensearch):
 
     LOGGER.debug(f"Running test {test_name}")
 
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_insert.json",
+    args = ["-c", "engine/source/indexerconnector/qa/test_data/" + test_name + "/config.json",
+            "-e", "engine/source/indexerconnector/qa/test_data/" + test_name + "/event_insert.json",
             "-w", "120",
             "-l", "log.out"]
 
@@ -171,8 +171,8 @@ def test_add_bulk_indexer_connector(opensearch):
     process.terminate()
 
     # Delete element
-    args = ["-c", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/config.json",
-            "-e", "shared_modules/indexer_connector/qa/test_data/" + test_name + "/event_delete.json",
+    args = ["-c", "engine/source/indexerconnector/qa/test_data/" + test_name + "/config.json",
+            "-e", "engine/source/indexerconnector/qa/test_data/" + test_name + "/event_delete.json",
             "-w", "120",
             "-l", "log.out"]
 
