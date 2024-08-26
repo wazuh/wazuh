@@ -7,7 +7,7 @@ from .base import BaseIndex, IndexerKey, remove_empty_values
 from wazuh.core.exception import WazuhResourceNotFound
 from wazuh.core.indexer.models.commands import Command, Result, Status
 
-ID_KEY = 'id'
+DOC_ID_KEY = 'id'
 AGENT_ID_KEY = 'agent.id'
 STATUS_KEY = 'status'
 
@@ -71,8 +71,8 @@ class CommandsIndex(BaseIndex):
         for item in items:
             actions.append({IndexerKey.UPDATE: {IndexerKey._INDEX: self.INDEX, IndexerKey._ID: item.id}})
             item_dict = asdict(item, dict_factory=remove_empty_values)
-            # The ID field shouldn't be part of the document value
-            item_dict.pop(ID_KEY, None)
+            # The document ID shouldn't be part of the value
+            item_dict.pop(DOC_ID_KEY, None)
             actions.append({IndexerKey.DOC: item_dict})
 
         # TODO(25121): Create an internal library to build opensearch requests and parse responses
