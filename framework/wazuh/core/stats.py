@@ -257,7 +257,6 @@ def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool
     str
         The command to retrieve statistics.
     """
-    command = None
     command = f"{str(agent_id).zfill(3)} {daemon} getstate"
 
     if next_page:

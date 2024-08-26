@@ -7,6 +7,7 @@ import operator
 from os import chmod, listdir, path
 from typing import Union
 
+from wazuh import __version__
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
     GROUP_FIELDS,
@@ -1032,7 +1033,7 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=f"version!=v5.0.0" + (';' + q if q else ''),
+                                query=f"version!={__version__}" + (';' + q if q else ''),
                                 **rbac_filters) as db_query:
             data = db_query.run()
 

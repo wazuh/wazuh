@@ -14386,7 +14386,7 @@ paths:
                     - '001'
                     - '002'
                     - '003'
-                  total_affected_items: 4
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: "Syscheck scan was restarted on returned agents"
@@ -15127,7 +15127,7 @@ paths:
                     - '010'
                     - '011'
                     - '012'
-                  total_affected_items: 13
+                  total_affected_items: 12
                   total_failed_items: 0
                   failed_items: []
                 message: "Syscheck database was cleared on returned agents"

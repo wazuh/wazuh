@@ -910,7 +910,7 @@ stages:
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: 7
+          total_failed_items: 6
           failed_items:
             - error:  # Not existing agents
                 code: 1701

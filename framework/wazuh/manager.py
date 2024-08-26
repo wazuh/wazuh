@@ -243,12 +243,14 @@ def validation() -> AffectedItemsWazuhResult:
                   resources=[f'node:id:{node_id}' if cluster_enabled else '*:*:*'])
 def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhResult:
     """Wrapper for get_active_configuration.
+
     Parameters
     ----------
     component : str
         Selected component.
     config : str
         Configuration to get, written on disk.
+        
     Returns
     -------
     AffectedItemsWazuhResult
