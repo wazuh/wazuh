@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends, Response, status
+from fastapi import APIRouter, Depends, Response, status
 
 from comms_api.authentication.authentication import decode_token, JWTBearer
 from comms_api.core.commands import pull_commands, post_results
@@ -63,3 +63,8 @@ async def post_commands_results(results: CommandsResults) -> Response:
         return Response(status_code=status.HTTP_200_OK)
     except WazuhResourceNotFound as exc:
         raise HTTPError(message=exc.message, code=exc.code, status_code=status.HTTP_404_NOT_FOUND)
+
+
+commands_router = APIRouter(prefix='/commands')
+commands_router.add_api_route('', get_commands, methods=['GET'])
+commands_router.add_api_route('/results', post_commands_results, dependencies=[Depends(JWTBearer())], methods=['POST'])
