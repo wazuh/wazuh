@@ -11,23 +11,25 @@ from wazuh.core.exception import WazuhEngineError, WazuhError
 
 
 @timeout(30)
-async def post_stateful_events(request: Request, events: StatefulEvents) -> JSONResponse:
-    """Post stateful events handler.
+async def post_stateful_events(request: Request, events: Events) -> JSONResponse:
+    """Handle posting stateful events.
 
     Parameters
     ----------
-    events : StatefulEvents
-        Stateful events list.
+    request : Request
+        The incoming HTTP request.
+    events : Events
+        The events to be posted.
 
     Raises
     ------
     HTTPError
-        If there is any error when indexing the events.
+        If there is an error when indexing the events.
 
     Returns
     -------
     JSONResponse
-        Indexer response.
+        The response from the indexer.
     """
     try:
         response = await create_stateful_events(events, request.app.state.batcher_queue)
