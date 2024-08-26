@@ -73,8 +73,8 @@ TEST_F(MonitoringTest, TestInvalidServer)
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
-    // All servers are available the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
+    // All servers have their corresponding status the first time
+    EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
@@ -95,9 +95,9 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
-    // All servers are available the first time
+    // All servers have their corresponding status the first time
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
+    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
