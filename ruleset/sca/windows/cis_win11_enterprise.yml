@@ -6555,6 +6555,202 @@ checks:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVManageDRA'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVManageDRA -> 1'
 
+ # 18.10.9.1.4 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Password' is set to 'Enabled: Allow 48-digit recovery password' or higher (Automated)
+  - id: 18833
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Password' is set to 'Enabled: Allow 48-digit recovery password' or higher."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Allow 48-digit recovery password or Enabled: Require 48-digit recovery password."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "A 48-digit recovery password will be permitted for fixed drives."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow 48-digit recovery password or Enabled: Require 48-digit recovery password: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLockerprotected fixed drives can be recovered: Recovery Password Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.4"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryPassword -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryPassword -> 2'
+
+ # 18.10.9.1.5 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key' or higher. (Automated)
+  - id: 18834
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Recovery Key' is set to 'Enabled: Allow 256-bit recovery key' or higher."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In \"Configure user storage of BitLocker recovery information\" select whether users are allowed, required, or not allowed to generate a 48-digit recovery password or a 256-bit recovery key. The recommended state for this setting is: Enabled: Allow 256-bit recovery key or Enabled: Require 256-bit recovery key."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "A 256-bit recovery key will be permitted for fixed drives."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow 256-bit recovery key or Enabled: Require 256-bit recovery key: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLocker-protected fixed drives can be recovered: Recovery Key Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.5"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: any
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryKey -> 1'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRecoveryKey -> 2'
+
+ # 18.10.9.1.6 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True' (Automated)
+  - id: 18834
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Omit recovery options from the BitLocker setup wizard' is set to 'Enabled: True'."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. Select \"Omit recovery options from the BitLocker setup wizard\" to prevent users from specifying recovery options when they enable BitLocker on a drive. This means that you will not be able to specify which recovery option to use when you enable BitLocker, instead BitLocker recovery options for the drive are determined by the policy setting. The recommended state for this setting is: Enabled: True (checked)."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "The ability to manually select recovery options for fixed drives will not be presented to the user in the BitLocker setup wizard."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLockerprotected fixed drives can be recovered: Omit recovery options from the BitLocker setup wizard Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.6"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHideRecoveryPage'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHideRecoveryPage -> 1'
+
+ # 18.10.9.1.7 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Save BitLocker recovery information to AD DS for fixed data drives' is set to 'Enabled: False' (Automated)
+  - id: 18834
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Save BitLocker recovery information to AD DS for fixed data drives' is set to 'Enabled: False'."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In \"Save BitLocker recovery information to Active Directory Domain Services\" choose which BitLocker recovery information to store in AD DS for fixed data drives. If you select \"Backup recovery password and key package\", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select \"Backup recovery password only\", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: False (unchecked)."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: False (unchecked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLockerprotected fixed drives can be recovered: Save BitLocker recovery information to AD DS for fixed data drives Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.7"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryBackup -> 1'
+
+ # 18.10.9.1.8 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Configure storage of BitLocker recovery information to AD DS' is set to 'Enabled: Backup recovery passwords and key packages' (Automated)
+  - id: 18834
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Configure storage of BitLocker recovery information to AD DS' is set to 'Enabled: Backup recovery passwords and key packages'."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. In \"Save BitLocker recovery information to Active Directory Domain Services\" choose which BitLocker recovery information to store in AD DS for fixed data drives. If you select \"Backup recovery password and key package\", both the BitLocker recovery password and key package are stored in AD DS. Storing the key package supports recovering data from a drive that has been physically corrupted. If you select \"Backup recovery password only\", only the recovery password is stored in AD DS. The recommended state for this setting is: Enabled: Backup recovery passwords and key packages."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this value is ignored when the checkbox above it (Save BitLocker recovery information to AD DS for fixed data drives) is False (unchecked), as is required in Rule 18.9.11.1.7. If that checkbox is set to True (checked), both recovery passwords and key packages for fixed drives will be saved to AD DS."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Backup recovery passwords and key packages: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLockerprotected fixed drives can be recovered: Configure storage of BitLocker recovery information to AD DS: Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.8"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryInfoToStore'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVActiveDirectoryInfoToStore -> 1'
+
+ # 18.10.9.1.9 (BL) Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for fixed data drives' is set to 'Enabled: False' (Automated)
+  - id: 18834
+    title: "Ensure 'Choose how BitLocker-protected fixed drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for fixed data drives' is set to 'Enabled: False'."
+    description: "This policy setting allows you to control how BitLocker-protected fixed data drives are recovered in the absence of the required credentials. This policy setting is applied when you turn on BitLocker. Select the \"Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives\" check box if you want to prevent users from enabling BitLocker unless the computer is connected to the domain and the backup of BitLocker recovery information to AD DS succeeds. Note: If the \"Do not enable BitLocker until recovery information is stored in AD DS for fixed data drives\" check box is selected, a recovery password is automatically generated. The recommended state for this setting is: Enabled: False (unchecked)."
+    rationale: "Administrators should always have a safe, secure way to access encrypted data in the event users cannot access their data. Additionally, as with any authentication method, a drive can be compromised by guessing or finding the authentication information used to access the drive. To use BitLocker, a Data Recovery Agent will need to be configured for fixed drives. To recover a drive will require highly-controlled access to the Data Recovery Agent private key."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: False (unchecked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Choose how BitLockerprotected fixed drives can be recovered: Do not enable BitLocker until recovery information is stored to AD DS for fixed data drives Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer).."
+    compliance:
+      - cis: ["18.10.9.1.9"]
+      - cis_csc_v8: ["3.6"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["AC.L2-3.1.19"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - nist_sp_800-53: ["SC-28"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRequireActiveDirectoryBackup'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVRequireActiveDirectoryBackup -> 0'
+
+ # 18.10.9.1.10 (BL) Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'. (Automated)
+  - id: 18835
+    title: "Ensure 'Configure use of hardware-based encryption for fixed data drives' is set to 'Disabled'."
+    description: "This policy setting allows you to manage BitLocker's use of hardware-based encryption on fixed data drives and specify which encryption algorithms it can use with hardware-based encryption. Using hardware-based encryption can improve performance of drive operations that involve frequent reading or writing of data to the drive. You can specify additional options that control whether BitLocker software-based encryption is used instead of hardware-based encryption on computers that do not support hardware-based encryption and whether you want to restrict the encryption algorithms and cipher suites used with hardware-based encryption. The recommended state for this setting is: Disabled."
+    rationale: "From a security perspective hardware-based encryption may introduce vulnerabilities in the hardware encryption of certain self-encrypting drives (SEDs), if the vendor and/or user has not updated the firmware to remediate the vulnerability. For more information visit ADV180028 - Security Update Guide - Microsoft - Guidance for configuring BitLocker to enforce software encryption."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Configure use of hardware-based encryption for fixed data drives Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
+    references:
+      - 'https://msrc.microsoft.com/update-guide/en-US/vulnerability/ADV180028'
+    compliance:
+      - cis: ["18.10.9.1.10"]
+      - cis_csc_v7: ["13.6"]
+      - iso_27001-2013: ["A.6.2.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHardwareEncryption'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVHardwareEncryption -> 0'
+
+ # 18.10.9.1.11 (BL) Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'. (Automated)
+  - id: 18836
+    title: "Ensure 'Configure use of passwords for fixed data drives' is set to 'Disabled'."
+    description: "This policy setting specifies whether a password is required to unlock BitLocker-protected fixed data drives. Note: This setting is enforced when turning on BitLocker, not when unlocking a volume. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Disabled."
+    rationale: "Using a dictionary-style attack, passwords can be guessed or discovered by repeatedly attempting to unlock a drive. Since this type of BitLocker password does include anti-dictionary attack protections provided by a TPM, for example, there is no mechanism to slow down rapid brute-force attacks against them."
+    impact: "The password option will not be available when configuring BitLocker for fixed drives."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Configure use of passwords for fixed data drives Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.11"]
+      - cis_csc_v8: ["5.2"]
+      - cis_csc_v7: ["13.6"]
+      - cmmc_v2.0: ["IA.L2-3.5.7"]
+      - iso_27001-2013: ["A.6.2.1"]
+      - pci_dss_v4.0: ["2.2.2", "8.3.5", "8.3.6", "8.6.3"]
+      - soc_2: ["CC6.1"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVPassphrase'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVPassphrase -> 0'
+
+ # 18.10.9.1.12 (BL) Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'. (Automated)
+  - id: 18837
+    title: "Ensure 'Configure use of smart cards on fixed data drives' is set to 'Enabled'."
+    description: "This policy setting allows you to specify whether smart cards can be used to authenticate user access to the BitLocker-protected fixed data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require smart card authentication by selecting the \"Require use of smart cards on fixed data drives\" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled."
+    rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
+    impact: "None - this is the default behavior."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Configure use of smart cards on fixed data drives Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.12"]
+      - cis_csc_v7: ["16.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVAllowUserCert'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVAllowUserCert -> 1'
+
+ # 18.10.9.1.13 (BL) Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'. (Automated)
+  - id: 18838
+    title: "Ensure 'Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives' is set to 'Enabled: True'."
+    description: "This policy setting allows you to specify whether smart cards must be used to authenticate user access to the BitLocker-protected fixed data drives on a computer. Smart cards can be used to authenticate user access to the drive. You can require a smart card authentication by selecting the \"Require use of smart cards on fixed data drives\" check box. Note: This setting is enforced when turning on BitLocker, not when unlocking a drive. BitLocker will allow unlocking a drive with any of the protectors available on the drive. The recommended state for this setting is: Enabled: True (checked)."
+    rationale: "A drive can be compromised by guessing or finding the authentication information used to access the drive. For example, a password could be guessed, or a drive set to automatically unlock could be lost or stolen with the computer it automatically unlocks with."
+    impact: "Smart cards will be required to authenticate user access to fixed data drives. Use of smart cards requires PKI infrastructure. Users will need to authenticate with the smart card to unlock the fixed data drive every time they restart the computer."
+    remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: True (checked): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\BitLocker Drive Encryption\\Fixed Data Drives\\Configure use of smart cards on fixed data drives: Require use of smart cards on fixed data drives Note: This Group Policy path is provided by the Group Policy template VolumeEncryption.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
+    compliance:
+      - cis: ["18.10.9.1.13"]
+      - cis_csc_v7: ["16.3"]
+    condition: all
+    rules:
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVEnforceUserCert'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\FVE -> FDVEnforceUserCert -> 1'
+
   - id: 26286
     title: "Ensure 'Allow Use of Camera' is set to 'Disabled'."
     description: "This policy setting controls whether the use of Camera devices on the machine are permitted. The recommended state for this setting is: Disabled."
