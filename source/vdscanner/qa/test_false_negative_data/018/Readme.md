@@ -12,4 +12,4 @@ Vulnerability detection validation for **_Node.js_** package.
 | Name    | Version | Feed | CVE IDs       | Expected   |
 |---------|---------|------|---------------|------------|
 | Node.js | 0.10.0  | NVD  | CVE-2013-4450 | Vulnerable |
-|         |         |      | CVE-2013-2882 | Vulnerable |
+| Node.js | 0.10.0  | NVD  | CVE-2013-2882 | Vulnerable |

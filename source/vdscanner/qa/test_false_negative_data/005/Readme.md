@@ -8,7 +8,6 @@ Vulnerability detection validation for package `libopenssl1_1` in SLES OS.
 
 - Input events
     - [001](input_001.json)
-    - [002](input_002.json)
 
 
 | Name           | Version                           | Feed           | CVE IDs         | Expected    |

@@ -9,7 +9,6 @@ Vulnerability detection validation for macOS packages `Mail` and homebrew `brotl
 
 - Input events
     - [001](input_001.json)
-    - [002](input_002.json)
 
 | Name                       | Version           | Feed | CVE IDs        | Expected    |
 |----------------------------|-------------------|------|----------------|-------------|
@@ -18,9 +17,7 @@ Vulnerability detection validation for macOS packages `Mail` and homebrew `brotl
 ## macOS
 
 - Input events
-    - [003](input_003.json)
-    - [004](input_004.json)
-    - [005](input_005.json)
+    - [002](input_002.json)
 
 | Name                | Version | Feed | CVE IDs        | Expected    |
 |---------------------|---------|------|----------------|-------------|

@@ -8,11 +8,6 @@ Vulnerability detection validation for Python packages `cfscrape`, `pypdf2`, `py
 
 - Input events
     - [001](input_001.json)
-    - [002](input_002.json)
-    - [003](input_003.json)
-    - [004](input_004.json)
-    - [005](input_005.json)
-    - [006](input_006.json)
 
 
 | Name      | Version           | Feed  | CVE IDs         | Expected    |
