@@ -47,18 +47,7 @@ void start(const LoggingConfig& cfg)
         spdlog::init_thread_pool(cfg.queueSize, cfg.dedicatedThreads);
     }
 
-    if (cfg.filePath == STD_ERR_PATH)
-    {
-        logger = spdlog::stderr_color_mt("default");
-    }
-    else if (cfg.filePath == STD_OUT_PATH)
-    {
-        logger = spdlog::stdout_color_mt("default");
-    }
-    else
-    {
-        logger = spdlog::basic_logger_mt("default", cfg.filePath, cfg.truncate);
-    }
+    logger = spdlog::stdout_color_mt("default");
 
     setLevel(cfg.level);
 
