@@ -45,8 +45,8 @@ async def post_commands_results(results: CommandsResults) -> Response:
 
     Parameters
     ----------
-    token : str
-        JWT token.
+    results : CommandsResults
+        Commands results.
 
     Raises
     ------
