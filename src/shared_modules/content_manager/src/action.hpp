@@ -12,7 +12,6 @@
 #ifndef _ACTION_MODULE_HPP
 #define _ACTION_MODULE_HPP
 
-#include "UNIXSocketRequest.hpp"
 #include "actionOrchestrator.hpp"
 #include "conditionSync.hpp"
 #include "iRouterProvider.hpp"
@@ -24,9 +23,6 @@
 #include <filesystem>
 #include <thread>
 #include <utility>
-
-constexpr auto FILE_PROCESSING_STATUS_SOCK {"queue/sockets/file-processing-status"};
-constexpr auto FILE_PROCESSING_ACTIVE_STATUS {"Active"};
 
 /**
  * @brief Action class.
@@ -85,21 +81,6 @@ public:
     }
 
     /**
-     * @brief Check if there is a file processing in progress.
-     *
-     */
-    void checkFileProcessingStatus()
-    {
-        const std::string url = "http://localhost/status";
-        UNIXSocketRequest::instance().get(
-            HttpUnixSocketURL(FILE_PROCESSING_STATUS_SOCK, url),
-            [&](const std::string& msg)
-            { msg.compare(FILE_PROCESSING_ACTIVE_STATUS) == 0 ? m_shouldRun.store(false) : m_shouldRun.store(true); },
-            [](const std::string& msg, const long responseCode)
-            { logError(WM_CONTENTUPDATER, "%s: %ld.", msg.c_str(), responseCode); });
-    }
-
-    /**
      * @brief Action scheduler start.
      *
      * @param interval Scheduler interval.
@@ -116,21 +97,13 @@ public:
 
                 // Run action on start, independently of the interval time.
                 runActionScheduled();
+
                 while (m_schedulerRunning)
                 {
                     m_cv.wait_for(lock, std::chrono::seconds(this->m_interval));
                     if (m_schedulerRunning)
                     {
-                        checkFileProcessingStatus();
-                        if (!this->m_shouldRun)
-                        {
-                            // Action skipped, sleep for interval time.
-                            logDebug2(WM_CONTENTUPDATER, "File processing in progress, scheduled request postponed.");
-                        }
-                        else
-                        {
-                            runActionScheduled();
-                        }
+                        runActionScheduled();
                     }
                 }
             });
@@ -216,15 +189,6 @@ public:
     void changeSchedulerInterval(size_t interval)
     {
         m_interval = interval;
-        wakeUpThread();
-    }
-
-    /**
-     * @brief Wakes up scheduled action thread.
-     *
-     */
-    void wakeUpThread()
-    {
         m_cv.notify_one();
     }
 
@@ -233,7 +197,6 @@ private:
     std::thread m_schedulerThread;
     std::atomic<bool> m_schedulerRunning = false;
     std::atomic<bool> m_actionInProgress;
-    std::atomic<bool> m_shouldRun = true;
     std::atomic<size_t> m_interval;
     std::mutex m_mutex;
     std::condition_variable m_cv;

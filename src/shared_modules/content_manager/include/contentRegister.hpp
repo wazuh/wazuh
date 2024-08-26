@@ -50,12 +50,6 @@ public:
      * @param newInterval New value to set.
      */
     void changeSchedulerInterval(size_t newInterval);
-
-    /**
-     * @brief Wakes up action thread.
-     *
-     */
-    void wakeUpThread();
 };
 
 #endif // _CONTENT_REGISTER_HPP

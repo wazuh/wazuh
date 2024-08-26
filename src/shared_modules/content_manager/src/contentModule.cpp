@@ -52,11 +52,6 @@ void ContentRegister::changeSchedulerInterval(const size_t newInterval)
     ContentModuleFacade::instance().changeSchedulerInterval(m_name, newInterval);
 }
 
-void ContentRegister::wakeUpThread()
-{
-    ContentModuleFacade::instance().wakeUpThread(m_name);
-}
-
 // LCOV_EXCL_START
 #ifdef __cplusplus
 extern "C"
