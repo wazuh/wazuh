@@ -17,7 +17,6 @@
 #include "components/updaterContext.hpp"
 #include "componentsHelper.hpp"
 #include "factoryOffsetUpdater.hpp"
-#include "iRouterProvider.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <memory>
 #include <utility>
@@ -108,13 +107,11 @@ public:
     /**
      * @brief Creates a new instance of ActionOrchestrator.
      *
-     * @param channel Channel where the orchestration will publish the data.
      * @param parameters Parameters used to create the orchestration.
      * @param stopActionCondition Condition wrapper used to interrupt the orchestration stages.
      * @param fileProcessingCallback Callback in charge to process downloaded files.
      */
-    explicit ActionOrchestrator(const std::shared_ptr<IRouterProvider> channel,
-                                const nlohmann::json& parameters,
+    explicit ActionOrchestrator(const nlohmann::json& parameters,
                                 std::shared_ptr<ConditionSync> stopActionCondition,
                                 const std::function<void(const std::string&)> fileProcessingCallback)
     {

@@ -13,8 +13,6 @@
 #define _CONTENT_PROVIDER_HPP
 
 #include "action.hpp"
-#include "routerProvider.hpp"
-#include "routerSubscriber.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
 #include <memory>
@@ -29,7 +27,6 @@ class ContentProvider final
 {
 private:
     std::shared_ptr<Action> m_action;
-    std::shared_ptr<RouterProvider> m_routerProvider;
 
 public:
     /**
@@ -42,16 +39,13 @@ public:
     explicit ContentProvider(const std::string& topicName,
                              const nlohmann::json& parameters,
                              const std::function<void(const std::string& message)> fileProcessingCallback)
-        : m_routerProvider(std::make_shared<RouterProvider>(topicName))
     {
-        m_routerProvider->start();
-        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters, fileProcessingCallback);
+        m_action = std::make_shared<Action>(topicName, parameters, fileProcessingCallback);
     }
 
     ~ContentProvider()
     {
         m_action.reset();
-        m_routerProvider.reset();
     }
 
     /**

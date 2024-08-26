@@ -30,7 +30,6 @@ include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 
 include_directories(${SHARED_MODULES})
 include_directories(${SHARED_MODULES}/utils)
-include_directories(${SHARED_MODULES}/router/include)
 include_directories(${SHARED_MODULES}/http-request/include)
 include_directories(${SHARED_MODULES}/content_manager/src/components)
 
@@ -40,7 +39,6 @@ link_directories(${SRC_FOLDER}/external/lzma/build/)
 link_directories(${SRC_FOLDER}/external/rocksdb/build/)
 link_directories(${SRC_FOLDER}/external/zlib/)
 link_directories(${SRC_FOLDER}/external/zlib/contrib/minizip/)
-link_directories(${SHARED_MODULES}/router/build)
 link_directories(${SHARED_MODULES}/http-request/build)
 link_directories(${SRC_FOLDER}/external/flatbuffers/build/)
 
@@ -52,7 +50,7 @@ add_library(content_manager SHARED
     ${CONTENT_DOWNLOAD_SRC}
     )
 
-target_link_libraries(content_manager router urlrequest gcc_s wazuhext lzma rocksdb flatbuffers)
+target_link_libraries(content_manager urlrequest gcc_s wazuhext lzma rocksdb flatbuffers)
 
 set_target_properties(content_manager PROPERTIES
         BUILD_RPATH_USE_ORIGIN TRUE

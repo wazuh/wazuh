@@ -13,7 +13,6 @@
 #define _UPDATER_CONTEXT_HPP
 
 #include "conditionSync.hpp"
-#include "iRouterProvider.hpp"
 #include "json.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <external/nlohmann/json.hpp>
