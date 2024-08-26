@@ -20,13 +20,26 @@ class Status(str, Enum):
 
 
 @dataclass
-class Command:
-    """Command data model."""
-    id: str = None # Document ID
-    args: List[str] = None
-    agent: CommandAgent = None
+class Document:
+    """OpenSearch document model."""
+    id: str = None
+
+
+@dataclass
+class Result(Document):
+    """Command result data model."""
+    # Cannot extend enumerations, custom validators are used to prevent agents 
+    # from uploading a result with a status other than completed or failed.
+    # https://docs.python.org/3/howto/enum.html#restricted-enum-subclassing
     status: Status = None
     info: str = None
+
+
+@dataclass
+class Command(Result):
+    """Command data model."""
+    args: List[str] = None
+    agent: CommandAgent = None
 
     @classmethod
     def from_dict(cls, id: str, data: dict):
