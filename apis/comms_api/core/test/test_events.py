@@ -3,11 +3,10 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from comms_api.core.events import create_stateful_events, send_stateless_events
-from comms_api.models.events import StatelessEvents
-from wazuh.core.engine import Engine
+from comms_api.models.events import StatefulEvents, StatelessEvents
 from wazuh.core.engine.models.events import StatelessEvent
 from wazuh.core.indexer import Indexer
-from wazuh.core.indexer.models.events import StatefulEvents, SCAEvent
+from wazuh.core.indexer.models.events import SCAEvent
 
 INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 

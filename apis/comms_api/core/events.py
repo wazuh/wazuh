@@ -1,7 +1,6 @@
-from comms_api.models.events import StatelessEvents
+from comms_api.models.events import StatefulEvents, StatelessEvents
 from wazuh.core.engine import get_engine_client
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.models.events import StatefulEvents
 
 
 async def create_stateful_events(events: StatefulEvents) -> dict:

@@ -3,11 +3,10 @@ from fastapi.responses import JSONResponse
 
 from comms_api.authentication.authentication import JWTBearer
 from comms_api.core.events import create_stateful_events, send_stateless_events
-from comms_api.models.events import StatelessEvents
+from comms_api.models.events import StatefulEvents, StatelessEvents
 from comms_api.routers.exceptions import HTTPError
 from comms_api.routers.utils import timeout
 from wazuh.core.exception import WazuhEngineError, WazuhError
-from wazuh.core.indexer.models.events import StatefulEvents
 
 
 @timeout(30)
