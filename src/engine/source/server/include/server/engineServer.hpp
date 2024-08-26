@@ -4,6 +4,8 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <cstdint>
+
 
 #include <uvw.hpp>
 #include <uvw/async.h>

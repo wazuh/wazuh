@@ -59,9 +59,9 @@ jobs:
       run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
 
     - name: Build
-      run: cmake --build ${{env.ENGINE_DIR}}/build --target all -j$(nproc)
+      run: cmake --build ${{env.ENGINE_DIR}}/build --target all_tests -j$(nproc)
 
     - name: Unit Test
       # Run unit tests using CTest
       working-directory: ${{env.ENGINE_DIR}}/build
-      run: ctest -T test --output-on-failure -j$(nproc)
+      run: ctest -T test -C ${{env.BUILD_PRESET}} --output-on-failure -j$(nproc)
