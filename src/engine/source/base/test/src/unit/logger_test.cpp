@@ -46,18 +46,18 @@ TEST_F(LoggerTest, LogNonExist)
 
 TEST_F(LoggerTest, LogSuccessStart)
 {
-    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = logging::Level::Info}));
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.level = logging::Level::Info}));
 }
 
 TEST_F(LoggerTest, LogRepeatedStart)
 {
-    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath}));
-    ASSERT_ANY_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath}));
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {}));
+    ASSERT_ANY_THROW(logging::start(logging::LoggingConfig {}));
 }
 
 TEST_F(LoggerTest, LogGetSomeInstance)
 {
-    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath}));
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {}));
     auto logger = logging::getDefaultLogger();
     auto someLogger = logging::getDefaultLogger();
     ASSERT_NE(logger, nullptr);
@@ -105,7 +105,7 @@ TEST_P(LoggerTestLevels, LogChangeLevelInRuntime)
 {
     auto level = GetParam();
 
-    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = level}));
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.level = level}));
 
     LOG_TRACE("TRACE message");
     LOG_DEBUG("DEBUG message");
@@ -154,7 +154,7 @@ TEST_P(LoggerTestExtraInfo, LogPatternMatching)
 {
     auto [level, pattern] = GetParam();
 
-    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.filePath = m_tmpPath, .level = level}));
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.level = level}));
 
     LOG_TRACE("TRACE message");
     LOG_DEBUG("DEBUG message");
