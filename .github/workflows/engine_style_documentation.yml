@@ -1,0 +1,122 @@
+name: Engine code style and documentation
+
+on:
+  workflow_dispatch:
+  pull_request:
+  # Pull request events
+    types: [synchronize, opened, reopened, ready_for_review]
+
+
+jobs:
+  documentation:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Dependencies for testing:
+      # - doxygen 
+      # - graphviz
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: doxygen graphviz
+          version: 1.0
+
+      - name: Generate documentation
+        shell: bash
+        run: |
+
+          INCLUDES=$(find "$(pwd)/src/engine/source" -type d -name "include" -print0 | tr '\0' ' ')
+          # Generate the doxygen configuration file
+          CONFIG_FILE=src/doxygen_config.cfg
+          {
+              cat src/Doxyfile
+              echo "OUTPUT_DIRECTORY = src/doc"
+              echo "INPUT = ${INCLUDES}"
+          } > ${CONFIG_FILE}
+
+          # Generate the documentation
+          sudo dot -c
+          ERRORS_FILE=src/doxygen_errors.txt
+          doxygen -s ${CONFIG_FILE} 2> ${ERRORS_FILE}
+
+          # Check if there are errors
+          if [ -s "${ERRORS_FILE}" ]; then
+            echo "-----------------------------------------------"
+            echo "FAILED: Doxygen documentation generation failed"
+            echo "-----------------------------------------------"
+            exit 1
+          else
+            echo "----------------------------------------------------"
+            echo "PASSED: Doxygen documentation generated successfully"
+            echo "----------------------------------------------------"
+          fi
+
+      # Upload errors as an artifact, when failed
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Doxygen errors
+          path: src/doxygen_errors.txt
+          retention-days: 1
+
+      # Upload the documentation as an artifact, when successful
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Doxygen Documentation
+          path: src/doc
+          retention-days: 1
+
+  style:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+        # Dependencies for testing:
+      # - clang-format 
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+            packages: clang-format 
+            version: 1.0
+
+      - name: Check Coding style
+        shell: bash
+        run: |
+            # Don't apply changes, just check
+            arguments="--dry-run "
+            CONFIG_FILE=src/engine/.clang-format
+            arguments+="--style=file "
+            arguments+="-assume-filename=$CONFIG_FILE "
+
+            # Retrieve all the source files for the desired module
+            sourceFiles=$(find src/engine -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
+            arguments+="-i $sourceFiles "
+
+            ERRORS_FILE=clang_format_errors.txt
+            clang-format $arguments 2> ${ERRORS_FILE}
+
+            # Check if there are errors
+            if [ -s "${ERRORS_FILE}" ]; then
+            echo "---------------------------------"
+            echo "FAILED: Clang-format check failed"
+            echo "---------------------------------"
+            exit 1
+            else
+            echo "---------------------------------"
+            echo "PASSED: Clang-format check passed"
+            echo "---------------------------------"
+            fi
+
+        # Upload errors as an artifact, when failed
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+            name: Clang-format errors
+            path: clang_format_errors.txt
+            retention-days: 1

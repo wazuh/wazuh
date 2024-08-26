@@ -43,8 +43,8 @@ jobs:
     steps:
     - name: Check out repository
       uses: actions/checkout@v3
-          with:
-          submodules: recursive
+      with:
+        submodules: recursive
 
     - name: Cache CMake and ccache
       uses: hendrikmuhs/ccache-action@v1.2
