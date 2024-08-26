@@ -92,10 +92,6 @@ options:
 
 After the test execution, a report is generated. If any test fails, the exit code will be non-zero, and details will be printed to stdout. This helps in identifying and resolving issues effectively.
 
-## Contribution Guidelines
-
-TODO
-
 ## Note
 
 It is important to remember that while this `README.md` is located in the `./test/health_test` directory, the actual tests are hosted within each integration's directory under `./ruleset/engine/integrations/`. This structure helps in maintaining clear separation and organization of tests according to their specific integrations.
