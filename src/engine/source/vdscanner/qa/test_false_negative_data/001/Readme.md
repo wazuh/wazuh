@@ -9,13 +9,15 @@ The test verifies the vulnerabilities for this specific package are found and th
 
 - Input events
     - [001](input_001.json)
-    - [002](input_002.json)
-    - [003](input_003.json)
 
 | Name    | Version         | Feed   | CVE IDs         | Expected    |
 |---------|-----------------|--------|-----------------|-------------|
 | systemd | 247.3-7+deb11u4 | Debian | CVE-2013-4392   | Vulnerable  |
+| systemd | 247.3-7+deb11u4 | Debian | CVE-2022-45873  | Vulnerable  |
 | systemd | 247.3-7+deb11u4 | Debian | CVE-2020-13529  | Vulnerable  |
 | systemd | 247.3-7+deb11u4 | Debian | CVE-2023-31437  | Vulnerable  |
 | systemd | 247.3-7+deb11u4 | Debian | CVE-2023-31438  | Vulnerable  |
 | systemd | 247.3-7+deb11u4 | Debian | CVE-2023-31439  | Vulnerable  |
+| systemd | 247.3-7+deb11u4 | Debian | CVE-2023-50387  | Vulnerable  |
+| systemd | 247.3-7+deb11u4 | Debian | CVE-2023-50868  | Vulnerable  |
+| systemd | 247.3-7+deb11u4 | Debian | CVE-2023-7008   | Vulnerable  |

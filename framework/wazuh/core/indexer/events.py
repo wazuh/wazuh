@@ -1,13 +1,14 @@
 from dataclasses import asdict
+from typing import List
 
 from .base import BaseIndex
-from wazuh.core.indexer.models.events import Events
+from wazuh.core.indexer.models.events import StatefulEvent
 
 
 class EventsIndex(BaseIndex):
     """Set of methods to interact with the stateful events indices."""
 
-    async def create(self, events: Events) -> dict:
+    async def create(self, events: List[StatefulEvent]) -> dict:
         """Post new events to the indexer.
 
         Parameters

@@ -8,7 +8,6 @@ Vulnerability detection validation for **_openssh_** package.
 
 - Input events
   - [001](input_001.json)
-  - [002](input_002.json)
 
 | Name           | Version             | Feed      | CVE IDs       | Expected       |
 |----------------|---------------------|-----------|---------------|----------------|
@@ -17,8 +16,7 @@ Vulnerability detection validation for **_openssh_** package.
 ## Centos 9
 
 - Input events
-  - [003](input_003.json)
-  - [004](input_004.json)
+  - [002](input_002.json)
 
 | Name    | Version      | Feed     | CVE IDs       | Expected   |
 |---------|--------------|----------|---------------|------------|
@@ -27,9 +25,7 @@ Vulnerability detection validation for **_openssh_** package.
 ## Arch Linux
 
 - Input files
-  - [005](input_005.json)
-  - [006](input_006.json)
-  - [007](input_007.json)
+  - [003](input_003.json)
 
 | Name    | Version | Feed | CVE IDs       | Expected       |
 |---------|---------|------|---------------|----------------|

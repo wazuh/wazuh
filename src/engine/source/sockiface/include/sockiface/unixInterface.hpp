@@ -1,6 +1,7 @@
 #ifndef _ISOCKFACE_UNIXINTERFACE_HPP
 #define _ISOCKFACE_UNIXINTERFACE_HPP
 
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <utility>

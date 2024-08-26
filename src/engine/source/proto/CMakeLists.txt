@@ -23,10 +23,20 @@ target_link_libraries(eMessages PUBLIC protobuf::libprotobuf base)
 # ###################################################################################################
 # Add custom target for code generation trigger
 # ###################################################################################################
-if(ENGINE_GENERATE_PROTOBUF)
-    message(STATUS "Regenerate Protobuf code")
+find_program(PROTOC_EXECUTABLE NAMES protoc)
+
+if(PROTOC_EXECUTABLE)
+    message(STATUS "Found protoc: ${PROTOC_EXECUTABLE}")
+    set(VCPKG_INSTALLED_DIR ${CMAKE_BINARY_DIR}/vcpkg_installed/${VCPKG_TARGET_TRIPLET})
+
     add_custom_target(generate_protobuf_code
-        COMMAND /bin/sh ${GENERATE_PROTOBUF_SCRIPT}
+        COMMAND VCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR} /bin/sh ${GENERATE_PROTOBUF_SCRIPT}
     )
+else()
+    message(WARNING "protoc not found. Skipping Protobuf generation.")
+endif()
+
+
+if(TARGET generate_protobuf_code)
     add_dependencies(eMessages generate_protobuf_code)
 endif()

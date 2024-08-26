@@ -10,9 +10,6 @@
 *.a
 *.lib
 
-# Executables
-*.out
-
 # Exclude automatic reports
 tools/valgrindReport.log
 

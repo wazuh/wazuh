@@ -1,13 +1,13 @@
 from dataclasses import asdict
-from typing import List, Optional
+from typing import List, Optional, Union
 
-from opensearchpy import NotFoundError
 from uuid6 import UUID
 
 from .base import BaseIndex, IndexerKey, remove_empty_values
-from wazuh.core.indexer.models.commands import Command, Status
 from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core.indexer.models.commands import Command, Result, Status
 
+DOC_ID_KEY = 'id'
 AGENT_ID_KEY = 'agent.id'
 STATUS_KEY = 'status'
 
@@ -54,13 +54,13 @@ class CommandsIndex(BaseIndex):
 
         return commands
 
-    async def update(self, commands: List[Command]) -> None:
+    async def update(self, items: List[Union[Command, Result]]) -> None:
         """Update commands.
         
         Parameters
         ----------
-        commands : List[Command]
-            List of commands to update.
+        items : List[Union[Command, Result]]
+            List of commands or results to update.
 
         Raises
         ------
@@ -68,12 +68,15 @@ class CommandsIndex(BaseIndex):
             If no document exists with the id provided.
         """
         actions = []
-        for command in commands:
-            actions.append({IndexerKey.UPDATE: {IndexerKey._INDEX: self.INDEX, IndexerKey._ID: command.id}})
-            command_dict = asdict(command, dict_factory=remove_empty_values)
-            actions.append({IndexerKey.DOC: command_dict})
+        for item in items:
+            actions.append({IndexerKey.UPDATE: {IndexerKey._INDEX: self.INDEX, IndexerKey._ID: item.id}})
+            item_dict = asdict(item, dict_factory=remove_empty_values)
+            # The document ID shouldn't be part of the value
+            item_dict.pop(DOC_ID_KEY, None)
+            actions.append({IndexerKey.DOC: item_dict})
 
-        try:
-            await self._client.bulk(actions, self.INDEX)
-        except NotFoundError:
-            raise WazuhResourceNotFound(2202)
+        # TODO(25121): Create an internal library to build opensearch requests and parse responses
+        response = await self._client.bulk(actions, self.INDEX)
+        for item in response[IndexerKey.ITEMS]:
+            if item[IndexerKey.UPDATE][STATUS_KEY] == 404:
+                raise WazuhResourceNotFound(2202)
