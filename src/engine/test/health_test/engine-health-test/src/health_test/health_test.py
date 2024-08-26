@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Optional, Union
 
-from engine_updown.handler import EngineHandler
+from engine_handler.handler import EngineHandler
 
 
 class UnitOutput:
@@ -294,8 +294,14 @@ def health_test(env_path: Path, integration_name: Optional[str] = None, skip: Op
         return 1
 
     print("\n\nSummary:")
+    failed = False
     for result in results:
+        if not result.success:
+            failed = True
         print(result)
+
+    if failed:
+        return 1
 
     return 0
 

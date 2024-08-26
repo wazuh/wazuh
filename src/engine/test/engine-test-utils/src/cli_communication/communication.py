@@ -30,5 +30,5 @@ class CLIClient:
             full_command = [self.binary_path] + arguments
             result = subprocess.run(full_command, text=True, capture_output=True, check=True)
             return result.returncode, result.stdout
-        except Exception as e:
-            return 1, e.stderr
+        except subprocess.CalledProcessError as result:
+            return 1, result.stderr

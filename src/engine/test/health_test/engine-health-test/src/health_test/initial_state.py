@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 from google.protobuf.json_format import ParseDict
 from shutil import copytree, copy
 
-from engine_updown.handler import EngineHandler
+from engine_handler.handler import EngineHandler
 from api_communication.proto import geo_pb2 as api_geo
 from api_communication.proto import catalog_pb2 as api_catalog
 from api_communication.proto import engine_pb2 as api_engine

@@ -6,7 +6,7 @@
     1. [Docs](#docs)
     1. [Source](#source)
     1. [Test](#test)
-    1. [Tools](#tools)                   
+    1. [Tools](#tools)
 1. [Directory description](#directory-description)
 1. [Engine Compilation](#engine-compilation)
     1. [Install cmake](#install-cmake)
@@ -79,12 +79,12 @@ wget -O vcpkg.tar.gz https://github.com/microsoft/vcpkg/archive/master.tar.gz
 ```
 - **Make a new directory to hold vcpkg and extract the tar.gz file**:
 ```bash
-sudo mkdir /home/$USER/engine/vcpkg
-sudo tar xf vcpkg.tar.gz --strip-components=1 -C /home/$USER/engine/vcpkg
+mkdir /home/$USER/engine/vcpkg
+tar xf vcpkg.tar.gz --strip-components=1 -C /home/$USER/engine/vcpkg
 ```
 - **Build vcpkg**:
 ```bash
-sudo /home/$USER/engine/vcpkg/bootstrap-vcpkg.sh
+/home/$USER/engine/vcpkg/bootstrap-vcpkg.sh
 ```
 - **Make a symbolic link to the vcpkg command in “/usr/local/bin”**
 ```bash
