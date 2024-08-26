@@ -20,14 +20,7 @@ runs:
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
           echo "deb http://deb.debian.org/debian/ testing main" >>  /etc/apt/sources.conf
           sudo apt update
-
-      # Dependencies for testing:
-      # - clang-format 
-      - name: Install dependencies
-        uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: clang-format 
-          version: 1.0
+          sudo apt install -y clang-format
 
       - name: Check Coding style
         shell: bash
