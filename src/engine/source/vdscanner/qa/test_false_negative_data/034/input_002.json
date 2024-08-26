@@ -5,21 +5,21 @@
   },
   "packages": [
     {
-      "scan_time": "2024/06/04 22:20:17",
+      "scan_time": "2024/06/04 22:15:06",
       "format": "deb",
-      "name": "grafana",
+      "name": "grafana-enterprise",
       "priority": "extra",
-      "size": 255701,
+      "size": 289545,
       "vendor": "contact@grafana.com",
       "install_time": " ",
-      "version": "8.5.0",
+      "version": "8.5.6",
       "architecture": "amd64",
       "multiarch": null,
       "source": " ",
       "description": "Grafana",
       "location": " ",
-      "checksum": "c4b71764ef99e7002f3132852a84a5c1e1b25fcc",
-      "item_id": "61e71c9fe4bab8cd4a5eb2a10ec16c99f8326c7b"
+      "checksum": "4fe94df9b61930ad71eab83ad5d3c2a5861c2717",
+      "item_id": "fe14be7973e211e281da6d754e1f2966bbf74449"
     }
   ],
   "hotfixes": [],

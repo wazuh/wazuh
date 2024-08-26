@@ -5,22 +5,21 @@
   },
   "packages": [
     {
-      "format": "win",
-      "name": "GrafanaOSS",
-      "vendor": "Grafana Labs",
-      "install_time": "2024/05/14 03:22:57",
-      "version": "9.2.0",
       "architecture": "x86_64",
       "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
-      "description": "Grafana",
+      "description": "Node.js",
+      "vendor": "Node.js Foundation",
+      "name": "Node.js",
       "size": 334,
+      "format": "win",
       "item_id": "f97fcd7d34fa7b705241093e8ba47c4458017285",
       "location": " ",
       "multiarch": " ",
       "priority": " ",
       "scan_time": "2024/05/28 02:01:07",
       "source": " ",
-      "groups": " "
+      "groups": " ",
+      "version": "17.0.1"
     }
   ],
   "hotfixes": [],

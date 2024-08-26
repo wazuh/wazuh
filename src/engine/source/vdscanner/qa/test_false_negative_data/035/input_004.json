@@ -9,7 +9,7 @@
       "name": "GrafanaOSS",
       "vendor": "Grafana Labs",
       "install_time": "2024/05/14 03:22:57",
-      "version": "9.1.1",
+      "version": "9.2.0",
       "architecture": "x86_64",
       "checksum": "eec8dacdb7087b2e0cc5ccebeb1259a6ec7a731e",
       "description": "Grafana",
