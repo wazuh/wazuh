@@ -67,7 +67,7 @@ namespace HealthCheckColumns
  */
 class Monitoring final
 {
-    std::map<std::string, bool> m_values;
+    std::map<std::string, bool> m_servers;
     std::thread m_thread;
     std::mutex m_mutex;
     std::condition_variable m_condition;
@@ -86,78 +86,91 @@ public:
     }
 
     /**
-     * @brief Class constructor. Initializes values map and check servers' health.
+     * @brief Class constructor. Checks the servers' health.
      *
-     * @param values Servers to be monitored.
+     * @param serverAddresses Servers to be monitored.
      * @param interval Interval for monitoring.
      * @param secureCommunication Object that provides secure communication.
      */
-    explicit Monitoring(const std::vector<std::string>& values,
+    explicit Monitoring(const std::vector<std::string>& serverAddresses,
                         const uint32_t interval = INTERVAL,
                         const SecureCommunication& secureCommunication = {})
         : m_interval(interval)
     {
-        // Initialize the map with the values, all servers are available.
-        for (auto& value : values)
+        /**
+         * @brief Health check function
+         *
+         * @note It sends a request to the \p serverAddress and update the \p serverStatus (true if the server is
+         * available, false otherwise).
+         */
+        const auto healthCheck = [this, secureCommunication](const std::string& serverAddress, bool& serverStatus)
         {
-            m_values[value] = true;
+            // Get the health of the server.
+            HTTPRequest::instance().get(
+                HttpURL(serverAddress + "/_cat/health?v"),
+                [&](std::string response)
+                {
+                    // Remove the tabs and double spaces.
+                    Utils::replaceAll(response, "\t", " ");
+                    response = Utils::trimRepeated(response, ' ');
+                    // Split the response by rows.
+                    const auto rows {Utils::split(response, '\n')};
+
+                    // Check if the response has the expected number of rows.
+                    if (HealthCheckRows::SIZE == rows.size())
+                    {
+                        // Split the data row by spaces.
+                        const auto fields {Utils::split(rows.at(HealthCheckRows::DATA), ' ')};
+
+                        // Check if the response has the expected number of columns and if the status is
+                        // green.
+                        if (fields.size() == HealthCheckColumns::SIZE &&
+                            fields.at(HealthCheckColumns::STATUS).compare("green") == 0)
+                        {
+                            serverStatus = true;
+                        }
+                        else
+                        {
+                            serverStatus = false;
+                        }
+                    }
+                    else
+                    {
+                        serverStatus = false; // LCOV_EXCL_LINE
+                    }
+                },
+                [&](const std::string& error, const long /*statusCode*/) { serverStatus = false; },
+                "",
+                {"Accept-Charset: utf-8"},
+                secureCommunication);
+        };
+
+        {
+            // Initialize the status of the servers
+            std::scoped_lock lock(m_mutex);
+            for (const auto& serverAddress : serverAddresses)
+            {
+                healthCheck(serverAddress, m_servers[serverAddress]);
+            }
         }
 
         // Start the thread, that will check the health of the servers.
         m_thread = std::thread(
-            [this, secureCommunication]()
+            [this, secureCommunication, healthCheck]()
             {
-                const std::unordered_set<std::string> headers {"Accept-Charset: utf-8"};
                 while (!m_stop)
                 {
-                    std::unique_lock<std::mutex> lock(m_mutex);
                     // Wait for the interval.
+                    std::unique_lock<std::mutex> lock(m_mutex);
                     m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
 
                     // If the thread is not stopped, check the health of the servers.
                     if (!m_stop)
                     {
                         // Check the health of the servers.
-                        for (auto& value : m_values)
+                        for (auto& [serverAddress, serverStatus] : m_servers)
                         {
-                            // Get the health of the server.
-                            HTTPRequest::instance().get(
-                                HttpURL(value.first + "/_cat/health?v"),
-                                [&](std::string response)
-                                {
-                                    // Remove the tabs and double spaces.
-                                    Utils::replaceAll(response, "\t", " ");
-                                    response = Utils::trimRepeated(response, ' ');
-                                    // Split the response by rows.
-                                    const auto rows {Utils::split(response, '\n')};
-
-                                    // Check if the response has the expected number of rows.
-                                    if (HealthCheckRows::SIZE == rows.size())
-                                    {
-                                        // Split the data row by spaces.
-                                        const auto fields {Utils::split(rows.at(HealthCheckRows::DATA), ' ')};
-
-                                        // Check if the response has the expected number of columns and if the status is
-                                        // green.
-                                        if (fields.size() == HealthCheckColumns::SIZE &&
-                                            fields.at(HealthCheckColumns::STATUS).compare("green") == 0)
-                                        {
-                                            value.second = true;
-                                        }
-                                        else
-                                        {
-                                            value.second = false;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        value.second = false; // LCOV_EXCL_LINE
-                                    }
-                                },
-                                [&](const std::string& error, const long /*statusCode*/) { value.second = false; },
-                                "",
-                                headers,
-                                secureCommunication);
+                            healthCheck(serverAddress, serverStatus);
                         }
                     }
                 }
@@ -167,15 +180,15 @@ public:
     /**
      * @brief Checks whether a server is available or not.
      *
-     * @param value Server's address.
+     * @param serverAddress Server's address.
      * @return true if available.
      * @return false if not available.
      */
-    bool isAvailable(const std::string& value)
+    bool isAvailable(const std::string& serverAddress)
     {
         // Check if the server is available.
         std::lock_guard<std::mutex> lock(m_mutex);
-        return m_values.at(value);
+        return m_servers.at(serverAddress);
     }
 };
 

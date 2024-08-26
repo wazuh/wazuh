@@ -26,12 +26,14 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
 {
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
+    const auto hostYellowServer {m_servers.at(2)};
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
-    // All servers are available the first time.
+    // All servers have their corresponding status the first time
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
+    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
+    EXPECT_FALSE(m_monitoring->isAvailable(hostYellowServer));
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
@@ -41,6 +43,9 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
 
     // It's false because the red server isn't available
     EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
+
+    // It's false because the yellow server isn't available
+    EXPECT_FALSE(m_monitoring->isAvailable(hostYellowServer));
 }
 
 /**
