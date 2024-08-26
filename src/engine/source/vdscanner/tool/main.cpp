@@ -20,7 +20,7 @@ int main(const int argc, const char* argv[])
     try
     {
         CmdLineArgs args(argc, argv);
-        logging::start({args.getLogFilePath(), logging::Level::Debug});
+        logging::start({logging::Level::Debug});
 
         std::string configurationData;
         std::ifstream file(args.getConfigurationFilePath());
