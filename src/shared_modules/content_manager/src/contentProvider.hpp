@@ -37,12 +37,15 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters Action orchestrator parameters.
+     * @param fileProcessingCallback Callback in charge to process downloaded files.
      */
-    explicit ContentProvider(const std::string& topicName, const nlohmann::json& parameters)
+    explicit ContentProvider(const std::string& topicName,
+                             const nlohmann::json& parameters,
+                             const std::function<void(const std::string& message)> fileProcessingCallback)
         : m_routerProvider(std::make_shared<RouterProvider>(topicName))
     {
         m_routerProvider->start();
-        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters);
+        m_action = std::make_shared<Action>(m_routerProvider, topicName, parameters, fileProcessingCallback);
     }
 
     ~ContentProvider()

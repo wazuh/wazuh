@@ -40,8 +40,11 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters Object parameters, including interval and ondemand.
+     * @param fileProcessingCallback Callback in charge to process downloaded files.
      */
-    explicit ContentRegister(std::string topicName, const nlohmann::json& parameters);
+    explicit ContentRegister(std::string topicName,
+                             const nlohmann::json& parameters,
+                             const std::function<void(const std::string& message)> fileProcessingCallback);
     ~ContentRegister() = default;
 
     /**

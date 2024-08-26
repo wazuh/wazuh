@@ -50,10 +50,10 @@ struct UpdaterBaseContext
     std::string httpUserAgent;
 
     /**
-     * @brief Channel where the data will be published.
+     * @brief Callback in charge to process downloaded files.
      *
      */
-    std::shared_ptr<IRouterProvider> spChannel;
+    const std::function<void(const std::string&)> fileProcessingCallback;
 
     /**
      * @brief Pointer to the RocksDB instance.
@@ -95,9 +95,13 @@ struct UpdaterBaseContext
      * @brief Struct constructor.
      *
      * @param spStopCondition Pointer to a stop condition wrapper.
+     * @param fileProcessingCallback Callback in charge to process downloaded files.
+     *
      */
-    explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition)
+    explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition,
+                                const std::function<void(const std::string&)>& fileProcessingCallback)
         : spStopCondition(std::move(spStopCondition))
+        , fileProcessingCallback(fileProcessingCallback)
     {
     }
 };

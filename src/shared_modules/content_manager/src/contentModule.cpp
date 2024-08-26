@@ -28,10 +28,12 @@ void ContentModule::stop()
     ContentModuleFacade::instance().stop();
 }
 
-ContentRegister::ContentRegister(std::string name, const nlohmann::json& parameters)
+ContentRegister::ContentRegister(std::string name,
+                                 const nlohmann::json& parameters,
+                                 const std::function<void(const std::string& message)> fileProcessingCallback)
     : m_name {std::move(name)}
 {
-    ContentModuleFacade::instance().addProvider(m_name, parameters);
+    ContentModuleFacade::instance().addProvider(m_name, parameters, fileProcessingCallback);
 
     if (parameters.contains("interval"))
     {

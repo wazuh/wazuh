@@ -37,15 +37,20 @@ public:
      * @param channel Router provider.
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
+     * @param fileProcessingCallback Callback in charge to process downloaded files.
      */
-    explicit Action(const std::shared_ptr<IRouterProvider> channel, std::string topicName, nlohmann::json parameters)
+    explicit Action(const std::shared_ptr<IRouterProvider> channel,
+                    std::string topicName,
+                    nlohmann::json parameters,
+                    const std::function<void(const std::string& message)> fileProcessingCallback)
         : m_channel {channel}
         , m_actionInProgress {false}
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
-        , m_orchestration {std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition)}
+        , m_orchestration {
+              std::make_unique<ActionOrchestrator>(channel, parameters, m_stopActionCondition, fileProcessingCallback)}
     {
         m_parameters = std::move(parameters);
     }
@@ -168,17 +173,14 @@ public:
     }
 
     /**
-     * @brief Runs ondemand action. Wrapper of runActionExclusively().
+     * @brief Runs ondemand action.
      *
      * @param updateData Update orchestration data.
      */
     void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData)
     {
         logDebug2(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        if (!runActionExclusively(updateData))
-        {
-            logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
-        }
+        runAction(updateData);
     }
 
     /**

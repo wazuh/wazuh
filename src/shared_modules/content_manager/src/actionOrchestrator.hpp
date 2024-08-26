@@ -111,18 +111,19 @@ public:
      * @param channel Channel where the orchestration will publish the data.
      * @param parameters Parameters used to create the orchestration.
      * @param stopActionCondition Condition wrapper used to interrupt the orchestration stages.
+     * @param fileProcessingCallback Callback in charge to process downloaded files.
      */
     explicit ActionOrchestrator(const std::shared_ptr<IRouterProvider> channel,
                                 const nlohmann::json& parameters,
-                                std::shared_ptr<ConditionSync> stopActionCondition)
+                                std::shared_ptr<ConditionSync> stopActionCondition,
+                                const std::function<void(const std::string&)> fileProcessingCallback)
     {
         try
         {
             // Create a context
-            m_spBaseContext = std::make_shared<UpdaterBaseContext>(stopActionCondition);
+            m_spBaseContext = std::make_shared<UpdaterBaseContext>(stopActionCondition, fileProcessingCallback);
             m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
-            m_spBaseContext->spChannel = channel;
 
             logDebug1(
                 WM_CONTENTUPDATER, "Creating '%s' Content Updater orchestration", m_spBaseContext->topicName.c_str());
