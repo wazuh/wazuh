@@ -1,6 +1,5 @@
-from unittest.mock import AsyncMock, patch
-
 import pytest
+from unittest.mock import patch, AsyncMock
 
 from comms_api.core.events import create_stateful_events, send_stateless_events
 from comms_api.models.events import StatefulEvents, StatelessEvents
@@ -12,18 +11,6 @@ INDEXER = Indexer(host='host', user='wazuh', password='wazuh')
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.create_indexer', return_value=INDEXER)
-@patch('wazuh.core.indexer.events.EventsIndex.create')
-async def test_create_stateful_events(events_create_mock, create_indexer_mock):
-    """Check that the `create_stateful_events` function works as expected."""
-    events = StatefulEvents(events=[SCAEvent()])
-    await create_stateful_events(events)
-
-    create_indexer_mock.assert_called_once()
-    events_create_mock.assert_called_once_with(events)
-
-
-@pytest.mark.asyncio
 @patch('wazuh.core.engine.events.EventsModule.send', new_callable=AsyncMock)
 async def test_send_stateless_events(events_send_mock):
     """Check that the `send_stateless_events` function works as expected."""
@@ -31,3 +18,17 @@ async def test_send_stateless_events(events_send_mock):
     await send_stateless_events(events)
 
     events_send_mock.assert_called_once_with(events.events)
+
+
+@patch('wazuh.core.indexer.create_indexer', return_value=AsyncMock())
+async def test_create_stateful_events(create_indexer_mock):
+    """Test creating stateful events with mocked indexer client."""
+    create_indexer_mock.return_value.events.create = AsyncMock()
+    batcher_queue = AsyncMock()
+
+    events = StatefulEvents(events=[SCAEvent()])
+    await create_stateful_events(events, batcher_queue)
+
+    create_indexer_mock.assert_called_once()
+    create_indexer_mock.return_value.events.create.assert_called_once()
+

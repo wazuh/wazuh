@@ -3,16 +3,21 @@ from wazuh.core.engine import get_engine_client
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.models.events import Events
 from wazuh.core.batcher.client import BatcherClient
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue
 
 
-async def create_stateful_events(events: Events, batcher_queue) -> dict:
-    """Post new events to the indexer.
-    
+async def create_stateful_events(events: Events, batcher_queue: MuxDemuxQueue) -> dict:
+    """
+    Post new events to the indexer.
+
     Parameters
     ----------
-    events : StatefulEvents
-        Stateful events list.
-    
+    events : Events
+        List of events to be posted.
+
+    batcher_queue : MuxDemuxQueue
+        The queue used by the BatcherClient for processing.
+
     Returns
     -------
     dict

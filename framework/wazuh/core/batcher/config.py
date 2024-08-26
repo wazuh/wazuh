@@ -2,7 +2,7 @@
 # TODO - Delete after centralized configuration
 BATCHER_MAX_ELEMENTS = 5
 BATCHER_MAX_SIZE = 30000
-BATCHER_MAX_TIME_SECONDS = 0.3
+BATCHER_MAX_TIME_SECONDS = 0.15
 
 
 class BatcherConfig:

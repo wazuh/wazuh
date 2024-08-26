@@ -29,7 +29,7 @@ async def main():
             for hit in hits:
                 # Process the document
                 print(hit['_source'])
-            print("Agent created successfully.")
+            print(f"Number of elements {len(hits)}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
