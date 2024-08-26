@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, status, Response
+from fastapi import status, Request
 from fastapi.responses import JSONResponse
 
 from comms_api.authentication.authentication import JWTBearer
@@ -10,7 +11,7 @@ from wazuh.core.exception import WazuhEngineError, WazuhError
 
 
 @timeout(30)
-async def post_stateful_events(events: StatefulEvents) -> JSONResponse:
+async def post_stateful_events(request: Request, events: StatefulEvents) -> JSONResponse:
     """Post stateful events handler.
 
     Parameters
@@ -29,7 +30,7 @@ async def post_stateful_events(events: StatefulEvents) -> JSONResponse:
         Indexer response.
     """
     try:
-        response = await create_stateful_events(events)
+        response = await create_stateful_events(events, request.app.state.batcher_queue)
         return JSONResponse(response)
     except WazuhError as exc:
         raise HTTPError(message=exc.message, status_code=status.HTTP_400_BAD_REQUEST)

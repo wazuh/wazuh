@@ -33,7 +33,7 @@ from wazuh.core.batcher.config import BATCHER_MAX_ELEMENTS, BATCHER_MAX_SIZE, BA
 MAIN_PROCESS = 'wazuh-comms-apid'
 
 
-def create_app() -> FastAPI:
+def create_app(batcher_queue) -> FastAPI:
     """Creates a FastAPI application instance and adds middlewares, exceptions handlers and routers to it."""
     app = FastAPI()
     app.add_middleware(SecureHeadersMiddleware)
@@ -44,6 +44,9 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, exception_handler)
     app.add_exception_handler(StarletteHTTPException, starlette_http_exception_handler)
     app.include_router(router)
+
+    app.state.batcher_queue = batcher_queue
+
     return app
 
 
@@ -231,10 +234,10 @@ if __name__ == '__main__':
         max_size=BATCHER_MAX_SIZE,
         max_time_seconds=BATCHER_MAX_TIME_SECONDS
     )
-    create_batcher_process(config=batcher_config)
+    mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
 
     try:
-        app = create_app()
+        app = create_app(mux_demux_manager.get_queue())
         options = get_gunicorn_options(pid, args.foreground, log_config_dict)
         StandaloneApplication(app, options).run()
     except WazuhCommsAPIError as e:
@@ -244,5 +247,8 @@ if __name__ == '__main__':
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     finally:
+        mux_demux_manager.shutdown()
+        batcher_process.terminate()
+        batcher_process.join()
         pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
         pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
