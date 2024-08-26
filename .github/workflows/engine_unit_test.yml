@@ -66,4 +66,4 @@ jobs:
     - name: Unit Test
       # Run unit tests using CTest
       working-directory: ${{env.ENGINE_DIR}}/build
-      run: ctest -T test --output-on-failure -j$(nproc)
+      run: ctest -T test --output-on-failure
