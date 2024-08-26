@@ -1,4 +1,4 @@
-project(indexer_connector_component_tests)
+project(indexerconnector_ctest)
 
 file(GLOB SOURCES
         *.cpp
@@ -14,4 +14,4 @@ target_link_libraries(${PROJECT_NAME}
         base
 )
 
-add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+gtest_discover_tests(${PROJECT_NAME})
