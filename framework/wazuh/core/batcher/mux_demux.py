@@ -59,16 +59,18 @@ class MuxDemuxQueue:
         self.q_mux.put(msg)
         return uid
 
-    def receive_from_mux(self) -> Message:
+    def receive_from_mux(self, block: bool = True) -> Message:
         """
-        Retrieves a message from the mux queue.
+        Retrieves a message from the mux queue. f the queue
+        is empty and block is False it raises an queue.Empty error
 
         Returns
         -------
         Message
             The message retrieved from the mux queue.
         """
-        return self.q_mux.get()
+        message = self.q_mux.get(block=block)
+        return message
 
     def send_to_demux(self, msg: Message):
         """
