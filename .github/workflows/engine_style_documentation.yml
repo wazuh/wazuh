@@ -77,7 +77,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-        # Dependencies for testing:
+      # Dependencies for testing:
       # - clang-format 
       - name: Install dependencies
         uses: awalsh128/cache-apt-pkgs-action@latest
@@ -103,6 +103,7 @@ jobs:
 
             # Check if there are errors
             if [ -s "${ERRORS_FILE}" ]; then
+            echo "clang-format $arguments"
             echo "---------------------------------"
             echo "FAILED: Clang-format check failed"
             echo "---------------------------------"
