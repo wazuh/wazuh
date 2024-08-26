@@ -66,7 +66,7 @@ enum Type : std::size_t
  */
 class Monitoring final
 {
-    std::map<std::string, bool> m_values;
+    std::map<std::string, bool, std::less<>> m_values;
     std::thread m_thread;
     std::mutex m_mutex;
     std::condition_variable m_condition;
@@ -109,7 +109,7 @@ public:
                 const std::unordered_set<std::string> headers {"Accept-Charset: utf-8"};
                 while (!m_stop)
                 {
-                    std::unique_lock<std::mutex> lock(m_mutex);
+                    std::unique_lock lock(m_mutex);
                     // Wait for the interval.
                     m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
 
@@ -154,7 +154,7 @@ public:
                                          value.second = false; // LCOV_EXCL_LINE
                                      }
                                  },
-                                 [&](const std::string& error, const long /*statusCode*/)
+                                 [&value](const std::string& /*error*/, const long /*statusCode*/)
                                  {
                                      value.second = false;
                                  }});

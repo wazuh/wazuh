@@ -12,8 +12,8 @@
 #ifndef _FAKE_INDEXER_HPP
 #define _FAKE_INDEXER_HPP
 
-#include <external/cpp-httplib/httplib.h>
 #include <functional>
+#include <httplib.h>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -73,10 +73,7 @@ public:
      *
      * @param health New health value.
      */
-    void setHealth(std::string health)
-    {
-        m_health = std::move(health);
-    }
+    void setHealth(std::string health) { m_health = std::move(health); }
 
     /**
      * @brief Sets the publish callback.
@@ -93,10 +90,7 @@ public:
      *
      * @return True if initialized, false otherwise.
      */
-    bool initialized() const
-    {
-        return m_indexerInitialized;
-    }
+    bool initialized() const { return m_indexerInitialized; }
 
     /**
      * @brief Starts the server and listens for new connections.

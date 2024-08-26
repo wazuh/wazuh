@@ -14,7 +14,6 @@
 
 #include "base/utils/roundRobinSelector.hpp"
 #include "monitoring.hpp"
-//#include "secureCommunication.hpp"
 #include <memory>
 #include <string>
 

@@ -12,8 +12,8 @@
 #ifndef _FAKE_OPEN_SEARCH_SERVER_HPP
 #define _FAKE_OPEN_SEARCH_SERVER_HPP
 
-#include <external/cpp-httplib/httplib.h>
-#include <external/nlohmann/json.hpp>
+#include <httplib.h>
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
 #include <thread>

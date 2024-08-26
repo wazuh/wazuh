@@ -1,5 +1,3 @@
-cmake_minimum_required(VERSION 3.12.4)
-
 project(indexer_connector_component_tests)
 
 file(GLOB SOURCES
@@ -10,12 +8,10 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME}
         urlrequest
-        debug gtestd
-        debug gtest_maind
-        optimized gtest
-        optimized gtest_main
-        indexer_connector
+        GTest::gtest_main
+        indexerconnector
         pthread
+        base
 )
 
 add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
