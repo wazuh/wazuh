@@ -19,7 +19,7 @@
       "scan_time": "2024/05/28 02:01:07",
       "source": "util-linux (2.37.2-4ubuntu3.4)",
       "groups": "utils",
-      "version": "8.5.5"
+      "version": "8.5.5-1"
     }
   ],
   "hotfixes": [],
