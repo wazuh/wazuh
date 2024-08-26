@@ -1,11 +1,10 @@
+#include "base/logging.hpp"
 #include "cmdArgParser.hpp"
-#include "logging_helper.h"
 #include <indexerConnector.hpp>
 #include <iomanip>
 #include <iostream>
 #include <random>
 
-auto constexpr MAXLEN {65536};
 static std::random_device RD;
 static std::mt19937 ENG(RD());
 
@@ -43,7 +42,8 @@ int generateRandomInt(int min, int max)
 std::string generateTimestamp()
 {
     std::time_t t = std::time(nullptr);
-    std::tm tm = *std::localtime(&t);
+    std::tm tm {};
+    localtime_r(&t, &tm);
     std::stringstream ss;
     ss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%S");
     return ss.str();
@@ -94,63 +94,20 @@ int main(const int argc, const char* argv[])
 {
     try
     {
+
         CmdLineArgs cmdArgParser(argc, argv);
+        logging::start({cmdArgParser.getLogFilePath(), logging::Level::Debug});
 
         // Read configuration file.
         std::ifstream configurationFile(cmdArgParser.getConfigurationFilePath());
         if (!configurationFile.is_open())
         {
-            throw std::runtime_error("Could not open configuration file.");
+            throw std::invalid_argument("Could not open configuration file.");
         }
         const auto configuration = nlohmann::json::parse(configurationFile);
 
-        // Open file to write log.
-        std::ofstream logFile;
-        if (!cmdArgParser.getLogFilePath().empty())
-        {
-            logFile.open(cmdArgParser.getLogFilePath());
-            if (!logFile.is_open())
-            {
-                throw std::runtime_error("Failed to open log file: " + cmdArgParser.getLogFilePath());
-            }
-        }
-
         // Create indexer connector.
-        IndexerConnector indexerConnector(
-            configuration,
-            [&logFile](const int logLevel,
-                       const std::string& tag,
-                       const std::string& file,
-                       const int line,
-                       const std::string& func,
-                       const std::string& message,
-                       va_list args)
-            {
-                auto pos = file.find_last_of('/');
-                if (pos != std::string::npos)
-                {
-                    pos++;
-                }
-                std::string fileName = file.substr(pos, file.size() - pos);
-                char formattedStr[MAXLEN] = {0};
-                vsnprintf(formattedStr, MAXLEN, message.c_str(), args);
-
-                if (logLevel != LOG_ERROR)
-                {
-                    std::cout << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
-                }
-                else
-                {
-                    std::cerr << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
-                }
-
-                if (logFile.is_open())
-                {
-                    logFile << tag << ":" << fileName << ":" << line << " " << func << " : " << formattedStr << "\n";
-                }
-                // Flush the log file every time a message is written.
-                logFile.flush();
-            });
+        IndexerConnector indexerConnector(configuration);
 
         // Read events file.
         // If the events file path is empty, then the events are generated
@@ -160,7 +117,7 @@ int main(const int argc, const char* argv[])
             std::ifstream eventsFile(cmdArgParser.getEventsFilePath());
             if (!eventsFile.is_open())
             {
-                throw std::runtime_error("Could not open events file.");
+                throw std::invalid_argument("Could not open events file.");
             }
             const auto events = nlohmann::json::parse(eventsFile);
 
@@ -174,7 +131,7 @@ int main(const int argc, const char* argv[])
             std::ifstream templateFile(cmdArgParser.getTemplateFilePath());
             if (!templateFile.is_open())
             {
-                throw std::runtime_error("Could not open template file.");
+                throw std::invalid_argument("Could not open template file.");
             }
 
             nlohmann::json templateData;
@@ -182,7 +139,7 @@ int main(const int argc, const char* argv[])
 
             if (eventsNumber == 0)
             {
-                throw std::runtime_error("Number of events must be greater than 0.");
+                throw std::invalid_argument("Number of events must be greater than 0.");
             }
             else
             {

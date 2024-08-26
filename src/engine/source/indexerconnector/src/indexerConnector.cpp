@@ -110,7 +110,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {
-        throw std::runtime_error("Index name must be lowercase.");
+        throw std::invalid_argument("Index name must be lowercase.");
     }
 
     auto secureCommunication = SecureCommunication::builder();
