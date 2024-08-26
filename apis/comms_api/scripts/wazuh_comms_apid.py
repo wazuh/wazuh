@@ -197,6 +197,16 @@ class StandaloneApplication(BaseApplication):
         return self.app
 
 
+def signal_handler(signum, frame, mux_demux_manager, batcher_process):
+    logger.info(f"Received signal {signum}, initiating shutdown.")
+    if batcher_process:
+        batcher_process.terminate()
+    if mux_demux_manager:
+        mux_demux_manager.shutdown()
+    pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
+    pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
+
+
 if __name__ == '__main__':
     args = get_script_arguments()
 
@@ -224,10 +234,6 @@ if __name__ == '__main__':
     else:
         logger.info('Starting API as root')
 
-    pid = os.getpid()
-    signal.signal(signal.SIGTERM, partial(pyDaemonModule.exit_handler, process_name=MAIN_PROCESS, logger=logger))
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
-
     # Creates batcher process
     batcher_config = BatcherConfig(
         max_elements=BATCHER_MAX_ELEMENTS,
@@ -235,6 +241,10 @@ if __name__ == '__main__':
         max_time_seconds=BATCHER_MAX_TIME_SECONDS
     )
     mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
+
+    pid = os.getpid()
+    signal.signal(signal.SIGTERM, partial(signal_handler, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process))
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     try:
         app = create_app(mux_demux_manager.get_queue())
@@ -247,8 +257,7 @@ if __name__ == '__main__':
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     finally:
-        mux_demux_manager.shutdown()
         batcher_process.terminate()
-        batcher_process.join()
+        mux_demux_manager.shutdown()
         pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
         pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
