@@ -21,6 +21,7 @@ class Status(str, Enum):
 
 @dataclass
 class Document:
+    """OpenSearch document model."""
     id: str = None
 
 
