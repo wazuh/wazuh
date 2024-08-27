@@ -1027,13 +1027,12 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
                                       some_msg='Some agents information was not returned',
                                       none_msg='No agent information was returned'
                                       )
-    # TODO: The GET /agents/outdated endpoint use case must be reviewed since the manager in 5.0 will not have wazuh-db
     if agent_list:
 
         rbac_filters = get_rbac_filters(system_resources=get_agents_info(), permitted_resources=agent_list)
 
         with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=f"version!={__version__}" + (';' + q if q else ''),
+                                query=f"version!=v{__version__}" + (';' + q if q else ''),
                                 **rbac_filters) as db_query:
             data = db_query.run()
 
