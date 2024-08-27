@@ -26,7 +26,7 @@ jobs:
         with:
           submodules: recursive
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: 3.8
           
@@ -63,18 +63,10 @@ jobs:
           python -m pytest -rA --html=report.html --self-contained-html --md-report --md-report-verbose=1 --md-report-zeros empty --md-report-color never --md-report-output "$REPORT_OUTPUT" -vv engine/source/indexerconnector/qa/ --log-cli-level=DEBUG
           rm -rf tmp
 
-      # Upload log files of the tests
-      - name: Upload log files
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: QA log files
-          path: ${{ github.workspace }}/qa_logs
-
       # Upload HTML report
       - name: Upload HTML report
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: report.html
           path: ${{ github.workspace }}/src/report.html
