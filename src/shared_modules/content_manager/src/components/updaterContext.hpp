@@ -94,7 +94,7 @@ struct UpdaterBaseContext
      * @brief Struct constructor.
      *
      * @param spStopCondition Pointer to a stop condition wrapper.
-     * @param fileProcessingCallback Callback in charge to process downloaded files.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      *
      */
     explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition,

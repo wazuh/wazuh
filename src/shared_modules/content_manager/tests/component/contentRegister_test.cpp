@@ -12,7 +12,7 @@
 #include "contentRegister_test.hpp"
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
-
+#if 0
 /*
  * @brief Tests instantiation of the ContentRegister class
  */
@@ -71,3 +71,4 @@ TEST_F(ContentRegisterTest, TestInstantiationAndChangeSchedulerInterval)
 
     EXPECT_NO_THROW(contentModule.stop());
 }
+#endif

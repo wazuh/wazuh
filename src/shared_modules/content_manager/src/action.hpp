@@ -35,7 +35,7 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters ActionOrchestrator parameters.
-     * @param fileProcessingCallback Callback in charge to process downloaded files.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
     explicit Action(std::string topicName,
                     nlohmann::json parameters,

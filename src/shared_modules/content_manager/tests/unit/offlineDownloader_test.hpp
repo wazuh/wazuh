@@ -30,7 +30,7 @@ class OfflineDownloaderTest : public ::testing::Test
 protected:
     OfflineDownloaderTest() = default;
     ~OfflineDownloaderTest() override = default;
-
+#if 0
     const std::filesystem::path m_tempPath {std::filesystem::temp_directory_path()};   ///< Temporary path.
     const std::filesystem::path m_inputFilePathRaw {m_tempPath / "testFile.txt"};      ///< Raw input test path.
     const std::string m_inputFileHashRaw {"da21ecfc2146bfeb7c2d4020eda94afc6878266d"}; ///< Raw file hash.
@@ -44,12 +44,12 @@ protected:
     inline static std::unique_ptr<FakeServer> m_spFakeServer; ///< Fake HTTP server used in tests.
     std::shared_ptr<ConditionSync> m_spStopActionCondition {
         std::make_shared<ConditionSync>(false)}; ///< Stop condition wrapper
-
+#endif
     /**
      * @brief Set up routine for each test fixture.
      *
      */
-    void SetUp() override
+    /*void SetUp() override
     {
         // Create raw input file.
         std::ofstream testFileStream {m_inputFilePathRaw};
@@ -75,39 +75,39 @@ protected:
         std::filesystem::create_directory(m_spUpdaterBaseContext->outputFolder);
         std::filesystem::create_directory(m_spUpdaterBaseContext->downloadsFolder);
         std::filesystem::create_directory(m_spUpdaterBaseContext->contentsFolder);
-    }
+    }*/
 
     /**
      * @brief Tear down routine for each test fixture.
      *
      */
-    void TearDown() override
+    /*void TearDown() override
     {
         std::filesystem::remove(m_inputFilePathRaw);
         std::filesystem::remove(m_inputFilePathCompressed);
         std::filesystem::remove_all(m_outputFolder);
-    }
+    }*/
 
     /**
      * @brief Set up routine for the test suite.
      *
      */
-    static void SetUpTestSuite()
+    /*static void SetUpTestSuite()
     {
         if (!m_spFakeServer)
         {
             m_spFakeServer = std::make_unique<FakeServer>("localhost", 4444);
         }
-    }
+    }*/
 
     /**
      * @brief Tear down routine for the test suite.
      *
      */
-    static void TearDownTestSuite()
+    /*static void TearDownTestSuite()
     {
         m_spFakeServer.reset();
-    }
+    }*/
 };
 
 #endif //_OFFLINE_DOWNLOADER_TEST

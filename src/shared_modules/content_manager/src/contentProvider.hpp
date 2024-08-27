@@ -34,7 +34,7 @@ public:
      *
      * @param topicName Topic name.
      * @param parameters Action orchestrator parameters.
-     * @param fileProcessingCallback Callback in charge to process downloaded files.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
     explicit ContentProvider(const std::string& topicName,
                              const nlohmann::json& parameters,

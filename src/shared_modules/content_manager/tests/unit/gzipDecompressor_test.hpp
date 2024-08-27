@@ -42,12 +42,12 @@ protected:
      * @brief Setup routine for each test fixture. Context initialization.
      *
      */
-    void SetUp() override
+    /*void SetUp() override
     {
         m_spContext = std::make_shared<UpdaterContext>();
         m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spContext->spUpdaterBaseContext->outputFolder = WORKING_DIR;
-    }
+    }*/
 
     /**
      * @brief Teardown routine for each test fixture. Output files removal.

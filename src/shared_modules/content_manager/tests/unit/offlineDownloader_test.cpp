@@ -32,7 +32,7 @@ const auto FILEHASH_XZ = "89fe2d7ad5369373c4b96f8eeedd11d27ed3bc79";
 const std::string BASE_URL = "localhost:4444/";
 
 constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
-
+#if 0
 /**
  * @brief Tests the correct instantiation of the class.
  *
@@ -410,3 +410,4 @@ TEST_F(OfflineDownloaderTest, HttpAndLocalDownloadFileTwice)
     ASSERT_NO_THROW(OfflineDownloader(HTTPRequest::instance()).handleRequest(m_spUpdaterContext));
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
+#endif

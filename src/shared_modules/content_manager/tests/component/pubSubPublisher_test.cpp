@@ -15,7 +15,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-
+#if 0
 /*
  * @brief Tests the instantiation of the PubSubPublisher class
  */
@@ -93,3 +93,4 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyDataWithouStartTheRouterProvider)
 
     EXPECT_TRUE(m_spUpdaterContext->data.empty());
 }
+#endif

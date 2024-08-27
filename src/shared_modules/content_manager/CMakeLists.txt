@@ -30,6 +30,7 @@ include_directories(${SRC_FOLDER}/external/zlib/contrib/)
 
 include_directories(${SHARED_MODULES})
 include_directories(${SHARED_MODULES}/utils)
+include_directories(${SHARED_MODULES}/router/include)
 include_directories(${SHARED_MODULES}/http-request/include)
 include_directories(${SHARED_MODULES}/content_manager/src/components)
 

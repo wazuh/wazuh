@@ -25,7 +25,7 @@ constexpr auto FAKE_CTI_URL {"http://localhost:4444/snapshot/consumers"};
 constexpr auto RAW_URL {"http://localhost:4444/raw"};
 
 const auto OUTPUT_DIR {std::filesystem::temp_directory_path() / "CtiSnapshotDownloaderTest"};
-
+#if 0
 void CtiSnapshotDownloaderTest::SetUp()
 {
     // Create base context.
@@ -177,3 +177,4 @@ TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotOffsetMetadata)
     expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
+#endif

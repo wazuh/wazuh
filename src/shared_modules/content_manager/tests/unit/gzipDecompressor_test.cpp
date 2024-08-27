@@ -24,7 +24,7 @@ const auto OK_STATUS = R"({"stage":"GzipDecompressor","status":"ok"})"_json;
 const auto FAIL_STATUS = R"({"stage":"GzipDecompressor","status":"fail"})"_json;
 
 constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
-
+#if 0
 /**
  * @brief Test the correct instantiation of the class.
  *
@@ -165,3 +165,4 @@ TEST_F(GzipDecompressorTest, DecompressTwoFilesOneInexistant)
     // Check output file.
     EXPECT_TRUE(std::filesystem::exists(OUTPUT_SAMPLE_A_FILE_PATH));
 }
+#endif

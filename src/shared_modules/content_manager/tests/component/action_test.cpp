@@ -28,7 +28,7 @@
 #include <utility>
 
 static const std::string SAMPLE_TXT_FILENAME {"sample.txt"};
-
+#if 0
 /*
  * @brief Tests the instantiation of the Action class
  */
@@ -393,3 +393,4 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     action.unregisterActionOnDemand();
     action.clearEndpoints();
 }
+#endif

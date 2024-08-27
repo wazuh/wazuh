@@ -52,7 +52,7 @@ public:
      *
      * @param name Provider name.
      * @param parameters Provider parameters.
-     * @param fileProcessingCallback Callback in charge to process downloaded files.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
     void addProvider(const std::string& name,
                      const nlohmann::json& parameters,

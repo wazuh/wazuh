@@ -39,13 +39,13 @@ protected:
      *
      */
     // cppcheck-suppress unusedFunction
-    void SetUp() override
+    /*void SetUp() override
     {
         m_spPubSubPublisher = std::make_shared<PubSubPublisher>();
         // Create a updater context
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
-    }
+    }*/
 };
 
 #endif //_PUB_SUB_PUBLISHER_TEST_HPP

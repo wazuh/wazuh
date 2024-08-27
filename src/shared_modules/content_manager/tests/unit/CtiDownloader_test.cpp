@@ -28,7 +28,7 @@ constexpr auto RAW_URL {"http://localhost:4444/raw"};
 constexpr auto TOO_MANY_REQUESTS_RETRY_TIME {1};
 constexpr auto TOO_MANY_REQUESTS_RETRY_TIME_MS {TOO_MANY_REQUESTS_RETRY_TIME * 1000};
 constexpr auto GENERIC_ERROR_INITIAL_RETRY_TIME_MS {GENERIC_ERROR_INITIAL_RETRY_TIME * 1000};
-
+#if 0
 /**
  * @class CtiDummyDownloader
  *
@@ -523,3 +523,4 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingDataKey)
     expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
+#endif

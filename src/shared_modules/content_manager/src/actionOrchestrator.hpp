@@ -109,7 +109,7 @@ public:
      *
      * @param parameters Parameters used to create the orchestration.
      * @param stopActionCondition Condition wrapper used to interrupt the orchestration stages.
-     * @param fileProcessingCallback Callback in charge to process downloaded files.
+     * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
     explicit ActionOrchestrator(const nlohmann::json& parameters,
                                 std::shared_ptr<ConditionSync> stopActionCondition,

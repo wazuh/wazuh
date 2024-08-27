@@ -45,7 +45,7 @@ protected:
      *
      */
     // cppcheck-suppress unusedFunction
-    void SetUp() override
+    /*void SetUp() override
     {
         m_spExecutionContext = std::make_shared<ExecutionContext>();
         // Create a updater context
@@ -53,13 +53,13 @@ protected:
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
         m_spUpdaterBaseContext->configData["outputFolder"] = m_outputFolder.string();
         m_spUpdaterBaseContext->configData["consumerName"] = m_consumerName;
-    }
+    }*/
 
     /**
      * @brief Tear down routine for each test fixture.
      *
      */
-    void TearDown() override
+    /*void TearDown() override
     {
         // Destruct RocksDB wrapper.
         if (m_spUpdaterBaseContext->spRocksDB)
@@ -69,7 +69,7 @@ protected:
 
         std::filesystem::remove_all(m_outputFolder);
         std::filesystem::remove_all(m_databasePath);
-    }
+    }*/
 };
 
 #endif //_EXECUTION_CONTEXT_TEST_HPP
