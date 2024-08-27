@@ -18,13 +18,18 @@ env:
 
 jobs:
   indexer_connector-qa:
+    name: Engine indexer connector e2e Test
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
-
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+          
       - name: Setup VCPKG
         uses: lukka/run-vcpkg@v11
         with:
