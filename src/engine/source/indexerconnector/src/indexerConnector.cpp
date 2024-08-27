@@ -146,23 +146,15 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
                 dataQueue.pop();
                 auto parsedData = nlohmann::json::parse(data);
                 const auto& id = parsedData.at("id").get_ref<const std::string&>();
-                // If the element should not be indexed, only delete it from the sync database.
-                const bool noIndex = parsedData.contains("no-index") ? parsedData.at("no-index").get<bool>() : false;
 
                 if (parsedData.at("operation").get_ref<const std::string&>().compare("DELETED") == 0)
                 {
-                    if (!noIndex)
-                    {
-                        builderBulkDelete(bulkData, id, m_indexName);
-                    }
+                    builderBulkDelete(bulkData, id, m_indexName);
                 }
                 else
                 {
                     const auto dataString = parsedData.at("data").dump();
-                    if (!noIndex)
-                    {
-                        builderBulkIndex(bulkData, id, m_indexName, dataString);
-                    }
+                    builderBulkIndex(bulkData, id, m_indexName, dataString);
                 }
             }
 

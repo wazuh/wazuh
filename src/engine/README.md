@@ -172,7 +172,7 @@ git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg && ./bootstrap-vcpkg.sh
 export VCPKG_ROOT=$(pwd)
 export PATH=$VCPKG_ROOT:$PATH
-cd ../wazuh-http-request
+cd ../wazuh/src
 cmake --preset=release
 cmake --build build -j$(nproc)
 ```
