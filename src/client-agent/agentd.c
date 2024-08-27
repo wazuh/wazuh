@@ -204,7 +204,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     }
 }
 
-bool check_uninstall_permission(const char *token, const char *host) {
+bool check_uninstall_permission(const char *token, const char *host, bool ssl_verify) {
     char url[OS_SIZE_8192];
     snprintf(url, sizeof(url), "https://%s/agents/uninstall", host);
 
@@ -214,7 +214,7 @@ bool check_uninstall_permission(const char *token, const char *host) {
     char* headers[] = { NULL, NULL };
     os_strdup(header, headers[0]);
 
-    curl_response *response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, OS_SIZE_8192, 30, NULL);
+    curl_response *response = wurl_http_request(WURL_GET_METHOD, headers, url, NULL, OS_SIZE_8192, 30, NULL, ssl_verify);
 
     if (response) {
         if (response->status_code == 200) {
@@ -236,13 +236,13 @@ bool check_uninstall_permission(const char *token, const char *host) {
     return false;
 }
 
-char* authenticate_and_get_token(const char *userpass, const char *host) {
+char* authenticate_and_get_token(const char *userpass, const char *host, bool ssl_verify) {
     char url[OS_SIZE_8192];
     char *token = NULL;
     char* headers[] = { NULL };
 
     snprintf(url, sizeof(url), "https://%s/security/user/authenticate?raw=true", host);
-    curl_response *response = wurl_http_request(WURL_POST_METHOD, headers, url, NULL, OS_SIZE_8192, 30, userpass);
+    curl_response *response = wurl_http_request(WURL_POST_METHOD, headers, url, NULL, OS_SIZE_8192, 30, userpass, ssl_verify);
 
     if (response) {
         if (response->status_code == 200) {
@@ -258,20 +258,20 @@ char* authenticate_and_get_token(const char *userpass, const char *host) {
     return token;
 }
 
-bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host) {
+bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify) {
     bool validate_result = false;
 
     minfo(AG_UNINSTALL_VALIDATION_START);
     if (uninstall_auth_token) {
-        validate_result = check_uninstall_permission(uninstall_auth_token, uninstall_auth_host);
+        validate_result = check_uninstall_permission(uninstall_auth_token, uninstall_auth_host, ssl_verify);
         if (validate_result) {
             return validate_result;
         }
     }
     if (uninstall_auth_login) {
-        char *new_token = authenticate_and_get_token(uninstall_auth_login, uninstall_auth_host);
+        char *new_token = authenticate_and_get_token(uninstall_auth_login, uninstall_auth_host, ssl_verify);
         if (new_token) {
-            validate_result = check_uninstall_permission(new_token, uninstall_auth_host);
+            validate_result = check_uninstall_permission(new_token, uninstall_auth_host, ssl_verify);
             os_free(new_token);
         } else {
             merror(AG_TOKEN_FAIL, uninstall_auth_login);

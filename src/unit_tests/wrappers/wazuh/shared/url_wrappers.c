@@ -50,7 +50,7 @@ char* __wrap_wurl_http_get(const char * url, __attribute__((unused)) size_t max_
     return mock_type(char *);
 }
 
-curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, const char *userpass) {
+curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, const char *userpass, bool ssl_verify) {
     check_expected(method);
 
     char** ptr = headers;
@@ -60,9 +60,9 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
 
     check_expected(url);
 
-    if (userpass) {
-        check_expected(userpass);
-    }
+    check_expected(ssl_verify);
+
+    check_expected(userpass);
 
     if (payload) {
         check_expected(payload);
@@ -75,7 +75,7 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
     return mock_type(curl_response*);
 }
 
-void expect_wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, const char *userpass, curl_response* response) {
+void expect_wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, const char *userpass, bool ssl_verify, curl_response* response) {
     expect_string(__wrap_wurl_http_request, method, method);
 
     char** ptr = headers;
@@ -85,9 +85,9 @@ void expect_wrap_wurl_http_request(char *method, char **headers, const char* url
 
     expect_string(__wrap_wurl_http_request, url, url);
 
-    if (userpass) {
-        expect_string(__wrap_wurl_http_request, userpass, userpass);
-    }
+    expect_string(__wrap_wurl_http_request, ssl_verify, ssl_verify);
+
+    expect_string(__wrap_wurl_http_request, userpass, userpass);
 
     if (payload) {
         expect_string(__wrap_wurl_http_request, payload, payload);
