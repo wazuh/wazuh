@@ -59,44 +59,6 @@ asyncio.set_event_loop_policy(EventLoopPolicy())
 loop = new_event_loop()
 
 
-class LoggerMock:
-    """Logger auxiliary class."""
-
-    def __init__(self):
-        self._debug = []
-        self._debug2 = []
-        self._error = []
-
-    def debug(self, data):
-        """Auxiliary method."""
-        self._debug.append(data)
-
-    def debug2(self, data):
-        """Auxiliary method."""
-        self._debug2.append(data)
-
-    def error(self, data):
-        """Auxiliary method."""
-        self._error.append(data)
-
-
-class MockAsyncWazuhDBConnection:
-    """AsyncWazuhDBConnection auxiliary class."""
-
-    def __init__(self):
-        self.exceptions = 0
-
-    async def run_wdb_command(self, data):
-        """Auxiliary method."""
-        if self.exceptions == 0:
-            return ''
-        else:
-            raise Exception
-
-    def close(self):
-        """Auxiliary method."""
-        pass
-
 # Test Response class methods
 
 @pytest.mark.asyncio
@@ -691,8 +653,10 @@ async def test_handler_update_chunks_wdb(send_request_mock):
     with patch('wazuh.core.cluster.cluster.run_in_pool',
                return_value={'total_updated': 0, 'errors_per_folder': {'key': 'value'}, 'generic_errors': ['ERR'],
                              'updated_chunks': 2, 'time_spent': 6,
-                             'error_messages': [0, 1]}):
+                             'error_messages': {'chunks': [[0, 0], [1, 1]], 'others': ['other1', 'other2']}}):
         with patch.object(LoggerMock, "debug") as logger_debug_mock:
+            with patch.object(LoggerMock, "debug2") as logger_debug2_mock:
+                with patch.object(LoggerMock, "error") as logger_error_mock:
                     assert await handler.update_chunks_wdb(
                         data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
                         logger=logger, error_command=b'ERROR') == {'error_messages': [0, 1],
@@ -701,6 +665,10 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                                                                    'time_spent': 6, 'total_updated': 0,
                                                                    'updated_chunks': 2}
                     logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
+                    logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
+                    logger_error_mock.assert_has_calls([call('other1'), call('other2'),
+                                                        call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
+                                                        call('Wazuh-db response for chunk 2/5 was not "ok": 1')])
 
     # Test Exception
     send_request_mock.reset_mock()
