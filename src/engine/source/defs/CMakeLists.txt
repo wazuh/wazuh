@@ -48,4 +48,6 @@ target_link_libraries(defs_utest
   GTest::gtest_main
 )
 
+gtest_discover_tests(defs_utest)
+
 endif(ENGINE_BUILD_TEST)
