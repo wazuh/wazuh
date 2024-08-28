@@ -40,8 +40,10 @@ jobs:
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
-
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        
     - name: Cache CMake and ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
@@ -64,4 +66,4 @@ jobs:
     - name: Unit Test
       # Run unit tests using CTest
       working-directory: ${{env.ENGINE_DIR}}/build
-      run: ctest -T test -C ${{env.BUILD_PRESET}} --output-on-failure -j$(nproc)
+      run: ctest -T test -C ${{env.BUILD_PRESET}} --output-on-failure

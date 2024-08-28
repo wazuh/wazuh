@@ -42,7 +42,9 @@ jobs:
 
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Cache CMake and ccache
       uses: hendrikmuhs/ccache-action@v1.2
@@ -50,7 +52,7 @@ jobs:
         key: ${{ github.workflow }}-${{ runner.os }}
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: 3.8
 
@@ -86,9 +88,6 @@ jobs:
       run: |
         pip install -r src/engine/source/vdscanner/qa/requirements.txt
 
-    - name: Create folder for test logs
-      run: |
-        mkdir -p ${{ github.workspace }}/qa_logs
     - name: Run tests
       env:
         REPORT_OUTPUT: md_report.md
@@ -106,18 +105,10 @@ jobs:
         cd src
         cat "$REPORT_FILE" >> $GITHUB_STEP_SUMMARY
 
-    # Upload log files of the tests
-    - name: Upload log files
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: QA log files
-        path: ${{ github.workspace }}/qa_logs
-
     # Upload HTML report
     - name: Upload HTML report
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: report.html
         path: ${{ github.workspace }}/src/report.html

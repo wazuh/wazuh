@@ -129,6 +129,8 @@ add_executable(main ${ENGINE_SOURCE_DIR}/main.cpp)
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/feedmanager)
 add_subdirectory(${ENGINE_SOURCE_DIR}/vdscanner)
+add_subdirectory(${ENGINE_SOURCE_DIR}/wazuh-http-request)
+add_subdirectory(${ENGINE_SOURCE_DIR}/indexerconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
 add_subdirectory(${ENGINE_SOURCE_DIR}/sockiface)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)

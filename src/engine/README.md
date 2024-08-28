@@ -165,18 +165,21 @@ Documentation is generated with docxygen, currently html and latex outputs are g
 
 <a name="buildmanual"></a>
 ## Building manually
-To build manually from root folder:
+This project use [CMake](https://cmake.org) and [VCPKG](https://vcpkg.io)
 ```bash
-mkdir build
-cd build
-cmake ..
-make
+cd ..
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg && ./bootstrap-vcpkg.sh
+export VCPKG_ROOT=$(pwd)
+export PATH=$VCPKG_ROOT:$PATH
+cd ../wazuh/src
+cmake --preset=release
+cmake --build build -j$(nproc)
 ```
 
 To run tests:
 ```bash
-cd build
-make test
+ctest --test-dir build --output-on-failure
 ```
 <a name="license"></a>
 ## License
