@@ -18,4 +18,4 @@ target_include_directories(indexerconnector_test INTERFACE ${CMAKE_CURRENT_LIST_
 add_library(indexerconnector::test ALIAS indexerconnector_test)
 
 add_subdirectory(tool)
-add_subdirectory(tests)
+add_subdirectory(test)
