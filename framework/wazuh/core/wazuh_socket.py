@@ -294,7 +294,7 @@ async def wazuh_sendasync(daemon_name: str, message: str = None) -> dict:
             message = dumps(message)
         await sock.send(msg_bytes=message.encode(), header_format=daemons[daemon_name]['header_format'])
         data = await sock.receive(header_size=daemons[daemon_name]['size'])
-        sock.close()
+        await sock.close()
     except WazuhException as e:
         raise e
     except Exception as e:

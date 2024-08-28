@@ -1,6 +1,6 @@
 # Copyright (C) 2015, Wazuh Inc.
 # Created by Wazuh, Inc. <info@wazuh.com>.
-# This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
+# This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
 import base64
@@ -26,9 +26,10 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
-from wazuh.core.wdb import WazuhDBConnection
+from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 
 IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
+
 
 class Response:
     """
@@ -1687,7 +1688,7 @@ def error_receiving_agent_information(logger, response, info_type):
     return b'ok', b'Thanks'
 
 
-async def send_data_to_wdb(data, timeout, info_type='agent-info') -> dict[str, Any]:
+def send_data_to_wdb(data, timeout, info_type='agent-info'):
     """Send chunks of data to Wazuh-db socket.
 
     Parameters
@@ -1724,7 +1725,10 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info') -> dict[str, A
                 except TimeoutError as e:
                     raise e
                 except Exception as e:
-                    result['error_messages']['chunks'].append((i, str(e)))
+                    error = str(e)
+                    if any(ignored_exception in error for ignored_exception in IGNORED_WDB_EXCEPTIONS):
+                        continue
+                    result['error_messages']['chunks'].append((i, error))
     except TimeoutError:
         result['error_messages']['others'].append(f'Timeout while processing {info_type} chunks.')
     except Exception as e:
@@ -1733,6 +1737,7 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info') -> dict[str, A
     result['time_spent'] = time.perf_counter() - before
     wdb_conn.close()
     return result
+
 
 def asyncio_exception_handler(loop, context: Dict):
     """Exception handler used in the protocol.

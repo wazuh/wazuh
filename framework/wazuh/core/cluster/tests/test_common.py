@@ -659,11 +659,11 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                 with patch.object(LoggerMock, "error") as logger_error_mock:
                     assert await handler.update_chunks_wdb(
                         data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
-                        logger=logger, error_command=b'ERROR') == {'error_messages': [0, 1],
-                                                                   'errors_per_folder': {'key': 'value'},
-                                                                   'generic_errors': ['ERR'],
-                                                                   'time_spent': 6, 'total_updated': 0,
-                                                                   'updated_chunks': 2}
+                        logger=logger, error_command=b'ERROR', timeout=10) == {'error_messages': [0, 1],
+                                                                               'errors_per_folder': {'key': 'value'},
+                                                                               'generic_errors': ['ERR'],
+                                                                               'time_spent': 6,
+                                                                               'total_updated': 0, 'updated_chunks': 2}
                     logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
                     logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
                     logger_error_mock.assert_has_calls([call('other1'), call('other2'),
@@ -1588,7 +1588,7 @@ def test_error_receiving_agent_information():
 
 
 @patch("wazuh.core.cluster.common.WazuhDBConnection")
-def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
+def test_send_data_to_wdb(WazuhDBConnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class MockWazuhDBConnection:
@@ -1600,8 +1600,10 @@ def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
         def send(self, data, raw):
             """Auxiliary method."""
             if self.exceptions == 0:
-                return ''
+                raise TimeoutError
             elif self.exceptions == 1:
+                return ''
+            elif self.exceptions == 2:
                 raise Exception('Cannot execute Global database query; FOREIGN KEY constraint failed')
             else:
                 raise Exception
@@ -1620,6 +1622,11 @@ def test_send_data_to_wdb_ko(WazuhDBConnection_mock):
     result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
                                              timeout=15)
     assert result['updated_chunks'] == 2
+
+    WazuhDBConnection_mock.return_value.exceptions += 1
+    result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
+                                             timeout=15)
+    assert result['updated_chunks'] == 0
 
     WazuhDBConnection_mock.return_value.exceptions += 1
     result = cluster_common.send_data_to_wdb(data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''},
