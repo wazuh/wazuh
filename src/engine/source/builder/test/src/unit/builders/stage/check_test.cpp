@@ -22,8 +22,8 @@ OpBuilderEntry getDummyFilter(bool result)
 {
     ValidationInfo info {schemf::ValidationToken {}};
     FilterBuilder builder = [result](const Reference& ref,
-                                 const std::vector<OpArg>& args,
-                                 const std::shared_ptr<const IBuildCtx>& buildCtx) -> FilterOp
+                                     const std::vector<OpArg>& args,
+                                     const std::shared_ptr<const IBuildCtx>& buildCtx) -> FilterOp
     {
         return [result](base::ConstEvent) -> FilterResult
         {

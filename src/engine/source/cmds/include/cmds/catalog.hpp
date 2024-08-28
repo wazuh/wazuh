@@ -5,9 +5,9 @@
 #include <vector>
 
 #include <CLI/CLI.hpp>
+#include <base/json.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <cmds/apiclnt/client.hpp>
-#include <base/json.hpp>
 
 namespace cmd::catalog
 {
@@ -37,9 +37,7 @@ void runCreate(std::shared_ptr<apiclnt::Client> client,
                const std::string& namespaceId,
                const std::string& role);
 
-void runDelete(std::shared_ptr<apiclnt::Client> client,
-               const std::string& nameStr,
-               const std::string& role);
+void runDelete(std::shared_ptr<apiclnt::Client> client, const std::string& nameStr, const std::string& role);
 
 void runValidate(std::shared_ptr<apiclnt::Client> client,
                  const std::string& format,

@@ -211,7 +211,6 @@ public:
      * @copydoc IStoreInternal::existsInternalDoc
      */
     bool existsInternalDoc(const base::Name& name) const override;
-
 };
 
 } // namespace store

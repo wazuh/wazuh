@@ -101,12 +101,12 @@ inline Parser dsvParserFunction(std::string name,
 
         if (headers.size() != i)
         {
-            return abs::makeFailure<ResultT>(txt.substr(start-1), name);
+            return abs::makeFailure<ResultT>(txt.substr(start - 1), name);
         }
 
-        if (start-1 != parsed.size())
+        if (start - 1 != parsed.size())
         {
-            return abs::makeFailure<ResultT>(txt.substr(start-1), name);
+            return abs::makeFailure<ResultT>(txt.substr(start - 1), name);
         }
 
         SemParser semP;

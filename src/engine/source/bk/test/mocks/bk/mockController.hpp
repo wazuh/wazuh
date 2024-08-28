@@ -4,15 +4,14 @@
 #include <gmock/gmock.h>
 
 #include <bk/icontroller.hpp>
-#include <bk/icontroller.hpp>
 
 namespace bk::mocks
 {
 class MockController : public IController
 {
 public:
-    MOCK_METHOD(void, ingest, (base::Event&&), (override));
-    MOCK_METHOD(base::Event, ingestGet, (base::Event&&), (override));
+    MOCK_METHOD(void, ingest, (base::Event &&), (override));
+    MOCK_METHOD(base::Event, ingestGet, (base::Event &&), (override));
     MOCK_METHOD(bool, isAviable, (), (const, override));
     MOCK_METHOD(void, start, (), (override));
     MOCK_METHOD(void, stop, (), (override));

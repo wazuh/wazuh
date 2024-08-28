@@ -204,7 +204,8 @@ PolicyData readData(const store::Doc& doc, const std::shared_ptr<store::IStoreRe
                     auto assetStr = assetArr.value()[i].getString();
                     if (!assetStr)
                     {
-                        throw std::runtime_error(fmt::format("Default parent asset in namespace '{}' is not a string", ns));
+                        throw std::runtime_error(
+                            fmt::format("Default parent asset in namespace '{}' is not a string", ns));
                     }
 
                     base::Name assetName;

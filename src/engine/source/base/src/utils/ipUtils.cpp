@@ -80,7 +80,7 @@ bool isSpecialIPv4Address(const std::string& ip)
 
     if ((ipUInt >= 0x0A000000 && ipUInt <= 0x0AFFFFFF)     // 10.x.x.x range
         || (ipUInt >= 0xAC100000 && ipUInt <= 0xAC1FFFFF)  // 172.16.x.x to 172.31.x.x
-        || (ipUInt >= 0xC0A80000 && ipUInt <= 0xC0A8FFFF) // 192.168.x.x range
+        || (ipUInt >= 0xC0A80000 && ipUInt <= 0xC0A8FFFF)  // 192.168.x.x range
         || (ipUInt >= 0x7F000000 && ipUInt <= 0x7FFFFFFF)) // 127.x.x.x loopback range
 
     {
@@ -88,7 +88,6 @@ bool isSpecialIPv4Address(const std::string& ip)
     }
     return false;
 }
-
 
 bool isSpecialIPv6Address(const std::string& ip)
 {
@@ -102,6 +101,5 @@ bool isSpecialIPv6Address(const std::string& ip)
            || IN6_IS_ADDR_LINKLOCAL(&addr)                          // Link-local fe80::/10
            || (addr.s6_addr[0] == 0xFC || addr.s6_addr[0] == 0xFD); // ULA fc00::/7
 }
-
 
 } // namespace utils::ip

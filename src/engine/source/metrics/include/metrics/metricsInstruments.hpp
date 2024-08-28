@@ -3,11 +3,10 @@
 
 #include <mutex>
 
-#include "opentelemetry/sdk/metrics/meter_provider.h"
 #include "opentelemetry/metrics/async_instruments.h"
+#include "opentelemetry/sdk/metrics/meter_provider.h"
 
 #include <metrics/iMetricsInstruments.hpp>
-
 
 namespace metricsManager
 {
@@ -37,6 +36,7 @@ public:
      * @return The enabled status of the instrument.
      */
     virtual bool getEnabledStatus() { return m_status; }
+
 private:
     /**
      * @brief Holds the enabled status
@@ -51,8 +51,10 @@ private:
  * @tparam T Internal OpenTelemetry object type.
  * @tparam U Basic value type held by the Internal.
  */
-template <typename T, typename U>
-class Counter : public iCounter<U>, public Instrument
+template<typename T, typename U>
+class Counter
+    : public iCounter<U>
+    , public Instrument
 {
 public:
     /**
@@ -92,8 +94,10 @@ private:
  * @tparam T Internal OpenTelemetry object type.
  * @tparam U Basic value type held by the Internal.
  */
-template <typename T, typename U>
-class Histogram : public iHistogram<U>, public Instrument
+template<typename T, typename U>
+class Histogram
+    : public iHistogram<U>
+    , public Instrument
 {
 public:
     /**
@@ -101,8 +105,8 @@ public:
      *
      * @param ptr A unique pointer to the instrument created with the OpenTelemetry MeterProvider Meter.
      */
-    Histogram(OTstd::unique_ptr<T> ptr):
-    m_histogram{std::move(ptr)}
+    Histogram(OTstd::unique_ptr<T> ptr)
+        : m_histogram {std::move(ptr)}
     {
     }
 
@@ -113,15 +117,16 @@ public:
      */
     void recordValue(const U& value) override
     {
-        auto context = opentelemetry::context::Context{};
+        auto context = opentelemetry::context::Context {};
         std::map<std::string, std::string> labels;
-        auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)>{labels};
+        auto labelkv = opentelemetry::common::KeyValueIterableView<decltype(labels)> {labels};
 
         if (getEnabledStatus())
         {
             m_histogram->Record(value, labelkv, context);
         }
     }
+
 private:
     /**
      * @brief A unique pointer to the instrument created with the OpenTelemetry MeterProvider.
@@ -135,8 +140,10 @@ private:
  *
  * @tparam U Basic value type held by the Internal.
  */
-template <typename U>
-class Gauge : public iGauge<U>, public Instrument
+template<typename U>
+class Gauge
+    : public iGauge<U>
+    , public Instrument
 {
 public:
     /**
@@ -144,8 +151,8 @@ public:
      *
      * @param ptr A shared pointer to the instrument created with the OpenTelemetry MeterProvider Meter.
      */
-    Gauge(OTstd::shared_ptr<OTMetrics::ObservableInstrument> ptr):
-    m_gauge{std::move(ptr)}
+    Gauge(OTstd::shared_ptr<OTMetrics::ObservableInstrument> ptr)
+        : m_gauge {std::move(ptr)}
     {
     }
 
@@ -156,10 +163,7 @@ public:
      * @param id The ID of the instrument.
      * @param defaultValue The default value of the observable instrument before first observation.
      */
-    void AddCallback(
-        OTMetrics::ObservableCallbackPtr callback,
-        void* id,
-        U defaultValue)
+    void AddCallback(OTMetrics::ObservableCallbackPtr callback, void* id, U defaultValue)
     {
         m_instrumentCallback = callback;
         m_instrumentId = id;
@@ -197,10 +201,7 @@ public:
     /**
      * @brief Destroy the Gauge object and removes the internal callback.
      */
-    ~Gauge()
-    {
-        m_gauge->RemoveCallback(m_instrumentCallback, m_instrumentId);
-    }
+    ~Gauge() { m_gauge->RemoveCallback(m_instrumentCallback, m_instrumentId); }
 
 private:
     /**

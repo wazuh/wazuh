@@ -22,7 +22,7 @@ public:
      * @param maxMsgSize maximum message size.
      *
      * @return std::shared_ptr<ISockHandler> handler.
-    */
+     */
     virtual std::shared_ptr<ISockHandler>
     getHandler(ISockHandler::Protocol proto, std::string_view path, uint32_t maxMsgSize) = 0;
 
@@ -33,7 +33,7 @@ public:
      * @param path path to the socket.
      *
      * @return std::shared_ptr<ISockHandler> handler.
-    */
+     */
     virtual std::shared_ptr<ISockHandler> getHandler(ISockHandler::Protocol proto, std::string_view path) = 0;
 };
 

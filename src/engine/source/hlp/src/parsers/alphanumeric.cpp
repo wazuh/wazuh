@@ -45,8 +45,7 @@ Parser getAlphanumericParser(const Params& params)
     }
 
     const auto synP = params.options.size() == 1 ? getSynParser(params.options[0]) : getSynParser();
-    const auto semP =
-        params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
+    const auto semP = params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
 
     return [name = params.name, synP, semP](std::string_view txt)
     {

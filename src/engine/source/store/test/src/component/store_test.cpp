@@ -1,15 +1,16 @@
 #include <gtest/gtest.h>
 
+#include <store/drivers/fileDriver.hpp>
 #include <store/istore.hpp>
 #include <store/store.hpp>
-#include <store/drivers/fileDriver.hpp>
 
 #include <base/logging.hpp>
 
 using namespace store;
 static const std::filesystem::path TEST_PATH = "/tmp/store_test";
 
-std::filesystem::path uniquePath() {
+std::filesystem::path uniquePath()
+{
     auto pid = getpid();
     auto tid = std::this_thread::get_id();
     std::stringstream ss;
@@ -29,18 +30,16 @@ static const NamespaceId NAMESPACE_A {"namespaceA"};
 static const NamespaceId NAMESPACE_B {"namespaceB"};
 static const NamespaceId NAMESPACE_C {"namespaceC"};
 
-static const base::Name  COLLECTION_A = "collectionA";
-static const base::Name  COLLECTION_B = "collectionB";
-static const base::Name  COLLECTION_C = "collectionC";
+static const base::Name COLLECTION_A = "collectionA";
+static const base::Name COLLECTION_B = "collectionB";
+static const base::Name COLLECTION_C = "collectionC";
 
-static const base::Name  COLLECTION_AB {COLLECTION_A + COLLECTION_B};
-static const base::Name  COLLECTION_ABC {COLLECTION_AB + COLLECTION_C};
-
+static const base::Name COLLECTION_AB {COLLECTION_A + COLLECTION_B};
+static const base::Name COLLECTION_ABC {COLLECTION_AB + COLLECTION_C};
 
 class StoreTest : public ::testing::Test
 {
 protected:
-
     std::shared_ptr<drivers::FileDriver> m_fDriver;
     std::filesystem::path utest_path;
 
@@ -52,12 +51,12 @@ protected:
         m_fDriver = std::make_shared<drivers::FileDriver>(utest_path, true);
     }
 
-    void TearDown() override {
+    void TearDown() override
+    {
         m_fDriver.reset();
         std::filesystem::remove_all(utest_path);
-     }
+    }
 };
-
 
 TEST_F(StoreTest, allSingleOpAndLoad)
 {
@@ -98,7 +97,8 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 3);
-            std::sort(root.begin(), root.end());;
+            std::sort(root.begin(), root.end());
+            ;
             ASSERT_EQ(root[0], NAMESPACE_A);
             ASSERT_EQ(root[1], NAMESPACE_B);
             ASSERT_EQ(root[2], NAMESPACE_C);
@@ -145,7 +145,6 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         ASSERT_FALSE(store->existsDoc(DOC_C));
     }
 
-
     // upsertDoc
     {
         ASSERT_FALSE(store->upsertDoc(DOC_A, NAMESPACE_A, JSON_A));
@@ -158,13 +157,13 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         ASSERT_TRUE(store->existsDoc(DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
-        std::sort(root.begin(), root.end());;
+        std::sort(root.begin(), root.end());
+        ;
         ASSERT_EQ(root[0], NAMESPACE_A);
         ASSERT_EQ(root[1], NAMESPACE_B);
 
         ASSERT_FALSE(store->upsertDoc(DOC_C, NAMESPACE_C, JSON_C));
         ASSERT_TRUE(store->existsDoc(DOC_C));
-
 
         ASSERT_FALSE(store->upsertDoc(DOC_A, NAMESPACE_A, JSON_A));
         ASSERT_FALSE(store->upsertDoc(DOC_B, NAMESPACE_B, JSON_A));
@@ -174,7 +173,8 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 3);
-            std::sort(root.begin(), root.end());;
+            std::sort(root.begin(), root.end());
+            ;
             ASSERT_EQ(root[0], NAMESPACE_A);
             ASSERT_EQ(root[1], NAMESPACE_B);
             ASSERT_EQ(root[2], NAMESPACE_C);
@@ -210,7 +210,6 @@ TEST_F(StoreTest, allSingleOpAndLoad)
         ASSERT_FALSE(store->existsDoc(DOC_B));
         ASSERT_FALSE(store->existsDoc(DOC_C));
     }
-
 }
 
 TEST_F(StoreTest, allColOpAndLoad)
@@ -240,20 +239,21 @@ TEST_F(StoreTest, allColOpAndLoad)
         ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 2);
-        std::sort(root.begin(), root.end());;
+        std::sort(root.begin(), root.end());
+        ;
         ASSERT_EQ(root[0], NAMESPACE_A);
         ASSERT_EQ(root[1], NAMESPACE_B);
 
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_C, NAMESPACE_C, JSON_C));
         ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_C));
 
-
         // Check the 3 items
         auto checkItems = [&]() -> void
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 3);
-            std::sort(root.begin(), root.end());;
+            std::sort(root.begin(), root.end());
+            ;
             ASSERT_EQ(root[0], NAMESPACE_A);
             ASSERT_EQ(root[1], NAMESPACE_B);
             ASSERT_EQ(root[2], NAMESPACE_C);
@@ -281,9 +281,7 @@ TEST_F(StoreTest, allColOpAndLoad)
                 ASSERT_FALSE(base::isError(colABC));
                 ASSERT_EQ(std::get<Col>(colABC).size(), 1);
                 ASSERT_EQ(std::get<Col>(colABC)[0], COLLECTION_ABC + doc);
-
             }
-
         };
 
         checkItems();
@@ -316,7 +314,7 @@ TEST_F(StoreTest, allColOpAndLoad)
     }
 
     // Same namespace
-     {
+    {
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_A, NAMESPACE_A, JSON_A));
         ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_A));
         auto root = store->listNamespaces();
@@ -327,14 +325,16 @@ TEST_F(StoreTest, allColOpAndLoad)
         ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_B));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
-        std::sort(root.begin(), root.end());;
+        std::sort(root.begin(), root.end());
+        ;
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         ASSERT_FALSE(store->createDoc(COLLECTION_ABC + DOC_C, NAMESPACE_A, JSON_C));
         ASSERT_TRUE(store->existsDoc(COLLECTION_ABC + DOC_C));
         root = store->listNamespaces();
         ASSERT_EQ(root.size(), 1);
-        std::sort(root.begin(), root.end());;
+        std::sort(root.begin(), root.end());
+        ;
         ASSERT_EQ(root[0], NAMESPACE_A);
 
         // Check the 3 items
@@ -342,7 +342,8 @@ TEST_F(StoreTest, allColOpAndLoad)
         {
             root = store->listNamespaces();
             ASSERT_EQ(root.size(), 1);
-            std::sort(root.begin(), root.end());;
+            std::sort(root.begin(), root.end());
+            ;
             ASSERT_EQ(root[0], NAMESPACE_A);
 
             auto rDocA = store->readDoc(COLLECTION_ABC + DOC_A);
@@ -356,7 +357,6 @@ TEST_F(StoreTest, allColOpAndLoad)
             auto rDocC = store->readDoc(COLLECTION_ABC + DOC_C);
             ASSERT_FALSE(base::isError(rDocC));
             ASSERT_EQ(std::get<Doc>(rDocC), JSON_C);
-
 
             auto colA = store->readCol(COLLECTION_A, NAMESPACE_A);
             ASSERT_TRUE(base::isError(store->readCol(COLLECTION_A, NAMESPACE_B)));
@@ -414,5 +414,4 @@ TEST_F(StoreTest, allColOpAndLoad)
         ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_B));
         ASSERT_FALSE(store->existsDoc(COLLECTION_ABC + DOC_C));
     }
-
 }

@@ -53,8 +53,8 @@ TEST_P(GraphGetCommand, ParameterEvaluation)
 {
     auto [execution, input, output] = GetParam();
 
-    EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::Eq(base::Name{JSON_SCHEMA}))
-    ).WillRepeatedly(::testing::Return(storeReadDocResp(store::Doc{WAZUH_LOGPAR_TYPES})));
+    EXPECT_CALL(*m_spMockStore, readInternalDoc(testing::Eq(base::Name {JSON_SCHEMA})))
+        .WillRepeatedly(::testing::Return(storeReadDocResp(store::Doc {WAZUH_LOGPAR_TYPES})));
 
     EXPECT_CALL(*m_spMockStore, readDoc(testing::_))
         .WillRepeatedly(testing::Invoke(

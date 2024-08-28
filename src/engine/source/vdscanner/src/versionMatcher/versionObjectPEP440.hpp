@@ -198,10 +198,7 @@ public:
      *
      * @return VersionObjectType.
      */
-    VersionObjectType getType() override
-    {
-        return VersionObjectType::PEP440;
-    }
+    VersionObjectType getType() override { return VersionObjectType::PEP440; }
 
     /**
      * @brief Comparison operator ==.
@@ -216,11 +213,11 @@ public:
         {
             throw std::runtime_error {"Error casting VersionObject type"};
         }
-        return (m_epoch == pB->m_epoch && !compareVersionStr(m_versionStr, pB->m_versionStr) &&
-                m_preReleaseStr == pB->m_preReleaseStr && m_preReleaseNumber == pB->m_preReleaseNumber &&
-                m_postReleaseNumber == pB->m_postReleaseNumber && m_devReleaseNumber == pB->m_devReleaseNumber &&
-                m_hasPreRelease == pB->m_hasPreRelease && m_hasPostRelease == pB->m_hasPostRelease &&
-                m_hasDevRelease == pB->m_hasDevRelease);
+        return (m_epoch == pB->m_epoch && !compareVersionStr(m_versionStr, pB->m_versionStr)
+                && m_preReleaseStr == pB->m_preReleaseStr && m_preReleaseNumber == pB->m_preReleaseNumber
+                && m_postReleaseNumber == pB->m_postReleaseNumber && m_devReleaseNumber == pB->m_devReleaseNumber
+                && m_hasPreRelease == pB->m_hasPreRelease && m_hasPostRelease == pB->m_hasPostRelease
+                && m_hasDevRelease == pB->m_hasDevRelease);
     }
 
     /**

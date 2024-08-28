@@ -3,8 +3,8 @@
 #include "environmentBuilder.hpp"
 
 #include <bk/mockController.hpp>
-#include <builder/mockPolicy.hpp>
 #include <builder/mockBuilder.hpp>
+#include <builder/mockPolicy.hpp>
 #include <store/mockStore.hpp>
 
 using namespace router;

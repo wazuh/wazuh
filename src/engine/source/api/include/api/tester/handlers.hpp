@@ -12,14 +12,14 @@ namespace api::tester::handlers
 api::HandlerSync sessionPost(const std::weak_ptr<::router::ITesterAPI>& tester);
 api::HandlerSync sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester);
 api::HandlerSync sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester,
-                        const std::weak_ptr<api::policy::IPolicy>& policy);
+                            const std::weak_ptr<api::policy::IPolicy>& policy);
 api::HandlerSync sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester);
 // Table of sessions
 api::HandlerSync tableGet(const std::weak_ptr<::router::ITesterAPI>& tester,
-                      const std::weak_ptr<api::policy::IPolicy>& policy);
+                          const std::weak_ptr<api::policy::IPolicy>& policy);
 // Use of session
 api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
-                     const std::weak_ptr<store::IStoreReader>& store);
+                          const std::weak_ptr<store::IStoreReader>& store);
 
 /**
  * @brief Register all router commands

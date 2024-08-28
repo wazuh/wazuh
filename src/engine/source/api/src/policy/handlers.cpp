@@ -2,8 +2,8 @@
 #include <utility>
 #include <vector>
 
-#include <eMessages/policy.pb.h>
 #include <base/logging.hpp>
+#include <eMessages/policy.pb.h>
 
 #include <api/adapter.hpp>
 #include <api/policy/handlers.hpp>

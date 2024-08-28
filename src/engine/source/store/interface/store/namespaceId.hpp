@@ -37,7 +37,6 @@ private:
     }
 
 public:
-
     NamespaceId() = default;
     ~NamespaceId() = default;
 
@@ -162,13 +161,10 @@ public:
 // hash function for NamespaceId
 namespace std
 {
-template <>
+template<>
 struct hash<store::NamespaceId>
 {
-    std::size_t operator()(const store::NamespaceId& k) const
-    {
-        return hash<base::Name>()(k.name());
-    }
+    std::size_t operator()(const store::NamespaceId& k) const { return hash<base::Name>()(k.name()); }
 };
 } // namespace std
 

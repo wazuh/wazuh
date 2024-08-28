@@ -29,7 +29,6 @@ TEST(Registry, exec)
 
     cmdTest(WazuhRequest::create("test", "gtest", json::Json {R"({"testArgKey": "testArgValue"})"}), callbackFn);
     ASSERT_EQ(*res, R"({"data":{},"error":5,"message":"Command \"test\" not found"})");
-
 }
 
 TEST(Registry, addComand)
@@ -54,9 +53,10 @@ TEST(Registry, addComand)
     auto cmdNotFound = *res;
 
     // Add command
-    registry.registerHandler(command, api::Api::convertToHandlerAsync(
-                             [](WazuhRequest) -> WazuhResponse
-                             { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 0, "OK"); }));
+    registry.registerHandler(command,
+                             api::Api::convertToHandlerAsync(
+                                 [](WazuhRequest) -> WazuhResponse
+                                 { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 0, "OK"); }));
 
     // Get callback in registry
     cmdTest = registry.getHandler(command);
@@ -119,9 +119,10 @@ TEST(Registry, AddDuplicateCommand)
 
     // Add command for the first time
     bool resp = registry.registerHandler(
-        command, api::Api::convertToHandlerAsync(
-        [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); }));
+        command,
+        api::Api::convertToHandlerAsync(
+            [](WazuhRequest) -> WazuhResponse
+            { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); }));
 
     ASSERT_TRUE(resp); // OK
     // Get callback in registry
@@ -131,9 +132,10 @@ TEST(Registry, AddDuplicateCommand)
 
     // Add command
     resp = registry.registerHandler(
-        command, api::Api::convertToHandlerAsync(
-        [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd2"); }));
+        command,
+        api::Api::convertToHandlerAsync(
+            [](WazuhRequest) -> WazuhResponse
+            { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd2"); }));
 
     ASSERT_FALSE(resp); // Fail
 
@@ -165,17 +167,19 @@ TEST(Registry, AddMultipleCommands)
 
     // Add command for the first time
     bool resp = registry.registerHandler(
-        command, api::Api::convertToHandlerAsync(
-        [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); }));
+        command,
+        api::Api::convertToHandlerAsync(
+            [](WazuhRequest) -> WazuhResponse
+            { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 1, "OK cmd1"); }));
 
     ASSERT_TRUE(resp); // OK
 
     // Add command for the first time
     resp = registry.registerHandler(
-        command2, api::Api::convertToHandlerAsync(
-        [](WazuhRequest) -> WazuhResponse
-        { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 2, "OK cmd2"); }));
+        command2,
+        api::Api::convertToHandlerAsync(
+            [](WazuhRequest) -> WazuhResponse
+            { return WazuhResponse(json::Json {R"({"testArgKey": "testArgValue"})"}, 2, "OK cmd2"); }));
 
     ASSERT_TRUE(resp); // OK
 

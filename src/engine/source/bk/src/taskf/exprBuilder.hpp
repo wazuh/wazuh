@@ -236,8 +236,8 @@ public:
     TaskOr(tf::Taskflow& tf)
         : ITask()
         , m_input(tf.placeholder().name("or_in"))
-        , m_outputSuccess(tf.emplace([](){return 0;}).name("or_out_success"))
-        , m_outputFailure(tf.emplace([](){return 0;}).name("or_out_failure"))
+        , m_outputSuccess(tf.emplace([]() { return 0; }).name("or_out_success"))
+        , m_outputFailure(tf.emplace([]() { return 0; }).name("or_out_failure"))
     {
     }
 

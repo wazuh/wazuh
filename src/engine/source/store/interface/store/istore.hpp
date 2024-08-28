@@ -32,7 +32,7 @@ public:
      */
     virtual base::RespOrError<Doc> readDoc(const base::Name& name) const = 0;
 
-     /**
+    /**
      * @brief List documents and collections names under a other name in a namespace.
      *
      * THe depth is limited to 1 and the name returned are absolute.
@@ -72,9 +72,6 @@ public:
      * @return std::optional<NamespaceId> The namespace identifier or nothing if the document does not exist.
      */
     virtual std::optional<NamespaceId> getNamespace(const base::Name& name) const = 0;
-
-
-
 };
 
 /**
@@ -148,10 +145,11 @@ public:
     virtual bool existsInternalDoc(const base::Name& name) const = 0;
 };
 
-class IStore : public IStoreReader, public IStoreInternal
+class IStore
+    : public IStoreReader
+    , public IStoreInternal
 {
 public:
-
     /**
      * @brief Add a document to the store.
      *

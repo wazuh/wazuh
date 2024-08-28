@@ -89,11 +89,11 @@ base::OptError Builder::validateIntegration(const json::Json& json, const std::s
     {
         policyData = policy::factory::PolicyData({.name = "policy/fake/0", .hash = "fakehash"});
     }
-    catch(const std::exception& e)
+    catch (const std::exception& e)
     {
         return base::Error {fmt::format("Error creating dummy policy: {}", e.what())};
     }
-    
+
     auto namePath = json::Json::formatJsonPath(syntax::asset::NAME_KEY);
     auto integrationNameResp = json.getString(namePath);
     if (!integrationNameResp)
@@ -171,8 +171,7 @@ base::OptError Builder::validatePolicy(const json::Json& json) const
 {
     try
     {
-        auto policy = std::make_shared<policy::Policy>(
-            json, m_storeRead, m_definitionsBuilder, m_registry, m_schema);
+        auto policy = std::make_shared<policy::Policy>(json, m_storeRead, m_definitionsBuilder, m_registry, m_schema);
     }
     catch (const std::exception& e)
     {

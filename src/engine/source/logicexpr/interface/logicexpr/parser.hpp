@@ -9,8 +9,8 @@
 #include <string_view>
 #include <vector>
 
-#include <fmt/format.h>
 #include <base/utils/stringUtils.hpp>
+#include <fmt/format.h>
 
 #include "tokenizer.hpp"
 

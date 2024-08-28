@@ -70,9 +70,7 @@ Parser getBetweenParser(const Params& params)
     const auto end = params.options[1];
 
     const auto synP = getSynParser(start, end);
-    const auto semP = params.targetField.empty()
-                          ? noSemParser()
-                          : getSemParser(params.targetField, start, end);
+    const auto semP = params.targetField.empty() ? noSemParser() : getSemParser(params.targetField, start, end);
 
     return [name = params.name, synP, semP](std::string_view txt)
     {

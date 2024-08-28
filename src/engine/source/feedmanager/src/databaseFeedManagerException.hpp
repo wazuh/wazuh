@@ -27,10 +27,7 @@ public:
      * @return const char* The message to be shown.
      */
     // LCOV_EXCL_START
-    const char* what() const noexcept override
-    {
-        return m_msg.what();
-    }
+    const char* what() const noexcept override { return m_msg.what(); }
     // LCOV_EXCL_STOP
 
     /**

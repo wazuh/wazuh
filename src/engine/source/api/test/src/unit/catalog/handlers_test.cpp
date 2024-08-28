@@ -47,32 +47,31 @@ TEST_P(CatalogGetApiTest, ResourseGet)
 INSTANTIATE_TEST_SUITE_P(
     ResourseGet,
     CatalogGetApiTest,
-    ::testing::Values(
-        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
-            R"({
+    ::testing::Values(std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
+                                      R"({
                 "status": "ERROR",
                 "error": "Could not get resource 'decoder/name/ok': Resource 'decoder/name/ok' does not have an associated namespace"
             })"),
-        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
-            R"({
+                      std::make_tuple(R"({"name": "decoder/name/ok", "format": "json", "namespaceid": "ignored"})",
+                                      R"({
                 "status": "ERROR",
                 "error": "Could not get resource 'decoder/name/ok': Resource 'decoder/name/ok' does not have an associated namespace"
             })"),
-        std::make_tuple(R"({"name": "decoder/name/ok"})",
-                        R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
-        std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
-                        R"({"status":"ERROR","error":"Missing /namespaceid parameter"})"),
-        std::make_tuple(
-            R"({"name": "decoder/name/fail", "format": "json", "namespaceid": "ignored"})",
-            R"({
+                      std::make_tuple(R"({"name": "decoder/name/ok"})",
+                                      R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
+                      std::make_tuple(R"({"name": "decoder/name/ok", "format": "json"})",
+                                      R"({"status":"ERROR","error":"Missing /namespaceid parameter"})"),
+                      std::make_tuple(R"({"name": "decoder/name/fail", "format": "json", "namespaceid": "ignored"})",
+                                      R"({
                 "status": "ERROR",
                 "error": "Could not get resource 'decoder/name/fail': Resource 'decoder/name/fail' does not have an associated namespace"
             })"),
-        std::make_tuple(R"({"name": "decoder/name/fail", "format": "invalid"})",
-                        R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
-        std::make_tuple(R"({"format": "json"})", R"({"status":"ERROR","error":"Missing /name parameter"})"),
-        std::make_tuple(R"({"name": "invalid", "format": "json", "namespaceid": "ignored"})",
-                        R"({"status":"ERROR","error":"Invalid collection type \"invalid\""})")));
+                      std::make_tuple(R"({"name": "decoder/name/fail", "format": "invalid"})",
+                                      R"({"status":"ERROR","error":"Missing or invalid /format parameter"})"),
+                      std::make_tuple(R"({"format": "json"})",
+                                      R"({"status":"ERROR","error":"Missing /name parameter"})"),
+                      std::make_tuple(R"({"name": "invalid", "format": "json", "namespaceid": "ignored"})",
+                                      R"({"status":"ERROR","error":"Invalid collection type \"invalid\""})")));
 
 class CatalogPostApiTest
     : public ::testing::TestWithParam<std::tuple<int, std::string, std::string, std::string, std::string>>

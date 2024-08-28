@@ -48,7 +48,6 @@ api::HandlerSync metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsMa
     };
 }
 
-
 api::HandlerSync metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI)
 {
     return [metricsAPI](api::wpRequest wRequest) -> api::wpResponse
@@ -189,7 +188,8 @@ api::HandlerSync metricsList(const std::shared_ptr<metricsManager::IMetricsManag
     };
 }
 
-void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Api> api)
+void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI,
+                      std::shared_ptr<api::Api> api)
 {
     try
     {

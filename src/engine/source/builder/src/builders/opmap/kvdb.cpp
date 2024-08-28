@@ -6,8 +6,8 @@
 #include <fmt/format.h>
 
 #include <base/json.hpp>
-#include <kvdb/ikvdbhandler.hpp>
 #include <base/utils/stringUtils.hpp>
+#include <kvdb/ikvdbhandler.hpp>
 
 #include "syntax.hpp"
 

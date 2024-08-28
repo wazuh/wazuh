@@ -5,8 +5,8 @@
 #include <string>
 #include <string_view>
 
-#include <defs/idefinitions.hpp>
 #include <base/json.hpp>
+#include <defs/idefinitions.hpp>
 
 /**
  * @brief Namespace for the component definitions
@@ -48,7 +48,7 @@ public:
 
 class DefinitionsBuilder : public IDefinitionsBuilder
 {
-    public:
+public:
     DefinitionsBuilder() = default;
     ~DefinitionsBuilder() = default;
 

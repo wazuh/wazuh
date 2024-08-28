@@ -4,9 +4,9 @@
 #include <string>
 
 #include <CLI/CLI.hpp>
+#include <base/json.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <cmds/apiclnt/client.hpp>
-#include <base/json.hpp>
 
 namespace cmd::policy
 {

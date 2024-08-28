@@ -14,17 +14,17 @@ namespace api::metrics::handlers
 api::HandlerSync metricsDumpCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
-* @brief Get a specific instrument.
-*
-* @return Instrument data, or error message.
-*/
+ * @brief Get a specific instrument.
+ *
+ * @return Instrument data, or error message.
+ */
 api::HandlerSync metricsGetCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
-* @brief Enable or disable a specific instrument.
-*
-* @return Returns "OK" if success, otherwise error message.
-*/
+ * @brief Enable or disable a specific instrument.
+ *
+ * @return Returns "OK" if success, otherwise error message.
+ */
 api::HandlerSync metricsEnableCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
@@ -35,10 +35,10 @@ api::HandlerSync metricsEnableCmd(const std::shared_ptr<metricsManager::IMetrics
 api::HandlerSync metricsList(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
-* @brief Generate a test instrument.
-*
-* @return Returns "OK".
-*/
+ * @brief Generate a test instrument.
+ *
+ * @return Returns "OK".
+ */
 api::HandlerSync metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI);
 
 /**
@@ -47,7 +47,8 @@ api::HandlerSync metricsTestCmd(const std::shared_ptr<metricsManager::IMetricsMa
  * @param registry API registry.
  * @throw std::runtime_error If the command registration fails for any reason.
  */
-void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI, std::shared_ptr<api::Api> api);
+void registerHandlers(const std::shared_ptr<metricsManager::IMetricsManagerAPI>& metricsAPI,
+                      std::shared_ptr<api::Api> api);
 
 } // namespace api::metrics::handlers
 

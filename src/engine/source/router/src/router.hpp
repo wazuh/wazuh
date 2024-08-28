@@ -6,8 +6,8 @@
 
 #include <builder/ibuilder.hpp>
 
-#include "table.hpp"
 #include "irouter.hpp"
+#include "table.hpp"
 
 namespace router
 {

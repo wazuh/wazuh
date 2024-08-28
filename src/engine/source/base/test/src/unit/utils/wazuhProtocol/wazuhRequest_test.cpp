@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <base/utils/wazuhProtocol/wazuhRequest.hpp>
 
 class WazuhRequest_validate : public ::testing::Test
 {
@@ -203,8 +203,7 @@ TEST_F(WazuhRequest_validate, invalidOriginModuleType)
     auto wrequest = base::utils::wazuhProtocol::WazuhRequest {jrequest_invalid};
     EXPECT_TRUE(wrequest.error());
     ASSERT_FALSE(wrequest.isValid());
-    ASSERT_STREQ(wrequest.error()->c_str(),
-                 "The request must have an 'origin/module' field containing a string value");
+    ASSERT_STREQ(wrequest.error()->c_str(), "The request must have an 'origin/module' field containing a string value");
 }
 
 TEST_F(WazuhRequest_validate, missingOriginModule)
@@ -215,8 +214,7 @@ TEST_F(WazuhRequest_validate, missingOriginModule)
     auto wrequest = base::utils::wazuhProtocol::WazuhRequest {jrequest_invalid};
     EXPECT_TRUE(wrequest.error());
     ASSERT_FALSE(wrequest.isValid());
-    ASSERT_STREQ(wrequest.error()->c_str(),
-                 "The request must have an 'origin/module' field containing a string value");
+    ASSERT_STREQ(wrequest.error()->c_str(), "The request must have an 'origin/module' field containing a string value");
 }
 
 TEST_F(WazuhRequest_validate, rootWrongType)

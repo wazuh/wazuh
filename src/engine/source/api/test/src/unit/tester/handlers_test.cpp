@@ -24,7 +24,6 @@ using namespace api::tester::handlers;
 using namespace store::mocks;
 using namespace tester::mocks;
 
-
 /***
  * @brief Represent the type signature of the all function to test
  *

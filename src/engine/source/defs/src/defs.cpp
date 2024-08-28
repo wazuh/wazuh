@@ -68,7 +68,7 @@ std::string Definitions::replace(std::string_view input) const
             // Check if the found $ is escaped with '\'
             if (pos > 0 && replaced[pos - 1] == '\\')
             {
-                replaced.erase(pos - 1, 1); // Remove the escape character '\'
+                replaced.erase(pos - 1, 1);  // Remove the escape character '\'
                 pos += defName.length() - 1; // Counter the erase and move over the name
             }
             else

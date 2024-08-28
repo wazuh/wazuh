@@ -12,9 +12,9 @@
 #include <fmt/format.h>
 
 #include <api/catalog/resource.hpp>
-#include <builder/ivalidator.hpp>
 #include <base/error.hpp>
 #include <base/name.hpp>
+#include <builder/ivalidator.hpp>
 #include <store/istore.hpp>
 
 namespace api::catalog
@@ -64,7 +64,8 @@ private:
     std::unordered_map<Resource::Format, std::function<std::variant<json::Json, base::Error>(const std::string&)>>
         m_inFormat;
 
-    std::optional<base::Error> validate(const Resource& item, const std::string& namespaceId, const json::Json& content) const;
+    std::optional<base::Error>
+    validate(const Resource& item, const std::string& namespaceId, const json::Json& content) const;
 
     /**
      * @brief Get the Document or error from the store.

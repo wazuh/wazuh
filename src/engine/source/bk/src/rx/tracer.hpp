@@ -6,8 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-#include <bk/icontroller.hpp>
 #include <base/error.hpp>
+#include <bk/icontroller.hpp>
 
 namespace bk::rx::detail
 {

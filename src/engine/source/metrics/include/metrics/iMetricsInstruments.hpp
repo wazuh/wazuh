@@ -11,7 +11,7 @@ namespace metricsManager
  *
  * @tparam T Internal OpenTelemetry value type.
  */
-template <typename T>
+template<typename T>
 class iCounter
 {
 public:
@@ -28,7 +28,7 @@ public:
  *
  * @tparam T Internal OpenTelemetry value type.
  */
-template <typename T>
+template<typename T>
 class iHistogram
 {
 public:
@@ -45,7 +45,7 @@ public:
  *
  * @tparam T Internal OpenTelemetry value type.
  */
-template <typename T>
+template<typename T>
 class iGauge
 {
 public:

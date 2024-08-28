@@ -4,10 +4,10 @@
 #include <type_traits>
 #include <variant>
 
-#include <eMessages/eMessage.h>
-#include <eMessages/engine.pb.h>
 #include <base/utils/wazuhProtocol/wazuhRequest.hpp>
 #include <base/utils/wazuhProtocol/wazuhResponse.hpp>
+#include <eMessages/eMessage.h>
+#include <eMessages/engine.pb.h>
 
 namespace api::adapter
 {
@@ -50,10 +50,10 @@ fromWazuhRequest(const base::utils::wazuhProtocol::WazuhRequest& wRequest)
     static_assert(std::is_base_of<google::protobuf::Message, T>::value, "T must be a derived class of proto::Message");
     static_assert(std::is_base_of<google::protobuf::Message, U>::value, "U must be a derived class of proto::Message");
     // Check that U has set_status and set_error functions
-    static_assert(std::is_invocable_v<decltype(&U::set_status), U,::com::wazuh::api::engine::ReturnStatus>,
+    static_assert(std::is_invocable_v<decltype(&U::set_status), U, ::com::wazuh::api::engine::ReturnStatus>,
                   "U must have set_status function");
-    //static_assert(std::is_invocable_v<decltype(&U::set_error), U, const std::string&>,
-    //              "U must have set_error function");
+    // static_assert(std::is_invocable_v<decltype(&U::set_error), U, const std::string&>,
+    //               "U must have set_error function");
 
     const auto json = wRequest.getParameters().value_or(json::Json {"{}"}).str();
 
@@ -89,7 +89,6 @@ base::utils::wazuhProtocol::WazuhResponse genericError(const std::string& messag
     eResponse.set_error(message.data());
     return toWazuhResponse<T>(eResponse);
 }
-
 
 /**
  * @brief Return a WazuhResponse with the status OK in WazuhResponse

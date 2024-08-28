@@ -80,10 +80,7 @@ public:
      *
      * @return VersionObjectType.
      */
-    VersionObjectType getType() override
-    {
-        return VersionObjectType::MajorMinor;
-    }
+    VersionObjectType getType() override { return VersionObjectType::MajorMinor; }
 
     /**
      * @brief Comparison operator ==.

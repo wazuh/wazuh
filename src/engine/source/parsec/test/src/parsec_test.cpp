@@ -579,11 +579,9 @@ TEST(ParsecCombinatorTest, Many)
         ASSERT_EQ(i, result.value().front());
         result.value().pop_front();
 
-        ASSERT_EQ(parsec::Trace(true, i + 1, {}, {}),
-                  result.trace().innerTraces().value()[i]);
+        ASSERT_EQ(parsec::Trace(true, i + 1, {}, {}), result.trace().innerTraces().value()[i]);
     }
-    ASSERT_EQ(parsec::Trace(false, 5, "error", {}),
-              result.trace().innerTraces().value()[5]);
+    ASSERT_EQ(parsec::Trace(false, 5, "error", {}), result.trace().innerTraces().value()[5]);
 
     // many first error
     p = getErrorParser();
@@ -614,11 +612,9 @@ TEST(ParsecCombinatorTest, Many1)
         ASSERT_EQ(i, result.value().front());
         result.value().pop_front();
 
-        ASSERT_EQ(parsec::Trace(true, i + 1, {}, {}),
-                  result.trace().innerTraces().value()[i]);
+        ASSERT_EQ(parsec::Trace(true, i + 1, {}, {}), result.trace().innerTraces().value()[i]);
     }
-    ASSERT_EQ(parsec::Trace(false, 5, "error", {}),
-              result.trace().innerTraces().value()[5]);
+    ASSERT_EQ(parsec::Trace(false, 5, "error", {}), result.trace().innerTraces().value()[5]);
 
     // many1 first error
     p = getErrorParser();

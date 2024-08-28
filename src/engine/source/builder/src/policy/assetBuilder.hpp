@@ -4,8 +4,8 @@
 #include <defs/idefinitions.hpp>
 
 #include "builders/buildCtx.hpp"
-#include "iregistry.hpp"
 #include "iassetBuilder.hpp"
+#include "iregistry.hpp"
 
 namespace builder::policy
 {

@@ -8,7 +8,7 @@ using Expression = std::shared_ptr<Formula>;
 
 unsigned int Formula::generateId()
 {
-    static std::atomic<unsigned int> id{0};
+    static std::atomic<unsigned int> id {0};
     return id++;
 }
 
@@ -71,9 +71,7 @@ std::string Formula::getName() const
     return m_name;
 }
 
-Operation::Operation(std::string name,
-                     std::string nameType,
-                     std::vector<std::shared_ptr<Formula>> operands)
+Operation::Operation(std::string name, std::string nameType, std::vector<std::shared_ptr<Formula>> operands)
     : Formula(name, nameType)
     , m_operands {operands}
 {
@@ -97,12 +95,9 @@ std::vector<std::shared_ptr<Formula>>& Operation::getOperands()
 }
 
 [[nodiscard]] std::shared_ptr<Implication>
-Implication::create(std::string name,
-                    std::shared_ptr<Formula> leftOperand,
-                    std::shared_ptr<Formula> rightOperand)
+Implication::create(std::string name, std::shared_ptr<Formula> leftOperand, std::shared_ptr<Formula> rightOperand)
 {
-    return std::shared_ptr<Implication>(
-        new Implication {name, leftOperand, rightOperand});
+    return std::shared_ptr<Implication>(new Implication {name, leftOperand, rightOperand});
 }
 
 Implication::~Implication() = default;
@@ -112,15 +107,12 @@ bool Implication::isImplication() const
     return true;
 }
 
-Implication::Implication(std::string name,
-                         std::shared_ptr<Formula> leftOperand,
-                         std::shared_ptr<Formula> rightOperand)
+Implication::Implication(std::string name, std::shared_ptr<Formula> leftOperand, std::shared_ptr<Formula> rightOperand)
     : Operation {name, "Implication", {leftOperand, rightOperand}}
 {
 }
 
-[[nodiscard]] std::shared_ptr<And>
-And::create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
+[[nodiscard]] std::shared_ptr<And> And::create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
 {
     return std::shared_ptr<And>(new And(name, operands));
 }
@@ -137,8 +129,7 @@ And::And(std::string name, std::vector<std::shared_ptr<Formula>> operands)
 {
 }
 
-[[nodiscard]] std::shared_ptr<Or>
-Or::create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
+[[nodiscard]] std::shared_ptr<Or> Or::create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
 {
     return std::shared_ptr<Or>(new Or(name, operands));
 }
@@ -155,8 +146,7 @@ Or::Or(std::string name, std::vector<std::shared_ptr<Formula>> operands)
 {
 }
 
-[[nodiscard]] std::shared_ptr<Chain>
-Chain::create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
+[[nodiscard]] std::shared_ptr<Chain> Chain::create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
 {
     return std::shared_ptr<Chain>(new Chain(name, operands));
 }
@@ -173,8 +163,8 @@ Chain::Chain(std::string name, std::vector<std::shared_ptr<Formula>> operands)
 {
 }
 
-[[nodiscard]] std::shared_ptr<Broadcast>
-Broadcast::create(std::string name, std::vector<std::shared_ptr<Formula>> operands)
+[[nodiscard]] std::shared_ptr<Broadcast> Broadcast::create(std::string name,
+                                                           std::vector<std::shared_ptr<Formula>> operands)
 {
     return std::shared_ptr<Broadcast>(new Broadcast(name, operands));
 }
@@ -220,11 +210,10 @@ std::string toGraphvizStr(Expression expression)
     };
     auto visit = [&](Expression current, auto& visitRef) -> void
     {
-        ss << "subgraph cluster_" << current->getId() << " {" << std::endl
-           << clusterHeader << std::endl;
+        ss << "subgraph cluster_" << current->getId() << " {" << std::endl << clusterHeader << std::endl;
         ss << "label=\"" << current->getTypeName() << "\";" << std::endl;
-        ss << current->getId() << " [label=\"" << eraseQuotes(current->getName()) << " ["
-           << current->getId() << "]\"];" << std::endl;
+        ss << current->getId() << " [label=\"" << eraseQuotes(current->getName()) << " [" << current->getId() << "]\"];"
+           << std::endl;
         ss << "}" << std::endl;
         if (current->isOperation())
         {
@@ -234,14 +223,13 @@ std::string toGraphvizStr(Expression expression)
             {
                 if (child)
                 {
-                    ss << fmt::format(
-                        "{} -> {} [ltail=cluster_{} lhead=cluster_{} label={} "
-                        "fontcolor=\"red\"];\n",
-                        current->getId(),
-                        child->getId(),
-                        current->getId(),
-                        child->getId(),
-                        i++);
+                    ss << fmt::format("{} -> {} [ltail=cluster_{} lhead=cluster_{} label={} "
+                                      "fontcolor=\"red\"];\n",
+                                      current->getId(),
+                                      child->getId(),
+                                      current->getId(),
+                                      child->getId(),
+                                      i++);
                     visitRef(child, visitRef);
                 }
             }

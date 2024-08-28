@@ -7,8 +7,8 @@
 
 #include <fmt/format.h>
 
-#include <eMessages/catalog.pb.h>
 #include <base/name.hpp>
+#include <eMessages/catalog.pb.h>
 
 namespace api::catalog
 {
@@ -154,8 +154,8 @@ public:
             }
 
             // Assets and Integration needs validation
-            if (Type::decoder == m_type || Type::rule == m_type || Type::filter == m_type
-                || Type::output == m_type || Type::integration == m_type)
+            if (Type::decoder == m_type || Type::rule == m_type || Type::filter == m_type || Type::output == m_type
+                || Type::integration == m_type)
             {
                 m_validation = true;
             }

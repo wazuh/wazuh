@@ -3,10 +3,10 @@
 
 #include <functional>
 #include <memory>
-#include <string>
-#include <vector>
 #include <optional>
+#include <string>
 #include <tuple>
+#include <vector>
 
 namespace engineserver
 {
@@ -54,7 +54,6 @@ public:
      */
     virtual void onMessage(const std::string& message, std::function<void(const std::string&)> callbackFn) = 0;
 
-
     /**
      * @brief Generate the data to send to the client
      *
@@ -97,7 +96,6 @@ public:
      * @return Data to send to the client
      */
     virtual std::string getErrorResponse() = 0;
-
 };
 
 // ProtocolHandler Factory

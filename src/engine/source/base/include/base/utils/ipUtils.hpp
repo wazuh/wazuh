@@ -1,8 +1,8 @@
 #ifndef _IP_UTILS_H
 #define _IP_UTILS_H
 
-#include <iostream>
 #include <cstdint>
+#include <iostream>
 
 namespace utils::ip
 {

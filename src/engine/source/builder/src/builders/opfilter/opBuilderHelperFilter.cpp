@@ -6,8 +6,8 @@
 
 #include <re2/re2.h>
 
-#include <base/baseTypes.hpp>
 #include "syntax.hpp"
+#include <base/baseTypes.hpp>
 #include <base/utils/ipUtils.hpp>
 
 namespace builder::builders::opfilter
@@ -938,9 +938,9 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
 }
 
 FilterOp opBuilderHelperArrayNotPresence(const Reference& targetField,
-                                      const std::vector<OpArg>& opArgs,
-                                      bool atleastOne,
-                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
+                                         const std::vector<OpArg>& opArgs,
+                                         bool atleastOne,
+                                         const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     // Assert expected number of parameters
     utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
@@ -1020,8 +1020,8 @@ FilterOp opBuilderHelperArrayNotPresence(const Reference& targetField,
 
 // field: +array_contains/value1/value2/...valueN
 FilterOp opBuilderHelperContains(const Reference& targetField,
-                                       const std::vector<OpArg>& opArgs,
-                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
+                                 const std::vector<OpArg>& opArgs,
+                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     auto op = opBuilderHelperArrayPresence(targetField, opArgs, false, buildCtx);
     return op;
@@ -1029,8 +1029,8 @@ FilterOp opBuilderHelperContains(const Reference& targetField,
 
 // field: +array_contains_any/value1/value2/...valueN
 FilterOp opBuilderHelperContainsAny(const Reference& targetField,
-                                       const std::vector<OpArg>& opArgs,
-                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     auto op = opBuilderHelperArrayPresence(targetField, opArgs, true, buildCtx);
     return op;
@@ -1038,8 +1038,8 @@ FilterOp opBuilderHelperContainsAny(const Reference& targetField,
 
 // field: +array_not_contains/value1/value2/...valueN
 FilterOp opBuilderHelperNotContains(const Reference& targetField,
-                                          const std::vector<OpArg>& opArgs,
-                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
+                                    const std::vector<OpArg>& opArgs,
+                                    const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     auto op = opBuilderHelperArrayNotPresence(targetField, opArgs, false, buildCtx);
     return op;
@@ -1047,8 +1047,8 @@ FilterOp opBuilderHelperNotContains(const Reference& targetField,
 
 // field: +array_not_contains_any/value1/value2/...valueN
 FilterOp opBuilderHelperNotContainsAny(const Reference& targetField,
-                                          const std::vector<OpArg>& opArgs,
-                                          const std::shared_ptr<const IBuildCtx>& buildCtx)
+                                       const std::vector<OpArg>& opArgs,
+                                       const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     auto op = opBuilderHelperArrayNotPresence(targetField, opArgs, true, buildCtx);
     return op;

@@ -1,10 +1,10 @@
 #include <benchmark/benchmark.h>
 
+#include <iostream>
 #include <map>
 #include <random>
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include <rapidjson/document.h>
 
@@ -35,7 +35,7 @@ struct InputTest
         auto i = 0;
         std::map<std::string, std::string> ret_data;
         for (auto it = obj_data.begin(); it != obj_data.end() && i < size; ++it, ++i)
-          ret_data.emplace(it->first, it->second);
+            ret_data.emplace(it->first, it->second);
 
         return ret_data;
     }

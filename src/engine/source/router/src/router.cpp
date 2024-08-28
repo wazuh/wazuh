@@ -3,8 +3,8 @@
 
 #include <base/logging.hpp>
 
-#include <builder/ibuilder.hpp>
 #include "router.hpp"
+#include <builder/ibuilder.hpp>
 
 namespace
 {
@@ -32,15 +32,15 @@ base::OptError Router::addEntry(const prod::EntryPost& entryPost, bool ignoreFai
     }
     catch (const std::exception& e)
     {
-        if(!ignoreFail)
+        if (!ignoreFail)
         {
             return base::Error {fmt::format("Failed to create the route: {}", e.what())};
         }
         entry.environment() = nullptr;
         entry.hash("");
     }
-        entry.status(env::State::DISABLED); // It is disabled until all routes are ready
-        entry.lastUpdate(getStartTime());
+    entry.status(env::State::DISABLED); // It is disabled until all routes are ready
+    entry.lastUpdate(getStartTime());
 
     // Add the entry to the table
     {

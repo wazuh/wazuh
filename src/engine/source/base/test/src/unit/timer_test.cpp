@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <base/timer.hpp>
+#include <gtest/gtest.h>
 #include <thread> // for std::this_thread::sleep_for
 
 TEST(TimerTest, TimerInitialization)

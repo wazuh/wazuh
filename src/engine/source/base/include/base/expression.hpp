@@ -73,19 +73,16 @@ public:
     template<typename Derived>
     std::shared_ptr<Derived> getPtr()
     {
-        static_assert(std::is_base_of_v<Formula, Derived>,
-                      "Derived must be a subclass of Formula");
-        std::shared_ptr<Derived> ptr =
-            std::dynamic_pointer_cast<Derived>(shared_from_this());
+        static_assert(std::is_base_of_v<Formula, Derived>, "Derived must be a subclass of Formula");
+        std::shared_ptr<Derived> ptr = std::dynamic_pointer_cast<Derived>(shared_from_this());
         if (!ptr)
         {
-            throw std::runtime_error(
-                fmt::format("Engine base expression: Error trying to downcast \"{}\" to "
-                            "\"{}\" from a "
-                            "formula of type \"{}\".",
-                            typeid(Formula).name(),
-                            typeid(Derived).name(),
-                            typeid(decltype(*shared_from_this())).name()));
+            throw std::runtime_error(fmt::format("Engine base expression: Error trying to downcast \"{}\" to "
+                                                 "\"{}\" from a "
+                                                 "formula of type \"{}\".",
+                                                 typeid(Formula).name(),
+                                                 typeid(Derived).name(),
+                                                 typeid(decltype(*shared_from_this())).name()));
         }
         return ptr;
     }
@@ -241,8 +238,8 @@ public:
 
     /**
      * @brief Set the Function used to compute the term
-     * 
-     * @param fn 
+     *
+     * @param fn
      */
     void setFn(T fn) { m_fn = fn; }
 };
@@ -269,9 +266,7 @@ protected:
      * @param nameType name of type of Operation
      * @param operands operation operators
      */
-    Operation(std::string name,
-              std::string nameType,
-              std::vector<std::shared_ptr<Formula>> operands);
+    Operation(std::string name, std::string nameType, std::vector<std::shared_ptr<Formula>> operands);
 
 public:
     /**
@@ -324,9 +319,7 @@ public:
      * @return new implication created
      */
     [[nodiscard]] static std::shared_ptr<Implication>
-    create(std::string name,
-           std::shared_ptr<Formula> leftOperand,
-           std::shared_ptr<Formula> rightOperand);
+    create(std::string name, std::shared_ptr<Formula> leftOperand, std::shared_ptr<Formula> rightOperand);
 
     /**
      * @brief Destroy the Implication object.
@@ -353,9 +346,7 @@ protected:
      *
      * @return
      */
-    Implication(std::string name,
-                std::shared_ptr<Formula> leftOperand,
-                std::shared_ptr<Formula> rightOperand);
+    Implication(std::string name, std::shared_ptr<Formula> leftOperand, std::shared_ptr<Formula> rightOperand);
 };
 
 class And : public Operation
@@ -378,8 +369,7 @@ public:
      * @param operands operands of the operation
      * @return new and operation created
      */
-    [[nodiscard]] static std::shared_ptr<And>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
+    [[nodiscard]] static std::shared_ptr<And> create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the And object
@@ -426,8 +416,7 @@ public:
      * @param operands operands of the operation
      * @return new or operation created
      */
-    [[nodiscard]] static std::shared_ptr<Or>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
+    [[nodiscard]] static std::shared_ptr<Or> create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the Or object
@@ -471,8 +460,8 @@ public:
      * @param operands operands of the operation
      * @return new chain operation created
      */
-    [[nodiscard]] static std::shared_ptr<Chain>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
+    [[nodiscard]] static std::shared_ptr<Chain> create(std::string name,
+                                                       std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the Chain object
@@ -509,8 +498,8 @@ public:
      * @param operands operands of the operation
      * @return new broadcast operation created
      */
-    [[nodiscard]] static std::shared_ptr<Broadcast>
-    create(std::string name, std::vector<std::shared_ptr<Formula>> operands);
+    [[nodiscard]] static std::shared_ptr<Broadcast> create(std::string name,
+                                                           std::vector<std::shared_ptr<Formula>> operands);
 
     /**
      * @brief Destroy the Broadcast object

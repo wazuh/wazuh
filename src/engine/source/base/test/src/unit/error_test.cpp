@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include <base/error.hpp>
+#include <gtest/gtest.h>
 
 TEST(ErrorTest, NoError)
 {
@@ -9,14 +9,14 @@ TEST(ErrorTest, NoError)
 
 TEST(ErrorTest, IsError)
 {
-    base::Error error{"Test error"};
+    base::Error error {"Test error"};
     base::OptError optError = error;
     ASSERT_TRUE(base::isError(optError));
 }
 
 TEST(ErrorTest, IsErrorVariant)
 {
-    base::RespOrError<int> respOrError = base::Error{"Test error"};
+    base::RespOrError<int> respOrError = base::Error {"Test error"};
     ASSERT_TRUE(base::isError(respOrError));
 }
 
@@ -29,14 +29,14 @@ TEST(ErrorTest, GetResponse)
 
 TEST(ErrorTest, GetResponseThrows)
 {
-    base::RespOrError<int> respOrError = base::Error{"Test error"};
+    base::RespOrError<int> respOrError = base::Error {"Test error"};
     ASSERT_TRUE(base::isError(respOrError));
     ASSERT_THROW(base::getResponse(respOrError), std::bad_variant_access);
 }
 
 TEST(ErrorTest, GetError)
 {
-    base::Error error{"Test error"};
+    base::Error error {"Test error"};
     base::RespOrError<int> respOrError = error;
     ASSERT_TRUE(base::isError(respOrError));
     ASSERT_EQ(base::getError(respOrError).message, "Test error");
@@ -44,7 +44,7 @@ TEST(ErrorTest, GetError)
 
 TEST(ErrorTest, GetErrorOptional)
 {
-    base::Error error{"Test error"};
+    base::Error error {"Test error"};
     base::OptError optError = error;
     ASSERT_TRUE(base::isError(optError));
     ASSERT_EQ(base::getError(optError).message, "Test error");

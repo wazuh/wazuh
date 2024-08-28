@@ -9,16 +9,16 @@
 #include <string>
 #include <system_error>
 
-#include <cmds/details/kbhit.hpp>
 #include <base/name.hpp>
+#include <cmds/details/kbhit.hpp>
 
 #include <eMessages/catalog.pb.h>
 
 #include "defaultSettings.hpp"
 #include "utils.hpp"
+#include <base/logging.hpp>
 #include <cmds/apiExcept.hpp>
 #include <cmds/apiclnt/client.hpp>
-#include <base/logging.hpp>
 
 namespace cmd::catalog
 {
