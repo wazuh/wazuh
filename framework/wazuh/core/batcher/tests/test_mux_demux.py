@@ -7,15 +7,14 @@ from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message, MuxDe
 
 
 def test_send_to_mux():
-    """
-    Test sending a message to the mux queue.
+    """Test sending a message to the mux queue.
     Ensures that the message is correctly placed in the queue.
     """
-    q_mux = Queue()
+    mux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
-        q_mux=q_mux,
-        q_demux=Queue()
+        mux_queue=mux_queue,
+        demux_queue=Queue()
     )
 
     expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
@@ -23,47 +22,45 @@ def test_send_to_mux():
 
     queue.send_to_mux(expected_uid, expected_msg)
 
-    assert not q_mux.empty()
-    result = q_mux.get()
+    assert not mux_queue.empty()
+    result = mux_queue.get()
 
     assert result.uid == expected_uid
     assert result.msg == expected_msg
 
 
 def test_receive_from_mux():
-    """
-    Test receiving a message from the mux queue.
+    """Test receiving a message from the mux queue.
     Ensures that the message is correctly retrieved from the queue.
     """
-    q_mux = Queue()
+    mux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
-        q_mux=q_mux,
-        q_demux=Queue()
+        mux_queue=mux_queue,
+        demux_queue=Queue()
     )
 
     expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     expected_msg = "test message"
 
-    q_mux.put(Message(expected_uid, expected_msg))
+    mux_queue.put(Message(expected_uid, expected_msg))
 
     result = queue.receive_from_mux()
 
-    assert q_mux.empty()
+    assert mux_queue.empty()
     assert result.uid == expected_uid
     assert result.msg == expected_msg
 
 
 def test_send_to_demux():
-    """
-    Test sending a message to the demux queue.
+    """Test sending a message to the demux queue.
     Ensures that the message is correctly placed in the queue.
     """
-    q_demux = Queue()
+    demux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
-        q_mux=Queue(),
-        q_demux=q_demux
+        mux_queue=Queue(),
+        demux_queue=demux_queue
     )
 
     expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
@@ -71,23 +68,22 @@ def test_send_to_demux():
 
     queue.send_to_demux(Message(expected_uid, expected_msg))
 
-    assert not q_demux.empty()
-    result = q_demux.get()
+    assert not demux_queue.empty()
+    result = demux_queue.get()
 
     assert result.uid == expected_uid
     assert result.msg == expected_msg
 
 
 def test_is_response_pending():
-    """
-    Test if a response is pending for a given UID.
+    """Test if a response is pending for a given UID.
     Ensures that the response pending status is correctly determined.
     """
     dict_test = dict()
     queue = MuxDemuxQueue(
         proxy_dict=dict_test,
-        q_mux=Queue(),
-        q_demux=Queue()
+        mux_queue=Queue(),
+        demux_queue=Queue()
     )
 
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
@@ -97,15 +93,14 @@ def test_is_response_pending():
 
 
 def test_receive_from_demux():
-    """
-    Test receiving a response from the demux queue.
+    """Test receiving a response from the demux queue.
     Ensures that the response is correctly retrieved and removed from the dictionary.
     """
     dict_test = dict()
     queue = MuxDemuxQueue(
         proxy_dict=dict_test,
-        q_mux=Queue(),
-        q_demux=Queue()
+        mux_queue=Queue(),
+        demux_queue=Queue()
     )
 
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
@@ -120,39 +115,37 @@ def test_receive_from_demux():
 
 
 def test_get_response_from_demux():
-    """
-    Test getting a response from the demux queue.
+    """Test getting a response from the demux queue.
     Ensures that the response is correctly retrieved from the queue.
     """
-    q_demux = Queue()
+    demux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
-        q_mux=Queue(),
-        q_demux=q_demux
+        mux_queue=Queue(),
+        demux_queue=demux_queue
     )
 
     expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     expected_msg = "test message"
 
-    q_demux.put(Message(expected_uid, expected_msg))
+    demux_queue.put(Message(expected_uid, expected_msg))
 
     result = queue._get_response_from_demux()
 
-    assert q_demux.empty()
+    assert demux_queue.empty()
     assert result.uid == expected_uid
     assert result.msg == expected_msg
 
 
 def test_store_response():
-    """
-    Test storing a response in the dictionary.
+    """Test storing a response in the dictionary.
     Ensures that the response is correctly stored.
     """
     dict_test = dict()
     queue = MuxDemuxQueue(
         proxy_dict=dict_test,
-        q_mux=Queue(),
-        q_demux=Queue()
+        mux_queue=Queue(),
+        demux_queue=Queue()
     )
 
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
@@ -165,8 +158,7 @@ def test_store_response():
 
 
 def test_mux_demux_manager_initialization():
-    """
-    Test the initialization of the MuxDemuxManager.
+    """Test the initialization of the MuxDemuxManager.
     Ensures that the manager and router process are correctly set up and running.
     """
     manager = MuxDemuxManager()
@@ -177,8 +169,7 @@ def test_mux_demux_manager_initialization():
 
 
 def test_mux_demux_manager_shutdown():
-    """
-    Test the shutdown of the MuxDemuxManager.
+    """Test the shutdown of the MuxDemuxManager.
     Ensures that the router process is terminated and the manager is shut down.
     """
     manager = MuxDemuxManager()

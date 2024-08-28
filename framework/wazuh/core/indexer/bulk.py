@@ -49,7 +49,7 @@ class BulkMetadata:
         Dict[str, Dict[str, str]]
             The metadata in a dictionary format.
         """
-        return {f'{self.action}': {"_index": self.index, "_id": self.doc_id}}
+        return {str(self.action.value): {"_index": self.index, "_id": self.doc_id}}
 
 
 class BulkDoc:

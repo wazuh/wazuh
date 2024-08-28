@@ -7,9 +7,7 @@ from framework.wazuh.core.batcher.timer import TimerManager
 @pytest.mark.asyncio
 @patch('asyncio.sleep', return_value=None)  # Patches asyncio.sleep to return immediately
 async def test_event_timer(mock_sleep):
-    """
-    Tests that the event timer sets the timeout event after the specified time.
-    """
+    """Tests that the event timer sets the timeout event after the specified time."""
     timer_manager = TimerManager(max_time_seconds=1)
     timer_manager.create_timer_task()
 
@@ -22,9 +20,7 @@ async def test_event_timer(mock_sleep):
 @pytest.mark.asyncio
 @patch('asyncio.sleep', return_value=None)  # Patches asyncio.sleep to return immediately
 async def test_reset_timer(mock_sleep):
-    """
-    Tests that the reset_timer method cancels the timer task and clears the timeout event.
-    """
+    """Tests that the reset_timer method cancels the timer task and clears the timeout event."""
     timer_manager = TimerManager(max_time_seconds=5)
     timer_manager.create_timer_task()
     timer_manager.reset_timer()
@@ -35,9 +31,7 @@ async def test_reset_timer(mock_sleep):
 
 @pytest.mark.asyncio
 async def test_wait_timeout_event():
-    """
-    Tests that the wait_timeout_event method correctly waits for the timeout event.
-    """
+    """Tests that the wait_timeout_event method correctly waits for the timeout event."""
     timer_manager = TimerManager(max_time_seconds=1)
     timer_manager._timeout_event.set()
     wait_return = await timer_manager.wait_timeout_event()

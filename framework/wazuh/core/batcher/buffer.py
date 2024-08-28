@@ -5,8 +5,7 @@ from wazuh.core.batcher.mux_demux import Message
 
 
 class Buffer:
-    """
-    Manages the buffer for batching messages.
+    """Manages the buffer for batching messages.
 
     Parameters
     ----------
@@ -21,8 +20,7 @@ class Buffer:
         self._buffer: List[Message] = []
 
     def add_message(self, msg: Message):
-        """
-        Adds a message to the buffer.
+        """Adds a message to the buffer.
 
         Parameters
         ----------
@@ -32,8 +30,7 @@ class Buffer:
         self._buffer.append(msg)
 
     def get_length(self) -> int:
-        """
-        Gets the current length of the buffer.
+        """Gets the current length of the buffer.
 
         Returns
         -------
@@ -43,8 +40,7 @@ class Buffer:
         return len(self._buffer)
 
     def check_count_limit(self) -> bool:
-        """
-        Checks if the buffer has reached the maximum number of messages.
+        """Checks if the buffer has reached the maximum number of messages.
 
         Returns
         -------
@@ -54,8 +50,7 @@ class Buffer:
         return self.get_length() >= self.max_elements
 
     def check_size_limit(self) -> bool:
-        """
-        Checks if the buffer has reached the maximum size in bytes.
+        """Checks if the buffer has reached the maximum size in bytes.
 
         Returns
         -------
@@ -66,8 +61,7 @@ class Buffer:
         return total_size >= self.max_size
 
     def copy(self) -> List[Message]:
-        """
-        Returns a copy of the buffer.
+        """Returns a copy of the buffer.
 
         Returns
         -------
@@ -77,7 +71,5 @@ class Buffer:
         return self._buffer.copy()
 
     def reset(self):
-        """
-        Clears the buffer.
-        """
+        """Clears the buffer."""
         self._buffer.clear()
