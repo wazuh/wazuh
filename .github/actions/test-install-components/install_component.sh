@@ -2,6 +2,13 @@
 package_name=$1
 target=$2
 
+# Check parameters
+if [ -z "$package_name" ] || [ -z "$target" ]; then
+    echo "Error: Both package_name and target must be provided."
+    echo "Usage: $0 <package_name> <target>"
+    exit 1
+fi
+
 echo "Installing Wazuh $target."
 
 if [ -n "$(command -v yum)" ]; then
