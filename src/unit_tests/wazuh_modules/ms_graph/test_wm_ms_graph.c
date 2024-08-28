@@ -1325,7 +1325,6 @@ void test_main_token(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -1634,7 +1633,6 @@ void test_wm_ms_graph_get_access_token_no_response(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
@@ -1700,7 +1698,6 @@ void test_wm_ms_graph_get_access_token_unsuccessful_status_code(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -1767,7 +1764,6 @@ void test_wm_ms_graph_get_access_token_curl_max_size(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
@@ -1833,7 +1829,6 @@ void test_wm_ms_graph_get_access_token_parse_json_fail(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
     expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:ms-graph");
@@ -1900,7 +1895,6 @@ void test_wm_ms_graph_get_access_token_success(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -1969,7 +1963,6 @@ void test_wm_ms_graph_get_access_token_no_access_token(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2034,7 +2027,6 @@ void test_wm_ms_graph_get_access_token_no_expire_time(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2260,7 +2252,6 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_res
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, NULL);
 
@@ -2428,7 +2419,6 @@ void test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code(void **
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2522,7 +2512,6 @@ void test_wm_ms_graph_scan_relationships_single_reached_curl_size(void **state) 
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2616,7 +2605,6 @@ void test_wm_ms_graph_scan_relationships_single_failed_parse(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2710,7 +2698,6 @@ void test_wm_ms_graph_scan_relationships_single_no_logs(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2814,7 +2801,6 @@ void test_wm_ms_graph_scan_relationships_single_success_one_log(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2920,7 +2906,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -2957,6 +2942,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response2);
 
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:ms-graph");
@@ -2968,6 +2954,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_logs(void **state) {
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response3);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
@@ -3062,7 +3049,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -3117,6 +3103,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_pages(void **state) 
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
+    expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response2);
 
     expect_string(__wrap__mtdebug2, tag, "wazuh-modulesd:ms-graph");
@@ -3236,7 +3223,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 
@@ -3295,7 +3281,6 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     expect_any(__wrap_wurl_http_request, payload);
     expect_any(__wrap_wurl_http_request, max_size);
     expect_value(__wrap_wurl_http_request, timeout, WM_MS_GRAPH_DEFAULT_TIMEOUT);
-    expect_any(__wrap_wurl_http_request, userpass);
     expect_any(__wrap_wurl_http_request, ssl_verify);
     will_return(__wrap_wurl_http_request, response);
 

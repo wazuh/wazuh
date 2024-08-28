@@ -650,9 +650,9 @@ void test_wurl_http_request_success(void **state)
         expect_value(wrap_curl_easy_setopt, curl, curl);
         will_return(wrap_curl_easy_setopt, CURLE_OK);
 
-        expect_value(__wrap_curl_easy_setopt, option, CURLOPT_USERPWD);
-        expect_value(__wrap_curl_easy_setopt, curl, curl);
-        will_return(__wrap_curl_easy_setopt, CURLE_OK);
+        expect_value(wrap_curl_easy_setopt, option, CURLOPT_USERPWD);
+        expect_value(wrap_curl_easy_setopt, curl, curl);
+        will_return(wrap_curl_easy_setopt, CURLE_OK);
 
         expect_value(wrap_curl_easy_setopt, option, CURLOPT_POSTFIELDS);
         expect_value(wrap_curl_easy_setopt, curl, curl);

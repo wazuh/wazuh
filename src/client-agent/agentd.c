@@ -221,7 +221,7 @@ bool check_uninstall_permission(const char *token, const char *host, bool ssl_ve
             minfo(AG_UNINSTALL_VALIDATION_GRANTED);
             wurl_free_response(response);
             os_free(headers[0]);
-            return true;
+            return false;
         } else if (response->status_code == 403) {
             minfo(AG_UNINSTALL_VALIDATION_DENIED);
         } else {
@@ -233,7 +233,7 @@ bool check_uninstall_permission(const char *token, const char *host, bool ssl_ve
     }
 
     os_free(headers[0]);
-    return false;
+    return true;
 }
 
 char* authenticate_and_get_token(const char *userpass, const char *host, bool ssl_verify) {
@@ -259,7 +259,7 @@ char* authenticate_and_get_token(const char *userpass, const char *host, bool ss
 }
 
 bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify) {
-    bool validate_result = false;
+    bool validate_result = true;
 
     minfo(AG_UNINSTALL_VALIDATION_START);
     if (uninstall_auth_token) {

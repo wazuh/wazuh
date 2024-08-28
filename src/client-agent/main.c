@@ -78,7 +78,7 @@ int main(int argc, char **argv)
         {"uninstall-auth-login", 1, NULL, 1},
         {"uninstall-auth-token", 1, NULL, 2},
         {"uninstall-auth-host", 1, NULL, 3},
-        {"uninstall-ssl-verify", 1, NULL, 4}
+        {"uninstall-ssl-verify", 2, NULL, 4}
     };
 
     while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
@@ -142,12 +142,9 @@ int main(int argc, char **argv)
                 uninstall_auth_host = optarg;
                 break;
             case 4:
-                if (!optarg) {
-                    merror_exit("--uninstall-ssl-verify needs an argument");
-                }
-                if (strcmp(optarg, "true") == 0 || strcmp(optarg, "1") == 0) {
+                if (!optarg || strcmp(optarg, "") == 0 || strcmp(optarg, "true") == 0 || strcmp(optarg, "TRUE") == 0 || strcmp(optarg, "1") == 0) {
                     ssl_verify = true;
-                } else if (strcmp(optarg, "false") == 0 || strcmp(optarg, "0") == 0) {
+                } else if (strcmp(optarg, "false") == 0 || strcmp(optarg, "FALSE") == 0 || strcmp(optarg, "0") == 0) {
                     ssl_verify = false;
                 } else {
                     merror_exit("--uninstall-ssl-verify accepts 'true'/'false' or '1'/'0' as arguments");

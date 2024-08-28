@@ -467,29 +467,36 @@ if [ $1 = 0 ]; then
   # Function to validate uninstallation
   validate_uninstall() {
     local validation_command
-    . "%{_localstatedir}/etc/uninstall_validation.env"
 
-    # Validate uninstallation
-    if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN} --uninstall-auth-login ${VALIDATION_LOGIN} --uninstall-auth-host ${VALIDATION_HOST} --uninstall-ssl-verify ${VALIDATION_SSL_VERIFY}"
-    elif [ -n "$VALIDATION_TOKEN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token ${VALIDATION_TOKEN} --uninstall-auth-host ${VALIDATION_HOST} --uninstall-ssl-verify ${VALIDATION_SSL_VERIFY}"
-    elif [ -n "$VALIDATION_LOGIN" ]; then
-      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login ${VALIDATION_LOGIN} --uninstall-auth-host ${VALIDATION_HOST} --uninstall-ssl-verify ${VALIDATION_SSL_VERIFY}"
+    # Check if the configuration file exists
+    if [ -f "%{_localstatedir}/etc/uninstall_validation.env" ]; then
+      . "%{_localstatedir}/etc/uninstall_validation.env"
     else
-      echo "Validation login or token not provided. Uninstallation cannot be continued."
+      echo "INFO: Uninstall configuration file not found, using environment variables."
+    fi
+
+    # Check if the VALIDATION_HOST variables are set
+    if [ -z "$VALIDATION_HOST" ]; then
+      echo "ERROR: Validation host not provided. Uninstallation cannot be continued."
       exit 1
     fi
 
-    if [ -n "$VALIDATION_HOST" ]; then
-      if $validation_command; then
-        echo "Uninstallation not authorized, aborting..."
-        exit 1
-      else
-        echo "Uninstallation authorized, continuing..."
-      fi
+    # Validate uninstallation
+    if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    elif [ -n "$VALIDATION_TOKEN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    elif [ -n "$VALIDATION_LOGIN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
     else
-      echo "Validation host not provided. Uninstallation cannot be continued."
+      echo "ERROR: Validation login or token not provided. Uninstallation cannot be continued."
+      exit 1
+    fi
+
+    if $validation_command; then
+      echo "INFO: Uninstallation authorized, continuing..."
+    else
+      echo "ERROR: Uninstallation not authorized, aborting..."
       exit 1
     fi
   }

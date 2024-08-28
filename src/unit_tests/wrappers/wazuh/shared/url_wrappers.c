@@ -62,7 +62,9 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
 
     check_expected(ssl_verify);
 
-    check_expected(userpass);
+    if (userpass) {
+        check_expected(userpass);
+    }
 
     if (payload) {
         check_expected(payload);
@@ -85,9 +87,11 @@ void expect_wrap_wurl_http_request(char *method, char **headers, const char* url
 
     expect_string(__wrap_wurl_http_request, url, url);
 
-    expect_string(__wrap_wurl_http_request, ssl_verify, ssl_verify);
+    expect_value(__wrap_wurl_http_request, ssl_verify, ssl_verify);
 
-    expect_string(__wrap_wurl_http_request, userpass, userpass);
+    if (userpass) {
+        expect_string(__wrap_wurl_http_request, userpass, userpass);
+    }
 
     if (payload) {
         expect_string(__wrap_wurl_http_request, payload, payload);
