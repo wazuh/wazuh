@@ -1,4 +1,3 @@
-import uuid
 import asyncio
 from typing import Optional
 
@@ -21,7 +20,7 @@ class BatcherClient:
         self.queue = queue
         self.wait_frequency = wait_frequency
 
-    def send_event(self, event) -> uuid.UUID:
+    def send_event(self, event) -> int:
         """Sends an event through the RouterQueue.
 
         Parameters
@@ -31,18 +30,18 @@ class BatcherClient:
 
         Returns
         -------
-        uuid.UUID
+        int
             The unique identifier assigned to the event.
         """
-        assigned_uid = uuid.uuid4()
+        assigned_uid = id(event)
         return self.queue.send_to_mux(assigned_uid, event)
 
-    async def get_response(self, uid: uuid.UUID) -> Optional[dict]:
+    async def get_response(self, uid: int) -> Optional[dict]:
         """Asynchronously waits for a response to become available and retrieves it.
 
         Parameters
         ----------
-        uid : uuid.UUID
+        uid : int
             The unique identifier for the response.
 
         Returns

@@ -36,7 +36,7 @@ class EventsIndex(BaseIndex, MixinBulk):
             Indexer response for each one of the events.
         """
         ids: List[UUID] = []
-        response = {}
+        response = {'events': []}
 
         # Sends the events to the batcher
         for event in events.events:
@@ -54,6 +54,10 @@ class EventsIndex(BaseIndex, MixinBulk):
         # Wait for all of them and create response
         results = await asyncio.gather(*tasks)
         for i, result in enumerate(results):
-            response.update({f'{i}': result})
+            response['events'].append({
+                'id': result['_id'],
+                'result': result['result'],
+                'status': result['status']
+            })
 
         return response

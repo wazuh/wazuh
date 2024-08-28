@@ -5,17 +5,17 @@ from framework.wazuh.core.batcher.client import BatcherClient
 
 
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
-@patch("uuid.uuid4")
-def test_send_event(uuid_mock, queue_mock):
+@patch("builtins.id")
+def test_send_event(id_mock, queue_mock):
     """Test sending an event through the BatcherClient.
     Ensures that the event is sent to the mux queue with a unique identifier.
     """
     batcher = BatcherClient(queue=queue_mock)
 
     event = {"data": "test event"}
-    expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
+    expected_uid = 1234
 
-    uuid_mock.return_value = expected_uid
+    id_mock.return_value = expected_uid
     queue_mock.send_to_mux.return_value = expected_uid
 
     result_uid = batcher.send_event(event)
@@ -31,7 +31,7 @@ async def test_get_response(queue_mock):
     batcher = BatcherClient(queue=queue_mock)
 
     event = {"data": "test event"}
-    expected_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
+    expected_uid = 1234
 
     queue_mock.is_response_pending.return_value = False
     queue_mock.receive_from_demux.return_value = event

@@ -219,7 +219,7 @@ def signal_handler(
         The current stack frame (unused).
     mux_demux_manager : MuxDemuxManager
         The MuxDemux manager instance to be shut down.
-    batcher_process : Any
+    batcher_process : Process
         The batcher process to be terminated.
 
     Notes
