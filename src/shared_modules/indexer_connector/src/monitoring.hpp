@@ -27,6 +27,7 @@
 #include <vector>
 
 constexpr auto INTERVAL = 60u;
+constexpr auto INITIALIZATION_TIMEOUT = 10u;
 
 namespace HealthCheckRows
 {
@@ -74,11 +75,16 @@ class Monitoring final
     std::atomic<bool> m_stop {false};
     uint32_t m_interval {INTERVAL};
 
+    // For initialization synchronization.
+    std::mutex m_initMutex;
+    std::condition_variable m_initCondition;
+    bool m_initialized {false};
+
     /**
      * @brief Checks the health of a server.
      *
-     * @note It sends a request to the \p serverAddress and update the serverStatus (true if the server is
-     * available, false otherwise). The \p authentication object is used to provide secure communication.
+     * @note It sends a request to the \p serverAddress and update the serverStatus. The \p authentication object is
+     * used to provide secure communication.
      *
      * @param serverAddress Server's address.
      * @param authentication Object that provides secure communication.
@@ -87,7 +93,7 @@ class Monitoring final
     {
         auto& serverStatus = m_servers[serverAddress];
 
-        // Set the server status to false by default
+        // Set the server status to unavailable by default
         serverStatus = false;
 
         // On success callback
@@ -133,12 +139,11 @@ class Monitoring final
     /**
      * @brief Initializes the status of the servers and adds them to the monitoring list.
      *
-     * @param serverAddresses Servers to be monitored.
      * @param authentication Object that provides secure communication.
      */
     void initialize(const std::vector<std::string>& serverAddresses, const SecureCommunication& authentication)
     {
-        std::scoped_lock lock(m_mutex);
+        std::scoped_lock lock(m_mutex, m_initMutex);
 
         // Initialize the status of the servers
         for (const auto& serverAddress : serverAddresses)
@@ -150,6 +155,9 @@ class Monitoring final
             }
             healthCheck(serverAddress, authentication);
         }
+
+        m_initialized = true;
+        m_initCondition.notify_one();
     }
 
 public:
@@ -175,6 +183,7 @@ public:
                         const SecureCommunication& authentication = {})
         : m_interval(interval)
     {
+
         // Start the thread, that will check the health of the servers.
         m_thread = std::thread(
             [this, authentication, serverAddresses]()
@@ -199,6 +208,11 @@ public:
                     }
                 }
             });
+
+        // Wait for the initialization to complete or the timeout to expire.
+        std::unique_lock initLock(m_initMutex);
+        m_initCondition.wait_for(
+            initLock, std::chrono::seconds(INITIALIZATION_TIMEOUT), [this]() { return m_initialized; });
     }
 
     /**
