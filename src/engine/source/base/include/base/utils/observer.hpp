@@ -30,10 +30,7 @@ public:
     {
     }
 
-    const std::string& observerId() const
-    {
-        return m_observerId;
-    }
+    const std::string& observerId() const { return m_observerId; }
 
     virtual void update(T data) = 0;
 };
@@ -79,10 +76,7 @@ public:
         observers.erase(it);
     }
 
-    void setData(T newData)
-    {
-        notifyObservers(newData);
-    }
+    void setData(T newData) { notifyObservers(newData); }
 
     void notifyObservers(T data)
     {

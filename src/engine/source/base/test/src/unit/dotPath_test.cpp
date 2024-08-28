@@ -67,7 +67,7 @@ TEST_P(BuildsStr, Builds)
 
     if (shouldPass)
     {
-        ASSERT_NO_THROW(DotPath{path});
+        ASSERT_NO_THROW(DotPath {path});
         DotPath dp(path);
         ASSERT_EQ(dp.str(), path);
         ASSERT_EQ(dp.parts().size(), parts.size());
@@ -78,7 +78,7 @@ TEST_P(BuildsStr, Builds)
     }
     else
     {
-        ASSERT_THROW(DotPath{path}, std::runtime_error);
+        ASSERT_THROW(DotPath {path}, std::runtime_error);
     }
 }
 
@@ -120,7 +120,7 @@ INSTANTIATE_TEST_SUITE_P(DotPathTest,
                          ::testing::Values(BuildsStrTuple("a", {"a"}, true),
                                            BuildsStrTuple("a.b", {"a", "b"}, true),
                                            BuildsStrTuple("a.b.c", {"a", "b", "c"}, true),
-                                           BuildsStrTuple(".", {"",""}, true),
+                                           BuildsStrTuple(".", {"", ""}, true),
                                            BuildsStrTuple("", {}, false),
                                            BuildsStrTuple("a.", {}, false),
                                            BuildsStrTuple(".a", {}, false),

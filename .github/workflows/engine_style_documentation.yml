@@ -9,6 +9,7 @@ on:
 
 jobs:
   documentation:
+    if: false
     name: Engine documentation generation
     runs-on: ubuntu-22.04
 
@@ -102,10 +103,15 @@ jobs:
 
             ERRORS_FILE=clang_format_errors.txt
             clang-format $arguments 2> ${ERRORS_FILE}
+            
+            # Print clanformat version used.
+            echo "Clang-format version: $(clang-format --version)"
+
+            # Print the command.
+            echo "clang-format $arguments"
 
             # Check if there are errors
             if [ -s "${ERRORS_FILE}" ]; then
-            echo "clang-format $arguments"
             echo "---------------------------------"
             echo "FAILED: Clang-format check failed"
             echo "---------------------------------"

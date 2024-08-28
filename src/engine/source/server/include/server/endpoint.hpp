@@ -2,9 +2,9 @@
 #define _SERVER_ENDPOINT_HPP
 
 #include <atomic>
+#include <cstdint>
 #include <memory>
 #include <string>
-#include <cstdint>
 
 #include <uvw.hpp>
 

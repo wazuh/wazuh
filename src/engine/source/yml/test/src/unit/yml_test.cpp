@@ -1,6 +1,6 @@
+#include <base/json.hpp>
 #include <gtest/gtest.h>
 #include <iostream>
-#include <base/json.hpp>
 #include <limits>
 #include <string>
 #include <yml/yml.hpp>

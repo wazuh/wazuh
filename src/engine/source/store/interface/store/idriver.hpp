@@ -11,7 +11,7 @@
 namespace store
 {
 
-using Doc = json::Json; ///< Document type
+using Doc = json::Json;              ///< Document type
 using Col = std::vector<base::Name>; ///< Collection type
 
 /**

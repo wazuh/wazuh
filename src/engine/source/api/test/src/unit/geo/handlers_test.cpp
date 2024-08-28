@@ -10,9 +10,9 @@
 
 #include <api/geo/handlers.hpp>
 #include <base/behaviour.hpp>
+#include <base/logging.hpp>
 #include <eMessages/geo.pb.h>
 #include <geo/mockManager.hpp>
-#include <base/logging.hpp>
 
 using namespace ::geo::mocks;
 using namespace base::test;

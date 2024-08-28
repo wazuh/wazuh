@@ -13,7 +13,8 @@ class MetricsScopeTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        opentelemetry::sdk::common::internal_log::GlobalLogHandler::SetLogLevel(opentelemetry::sdk::common::internal_log::LogLevel::Error);
+        opentelemetry::sdk::common::internal_log::GlobalLogHandler::SetLogLevel(
+            opentelemetry::sdk::common::internal_log::LogLevel::Error);
         m_spMetricsScope = std::make_shared<metricsManager::MetricsScope>();
         m_spMetricsScope->initialize(false, 1000, 300);
     }
@@ -57,7 +58,8 @@ TEST_F(MetricsScopeTest, MetricsUpDownCounter)
     auto counterUpDown = m_spMetricsScope->getUpDownCounterDouble("counterUpDown_0");
     counterUpDown->addValue(-1);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    auto arrayCounter = m_spMetricsScope->getAllMetrics().getJson("/counterUpDown_0").value().getArray("/records").value();
+    auto arrayCounter =
+        m_spMetricsScope->getAllMetrics().getJson("/counterUpDown_0").value().getArray("/records").value();
     arrayCounter[0].erase("/start_time");
 
     auto expected = json::Json {R"({
@@ -78,7 +80,8 @@ TEST_F(MetricsScopeTest, MetricsHistogram)
     auto histogram = m_spMetricsScope->getHistogramDouble("histogram_0");
     histogram->recordValue(1);
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    auto arrayHistogram = m_spMetricsScope->getAllMetrics().getJson("/histogram_0").value().getArray("/records").value();
+    auto arrayHistogram =
+        m_spMetricsScope->getAllMetrics().getJson("/histogram_0").value().getArray("/records").value();
     arrayHistogram[0].erase("/start_time");
 
     auto expected = json::Json {R"({

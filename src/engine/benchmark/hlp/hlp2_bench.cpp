@@ -391,7 +391,6 @@ static void BM_ipSuccess(benchmark::State& state)
             state.SkipWithError("Parsing failed");
         }
     }
-
 }
 BENCHMARK(BM_ipSuccess);
 

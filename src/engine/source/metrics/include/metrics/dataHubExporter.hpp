@@ -6,8 +6,8 @@
 #include "opentelemetry/sdk/metrics/instruments.h"
 #include "opentelemetry/sdk/metrics/push_metric_exporter.h"
 #include "opentelemetry/version.h"
-#include <iostream>
 #include <base/json.hpp>
+#include <iostream>
 #include <string>
 
 #include <metrics/iDataHub.hpp>

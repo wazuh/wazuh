@@ -21,6 +21,8 @@
 #include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
+#include <base/logging.hpp>
+#include <base/parseEvent.hpp>
 #include <bk/rx/controller.hpp>
 #include <builder/builder.hpp>
 #include <cmds/details/stackExecutor.hpp>
@@ -28,11 +30,9 @@
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <base/logging.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
 #include <metrics/metricsManager.hpp>
-#include <base/parseEvent.hpp>
 #include <queue/concurrentQueue.hpp>
 #include <rbac/rbac.hpp>
 #include <router/orchestrator.hpp>
@@ -531,12 +531,12 @@ void configure(CLI::App_p app)
         ->default_val(ENGINE_TZDB_PATH)
         ->envname(ENGINE_TZDB_PATH_ENV);
 
-     serverApp
-         ->add_flag("--tzdb_automatic_update,!--no-tzdb_automatic_update",
-                    options->tzdbAutoUpdate,
-                    "Enable automatic updates of the time zone database.")
-         ->default_val(ENGINE_TZDB_AUTO_UPDATE)
-         ->envname(ENGINE_TZDB_AUTO_UPDATE_ENV);
+    serverApp
+        ->add_flag("--tzdb_automatic_update,!--no-tzdb_automatic_update",
+                   options->tzdbAutoUpdate,
+                   "Enable automatic updates of the time zone database.")
+        ->default_val(ENGINE_TZDB_AUTO_UPDATE)
+        ->envname(ENGINE_TZDB_AUTO_UPDATE_ENV);
 
     // Router module
     serverApp

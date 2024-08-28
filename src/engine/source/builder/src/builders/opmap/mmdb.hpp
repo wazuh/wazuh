@@ -35,6 +35,6 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager);
  */
 MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager);
 
-} // namespace builder::builders
+} // namespace builder::builders::mmdb
 
 #endif // _BUILDER_BUILDERS_OPTRANSFORM_MMDB_HPP

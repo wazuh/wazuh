@@ -22,27 +22,28 @@ protected:
 
 TEST_F(DataHubExporterTest, SuccessExport)
 {
-    sdk::metrics::SumPointData sum_point_data{};
+    sdk::metrics::SumPointData sum_point_data {};
     sum_point_data.value_ = 10.0;
-    sdk::metrics::SumPointData sum_point_data2{};
+    sdk::metrics::SumPointData sum_point_data2 {};
     sum_point_data2.value_ = 20.0;
     sdk::metrics::ResourceMetrics data;
-    auto resource = opentelemetry::sdk::resource::Resource::Create(
-    opentelemetry::sdk::resource::ResourceAttributes{});
+    auto resource = opentelemetry::sdk::resource::Resource::Create(opentelemetry::sdk::resource::ResourceAttributes {});
     data.resource_ = &resource;
-    auto scope     = opentelemetry::sdk::instrumentationscope::InstrumentationScope::Create(
-    "library_name", "1.2.0");
-    sdk::metrics::MetricData metric_data{
-    sdk::metrics::InstrumentDescriptor{"library_name", "description", "unit",
-                                    sdk::metrics::InstrumentType::kCounter,
-                                    sdk::metrics::InstrumentValueType::kDouble},
-    sdk::metrics::AggregationTemporality::kDelta, opentelemetry::common::SystemTimestamp{},
-    opentelemetry::common::SystemTimestamp{},
-    std::vector<sdk::metrics::PointDataAttributes>{
-        {sdk::metrics::PointAttributes{{"a1", "b1"}}, sum_point_data},
-        {sdk::metrics::PointAttributes{{"a1", "b1"}}, sum_point_data2}}};
-    data.scope_metric_data_ = std::vector<sdk::metrics::ScopeMetrics>{
-    {scope.get(), std::vector<sdk::metrics::MetricData>{metric_data}}};
+    auto scope = opentelemetry::sdk::instrumentationscope::InstrumentationScope::Create("library_name", "1.2.0");
+    sdk::metrics::MetricData metric_data {
+        sdk::metrics::InstrumentDescriptor {"library_name",
+                                            "description",
+                                            "unit",
+                                            sdk::metrics::InstrumentType::kCounter,
+                                            sdk::metrics::InstrumentValueType::kDouble},
+        sdk::metrics::AggregationTemporality::kDelta,
+        opentelemetry::common::SystemTimestamp {},
+        opentelemetry::common::SystemTimestamp {},
+        std::vector<sdk::metrics::PointDataAttributes> {
+            {sdk::metrics::PointAttributes {{"a1", "b1"}}, sum_point_data},
+            {sdk::metrics::PointAttributes {{"a1", "b1"}}, sum_point_data2}}};
+    data.scope_metric_data_ =
+        std::vector<sdk::metrics::ScopeMetrics> {{scope.get(), std::vector<sdk::metrics::MetricData> {metric_data}}};
 
     EXPECT_CALL(*m_spMockDataHubExporter, setResource(testing::_, testing::_));
 

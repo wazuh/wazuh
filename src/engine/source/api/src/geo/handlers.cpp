@@ -1,8 +1,8 @@
 #include "api/geo/handlers.hpp"
 
+#include <base/json.hpp>
 #include <eMessages/eMessage.h>
 #include <eMessages/geo.pb.h>
-#include <base/json.hpp>
 
 #include <api/adapter.hpp>
 

@@ -1,7 +1,7 @@
 #include "
 
-#include <gtest/gtest.h>
 #include <base/logging.hpp>
+#include <gtest/gtest.h>
 
 using namespace engineserver;
 

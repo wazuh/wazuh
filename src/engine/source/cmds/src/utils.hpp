@@ -4,10 +4,10 @@
 #include <exception>
 #include <string>
 
+#include <base/json.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
 #include <eMessages/eMessage.h>
 #include <eMessages/engine.pb.h>
-#include <base/json.hpp>
 
 #include <cmds/apiclnt/client.hpp>
 

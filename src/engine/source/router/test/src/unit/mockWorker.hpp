@@ -4,8 +4,8 @@
 #include <gmock/gmock.h>
 
 #include "iworker.hpp"
-#include "mockTester.hpp"
 #include "mockRouter.hpp"
+#include "mockTester.hpp"
 
 namespace router
 {

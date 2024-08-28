@@ -193,18 +193,16 @@ INSTANTIATE_TEST_SUITE_P(Table,
  *      Test Set/Get priority by name.
  ************************************************/
 
-std::vector<EntryTest> g_initStatePrior = {
-    {"a", 1, "a"},
-    {"b", 2, "b"},
-    {"c", 3, "c"},
-    {"d", 4, "d"},
-    {"e", 5, "e"},
-    {"f", 6, "f"},
-    {"h", 10, "h"},
-    {"i", 15, "i"},
-    {"j", 18, "j"},
-    {"k", 20, "k"}
-};
+std::vector<EntryTest> g_initStatePrior = {{"a", 1, "a"},
+                                           {"b", 2, "b"},
+                                           {"c", 3, "c"},
+                                           {"d", 4, "d"},
+                                           {"e", 5, "e"},
+                                           {"f", 6, "f"},
+                                           {"h", 10, "h"},
+                                           {"i", 15, "i"},
+                                           {"j", 18, "j"},
+                                           {"k", 20, "k"}};
 
 /**
  * @brief Check if the priority is the same as the expected.
@@ -276,11 +274,11 @@ INSTANTIATE_TEST_SUITE_P(Table,
                              // end
                              ));
 
-
 /************************************************
  *     Test Erase by name
  ************************************************/
-TEST(Table, erase) {
+TEST(Table, erase)
+{
 
     // Insert all entries (And check if the insert is ok)
     ri::Table<ValueType> table;
@@ -306,7 +304,8 @@ TEST(Table, erase) {
 /************************************************
  *     Modify the entry by reference
  ************************************************/
-TEST(Table, modify) {
+TEST(Table, modify)
+{
 
     // Insert all entries (And check if the insert is ok)
     ri::Table<ValueType> table;
@@ -337,13 +336,14 @@ class EasyGetMaxPriorityT
 {
 private:
     MaxPriorityT m_getMaxPriorityT;
+
 public:
     EasyGetMaxPriorityT(std::size_t min, std::size_t max, std::size_t priority, bool exception)
     {
         m_getMaxPriorityT = std::make_tuple(min, max, priority, exception);
     }
 
-    operator MaxPriorityT() const {return m_getMaxPriorityT; };
+    operator MaxPriorityT() const { return m_getMaxPriorityT; };
 };
 
 TEST_P(MaxPriorityTest, Functionallity)
@@ -356,7 +356,7 @@ TEST_P(MaxPriorityTest, Functionallity)
         checkEntryTable(table, entry, true);
     }
 
-    auto &[minP, maxP, lowestPriority, exception] = GetParam();
+    auto& [minP, maxP, lowestPriority, exception] = GetParam();
 
     if (exception)
     {

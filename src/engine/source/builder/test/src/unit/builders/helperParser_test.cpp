@@ -507,10 +507,7 @@ INSTANTIATE_TEST_SUITE_P(
         HelperT(R"(test(1, {"key": "value", "key2": "value2"}))",
                 makeSuccess<HelperToken>(
                     {.name = "test", .args = {val(R"(1)"), val(R"({"key": "value", "key2": "value2"})")}}, 43)),
-        HelperT(R"(test([1]123))",
-                makeSuccess<HelperToken>(
-                    {.name = "test", .args = {val(R"("[1]123")")}}, 12))
-        ));
+        HelperT(R"(test([1]123))", makeSuccess<HelperToken>({.name = "test", .args = {val(R"("[1]123")")}}, 12))));
 
 INSTANTIATE_TEST_SUITE_P(Builder,
                          IsDefaultHelperTest,

@@ -1,17 +1,14 @@
 #include "parse_field.hpp"
 #include "fmt/format.h"
 #include "number.hpp"
-#include <iostream>
 #include <base/json.hpp>
+#include <iostream>
 #include <string_view>
 namespace hlp
 {
 
-std::optional<Field> getField(std::string_view input,
-                              const char delimiter,
-                              const char quote,
-                              const char escape,
-                              bool strict)
+std::optional<Field>
+getField(std::string_view input, const char delimiter, const char quote, const char escape, bool strict)
 {
     size_t last_escape_location = 0;
 

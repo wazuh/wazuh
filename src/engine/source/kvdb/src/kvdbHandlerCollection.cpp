@@ -7,8 +7,7 @@
 namespace kvdbManager
 {
 
-void KVDBHandlerCollection::addKVDBHandler(const std::string& dbName,
-                                           const std::string& scopeName)
+void KVDBHandlerCollection::addKVDBHandler(const std::string& dbName, const std::string& scopeName)
 {
     std::shared_lock<std::shared_mutex> lock(m_mutex);
 

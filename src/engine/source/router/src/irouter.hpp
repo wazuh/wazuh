@@ -9,7 +9,8 @@
 
 #include "environmentBuilder.hpp"
 
-namespace router {
+namespace router
+{
 
 /**
  * @class Router
@@ -18,7 +19,8 @@ namespace router {
  * An environment is a policy + filter combination.
  * A filter is a set of rules that determine which events are processed by a policy
  */
-class IRouter {
+class IRouter
+{
 public:
     virtual ~IRouter() = default;
 

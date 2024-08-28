@@ -91,10 +91,7 @@ public:
      *
      * @return VersionObjectType.
      */
-    VersionObjectType getType() override
-    {
-        return VersionObjectType::SemVer;
-    }
+    VersionObjectType getType() override { return VersionObjectType::SemVer; }
 
     /**
      * @brief Comparison operator ==.
@@ -109,8 +106,8 @@ public:
         {
             throw std::runtime_error {"Error casting VersionObject type"};
         }
-        return (m_major == pB->m_major && m_minor == pB->m_minor && m_patch == pB->m_patch &&
-                m_preRelease == pB->m_preRelease);
+        return (m_major == pB->m_major && m_minor == pB->m_minor && m_patch == pB->m_patch
+                && m_preRelease == pB->m_preRelease);
     }
 
     /**

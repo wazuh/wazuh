@@ -1,51 +1,45 @@
-#include <gtest/gtest.h>
-#include <server/engineServer.hpp>
-#include <server/endpoint.hpp>
-#include <thread>
 #include <chrono>
+#include <gtest/gtest.h>
+#include <server/endpoint.hpp>
+#include <server/engineServer.hpp>
+#include <thread>
 
 #include <base/logging.hpp>
 
-class MockEndpoint : public engineserver::Endpoint {
+class MockEndpoint : public engineserver::Endpoint
+{
 public:
     MockEndpoint(const std::string& address, const std::size_t taskQueueSize)
-        : Endpoint(address, taskQueueSize) {}
-
-    void bind(std::shared_ptr<uvw::Loop> loop) override {
-        m_loop = loop;
+        : Endpoint(address, taskQueueSize)
+    {
     }
 
-    void close() override {
-        m_loop.reset();
-    }
+    void bind(std::shared_ptr<uvw::Loop> loop) override { m_loop = loop; }
 
-    bool pause() override {
-        return true;
-    }
+    void close() override { m_loop.reset(); }
 
-    bool resume() override {
-        return true;
-    }
+    bool pause() override { return true; }
+
+    bool resume() override { return true; }
 };
 
-class EngineServerTest : public testing::Test {
+class EngineServerTest : public testing::Test
+{
 protected:
-    void SetUp() override {
+    void SetUp() override
+    {
         logging::testInit();
         server = std::make_unique<engineserver::EngineServer>();
     }
 
-    void TearDown() override {
-        server.reset();
-    }
+    void TearDown() override { server.reset(); }
 
     std::unique_ptr<engineserver::EngineServer> server;
 };
 
-TEST_F(EngineServerTest, StartAndRequestStop) {
-    std::thread serverThread([this]() {
-        server->start();
-    });
+TEST_F(EngineServerTest, StartAndRequestStop)
+{
+    std::thread serverThread([this]() { server->start(); });
 
     // Wait for the server to start and then request to stop
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -55,7 +49,8 @@ TEST_F(EngineServerTest, StartAndRequestStop) {
     serverThread.join();
 }
 
-TEST_F(EngineServerTest, AddEndpoint) {
+TEST_F(EngineServerTest, AddEndpoint)
+{
     auto endpoint1 = std::make_shared<MockEndpoint>("test_endpoint1", 0);
     ASSERT_NO_THROW(server->addEndpoint("test_endpoint1", endpoint1));
 

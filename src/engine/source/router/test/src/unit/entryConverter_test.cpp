@@ -24,7 +24,6 @@ TEST(EntryConverter, prodEntryConverter)
     EXPECT_EQ(entryPost.priority(), entryPost2.priority());
 }
 
-
 TEST(EntryConverter, testEntryConverter)
 {
     // Chcek if can be converted to json and back to test::EntryPost
@@ -44,18 +43,20 @@ TEST(EntryConverter, testEntryConverter)
     EXPECT_EQ(entryPost.lifetime(), entryPost2.lifetime());
 }
 
-using ::testing::Values;
 using ::testing::Combine;
+using ::testing::Values;
 
-class EntryConverterTest : public ::testing::TestWithParam<std::tuple<test::Entry, prod::Entry>> {
+class EntryConverterTest : public ::testing::TestWithParam<std::tuple<test::Entry, prod::Entry>>
+{
 };
 
-TEST_P(EntryConverterTest, ConvertToAndFromJson) {
+TEST_P(EntryConverterTest, ConvertToAndFromJson)
+{
     auto [testEntry, prodEntry] = GetParam();
 
     // Create both lists
-    std::list<test::Entry> testEntries{ testEntry };
-    std::list<prod::Entry> prodEntries{ prodEntry };
+    std::list<test::Entry> testEntries {testEntry};
+    std::list<prod::Entry> prodEntries {prodEntry};
 
     // Do the conversion
     json::Json testJson = EntryConverter::toJsonArray(testEntries);
@@ -69,8 +70,8 @@ TEST_P(EntryConverterTest, ConvertToAndFromJson) {
     ASSERT_EQ(testEntriesConverted.size(), 1);
     ASSERT_EQ(prodEntriesConverted.size(), 1);
 
-    test::EntryPost testEntryConverted (testEntriesConverted.front());
-    prod::EntryPost prodEntryConverted (prodEntriesConverted.front());
+    test::EntryPost testEntryConverted(testEntriesConverted.front());
+    prod::EntryPost prodEntryConverted(prodEntriesConverted.front());
 
     EXPECT_EQ(testEntry.name(), testEntryConverted.name());
     EXPECT_EQ(testEntry.policy(), testEntryConverted.policy());
@@ -82,11 +83,7 @@ TEST_P(EntryConverterTest, ConvertToAndFromJson) {
     EXPECT_EQ(prodEntry.priority(), prodEntryConverted.priority());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    Default,
-    EntryConverterTest,
-    Combine(
-        Values(test::EntryPost("testName", "testPolicy/0", 100)),
-        Values(prod::EntryPost("prodName", "prodPolicy/0", "prodFilter/0", 1))
-    )
-);
+INSTANTIATE_TEST_SUITE_P(Default,
+                         EntryConverterTest,
+                         Combine(Values(test::EntryPost("testName", "testPolicy/0", 100)),
+                                 Values(prod::EntryPost("prodName", "prodPolicy/0", "prodFilter/0", 1))));

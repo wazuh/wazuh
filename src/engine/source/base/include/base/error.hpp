@@ -20,7 +20,7 @@ struct Error
     std::string message; ///< Error message
 };
 
-using OptError = std::optional<Error>;      ///< Optional Error
+using OptError = std::optional<Error>; ///< Optional Error
 template<typename T>
 using RespOrError = std::variant<T, Error>; ///< T or Error
 
@@ -118,12 +118,13 @@ inline auto getError(RespOrError<T>&& error) -> decltype(std::get<Error>(std::mo
     return std::get<Error>(std::move(error));
 }
 
-
-inline Error& getError(OptError& error) {
+inline Error& getError(OptError& error)
+{
     return error.value();
 }
 
-inline const Error& getError(const OptError& error) {
+inline const Error& getError(const OptError& error)
+{
     return error.value();
 }
 

@@ -7,10 +7,10 @@
 #include <iostream>
 #include <thread>
 
-#include <geo/downloader.hpp>
-#include <geo/manager.hpp>
 #include <base/json.hpp>
 #include <base/logging.hpp>
+#include <geo/downloader.hpp>
+#include <geo/manager.hpp>
 #include <store/mockStore.hpp>
 
 using namespace store::mocks;

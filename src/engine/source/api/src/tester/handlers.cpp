@@ -51,7 +51,8 @@ getRequest(const api::wpRequest& wRequest, const std::weak_ptr<::router::ITester
     return std::make_pair(tester, std::get<RequestType>(res));
 }
 
-eTester::Sync getHashSatus(const ::router::test::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eTester::Sync getHashSatus(const ::router::test::Entry& entry,
+                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
 {
     auto policyManager = wPolicyManager.lock();
     if (!policyManager)
@@ -68,7 +69,6 @@ eTester::Sync getHashSatus(const ::router::test::Entry& entry, const std::weak_p
     return base::getResponse(resPolicy) == entry.hash() ? eTester::Sync::UPDATED : eTester::Sync::OUTDATED;
 }
 
-
 /**
  * @brief Transform a router::test::Entry to a eTester::Session
  *
@@ -76,7 +76,8 @@ eTester::Sync getHashSatus(const ::router::test::Entry& entry, const std::weak_p
  * @param wPolicyManager Policy manager to get the policy hash
  * @return eTester::Session
  */
-eTester::Session toSession(const ::router::test::Entry& entry, const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
+eTester::Session toSession(const ::router::test::Entry& entry,
+                           const std::weak_ptr<api::policy::IPolicy>& wPolicyManager)
 {
     eTester::Session session;
     session.set_name(entry.name());
@@ -267,7 +268,8 @@ api::HandlerSync sessionDelete(const std::weak_ptr<::router::ITesterAPI>& tester
     };
 }
 
-api::HandlerSync sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync sessionGet(const std::weak_ptr<::router::ITesterAPI>& tester,
+                            const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wTester = tester, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -322,7 +324,8 @@ api::HandlerSync sessionReload(const std::weak_ptr<::router::ITesterAPI>& tester
     };
 }
 
-api::HandlerSync tableGet(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<api::policy::IPolicy>& policy)
+api::HandlerSync tableGet(const std::weak_ptr<::router::ITesterAPI>& tester,
+                          const std::weak_ptr<api::policy::IPolicy>& policy)
 {
     return [wTester = tester, wPolicyManager = policy](const api::wpRequest& wRequest) -> api::wpResponse
     {
@@ -351,9 +354,11 @@ api::HandlerSync tableGet(const std::weak_ptr<::router::ITesterAPI>& tester, con
     };
 }
 
-api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester, const std::weak_ptr<store::IStoreReader>& store)
+api::HandlerAsync runPost(const std::weak_ptr<::router::ITesterAPI>& tester,
+                          const std::weak_ptr<store::IStoreReader>& store)
 {
-    return [wTester = tester, wStore = store](const api::wpRequest& wRequest, std::function<void(const api::wpResponse &)> callbackFn)
+    return [wTester = tester, wStore = store](const api::wpRequest& wRequest,
+                                              std::function<void(const api::wpResponse&)> callbackFn)
     {
         using RequestType = eTester::RunPost_Request;
         using ResponseType = eTester::RunPost_Response;

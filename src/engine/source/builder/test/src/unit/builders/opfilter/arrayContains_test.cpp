@@ -20,9 +20,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeRef("ref"), makeValue(R"("false")"), makeValue("2")},
                 opfilter::opBuilderHelperContains,
                 SUCCESS()),
-        FilterT({makeRef("ref")},
-                opfilter::opBuilderHelperContains,
-                SUCCESS()),
+        FilterT({makeRef("ref")}, opfilter::opBuilderHelperContains, SUCCESS()),
         /*** Array Not Contains ***/
         FilterT({}, opfilter::opBuilderHelperNotContains, FAILURE()),
         FilterT({makeValue(R"("str")")}, opfilter::opBuilderHelperNotContains, SUCCESS()),
@@ -30,16 +28,12 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT({makeValue(R"(2)")}, opfilter::opBuilderHelperNotContains, SUCCESS()),
         FilterT({makeValue(R"("str")"), makeValue(R"(2)")}, opfilter::opBuilderHelperNotContains, SUCCESS()),
         FilterT({makeRef("ref")}, opfilter::opBuilderHelperNotContains, SUCCESS()),
-        FilterT({makeRef("ref"), makeValue(R"("[1,2,3,4]")")},
-                opfilter::opBuilderHelperNotContains,
-                SUCCESS()),
+        FilterT({makeRef("ref"), makeValue(R"("[1,2,3,4]")")}, opfilter::opBuilderHelperNotContains, SUCCESS()),
         FilterT({makeRef("ref"), makeValue(R"(null)")}, opfilter::opBuilderHelperNotContains, SUCCESS()),
         FilterT({makeRef("ref"), makeValue(R"("false")"), makeValue("2")},
                 opfilter::opBuilderHelperNotContains,
                 SUCCESS()),
-        FilterT({makeRef("ref")},
-                opfilter::opBuilderHelperNotContains,
-                SUCCESS())),
+        FilterT({makeRef("ref")}, opfilter::opBuilderHelperNotContains, SUCCESS())),
     testNameFormatter<FilterBuilderTest>("ArrayContains"));
 } // namespace filterbuildtest
 

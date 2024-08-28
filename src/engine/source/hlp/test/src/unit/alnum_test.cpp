@@ -5,12 +5,13 @@
 auto constexpr NAME = "alphanumParser";
 static const std::string TARGET = "/TargetField";
 
-INSTANTIATE_TEST_SUITE_P(AlnumBuild,
-                         HlpBuildTest,
-                         ::testing::Values(BuildT(SUCCESS, getAlphanumericParser, {NAME, TARGET, {}, {}}),
-                                           BuildT(SUCCESS, getAlphanumericParser, {NAME, TARGET, {}, {"-.,_(){}"}}),
-                                           BuildT(SUCCESS, getAlphanumericParser, {NAME, TARGET, {}, {"abcDEF123"}}),
-                                           BuildT(FAILURE, getAlphanumericParser, {NAME, TARGET, {}, {"-", "unexpected"}})));
+INSTANTIATE_TEST_SUITE_P(
+    AlnumBuild,
+    HlpBuildTest,
+    ::testing::Values(BuildT(SUCCESS, getAlphanumericParser, {NAME, TARGET, {}, {}}),
+                      BuildT(SUCCESS, getAlphanumericParser, {NAME, TARGET, {}, {"-.,_(){}"}}),
+                      BuildT(SUCCESS, getAlphanumericParser, {NAME, TARGET, {}, {"abcDEF123"}}),
+                      BuildT(FAILURE, getAlphanumericParser, {NAME, TARGET, {}, {"-", "unexpected"}})));
 
 INSTANTIATE_TEST_SUITE_P(
     AlnumParse,

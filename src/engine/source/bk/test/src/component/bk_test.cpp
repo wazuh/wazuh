@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <bk/mockController.hpp> // Force mock compilation
 #include <bk/rx/controller.hpp>
 #include <bk/taskf/controller.hpp>
-#include <bk/mockController.hpp> // Force mock compilation
 
 #include "bk_test.hpp"
 
@@ -833,7 +833,7 @@ INSTANTIATE_TEST_SUITE_P(
                                    order("and_0", term("t00", true), term("t01", true)),
                                    order("and_1", term("t10", false))))}));
 
-template <typename Controller>
+template<typename Controller>
 struct Subscriber
 {
     std::vector<std::string> traces;

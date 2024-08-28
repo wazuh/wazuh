@@ -85,19 +85,17 @@ int testSocketConnect(std::string_view path, const int socketType)
     const auto socketFD {socket(PF_UNIX, socketType, 0)};
     if (0 > socketFD)
     {
-        const auto msg = std::string {"Cannot create the socket: "} + strerror(errno)
-                         + " (" + std::to_string(errno) + ")";
+        const auto msg =
+            std::string {"Cannot create the socket: "} + strerror(errno) + " (" + std::to_string(errno) + ")";
 
         throw std::runtime_error(msg);
     }
 
     /* Connect to the UNIX domain */
-    if (connect(socketFD, reinterpret_cast<struct sockaddr*>(&sAddr), SUN_LEN(&sAddr))
-        < 0)
+    if (connect(socketFD, reinterpret_cast<struct sockaddr*>(&sAddr), SUN_LEN(&sAddr)) < 0)
     {
         close(socketFD);
-        const auto msg = std::string {"Cannot connect: "} + strerror(errno) + " ("
-                         + std::to_string(errno) + ")";
+        const auto msg = std::string {"Cannot connect: "} + strerror(errno) + " (" + std::to_string(errno) + ")";
         throw std::runtime_error(msg);
     }
 
@@ -115,16 +113,13 @@ int testSocketConnect(std::string_view path, const int socketType)
         if (MSG_MAX_SIZE > len)
         {
             len = MSG_MAX_SIZE;
-            if (setsockopt(socketFD,
-                           SOL_SOCKET,
-                           (socketType == SOCK_DGRAM) ? SO_SNDBUF : SO_RCVBUF,
-                           (const void*)&len,
-                           optlen)
+            if (setsockopt(
+                    socketFD, SOL_SOCKET, (socketType == SOCK_DGRAM) ? SO_SNDBUF : SO_RCVBUF, (const void*)&len, optlen)
                 == -1)
             {
                 close(socketFD);
-                const auto msg = std::string {"Cannot set socket buffer size: "}
-                                 + strerror(errno) + " (" + std::to_string(errno) + ")";
+                const auto msg = std::string {"Cannot set socket buffer size: "} + strerror(errno) + " ("
+                                 + std::to_string(errno) + ")";
                 throw std::runtime_error(msg);
             }
         }
@@ -184,12 +179,9 @@ CommRetval testSendMsg(const int socketFD, const std::string& msg, const bool do
         bool success = true;
         if (doSendSize)
         {
-            success =
-                (send(socketFD, &payloadSize, HEADER_SIZE, MSG_NOSIGNAL) == HEADER_SIZE);
+            success = (send(socketFD, &payloadSize, HEADER_SIZE, MSG_NOSIGNAL) == HEADER_SIZE);
         }
-        success =
-            success
-            && (send(socketFD, msg.data(), payloadSize, MSG_NOSIGNAL) == payloadSize);
+        success = success && (send(socketFD, msg.data(), payloadSize, MSG_NOSIGNAL) == payloadSize);
 
         if (success)
         {
@@ -212,11 +204,12 @@ CommRetval testSendMsg(const int socketFD, const std::string& msg, const bool do
 inline std::vector<char> testStreamRcvMsg(const int socketFD)
 {
     // Check recive msg
-    const auto checkRcv = [](const ssize_t rcvBytes) {
+    const auto checkRcv = [](const ssize_t rcvBytes)
+    {
         if (0 > rcvBytes)
         {
-            const auto msg = std::string {"recvMsg: recv error : "} + strerror(errno)
-                             + " (" + std::to_string(errno) + ")";
+            const auto msg =
+                std::string {"recvMsg: recv error : "} + strerror(errno) + " (" + std::to_string(errno) + ")";
             throw std::runtime_error(msg);
         }
         else if (0 == rcvBytes)
@@ -252,12 +245,7 @@ inline std::vector<char> testDatagramRcvMsg(const int socketFD)
     struct sockaddr_un peer_sock;
     memset(&peer_sock, 0, sizeof(peer_sock));
 
-    recvfrom(socketFD,
-             &(recvMsg[0]),
-             DATAGRAM_MAX_MSG_SIZE,
-             0,
-             (struct sockaddr*)&peer_sock,
-             &len);
+    recvfrom(socketFD, &(recvMsg[0]), DATAGRAM_MAX_MSG_SIZE, 0, (struct sockaddr*)&peer_sock, &len);
 
     return recvMsg;
 }

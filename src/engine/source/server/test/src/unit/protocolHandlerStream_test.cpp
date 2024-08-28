@@ -9,17 +9,19 @@ class WStreamTest : public ::testing::Test
 public:
     void mockMessageHandler(const std::string& message, std::function<void(const std::string&)> callback)
     {
-        auto response =  "RESPONSE: " + message;
+        auto response = "RESPONSE: " + message;
         callback(response);
     }
 
-    WStream wstream{std::bind(&WStreamTest::mockMessageHandler, this, std::placeholders::_1, std::placeholders::_2)};
+    WStream wstream {std::bind(&WStreamTest::mockMessageHandler, this, std::placeholders::_1, std::placeholders::_2)};
 };
 
-std::string uintToLittleEndianBytes(unsigned int num) {
+std::string uintToLittleEndianBytes(unsigned int num)
+{
     std::string result(4, '\0');
 
-    for (int i = 0; i < 4; ++i) {
+    for (int i = 0; i < 4; ++i)
+    {
         result[i] = static_cast<char>(num & 0xFF);
         num >>= 8;
     }
@@ -111,7 +113,8 @@ TEST_F(WStreamTest, getErrorResponse)
 TEST_F(WStreamTest, onDataPayloadSizeExceeded)
 {
     int maxPayloadSize = 1024 * 1024 * 10;
-    WStream wstream2(std::bind(&WStreamTest::mockMessageHandler, this, std::placeholders::_1, std::placeholders::_2), maxPayloadSize);
+    WStream wstream2(std::bind(&WStreamTest::mockMessageHandler, this, std::placeholders::_1, std::placeholders::_2),
+                     maxPayloadSize);
 
     int exceededSize = maxPayloadSize + 1;
     std::string data("\x00\xA0\x96\x01", 4); // Exceeded size encoded in 4 bytes

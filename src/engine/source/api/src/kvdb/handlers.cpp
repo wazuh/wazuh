@@ -5,10 +5,10 @@
 #include <fmt/format.h>
 
 #include <api/adapter.hpp>
-#include <eMessages/eMessage.h>
-#include <eMessages/kvdb.pb.h>
 #include <base/json.hpp>
 #include <base/utils/stringUtils.hpp>
+#include <eMessages/eMessage.h>
+#include <eMessages/kvdb.pb.h>
 
 namespace api::kvdb::handlers
 {
@@ -496,15 +496,18 @@ void registerHandlers(std::shared_ptr<kvdbManager::IKVDBManager> kvdbManager,
 {
 
     //        Manager (Works on the KVDB manager, create/delete/list/dump KVDBs)
-    const bool ok = api->registerHandler("kvdb.manager/post", Api::convertToHandlerAsync(managerPost(kvdbManager)))
-                    && api->registerHandler("kvdb.manager/delete", Api::convertToHandlerAsync(managerDelete(kvdbManager)))
-                    && api->registerHandler("kvdb.manager/get", Api::convertToHandlerAsync(managerGet(kvdbManager)))
-                    && api->registerHandler("kvdb.manager/dump", Api::convertToHandlerAsync(managerDump(kvdbManager, kvdbScopeName))) &&
-                    // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
-                    api->registerHandler("kvdb.db/put", Api::convertToHandlerAsync(dbPut(kvdbManager, kvdbScopeName)))
-                    && api->registerHandler("kvdb.db/delete", Api::convertToHandlerAsync(dbDelete(kvdbManager, kvdbScopeName)))
-                    && api->registerHandler("kvdb.db/get", Api::convertToHandlerAsync(dbGet(kvdbManager, kvdbScopeName)))
-                    && api->registerHandler("kvdb.db/search", Api::convertToHandlerAsync(dbSearch(kvdbManager, kvdbScopeName)));
+    const bool ok =
+        api->registerHandler("kvdb.manager/post", Api::convertToHandlerAsync(managerPost(kvdbManager)))
+        && api->registerHandler("kvdb.manager/delete", Api::convertToHandlerAsync(managerDelete(kvdbManager)))
+        && api->registerHandler("kvdb.manager/get", Api::convertToHandlerAsync(managerGet(kvdbManager)))
+        && api->registerHandler("kvdb.manager/dump",
+                                Api::convertToHandlerAsync(managerDump(kvdbManager, kvdbScopeName)))
+        &&
+        // Specific KVDB (Works on a specific KVDB instance, not on the manager, create/delete/modify keys)
+        api->registerHandler("kvdb.db/put", Api::convertToHandlerAsync(dbPut(kvdbManager, kvdbScopeName)))
+        && api->registerHandler("kvdb.db/delete", Api::convertToHandlerAsync(dbDelete(kvdbManager, kvdbScopeName)))
+        && api->registerHandler("kvdb.db/get", Api::convertToHandlerAsync(dbGet(kvdbManager, kvdbScopeName)))
+        && api->registerHandler("kvdb.db/search", Api::convertToHandlerAsync(dbSearch(kvdbManager, kvdbScopeName)));
 
     if (!ok)
     {

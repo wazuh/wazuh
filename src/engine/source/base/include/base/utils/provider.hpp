@@ -22,20 +22,11 @@ protected:
 
 public:
     virtual ~Provider() = default;
-    void addSubscriber(std::shared_ptr<Observer<T>> subscriber)
-    {
-        m_subject.attach(std::move(subscriber));
-    }
+    void addSubscriber(std::shared_ptr<Observer<T>> subscriber) { m_subject.attach(std::move(subscriber)); }
 
-    void removeSubscriber(const std::string& observerId)
-    {
-        m_subject.detach(observerId);
-    }
+    void removeSubscriber(const std::string& observerId) { m_subject.detach(observerId); }
 
-    void call(T data)
-    {
-        m_subject.setData(data);
-    }
+    void call(T data) { m_subject.setData(data); }
 };
 
 #endif // _PROVIDER_HPP

@@ -7,8 +7,8 @@
 #include <variant>
 #include <vector>
 
-#include <fmt/format.h>
 #include <base/json.hpp>
+#include <fmt/format.h>
 
 #include "abstractParser.hpp"
 

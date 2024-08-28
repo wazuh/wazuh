@@ -8,7 +8,6 @@
 #include <api/api.hpp>
 #include <rbac/irbac.hpp>
 
-
 namespace api::catalog::handlers
 {
 

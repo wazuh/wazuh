@@ -17,7 +17,7 @@ void MetricsScope::initialize(bool delta, int exporterIntervalMS, int exporterTi
     m_dataHub = std::make_shared<DataHub>();
 
     // Create Exporter
-    OTTemporality temporality = delta?(OTTemporality::kDelta):(OTTemporality::kCumulative);
+    OTTemporality temporality = delta ? (OTTemporality::kDelta) : (OTTemporality::kCumulative);
     std::unique_ptr<OTSDKMetricExporter> metricExporter(new OTDataHubExporter(m_dataHub, temporality));
 
     // Create Reader
@@ -47,14 +47,12 @@ json::Json MetricsScope::getAllMetrics(const std::string& metricsInstrumentName)
 
 std::shared_ptr<iCounter<double>> MetricsScope::getCounterDouble(const std::string& name)
 {
-    auto retValue = m_collection_counter_double.getInstrument(
-        name,
-        [&]()
-        {
-            auto meter = m_meterProvider->GetMeter(name);
-            return meter->CreateDoubleCounter(name);
-        }
-    );
+    auto retValue = m_collection_counter_double.getInstrument(name,
+                                                              [&]()
+                                                              {
+                                                                  auto meter = m_meterProvider->GetMeter(name);
+                                                                  return meter->CreateDoubleCounter(name);
+                                                              });
 
     registerInstrument(name, retValue);
 
@@ -63,14 +61,12 @@ std::shared_ptr<iCounter<double>> MetricsScope::getCounterDouble(const std::stri
 
 std::shared_ptr<iCounter<uint64_t>> MetricsScope::getCounterUInteger(const std::string& name)
 {
-    auto retValue = m_collection_counter_integer.getInstrument(
-        name,
-        [&]()
-        {
-            auto meter = m_meterProvider->GetMeter(name);
-            return meter->CreateUInt64Counter(name);
-        }
-    );
+    auto retValue = m_collection_counter_integer.getInstrument(name,
+                                                               [&]()
+                                                               {
+                                                                   auto meter = m_meterProvider->GetMeter(name);
+                                                                   return meter->CreateUInt64Counter(name);
+                                                               });
 
     registerInstrument(name, retValue);
 
@@ -79,14 +75,12 @@ std::shared_ptr<iCounter<uint64_t>> MetricsScope::getCounterUInteger(const std::
 
 std::shared_ptr<iCounter<double>> MetricsScope::getUpDownCounterDouble(const std::string& name)
 {
-    auto retValue = m_collection_updowncounter_double.getInstrument(
-        name,
-        [&]()
-        {
-            auto meter = m_meterProvider->GetMeter(name);
-            return meter->CreateDoubleUpDownCounter(name);
-        }
-    );
+    auto retValue = m_collection_updowncounter_double.getInstrument(name,
+                                                                    [&]()
+                                                                    {
+                                                                        auto meter = m_meterProvider->GetMeter(name);
+                                                                        return meter->CreateDoubleUpDownCounter(name);
+                                                                    });
 
     registerInstrument(name, retValue);
 
@@ -95,14 +89,12 @@ std::shared_ptr<iCounter<double>> MetricsScope::getUpDownCounterDouble(const std
 
 std::shared_ptr<iCounter<int64_t>> MetricsScope::getUpDownCounterInteger(const std::string& name)
 {
-    auto retValue = m_collection_updowncounter_integer.getInstrument(
-        name,
-        [&]()
-        {
-            auto meter = m_meterProvider->GetMeter(name);
-            return meter->CreateInt64UpDownCounter(name);
-        }
-    );
+    auto retValue = m_collection_updowncounter_integer.getInstrument(name,
+                                                                     [&]()
+                                                                     {
+                                                                         auto meter = m_meterProvider->GetMeter(name);
+                                                                         return meter->CreateInt64UpDownCounter(name);
+                                                                     });
 
     registerInstrument(name, retValue);
 
@@ -111,14 +103,12 @@ std::shared_ptr<iCounter<int64_t>> MetricsScope::getUpDownCounterInteger(const s
 
 std::shared_ptr<iHistogram<double>> MetricsScope::getHistogramDouble(const std::string& name)
 {
-    auto retValue = m_collection_histogram_double.getInstrument(
-        name,
-        [&]()
-        {
-            auto meter = m_meterProvider->GetMeter(name);
-            return meter->CreateDoubleHistogram(name);
-        }
-    );
+    auto retValue = m_collection_histogram_double.getInstrument(name,
+                                                                [&]()
+                                                                {
+                                                                    auto meter = m_meterProvider->GetMeter(name);
+                                                                    return meter->CreateDoubleHistogram(name);
+                                                                });
 
     registerInstrument(name, retValue);
 
@@ -127,13 +117,12 @@ std::shared_ptr<iHistogram<double>> MetricsScope::getHistogramDouble(const std::
 
 std::shared_ptr<iHistogram<uint64_t>> MetricsScope::getHistogramUInteger(const std::string& name)
 {
-    auto retValue = m_collection_histogram_integer.getInstrument(
-        name,
-        [&]()
-        {
-            auto meter = m_meterProvider->GetMeter(name);
-            return meter->CreateUInt64Histogram(name);
-        });
+    auto retValue = m_collection_histogram_integer.getInstrument(name,
+                                                                 [&]()
+                                                                 {
+                                                                     auto meter = m_meterProvider->GetMeter(name);
+                                                                     return meter->CreateUInt64Histogram(name);
+                                                                 });
 
     registerInstrument(name, retValue);
 
@@ -151,10 +140,7 @@ std::shared_ptr<iGauge<int64_t>> MetricsScope::getGaugeInteger(const std::string
             return retValue;
         },
         [&](const std::shared_ptr<Gauge<int64_t>>& gauge)
-        {
-            gauge->AddCallback(MetricsScope::FetcherInteger, static_cast<void*>(gauge.get()), defaultValue);
-        }
-    );
+        { gauge->AddCallback(MetricsScope::FetcherInteger, static_cast<void*>(gauge.get()), defaultValue); });
 
     registerInstrument(name, retValue);
 
@@ -172,10 +158,7 @@ std::shared_ptr<iGauge<double>> MetricsScope::getGaugeDouble(const std::string& 
             return retValue;
         },
         [&](const std::shared_ptr<Gauge<double>>& gauge)
-        {
-            gauge->AddCallback(MetricsScope::FetcherDouble, static_cast<void*>(gauge.get()), defaultValue);
-        }
-    );
+        { gauge->AddCallback(MetricsScope::FetcherDouble, static_cast<void*>(gauge.get()), defaultValue); });
 
     registerInstrument(name, retValue);
 
@@ -194,8 +177,7 @@ void MetricsScope::FetcherInteger(opentelemetry::metrics::ObserverResult observe
 
 void MetricsScope::FetcherDouble(opentelemetry::metrics::ObserverResult observer_result, void* id)
 {
-    if (opentelemetry::nostd::holds_alternative<
-            OTGaugeDouble>(observer_result))
+    if (opentelemetry::nostd::holds_alternative<OTGaugeDouble>(observer_result))
     {
         Gauge<double>* gauge = (Gauge<double>*)id;
         double value = gauge->readValue();

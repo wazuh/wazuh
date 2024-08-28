@@ -33,7 +33,6 @@ public:
         }
     }
 
-
     auto addMockWorker() -> std::shared_ptr<MockWorker>
     {
         auto workerMock = std::make_shared<MockWorker>();
@@ -61,7 +60,6 @@ public:
         auto& firstWorkerMock = m_mocks.front();
         EXPECT_CALL(*firstWorkerMock, getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
 
-
         EXPECT_CALL(*testerMock, getEntries()).WillOnce(testing::Return(std::list<test::Entry> {}));
 
         EXPECT_CALL(*(m_mockstore), upsertInternalDoc(testing::_, testing::_))
@@ -79,7 +77,7 @@ public:
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
         EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
-        EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntryEnableEntryFailture()
@@ -98,7 +96,7 @@ public:
             EXPECT_CALL(*testerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         }
 
-        EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntrySuccess()
@@ -134,7 +132,7 @@ public:
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
         EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
-        EXPECT_CALL(*testerMock, removeEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*testerMock, removeEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectDeleteEntrySuccess()
@@ -169,7 +167,7 @@ public:
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
         EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
-        EXPECT_CALL(*testerMock, getEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*testerMock, getEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectGetEntrySuccess()
@@ -185,7 +183,8 @@ public:
         for (auto mock : m_mocks)
         {
             EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, getEntry(testing::_)).WillRepeatedly(testing::Return(test::EntryPost {"test", "policy", 0}));
+            EXPECT_CALL(*testerMock, getEntry(testing::_))
+                .WillRepeatedly(testing::Return(test::EntryPost {"test", "policy", 0}));
         }
     }
 
@@ -200,7 +199,7 @@ public:
         auto itesterMock = std::static_pointer_cast<router::ITester>(testerMock);
 
         EXPECT_CALL(*m_mocks.front(), getTester()).WillOnce(testing::ReturnRefOfCopy(itesterMock));
-        EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadEntryEnableEntryFailture()
@@ -219,7 +218,7 @@ public:
             EXPECT_CALL(*testerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         }
 
-        EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*testerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadSuccess()
@@ -270,7 +269,8 @@ public:
             EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
         }
 
-        EXPECT_CALL(*testerMock, getEntries()).WillRepeatedly(testing::Return(std::list<test::Entry> {test::EntryPost {"test", "policy", 0}}));
+        EXPECT_CALL(*testerMock, getEntries())
+            .WillRepeatedly(testing::Return(std::list<test::Entry> {test::EntryPost {"test", "policy", 0}}));
     }
 
     void expectGetAssetsEmpty()
@@ -300,7 +300,8 @@ public:
         for (auto mock : m_mocks)
         {
             EXPECT_CALL(*mock, getTester()).WillRepeatedly(testing::ReturnRefOfCopy(itesterMock));
-            EXPECT_CALL(*testerMock, getAssets(testing::_)).WillRepeatedly(testing::Return(std::unordered_set<std::string> {"decoder", "filter"}));
+            EXPECT_CALL(*testerMock, getAssets(testing::_))
+                .WillRepeatedly(testing::Return(std::unordered_set<std::string> {"decoder", "filter"}));
         }
     }
 
@@ -319,7 +320,7 @@ public:
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
         EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
-        EXPECT_CALL(*routerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*routerMock, addEntry(testing::_, testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntryEnableEntryFailtureRouter()
@@ -338,7 +339,7 @@ public:
             EXPECT_CALL(*routerMock, addEntry(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         }
 
-        EXPECT_CALL(*routerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*routerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectPostEntrySuccessRouter()
@@ -374,7 +375,7 @@ public:
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
         EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
-        EXPECT_CALL(*routerMock, removeEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*routerMock, removeEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectDeleteEntrySuccessRouter()
@@ -409,7 +410,7 @@ public:
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
         EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
-        EXPECT_CALL(*routerMock, getEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*routerMock, getEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectGetEntrySuccessRouter()
@@ -425,7 +426,8 @@ public:
         for (auto mock : m_mocks)
         {
             EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
-            EXPECT_CALL(*routerMock, getEntry(testing::_)).WillRepeatedly(testing::Return(prod::EntryPost {"test", "policy", "filter", 10}));
+            EXPECT_CALL(*routerMock, getEntry(testing::_))
+                .WillRepeatedly(testing::Return(prod::EntryPost {"test", "policy", "filter", 10}));
         }
     }
 
@@ -440,7 +442,7 @@ public:
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
         EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
-        EXPECT_CALL(*routerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*routerMock, rebuildEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadEntryEnableEntryFailtureRouter()
@@ -459,7 +461,7 @@ public:
             EXPECT_CALL(*routerMock, rebuildEntry(testing::_)).WillRepeatedly(testing::Return(std::nullopt));
         }
 
-        EXPECT_CALL(*routerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*routerMock, enableEntry(testing::_)).WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectReloadSuccessRouter()
@@ -492,7 +494,8 @@ public:
         auto irouterMock = std::static_pointer_cast<router::IRouter>(routerMock);
 
         EXPECT_CALL(*m_mocks.front(), getRouter()).WillOnce(testing::ReturnRefOfCopy(irouterMock));
-        EXPECT_CALL(*routerMock, changePriority(testing::_, testing::_)).WillOnce(testing::Return(base::Error{"error"}));
+        EXPECT_CALL(*routerMock, changePriority(testing::_, testing::_))
+            .WillOnce(testing::Return(base::Error {"error"}));
     }
 
     void expectChangePrioritySuccess()
@@ -508,7 +511,8 @@ public:
         for (auto mock : m_mocks)
         {
             EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
-            EXPECT_CALL(*routerMock, changePriority(testing::_, testing::_)).WillRepeatedly(testing::Return(std::nullopt));
+            EXPECT_CALL(*routerMock, changePriority(testing::_, testing::_))
+                .WillRepeatedly(testing::Return(std::nullopt));
             EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {}));
         }
 
@@ -545,7 +549,8 @@ public:
             EXPECT_CALL(*mock, getRouter()).WillRepeatedly(testing::ReturnRefOfCopy(irouterMock));
         }
 
-        EXPECT_CALL(*routerMock, getEntries()).WillRepeatedly(testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", "policy", "filter", 10}}));
+        EXPECT_CALL(*routerMock, getEntries())
+            .WillRepeatedly(testing::Return(std::list<prod::Entry> {prod::EntryPost {"test", "policy", "filter", 10}}));
     }
 };
 
@@ -571,31 +576,26 @@ protected:
  * TESTER EXPECTS CALL
  *************************************************************************/
 
-TEST_F(OrchestratorTest, start) {
+TEST_F(OrchestratorTest, start)
+{
 
-    m_orchestrator->forEachWorkerMock([](auto mockWorker) {
-        EXPECT_CALL(*mockWorker, start(testing::_)).Times(1);
-    });
+    m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, start(testing::_)).Times(1); });
 
     ASSERT_NO_THROW(m_orchestrator->start());
 }
-
 
 TEST_F(OrchestratorTest, stop)
 {
 
     m_orchestrator->expectDumpTester();
-    m_orchestrator->forEachWorkerMock([](auto mockWorker) {
-        EXPECT_CALL(*mockWorker, stop()).Times(1);
-    });
-
+    m_orchestrator->forEachWorkerMock([](auto mockWorker) { EXPECT_CALL(*mockWorker, stop()).Times(1); });
 
     ASSERT_NO_THROW(m_orchestrator->stop());
 }
 
 TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailture)
 {
-    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", base::Name{}, 0}).has_value());
+    EXPECT_TRUE(m_orchestrator->postTestEntry(test::EntryPost {"test", base::Name {}, 0}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostNameEmptyFailture)
@@ -749,14 +749,13 @@ TEST_F(OrchestratorTest, ingestEventFailture)
 
 TEST_F(OrchestratorTest, entryPostPolicyNameEmptyFailtureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", base::Name{}, "filter/test/0", 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", base::Name {}, "filter/test/0", 10}).has_value());
 }
 
 TEST_F(OrchestratorTest, entryPostFilterNameEmptyFailtureRouter)
 {
-    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", "policy/test/0", base::Name{}, 10}).has_value());
+    EXPECT_TRUE(m_orchestrator->postEntry(prod::EntryPost {"test", "policy/test/0", base::Name {}, 10}).has_value());
 }
-
 
 TEST_F(OrchestratorTest, entryPostNameEmptyFailtureRouter)
 {

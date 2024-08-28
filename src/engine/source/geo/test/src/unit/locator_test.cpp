@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <base/json.hpp>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <base/json.hpp>
 
 #include <fmt/format.h>
 

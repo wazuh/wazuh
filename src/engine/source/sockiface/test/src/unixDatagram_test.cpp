@@ -1,6 +1,6 @@
+#include <filesystem>
 #include <iostream>
 #include <sys/un.h>
-#include <filesystem>
 
 #include <gtest/gtest.h>
 
@@ -10,14 +10,14 @@
 
 using namespace sockiface;
 
-std::filesystem::path uniquePath() {
+std::filesystem::path uniquePath()
+{
     auto pid = getpid();
     auto tid = std::this_thread::get_id();
     std::stringstream ss;
     ss << pid << "_" << tid; // Unique path per thread and process
-    return std::filesystem::path ("/tmp") / (ss.str() + "_unixDatagram_test.sock");
+    return std::filesystem::path("/tmp") / (ss.str() + "_unixDatagram_test.sock");
 }
-
 
 class unixDatagramSocket : public ::testing::Test
 {

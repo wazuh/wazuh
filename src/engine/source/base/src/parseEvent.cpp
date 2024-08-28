@@ -1,7 +1,7 @@
 #include "parseEvent.hpp"
 
-#include <fmt/format.h>
 #include <base/logging.hpp>
+#include <fmt/format.h>
 
 namespace base::parseEvent
 {

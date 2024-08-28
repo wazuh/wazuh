@@ -5,8 +5,8 @@
 #include <gtest/gtest.h>
 
 #include <base/baseTypes.hpp>
-#include <defs/failDef.hpp>
 #include <base/logging.hpp>
+#include <defs/failDef.hpp>
 #include <sockiface/mockSockFactory.hpp>
 #include <sockiface/mockSockHandler.hpp>
 #include <wdb/mockWdbHandler.hpp>
@@ -64,7 +64,7 @@ protected:
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
     std::shared_ptr<const RunState> runState;
-    Context context {"test","test","test","test"};
+    Context context {"test", "test", "test", "test"};
 
     void SetUp() override
     {
@@ -95,7 +95,7 @@ protected:
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
     std::shared_ptr<const RunState> runState;
-    Context context {"test","test","test","test"};
+    Context context {"test", "test", "test", "test"};
 
     void SetUp() override
     {
@@ -106,7 +106,6 @@ protected:
         cfg = std::make_shared<MockSockHandler>();
         ctx = std::make_shared<const MockBuildCtx>();
         runState = std::make_shared<const RunState>();
-
 
         ON_CALL(*wdbManager, connection()).WillByDefault(testing::Return(wdb));
         ON_CALL(*sockFactory, getHandler(testing::_, testing::_)).WillByDefault(testing::Return(cfg));
@@ -126,7 +125,7 @@ protected:
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
     std::shared_ptr<const RunState> runState;
-    Context context {"test","test","test","test"};
+    Context context {"test", "test", "test", "test"};
 
     void SetUp() override
     {
@@ -156,7 +155,7 @@ protected:
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
     std::shared_ptr<const RunState> runState;
-    Context context {"test","test","test","test"};
+    Context context {"test", "test", "test", "test"};
 
     void SetUp() override
     {
@@ -186,7 +185,7 @@ protected:
     std::shared_ptr<MockSockHandler> cfg {};
     std::shared_ptr<const MockBuildCtx> ctx {};
     std::shared_ptr<const RunState> runState;
-    Context context {"test","test","test","test"};
+    Context context {"test", "test", "test", "test"};
 
     void SetUp() override
     {
@@ -1202,8 +1201,7 @@ TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
 {
     const std::vector<OpArg> arguments {makeRef("_event_json"), makeRef("agent.id")};
 
-    const auto tuple {
-        std::make_tuple(targetField, arguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, arguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1220,8 +1218,7 @@ TEST_F(opBuilderSCAdecoderInit, gettingEmptyReference)
 
 TEST_F(opBuilderSCAdecoderInit, gettingNonExistingReference)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1238,8 +1235,7 @@ TEST_F(opBuilderSCAdecoderInit, gettingNonExistingReference)
 
 TEST_F(opBuilderSCAdecoderInit, unexpectedType)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1295,8 +1291,7 @@ const auto checkTypeEvtWithMandatoryFields {
 
 TEST_F(checkTypeDecoderSCA, missingFields)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1322,8 +1317,7 @@ TEST_F(checkTypeDecoderSCA, missingFields)
 
 TEST_F(checkTypeDecoderSCA, missingIDField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1361,8 +1355,7 @@ TEST_F(checkTypeDecoderSCA, missingIDField)
 
 TEST_F(checkTypeDecoderSCA, missingPolicyField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1400,8 +1393,7 @@ TEST_F(checkTypeDecoderSCA, missingPolicyField)
 
 TEST_F(checkTypeDecoderSCA, missingPolicyIDField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1439,8 +1431,7 @@ TEST_F(checkTypeDecoderSCA, missingPolicyIDField)
 
 TEST_F(checkTypeDecoderSCA, missingCheckField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1473,8 +1464,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckField)
 
 TEST_F(checkTypeDecoderSCA, missingCheckIDField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1512,8 +1502,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckIDField)
 
 TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1551,8 +1540,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckTitleField)
 
 TEST_F(checkTypeDecoderSCA, missingCheckResultField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1593,8 +1581,7 @@ TEST_F(checkTypeDecoderSCA, missingCheckResultField)
 
 TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1614,8 +1601,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckUnexpectedAnswer)
 
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1647,8 +1633,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutComplianceNorRules)
 // It won't fill event check Result Exists and Response from DB is equal to result
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1671,8 +1656,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithResultEqualResponse)
 // It won't fill event check Result doesn't exists
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResult)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1719,8 +1703,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkFoundWithoutResult)
 
 TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1751,8 +1734,7 @@ TEST_F(checkTypeDecoderSCA, FindEventcheckOkNotFoundWithoutComplianceNorRules)
 
 TEST_F(checkTypeDecoderSCA, SaveACompliance)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1818,8 +1800,7 @@ TEST_F(checkTypeDecoderSCA, SaveACompliance)
 
 TEST_F(checkTypeDecoderSCA, SaveCompliances)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1879,8 +1860,7 @@ TEST_F(checkTypeDecoderSCA, SaveCompliances)
 
 TEST_F(checkTypeDecoderSCA, SaveFileRule)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1934,8 +1914,7 @@ TEST_F(checkTypeDecoderSCA, SaveFileRule)
 
 TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -1989,8 +1968,7 @@ TEST_F(checkTypeDecoderSCA, SaveDirectoryRule)
 
 TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2044,8 +2022,7 @@ TEST_F(checkTypeDecoderSCA, SaveRegistryRule)
 
 TEST_F(checkTypeDecoderSCA, SaveCommandRule)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2099,8 +2076,7 @@ TEST_F(checkTypeDecoderSCA, SaveCommandRule)
 
 TEST_F(checkTypeDecoderSCA, SaveProcessRule)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2154,8 +2130,7 @@ TEST_F(checkTypeDecoderSCA, SaveProcessRule)
 
 TEST_F(checkTypeDecoderSCA, SaveNumericRule)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2209,8 +2184,7 @@ TEST_F(checkTypeDecoderSCA, SaveNumericRule)
 
 TEST_F(checkTypeDecoderSCA, InvalidRules)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2362,8 +2336,7 @@ TEST_F(checkTypeDecoderSCA, InvalidRules)
 
 TEST_F(checkTypeDecoderSCA, SaveRules)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2472,8 +2445,7 @@ TEST_F(checkTypeDecoderSCA, SaveRules)
 
 TEST_F(summaryTypeDecoderSCA, missingFields)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2498,8 +2470,7 @@ TEST_F(summaryTypeDecoderSCA, missingFields)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldPolicyId)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2536,8 +2507,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPolicyId)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldScanId)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2574,8 +2544,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScanId)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldStartTime)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2612,8 +2581,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldStartTime)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldEndTime)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2650,8 +2618,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldEndTime)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldPassed)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2688,8 +2655,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldPassed)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldFailed)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2726,8 +2692,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFailed)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldInvalid)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2764,8 +2729,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldInvalid)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldTotalChecks)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2801,8 +2765,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldTotalChecks)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldScore)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2839,8 +2802,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldScore)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldHash)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2877,8 +2839,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHash)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldHashFile)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2915,8 +2876,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldHashFile)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldFile)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -2953,8 +2913,7 @@ TEST_F(summaryTypeDecoderSCA, missingFieldFile)
 
 TEST_F(summaryTypeDecoderSCA, missingFieldName)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3081,8 +3040,7 @@ static inline void ignoreCodeSection(const FuncName function,
 
 TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3109,8 +3067,7 @@ TEST_F(summaryTypeDecoderSCA, AllUnexpectedAnswers)
 
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3151,8 +3108,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFound)
 
 TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3226,8 +3182,7 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFound)
 
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3288,8 +3243,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkFoundSameHashNoForced)
 
 TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3351,8 +3305,7 @@ TEST_F(summaryTypeDecoderSCA, scoreFloatFindScanInfoOkFoundSameHashNoForced)
 
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3398,8 +3351,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundFirstScan)
 
 TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3440,8 +3392,7 @@ TEST_F(summaryTypeDecoderSCA, FindScanInfoOkNotFoundNotFirstScan)
 
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3473,8 +3424,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkNotFound)
 
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3503,8 +3453,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256UnexpectedAns
 
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3533,8 +3482,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkNotFound)
 
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHashFile)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3563,8 +3511,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundSameHa
 
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3602,8 +3549,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyErr)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3634,8 +3580,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 
 TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDeletePolicyOk)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3675,8 +3620,7 @@ TEST_F(summaryTypeDecoderSCA, FindPolicyInfoOkFoundFindPolicySHA256OkFoundDelete
 
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3703,8 +3647,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsUnexpectedAnswer)
 
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3736,8 +3679,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundFirstScan)
 
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3769,8 +3711,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkNotFoundNotFirstScan)
 
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3797,8 +3738,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundSameHash)
 
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3830,8 +3770,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashFirstScan)
 
 TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3867,8 +3806,7 @@ TEST_F(summaryTypeDecoderSCA, FindCheckResultsOkFoundDifferentHashNotFirstScan)
 
 TEST_F(policiesTypeDecoderSCA, missingFields)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3894,8 +3832,7 @@ TEST_F(policiesTypeDecoderSCA, missingFields)
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3930,8 +3867,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsUnexpectedAnswer)
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -3966,8 +3902,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkNotFound)
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4002,8 +3937,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicy)
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4038,8 +3972,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundSamePolicies)
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4079,8 +4012,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyError)
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAnswer)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4120,8 +4052,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyUnexpectedAn
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePolicyCheck)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4166,8 +4097,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPolicyOkDeletePoli
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckI)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4209,8 +4139,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
 
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckII)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4253,8 +4182,7 @@ TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePoli
 TEST_F(policiesTypeDecoderSCA, FindPoliciesIdsOkFoundDifferentPoliciesDeletePolicyCheckIII)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4334,8 +4262,7 @@ const auto dumpEndTypeEvent {
 
 TEST_F(dumpEndTypeDecoderSCA, missingFields)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4360,8 +4287,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingFields)
 
 TEST_F(dumpEndTypeDecoderSCA, missingPolicyIDField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4388,8 +4314,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingPolicyIDField)
 
 TEST_F(dumpEndTypeDecoderSCA, missingElementsSentField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4416,8 +4341,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingElementsSentField)
 
 TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4444,8 +4368,7 @@ TEST_F(dumpEndTypeDecoderSCA, missingScanIDField)
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4473,8 +4396,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheck
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheckResultsOkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4502,8 +4424,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindCheck
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4531,8 +4452,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindCheckResultsOkNotF
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4560,8 +4480,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsUnexpec
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4589,8 +4508,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindCheckResultsOkNotFo
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4622,8 +4540,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanI
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanInfoOkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4655,8 +4572,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerFindScanI
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4688,8 +4604,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoUnexpected
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4721,8 +4636,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrFindScanInfoOkNotFound
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4754,8 +4668,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoOkNotFound)
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedAnswer)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4787,8 +4700,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkFindScanInfoUnexpectedA
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZero)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4820,8 +4732,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsZ
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4853,8 +4764,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsZero)
 
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
 {
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4887,8 +4797,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsZero)
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsNotZero)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4926,8 +4835,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctUnexpectedAnswerStrcmpIsN
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));
@@ -4965,8 +4873,7 @@ TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctErrStrcmpIsNotZero)
 TEST_F(dumpEndTypeDecoderSCA, DeletePolicyCheckDistinctOkStrcmpIsNotZero)
 {
 
-    const auto tuple {
-        std::make_tuple(targetField, commonArguments, ctx)};
+    const auto tuple {std::make_tuple(targetField, commonArguments, ctx)};
 
     EXPECT_CALL(*wdbManager, connection());
     EXPECT_CALL(*sockFactory, getHandler(testing::_, testing::_));

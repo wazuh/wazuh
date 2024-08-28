@@ -75,7 +75,6 @@ public:
      * TODO: Delete this, should not use rapidjson
      */
     static YAML::Node jsonToYaml(const rapidjson::Value& value);
-
 };
 
 namespace utils
@@ -90,7 +89,7 @@ namespace utils
  * @throw std::runtime_error if the YML string is invalid.
  */
 std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort = false);
-} // namespace util
+} // namespace utils
 
 } // namespace yml
 

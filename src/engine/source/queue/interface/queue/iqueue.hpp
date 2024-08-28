@@ -1,8 +1,6 @@
 #ifndef _QUEUE_IQUEUE_HPP
 #define _QUEUE_IQUEUE_HPP
 
-
-
 namespace base::queue
 {
 

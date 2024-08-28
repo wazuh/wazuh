@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <bk/mockController.hpp>
-#include <builder/mockPolicy.hpp>
 #include <builder/mockBuilder.hpp>
+#include <builder/mockPolicy.hpp>
 
 #include "router.hpp"
 
@@ -64,15 +64,15 @@ public:
     {
         makeControllerBuildPolicySuccess();
         auto assets = std::unordered_set<base::Name> {"asset/wazuh/0"};
-        EXPECT_CALL(*m_mockPolicy, assets())
-            .WillRepeatedly(::testing::ReturnRefOfCopy(assets));
+        EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(assets));
     }
 
     void makeControllerNameFilterFailture(router::prod::EntryPost entryPost)
     {
         std::string hash = "hash";
         makeControllerPolicyAssetsSuccess();
-        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+            .WillOnce(::testing::Return(m_mockController));
         auto emptyExpression = base::Expression {};
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRefOfCopy(hash));
@@ -85,7 +85,8 @@ public:
     {
         std::string hash = "hash";
         makeControllerPolicyAssetsSuccess();
-        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+            .WillOnce(::testing::Return(m_mockController));
 
         auto emptyExpression = base::Expression {};
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(emptyExpression));
@@ -95,7 +96,8 @@ public:
     void makeControllerBuildAssetFailture(router::prod::EntryPost entryPost)
     {
         makeControllerNameFilterSuccess();
-        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
+        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_))
+            .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
         stopControllerCall();
         auto error = m_router->addEntry(entryPost);
         EXPECT_TRUE(error.has_value());
@@ -130,7 +132,8 @@ public:
 
     void rebuildEntryBuildPolicyFailture(const std::string& name)
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_))
+            .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
         EXPECT_FALSE(rebuildEntry(name));
     }
 
@@ -145,7 +148,8 @@ public:
     void rebuildEntryBuildAssetFailture(const std::string& name)
     {
         makeControllerNameFilterSuccess();
-        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Filter was not building")));
+        EXPECT_CALL(*m_mockBuilder, buildAsset(testing::_))
+            .WillOnce(::testing::Throw(std::runtime_error("Filter was not building")));
         stopControllerCall(2);
         EXPECT_FALSE(rebuildEntry(name));
     }
@@ -180,9 +184,7 @@ public:
         bool mockCalled = false;
 
         EXPECT_CALL(*m_mockController, ingest(testing::_))
-            .WillOnce(testing::Invoke([&mockCalled]() {
-                mockCalled = true;
-            }));
+            .WillOnce(testing::Invoke([&mockCalled]() { mockCalled = true; }));
 
         m_router->ingest(std::move(event));
 

@@ -87,9 +87,9 @@ inline bool isDecoder(const base::Name& name, bool verifyParts = true)
 {
     if (verifyParts)
     {
-        return  (name.parts().front() == DECODER_PART) && (name.parts().size() == NUM_PARTS);
+        return (name.parts().front() == DECODER_PART) && (name.parts().size() == NUM_PARTS);
     }
-    return  name.parts().front() == DECODER_PART;
+    return name.parts().front() == DECODER_PART;
 }
 
 /**
@@ -102,9 +102,9 @@ inline bool isRule(const base::Name& name, bool verifyParts = true)
 {
     if (verifyParts)
     {
-        return  (name.parts().front() == RULE_PART) && (name.parts().size() == NUM_PARTS);
+        return (name.parts().front() == RULE_PART) && (name.parts().size() == NUM_PARTS);
     }
-    return  name.parts().front() == RULE_PART;
+    return name.parts().front() == RULE_PART;
 }
 
 /**
@@ -117,9 +117,9 @@ inline bool isOutput(const base::Name& name, bool verifyParts = true)
 {
     if (verifyParts)
     {
-        return  (name.parts().front() == OUTPUT_PART) && (name.parts().size() == NUM_PARTS);
+        return (name.parts().front() == OUTPUT_PART) && (name.parts().size() == NUM_PARTS);
     }
-    return  name.parts().front() == OUTPUT_PART;
+    return name.parts().front() == OUTPUT_PART;
 }
 
 /**
@@ -132,9 +132,9 @@ inline bool isFilter(const base::Name& name, bool verifyParts = true)
 {
     if (verifyParts)
     {
-        return  (name.parts().front() == FILTER_PART) && (name.parts().size() == NUM_PARTS);
+        return (name.parts().front() == FILTER_PART) && (name.parts().size() == NUM_PARTS);
     }
-    return  name.parts().front() == FILTER_PART;
+    return name.parts().front() == FILTER_PART;
 }
 
 /**

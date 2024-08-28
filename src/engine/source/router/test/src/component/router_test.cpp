@@ -365,7 +365,9 @@ TEST_F(OrchestratorRouterTest, ChangeEPSError)
 
 TEST_F(OrchestratorRouterTest, ActivateEPS)
 {
-    EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_)).Times(2).WillRepeatedly(testing::Return(std::nullopt));
+    EXPECT_CALL(*m_mockStore, upsertInternalDoc(testing::_, testing::_))
+        .Times(2)
+        .WillRepeatedly(testing::Return(std::nullopt));
 
     auto res = m_orchestrator->activateEpsCounter(true);
     ASSERT_FALSE(base::isError(res));

@@ -6,7 +6,6 @@
 
 #include <router/iapi.hpp>
 
-
 namespace api::router::handlers
 {
 
@@ -14,12 +13,12 @@ namespace api::router::handlers
 api::HandlerSync routePost(const std::weak_ptr<::router::IRouterAPI>& router);
 api::HandlerSync routeDelete(const std::weak_ptr<::router::IRouterAPI>& router);
 api::HandlerSync routeGet(const std::weak_ptr<::router::IRouterAPI>& router,
-                      const std::weak_ptr<api::policy::IPolicy>& policy);
+                          const std::weak_ptr<api::policy::IPolicy>& policy);
 api::HandlerSync routeReload(const std::weak_ptr<::router::IRouterAPI>& router);
 api::HandlerSync routePatchPriority(const std::weak_ptr<::router::IRouterAPI>& router);
 
 api::HandlerSync tableGet(const std::weak_ptr<::router::IRouterAPI>& router,
-                      const std::weak_ptr<api::policy::IPolicy>& policy);
+                          const std::weak_ptr<api::policy::IPolicy>& policy);
 api::HandlerSync queuePost(const std::weak_ptr<::router::IRouterAPI>& router);
 
 api::HandlerSync changeEpsSettings(const std::weak_ptr<::router::IRouterAPI>& router);
@@ -36,6 +35,6 @@ api::HandlerSync deactivateEpsLimiter(const std::weak_ptr<::router::IRouterAPI>&
 void registerHandlers(const std::weak_ptr<::router::IRouterAPI>& router,
                       const std::weak_ptr<api::policy::IPolicy>& policy,
                       const std::shared_ptr<api::Api> api);
-}
+} // namespace api::router::handlers
 
 #endif // _API_ROUTER_HANDLERS_HPP

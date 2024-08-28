@@ -1,11 +1,10 @@
 #ifndef _SERVER_SERVER_H
 #define _SERVER_SERVER_H
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
-#include <cstdint>
-
 
 #include <uvw.hpp>
 #include <uvw/async.h>

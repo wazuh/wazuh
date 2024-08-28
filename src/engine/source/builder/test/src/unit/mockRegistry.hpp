@@ -28,18 +28,20 @@ class MockMetaRegistry final : public MetaRegistry<Builders...>
 public:
     [[nodiscard]] static constexpr std::shared_ptr<MockMetaRegistry<Builders...>> createMock()
     {
-        return std::static_pointer_cast<MockMetaRegistry<Builders...>>(MetaRegistry<Builders...>::template create<MockRegistry>());
+        return std::static_pointer_cast<MockMetaRegistry<Builders...>>(
+            MetaRegistry<Builders...>::template create<MockRegistry>());
     }
 
-    template <typename Builder>
+    template<typename Builder>
     const MockRegistry<Builder>& getRegistry()
     {
         auto regTuple = this->getRegistryTuple();
-        auto ptr = std::static_pointer_cast<MockRegistry<Builder>>(std::get<std::shared_ptr<IRegistry<Builder>>>(regTuple));
+        auto ptr =
+            std::static_pointer_cast<MockRegistry<Builder>>(std::get<std::shared_ptr<IRegistry<Builder>>>(regTuple));
         return *ptr;
     }
 };
 
-} // namespace builder::registry::mock
+} // namespace builder::mocks
 
 #endif // _BUILDER_TEST_UNIT_REGISTRY_MOCKREGISTRY_HPP

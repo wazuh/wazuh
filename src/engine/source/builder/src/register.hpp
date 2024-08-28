@@ -55,18 +55,14 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
                                                      {schemf::runtimeValidation(), builders::opfilter::existsBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "not_exists", {schemf::runtimeValidation(), builders::opfilter::notExistsBuilder});
-    registry->template add<builders::OpBuilderEntry>("array_contains",
-                                                     {schemf::isArrayToken(),
-                                                      builders::opfilter::opBuilderHelperContains});
-    registry->template add<builders::OpBuilderEntry>("array_contains_any",
-                                                     {schemf::isArrayToken(),
-                                                      builders::opfilter::opBuilderHelperContainsAny});
-    registry->template add<builders::OpBuilderEntry>("array_not_contains",
-                                                     {schemf::isArrayToken(),
-                                                      builders::opfilter::opBuilderHelperNotContains});
-    registry->template add<builders::OpBuilderEntry>("array_not_contains_any",
-                                                     {schemf::isArrayToken(),
-                                                      builders::opfilter::opBuilderHelperNotContainsAny});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_contains", {schemf::isArrayToken(), builders::opfilter::opBuilderHelperContains});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_contains_any", {schemf::isArrayToken(), builders::opfilter::opBuilderHelperContainsAny});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_not_contains", {schemf::isArrayToken(), builders::opfilter::opBuilderHelperNotContains});
+    registry->template add<builders::OpBuilderEntry>(
+        "array_not_contains_any", {schemf::isArrayToken(), builders::opfilter::opBuilderHelperNotContainsAny});
     registry->template add<builders::OpBuilderEntry>(
         "int_equal",
         {schemf::JTypeToken::create(json::Json::Type::Number), builders::opfilter::opBuilderHelperIntEqual});
@@ -214,7 +210,8 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const Builder
     registry->template add<builders::OpBuilderEntry>(
         "concat", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat()});
     registry->template add<builders::OpBuilderEntry>(
-        "concat_any", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat(true)});
+        "concat_any",
+        {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringConcat(true)});
     registry->template add<builders::OpBuilderEntry>(
         "replace", {schemf::JTypeToken::create(json::Json::Type::String), builders::opBuilderHelperStringReplace});
     registry->template add<builders::OpBuilderEntry>(

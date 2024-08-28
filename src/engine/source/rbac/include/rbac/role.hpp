@@ -1,8 +1,8 @@
 #ifndef _RBAC_ROLE_HPP
 #define _RBAC_ROLE_HPP
 
-#include <string>
 #include <set>
+#include <string>
 #include <variant>
 
 #include <rbac/permission.hpp>
