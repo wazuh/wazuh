@@ -8,7 +8,7 @@ azure-storage-common==2.1.0
 boto3==1.34.135
 botocore==1.34.135
 cachetools==4.1.0
-certifi==2023.7.22
+certifi==2024.7.4
 cffi==1.15.1
 chardet==3.0.4
 charset-normalizer==2.0.4
@@ -40,7 +40,6 @@ httpcore==1.0.2
 httpx==0.26.0
 h11==0.14.0
 idna==3.7.0
-importlib-metadata==6.8.0
 inflection==0.3.1
 isodate==0.6.1
 Jinja2==3.1.4
@@ -95,5 +94,3 @@ websocket-client==0.57.0
 Werkzeug==3.0.3
 xmltodict==0.12.0
 yarl==1.7.0
-zipp==3.3.2
-content_size_limit_asgi==0.1.5
