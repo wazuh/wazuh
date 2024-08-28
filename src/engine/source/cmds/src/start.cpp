@@ -258,7 +258,7 @@ void runStart(ConfHandler confManager)
             auto hlpParsers = store->readInternalDoc(hlpConfigFileName);
             if (std::holds_alternative<base::Error>(hlpParsers))
             {
-                LOG_ERROR("Could not retreive configuration file [{}] needed by the "
+                LOG_ERROR("Could not retrieve configuration file [{}] needed by the "
                           "HLP module, error: {}",
                           hlpConfigFileName.fullName(),
                           std::get<base::Error>(hlpParsers).message);
