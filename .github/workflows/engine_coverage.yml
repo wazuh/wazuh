@@ -193,7 +193,7 @@ jobs:
 
             # Generate the coverage report
             lcov  --no-external --capture --initial --directory ${module_build_path} --base-directory ${module_path} --exclude "${module_path}/test/*" --output-file ${coverage_base_file}
-            ctest --test-dir ${module_build_path} -j
+            ctest --test-dir ${module_build_path}
             lcov  --no-external --capture --directory ${module_build_path} --base-directory ${module_path} --exclude "${module_path}/test/*" --output-file $coverage_after_file
             lcov --add-tracefile ${coverage_base_file} --add-tracefile $coverage_after_file --output-file ${coverage_total_file}
             lcov --remove ${coverage_total_file} '*/test/*' "*/${{env.BUILD_PATH}}/vcpkg_installed/*" --output-file ${coverage_filtered_file} --ignore-errors unused
