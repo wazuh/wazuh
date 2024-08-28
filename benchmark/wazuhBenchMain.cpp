@@ -1,7 +1,7 @@
-#include <benchmark/benchmark.h>
 #include <base/logging.hpp>
+#include <benchmark/benchmark.h>
 
-int main(int argc, char **argv)
+int main(int argc, char** argv)
 {
     logging::testInit();
 

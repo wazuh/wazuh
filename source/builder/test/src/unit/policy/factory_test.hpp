@@ -11,7 +11,7 @@ namespace buildgraphtest
 
 inline base::Expression assetExpr(const base::Name& name)
 {
-    return base::And::create(name,  {base::Term<int>::create("fake", 0)});
+    return base::And::create(name, {base::Term<int>::create("fake", 0)});
 }
 
 class AssetData

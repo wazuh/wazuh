@@ -6,9 +6,9 @@
 #include <fmt/format.h>
 
 #include <api/catalog/catalog.hpp>
-#include <store/mockStore.hpp>
-#include <rbac/mockRbac.hpp>
 #include <builder/mockValidator.hpp>
+#include <rbac/mockRbac.hpp>
+#include <store/mockStore.hpp>
 
 using namespace store::mocks;
 

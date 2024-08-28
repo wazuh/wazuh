@@ -41,8 +41,7 @@ TEST(LogicExpression, buildDijstraEvaluator)
         }
         else
         {
-            throw std::runtime_error(
-                "Error test fakeBuilder, got unexpected term: " + s);
+            throw std::runtime_error("Error test fakeBuilder, got unexpected term: " + s);
         }
     };
 

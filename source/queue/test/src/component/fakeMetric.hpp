@@ -55,12 +55,14 @@ class FakeMetricScope : public metricsManager::IMetricsScope
         return std::make_shared<FakeIHistogram<uint64_t>>();
     }
 
-    std::shared_ptr<metricsManager::iGauge<double>> getGaugeDouble(const std::string& name, double defaultValue) override
+    std::shared_ptr<metricsManager::iGauge<double>> getGaugeDouble(const std::string& name,
+                                                                   double defaultValue) override
     {
         return std::make_shared<FakeIGauge<double>>();
     }
 
-    std::shared_ptr<metricsManager::iGauge<int64_t>> getGaugeInteger(const std::string& name, int64_t defaultValue) override
+    std::shared_ptr<metricsManager::iGauge<int64_t>> getGaugeInteger(const std::string& name,
+                                                                     int64_t defaultValue) override
     {
         return std::make_shared<FakeIGauge<int64_t>>();
     }

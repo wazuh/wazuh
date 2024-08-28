@@ -3,8 +3,8 @@
 
 #include <CLI/CLI.hpp>
 
-#include <cmds/apiclnt/client.hpp>
 #include <base/utils/wazuhProtocol/wazuhProtocol.hpp>
+#include <cmds/apiclnt/client.hpp>
 
 namespace cmd::metrics
 {
@@ -40,7 +40,9 @@ void runDump(std::shared_ptr<apiclnt::Client> client);
  * @param socketPath The socket.
  * @param name The instrument name.
  */
-void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName);
+void runGetInstrument(std::shared_ptr<apiclnt::Client> client,
+                      const std::string& scopeName,
+                      const std::string& instrumentName);
 
 /**
  * @brief Enables or disables an instrument.
@@ -49,7 +51,10 @@ void runGetInstrument(std::shared_ptr<apiclnt::Client> client, const std::string
  * @param name The instrument name.
  * @param status The desired status.
  */
-void runEnableInstrument(std::shared_ptr<apiclnt::Client> client, const std::string& scopeName, const std::string& instrumentName, bool status);
+void runEnableInstrument(std::shared_ptr<apiclnt::Client> client,
+                         const std::string& scopeName,
+                         const std::string& instrumentName,
+                         bool status);
 
 /**
  * @brief List the instruments.

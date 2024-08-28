@@ -90,8 +90,7 @@ ssize_t testRecvWaitAll(int socketFD, void* buf, size_t size) noexcept;
  * @throw RecoverableError if a broken pipe error occurs (EPIPE).
  * @warning This function blocks until the message is sent or the socket is disconnected.
  */
-CommRetval
-testSendMsg(const int socketFD, const std::string& msg, const bool doSendLength = true);
+CommRetval testSendMsg(const int socketFD, const std::string& msg, const bool doSendLength = true);
 
 /**
  * @brief Receive a Wazuh protocol message from a socket.

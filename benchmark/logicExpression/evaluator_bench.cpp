@@ -4,7 +4,7 @@
 
 static void BM_DijkstraEvaluator(benchmark::State& state)
 {
-     auto fakeTermBuilder = [](std::string s) -> std::function<bool(int)>
+    auto fakeTermBuilder = [](std::string s) -> std::function<bool(int)>
     {
         if (s == "even")
         {
@@ -36,8 +36,7 @@ static void BM_DijkstraEvaluator(benchmark::State& state)
         }
         else
         {
-            throw std::runtime_error(
-                "Error test fakeBuilder, got unexpected term: " + s);
+            throw std::runtime_error("Error test fakeBuilder, got unexpected term: " + s);
         }
     };
 
@@ -58,7 +57,8 @@ static void BM_DijkstraEvaluator(benchmark::State& state)
     };
 
     auto expression = "(even OR odd AND NOT great5) AND great1";
-    std::function<bool(int)> evaluator = logicexpr::buildDijstraEvaluator<int, std::string>(expression, fakeTermBuilder, termP);
+    std::function<bool(int)> evaluator =
+        logicexpr::buildDijstraEvaluator<int, std::string>(expression, fakeTermBuilder, termP);
 
     // Benchamark
     for (auto _ : state)
@@ -73,6 +73,4 @@ static void BM_DijkstraEvaluator(benchmark::State& state)
 
 // Benchmarks
 
-BENCHMARK(BM_DijkstraEvaluator)
-    ->RangeMultiplier(10)->Range(1, 10000000)
-    ->Unit(benchmark::kMicrosecond);
+BENCHMARK(BM_DijkstraEvaluator)->RangeMultiplier(10)->Range(1, 10000000)->Unit(benchmark::kMicrosecond);

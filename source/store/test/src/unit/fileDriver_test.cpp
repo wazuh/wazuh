@@ -42,10 +42,7 @@ protected:
         std::ofstream file(m_filePath);
     }
 
-    void TearDown() override
-    {
-        std::filesystem::remove_all(m_path);
-    }
+    void TearDown() override { std::filesystem::remove_all(m_path); }
 };
 
 using BuildsT = std::tuple<bool, std::string, bool>; // shouldPass, path, create

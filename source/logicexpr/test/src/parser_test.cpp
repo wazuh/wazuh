@@ -99,7 +99,6 @@ TEST_P(ErrorParserTest, badExpression)
             ++pos;
         }
 
-
         if (start == pos)
         {
             return parsec::makeError<std::string>(std::string("Expected keyword"), pos);
@@ -297,7 +296,6 @@ termA_11;
 }
 )"}));
 
-
 TEST(LogicExpressionParser, notCopiableTerm)
 {
 
@@ -350,7 +348,7 @@ TEST(LogicExpressionParser, notCopiableTerm)
 
         auto keyword = text.substr(start, pos - start);
 
-        return parsec::makeSuccess(NotCopyableTerm{std::string(keyword)}, pos);
+        return parsec::makeSuccess(NotCopyableTerm {std::string(keyword)}, pos);
     };
 
     std::string input = "termA AND termB";
@@ -363,11 +361,10 @@ termA_11;
 }
 )";
     auto expression = Expression::create();
-    std::string result ;
+    std::string result;
 
     EXPECT_NO_THROW(expression = parse<decltype(p)>(input, std::move(p))) << "Parsing: " << input;
     EXPECT_NO_THROW(result = Expression::toDotString(expression));
-
 
     EXPECT_EQ(result, expected) << "Parsing: " << input << "\n result: " << result << "\n expected: " << expected;
 }

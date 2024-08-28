@@ -353,10 +353,7 @@ public:
      *
      * @return VersionObjectType.
      */
-    VersionObjectType getType() override
-    {
-        return VersionObjectType::RPM;
-    }
+    VersionObjectType getType() override { return VersionObjectType::RPM; }
 
     /**
      * @brief Comparison operator ==.

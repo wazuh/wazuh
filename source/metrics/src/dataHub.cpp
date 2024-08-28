@@ -1,9 +1,8 @@
-#include <metrics/dataHub.hpp>
-#include <thread>
-#include <mutex>
-#include <iostream>
 #include <fmt/format.h>
+#include <iostream>
 #include <metrics/dataHub.hpp>
+#include <mutex>
+#include <thread>
 
 namespace metricsManager
 {
@@ -34,7 +33,8 @@ json::Json DataHub::getAllResources()
 
     json::Json retValue;
 
-    for (auto &r : m_resources) {
+    for (auto& r : m_resources)
+    {
         retValue.set("/" + r.first, r.second);
     }
 

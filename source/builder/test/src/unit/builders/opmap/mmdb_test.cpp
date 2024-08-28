@@ -399,10 +399,8 @@ INSTANTIATE_TEST_SUITE_P(
         MapDepsT(
             R"({"ref": "1.2.3.4"})", as::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
         // No result
-        MapDepsT(R"({"ref": "1.2.3.4"})",
-                 as::getBuilderLocatorNoResult(),
-                 {makeRef("ref")},
-                 FAILURE(customRefExpected())),
+        MapDepsT(
+            R"({"ref": "1.2.3.4"})", as::getBuilderLocatorNoResult(), {makeRef("ref")}, FAILURE(customRefExpected())),
         // Partial result
         MapDepsT(R"({"ref": "1.2.3.4"})",
                  as::getBuilderLocatorResult(false, false),

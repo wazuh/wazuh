@@ -33,7 +33,7 @@ class Registry
 {
 
     std::map<std::string, HandlerAsync> m_handlers; ///< Map of command and handlers
-    std::shared_mutex m_mutex;                 ///< A mutex for thread safety (protect m_handlers)
+    std::shared_mutex m_mutex;                      ///< A mutex for thread safety (protect m_handlers)
 
 public:
     // Constructors

@@ -8,7 +8,9 @@
 namespace base::test
 {
 
-struct None{};
+struct None
+{
+};
 
 template<typename R, typename... A>
 class InnerExpected

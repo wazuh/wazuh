@@ -30,10 +30,7 @@ public:
     }
     inline int end() const { return m_end; }
 
-    inline int len() const
-    {
-        return m_isQuoted ? m_end - m_start - 2 : m_end - m_start;
-    }
+    inline int len() const { return m_isQuoted ? m_end - m_start - 2 : m_end - m_start; }
 
     inline int start() const { return m_isQuoted ? m_start + 1 : m_start; }
 
@@ -58,11 +55,8 @@ public:
  * @param strict Whether strict parsing should be used. If true, fields not enclosed in quotes cannot contain quotes.
  * @return An optional Field object containing the parsed field, or std::nullopt if the input is invalid.
  */
-std::optional<Field> getField(std::string_view input,
-                              const char delimiter,
-                              const char quote,
-                              const char escape,
-                              bool strict);
+std::optional<Field>
+getField(std::string_view input, const char delimiter, const char quote, const char escape, bool strict);
 
 /**
  * @brief Unescapes a string

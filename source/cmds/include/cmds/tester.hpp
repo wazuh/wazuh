@@ -55,7 +55,8 @@ void sessionCreate(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 /**
  * @brief Deletes an existing testing session based on the provided parameters.
  *
- * This function connects to the provided API client and deletes an existing testing session using the specified parameters.
+ * This function connects to the provided API client and deletes an existing testing session using the specified
+ * parameters.
  *
  * @param client A shared pointer to the apiclnt::Client instance.
  * @param parameters The configuration parameters for deleting the testing session.
@@ -65,7 +66,8 @@ void sessionDelete(std::shared_ptr<apiclnt::Client> client, const Parameters& pa
 /**
  * @brief Retrieves information about a specific testing session based on the provided parameters.
  *
- * This function connects to the provided API client and retrieves information about a specific testing session using the specified parameters.
+ * This function connects to the provided API client and retrieves information about a specific testing session using
+ * the specified parameters.
  *
  * @param client A shared pointer to the apiclnt::Client instance.
  * @param parameters The configuration parameters for getting information about the testing session.
@@ -98,6 +100,6 @@ void run(std::shared_ptr<apiclnt::Client> client, const Parameters& parameters);
  * @param app A pointer to the CLI::App instance to be configured.
  */
 void configure(CLI::App_p app);
-} // namespace cmd::test
+} // namespace cmd::tester
 
 #endif // _CMD_TEST_HPP

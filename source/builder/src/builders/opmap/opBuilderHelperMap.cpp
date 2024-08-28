@@ -540,8 +540,8 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                 const auto& asValue = std::static_pointer_cast<Value>(arg);
                 if (!asValue->value().isString() && !asValue->value().isNumber() && !asValue->value().isObject())
                 {
-                    throw std::runtime_error(
-                        fmt::format("Expected 'string/number/object' parameter but got type '{}'", asValue->value().typeName()));
+                    throw std::runtime_error(fmt::format("Expected 'string/number/object' parameter but got type '{}'",
+                                                         asValue->value().typeName()));
                 }
             }
             else
@@ -607,7 +607,7 @@ MapBuilder opBuilderHelperStringConcat(bool atleastOne)
                     {
                         resolvedField = std::to_string(event->getDouble(ref).value());
                     }
-                    else if (event->isInt(ref) ||event->isInt64(ref))
+                    else if (event->isInt(ref) || event->isInt64(ref))
                     {
                         resolvedField = std::to_string(event->getIntAsInt64(ref).value());
                     }

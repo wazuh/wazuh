@@ -9,9 +9,8 @@
 
 #include "baseTypes.hpp" // hlpc
 #include <arpa/inet.h>   // ip
+#include <iostream>      // TODO delete
 #include <variant>       // SemParser
-#include <iostream> // TODO delete
-
 
 namespace pocp
 {
@@ -545,13 +544,14 @@ hlpc::Parser synLiteral(const std::string& literal, const std::string& name, con
         }
 
         return pocp::makeSuccess(hlpc::SynToken {input.substr(0, input.size() - res.remaining().size()), semParser},
-                           res.remaining());
+                                 res.remaining());
     };
 }
 
 hlpc::SemParser semIp(std::string_view parsed, const std::string& targetField)
 {
-    return [mapper = mapperLiteral(parsed, targetField)](std::string_view parsed) -> std::variant<hlpc::SemToken, base::Error>
+    return [mapper = mapperLiteral(parsed, targetField)](
+               std::string_view parsed) -> std::variant<hlpc::SemToken, base::Error>
     {
         struct in_addr addr;
         const std::string parsedStr {parsed};
@@ -579,8 +579,7 @@ hlpc::Parser ipParser(const std::string& name, const std::string& targetField)
         }
         auto parsed = input.substr(0, input.size() - res.remaining().size());
 
-        return makeSuccess(hlpc::SynToken {parsed, semIp(parsed, targetField)},
-                           res.remaining());
+        return makeSuccess(hlpc::SynToken {parsed, semIp(parsed, targetField)}, res.remaining());
     };
 }
 

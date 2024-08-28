@@ -4,7 +4,8 @@
 #include <exception>
 #include <string>
 
-namespace cmd {
+namespace cmd
+{
 
 /**
  * @brief Error type
@@ -16,10 +17,12 @@ namespace cmd {
 /**
  * @brief Exception thrown when the API client fails
  */
-class ClientException : public std::exception {
+class ClientException : public std::exception
+{
 
 public:
-    enum class Type {
+    enum class Type
+    {
         // 0 is reserved for success
         UNKNOWN_ERROR = 1,            ///< Unknown error (default)
         SOCKET_COMMUNICATION_ERROR,   ///< Socket communication error
@@ -72,29 +75,22 @@ public:
      */
     std::string getErrorTypeDescription() const
     {
-        switch (m_errorType) {
-        case Type::UNKNOWN_ERROR:
-            return "Unknown error";
-        case Type::SOCKET_COMMUNICATION_ERROR:
-            return "Socket communication error";
-        case Type::INVALID_RESPONSE_FROM_SERVER:
-            return "Invalid response from server";
-        case Type::PROTOBUFF_SERIALIZE_ERROR:
-            return "Protobuff serialize error";
-        case Type::PROTOBUFF_DESERIALIZE_ERROR:
-            return "Protobuff deserialize error";
-        case Type::WRESPONSE_ERROR:
-            return "Wazuh protocol response error";
-        case Type::EMESSAGE_ERROR:
-            return "Engine requeset failed";
-        default:
-            return "Invalid error type";
+        switch (m_errorType)
+        {
+            case Type::UNKNOWN_ERROR: return "Unknown error";
+            case Type::SOCKET_COMMUNICATION_ERROR: return "Socket communication error";
+            case Type::INVALID_RESPONSE_FROM_SERVER: return "Invalid response from server";
+            case Type::PROTOBUFF_SERIALIZE_ERROR: return "Protobuff serialize error";
+            case Type::PROTOBUFF_DESERIALIZE_ERROR: return "Protobuff deserialize error";
+            case Type::WRESPONSE_ERROR: return "Wazuh protocol response error";
+            case Type::EMESSAGE_ERROR: return "Engine requeset failed";
+            default: return "Invalid error type";
         }
     }
 
 private:
     std::string m_errorMsg; ///< Error message
-    Type m_errorType;  ///< Error type
+    Type m_errorType;       ///< Error type
 };
 
 } // namespace cmd

@@ -5,9 +5,9 @@
 #include <mutex>
 #include <unordered_map>
 
+#include <metrics/dataHub.hpp>
 #include <metrics/iMetricsManager.hpp>
 #include <metrics/iMetricsManagerAPI.hpp>
-#include <metrics/dataHub.hpp>
 #include <metrics/metricsScope.hpp>
 
 namespace metricsManager
@@ -17,34 +17,39 @@ namespace metricsManager
  * @brief Metrics Module implementation. This
  *
  */
-class MetricsManager : public IMetricsManager, public IMetricsManagerAPI
+class MetricsManager
+    : public IMetricsManager
+    , public IMetricsManagerAPI
 {
 public:
     MetricsManager();
 
     /**
      * @copydoc IMetricsManager::getMetricsScope
-    */
-    std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name, bool delta = false, int exporterIntervalMS = 1000, int exporterTimeoutMS = 300) override;
+     */
+    std::shared_ptr<IMetricsScope> getMetricsScope(const std::string& name,
+                                                   bool delta = false,
+                                                   int exporterIntervalMS = 1000,
+                                                   int exporterTimeoutMS = 300) override;
 
     /**
      * @copydoc IMetricsManager::getScopeNames
-    */
+     */
     std::vector<std::string> getScopeNames() override;
 
     /**
      * @copydoc IMetricsManager::start
-    */
+     */
     void start() override;
 
     /**
      * @copydoc IMetricsManager::isRunning
-    */
+     */
     bool isRunning() override;
 
     /**
      * @copydoc IMetricsManager::getAllMetrics
-    */
+     */
     json::Json getAllMetrics() override;
 
     // API Commands
@@ -52,22 +57,24 @@ public:
 
     /**
      * @copydoc iMetricsManagerAPI::getCmd
-    */
-    std::variant<std::string, base::Error> getCmd(const std::string& scopeName, const std::string& instrumentName) override;
+     */
+    std::variant<std::string, base::Error> getCmd(const std::string& scopeName,
+                                                  const std::string& instrumentName) override;
 
     /**
      * @copydoc iMetricsManagerAPI::enableCmd
-    */
-    std::optional<base::Error> enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) override;
+     */
+    std::optional<base::Error>
+    enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) override;
 
     /**
      * @copydoc iMetricsManagerAPI::testCmd
-    */
+     */
     void testCmd() override;
 
     /**
      * @copydoc iMetricsManagerAPI::listCmd
-    */
+     */
     std::variant<std::string, base::Error> listCmd() override;
 
 private:
@@ -89,7 +96,7 @@ private:
     /**
      * @brief Metrics Scope for Testing Instrument
      */
-    std::shared_ptr<metricsManager::IMetricsScope>  m_scopeMetrics;
+    std::shared_ptr<metricsManager::IMetricsScope> m_scopeMetrics;
 
     /**
      * @brief Get the MetricsScope object.

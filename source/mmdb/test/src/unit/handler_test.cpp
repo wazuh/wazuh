@@ -13,10 +13,7 @@ const std::string g_ipNotFound {"1.2.3.6"};
 class HandlerTest : public ::testing::Test
 {
 protected:
-    void SetUp() override
-    {
-        logging::testInit();
-    }
+    void SetUp() override { logging::testInit(); }
 };
 
 TEST_F(HandlerTest, openOk)

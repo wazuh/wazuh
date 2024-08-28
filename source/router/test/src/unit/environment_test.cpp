@@ -22,7 +22,6 @@ auto getMockController()
     return controller;
 }
 
-
 TEST(EnvironmentTest, ConstructorThrowsOnInvalidController)
 {
     EXPECT_THROW(Environment(getDummyTerm(true), nullptr, std::string("-")), std::runtime_error);
@@ -30,7 +29,7 @@ TEST(EnvironmentTest, ConstructorThrowsOnInvalidController)
 
 TEST(EnvironmentTest, StopOnDestroy)
 {
-    Environment environment(base::Expression{}, getMockController(), std::string("-"));
+    Environment environment(base::Expression {}, getMockController(), std::string("-"));
 }
 
 TEST(EnvironmentTest, isAccepted)
@@ -62,4 +61,3 @@ TEST(EnvironmentTest, IngestGet)
     auto res = environment.ingestGet(std::move(event));
     EXPECT_EQ(*res, *eventExpected);
 }
-

@@ -1,7 +1,7 @@
 #include "store/drivers/fileDriver.hpp"
 
-#include <fmt/format.h>
 #include <base/logging.hpp>
+#include <fmt/format.h>
 
 namespace store::drivers
 {
@@ -256,7 +256,6 @@ base::RespOrError<Col> FileDriver::readCol(const base::Name& name) const
 
     return result;
 }
-
 
 base::RespOrError<Col> FileDriver::readRoot() const
 {

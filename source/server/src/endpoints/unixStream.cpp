@@ -283,13 +283,8 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
     asyncs->push_back(wAsync);
 
     async->on<uvw::AsyncEvent>(
-        [wClient,
-         address = m_address,
-         metric = m_metric,
-         responseTimer,
-         protocolHandler,
-         response,
-         asyncs](const uvw::AsyncEvent&, uvw::AsyncHandle& syncHandle)
+        [wClient, address = m_address, metric = m_metric, responseTimer, protocolHandler, response, asyncs](
+            const uvw::AsyncEvent&, uvw::AsyncHandle& syncHandle)
         {
             // Check if client is closed
             auto client = wClient.lock();
@@ -312,11 +307,13 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
             metric.m_responseTime->recordValue(static_cast<uint64_t>(elapsedTime));
 
             // Find and remove the corresponding AsyncHandle from the array
-            auto it = std::find_if(asyncs->begin(), asyncs->end(),
-                                [&syncHandle](const auto& weakAsync) {
-                                    auto async = weakAsync.lock();
-                                    return async && async.get() == &syncHandle;
-                                });
+            auto it = std::find_if(asyncs->begin(),
+                                   asyncs->end(),
+                                   [&syncHandle](const auto& weakAsync)
+                                   {
+                                       auto async = weakAsync.lock();
+                                       return async && async.get() == &syncHandle;
+                                   });
 
             if (it != asyncs->end())
             {
@@ -379,8 +376,9 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
 }
 
-std::shared_ptr<uvw::TimerHandle> UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient,
-                                                          std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs)
+std::shared_ptr<uvw::TimerHandle>
+UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient,
+                        std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs)
 {
     auto timer = m_loop->resource<uvw::TimerHandle>();
 

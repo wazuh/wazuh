@@ -28,7 +28,8 @@ public:
      * @param newStatus The new status. True Enabled. False Disabled.
      * @return The Error code.
      */
-    virtual std::optional<base::Error> enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) = 0;
+    virtual std::optional<base::Error>
+    enableCmd(const std::string& scopeName, const std::string& instrumentName, bool newStatus) = 0;
 
     /**
      * @brief Implements the GET command, which retrieves instrument data based on scope and instrument names.
@@ -37,7 +38,8 @@ public:
      * @param instrumentName Name of the Instrument.
      * @return The json representation of the instrument data or Error.
      */
-    virtual std::variant<std::string, base::Error> getCmd(const std::string& scopeName, const std::string& instrumentName) = 0;
+    virtual std::variant<std::string, base::Error> getCmd(const std::string& scopeName,
+                                                          const std::string& instrumentName) = 0;
 
     /**
      * @brief Implements the TEST command, which creates a testing counter and increases its value for testing purposes.
@@ -53,5 +55,5 @@ public:
     virtual std::variant<std::string, base::Error> listCmd() = 0;
 };
 
-}
+} // namespace metricsManager
 #endif // _I_METRICS_MANAGER_API_H

@@ -30,10 +30,11 @@ class UnixDatagram : public Endpoint
 {
 private:
     std::function<void(std::string&)> m_callback; ///< Callback function to be called when a message is received
-    std::shared_ptr<uvw::UDPHandle> m_handle;      ///< Handle to the socket
-    int m_bufferSize;                              ///< Size of the receive buffer
+    std::shared_ptr<uvw::UDPHandle> m_handle;     ///< Handle to the socket
+    int m_bufferSize;                             ///< Size of the receive buffer
 
-    struct Metric {
+    struct Metric
+    {
         std::shared_ptr<metricsManager::IMetricsScope> m_metricsScope;     ///< Metrics scope for the endpoint
         std::shared_ptr<metricsManager::iCounter<uint64_t>> m_byteRecv;    ///< Counter for the total requests
         std::shared_ptr<metricsManager::iHistogram<uint64_t>> m_eventSize; ///< Histogram for the event size

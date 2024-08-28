@@ -117,10 +117,7 @@ public:
      *
      * @return VersionObjectType.
      */
-    VersionObjectType getType() override
-    {
-        return VersionObjectType::CalVer;
-    }
+    VersionObjectType getType() override { return VersionObjectType::CalVer; }
 
     /**
      * @brief Comparison operator ==.

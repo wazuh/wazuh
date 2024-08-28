@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <bk/mockController.hpp>
-#include <builder/mockPolicy.hpp>
 #include <builder/mockBuilder.hpp>
+#include <builder/mockPolicy.hpp>
 
 #include "tester.hpp"
 
@@ -36,7 +36,8 @@ public:
     {
         EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
-        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+            .WillOnce(::testing::Return(m_mockController));
 
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));
@@ -46,14 +47,16 @@ public:
 
     void rebuildEntryFailture()
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_))
+            .WillOnce(::testing::Throw(std::runtime_error("Policy was not building")));
     }
 
     void rebuildEntryCallersSuccess(const std::unordered_set<base::Name>& fakeAssets, const std::string& hash)
     {
         EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_)).WillOnce(::testing::Return(m_mockPolicy));
         EXPECT_CALL(*m_mockPolicy, assets()).WillRepeatedly(::testing::ReturnRefOfCopy(fakeAssets));
-        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_)).WillOnce(::testing::Return(m_mockController));
+        EXPECT_CALL(*m_mockControllerMaker, create(testing::_, testing::_, testing::_))
+            .WillOnce(::testing::Return(m_mockController));
 
         EXPECT_CALL(*m_mockPolicy, expression()).WillOnce(::testing::ReturnRefOfCopy(base::Expression {}));
         EXPECT_CALL(*m_mockPolicy, hash()).WillOnce(::testing::ReturnRef(hash));

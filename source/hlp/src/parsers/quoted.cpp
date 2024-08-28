@@ -120,9 +120,7 @@ Parser getQuotedParser(const Params& params)
     }
 
     const auto synP = getSynParser(quoteChar, escapeChar);
-    const auto semP = params.targetField.empty()
-                          ? noSemParser()
-                          : getSemParser(params.targetField, escapeChar);
+    const auto semP = params.targetField.empty() ? noSemParser() : getSemParser(params.targetField, escapeChar);
 
     // The parser
     return [name = params.name, synP, semP](std::string_view txt)

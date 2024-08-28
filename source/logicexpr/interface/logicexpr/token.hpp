@@ -8,12 +8,15 @@
  * @brief Defines the base token class and its derived classes for the logic expression parser.
  *
  * This file defines the BaseToken class, which is the base class for all tokens used in the logic expression parser.
- * It also defines the derived classes for the different types of tokens, such as TermToken, OpToken, UnaryOpToken, BinaryOpToken, OrToken, AndToken, NotToken, ParenthesisOpenToken, and ParenthesisCloseToken.
+ * It also defines the derived classes for the different types of tokens, such as TermToken, OpToken, UnaryOpToken,
+ * BinaryOpToken, OrToken, AndToken, NotToken, ParenthesisOpenToken, and ParenthesisCloseToken.
  *
- * The BaseToken class provides virtual functions to check the type of the token, as well as functions to get the token's text and position.
- * It also provides overloaded operators to compare tokens based on their text and position, and to compare their precedence.
+ * The BaseToken class provides virtual functions to check the type of the token, as well as functions to get the
+ * token's text and position. It also provides overloaded operators to compare tokens based on their text and position,
+ * and to compare their precedence.
  *
- * The derived classes provide additional functionality specific to their type of token, such as the buildToken function in TermToken, and the precedence function in OpToken.
+ * The derived classes provide additional functionality specific to their type of token, such as the buildToken function
+ * in TermToken, and the precedence function in OpToken.
  */
 
 namespace logicexpr::parser
@@ -39,7 +42,7 @@ protected:
     }
 
     std::string m_text; ///< Token text
-    size_t m_pos;      ///< Text position of the token in the expression
+    size_t m_pos;       ///< Text position of the token in the expression
 
 public:
     virtual ~BaseToken() = default;
@@ -47,8 +50,9 @@ public:
     /**
      * @brief Returns a shared pointer to a derived class of BaseToken.
      *
-     * This function returns a shared pointer to a derived class of BaseToken, specified by the template parameter Derived.
-     * It performs a dynamic cast of the shared pointer to the derived class, and throws a runtime_error if the cast fails.
+     * This function returns a shared pointer to a derived class of BaseToken, specified by the template parameter
+     * Derived. It performs a dynamic cast of the shared pointer to the derived class, and throws a runtime_error if the
+     * cast fails.
      *
      * @tparam Derived The derived class of BaseToken to cast the shared pointer to.
      * @return std::shared_ptr<Derived> A shared pointer to the derived class of BaseToken.
@@ -155,7 +159,6 @@ public:
     {
         return lhs.text() == rhs.text() && lhs.pos() == rhs.pos();
     }
-
 };
 /**
  * @brief A class representing a term token in a logical expression.
@@ -229,7 +232,8 @@ namespace details
  * @brief A class representing an operator token in a logical expression.
  *
  * This class inherits from BaseToken and represents an operator token in a logical expression.
- * It contains a PrecedencePolicy object and provides methods to create shared pointers to OrToken, AndToken and NotToken objects.
+ * It contains a PrecedencePolicy object and provides methods to create shared pointers to OrToken, AndToken and
+ * NotToken objects.
  *
  * @tparam PrecedencePolicy The type of the PrecedencePolicy object.
  */
@@ -547,7 +551,6 @@ struct DefaultPrecedencePolicy
 
 } // namespace details
 
-
 /**
  * @brief A class representing a left parenthesis token.
  *
@@ -646,30 +649,30 @@ using NotToken = details::NotToken<details::DefaultPrecedencePolicy>;
  */
 namespace traits
 {
-    /**
-     * @brief Trait to check if a token is a term token.
-     *
-     * This trait is used to check if a token is a term token. It is implemented using std::false_type as the default
-     * value and std::true_type for std::shared_ptr<TermToken<T>>.
-     *
-     * @tparam T The type of the token.
-     */
-    template<typename T>
-    struct is_term_token : std::false_type
-    {
-    };
+/**
+ * @brief Trait to check if a token is a term token.
+ *
+ * This trait is used to check if a token is a term token. It is implemented using std::false_type as the default
+ * value and std::true_type for std::shared_ptr<TermToken<T>>.
+ *
+ * @tparam T The type of the token.
+ */
+template<typename T>
+struct is_term_token : std::false_type
+{
+};
 
-    /**
-     * @brief Trait specialization for std::shared_ptr<TermToken<T>>.
-     *
-     * This trait specialization is used to set std::true_type for std::shared_ptr<TermToken<T>>.
-     *
-     * @tparam T The type of the token.
-     */
-    template<typename T>
-    struct is_term_token<std::shared_ptr<TermToken<T>>> : std::true_type
-    {
-    };
+/**
+ * @brief Trait specialization for std::shared_ptr<TermToken<T>>.
+ *
+ * This trait specialization is used to set std::true_type for std::shared_ptr<TermToken<T>>.
+ *
+ * @tparam T The type of the token.
+ */
+template<typename T>
+struct is_term_token<std::shared_ptr<TermToken<T>>> : std::true_type
+{
+};
 } // namespace traits
 
 } // namespace logicexpr::parser

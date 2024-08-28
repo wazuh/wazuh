@@ -174,16 +174,15 @@ TEST_P(LoggerTestExtraInfo, LogPatternMatching)
 INSTANTIATE_TEST_CASE_P(
     LevelsWithRegex,
     LoggerTestExtraInfo,
-    ::testing::Values(
-        std::make_tuple(logging::Level::Trace,
-                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
-        std::make_tuple(logging::Level::Debug,
-                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
-        std::make_tuple(logging::Level::Info,
-                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
-        std::make_tuple(logging::Level::Warn,
-                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
-        std::make_tuple(logging::Level::Err,
-                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
-        std::make_tuple(logging::Level::Critical,
-                        std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"))));
+    ::testing::Values(std::make_tuple(logging::Level::Trace,
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
+                      std::make_tuple(logging::Level::Debug,
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ .*: (\w+): .*)")),
+                      std::make_tuple(logging::Level::Info,
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+                      std::make_tuple(logging::Level::Warn,
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+                      std::make_tuple(logging::Level::Err,
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
+                      std::make_tuple(logging::Level::Critical,
+                                      std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"))));

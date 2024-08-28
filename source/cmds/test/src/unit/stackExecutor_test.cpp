@@ -1,7 +1,7 @@
 #include <cmds/details/stackExecutor.hpp>
 
-#include <gtest/gtest.h>
 #include <base/logging.hpp>
+#include <gtest/gtest.h>
 
 class StackExecutor : public ::testing::Test
 {
@@ -23,9 +23,9 @@ TEST_F(StackExecutor, add)
     cmd::details::StackExecutor stack;
     std::string result {};
 
-    stack.add([&result](){ result += "1"; });
-    stack.add([&result](){ result += "2"; });
-    stack.add([&result](){ result += "3"; });
+    stack.add([&result]() { result += "1"; });
+    stack.add([&result]() { result += "2"; });
+    stack.add([&result]() { result += "3"; });
 
     ASSERT_EQ(result, "");
 }
@@ -35,9 +35,9 @@ TEST_F(StackExecutor, execute_as_lifo)
     cmd::details::StackExecutor stack;
     std::string result {};
 
-    stack.add([&result](){ result += "1"; });
-    stack.add([&result](){ result += "2"; });
-    stack.add([&result](){ result += "3"; });
+    stack.add([&result]() { result += "1"; });
+    stack.add([&result]() { result += "2"; });
+    stack.add([&result]() { result += "3"; });
 
     stack.execute();
     ASSERT_EQ(result, "321");
@@ -48,9 +48,9 @@ TEST_F(StackExecutor, execute_clears_stack)
     cmd::details::StackExecutor stack;
     std::string result {};
 
-    stack.add([&result](){ result += "1"; });
-    stack.add([&result](){ result += "2"; });
-    stack.add([&result](){ result += "3"; });
+    stack.add([&result]() { result += "1"; });
+    stack.add([&result]() { result += "2"; });
+    stack.add([&result]() { result += "3"; });
 
     stack.execute();
     ASSERT_EQ(result, "321");
@@ -63,9 +63,9 @@ TEST_F(StackExecutor, execute_catches_exceptions)
     cmd::details::StackExecutor stack;
     std::string result {};
 
-    stack.add([&result](){ result += "1"; });
-    stack.add([&result](){ throw std::runtime_error("error"); });
-    stack.add([&result](){ result += "3"; });
+    stack.add([&result]() { result += "1"; });
+    stack.add([&result]() { throw std::runtime_error("error"); });
+    stack.add([&result]() { result += "3"; });
 
     stack.execute();
     ASSERT_EQ(result, "31");

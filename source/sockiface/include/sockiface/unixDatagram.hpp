@@ -32,14 +32,14 @@ public:
 
     /**
      * @copydoc ISockHandler::sendMsg
-    */
+     */
     SendRetval sendMsg(const std::string& msg) override;
 
     /**
      * @copydoc ISockHandler::recvMsg
-    */
+     */
     std::vector<char> recvMsg(void) override;
 };
-} // namespace base::utils::socketInterface
+} // namespace sockiface
 
 #endif // _SOCKETINTERFACE_UNIX_DGRAM_H

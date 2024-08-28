@@ -1,7 +1,7 @@
 #include "api/catalog/catalog.hpp"
 
-#include <fmt/format.h>
 #include <base/logging.hpp>
+#include <fmt/format.h>
 
 #include <store/utils.hpp>
 #include <yml/yml.hpp>
@@ -496,7 +496,8 @@ base::OptError Catalog::deleteResource(const Resource& resource, const std::stri
     return delDoc(resource);
 }
 
-std::optional<base::Error> Catalog::validate(const Resource& item, const std::string& namespaceId, const json::Json& content) const
+std::optional<base::Error>
+Catalog::validate(const Resource& item, const std::string& namespaceId, const json::Json& content) const
 {
     // Assert resource type is Asset, Policy or Integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type
@@ -517,7 +518,8 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const std::st
     {
         if (namespaceId.empty())
         {
-            return base::Error {fmt::format("Missing /namespaceid parameter for type '{}'", Resource::typeToStr(item.m_type))};
+            return base::Error {
+                fmt::format("Missing /namespaceid parameter for type '{}'", Resource::typeToStr(item.m_type))};
         }
         validationError = m_validator->validateIntegration(content, namespaceId);
     }
@@ -535,7 +537,8 @@ std::optional<base::Error> Catalog::validate(const Resource& item, const std::st
     ;
 }
 
-std::optional<base::Error> Catalog::validateResource(const Resource& item, const std::string& namespaceId, const std::string& content) const
+std::optional<base::Error>
+Catalog::validateResource(const Resource& item, const std::string& namespaceId, const std::string& content) const
 {
     // Assert resource is asset, policy or integration
     if (Resource::Type::decoder != item.m_type && Resource::Type::rule != item.m_type

@@ -6,7 +6,8 @@
 using namespace std;
 using namespace rxcpp;
 
-template <class... Args> void BM_IntAndOperationA(benchmark::State & state, Args &&... args)
+template<class... Args>
+void BM_IntAndOperationA(benchmark::State& state, Args&&... args)
 {
     // Config
     auto args_tuple = make_tuple(move(args)...);
@@ -17,7 +18,8 @@ template <class... Args> void BM_IntAndOperationA(benchmark::State & state, Args
     vector<operation_a::Operation<int>> ops;
     for (auto i = 0; i < OPERATIONS; ++i)
     {
-        ops.push_back(operation_a::Operation<int>(to_string(i), [=](operation_a::OperationResult<int> r)
+        ops.push_back(operation_a::Operation<int>(to_string(i),
+                                                  [=](operation_a::OperationResult<int> r)
                                                   { return operation_a::OperationResult(true, r.event() + 1); }));
     }
     operation_a::CombinatorAnd<int> and_a("and", ops);
@@ -83,7 +85,8 @@ BENCHMARK_CAPTURE(BM_IntAndOperationA, "100000->1000", 100000, 1000)->Unit(bench
 BENCHMARK_CAPTURE(BM_IntAndOperationA, "1000000->1000", 1000000, 1000)->Unit(benchmark::kSecond);
 // BENCHMARK_CAPTURE(BM_IntAndOperationA, "10000000->1000", 10000000, 1000)->Unit(benchmark::kSecond);
 
-template <class... Args> void BM_IntAndOperationRaw(benchmark::State & state, Args &&... args)
+template<class... Args>
+void BM_IntAndOperationRaw(benchmark::State& state, Args&&... args)
 {
     // Config
     auto args_tuple = make_tuple(move(args)...);

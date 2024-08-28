@@ -3,7 +3,6 @@
 
 #include <sockiface/isockFactory.hpp>
 
-
 #include "builders/types.hpp"
 
 namespace builder::builders

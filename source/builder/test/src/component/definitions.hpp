@@ -1,6 +1,7 @@
 #ifndef _BUILDER_TEST_DEFINITIONS_HPP
 #define _BUILDER_TEST_DEFINITIONS_HPP
 
+#include <base/behaviour.hpp>
 #include <builder/builder.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <logpar/logpar.hpp>
@@ -8,7 +9,6 @@
 #include <schemf/mockSchema.hpp>
 #include <sockiface/mockSockFactory.hpp>
 #include <store/mockStore.hpp>
-#include <base/behaviour.hpp>
 
 using namespace base::test;
 using namespace store::mocks;

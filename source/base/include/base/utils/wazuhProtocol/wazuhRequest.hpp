@@ -39,7 +39,6 @@ public:
      */
     ~WazuhRequest() = default;
 
-
     // copy constructor
     WazuhRequest(const WazuhRequest& other)
     {

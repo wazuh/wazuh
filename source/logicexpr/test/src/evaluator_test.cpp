@@ -8,8 +8,7 @@ TEST(LogicExpressionEvaluator, ExpressionConstructs)
 {
     ASSERT_NO_THROW(Expression<int>::create());
     auto expression = Expression<int>::create();
-    EXPECT_NO_THROW(expression =
-                        Expression<int>::create([](int) { return true; }));
+    EXPECT_NO_THROW(expression = Expression<int>::create([](int) { return true; }));
     EXPECT_TRUE(expression->m_function(0));
     EXPECT_THROW(expression = Expression<int>::create(ExpressionType::TERM), std::runtime_error);
 
@@ -53,11 +52,9 @@ TEST(LogicExpressionEvaluator, getDijstraEvaluator)
     auto root = Expression<int>::create(ExpressionType::AND);
     root->m_left = Expression<int>::create([](int i) { return i > 1; });
     root->m_right = Expression<int>::create(ExpressionType::OR);
-    root->m_right->m_left =
-        Expression<int>::create([](int i) { return i % 2 == 0; });
+    root->m_right->m_left = Expression<int>::create([](int i) { return i % 2 == 0; });
     root->m_right->m_right = Expression<int>::create(ExpressionType::NOT);
-    root->m_right->m_right->m_left =
-        Expression<int>::create([](int i) { return i > 5; });
+    root->m_right->m_right->m_left = Expression<int>::create([](int i) { return i > 5; });
 
     std::function<bool(int)> evaluator;
     ASSERT_NO_THROW(evaluator = getDijstraEvaluator<int>(root));

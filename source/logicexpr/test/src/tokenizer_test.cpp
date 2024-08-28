@@ -22,7 +22,10 @@ public:
     NotCopyableTerm(NotCopyableTerm&&) noexcept = default;
     NotCopyableTerm& operator=(NotCopyableTerm&&) noexcept = default;
 
-    explicit NotCopyableTerm(int value) : m_value(value) {}
+    explicit NotCopyableTerm(int value)
+        : m_value(value)
+    {
+    }
 
     int value() const { return m_value; }
 };
@@ -51,7 +54,8 @@ TEST(LogicxprTokenizerTest, TermParserIncludesOperators)
     {
         if (sv.substr(pos, termStr.size()) == termStr)
         {
-            return parsec::makeSuccess(Token {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), termStr, pos)}, pos + termStr.size());
+            return parsec::makeSuccess(Token {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), termStr, pos)},
+                                       pos + termStr.size());
         }
         else
         {
@@ -107,8 +111,12 @@ INSTANTIATE_TEST_SUITE_P(
         TokenizerT(true, opstr::P_OPEN, {ParenthOpenToken::create(opstr::P_OPEN, 0)}),
         TokenizerT(true, opstr::P_CLOSE, {ParenthCloseToken::create(opstr::P_CLOSE, 0)}),
         TokenizerT(true, "    TERM ", {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 4)}),
-        TokenizerT(true, "TERMOR", {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 0), OrToken::create(opstr::OR, 4)}),
-        TokenizerT(true, "TERM OR", {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 0), OrToken::create(opstr::OR, 5)}),
+        TokenizerT(true,
+                   "TERMOR",
+                   {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 0), OrToken::create(opstr::OR, 4)}),
+        TokenizerT(true,
+                   "TERM OR",
+                   {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 0), OrToken::create(opstr::OR, 5)}),
         TokenizerT(true,
                    "TERM  OR TERM   ",
                    {TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 0),
@@ -129,9 +137,8 @@ INSTANTIATE_TEST_SUITE_P(
                     NotToken::create(opstr::NOT, 23)}),
         TokenizerT(false, "    ", {}),
         TokenizerT(true,
-           "NOT TERM AND TERM   ",
-           {{NotToken::create(opstr::NOT, 0)},
-            TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 4),
-            OrToken::create(opstr::AND, 9),
-            TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 13)})
-        ));
+                   "NOT TERM AND TERM   ",
+                   {{NotToken::create(opstr::NOT, 0)},
+                    TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 4),
+                    OrToken::create(opstr::AND, 9),
+                    TermToken<NotCopyableTerm>::create(NotCopyableTerm(0), "TERM", 13)})));

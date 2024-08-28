@@ -4,8 +4,8 @@
 #include <gtest/gtest.h>
 
 #include <base/expression.hpp>
-#include <fmt/format.h>
 #include <base/utils/stringUtils.hpp>
+#include <fmt/format.h>
 
 namespace bk::test
 {
@@ -138,8 +138,8 @@ public:
     {
         ASSERT_TRUE(data.isObject());
         ASSERT_TRUE(data.exists(m_name)) << fmt::format("Expected {} to exist but got:\n{}", m_name, data.prettyStr());
-        ASSERT_TRUE(data.isObject(m_name)) << fmt::format(
-            "Expected {} to be an object but got:\n{}", m_name, data.prettyStr());
+        ASSERT_TRUE(data.isObject(m_name))
+            << fmt::format("Expected {} to be an object but got:\n{}", m_name, data.prettyStr());
         ASSERT_EQ(data.size(m_name), m_steps.size())
             << fmt::format("Expected {} to have {} items but got:\n{}", m_name, m_steps.size(), data.prettyStr());
 
@@ -150,7 +150,7 @@ public:
             for (const auto& step : m_steps)
             {
                 auto [key, value] = asObject[i++];
-                json::Json nextData{};
+                json::Json nextData {};
                 auto path = std::string("/") + key;
                 nextData.set(path, value);
                 step->check(nextData);

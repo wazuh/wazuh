@@ -2,7 +2,7 @@
 
 #include <queue/concurrentQueue.hpp>
 
-#include "fakeMetric.hpp" // TODO Remove after implementing metrics mocks 
+#include "fakeMetric.hpp" // TODO Remove after implementing metrics mocks
 
 using namespace base::queue;
 
@@ -27,9 +27,7 @@ protected:
 
     ~ConcurrentQueueTest() {}
 
-    void SetUp() override {
-        logging::testInit();
-    }
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override {}
 };

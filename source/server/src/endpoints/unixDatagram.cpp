@@ -56,7 +56,6 @@ UnixDatagram::UnixDatagram(const std::string& address,
     m_metric.m_metricsScopeDelta = std::move(metricsScopeDelta);
     m_metric.m_byteRecvPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("BytesReceivedPerSeconds");
     m_metric.m_eventPerSecond = m_metric.m_metricsScopeDelta->getCounterUInteger("EventsReceivedPerSeconds");
-
 }
 
 UnixDatagram::~UnixDatagram()
@@ -67,7 +66,6 @@ UnixDatagram::~UnixDatagram()
         m_handle->close();
         m_handle = nullptr;
         unlink(m_address.c_str());
-
     }
 }
 
@@ -145,21 +143,18 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
                         LOG_WARNING("[Endpoint: {}] Resume listening.", m_address);
                     }
                     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
-
                 });
 
             workerJob->on<uvw::ErrorEvent>(
                 [this](const uvw::ErrorEvent& error, uvw::WorkReq& work)
                 {
-                    LOG_WARNING(
-                        "[Endpoint: {}] Error calling the callback: {}", m_address, error.what(), error.code());
+                    LOG_WARNING("[Endpoint: {}] Error calling the callback: {}", m_address, error.what(), error.code());
                     m_currentTaskQueueSize--;
                     if (resume())
                     {
                         LOG_WARNING("[Endpoint: {}] Resume listening.", m_address);
                     }
                     m_metric.m_queueSize->recordValue(m_currentTaskQueueSize.load());
-
                 });
             workerJob->queue();
         });
@@ -170,10 +165,10 @@ void UnixDatagram::bind(std::shared_ptr<uvw::Loop> loop)
         {
             // Log the error
             LOG_WARNING("[Endpoint: {}] Error: code=[{}]; name=[{}]; message=[{}].",
-                           m_address,
-                           event.code(),
-                           event.name(),
-                           event.what());
+                        m_address,
+                        event.code(),
+                        event.name(),
+                        event.what());
         });
 
     m_handle->on<uvw::CloseEvent>(

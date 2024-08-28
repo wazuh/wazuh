@@ -12,8 +12,8 @@
 #include <base/graph.hpp>
 #include <store/istore.hpp>
 
-#include "iregistry.hpp"
 #include "iassetBuilder.hpp"
+#include "iregistry.hpp"
 
 namespace builder::policy::factory
 {

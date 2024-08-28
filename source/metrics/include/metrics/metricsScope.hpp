@@ -3,8 +3,8 @@
 
 #include <string>
 
-#include "opentelemetry/sdk/metrics/meter_provider.h"
 #include "opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader.h"
+#include "opentelemetry/sdk/metrics/meter_provider.h"
 
 #include <metrics/dataHub.hpp>
 #include <metrics/dataHubExporter.hpp>
@@ -111,8 +111,7 @@ private:
     /**
      * @brief Collection of Double Counters mapping to OpenTelemetry internals.
      */
-    InstrumentCollection<Counter<OTMetrics::Counter<double>, double>,
-                        OTstd::unique_ptr<OTMetrics::Counter<double>>>
+    InstrumentCollection<Counter<OTMetrics::Counter<double>, double>, OTstd::unique_ptr<OTMetrics::Counter<double>>>
         m_collection_counter_double;
 
     /**
@@ -188,7 +187,7 @@ private:
      * @param observer_result Internals Open Telemetry holding the observer result.
      * @param id Identification of instrument.
      */
-    static void FetcherInteger(OTMetrics::ObserverResult observer_result, void *id);
+    static void FetcherInteger(OTMetrics::ObserverResult observer_result, void* id);
 
     /**
      * @brief Callback for Observable instrument of type Double.
@@ -196,7 +195,7 @@ private:
      * @param observer_result Internals Open Telemetry holding the observer result.
      * @param id Identification of instrument.
      */
-    static void FetcherDouble(OTMetrics::ObserverResult observer_result, void *id);
+    static void FetcherDouble(OTMetrics::ObserverResult observer_result, void* id);
 };
 
 } // namespace metricsManager

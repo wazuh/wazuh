@@ -1,17 +1,16 @@
 #ifndef _API_CONFIG_HANDLERS_HPP
 #define _API_CONFIG_HANDLERS_HPP
 
+#include <exception>
 #include <memory>
 #include <optional>
-#include <exception>
 
-#include <conf/iconf.hpp>
 #include <base/json.hpp>
+#include <conf/iconf.hpp>
 #include <eMessages/config.pb.h>
 
-#include <api/api.hpp>
 #include <api/adapter.hpp>
-
+#include <api/api.hpp>
 
 namespace api::config::handlers
 {
@@ -72,9 +71,9 @@ api::HandlerSync runtimePut(ConfHandler<ConfDriver> confHandler)
 
         const auto& request = std::get<RequestType>(res);
         // Validate the engine request
-        std::optional<std::string> error = !request.has_name()    ? std::make_optional("Missing /name")
+        std::optional<std::string> error = !request.has_name()      ? std::make_optional("Missing /name")
                                            : !request.has_content() ? std::make_optional("Missing /value")
-                                                                  : std::nullopt;
+                                                                    : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
@@ -138,9 +137,10 @@ api::HandlerSync runtimeSave(ConfHandler<ConfDriver> confHandler)
 template<typename ConfDriver>
 void registerHandlers(std::shared_ptr<api::Api> api, ConfHandler<ConfDriver> confHandler)
 {
-    const bool ok = api->registerHandler("config.runtime/get", Api::convertToHandlerAsync(runtimeGet(confHandler)))
-                    && api->registerHandler("config.runtime/put", Api::convertToHandlerAsync(runtimePut(confHandler)))
-                    && api->registerHandler("config.runtime/save", Api::convertToHandlerAsync(runtimeSave(confHandler)));
+    const bool ok =
+        api->registerHandler("config.runtime/get", Api::convertToHandlerAsync(runtimeGet(confHandler)))
+        && api->registerHandler("config.runtime/put", Api::convertToHandlerAsync(runtimePut(confHandler)))
+        && api->registerHandler("config.runtime/save", Api::convertToHandlerAsync(runtimeSave(confHandler)));
 
     if (!ok)
     {

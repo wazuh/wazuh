@@ -2,11 +2,11 @@
 #include "api/graph/handlers.hpp"
 
 #include <api/adapter.hpp>
+#include <builder/ibuilder.hpp>
 #include <eMessages/eMessage.h>
 #include <eMessages/graph.pb.h>
 #include <logpar/registerParsers.hpp>
 #include <schemf/schema.hpp>
-#include <builder/ibuilder.hpp>
 
 namespace
 {
@@ -16,7 +16,6 @@ enum class GraphType
     EXPRESSIONS
 };
 }
-
 
 namespace api::graph::handlers
 {

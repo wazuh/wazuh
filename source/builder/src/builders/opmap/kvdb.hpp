@@ -118,8 +118,7 @@ TransformBuilder getOpBuilderKVDBDelete(std::shared_ptr<IKVDBManager> kvdbManage
  *
  * @return Builder
  */
-TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager,
-                                       const std::string& kvdbScopeName);
+TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbManager, const std::string& kvdbScopeName);
 
 /**
  * @brief Builds helper BitmaskToTable, that maps a bitmask to a table of values.
@@ -150,10 +149,10 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
  * @throw std::runtime_error if the parameter size is not one.
  */
 TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
-                                                  const std::vector<OpArg>& opArgs,
-                                                  const std::shared_ptr<const IBuildCtx>& buildCtx,
-                                                  std::shared_ptr<IKVDBManager> kvdbManager,
-                                                  const std::string& kvdbScopeName);
+                                             const std::vector<OpArg>& opArgs,
+                                             const std::shared_ptr<const IBuildCtx>& buildCtx,
+                                             std::shared_ptr<IKVDBManager> kvdbManager,
+                                             const std::string& kvdbScopeName);
 
 /**
  * @brief Get the 'kvdb_decode_bitmask' function helper builder
@@ -164,7 +163,7 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
  * @return TransformBuilder The builder of the helper.
  */
 TransformBuilder getOpBuilderHelperKVDBDecodeBitmask(std::shared_ptr<IKVDBManager> kvdbManager,
-                                                  const std::string& kvdbScopeName);
+                                                     const std::string& kvdbScopeName);
 
 } // namespace builder::builders
 

@@ -7,10 +7,10 @@
 
 #include <fmt/format.h>
 
+#include <base/logging.hpp>
 #include <rbac/irbac.hpp>
 #include <rbac/model.hpp>
 #include <store/istore.hpp>
-#include <base/logging.hpp>
 
 namespace rbac
 {

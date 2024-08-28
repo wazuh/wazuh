@@ -108,8 +108,7 @@ Parser getBinaryParser(const Params& params)
         throw std::runtime_error("binary parser doesn't accept parameters");
     }
 
-    const auto semP =
-        params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
+    const auto semP = params.targetField.empty() ? noSemParser() : getSemParser(params.targetField);
     const auto synP = getSynParser();
 
     return [name = params.name, semP, synP](std::string_view txt)

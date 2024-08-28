@@ -122,13 +122,9 @@ rapidjson::Value Converter::yamlToJson(const YAML::Node& root, rapidjson::Docume
 
     switch (root.Type())
     {
-        case YAML::NodeType::Null:
-            v.SetNull();
-            break;
+        case YAML::NodeType::Null: v.SetNull(); break;
 
-        case YAML::NodeType::Scalar:
-            v = parseScalar(root, allocator);
-            break;
+        case YAML::NodeType::Scalar: v = parseScalar(root, allocator); break;
 
         case YAML::NodeType::Sequence:
             v.SetArray();
@@ -145,17 +141,14 @@ rapidjson::Value Converter::yamlToJson(const YAML::Node& root, rapidjson::Docume
 
             for (const auto& it : root)
             {
-                v.AddMember(
-                    rapidjson::Value(it.first.as<std::string>().c_str(), allocator),
-                    yamlToJson(it.second, allocator),
-                    allocator);
+                v.AddMember(rapidjson::Value(it.first.as<std::string>().c_str(), allocator),
+                            yamlToJson(it.second, allocator),
+                            allocator);
             }
 
             break;
 
-        default:
-            v.SetNull();
-            break;
+        default: v.SetNull(); break;
     }
 
     return v;

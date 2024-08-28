@@ -5,7 +5,7 @@
 namespace mmdb
 {
 
-void Manager::addHandler(const std::string& name, const std::string& mmdbPath) 
+void Manager::addHandler(const std::string& name, const std::string& mmdbPath)
 {
     if (m_handlers.find(name) != m_handlers.end())
     {
@@ -25,12 +25,12 @@ void Manager::addHandler(const std::string& name, const std::string& mmdbPath)
     m_handlers[name] = handler;
 }
 
-void Manager::removeHandler(const std::string& name) 
+void Manager::removeHandler(const std::string& name)
 {
     m_handlers.erase(name);
 }
 
-base::RespOrError<std::shared_ptr<IHandler>> Manager::getHandler(const std::string& name) const 
+base::RespOrError<std::shared_ptr<IHandler>> Manager::getHandler(const std::string& name) const
 {
     auto it = m_handlers.find(name);
     if (it == m_handlers.end())

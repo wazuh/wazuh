@@ -1,9 +1,9 @@
 
 #include "api/catalog/handlers.hpp"
 
+#include <base/json.hpp>
 #include <eMessages/catalog.pb.h>
 #include <eMessages/eMessage.h>
-#include <base/json.hpp>
 
 #include <api/adapter.hpp>
 
@@ -373,10 +373,10 @@ api::HandlerSync resourceValidate(std::shared_ptr<Catalog> catalog, std::weak_pt
         const auto& eRequest = std::get<RequestType>(res);
 
         // Validate the params request
-        const auto error = !eRequest.has_name()          ? std::make_optional("Missing /name parameter")
-                           : !eRequest.has_format()      ? std::make_optional("Missing or invalid /format parameter")
-                           : !eRequest.has_content()     ? std::make_optional("Missing /content parameter")
-                                                         : std::nullopt;
+        const auto error = !eRequest.has_name()      ? std::make_optional("Missing /name parameter")
+                           : !eRequest.has_format()  ? std::make_optional("Missing or invalid /format parameter")
+                           : !eRequest.has_content() ? std::make_optional("Missing /content parameter")
+                                                     : std::nullopt;
         if (error)
         {
             return ::api::adapter::genericError<ResponseType>(error.value());
@@ -473,12 +473,18 @@ api::HandlerSync getNamespaces(std::shared_ptr<Catalog> catalog, std::weak_ptr<r
 
 void registerHandlers(std::shared_ptr<Catalog> catalog, std::shared_ptr<api::Api> api)
 {
-    const bool ok = api->registerHandler("catalog.resource/post", Api::convertToHandlerAsync(resourcePost(catalog, api->getRBAC())))
-                    && api->registerHandler("catalog.resource/get", Api::convertToHandlerAsync(resourceGet(catalog, api->getRBAC())))
-                    && api->registerHandler("catalog.resource/put", Api::convertToHandlerAsync(resourcePut(catalog, api->getRBAC())))
-                    && api->registerHandler("catalog.resource/delete", Api::convertToHandlerAsync(resourceDelete(catalog, api->getRBAC())))
-                    && api->registerHandler("catalog.resource/validate", Api::convertToHandlerAsync(resourceValidate(catalog, api->getRBAC())))
-                    && api->registerHandler("catalog.namespaces/get", Api::convertToHandlerAsync(getNamespaces(catalog, api->getRBAC())));
+    const bool ok =
+        api->registerHandler("catalog.resource/post", Api::convertToHandlerAsync(resourcePost(catalog, api->getRBAC())))
+        && api->registerHandler("catalog.resource/get",
+                                Api::convertToHandlerAsync(resourceGet(catalog, api->getRBAC())))
+        && api->registerHandler("catalog.resource/put",
+                                Api::convertToHandlerAsync(resourcePut(catalog, api->getRBAC())))
+        && api->registerHandler("catalog.resource/delete",
+                                Api::convertToHandlerAsync(resourceDelete(catalog, api->getRBAC())))
+        && api->registerHandler("catalog.resource/validate",
+                                Api::convertToHandlerAsync(resourceValidate(catalog, api->getRBAC())))
+        && api->registerHandler("catalog.namespaces/get",
+                                Api::convertToHandlerAsync(getNamespaces(catalog, api->getRBAC())));
 
     if (!ok)
     {

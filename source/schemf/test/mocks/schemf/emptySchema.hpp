@@ -27,7 +27,6 @@ public:
 
     // TODO DELETE THIS
     static std::shared_ptr<EmptySchema> create() { return std::make_shared<EmptySchema>(); }
-
 };
 
 } // namespace schemf::mocks

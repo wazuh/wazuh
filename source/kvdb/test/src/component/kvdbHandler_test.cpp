@@ -5,11 +5,11 @@
 #include <thread>
 #include <unistd.h>
 
+#include "fakeMetric.hpp"
 #include <base/json.hpp>
+#include <base/logging.hpp>
 #include <kvdb/ikvdbmanager.hpp>
 #include <kvdb/kvdbManager.hpp>
-#include <base/logging.hpp>
-#include "fakeMetric.hpp"
 
 namespace
 {
@@ -88,7 +88,7 @@ private:
     std::string kvdbPath;
 
 protected:
-    std::shared_ptr<kvdbManager::IKVDBManager>  m_kvdbManager;
+    std::shared_ptr<kvdbManager::IKVDBManager> m_kvdbManager;
 
     void SetUp() override
     {

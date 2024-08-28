@@ -123,8 +123,7 @@ TEST_F(wdb_query, SendAndResponse)
 {
     auto [wdb, MockSockHandler] = getWDBHandler();
     EXPECT_CALL(*MockSockHandler, getMaxMsgSize()).WillOnce(testing::Return(1024));
-    EXPECT_CALL(*MockSockHandler, sendMsg(testing::_))
-        .WillOnce(testing::Return(successSendMsgRes()));
+    EXPECT_CALL(*MockSockHandler, sendMsg(testing::_)).WillOnce(testing::Return(successSendMsgRes()));
     EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(recvMsgRes("Test")));
 
     ASSERT_STREQ(wdb->query(TEST_MESSAGE).c_str(), TEST_RESPONSE);
@@ -283,8 +282,7 @@ TEST_F(wdb_tryQueryAndParseResult, SendQueryOK_firstAttemp_wopayload)
 {
     auto [wdb, MockSockHandler] = getWDBHandler();
     EXPECT_CALL(*MockSockHandler, getMaxMsgSize()).WillOnce(testing::Return(1024));
-    EXPECT_CALL(*MockSockHandler, sendMsg(testing::_))
-        .WillOnce(testing::Return(successSendMsgRes()));
+    EXPECT_CALL(*MockSockHandler, sendMsg(testing::_)).WillOnce(testing::Return(successSendMsgRes()));
     EXPECT_CALL(*MockSockHandler, recvMsg()).WillOnce(testing::Return(recvMsgRes("ok")));
 
     auto retval {wdb->tryQueryAndParseResult(TEST_MESSAGE, 1)};
@@ -312,8 +310,7 @@ TEST_F(wdb_tryQueryAndParseResult, SendQueryIrrecoverable)
 {
     auto [wdb, MockSockHandler] = getWDBHandler();
     EXPECT_CALL(*MockSockHandler, getMaxMsgSize()).WillOnce(testing::Return(1024));
-    EXPECT_CALL(*MockSockHandler, sendMsg(testing::_))
-        .WillOnce(testing::Throw(std::runtime_error("test error")));
+    EXPECT_CALL(*MockSockHandler, sendMsg(testing::_)).WillOnce(testing::Throw(std::runtime_error("test error")));
     EXPECT_CALL(*MockSockHandler, socketDisconnect()).Times(1);
 
     // Empty string on error

@@ -20,40 +20,41 @@ auto customRefExpected()
 
 namespace transformbuildtest
 {
-INSTANTIATE_TEST_SUITE_P(Builders,
-                         TransformBuilderTest,
-                         testing::Values(
-                             /*** Delete Field ***/
-                             TransformT({}, opBuilderHelperDeleteField, SUCCESS()),
-                             TransformT({makeValue(R"("value")")}, opBuilderHelperDeleteField, FAILURE()),
-                             TransformT({makeRef("ref")}, opBuilderHelperDeleteField, FAILURE()),
-                             /*** Rename Field ***/
-                             TransformT({}, opBuilderHelperRenameField, FAILURE()),
-                             TransformT({makeValue(R"("value")")}, opBuilderHelperRenameField, FAILURE()),
-                             TransformT({makeRef("ref")}, opBuilderHelperRenameField, SUCCESS()),
-                             TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperRenameField, FAILURE()),
-                             /*** Merge ***/
-                             TransformT({}, opBuilderHelperMerge, FAILURE()),
-                             TransformT({makeValue(R"("value")")}, opBuilderHelperMerge, FAILURE()),
-                             TransformT({makeRef("ref")}, opBuilderHelperMerge, SUCCESS()),
-                             TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMerge, FAILURE()),
-                             /*** Merge Recursive ***/
-                             TransformT({}, opBuilderHelperMergeRecursively, FAILURE()),
-                             TransformT({makeValue(R"("value")")}, opBuilderHelperMergeRecursively, FAILURE()),
-                             TransformT({makeRef("ref")}, opBuilderHelperMergeRecursively, SUCCESS()),
-                             TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMergeRecursively, FAILURE()),
-                             /*** Erase Custom Fields ***/
-                             TransformT({},
-                                        opBuilderHelperEraseCustomFields,
-                                        SUCCESS(
-                                            [](const BuildersMocks& mocks)
-                                            {
-                                                EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(nullptr));
-                                                return None {};
-                                            })),
-                             TransformT({makeValue(R"("value")")}, opBuilderHelperEraseCustomFields, FAILURE()),
-                             TransformT({makeRef("ref")}, opBuilderHelperEraseCustomFields, FAILURE())),
-                         testNameFormatter<TransformBuilderTest>("JsonTransform"));
+INSTANTIATE_TEST_SUITE_P(
+    Builders,
+    TransformBuilderTest,
+    testing::Values(
+        /*** Delete Field ***/
+        TransformT({}, opBuilderHelperDeleteField, SUCCESS()),
+        TransformT({makeValue(R"("value")")}, opBuilderHelperDeleteField, FAILURE()),
+        TransformT({makeRef("ref")}, opBuilderHelperDeleteField, FAILURE()),
+        /*** Rename Field ***/
+        TransformT({}, opBuilderHelperRenameField, FAILURE()),
+        TransformT({makeValue(R"("value")")}, opBuilderHelperRenameField, FAILURE()),
+        TransformT({makeRef("ref")}, opBuilderHelperRenameField, SUCCESS()),
+        TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperRenameField, FAILURE()),
+        /*** Merge ***/
+        TransformT({}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeValue(R"("value")")}, opBuilderHelperMerge, FAILURE()),
+        TransformT({makeRef("ref")}, opBuilderHelperMerge, SUCCESS()),
+        TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMerge, FAILURE()),
+        /*** Merge Recursive ***/
+        TransformT({}, opBuilderHelperMergeRecursively, FAILURE()),
+        TransformT({makeValue(R"("value")")}, opBuilderHelperMergeRecursively, FAILURE()),
+        TransformT({makeRef("ref")}, opBuilderHelperMergeRecursively, SUCCESS()),
+        TransformT({makeRef("ref"), makeRef("ref")}, opBuilderHelperMergeRecursively, FAILURE()),
+        /*** Erase Custom Fields ***/
+        TransformT({},
+                   opBuilderHelperEraseCustomFields,
+                   SUCCESS(
+                       [](const BuildersMocks& mocks)
+                       {
+                           EXPECT_CALL(*mocks.ctx, validatorPtr()).WillOnce(testing::Return(nullptr));
+                           return None {};
+                       })),
+        TransformT({makeValue(R"("value")")}, opBuilderHelperEraseCustomFields, FAILURE()),
+        TransformT({makeRef("ref")}, opBuilderHelperEraseCustomFields, FAILURE())),
+    testNameFormatter<TransformBuilderTest>("JsonTransform"));
 } // namespace transformbuildtest
 
 namespace transformoperatestest

@@ -14,7 +14,6 @@
 #include "hlp.hpp"
 #include "syntax.hpp"
 
-
 namespace
 {
 using namespace hlp;
@@ -208,17 +207,18 @@ void downloadAndInstallTimeZoneDB(const std::string& version)
     }
 
     date::reload_tzdb();
-
 }
 } // namespace
 
-void initTZDB(const std::string& path, const bool autoUpdate) {
+void initTZDB(const std::string& path, const bool autoUpdate)
+{
     date::set_install(path);
 
     std::string rv = date::remote_version();
     LOG_DEBUG("Remote timezone database version: '{}'", rv);
 
-    if (loadTimeZoneDB(rv) && !autoUpdate) {
+    if (loadTimeZoneDB(rv) && !autoUpdate)
+    {
         return;
     }
 

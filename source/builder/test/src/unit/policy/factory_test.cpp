@@ -2,8 +2,8 @@
 
 #include <sstream>
 
-#include <store/mockStore.hpp>
 #include <base/behaviour.hpp>
+#include <store/mockStore.hpp>
 
 #include "expressionCmp.hpp"
 #include "factory_test.hpp"
@@ -205,8 +205,7 @@ INSTANTIATE_TEST_SUITE_P(
                               .hash = "test",
                               .defaultParents = {{"ns", "rule/asset/0"}},
                               .assets = {{factory::PolicyData::AssetType::RULE, {{"ns", {{"rule/asset/0"}}}}}}};
-                }))
-            ));
+                }))));
 } // namespace readtest
 
 namespace buildassetstest

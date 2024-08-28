@@ -123,15 +123,9 @@ public:
         }
     }
 
-    uint64_t size() const
-    {
-        return m_size;
-    }
+    uint64_t size() const { return m_size; }
 
-    bool empty() const
-    {
-        return m_size == 0;
-    }
+    bool empty() const { return m_size == 0; }
 
     U front() const
     {

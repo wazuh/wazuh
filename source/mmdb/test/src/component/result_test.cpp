@@ -4,7 +4,6 @@
 
 #include <mmdb/manager.hpp>
 
-
 namespace
 {
 
@@ -29,7 +28,7 @@ constexpr auto JSON_IP_FULLDATA {R"(
 }
 )"};
 
-constexpr auto JSON_IP_MINDATA  {R"(
+constexpr auto JSON_IP_MINDATA {R"(
 {
   "test_map": {
     "test_str1": "Missing values"
@@ -58,7 +57,7 @@ protected:
 
         m_jDumpFull = json::Json {JSON_IP_FULLDATA};
         m_jDumpFull.setFloat(122.0838, "/test_float");
-        m_jDumpMinimal = json::Json  {JSON_IP_MINDATA};
+        m_jDumpMinimal = json::Json {JSON_IP_MINDATA};
     }
 };
 

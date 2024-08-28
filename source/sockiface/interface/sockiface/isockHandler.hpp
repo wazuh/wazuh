@@ -119,10 +119,7 @@ public:
      * @warning this method blocks until the message is received or the socket is
      * disconnected.
      */
-    std::string recvString()
-    {
-        return std::string(recvMsg().data());
-    }
+    std::string recvString() { return std::string(recvMsg().data()); }
 };
 
 } // namespace sockiface

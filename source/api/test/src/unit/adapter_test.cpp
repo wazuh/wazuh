@@ -58,7 +58,8 @@ TEST(Adapter_fromWazuhRequest, success_empty)
 
 TEST(Adapter_fromWazuhRequest, success)
 {
-    const auto params = json::Json {R"({"valueString":"test value", "defaultBool":true, "defaultInt":1, "anyJson":{}})"};
+    const auto params =
+        json::Json {R"({"valueString":"test value", "defaultBool":true, "defaultInt":1, "anyJson":{}})"};
     const auto wRequest = WazuhRequest::create("testCmd", "test origin", params);
 
     const auto res = fromWazuhRequest<RequestType, ResponseType>(wRequest);
@@ -71,9 +72,7 @@ TEST(Adapter_fromWazuhRequest, success)
     ASSERT_EQ(eRequest.has_anyjson(), false);
     ASSERT_EQ(eRequest.has_valuestring(), true);
     ASSERT_EQ(eRequest.valuestring(), "test value");
-
 }
-
 
 TEST(Adapter_fromWazuhRequest, fail_eMessageFormat)
 {
@@ -87,8 +86,7 @@ TEST(Adapter_fromWazuhRequest, fail_eMessageFormat)
     const auto& wResponse = std::get<WazuhResponse>(res);
     ASSERT_FALSE(wResponse.error());
 
-    ASSERT_EQ(wResponse.data(),
-              json::Json(R"({"status":"ERROR",
+    ASSERT_EQ(wResponse.data(), json::Json(R"({"status":"ERROR",
                               "error":"INVALID_ARGUMENT:: invalid value Starting an object on a scalar field for type defaultInt"
                             })"));
 }
@@ -100,11 +98,9 @@ TEST(Adapter_genericError, response_error)
     const auto wResponse = genericError<ResponseType>(message);
 
     ASSERT_FALSE(wResponse.error());
-    ASSERT_EQ(wResponse.data(),
-              json::Json(R"({"status":"ERROR",
+    ASSERT_EQ(wResponse.data(), json::Json(R"({"status":"ERROR",
                               "error":"test generic error"
                             })"));
-
 }
 
 TEST(Adapter_genericSuccess, response_ok)
@@ -115,5 +111,4 @@ TEST(Adapter_genericSuccess, response_ok)
 
     ASSERT_FALSE(wResponse.error());
     ASSERT_EQ(wResponse.data(), json::Json(R"({"status":"OK"})"));
-
 }

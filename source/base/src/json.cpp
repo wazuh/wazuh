@@ -5,8 +5,8 @@
 
 #include "rapidjson/schema.h"
 
-#include <fmt/format.h>
 #include <base/logging.hpp>
+#include <fmt/format.h>
 
 namespace
 {
