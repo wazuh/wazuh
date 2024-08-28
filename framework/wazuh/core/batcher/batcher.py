@@ -99,6 +99,7 @@ class Batcher:
         buffer_copy = self._buffer.copy()
         asyncio.create_task(self._send_buffer(buffer_copy))
         self._buffer.reset()
+        self._timer.reset_timer()
 
     async def run(self):
         """Continuously retrieves messages from the queue and batches them based on the configuration. Handles signals
@@ -135,14 +136,12 @@ class Batcher:
 
                         if self._buffer.check_count_limit() or self._buffer.check_size_limit():
                             self.create_flush_buffer_task()
-                            self._timer.reset_timer()
                     else:
                         # Cancel the reading task if it is still pending
                         for p_task in pending:
                             p_task.cancel()
 
                         self.create_flush_buffer_task()
-                        self._timer.reset_timer()
 
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)

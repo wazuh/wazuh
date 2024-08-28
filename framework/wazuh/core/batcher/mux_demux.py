@@ -1,5 +1,3 @@
-import uuid
-
 from multiprocessing import Queue, Process
 from multiprocessing.managers import DictProxy, SyncManager
 from typing import Optional
@@ -10,12 +8,12 @@ class Message:
 
     Parameters
     ----------
-    uid : uuid.UUID
+    uid : int
         The unique identifier for the message.
     msg : dict
         The message content as a dictionary.
     """
-    def __init__(self, uid: uuid.UUID, msg: dict):
+    def __init__(self, uid: int, msg: dict):
         self.uid = uid
         self.msg = msg
 
@@ -37,19 +35,19 @@ class MuxDemuxQueue:
         self.mux_queue = mux_queue
         self.demux_queue = demux_queue
 
-    def send_to_mux(self, uid: uuid.UUID, msg: dict) -> uuid.UUID:
+    def send_to_mux(self, uid: int, msg: dict) -> int:
         """Puts a message into the mux queue with an associated unique identifier.
 
         Parameters
         ----------
-        uid : uuid.UUID
+        uid : int
             The unique identifier for the message.
         msg : dict
             The message content to be put into the mux queue.
 
         Returns
         -------
-        uuid.UUID
+        int
             The unique identifier of the message.
         """
         msg = Message(uid=uid, msg=msg)
@@ -78,12 +76,12 @@ class MuxDemuxQueue:
         """
         self.demux_queue.put(msg)
 
-    def is_response_pending(self, uid: uuid.UUID) -> bool:
+    def is_response_pending(self, uid: int) -> bool:
         """Checks if a response is available for a given unique identifier.
 
         Parameters
         ----------
-        uid : uuid.UUID
+        uid : int
             The unique identifier to check.
 
         Returns
@@ -93,12 +91,12 @@ class MuxDemuxQueue:
         """
         return uid not in self.responses
 
-    def receive_from_demux(self, uid: uuid.UUID) -> Optional[dict]:
+    def receive_from_demux(self, uid: int) -> Optional[dict]:
         """Retrieves and removes a response from the dictionary for a given unique identifier.
 
         Parameters
         ----------
-        uid : uuid.UUID
+        uid : int
             The unique identifier for the response.
 
         Returns
