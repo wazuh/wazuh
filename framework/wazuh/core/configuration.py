@@ -1137,13 +1137,13 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(agent_id: str, component: str, configuration: str) -> dict:
+def get_active_configuration(component: str, configuration: str, agent_id: str = None) -> dict:
     """Get an agent's component active configuration.
 
     Parameters
     ----------
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID. All possible values from 001 onwards.
     component : str
         Selected agent's component.
     configuration : str
@@ -1284,7 +1284,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
         return rec_msg_ok, rec_msg
 
-    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_manager()
+    rec_error, rec_data = get_active_configuration_agent() if agent_id else get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data

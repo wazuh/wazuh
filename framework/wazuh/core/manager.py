@@ -105,7 +105,7 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     LoggingFormat
         Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
     """
-    active_logging = get_active_configuration(agent_id="000", component="com", configuration="logging")['logging']
+    active_logging = get_active_configuration(component="com", configuration="logging")['logging']
     return LoggingFormat.plain if active_logging['plain'] == "yes" else LoggingFormat.json
 
 

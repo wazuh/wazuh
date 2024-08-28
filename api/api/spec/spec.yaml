@@ -5330,7 +5330,7 @@ components:
     agent_id:
       in: path
       name: agent_id
-      description: "Agent ID. All possible values from 000 onwards"
+      description: "Agent ID. All possible values from 001 onwards"
       required: true
       schema:
         $ref: '#/components/schemas/AgentID'
@@ -11655,7 +11655,6 @@ paths:
                       gpg13:
                         - 4.3
                     agent:
-                      id: "000"
                       name: "wazuh-master"
                     manager:
                       name: "wazuh-master"
@@ -13510,11 +13509,10 @@ paths:
               example:
                 data:
                   affected_items:
-                    - "000"
                     - "001"
                     - "002"
                     - "003"
-                  total_affected_items: 4
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: "Rootcheck scan was restarted on returned agents"
@@ -14385,11 +14383,10 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '000'
                     - '001'
                     - '002'
                     - '003'
-                  total_affected_items: 4
+                  total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
                 message: "Syscheck scan was restarted on returned agents"
@@ -14525,7 +14522,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '000'
+                    - '001'
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
@@ -15118,7 +15115,6 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '000'
                     - '001'
                     - '002'
                     - '003'
@@ -15131,7 +15127,7 @@ paths:
                     - '010'
                     - '011'
                     - '012'
-                  total_affected_items: 13
+                  total_affected_items: 12
                   total_failed_items: 0
                   failed_items: []
                 message: "Syscheck database was cleared on returned agents"
@@ -15280,7 +15276,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - agent_id: '000'
+                    - agent_id: '001'
                       board_serial: BSS-0123456789
                       cpu:
                         cores: 12
@@ -15374,7 +15370,7 @@ paths:
                 data:
                   affected_items:
                     - address: 172.23.0.3
-                      agent_id: '000'
+                      agent_id: '001'
                       broadcast: 172.23.255.255
                       iface: eth0
                       netmask: 255.255.0.0
@@ -15460,7 +15456,7 @@ paths:
               example:
                 data:
                   affected_items:
-                    - agent_id: '000'
+                    - agent_id: '001'
                       mac: 02:42:ac:17:00:03
                       mtu: 1500
                       name: eth0
@@ -15577,7 +15573,7 @@ paths:
                       type: ipv4
                       gateway: 172.24.0.1
                       dhcp: "enabled"
-                      agent_id: '000'
+                      agent_id: '001'
                     - scan:
                         id: 1213296763
                       iface: eth0
@@ -15662,7 +15658,7 @@ paths:
                       version: "#34~1584408018~19.10~21df4b1-Ubuntu SMP Tue Mar 17 13:38:51 UTC "
                       release: 5.3.0-7642-generic
                       architecture: x86_64
-                      agent_id: '000'
+                      agent_id: '001'
                     - os:
                         codename: Xenial Xerus
                         major: '16'
@@ -15764,7 +15760,7 @@ paths:
                       description: GCC Quad-Precision Math Library
                       priority: optional
                       vendor: Ubuntu Core developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
+                      agent_id: '001'
                     - scan:
                         id: 1137251326
                         time: '2020-04-15T11:02:03Z'
@@ -15779,7 +15775,7 @@ paths:
                       description: replacement for GNU Pth using system threads
                       priority: optional
                       vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
+                      agent_id: '001'
                     - scan:
                         id: 1137251326
                         time: '2020-04-15T11:02:03Z'
@@ -15794,7 +15790,7 @@ paths:
                       description: collection of partitioning utilities
                       priority: important
                       vendor: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
-                      agent_id: '000'
+                      agent_id: '001'
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -15867,7 +15863,7 @@ paths:
                       protocol: tcp
                       inode: 12387152
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                     - local:
                         ip: 0.0.0.0
                         port: 1514
@@ -15882,7 +15878,7 @@ paths:
                       protocol: tcp
                       inode: 12397927
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                     - local:
                         ip: 0.0.0.0
                         port: 1515
@@ -15897,7 +15893,7 @@ paths:
                       protocol: tcp
                       inode: 12397153
                       tx_queue: 0
-                      agent_id: '000'
+                      agent_id: '001'
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -15992,7 +15988,7 @@ paths:
                       share: 726
                       priority: 20
                       cmd: bash
-                      agent_id: '000'
+                      agent_id: '001'
                     - scan:
                         id: 28643647
                         time: '2020-04-15T11:02:07Z'
@@ -16024,7 +16020,7 @@ paths:
                       share: 417
                       priority: 20
                       cmd: "/bin/sh"
-                      agent_id: '000'
+                      agent_id: '001'
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []

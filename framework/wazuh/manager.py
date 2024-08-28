@@ -250,8 +250,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
         Selected component.
     config : str
         Configuration to get, written on disk.
-
-
+        
     Returns
     -------
     AffectedItemsWazuhResult
@@ -265,7 +264,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
                                       )
 
     try:
-        data = configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+        data = configuration.get_active_configuration(component=component, configuration=config)
         len(data.keys()) > 0 and result.affected_items.append(data)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)

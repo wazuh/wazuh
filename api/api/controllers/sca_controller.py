@@ -26,7 +26,7 @@ async def get_sca_agent(agent_id: str = None, pretty: bool = False, wait_for_com
     Parameters
     ----------
     agent_id : str
-        Agent ID. All possible values since 000 onwards.
+        Agent ID. All possible values since 001 onwards.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool
@@ -97,7 +97,7 @@ async def get_sca_checks(agent_id: str = None, pretty: bool = False, wait_for_co
     Parameters
     ----------
     agent_id : str
-        Agent ID. All possible values since 000 onwards.
+        Agent ID. All possible values since 001 onwards.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool

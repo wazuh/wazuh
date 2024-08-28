@@ -28,7 +28,7 @@ async def get_agents_ciscat_results(agent_id: str, pretty: bool = False, wait_fo
     Parameters
     ----------
     agent_id : str
-        Agent ID. All posible values since 000 onwards.
+        Agent ID. All posible values since 001 onwards.
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool

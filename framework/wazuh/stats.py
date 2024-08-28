@@ -86,7 +86,7 @@ def weekly() -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1707]})
 async def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None):
     """Get agents statistical information from the specified daemons.
     If the daemons list is empty, the stats from all daemons will be retrieved.
@@ -122,10 +122,6 @@ async def get_daemons_stats_agents(daemons_list: list = None, agent_list: list =
                 data = db_query.run()
 
             agent_list = set(agent_list)
-
-            with contextlib.suppress(KeyError):
-                agent_list.remove('000')
-                result.add_failed_item('000', exception.WazuhError(1703))
 
             # Add non-existent agents to failed_items
             not_found_agents = agent_list - system_agents

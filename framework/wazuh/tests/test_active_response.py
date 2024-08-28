@@ -22,14 +22,13 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.tests.test_active_response import agent_config, agent_info_exception_and_version
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'etc', 'shared', 'ar.conf')
-full_agent_list = ['000', '001', '002', '003', '004', '005', '006', '007', '008']
+full_agent_list = ['001', '002', '003', '004', '005', '006', '007', '008']
 
 
 # Tests
 
 @pytest.mark.parametrize('message_exception, send_exception, agent_id, command, arguments, alert, version', [
     (1701, None, ['999'], 'restart-wazuh0', [], None, 'Wazuh v4.0.0'),
-    (1703, None, ['000'], 'restart-wazuh0', [], None, 'Wazuh v4.0.0'),
     (1650, None, ['001'], None, [], None, 'Wazuh v4.0.0'),
     (1652, None, ['002'], 'random', [], None, 'Wazuh v4.0.0'),
     (None, 1707, ['003'], 'restart-wazuh0', [], None, None),

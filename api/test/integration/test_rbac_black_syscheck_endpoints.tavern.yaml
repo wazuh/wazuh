@@ -3,18 +3,6 @@ test_name: GET /syscheck
 
 stages:
 
-  - name: Try to get syscheck scan results for agent 000 (Deny)
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response: &permission_denied
-      status_code: 403
-      json:
-        error: 4000
-
   - name: Try to get syscheck scan results for agent 002 (Allow)
     request:
       verify: False
@@ -36,16 +24,6 @@ stages:
 test_name: GET /syscheck/{agent_id}/last_scan
 
 stages:
-
-  - name: Try to get when the last scan for agent 000 started and ended
-    request:
-      verify: False
-      method: GET
-      url: "{protocol:s}://{host:s}:{port:d}/syscheck/000/last_scan"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
 
   - name: Try to get when the last scan for agent 002 started and ended
     request:
@@ -96,7 +74,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,003,001,004,008'
+        agents_list: '003,001,004,008'
     response:
       status_code: 200
       json:
@@ -107,11 +85,10 @@ stages:
             - error:
                 code: 4000
               id:
-                - '000'
                 - '001'
                 - '003'
           total_affected_items: 2
-          total_failed_items: 3
+          total_failed_items: 2
         
   - name: Try to run a syscheck scan on a list of agents
     request:
