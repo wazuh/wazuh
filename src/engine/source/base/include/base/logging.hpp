@@ -12,6 +12,18 @@
 namespace logging
 {
 
+/**
+ * @brief Default path for the error log file.
+ * The default path where error logs should be saved.
+ */
+constexpr auto STD_ERR_PATH {"/dev/stderr"};
+
+/**
+ * @brief Default path for the info log file.
+ * The default path where info logs should be saved.
+ */
+constexpr auto STD_OUT_PATH {"/dev/stdout"};
+
 // constexpr auto WAZUH_LOG_HEADER {"%D %T wazuh-engine[%P] %s:%# at %!(): %l: %v"};
 
 /**
@@ -149,10 +161,12 @@ constexpr static auto strToLevel(std::string_view level)
  */
 struct LoggingConfig
 {
+    std::string filePath {STD_OUT_PATH};                       ///< Path to the log file.
     Level level {Level::Info};                                 ///< Log level.
     const uint32_t flushInterval {DEFAULT_LOG_FLUSH_INTERVAL}; ///< Flush interval in milliseconds.
     const uint32_t dedicatedThreads {DEFAULT_LOG_THREADS};     ///< Number of dedicated threads.
     const uint32_t queueSize {DEFAULT_LOG_THREADS_QUEUE_SIZE}; ///< Size of the log queue for dedicated threads.
+    bool truncate {false}; ///< If true, the log file will be deleted for each start of the engine.
 };
 
 /**

@@ -28,6 +28,7 @@ public:
      */
     explicit CmdLineArgs(const int argc, const char* argv[])
         : m_configurationFilePath {paramValueOf(argc, argv, "-c")}
+        , m_logFilePath {paramValueOf(argc, argv, "-l", std::make_pair(false, "/dev/stdout"))}
         , m_socketPath {paramValueOf(argc, argv, "-s")}
     {
     }
@@ -37,6 +38,13 @@ public:
      * @return Configuration file path.
      */
     const std::string& getConfigurationFilePath() const { return m_configurationFilePath; }
+
+    /**
+     * @brief Gets the log file path.
+     *
+     * @return Path to the log file.
+     */
+    const std::string& getLogFilePath() const { return m_logFilePath; }
 
     /**
      * @brief Gets the http socket path.
@@ -54,6 +62,7 @@ public:
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-c CONFIG_FILE\t\tSpecifies the configuration file.\n"
+                  << "\t-l LOG_FILE\t\tSpecifies the log file to write.\n"
                   << "\nExample:"
                   << "\n\t./vd_scanner_testtool -c config.json -s test.sock\n"
                   << "\n\t./vd_scanner_testtool -c config.json -s test.sock -l log.txt\n"
@@ -86,6 +95,7 @@ private:
     }
 
     const std::string m_configurationFilePath;
+    const std::string m_logFilePath;
     const std::string m_socketPath;
 };
 
