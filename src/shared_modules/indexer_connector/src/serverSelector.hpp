@@ -35,14 +35,14 @@ public:
      *
      * @param values Servers to be selected.
      * @param timeout Timeout for monitoring.
-     * @param secureCommunication Object that provides secure communication.
+     * @param authentication Object that provides secure communication.
      */
     explicit ServerSelector(const std::vector<std::string>& values,
                             const uint32_t timeout = INTERVAL,
-                            const SecureCommunication& secureCommunication = {})
+                            const SecureCommunication& authentication = {})
         : RoundRobinSelector<std::string>(values)
     {
-        m_monitoring = std::make_shared<Monitoring>(values, timeout, secureCommunication);
+        m_monitoring = std::make_shared<Monitoring>(values, timeout, authentication);
     }
 
     /**

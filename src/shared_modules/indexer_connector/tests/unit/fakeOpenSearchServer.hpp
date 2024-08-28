@@ -30,6 +30,7 @@ private:
     std::string m_host;
     std::string m_health;
     int m_port;
+    uint16_t m_forcedDelay;
 
 public:
     /**
@@ -38,12 +39,14 @@ public:
      * @param host host of the fake OpenSearch server.
      * @param port port of the fake OpenSearch server
      * @param health health status of the fake OpenSearch server.
+     * @param forcedDelay forced delay in milliseconds (default 0). This is used to simulate a slow server.
      */
-    FakeOpenSearchServer(std::string host, int port, std::string health)
+    FakeOpenSearchServer(std::string host, int port, std::string health, uint16_t forcedDelay = 0)
         : m_thread(&FakeOpenSearchServer::run, this)
         , m_host(std::move(host))
         , m_health(std::move(health))
         , m_port(port)
+        , m_forcedDelay(forcedDelay)
     {
         // Wait until server is ready
         while (!m_server.is_running())
@@ -74,6 +77,9 @@ public:
             "/_cat/health",
             [this](const httplib::Request& req, httplib::Response& res)
             {
+                // Simulate a slow server
+                std::this_thread::sleep_for(std::chrono::milliseconds(m_forcedDelay));
+
                 std::stringstream ss;
                 ss << "epoch      timestamp cluster            status node.total node.data discovered_cluster_manager "
                       "shards pri relo init unassign pending_tasks max_task_wait_time active_shards_percent\n";

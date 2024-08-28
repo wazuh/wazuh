@@ -80,12 +80,15 @@ class Monitoring final
      * @note It sends a request to the \p serverAddress and update the serverStatus (true if the server is
      * available, false otherwise). The \p authentication object is used to provide secure communication.
      *
-     * @param serverAddress
-     * @param authentication
+     * @param serverAddress Server's address.
+     * @param authentication Object that provides secure communication.
      */
     void healthCheck(const std::string& serverAddress, const SecureCommunication& authentication)
     {
         auto& serverStatus = m_servers[serverAddress];
+
+        // Set the server status to false by default
+        serverStatus = false;
 
         // On success callback
         const auto onSuccess = [&serverStatus](std::string response)
@@ -109,21 +112,13 @@ class Monitoring final
                 {
                     serverStatus = true;
                 }
-                else
-                {
-                    serverStatus = false;
-                }
-            }
-            else
-            {
-                serverStatus = false; // LCOV_EXCL_LINE
             }
         };
 
         // On error callback
-        const auto onError = [&serverStatus](const std::string& /*error*/, const long /*statusCode*/)
+        const auto onError = [](const std::string& /*error*/, const long /*statusCode*/)
         {
-            serverStatus = false;
+            // Do nothing
         };
 
         // Get the health of the server.
@@ -136,19 +131,24 @@ class Monitoring final
     }
 
     /**
-     * @brief Initializes the status of the servers.
-     * 
+     * @brief Initializes the status of the servers and adds them to the monitoring list.
+     *
      * @param serverAddresses Servers to be monitored.
-     * @param secureCommunication Object that provides secure communication.
+     * @param authentication Object that provides secure communication.
      */
-    void initialize(const std::vector<std::string>& serverAddresses, const SecureCommunication& secureCommunication)
+    void initialize(const std::vector<std::string>& serverAddresses, const SecureCommunication& authentication)
     {
         std::scoped_lock lock(m_mutex);
 
         // Initialize the status of the servers
         for (const auto& serverAddress : serverAddresses)
         {
-            healthCheck(serverAddress, secureCommunication);
+            if (m_stop)
+            {
+                // If the thread is stopped, break the loop.
+                return;
+            }
+            healthCheck(serverAddress, authentication);
         }
     }
 
@@ -172,15 +172,16 @@ public:
      */
     explicit Monitoring(const std::vector<std::string>& serverAddresses,
                         const uint32_t interval = INTERVAL,
-                        const SecureCommunication& secureCommunication = {})
+                        const SecureCommunication& authentication = {})
         : m_interval(interval)
     {
-        initialize(serverAddresses, secureCommunication);
-
         // Start the thread, that will check the health of the servers.
         m_thread = std::thread(
-            [this, &secureCommunication]()
+            [this, authentication, serverAddresses]()
             {
+                // First, initialize the status of the servers.
+                initialize(serverAddresses, authentication);
+
                 while (!m_stop)
                 {
                     // Wait for the interval.
@@ -193,7 +194,7 @@ public:
                         // Check the health of the servers.
                         for (const auto& [serverAddress, _] : m_servers)
                         {
-                            healthCheck(serverAddress, secureCommunication);
+                            healthCheck(serverAddress, authentication);
                         }
                     }
                 }

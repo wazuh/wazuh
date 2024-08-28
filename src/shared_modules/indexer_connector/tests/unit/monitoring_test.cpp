@@ -16,7 +16,7 @@
 #include <thread>
 
 // Healt check interval for the servers
-constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {5u};
+constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {1u};
 
 /**
  * @brief Test instantiation and check the availability of valid servers.
@@ -27,6 +27,7 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     const auto hostGreenServer {m_servers.at(0)};
     const auto hostRedServer {m_servers.at(1)};
     const auto hostYellowServer {m_servers.at(2)};
+    const auto hostGreenServerWithDelay {m_servers.at(3)};
 
     EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
 
@@ -34,6 +35,7 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
     EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
     EXPECT_FALSE(m_monitoring->isAvailable(hostYellowServer));
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
@@ -46,6 +48,28 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
 
     // It's false because the yellow server isn't available
     EXPECT_FALSE(m_monitoring->isAvailable(hostYellowServer));
+
+    // It's true because the green server is available
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
+}
+
+/**
+ * @brief Test a slow server.
+ *
+ */
+TEST_F(MonitoringTest, TestSlowServer)
+{
+    const auto hostGreenServerWithDelay {m_servers.at(3)};
+
+    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+
+    // It's true because the green server is available
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
+
+    // Wait for the first health check to finish + the delay of the server
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 1000 + 110));
+
+    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
 }
 
 /**
