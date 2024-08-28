@@ -7,6 +7,7 @@ from argparse import ArgumentParser, Namespace
 from functools import partial
 from sys import exit
 from typing import Any, Callable, Dict
+from multiprocessing import Process
 
 from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI
@@ -26,14 +27,15 @@ from comms_api.core.batcher import create_batcher_process
 from wazuh.core import common, pyDaemonModule, utils
 from wazuh.core.exception import WazuhCommsAPIError
 from wazuh.core.batcher.config import BatcherConfig
+from wazuh.core.batcher.mux_demux import MuxDemuxQueue, MuxDemuxManager
 
-# TODO - Delete after centralized configuration
+# TODO(#25121) - Delete after centralized configuration
 from wazuh.core.batcher.config import BATCHER_MAX_ELEMENTS, BATCHER_MAX_SIZE, BATCHER_MAX_TIME_SECONDS
 
 MAIN_PROCESS = 'wazuh-comms-apid'
 
 
-def create_app(batcher_queue) -> FastAPI:
+def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
     """Creates a FastAPI application instance and adds middlewares, exceptions handlers and routers to it."""
     app = FastAPI()
     app.add_middleware(SecureHeadersMiddleware)
@@ -197,7 +199,34 @@ class StandaloneApplication(BaseApplication):
         return self.app
 
 
-def signal_handler(signum, frame, mux_demux_manager, batcher_process):
+def signal_handler(
+    signum: int,
+    frame: Any,
+    mux_demux_manager: MuxDemuxManager,
+    batcher_process: Process
+) -> None:
+    """Handles incoming signals for graceful shutdown of the API.
+
+    This function is triggered when a termination signal (SIGTERM) is received. It handles the cleanup
+    of resources by terminating the batcher process, shutting down the mux/demux manager, and deleting
+    any child and main process IDs.
+
+    Parameters
+    ----------
+    signum : int
+        The signal number received.
+    frame : Any
+        The current stack frame (unused).
+    mux_demux_manager : MuxDemuxManager
+        The MuxDemux manager instance to be shut down.
+    batcher_process : Any
+        The batcher process to be terminated.
+
+    Notes
+    -----
+    This function is designed to be used with the `signal` module to handle termination and
+    interruption signals (e.g., SIGTERM).
+    """
     logger.info(f"Received signal {signum}, initiating shutdown.")
     if batcher_process:
         batcher_process.terminate()
@@ -234,7 +263,6 @@ if __name__ == '__main__':
     else:
         logger.info('Starting API as root')
 
-    # Creates batcher process
     batcher_config = BatcherConfig(
         max_elements=BATCHER_MAX_ELEMENTS,
         max_size=BATCHER_MAX_SIZE,

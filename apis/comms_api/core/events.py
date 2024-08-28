@@ -7,8 +7,7 @@ from wazuh.core.batcher.mux_demux import MuxDemuxQueue
 
 
 async def create_stateful_events(events: Events, batcher_queue: MuxDemuxQueue) -> dict:
-    """
-    Post new events to the indexer.
+    """Post new events to the indexer.
 
     Parameters
     ----------

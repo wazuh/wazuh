@@ -6,8 +6,7 @@ BATCHER_MAX_TIME_SECONDS = 0.15
 
 
 class BatcherConfig:
-    """
-    Configuration for the Batcher, specifying limits for batching.
+    """Configuration for the Batcher, specifying limits for batching.
 
     Parameters
     ----------

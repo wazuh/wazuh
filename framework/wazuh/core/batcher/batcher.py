@@ -1,11 +1,11 @@
 import asyncio
 import uuid
-from typing import List, Optional
-from multiprocessing import Process
 import queue
 import signal
 import traceback
 import logging
+from typing import List, Optional
+from multiprocessing import Process
 
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.bulk import BulkDoc
@@ -21,8 +21,7 @@ WAIT_TIME_BETWEEN_QUEUE_READ = 0.01
 
 
 class Batcher:
-    """
-    Manages the batching of messages from a MuxDemuxQueue and sends them in bulk to an indexer.
+    """Manages the batching of messages from a MuxDemuxQueue and sends them in bulk to an indexer.
 
     Parameters
     ----------
@@ -38,8 +37,7 @@ class Batcher:
         self._shutdown_event: Optional[asyncio.Event] = None
 
     async def _get_from_queue(self) -> Message:
-        """
-        Retrieves a message from the mux queue. If the queue is empty, waits and retries until a message is received
+        """Retrieves a message from the mux queue. If the queue is empty, waits and retries until a message is received
         or the task is cancelled.
 
         Returns
@@ -65,8 +63,7 @@ class Batcher:
                 break
 
     async def _send_buffer(self, events: List[Message]):
-        """
-        Sends a batch of messages to the indexer in bulk. Updates the demux queue with the response messages.
+        """Sends a batch of messages to the indexer in bulk. Updates the demux queue with the response messages.
 
         Parameters
         ----------
@@ -80,24 +77,23 @@ class Batcher:
         """
         try:
             async with get_indexer_client() as indexer_client:
-                list_of_uid: List[uuid.UUID] = [event.uid for event in events]
+                event_ids: List[uuid.UUID] = [event.uid for event in events]
                 bulk_list: List[BulkDoc] = [
                     BulkDoc.create(index=indexer_client.events.INDEX, doc_id=None, doc=event.msg) for event in events
                 ]
 
                 response = await indexer_client.events.bulk(data=bulk_list)
 
-                for response_item, uid in zip(response["items"], list_of_uid):
+                for response_item, uid in zip(response["items"], event_ids):
                     response_item_msg = response_item["create"]
                     response_msg = Message(uid=uid, msg=response_item_msg)
                     self.q.send_to_demux(response_msg)
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
-            logger.error(f"Error when sending buffer:\n{''.join(tb_str)}")
+            logger.error(f"Error sending message to buffer: {''.join(tb_str)}")
 
     def create_flush_buffer_task(self):
-        """
-        Creates a task to flush the current buffer and reset it. This task sends the buffered messages to the indexer
+        """Creates a task to flush the current buffer and reset it. This task sends the buffered messages to the indexer
         and clears the buffer.
         """
         buffer_copy = self._buffer.copy()
@@ -105,8 +101,7 @@ class Batcher:
         self._buffer.reset()
 
     async def run(self):
-        """
-        Continuously retrieves messages from the queue and batches them based on the configuration. Handles signals
+        """Continuously retrieves messages from the queue and batches them based on the configuration. Handles signals
         for shutdown and manages the batching logic.
 
         Handles:
@@ -159,9 +154,8 @@ class Batcher:
                     task.cancel()
             await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
 
-    def _handle_signal(self, signal_number):
-        """
-        Handles shutdown signals by setting the shutdown event.
+    def _handle_signal(self, signal_number: int):
+        """Handles shutdown signals by setting the shutdown event.
 
         Parameters
         ----------
@@ -173,24 +167,23 @@ class Batcher:
 
 
 class BatcherProcess(Process):
-    """
-    A process that runs a Batcher instance. This class is used to execute the Batcher in a separate process.
+    """A process that runs a Batcher instance. This class is used to execute the Batcher in a separate process.
 
     Parameters
     ----------
-    q : MuxDemuxQueue
+    queue : MuxDemuxQueue
         The MuxDemuxQueue instance for message multiplexing and demultiplexing.
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
-    def __init__(self, q: MuxDemuxQueue, config: BatcherConfig):
+    def __init__(self, queue: MuxDemuxQueue, config: BatcherConfig):
         super().__init__()
-        self.q = q
+        self.queue = queue
         self.config = config
 
     def run(self):
         """
         Initializes and runs a Batcher instance in the process. This method is called when the process is started.
         """
-        batcher = Batcher(queue=self.q, config=self.config)
+        batcher = Batcher(queue=self.queue, config=self.config)
         asyncio.run(batcher.run())

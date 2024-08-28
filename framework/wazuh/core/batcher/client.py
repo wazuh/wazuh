@@ -6,21 +6,23 @@ from wazuh.core.batcher.mux_demux import MuxDemuxQueue
 
 
 class BatcherClient:
-    """
-    A client for sending and receiving events via a MuxDemuxQueue.
+    """A client for sending and receiving events via a MuxDemuxQueue.
 
     Parameters
     ----------
     queue : MuxDemuxQueue
         The MuxDemuxQueue instance used to route messages.
+    wait_frequency: float
+        The frequency, in seconds, at which the client checks for responses in the queue.
+        Defaults to 0.1 seconds.
+
     """
-    def __init__(self, queue: MuxDemuxQueue, frequency_of_wait: int = 0.1):
+    def __init__(self, queue: MuxDemuxQueue, wait_frequency: float = 0.1):
         self.queue = queue
-        self.frequency_of_wait = frequency_of_wait
+        self.wait_frequency = wait_frequency
 
     def send_event(self, event) -> uuid.UUID:
-        """
-        Sends an event through the RouterQueue.
+        """Sends an event through the RouterQueue.
 
         Parameters
         ----------
@@ -36,8 +38,7 @@ class BatcherClient:
         return self.queue.send_to_mux(assigned_uid, event)
 
     async def get_response(self, uid: uuid.UUID) -> Optional[dict]:
-        """
-        Asynchronously waits for a response to become available and retrieves it.
+        """Asynchronously waits for a response to become available and retrieves it.
 
         Parameters
         ----------
@@ -54,4 +55,4 @@ class BatcherClient:
                 result = self.queue.receive_from_demux(uid)
                 return result
             else:
-                await asyncio.sleep(self.frequency_of_wait)
+                await asyncio.sleep(self.wait_frequency)
