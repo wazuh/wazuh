@@ -16,7 +16,9 @@
 
 #define WM_UPGRADE_WPK_REPO_URL_3_X "packages.wazuh.com/wpk/"
 #define WM_UPGRADE_WPK_REPO_URL "packages.wazuh.com/%d.x/wpk/"
-#define WM_UPGRADE_CHUNK_SIZE 512
+#define WM_UPGRADE_CHUNK_SIZE 32768
+#define WM_UPGRADE_CHUNK_SIZE_MIN 64
+#define WM_UPGRADE_CHUNK_SIZE_MAX 60000
 #define WM_UPGRADE_MAX_THREADS 8
 #define WM_UPGRADE_WAIT_START 300
 #define WM_UPGRADE_WAIT_MAX 3600

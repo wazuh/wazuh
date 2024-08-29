@@ -151,7 +151,7 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
                 return (OS_INVALID);
             }
             int chunk;
-            if (chunk = atoi(nodes[i]->content), chunk < 64 || chunk > 32768) {
+            if (chunk = atoi(nodes[i]->content), chunk < WM_UPGRADE_CHUNK_SIZE_MIN || chunk > WM_UPGRADE_CHUNK_SIZE_MAX) {
                 merror("Invalid content for tag '%s' at module '%s'.", XML_CHUNK_SIZE, WM_AGENT_UPGRADE_CONTEXT.name);
                 return (OS_INVALID);
             }
