@@ -228,10 +228,22 @@ def signal_handler(
     interruption signals (e.g., SIGTERM).
     """
     logger.info(f"Received signal {signum}, initiating shutdown.")
-    if batcher_process:
-        batcher_process.terminate()
-    if mux_demux_manager:
-        mux_demux_manager.shutdown()
+    terminate_processes(mux_demux_manager, batcher_process)
+
+
+def terminate_processes( mux_demux_manager: MuxDemuxManager, batcher_process: Process):
+    """It terminates the batcher process, shutting down the mux/demux manager, and deleting
+    any child and main process IDs.
+
+        Parameters
+    ----------
+    mux_demux_manager : MuxDemuxManager
+        The MuxDemux manager instance to be shut down.
+    batcher_process : Process
+        The batcher process to be terminated.
+    """
+    batcher_process.terminate()
+    mux_demux_manager.shutdown()
     pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
     pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
 
@@ -285,7 +297,4 @@ if __name__ == '__main__':
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     finally:
-        batcher_process.terminate()
-        mux_demux_manager.shutdown()
-        pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
-        pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
+        terminate_processes(mux_demux_manager, batcher_process)

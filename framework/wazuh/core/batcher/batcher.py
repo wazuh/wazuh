@@ -8,7 +8,7 @@ from typing import List, Optional
 from multiprocessing import Process
 
 from wazuh.core.indexer import get_indexer_client
-from wazuh.core.indexer.bulk import BulkDoc
+from wazuh.core.indexer.bulk import BulkDoc, BulkAction
 
 from wazuh.core.batcher.buffer import Buffer
 from wazuh.core.batcher.timer import TimerManager
@@ -85,9 +85,17 @@ class Batcher:
                 response = await indexer_client.events.bulk(data=bulk_list)
 
                 for response_item, uid in zip(response["items"], event_ids):
-                    response_item_msg = response_item["create"]
-                    response_msg = Message(uid=uid, msg=response_item_msg)
-                    self.q.send_to_demux(response_msg)
+                    action_found = False
+
+                    for action in BulkAction:
+                        if action.value in response_item:
+                            action_found = True
+                            response_item_msg = response_item[action.value]
+                            response_msg = Message(uid=uid, msg=response_item_msg)
+                            self.q.send_to_demux(response_msg)
+
+                    if not action_found:
+                        logger.error(f"Error processing batcher response, no know action in: {response_item}")
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
             logger.error(f"Error sending message to buffer: {''.join(tb_str)}")
@@ -145,7 +153,7 @@ class Batcher:
 
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
-            logger.error(f"Error in batcher loop:\n{''.join(tb_str)}")
+            logger.error(f"Error in batcher loop:{''.join(tb_str)}")
         finally:
             # Ensure all tasks are properly cancelled
             for task in asyncio.all_tasks():
