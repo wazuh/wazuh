@@ -50,10 +50,11 @@ protected:
     /**
      * @brief Sets up the test fixture.
      */
-    /*void SetUp() override
+    void SetUp() override
     {
         // Initialize contexts
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {});
 
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
@@ -67,7 +68,7 @@ protected:
         std::filesystem::create_directory(TEST_DIR);
         std::filesystem::create_directory(DOWNLOAD_DIR);
         std::filesystem::create_directory(CONTENTS_DIR);
-    }*/
+    }
 
     /**
      * @brief Tears down the test fixture.

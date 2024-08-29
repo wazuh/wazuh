@@ -45,11 +45,12 @@ protected:
      *
      */
     // cppcheck-suppress unusedFunction
-    /*void SetUp() override
+    void SetUp() override
     {
         m_spAPIDownloader = std::make_shared<APIDownloader>(HTTPRequest::instance());
         // Create a updater base context
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {});
         m_spUpdaterBaseContext->outputFolder = "/tmp/api-downloader-tests";
         m_spUpdaterBaseContext->downloadsFolder = m_spUpdaterBaseContext->outputFolder / DOWNLOAD_FOLDER;
         m_spUpdaterBaseContext->contentsFolder = m_spUpdaterBaseContext->outputFolder / CONTENTS_FOLDER;
@@ -70,14 +71,14 @@ protected:
         std::filesystem::create_directory(m_spUpdaterBaseContext->outputFolder);
         std::filesystem::create_directory(m_spUpdaterBaseContext->downloadsFolder);
         std::filesystem::create_directory(m_spUpdaterBaseContext->contentsFolder);
-    }*/
+    }
 
     /**
      * @brief Tear down routine for tests
      *
      */
     // cppcheck-suppress unusedFunction
-    /*void TearDown() override
+    void TearDown() override
     {
         // Remove outputFolder
         std::filesystem::remove_all(m_spUpdaterBaseContext->outputFolder);
@@ -87,7 +88,7 @@ protected:
         m_spUpdaterContext.reset();
         // Reset UpdaterBaseContext
         m_spUpdaterBaseContext.reset();
-    }*/
+    }
 
     /**
      * @brief Creates the fakeServer for the runtime of the test suite

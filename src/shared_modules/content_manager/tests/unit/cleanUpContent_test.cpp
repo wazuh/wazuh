@@ -12,7 +12,7 @@
 #include "cleanUpContent_test.hpp"
 #include <filesystem>
 #include <memory>
-#if 0
+
 /*
  * @brief Check if the output path is not set.
  */
@@ -42,4 +42,3 @@ TEST_F(CleanUpContentTest, OutputPathSet)
     EXPECT_TRUE(std::filesystem::is_empty(DOWNLOAD_DIR));
     EXPECT_FALSE(std::filesystem::is_empty(CONTENTS_DIR));
 }
-#endif

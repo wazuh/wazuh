@@ -28,7 +28,7 @@ const auto FILEHASH_XZ = "89fe2d7ad5369373c4b96f8eeedd11d27ed3bc79";
 const std::string BASE_URL = "localhost:4444/";
 
 constexpr auto DEFAULT_TYPE {"raw"}; ///< Default content type.
-#if 0
+
 void FileDownloaderTest::SetUpTestSuite()
 {
     if (!m_spFakeServer)
@@ -44,7 +44,8 @@ void FileDownloaderTest::TearDownTestSuite()
 
 void FileDownloaderTest::SetUp()
 {
-    m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
+    m_spUpdaterBaseContext =
+        std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {});
     m_spUpdaterBaseContext->downloadsFolder = (m_outputFolder / "downloads").string();
     m_spUpdaterBaseContext->contentsFolder = (m_outputFolder / "contents").string();
 
@@ -219,4 +220,3 @@ TEST_F(FileDownloaderTest, DownloadURLWithoutFilename)
     // Check expected data.
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
-#endif

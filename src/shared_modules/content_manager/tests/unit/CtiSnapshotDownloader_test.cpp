@@ -25,11 +25,11 @@ constexpr auto FAKE_CTI_URL {"http://localhost:4444/snapshot/consumers"};
 constexpr auto RAW_URL {"http://localhost:4444/raw"};
 
 const auto OUTPUT_DIR {std::filesystem::temp_directory_path() / "CtiSnapshotDownloaderTest"};
-#if 0
+
 void CtiSnapshotDownloaderTest::SetUp()
 {
     // Create base context.
-    auto spBaseContext {std::make_shared<UpdaterBaseContext>(m_spStopActionCondition)};
+    auto spBaseContext {std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {})};
     spBaseContext->downloadsFolder = OUTPUT_DIR;
     spBaseContext->configData["url"] = FAKE_CTI_URL;
 
@@ -177,4 +177,3 @@ TEST_F(CtiSnapshotDownloaderTest, MissingLastSnapshotOffsetMetadata)
     expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
-#endif

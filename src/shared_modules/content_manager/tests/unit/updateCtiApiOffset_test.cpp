@@ -11,7 +11,7 @@
 
 #include "updateCtiApiOffset_test.hpp"
 #include "updaterContext.hpp"
-#if 0
+
 /**
  * @brief Check that the offset is updated in the database.
  */
@@ -83,4 +83,3 @@ TEST_F(UpdateCtiApiOffsetTest, databaseNotCreated)
     // Execute the handleRequest method.
     EXPECT_THROW(m_spUpdateCtiApiOffset->handleRequest(m_spUpdaterContext), std::runtime_error);
 }
-#endif

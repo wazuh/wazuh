@@ -52,10 +52,11 @@ protected:
     /**
      * @brief Sets up the test fixture.
      */
-    /*void SetUp() override
+    void SetUp() override
     {
         // Initialize contexts
-        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
+        m_spUpdaterBaseContext =
+            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {});
         m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER);
         m_spUpdaterBaseContext->spRocksDB->createColumn(Components::Columns::CURRENT_OFFSET);
         m_spUpdaterBaseContext->spRocksDB->put(
@@ -66,12 +67,12 @@ protected:
 
         // Instance of the class to test
         m_spUpdateCtiApiOffset = std::make_shared<UpdateCtiApiOffset>();
-    }*/
+    }
 
     /**
      * @brief Tears down the test fixture.
      */
-    /*void TearDown() override
+    void TearDown() override
     {
         if (m_spUpdaterBaseContext->spRocksDB)
         {
@@ -79,7 +80,7 @@ protected:
         }
 
         std::filesystem::remove_all(DATABASE_FOLDER);
-    }*/
+    }
 };
 
 #endif //_UPDATE_CTI_API_OFFSET_TEST_HPP

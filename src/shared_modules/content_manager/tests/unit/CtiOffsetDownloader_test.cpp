@@ -18,7 +18,7 @@ const auto OK_STATUS = R"([{"stage":"CtiOffsetDownloader","status":"ok"}])"_json
 const auto FAIL_STATUS = R"([{"stage":"CtiOffsetDownloader","status":"fail"}])"_json;
 
 constexpr auto DEFAULT_TYPE {"offsets"}; ///< Default content type.
-#if 0
+
 /**
  * @brief Tests handle a valid request with raw data.
  */
@@ -270,4 +270,3 @@ TEST_F(CtiOffsetDownloaderTest, MissingLastOffsetMetadata)
     expectedData["offset"] = 0;
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
-#endif

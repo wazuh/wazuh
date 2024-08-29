@@ -31,11 +31,12 @@ static const std::filesystem::path SAMPLE_B_INPUT_FILE {INPUT_FILES_FOLDER / "do
 static const std::filesystem::path CONTENT_FOLDER {INPUT_FILES_FOLDER / "contents"};
 static const std::filesystem::path SAMPLE_A_OUTPUT_FILE {CONTENT_FOLDER / "sample_a.json"};
 static const std::filesystem::path SAMPLE_B_OUTPUT_FILE {CONTENT_FOLDER / "sample_b.json"};
-#if 0
+
 void XZDecompressorTest::SetUp()
 {
     m_spUpdaterContext = std::make_shared<UpdaterContext>();
-    m_spUpdaterContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(m_spStopActionCondition);
+    m_spUpdaterContext->spUpdaterBaseContext =
+        std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {});
     // The input files folder simulates the Content Manager output folder.
     m_spUpdaterContext->spUpdaterBaseContext->outputFolder = INPUT_FILES_FOLDER;
 
@@ -162,4 +163,3 @@ TEST_F(XZDecompressorTest, DecompressTwoFilesOneInexistantThrows)
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }
-#endif
