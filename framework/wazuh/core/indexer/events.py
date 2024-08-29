@@ -5,7 +5,6 @@ from uuid import UUID
 
 from .base import BaseIndex
 from wazuh.core.indexer.models.events import StatefulEvent
-from wazuh.core.indexer.models.events import Events
 from wazuh.core.indexer.bulk import MixinBulk
 from wazuh.core.batcher.client import BatcherClient
 
@@ -20,12 +19,12 @@ class EventsIndex(BaseIndex, MixinBulk):
     def __init__(self, client: AsyncOpenSearch):
         super().__init__(client)
 
-    async def create(self, events: Events, batcher_client: BatcherClient) -> dict:
+    async def create(self, events: StatefulEvent, batcher_client: BatcherClient) -> dict:
         """Post new events to the indexer.
 
         Parameters
         ----------
-        events : Events
+        events : StatefulEvent
             List of events.
         batcher_client : BatcherClient
             The client responsible for sending the events to the batcher and managing responses.

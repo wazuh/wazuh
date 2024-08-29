@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, Response
+from fastapi import APIRouter, Depends, Response
 from fastapi import status, Request
 from fastapi.responses import JSONResponse
 
@@ -11,14 +11,14 @@ from wazuh.core.exception import WazuhEngineError, WazuhError
 
 
 @timeout(30)
-async def post_stateful_events(request: Request, events: Events) -> JSONResponse:
+async def post_stateful_events(request: Request, events: StatefulEvents) -> JSONResponse:
     """Handle posting stateful events.
 
     Parameters
     ----------
     request : Request
         The incoming HTTP request.
-    events : Events
+    events : StatefulEvents
         The events to be posted.
 
     Raises
