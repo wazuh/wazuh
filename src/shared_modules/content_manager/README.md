@@ -10,13 +10,13 @@ The input configuration of the Content Manager is described below:
 - `interval`: Interval, in seconds, between each action execution.
 - `ondemand`: If `true`, the module will be executed on demand.
 - `configData`: Configuration data to create the orchestration of the module.
+  + `consumerName`: Name of the Content Manager caller (e.g. `Wazuh VulnerabilityScanner`). Used to set the "User-Agent" HTTP header.
   + `contentSource`: Source of the content. Can be any of `api`, `cti-offset`, `cti-snapshot`, `file`, or `offline`. See the [use cases section](#use-cases) for more information.
   + `compressionType`: Compression type of the content. Can be any of `gzip`, `zip`, `xz`, or `raw`.
   + `versionedContent`: Type of versioned content. Can be any of `false` (content versioning disabled) or `cti-api` (only useful if using the `cti-offset` content source).
   + `deleteDownloadedContent`: If `true`, the downloaded content will be deleted after being processed.
   + `url`: URL from where the content will be downloaded or copied. Depending on the `contentSource` type, it supports HTTP/S and filesystem paths.
   + `outputFolder`: If defined, the content (downloads and uncompressed content) will be downloaded in this folder.
-  + `dataFormat`: Content data format. Examples: `json`, `xml`, `txt`, etc.
   + `contentFileName`: Used as output content file name by the API and CTI API downloaders. If not provided, it will be defaulted as `<temp_dir>/output_folder`, being `<temp_dir>` a directory location suitable for temporary files.
   + `databasePath`: Path for the RocksDB database. The database stores the last offset fetched (when using the `cti-offset` content source).
 
@@ -357,8 +357,7 @@ In the offline mode, the compression type is deduced from the URL extension, ign
         "contentSource": "offline",
         "deleteDownloadedContent": false,
         "url": "file:///home/data/content.xz",
-        "outputFolder": "/tmp/output_folder",
-        "dataFormat": "xml"
+        "outputFolder": "/tmp/output_folder"
     }
 }
 ```
@@ -372,8 +371,7 @@ In the offline mode, the compression type is deduced from the URL extension, ign
         "contentSource": "offline",
         "deleteDownloadedContent": false,
         "url": "http://localhost:8888/content.xz",
-        "outputFolder": "/tmp/output_folder",
-        "dataFormat": "xml"
+        "outputFolder": "/tmp/output_folder"
     }
 }
 ```

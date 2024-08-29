@@ -1,0 +1,38 @@
+This work was packaged for Debian by:
+
+    Wazuh, Inc <info@wazuh.com> on Wed, 19 Jun 2024 00:00:00 +0000
+
+It was downloaded from:
+
+    https://www.wazuh.com
+
+Upstream Authors:
+
+    dcid@dcid.me
+    Jia-BingJB_Cheng@trendmicro.com
+    vichargrave@gmail.com
+    ossec@michaelstarks.com
+    ddpbsd@gmail.com
+    scott@atomicorp.com
+    brad.lhotsky@gmail.com
+    jeremy@jeremyrossy.com
+    santiago.bassett@gmail.com
+    pedro@wazuh.com
+    alberto.rodriguez@wazuh.com
+    braulio@wazuh.com
+    jose.fernandez@wazuh.com
+
+Copyright:
+
+    GNU General Public License version 2.
+
+License:
+
+    GNU General Public License version 2.
+
+The Debian packaging is:
+
+    Copyright (C) 2015 Wazuh, Inc <info@wazuh.com>
+
+and is licensed under the GPL version 2,
+see "/usr/share/common-licenses/GPL-2".

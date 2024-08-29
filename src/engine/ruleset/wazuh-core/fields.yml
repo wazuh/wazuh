@@ -1,0 +1,133 @@
+wazuh.queue:
+  description: Queue part of the OSSEC message format
+  type: long
+
+wazuh.location:
+  description: Location part of the OSSEC message format
+  type: text
+
+wazuh.message:
+  description: Message part of the OSSEC message format
+  type: text
+
+wazuh.origin:
+  description: Origin part of the OSSEC message format
+  type: keyword
+
+wazuh.registered_ip:
+  description: Registered IP part of the OSSEC message format
+  type: keyword
+
+wazuh.decoders:
+  description: Trace of the decoders used to decode the event in order
+  type: keyword
+  array: true
+
+wazuh.source:
+  description: Source that ingested the event
+  type: keyword
+
+wazuh.syscollector.hardware:
+  description: 'Object that contains the hardware fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.hotfix:
+  description: 'Object that contains the hotfix fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.netinfo.addr:
+  description: 'Object that contains the address fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.netinfo.iface:
+  description: 'Object that contains the network interface fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.netinfo.proto:
+  description: 'Object that contains the network protocol fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.os:
+  description: 'Object that contains the os fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.port:
+  description: 'Object that contains the port fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.process:
+  description: 'Object that contains the process fields from a syscollector event'
+  type: object
+
+wazuh.syscollector.program:
+  description: 'Object that contains the program fields from a syscollector event'
+  type: object
+
+wazuh.rootcheck.file:
+  description: 'File path'
+  type: keyword
+
+wazuh.rootcheck.update:
+  description: 'Update status'
+  type: boolean
+
+wazuh.rootcheck.fts:
+  description: 'Fts status'
+  type: boolean
+
+wazuh.rootcheck.title:
+  description: 'Title of the rootcheck event'
+  type: keyword
+
+wazuh.ciscat.type:
+  description: 'Type of the Ciscat event'
+  type: keyword
+
+wazuh.ciscat.scan_id:
+  description: 'Scan ID of the Ciscat event'
+  type: long
+
+wazuh.ciscat.cis.timestamp:
+  description: 'Timestamp of the CIS fields from a Ciscat event'
+  type: date
+
+wazuh.ciscat.cis.benchmark:
+  description: 'Benchmark of the CIS fields from a Ciscat event'
+  type: keyword
+
+wazuh.ciscat.cis.profile:
+  description: 'Profile of the CIS fields from a Ciscat event'
+  type: keyword
+
+wazuh.ciscat.cis.pass:
+  description: 'Pass of the CIS fields from a Ciscat event'
+  type: long
+
+wazuh.ciscat.cis.fail:
+  description: 'Fail of the CIS fields from a Ciscat event'
+  type: long
+
+wazuh.ciscat.cis.error:
+  description: 'Error of the CIS fields from a Ciscat event'
+  type: long
+
+wazuh.ciscat.cis.notchecked:
+  description: 'Not checked of the CIS fields from a Ciscat event'
+  type: long
+
+wazuh.ciscat.cis.unknown:
+  description: 'Unknown of the CIS fields from a Ciscat event'
+  type: long
+
+wazuh.ciscat.cis.score:
+  description: 'Score of the CIS fields from a Ciscat event'
+  type: long
+
+wazuh.ciscat.cis.hostname:
+  description: 'Hostname of the CIS fields from a Ciscat event'
+  type: keyword
+
+
+wazuh.noIndexing:
+  description: 'Boolean that indicates if the event is related with internal Wazuh functionality and should not be indexed'
+  type: boolean

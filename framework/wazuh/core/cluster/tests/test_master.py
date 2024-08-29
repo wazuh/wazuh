@@ -30,7 +30,6 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cluster.master import DEFAULT_DATE
         from wazuh.core import common
         from wazuh.core.cluster.dapi import dapi
-        from wazuh.core.utils import get_utc_strptime
         from wazuh.core.common import DECIMALS_DATE_FORMAT
 
 # Global variables
@@ -40,7 +39,7 @@ cluster_items = {'node': 'master-node',
                                "communication": {"timeout_receiving_file": 1, "timeout_dapi_request": 1,
                                                  "max_zip_size": 1073741824, "min_zip_size": 31457280,
                                                  "zip_limit_tolerance": 0.2},
-                               'master': {'max_locked_integrity_time': 0, 'timeout_agent_info': 0,
+                               'master': {'max_locked_integrity_time': 0,
                                           'timeout_extra_valid': 0, 'process_pool_size': 10,
                                           'recalculate_integrity': 0, 'sync_agent_groups': 1,
                                           'agent_group_start_delay': 1}},
@@ -915,7 +914,7 @@ async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_
 
     assert await master_handler.sync_wazuh_db_info(task_id=b'17', info_type='agent-groups') == 'some_data'
     get_chunks_mock.assert_called_once_with(b'17', b'syn_m_a_err')
-    update_chunks_mock.assert_called_once_with('chunks', 'agent-info', logger, b'syn_m_a_err', 0)
+    update_chunks_mock.assert_called_once_with('chunks', 'agent-info', logger, b'syn_m_a_err')
     send_request_mock.assert_called_once_with(command=b'syn_m_a_e', data=b'{"updated_chunks": 1}')
     assert logger._info == ['Starting.', 'Finished in 0.000s. Updated 1 chunks.']
     assert master_handler.sync_agent_info_status == {'n_synced_chunks': 1,
@@ -924,15 +923,16 @@ async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
+@patch("wazuh.core.cluster.master.MasterHandler.recalculate_group_hash", return_value=AsyncMock())
 @patch('wazuh.core.cluster.common.SyncWazuhdb')
-async def test_manager_handler_send_entire_agent_groups_information(SyncWazuhdb_mock, AsyncWazuhDBConnection_mock):
+async def test_manager_handler_send_entire_agent_groups_information(syncwazuhdb_mock, recalculate_group_hash_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class LoggerMock:
         """Auxiliary class."""
 
         def __init__(self):
+            self._debug = []
             self._info = []
             self._error = []
 
@@ -943,24 +943,24 @@ async def test_manager_handler_send_entire_agent_groups_information(SyncWazuhdb_
     master_handler = get_master_handler()
     logger = LoggerMock()
     master_handler.task_loggers["Agent-groups send full"] = logger
-    SyncWazuhdb_mock.return_value.retrieve_information = AsyncMock()
-    SyncWazuhdb_mock.return_value.sync = AsyncMock()
+    syncwazuhdb_mock.return_value.retrieve_information = AsyncMock()
+    syncwazuhdb_mock.return_value.sync = AsyncMock()
     assert await master_handler.send_entire_agent_groups_information() is None
-    SyncWazuhdb_mock.assert_called_once_with(manager=master_handler, logger=logger, cmd=b'syn_g_m_w_c',
+    syncwazuhdb_mock.assert_called_once_with(manager=master_handler, logger=logger, cmd=b'syn_g_m_w_c',
                                              data_retriever=ANY,
                                              get_data_command='global sync-agent-groups-get ',
                                              get_payload={'condition': 'all', 'set_synced': False,
                                                           'get_global_hash': False, 'last_id': 0},
                                              pivot_key='last_id', set_data_command='global set-agent-groups',
                                              set_payload={'mode': 'override', 'sync_status': 'synced'})
-    SyncWazuhdb_mock.return_value.retrieve_information.assert_called_once()
-    SyncWazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
+    syncwazuhdb_mock.return_value.retrieve_information.assert_called_once()
+    syncwazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
     assert logger._info == ['Starting.']
 
 
 @pytest.mark.asyncio
 @patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
-async def test_manager_handler_send_agent_groups_information(AsyncWazuhDBConnection_mock):
+async def test_manager_handler_send_agent_groups_information(asyncwazuhdbconnection_mock):
     """Check if the data chunks are being properly forward to the Wazuh-db socket."""
 
     class LoggerMock:
@@ -1417,14 +1417,19 @@ def test_master_handler_get_logger():
     assert master_handler.get_logger("random_tag") == "output"
 
 
+@pytest.mark.parametrize('worker_name', [
+    'worker1',
+    ''
+])
 @patch.object(logging.getLogger("wazuh"), "info")
 @patch("wazuh.core.cluster.master.server.AbstractServerHandler.connection_lost")
 @patch("wazuh.core.cluster.master.cluster.clean_up") 
-def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock):
+def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, logger_mock, worker_name):
     """Check if all the pending tasks are closed when the connection between workers and master is lost."""
 
     master_handler = get_master_handler()
     master_handler.logger = logging.getLogger("wazuh")
+    master_handler.name = worker_name
 
     class PendingTaskMock:
         """Auxiliary class."""
@@ -1449,7 +1454,10 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
         assert pending_task_mock.task.cancel_called
 
     connection_lost_mock.assert_called_once()
-    clean_up_mock.assert_called_once_with(node_name=master_handler.name)
+    if worker_name:
+        clean_up_mock.assert_called_once_with(node_name=worker_name)
+    else:
+        clean_up_mock.assert_not_called()
 
 
 # Test Master class

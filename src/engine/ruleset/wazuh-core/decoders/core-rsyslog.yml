@@ -1,0 +1,28 @@
+name: decoder/core-rsyslog/0
+# module: wazuh
+
+metadata:
+  title: Rsyslog queue decoder.
+  description: >
+    Processes events that were received by the wazuh-remoted syslog server.
+  compatibility: Syslog log format.
+  versions:
+    - Wazuh 4.*
+  author:
+    name: Wazuh, Inc.
+    date: 07/03/2023
+  references:
+    - https://wazuh.com/blog/how-to-configure-rsyslog-client-to-send-events-to-wazuh/
+
+parents:
+  - decoder/core-wazuh-message/0
+
+check:
+  # Value 50 is equal to character '2' in ASCII
+  - wazuh.queue: 50
+
+normalize:
+  - map:
+      - wazuh.source: wazuh-syslog-server
+      - client.ip: $wazuh.origin
+      - related.ip: array_append($client.ip)

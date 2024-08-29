@@ -96,7 +96,6 @@
             "sync_agent_groups": 10,
             "timeout_extra_valid": 40,
             "recalculate_integrity": 8,
-            "timeout_agent_info": 40,
             "agent_group_start_delay": 30,
             "check_worker_lastkeepalive": 60,
             "max_allowed_time_without_keepalive": 120,

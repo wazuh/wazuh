@@ -1,0 +1,42 @@
+---
+name: decoder/syslog/0
+
+metadata:
+  module: syslog
+  title: Syslog Decoder event
+  description: Syslog header
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.3
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2022/11/08
+  references:
+    - https://www.ietf.org/rfc/rfc3164.txt
+    - https://www.ietf.org/rfc/rfc5424.txt
+
+parse|event.original:
+    # BSD Syslog RFC 3164 standard
+    - <event.start/Jun 14 15:16:01> <host.hostname> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>
+    # BSD Syslog RFC 3164 no pid
+    - <event.start/Jun 14 15:16:01> <host.hostname> <TAG/alphanumeric/->:<~/ignore/ ><message>
+
+    # BSD Syslog RFC 3164 standard ISO8601
+    - "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <TAG/alphanumeric/->[<process.pid>]: <message>"
+    # BSD Syslog RFC 3164 no pid ISO8601
+    - "<event.start/2018-08-14T14:30:02.203151+02:00> <host.hostname> <TAG/alphanumeric/->: <message>"
+
+    # RFC3164 example 2 section 5.4
+    - <event.start/SYSLOG> <host.hostname> <message>
+
+    # RFC3164 example 4 section 5.4
+    - "<event.start/%Y %b %d %T> <timezone> <host.hostname> <tmp.host_ip> <TAG/alphanumeric/->[<process.pid>]:<~/ignore/ ><message>"
+
+normalize:
+  - map:
+      - event.kind: event
+      - wazuh.decoders: array_append(syslog)
+      - related.hosts: array_append($host.hostname)
+
+      - process.name: rename($TAG)
+      - host.ip: array_append($tmp.host_ip)

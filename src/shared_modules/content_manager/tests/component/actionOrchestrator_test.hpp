@@ -55,13 +55,13 @@ protected:
                 "interval": 1,
                 "ondemand": true,
                 "configData": {
+                    "consumerName": "ActionOrchestratorTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
                     "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/action-orchestrator-tests",
-                    "dataFormat": "json",
                     "contentFileName": "sample.json"
                 }
             }

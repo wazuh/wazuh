@@ -9,19 +9,17 @@ import re
 import subprocess
 import sys
 import tempfile
-from configparser import RawConfigParser, NoOptionError
+from configparser import NoOptionError, RawConfigParser
 from io import StringIO
-from os import remove, path as os_path
+from os import path as os_path
+from os import remove
 from types import MappingProxyType
-from typing import Union, List
+from typing import List, Union
 
 from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
-
-from wazuh.core import common
-from wazuh.core import wazuh_socket
-from wazuh.core.exception import WazuhInternalError, WazuhError
-from wazuh.core.exception import WazuhResourceNotFound
+from wazuh.core import common, wazuh_socket
+from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
 
 logger = logging.getLogger('wazuh')
@@ -38,7 +36,7 @@ CONF_SECTIONS = MappingProxyType({
     'active-response': {'type': 'duplicate', 'list_options': []},
     'command': {'type': 'duplicate', 'list_options': []},
     'agentless': {'type': 'duplicate', 'list_options': []},
-    'localfile': {'type': 'duplicate', 'list_options': []},
+    'localfile': {'type': 'duplicate', 'list_options': ["filter", "ignore"]},
     'remote': {'type': 'duplicate', 'list_options': []},
     'syslog_output': {'type': 'duplicate', 'list_options': []},
     'integration': {'type': 'duplicate', 'list_options': []},
@@ -119,6 +117,8 @@ GETCONFIG_COMMAND = "getconfig"
 UPDATE_CHECK_OSSEC_FIELD = 'update_check'
 GLOBAL_KEY = 'global'
 YES_VALUE = 'yes'
+CTI_URL_FIELD = 'cti-url'
+DEFAULT_CTI_URL = 'https://cti.wazuh.com'
 
 
 def _insert(json_dst: dict, section_name: str, option: str, value: str):
@@ -229,12 +229,14 @@ def _read_option(section_name: str, opt: str) -> tuple:
                 json_path = json_attribs.copy()
                 json_path['path'] = path.strip()
                 opt_value.append(json_path)
-    elif section_name == 'syscheck' and opt_name in ('synchronization', 'whodata'):
+    elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')) or \
+        (section_name == 'cluster' and opt_name == 'haproxy_helper'):
         opt_value = {}
         for child in opt:
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
+            (section_name == 'haproxy_helper' and opt_name == 'excluded_nodes') or \
             (section_name == 'sca' and opt_name == 'policies') or \
             (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
@@ -854,7 +856,7 @@ def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, ra
 
     if not os_path.exists(file_path):
         raise WazuhError(1006, file_path)
-    
+
     if raw:
         with open(file_path, 'r') as raw_data:
             data = raw_data.read()
@@ -1135,13 +1137,13 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         raise WazuhError(1111)
 
 
-def get_active_configuration(agent_id: str, component: str, configuration: str) -> dict:
+def get_active_configuration(component: str, configuration: str, agent_id: str = None) -> dict:
     """Get an agent's component active configuration.
 
     Parameters
     ----------
     agent_id : str
-        Agent ID. All possible values from 000 onwards.
+        Agent ID. All possible values from 001 onwards.
     component : str
         Selected agent's component.
     configuration : str
@@ -1282,7 +1284,7 @@ def get_active_configuration(agent_id: str, component: str, configuration: str) 
 
         return rec_msg_ok, rec_msg
 
-    rec_error, rec_data = get_active_configuration_agent() if agent_id != '000' else get_active_configuration_manager()
+    rec_error, rec_data = get_active_configuration_agent() if agent_id else get_active_configuration_manager()
 
     if rec_error == 'ok' or rec_error == 0:
         data = json.loads(rec_data) if isinstance(rec_data, str) else rec_data
@@ -1317,8 +1319,8 @@ def write_ossec_conf(new_conf: str):
     try:
         with open(common.OSSEC_CONF, 'w') as f:
             f.writelines(new_conf)
-    except Exception:
-        raise WazuhError(1126)
+    except Exception as e:
+        raise WazuhError(1126, extra_message=str(e))
 
 
 def update_check_is_enabled() -> bool:
@@ -1329,6 +1331,26 @@ def update_check_is_enabled() -> bool:
     bool
         True if UPDATE_CHECK_OSSEC_FIELD is 'yes' or isn't present, else False.
     """
-    global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
+    try:
+        global_configurations = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {})
+        return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE
+    except WazuhError as e:
+        if e.code != 1106:
+            raise e
+        return True
 
-    return global_configurations.get(UPDATE_CHECK_OSSEC_FIELD, YES_VALUE) == YES_VALUE
+
+def get_cti_url() -> str:
+    """Get the CTI service URL from the configuration.
+
+    Returns
+    -------
+    str
+        CTI service URL. The default value is returned if CTI_URL_FIELD isn't present.
+    """
+    try:
+        return get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get(CTI_URL_FIELD, DEFAULT_CTI_URL)
+    except WazuhError as e:
+        if e.code != 1106:
+            raise e
+        return DEFAULT_CTI_URL

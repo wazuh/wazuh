@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+  <System>
+    <Provider Name="Microsoft-Windows-Security-Auditing" Guid="54849625-5478-4994-A5BA-3E3B0328C30D">
+    </Provider>
+    <EventID>4716</EventID>
+    <Version>0</Version>
+    <Level>0</Level>
+    <Task>13569</Task>
+    <Opcode>0</Opcode>
+    <Keywords>0x8020000000000000</Keywords>
+    <TimeCreated SystemTime="2020-07-28T08:17:00.470644Z">
+    </TimeCreated>
+    <EventRecordID>14929</EventRecordID>
+    <Correlation ActivityID="BE129571-63F8-0000-A795-12BEF863D601">
+    </Correlation>
+    <Execution ProcessID="776" ThreadID="3776">
+    </Execution>
+    <Channel>Security</Channel>
+    <Computer>WIN-BVM4LI1L1Q6.TEST.local</Computer>
+    <Security>
+    </Security>
+  </System>
+  <EventData>
+    <Data Name="SubjectUserSid">S-1-5-21-2024912787-2692429404-2351956786-500</Data>
+    <Data Name="SubjectUserName">Administrator</Data>
+    <Data Name="SubjectDomainName">TEST</Data>
+    <Data Name="SubjectLogonId">0x6a868</Data>
+    <Data Name="DomainName">-</Data>
+    <Data Name="DomainSid">S-1-0-0</Data>
+    <Data Name="TdoType">3</Data>
+    <Data Name="TdoDirection">3</Data>
+    <Data Name="TdoAttributes">1</Data>
+    <Data Name="SidFilteringEnabled">-</Data>
+  </EventData>
+</Event>
+</Events>

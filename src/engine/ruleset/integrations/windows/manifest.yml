@@ -1,0 +1,12 @@
+name: integration/windows/0
+decoders:
+- decoder/windows-security/0
+- decoder/windows-sysmon/0
+- decoder/windows-powershell/0
+- decoder/windows-event/0
+- decoder/windows-powershell-operational/0
+rules:
+- rule/execution-python-script-in-cmdline/0
+- rule/defense-evasion-disabling-windows-logs/0
+- rule/defense-evasion-timestomp-sysmon/0
+- rule/defense-evasion-deleting-websvr-access-logs/0

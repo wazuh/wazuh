@@ -1,0 +1,34 @@
+{
+    "index_patterns": [
+        "wazuh-alerts-5.x-*"
+    ],
+    "mappings": {
+        "_meta": {
+            "version": "8.7.0-dev"
+        },
+        "date_detection": false,
+        "dynamic_templates": [
+            {
+                "strings_as_keyword": {
+                    "mapping": {
+                        "ignore_above": 1024,
+                        "type": "keyword"
+                    },
+                    "match_mapping_type": "string"
+                }
+            }
+        ],
+        "properties": {}
+    },
+    "order": 1,
+    "settings": {
+        "index": {
+            "mapping": {
+                "total_fields": {
+                    "limit": 10000
+                }
+            },
+            "refresh_interval": "5s"
+        }
+    }
+}

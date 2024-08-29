@@ -176,7 +176,7 @@ _update_config_default_result_kwargs = {
 }
 
 _restart_default_result_kwargs = {
-    'all_msg': f"Restart request sent to {' all specified nodes' if node_id != ' manager' else ''}",
+    'all_msg': f"Restart request sent to {'all specified nodes' if node_id != 'manager' else ''}",
     'some_msg': "Could not send restart request to some specified nodes",
     'none_msg': "Could not send restart request to any node",
     'sort_casting': ['str']
@@ -250,8 +250,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
         Selected component.
     config : str
         Configuration to get, written on disk.
-
-
+        
     Returns
     -------
     AffectedItemsWazuhResult
@@ -265,7 +264,7 @@ def get_config(component: str = None, config: str = None) -> AffectedItemsWazuhR
                                       )
 
     try:
-        data = configuration.get_active_configuration(agent_id='000', component=component, configuration=config)
+        data = configuration.get_active_configuration(component=component, configuration=config)
         len(data.keys()) > 0 and result.affected_items.append(data)
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
@@ -395,11 +394,13 @@ def update_ossec_conf(new_conf: str = None) -> AffectedItemsWazuhResult:
     return result
 
 
-def get_update_information(update_information: dict) -> WazuhResult:
+def get_update_information(installation_uid: str, update_information: dict) -> WazuhResult:
     """Process update information into a wazuh result.
 
     Parameters
     ----------
+    installation_uid : str
+        Wazuh UID to include in the result.
     update_information : dict
         Data to process.
 
@@ -410,8 +411,8 @@ def get_update_information(update_information: dict) -> WazuhResult:
     """
 
     if not update_information:
-        # Return an empty response because the update_check is disabled
-        return WazuhResult({'data': get_update_information_template(update_check=False)})
+        # Return a response with minimal data because the update_check is disabled
+        return WazuhResult({'data': get_update_information_template(uuid=installation_uid, update_check=False)})
     status_code = update_information.pop('status_code')
     uuid = update_information.get('uuid')
     tag = update_information.get('current_version')

@@ -1,0 +1,236 @@
+[
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\", \"state.new\": \"ready\", \"state.old\": \"unknown\"}}, \"scope\": \"swarm\", \"time\": 1686330682, \"timeNano\": 1686330682283791563}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\", \"state.new\": \"ready\", \"state.old\": \"unknown\"}}, \"scope\": \"swarm\", \"time\": 1686330682, \"timeNano\": 1686330682283791563}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:11:22Z",
+            "category":
+            [
+                "host",
+                "network"
+            ],
+            "type": "change"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "service":
+        {
+            "node":
+            {
+                "name": "vm-ubuntu22"
+            }
+        },
+        "~node":
+        {
+            "attributes":
+            {
+                "name": "vm-ubuntu22",
+                "state.new": "ready",
+                "state.old": "unknown"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\", \"state.new\": \"down\", \"state.old\": \"ready\"}}, \"scope\": \"swarm\", \"time\": 1686331355, \"timeNano\": 1686331355056821726}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\", \"state.new\": \"down\", \"state.old\": \"ready\"}}, \"scope\": \"swarm\", \"time\": 1686331355, \"timeNano\": 1686331355056821726}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:22:35Z",
+            "category":
+            [
+                "host",
+                "network"
+            ],
+            "type": "change"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "service":
+        {
+            "node":
+            {
+                "name": "vm-ubuntu22"
+            }
+        },
+        "~node":
+        {
+            "attributes":
+            {
+                "name": "vm-ubuntu22",
+                "state.new": "down",
+                "state.old": "ready"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\", \"state.new\": \"ready\", \"state.old\": \"down\"}}, \"scope\": \"swarm\", \"time\": 1686331355, \"timeNano\": 1686331355158505690}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\", \"state.new\": \"ready\", \"state.old\": \"down\"}}, \"scope\": \"swarm\", \"time\": 1686331355, \"timeNano\": 1686331355158505690}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:22:35Z",
+            "category":
+            [
+                "host",
+                "network"
+            ],
+            "type": "change"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "service":
+        {
+            "node":
+            {
+                "name": "vm-ubuntu22"
+            }
+        },
+        "~node":
+        {
+            "attributes":
+            {
+                "name": "vm-ubuntu22",
+                "state.new": "ready",
+                "state.old": "down"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\"}}, \"scope\": \"swarm\", \"time\": 1686330875, \"timeNano\": 1686330875520676855}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"node\", \"Action\": \"update\", \"Actor\": {\"ID\": \"5ca9l4ph9bbro9kd2v0u4wjmq\", \"Attributes\": {\"name\": \"vm-ubuntu22\"}}, \"scope\": \"swarm\", \"time\": 1686330875, \"timeNano\": 1686330875520676855}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:14:35Z",
+            "category":
+            [
+                "host",
+                "network"
+            ],
+            "type": "change"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "service":
+        {
+            "node":
+            {
+                "name": "vm-ubuntu22"
+            }
+        },
+        "~node":
+        {
+            "attributes":
+            {
+                "name": "vm-ubuntu22"
+            }
+        }
+    }
+]

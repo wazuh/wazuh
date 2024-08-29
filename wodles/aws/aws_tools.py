@@ -16,9 +16,6 @@ import sys
 import re
 
 DEFAULT_AWS_CONFIG_PATH = path.join(path.expanduser('~'), '.aws', 'config')
-CREDENTIALS_URL = 'https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html'
-DEPRECATED_MESSAGE = 'The {name} authentication parameter was deprecated in {release}. ' \
-                     'Please use another authentication method instead. Check {url} for more information.'
 SECURITY_LAKE_IAM_ROLE_AUTHENTICATION_URL = 'https://documentation.wazuh.com/current/cloud-security/amazon/services/' \
                                         'supported-services/security-lake.html#configuring-an-iam-role'
 
@@ -32,18 +29,19 @@ ALL_REGIONS = (
 RETRY_ATTEMPTS_KEY: str = "max_attempts"
 RETRY_MODE_CONFIG_KEY: str = "retry_mode"
 RETRY_MODE_BOTO_KEY: str = "mode"
+WAZUH_DEFAULT_RETRY_CONFIGURATION = {RETRY_ATTEMPTS_KEY: 10, RETRY_MODE_BOTO_KEY: 'standard'}
 
 # Enable/disable debug mode
 debug_level = 0
 
 
 def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dict):
-    """Create a botocore.config.Config object with the specified profile and profile_config.
+    """Create a botocore.config.Config object with the specified profile_config.
 
     This function reads the profile configuration from the provided profile_config object and extracts the necessary
     parameters to create a botocore.config.Config object.
-    It handles the signature version, s3, proxies, and proxies_config settings found in the .aws/config file for the
-    specified profile. If a setting is not found, a default value is used based on the boto3 documentation and config is
+    It handles the signature version, s3, proxies, and proxies_config settings found in the .aws/config file.
+    If a setting is not found, a default value is used based on the boto3 documentation and config is
     set into the boto_config.
 
     Parameters
@@ -60,38 +58,56 @@ def set_profile_dict_config(boto_config: dict, profile: str, profile_config: dic
     profile = remove_prefix(profile, 'profile ')
 
     # Set s3 config
-    if f'{profile}.s3' in str(profile_config):
+    if 's3' in str(profile_config):
         s3_config = {
-            "max_concurrent_requests": int(profile_config.get(f'{profile}.s3.max_concurrent_requests', 10)),
-            "max_queue_size": int(profile_config.get(f'{profile}.s3.max_queue_size', 10)),
-            "multipart_threshold": profile_config.get(f'{profile}.s3.multipart_threshold', '8MB'),
-            "multipart_chunksize": profile_config.get(f'{profile}.s3.multipart_chunksize', '8MB'),
-            "max_bandwidth": profile_config.get(f'{profile}.s3.max_bandwidth'),
+            "max_concurrent_requests": int(profile_config.get('s3.max_concurrent_requests', 10)),
+            "max_queue_size": int(profile_config.get('s3.max_queue_size', 10)),
+            "multipart_threshold": profile_config.get('s3.multipart_threshold', '8MB'),
+            "multipart_chunksize": profile_config.get('s3.multipart_chunksize', '8MB'),
+            "max_bandwidth": profile_config.get('s3.max_bandwidth'),
             "use_accelerate_endpoint": (
-                True if profile_config.get(f'{profile}.s3.use_accelerate_endpoint') == 'true' else False
+                True if profile_config.get('s3.use_accelerate_endpoint') == 'true' else False
             ),
-            "addressing_style": profile_config.get(f'{profile}.s3.addressing_style', 'auto'),
+            "addressing_style": profile_config.get('s3.addressing_style', 'auto'),
         }
         boto_config['config'].s3 = s3_config
 
     # Set Proxies configuration
-    if f'{profile}.proxy' in str(profile_config):
+    if 'proxy' in str(profile_config):
         proxy_config = {
-            "host": profile_config.get(f'{profile}.proxy.host'),
-            "port": int(profile_config.get(f'{profile}.proxy.port')),
-            "username": profile_config.get(f'{profile}.proxy.username'),
-            "password": profile_config.get(f'{profile}.proxy.password'),
+            "host": profile_config.get('proxy.host'),
+            "port": int(profile_config.get('proxy.port')),
+            "username": profile_config.get('proxy.username'),
+            "password": profile_config.get('proxy.password'),
         }
         boto_config['config'].proxies = proxy_config
 
         proxies_config = {
-            "ca_bundle": profile_config.get(f'{profile}.proxy.ca_bundle'),
-            "client_cert": profile_config.get(f'{profile}.proxy.client_cert'),
+            "ca_bundle": profile_config.get('proxy.ca_bundle'),
+            "client_cert": profile_config.get('proxy.client_cert'),
             "use_forwarding_for_https": (
-                True if profile_config.get(f'{profile}.proxy.use_forwarding_for_https') == 'true' else False
+                True if profile_config.get('proxy.use_forwarding_for_https') == 'true' else False
             )
         }
         boto_config['config'].proxies_config = proxies_config
+    
+    # Checks for retries config in profile config and sets it if not found to avoid throttling exception
+    if RETRY_ATTEMPTS_KEY in profile_config or RETRY_MODE_CONFIG_KEY in profile_config:
+        retries = {
+            RETRY_ATTEMPTS_KEY: int(profile_config.get(RETRY_ATTEMPTS_KEY, 10)),
+            RETRY_MODE_BOTO_KEY: profile_config.get(RETRY_MODE_CONFIG_KEY, 'standard')
+        }
+        debug(f"Retries parameters found in user profile. Using profile '{profile}' retries configuration", 2)
+        boto_config['config'].retries = retries
+
+    else:
+        debug(
+            "No retries configuration found in profile config. Generating default configuration for retries: mode: "
+            f"{boto_config['config'].retries['mode']} - max_attempts: {boto_config['config'].retries['max_attempts']}",
+            2)
+
+    # Set signature version
+    boto_config['config'].signature_version = profile_config.get('signature_version', 's3v4')
 
 
 def remove_prefix(text: str, prefix: str) -> str:
@@ -120,6 +136,14 @@ def handler(signal, frame):
 def debug(msg, msg_level):
     if debug_level >= msg_level:
         print('DEBUG: {debug_msg}'.format(debug_msg=msg))
+
+
+def error(msg):
+    print('ERROR: {error_msg}'.format(error_msg=msg))
+
+
+def info(msg):
+    print('INFO: {msg}'.format(msg=msg))
 
 
 def arg_valid_date(arg_string):
@@ -209,8 +233,8 @@ def arg_valid_iam_role_duration(arg_string):
 
     # Convert to integer and check range
     num_seconds = int(arg_string)
-    if not (900 <= num_seconds <= 3600):
-        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 3600.")
+    if not (900 <= num_seconds <= 43200):
+        raise argparse.ArgumentTypeError("Invalid session duration specified. Value must be between 900 and 43200.")
 
     return num_seconds
 
@@ -297,13 +321,13 @@ def arg_validate_security_lake_auth_params(external_id: Optional[str], name: Opt
     """
 
     if iam_role_arn is None:
-        print('ERROR: Used a subscriber but no --iam_role_arn provided.')
+        error('Used a subscriber but no --iam_role_arn provided.')
         sys.exit(21)
     if name is None:
-        print('ERROR: Used a subscriber but no --queue provided.')
+        error('Used a subscriber but no --queue provided.')
         sys.exit(21)
     if external_id is None:
-        print('ERROR: Used a subscriber but no --external_id provided.')
+        error('Used a subscriber but no --external_id provided.')
         sys.exit(21)
 
 
@@ -341,12 +365,6 @@ def get_script_arguments():
                         help='AWS Account ID for logs', required=False,
                         type=arg_valid_accountid)
     parser.add_argument('-d', '--debug', action='store', dest='debug', default=0, help='Enable debug')
-    parser.add_argument('-a', '--access_key', dest='access_key', default=None,
-                        help='S3 Access key credential. '
-                             f'{DEPRECATED_MESSAGE.format(name="access_key", release="4.4", url=CREDENTIALS_URL)}')
-    parser.add_argument('-k', '--secret_key', dest='secret_key', default=None,
-                        help='S3 Access key credential. '
-                             f'{DEPRECATED_MESSAGE.format(name="secret_key", release="4.4", url=CREDENTIALS_URL)}')
     # Beware, once you delete history it's gone.
     parser.add_argument('-R', '--remove', action='store_true', dest='deleteFile',
                         help='Remove processed files from the AWS S3 bucket', default=False)

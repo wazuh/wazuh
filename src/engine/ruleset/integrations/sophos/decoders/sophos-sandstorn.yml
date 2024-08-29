@@ -1,0 +1,106 @@
+---
+name: decoder/sophos-sandstorn/0
+
+metadata:
+  module: Sophos
+  title: Sophos-Sandstorn logs decoder
+  version: [17.5.x, 18.0.x]
+  description: Decoder for Sophos Sandstorn
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://support.sophos.com/support/s/?language=en_US#t=DocumentationTab
+
+parents:
+  - decoder/integrations/0
+
+check:
+- event.original: +regex_match/^device\=["[:alpha:]]*? date\=.*? time\=.*? timezone\=["[:alpha:]]*? device_name\=["[:ascii:]]*? device_id\=[[:ascii:]]*? log_id\=[[:alnum:]]*? log_type\="Sandbox"
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sophos
+  # - event.dataset: sophos.xg
+
+parse:
+  logpar:
+    # device="SFW" date=2017-01-31 time=14:52:11 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=138301618041 log_type="Sandbox" log_component="Mail" log_subtype="Allowed" priority=Information user_name="" src_ip= filename="" filetype="" filesize=0 sha1sum="" source="" reason="eligible" destination="" subject=""
+    # device="SFW" date=2017-01-31 time=14:52:11 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=138302218042 log_type="Sandbox" log_component="Mail" log_subtype="Denied" priority=Critical user_name="jsmith@iview.com" src_ip=10.198.47.112 filename="1.exe" filetype="application/octet-stream" filesize=153006 sha1sum="83cd339302bf5e8ed5240ca6383418089c337a81" source="jsmith@iview.com" reason="cached malicious" destination="" subject=""
+    # device="SFW" date=2017-01-31 time=15:28:25 timezone="IST" device_name="CR750iNG-XP" device_id=C44313350024-P29PUA log_id=136501618041 log_type="Sandbox" log_component="Web" log_subtype="Allowed" priority=Information user_name="" src_ip= filename="" filetype="" filesize=0 sha1sum="" source="" reason="eligible" destination="" subject=""
+    # device="SFW" date=2017-01-31 time=15:28:25 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=136528618043 log_type="Sandbox" log_component="Web" log_subtype="Pending" priority=Information user_name="jsmith" src_ip=10.198.47.112 filename="19.exe" filetype="application/octet-stream" filesize=153010 sha1sum="3ce799580908df9ca0dc649aa8c2d06ab267e8c8" source="10.198.241.50" reason="pending" destination="" subject=""
+    # device="SFW" date=2017-01-31 time=15:28:25 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=136502218042 log_type="Sandbox" log_component="Web" log_subtype="Denied" priority=Critical user_name="jsmith" src_ip=10.198.47.112 filename="19.exe" filetype="application/octet-stream" filesize=153010 sha1sum="3ce799580908df9ca0dc649aa8c2d06ab267e8c8" source="10.198.241.50" reason="cloud malicious" destination="" subject="
+    # device="SFW" date=2020-05-18 time=14:38:36 timezone="IST" device_name="CR750iNG-XP" device_id=C44310050024-P29PUA log_id=136502218042 log_type="Sandbox" log_component="Web" log_subtype="Denied" priority=Critical user_name="" src_ip=172.16.34.24 filename="SBTestFile1.pdf" filetype="application/pdf" filesize=1124 sha1sum="d910c4a81122c360fe57f67a04999425a65249db" source="sophostest.com" reason="cached malicious" destination="" subject=""
+    - event.original: <~tmp.payload_message>
+
+# TODO: All sophos named fields are not currently in the schema.
+normalize:
+  - map:
+      - ~tmp.payload_message: +replace/=""/=" "
+    logpar:
+      - ~tmp.payload_message: <~tmp/kv/=/ /"/'>
+  - map:
+      - event.action: $~tmp.log_subtype
+      - event.code: $~tmp.log_id
+      - event.dataset: sophos.xg
+      - event.kind: event
+      - event.module: sophos
+      - event.outcome: success
+      - event.reason: $~tmp.reason
+  - check:
+      - ~tmp.priority: Unknown
+    map:
+      - event.severity: 0
+  - check:
+      - ~tmp.priority: Alert
+    map:
+      - event.severity: 1
+  - check:
+      - ~tmp.priority: Critical
+    map:
+      - event.severity: 2
+  - check:
+      - ~tmp.priority: Error
+    map:
+      - event.severity: 3
+  - check:
+      - ~tmp.priority: Warning
+    map:
+      - event.severity: 4
+  - check:
+      - ~tmp.priority: Notification
+    map:
+      - event.severity: 5
+  - check:
+      - ~tmp.priority: Information
+    map:
+      - event.severity: 6
+  - map:
+      # TODO: need converter timezone abbrevation to UTC offset, for example 'IST' to -02:00
+      - event.timezone: $~tmp.timezone
+      - file.hash.sha: $~tmp.sha1sum
+      - file.mime_type: $~tmp.filetype
+      - file.size: $~tmp.filesize
+      - fileset.name: xg
+      - input.type: log
+      - log.level: $~tmp.priority
+      - observer.product: XG
+      - observer.serial_number: $~tmp.device_id
+      - observer.type: firewall
+      - observer.vendor: Sophos
+      - related.hash: [$~tmp.sha1sum]
+      - related.ip: [$~tmp.src_ip, $~tmp.source]
+      - related.user: [$~tmp.user_name]
+      - sophos.xg.device: $~tmp.device
+      - sophos.xg.device_name: $~tmp.device_name
+      - sophos.xg.log_component: $~tmp.log_type
+      - sophos.xg.log_id: $~tmp.log_type
+      - sophos.xg.log_subtype: $~tmp.log_subtype
+      - sophos.xg.log_type: $~tmp.log_type
+      - sophos.xg.priority: $~tmp.priority
+      - sophos.xg.source: $~tmp.source
+      - source.ip: $~tmp.src_ip
+      - source.user.name: $~tmp.user_name
+      - url.domain: $~tmp.source
+      - tags: [forwarded, preserve_original_even, sophos-xg]
+      - \@timestamp: +concat/$~tmp.date/T/$~tmp.time
+      - wazuh.decoders: +array_append/sophos-sandstorn
+      - ~tmp: delete()

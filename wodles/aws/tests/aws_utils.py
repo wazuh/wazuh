@@ -22,8 +22,6 @@ import s3_log_handler
 
 TEST_TABLE_NAME = "cloudtrail"
 TEST_SERVICE_NAME = "s3"
-TEST_ACCESS_KEY = "test_access_key"
-TEST_SECRET_KEY = "test_secret_key"
 TEST_AWS_PROFILE = "test_aws_profile"
 TEST_IAM_ROLE_ARN = "arn:aws:iam::123455678912:role/Role"
 TEST_IAM_ROLE_DURATION = '3600'
@@ -104,7 +102,6 @@ INVALID_REGION_ERROR_CODE = 22
 
 
 def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
-                                     access_key: str = None, secret_key: str = None,
                                      iam_role_arn: str = None, region: str = None, discard_field: str = None,
                                      discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                      iam_role_duration: str = None, external_id: str = None,
@@ -116,10 +113,6 @@ def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, prof
     ----------
     service_name : str
         Name of the service.
-    access_key : str
-        Access key value.
-    secret_key : str
-        Secret key value.
     profile : str
         AWS profile name.
     iam_role_arn : str
@@ -146,15 +139,14 @@ def get_wazuh_integration_parameters(service_name: str = TEST_SERVICE_NAME, prof
     dict
         A dict containing the configuration parameters with their default values.
     """
-    return {'service_name': service_name, 'access_key': access_key,
-            'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
+    return {'service_name': service_name, 'profile': profile, 'iam_role_arn': iam_role_arn,
             'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration,
             'external_id': external_id, 'skip_on_error': skip_on_error}
 
 
 def get_wazuh_aws_database_parameters(service_name: str = TEST_SERVICE_NAME, profile: str = TEST_AWS_PROFILE,
-                                      db_name: str = TEST_DATABASE, access_key: str = None, secret_key: str = None,
+                                      db_name: str = TEST_DATABASE,
                                       iam_role_arn: str = None, region: str = None, discard_field: str = None,
                                       discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                       iam_role_duration: str = None, external_id: str = None):
@@ -164,10 +156,6 @@ def get_wazuh_aws_database_parameters(service_name: str = TEST_SERVICE_NAME, pro
     ----------
     service_name : str
         Name of the service.
-    access_key : str
-        Access key value.
-    secret_key : str
-        Secret key value.
     profile : str
         AWS profile name.
     db_name : str
@@ -194,15 +182,14 @@ def get_wazuh_aws_database_parameters(service_name: str = TEST_SERVICE_NAME, pro
     dict
         A dict containing the configuration parameters with their default values.
     """
-    return {'service_name': service_name, 'access_key': access_key,
-            'secret_key': secret_key, 'profile': profile, 'db_name': db_name, 'iam_role_arn': iam_role_arn,
+    return {'service_name': service_name, 'profile': profile, 'db_name': db_name, 'iam_role_arn': iam_role_arn,
             'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
             'sts_endpoint': sts_endpoint, 'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration,
             'external_id': external_id}
 
 
 def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str = TEST_BUCKET, reparse: bool = False,
-                              profile: str = TEST_AWS_PROFILE, access_key: str = None, secret_key: str = None,
+                              profile: str = TEST_AWS_PROFILE,
                               iam_role_arn: str = None, only_logs_after: str = None, skip_on_error: bool = False,
                               account_alias: str = None, prefix: str = "", suffix: str = "", delete_file: bool = False,
                               aws_organization_id: str = None, region: str = None, discard_field: str = None,
@@ -221,10 +208,6 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
         Whether to parse already parsed logs or not.
     profile : str
         AWS profile name.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        Secret key value.
     iam_role_arn : str
         IAM Role ARN value.
     only_logs_after : str
@@ -260,7 +243,7 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
         A dict containing the configuration parameters with their default values.
     """
     return {'db_table_name': db_table_name, 'bucket': bucket, 'reparse': reparse, 'profile': profile,
-            'access_key': access_key, 'secret_key': secret_key, 'iam_role_arn': iam_role_arn,
+            'iam_role_arn': iam_role_arn,
             'only_logs_after': only_logs_after, 'skip_on_error': skip_on_error, 'account_alias': account_alias,
             'prefix': prefix, 'suffix': suffix, 'delete_file': delete_file, 'aws_organization_id': aws_organization_id,
             'region': region, 'discard_field': discard_field, 'discard_regex': discard_regex,
@@ -268,9 +251,9 @@ def get_aws_bucket_parameters(db_table_name: str = TEST_TABLE_NAME, bucket: str 
 
 
 def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_name: str = 'cloudwatchlogs',
-                               reparse: bool = False, access_key: str = None, secret_key: str = None,
+                               reparse: bool = False,
                                profile: str = TEST_AWS_PROFILE, iam_role_arn: str = None,
-                               only_logs_after: str = None, region: str = None, aws_log_groups: str = None,
+                               only_logs_after: str = None, account_alias: str = None, region: str = None, aws_log_groups: str = None,
                                remove_log_streams: bool = None, discard_field: str = None,
                                discard_regex: str = None, sts_endpoint: str = None, service_endpoint: str = None,
                                iam_role_duration: str = None):
@@ -281,10 +264,6 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
     ----------
     reparse : bool
         Whether to parse already parsed logs or not.
-    access_key : str
-        AWS access key id.
-    secret_key : str
-        AWS secret access key.
     profile : str
         AWS profile.
     iam_role_arn : str
@@ -293,6 +272,8 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
         Service name to extract logs from.
     only_logs_after : str
         Date after which obtain logs.
+    account_alias: str
+        AWS account alias.
     region : str
         Region name.
     aws_log_groups : str
@@ -317,9 +298,10 @@ def get_aws_service_parameters(db_table_name: str = TEST_TABLE_NAME, service_nam
     dict
         A dict containing the configuration parameters with their default values.
     """
-    return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse, 'access_key': access_key,
-            'secret_key': secret_key, 'profile': profile, 'iam_role_arn': iam_role_arn,
-            'only_logs_after': only_logs_after, 'region': region, 'aws_log_groups': aws_log_groups,
+    return {'db_table_name': db_table_name, 'service_name': service_name, 'reparse': reparse,
+            'profile': profile, 'iam_role_arn': iam_role_arn,
+            'only_logs_after': only_logs_after, 'account_alias': account_alias, 'region': region,
+            'aws_log_groups': aws_log_groups,
             'remove_log_streams': remove_log_streams, 'discard_field': discard_field,
             'discard_regex': discard_regex, 'sts_endpoint': sts_endpoint,
             'service_endpoint': service_endpoint, 'iam_role_duration': iam_role_duration}

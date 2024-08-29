@@ -41,8 +41,7 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
     assert integration.wazuh_path == utils.TEST_WAZUH_PATH
     assert integration.wazuh_queue == os.path.join(integration.wazuh_path, utils.QUEUE_PATH)
     assert integration.wazuh_wodle == os.path.join(integration.wazuh_path, utils.WODLE_PATH)
-    mock_client.assert_called_with(access_key=args["access_key"], secret_key=args["secret_key"],
-                                   profile=args["profile"], iam_role_arn=args["iam_role_arn"],
+    mock_client.assert_called_with(profile=args["profile"], iam_role_arn=args["iam_role_arn"],
                                    service_name=args["service_name"], region=args["region"],
                                    sts_endpoint=args["sts_endpoint"], service_endpoint=args["service_endpoint"],
                                    iam_role_duration=args["iam_role_duration"], external_id=args["external_id"])
@@ -51,13 +50,12 @@ def test_wazuh_integration_initializes_properly(mock_version, mock_path, mock_cl
                                                                  tzinfo=timezone.utc)
 
 
-@patch('wazuh_integration.botocore')
 @pytest.mark.parametrize('file_exists, options, retry_attempts, retry_mode',
                          [(True, [aws_tools.RETRY_ATTEMPTS_KEY, aws_tools.RETRY_MODE_BOTO_KEY], 5, 'standard'),
                           (True, ['other_option'], None, None),
                           (False, None, None, None)]
                          )
-def test_default_config(mock_botocore, file_exists, options, retry_attempts, retry_mode):
+def test_default_config(file_exists, options, retry_attempts, retry_mode):
     """Test if `default_config` function returns the Wazuh default Retry configuration if there is no user-defined
     configuration.
 
@@ -77,8 +75,7 @@ def test_default_config(mock_botocore, file_exists, options, retry_attempts, ret
     profile = utils.TEST_AWS_PROFILE
     with patch('wazuh_integration.path.exists', return_value=file_exists):
         if file_exists:
-            with patch('aws_tools.get_aws_config_params') as mock_config, \
-                    patch('aws_tools.set_profile_dict_config'):
+            with patch('aws_tools.get_aws_config_params') as mock_config:
                 mock_config.options(profile).return_value = options
                 profile_config = {option: mock_config.get(profile, option) for option in mock_config.options(profile)}
 
@@ -86,40 +83,30 @@ def test_default_config(mock_botocore, file_exists, options, retry_attempts, ret
 
             if aws_tools.RETRY_ATTEMPTS_KEY in profile_config or aws_tools.RETRY_MODE_CONFIG_KEY in profile_config:
                 retries = {
-                        aws_tools.RETRY_ATTEMPTS_KEY: retry_attempts,
-                        aws_tools.RETRY_MODE_BOTO_KEY: retry_mode
-                    }
+                    aws_tools.RETRY_ATTEMPTS_KEY: retry_attempts,
+                    aws_tools.RETRY_MODE_BOTO_KEY: retry_mode
+                }
             else:
-                retries = wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION
+                retries = aws_tools.WAZUH_DEFAULT_RETRY_CONFIGURATION
 
             assert config['config'].retries == retries
         else:
             config = wazuh_integration.WazuhIntegration.default_config(profile=utils.TEST_AWS_PROFILE)
-
-            mock_botocore.config.Config.assert_called_with(retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
             assert 'config' in config
-            assert config['config'] == mock_botocore.config.Config(
-                retries=wazuh_integration.WAZUH_DEFAULT_RETRY_CONFIGURATION)
+            assert config['config'].retries == aws_tools.WAZUH_DEFAULT_RETRY_CONFIGURATION
 
 
-@pytest.mark.parametrize('access_key, secret_key, profile', [
-    (utils.TEST_ACCESS_KEY, utils.TEST_SECRET_KEY, None),
-    (utils.TEST_ACCESS_KEY, None, None),
-    (None, utils.TEST_SECRET_KEY, None),
-    (None, None, utils.TEST_AWS_PROFILE),
-    (None, None, utils.TEST_AWS_PROFILE),
+@pytest.mark.parametrize('profile', [
+    None,
+    utils.TEST_AWS_PROFILE,
 ])
 @pytest.mark.parametrize('region', list(wazuh_integration.DEFAULT_GOV_REGIONS) + ['us-east-1', None])
 @pytest.mark.parametrize('service_name', list(wazuh_integration.SERVICES_REQUIRING_REGION) + ['other'])
-def test_wazuh_integration_get_client_authentication(access_key, secret_key, profile, region, service_name):
+def test_wazuh_integration_get_client_authentication(profile, region, service_name):
     """Test `get_client` function uses the different authentication parameters properly.
 
     Parameters
     ----------
-    access_key : str
-        Access key value.
-    secret_key : str
-        Secret key value.
     profile : str
         AWS profile name.
     region : str
@@ -127,12 +114,10 @@ def test_wazuh_integration_get_client_authentication(access_key, secret_key, pro
     service_name : str
         Name of the service.
     """
-    kwargs = utils.get_wazuh_integration_parameters(access_key=access_key, secret_key=secret_key, profile=profile,
-                                                    region=region, service_name=service_name, iam_role_arn=None)
+    kwargs = utils.get_wazuh_integration_parameters(
+        profile=profile, region=region, service_name=service_name, iam_role_arn=None
+    )
     expected_conn_args = {}
-    if access_key and secret_key:
-        expected_conn_args['aws_access_key_id'] = access_key
-        expected_conn_args['aws_secret_access_key'] = secret_key
 
     if profile:
         expected_conn_args['profile_name'] = profile
@@ -165,7 +150,7 @@ def test_wazuh_integration_get_client(iam_role_arn, service_name, external_id):
     external_id : str
         External ID primarily used for Security Lake.
     """
-    kwargs = utils.get_wazuh_integration_parameters(access_key=None, secret_key=None, profile=None,
+    kwargs = utils.get_wazuh_integration_parameters(profile=None,
                                                     sts_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                                     service_endpoint=utils.TEST_SERVICE_ENDPOINT,
                                                     service_name=service_name, iam_role_arn=iam_role_arn,
@@ -223,38 +208,28 @@ def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
         assert e.value.code == utils.INVALID_CREDENTIALS_ERROR_CODE
 
 
-@pytest.mark.parametrize('access_key, secret_key, profile', [
-    (utils.TEST_ACCESS_KEY, utils.TEST_SECRET_KEY, None),
-    (utils.TEST_ACCESS_KEY, None, None),
-    (None, utils.TEST_SECRET_KEY, None),
-    (None, None, utils.TEST_AWS_PROFILE),
-    (None, None, utils.TEST_AWS_PROFILE),
+@pytest.mark.parametrize('profile', [
+    None,
+    utils.TEST_AWS_PROFILE,
 ])
-def test_wazuh_integration_get_sts_client(access_key, secret_key, profile):
+def test_wazuh_integration_get_sts_client(profile):
     """Test `get_sts_client` function uses the expected configuration for the session and the client while returning a
     valid sts client object.
 
     Parameters
     ----------
-    access_key : str
-        Access key value.
-    secret_key : str
-        Secret key value.
     profile : str
         AWS profile name.
     """
-    instance = utils.get_mocked_wazuh_integration(access_key=access_key, secret_key=secret_key, profile=profile)
+    instance = utils.get_mocked_wazuh_integration(profile=profile)
     expected_conn_args = {}
-    if access_key and secret_key:
-        expected_conn_args['aws_access_key_id'] = access_key
-        expected_conn_args['aws_secret_access_key'] = secret_key
 
     if profile:
         expected_conn_args['profile_name'] = profile
 
     mock_session = MagicMock()
     with patch('wazuh_integration.boto3.Session', return_value=mock_session) as mock_boto:
-        sts_client = instance.get_sts_client(access_key=access_key, secret_key=secret_key, profile=profile)
+        sts_client = instance.get_sts_client(profile=profile)
         mock_boto.assert_called_with(**expected_conn_args)
         mock_session.client.assert_called_with(service_name='sts', **instance.connection_config)
         assert sts_client == mock_session.client()
@@ -266,11 +241,11 @@ def test_wazuh_integration_get_sts_client_handles_exceptions_when_invalid_creds_
     mock_boto_session.client.side_effect = wazuh_integration.botocore.exceptions.ClientError({'Error': {'Code': 1}},
                                                                                              'operation')
 
-    instance = utils.get_mocked_wazuh_integration(access_key=None, secret_key=None, profile=None)
+    instance = utils.get_mocked_wazuh_integration(profile=None)
 
     with patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
-            instance.get_sts_client(access_key=None, secret_key=None, profile=None)
+            instance.get_sts_client(profile=None)
         assert e.value.code == utils.INVALID_CREDENTIALS_ERROR_CODE
 
 

@@ -1,0 +1,60 @@
+- name: UPLOAD_ONE_BLOCK_CONFIG_ALLOWED
+  description: Upload one block configuration with a public virustotal key allowed
+  configuration_parameters:
+    ALLOWED: yes
+    MIN_QUOTA: 240
+  metadata:
+    expected_code: 200
+    expected_error_code: 0
+    request_body: >
+      <ossec_config>
+        <remote>
+          <connection>secure</connection>
+          <port>1514</port>
+        </remote>
+      </ossec_config>
+      
+      <ossec_config>
+        <integration>
+          <name>virustotal</name>
+          <api_key>expected_api_key</api_key>
+          <group>syscheck</group>
+          <alert_format>json</alert_format>
+        </integration>
+      </ossec_config>
+
+- name: UPLOAD_ONE_BLOCK_CONFIG_NOT_ALLOWED
+  description: Upload one block configuration with a public virustotal key not allowed
+  configuration_parameters:
+    ALLOWED: no
+    MIN_QUOTA: 240
+  metadata:
+    expected_code: 200
+    expected_error_code: 1
+    request_body: >
+      <ossec_config>
+        <integration>
+          <name>virustotal</name>
+          <api_key>expected_api_key</api_key>
+          <group>syscheck</group>
+          <alert_format>json</alert_format>
+        </integration>
+      </ossec_config>
+
+- name: UPLOAD_ONE_BLOCK_CONFIG_NOT_ALLOWED_VIRUS_TOTAL_API_ERROR
+  description: Upload one block configuration with a public virustotal key not allowed but virustotal does not respond
+  configuration_parameters:
+    ALLOWED: no
+    MIN_QUOTA: 240
+  metadata:
+    expected_code: 200
+    expected_error_code: 1
+    request_body: >
+      <ossec_config>
+        <integration>
+          <name>virustotal</name>
+          <api_key>wrong_api_key</api_key>
+          <group>syscheck</group>
+          <alert_format>json</alert_format>
+        </integration>
+      </ossec_config>

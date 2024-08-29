@@ -1,0 +1,19 @@
+{
+    "steps": [
+        {
+            "description": "Build (TSAN flag)",
+            "parameters": [
+                "--test build",
+                "--option ENGINE_BUILD_TSAN=ON",
+                "--log-name tsan-build"
+            ]
+        },
+        {
+            "description": "Unit tests (TSAN)",
+            "parameters": [
+                "--test ut",
+                "--log-name tsan"
+            ]
+        }
+    ]
+}

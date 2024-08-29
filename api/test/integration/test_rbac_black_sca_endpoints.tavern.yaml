@@ -3,19 +3,6 @@ test_name: GET /sca/{agent_id}
 
 stages:
 
-  - name: Request sca for agent 000 (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data: !anything
-
   - name: Request sca for agent 001 (Denied)
     request:
       verify: False
@@ -78,19 +65,6 @@ stages:
 test_name: GET /sca/{agent_id}/checks/{policy_id}
 
 stages:
-
-  - name: Request policy checks for 000 (Allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      status_code: 200
-      json:
-        error: !anyint
-        data: !anything
 
   - name: Request policy checks for 001 (Denied)
     request:

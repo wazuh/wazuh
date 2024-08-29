@@ -5,10 +5,11 @@
 from copy import deepcopy
 from typing import Union
 
-from wazuh.core.common import MAX_SOCKET_BUFFER_SIZE, WAZUH_VERSION, AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP
+from wazuh.core.cluster import __version__
+from wazuh.core.common import AGENT_NAME_LEN_LIMIT, MAX_GROUPS_PER_MULTIGROUP, MAX_SOCKET_BUFFER_SIZE
 
 GENERIC_ERROR_MSG = "Wazuh Internal Error. See log for more detail"
-DOCU_VERSION = 'current' if WAZUH_VERSION == '' else '.'.join(WAZUH_VERSION.split('.')[:2]).lstrip('v')
+DOCU_VERSION = 'current' if __version__ == '' else '.'.join(__version__.split('.')[:2]).lstrip('v')
 
 class WazuhException(Exception):
     """
@@ -97,12 +98,7 @@ class WazuhException(Exception):
         1121: {'message': "Error connecting with socket",
                'remediation': "Please ensure the selected module is running and properly configured"},
         1122: {'message': 'Experimental features are disabled',
-               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml or '
-                              f"using API endpoint https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/"
-                              'reference.html#operation/api.controllers.manager_controller.put_api_config or '
-                              f"https://documentation.wazuh.com/{DOCU_VERSION}/"
-                              'user-manual/api/reference.html#operation/'
-                              'api.controllers.cluster_controller.put_api_config'},
+               'remediation': 'Experimental features can be enabled in WAZUH_PATH/api/configuration/api.yaml'},
         1123: {
             'message': f"Error communicating with socket. Query too long, maximum allowed size for queries is "
                        f"{MAX_SOCKET_BUFFER_SIZE // 1024} KB"},
@@ -125,7 +121,15 @@ class WazuhException(Exception):
                'remediation': f'To solve this issue, please enable agents higher versions in the API settings: '
                               f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/'
                               f'configuration.html#agents'},
-
+        1130: {'message': 'Public Virus Total API Key detected',
+               'remediation': 'To solve this, either use a premium VirusTotal API key or disable the public key'
+                              ' protection in the API settings: '
+                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
+        1131: {'message': 'Virus Total API request error',
+               'remediation': 'The use of Virus Total Public API keys is disabled but could not be checked. '
+                              'To solve this, check your connection to the Virus Total API or disable the public key'
+                              ' protection in the API settings: '
+                              f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
@@ -270,10 +274,6 @@ class WazuhException(Exception):
         # Agents: 1700 - 1799
         1701: {'message': 'Agent does not exist',
                'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents'
-               },
-        1703: {'message': 'Action not available for Manager (agent 000)',
-               'remediation': 'Please, use `GET /agents?select=id,name` to find all available agents and make sure you '
-                              'select an agent other than 000'
                },
         1705: {'message': 'There is an agent with the same name',
                'remediation': 'Please choose another name'
@@ -433,6 +433,26 @@ class WazuhException(Exception):
         # External services
         2100: {'message': 'Error in CTI service request'},
 
+        # Indexer
+        2200: {'message': 'Could not connect to the indexer'},
+        2201: {'message': 'Indexer credentials not provided'},
+        2202: {'message': 'Command does not exist'},
+
+        # Communications API
+        2700: {'message': 'Private key does not match with the certificate'},
+        2701: {'message': 'PEM phrase is not correct'},
+        2702: {'message': 'Ensure the certificates have the correct permissions'},
+        2703: {'message': 'Wazuh comms API SSL error. Please, ensure the configuration is correct'},
+        2704: {'message': 'Invalid file name, it must not be a directory'},
+        2705: {'message': 'Invalid file name, it must not contain directories'},
+        2706: {'message': 'Invalid authentication token'},
+        2707: {'message': 'Authentication token expired'},
+
+        # Engine API client
+        2800: {'message': 'The engine client connection timeout has been exceeded'},
+        2801: {'message': 'Invalid request URL scheme'},
+        2802: {'message': 'Invalid unix socket path'},
+
         # Cluster
         3000: 'Cluster',
         3001: 'Error creating zip file',
@@ -500,6 +520,17 @@ class WazuhException(Exception):
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
+
+        # HAProxy Helper exceptions
+        3041: "Server status check timed out after adding new servers",
+        3042: "User configuration is not valid",
+        3043: "Could not initialize Proxy API",
+        3044: "Could not connect to the HAProxy dataplane API",
+        3045: "Could not connect to HAProxy",
+        3046: "Invalid credentials for the Proxy API",
+        3047: "Invalid HAProxy Dataplane API specification configured",
+        3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
+        3049: "Unexpected response from HAProxy Dataplane API",
 
         # RBAC exceptions
         # The messages of these exceptions are provisional until the RBAC documentation is published.
@@ -780,6 +811,38 @@ class WazuhClusterError(WazuhInternalError):
     """
     _default_type = "about:blank"
     _default_title = "Wazuh Cluster Error"
+
+
+class WazuhHAPHelperError(WazuhClusterError):
+    """
+    This type of exception is raised inside the HAProxy Helper.
+    """
+    _default_type = "about:blank"
+    _default_title = "HAProxy Helper Error"
+
+
+class WazuhCommsAPIError(WazuhInternalError):
+    """
+    This type of exception is raised inside the Communications API.
+    """
+    _default_type = "about:blank"
+    _default_title = "Communications API Error"
+
+
+class WazuhEngineError(WazuhInternalError):
+    """
+    This type of exception is raised inside the engine.
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Engine Error"
+
+
+class WazuhIndexerError(WazuhInternalError):
+    """
+    This type of exception is raised inside the indexer.
+    """
+    _default_type = "about:blank"
+    _default_title = "Wazuh Indexer Error"
 
 
 class WazuhError(WazuhException):

@@ -1,7 +1,0 @@
-{
-    "action": "dbsync_set_table_max_rows",
-    "body": {
-        "table": "processes",
-        "max_rows":100
-    }
-}

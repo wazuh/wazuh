@@ -1,0 +1,38 @@
+# Name of the helper function
+name: erase_custom_fields
+
+metadata:
+  description: |
+    This operation removes all fields that do not belong to the schema.
+    Typically used with field = ".", the root element.
+
+  keywords:
+    - delete
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type:
+    - number
+    - string
+    - object
+    - boolean
+    - array
+
+test:
+  - target_field: -- Hi wazuh! --
+    should_pass: true
+    expected: ""
+    description: Success erase custom file
+  - target_field:
+      key: value
+    should_pass: true
+    expected: ""
+    description: Success erase custum file
+  - target_field: [1,2,3,4]
+    should_pass: true
+    expected: ""
+    description: Success erase custom file

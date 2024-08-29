@@ -1,0 +1,40 @@
+# Name of the helper function
+name: kvdb_not_match
+
+metadata:
+  description: |
+    Checks if a given key does not exist in the DB named db-name. This helper function is typically used in the check stage.
+
+  keywords:
+    - kvdb
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db-name:
+    type: string  # Expected type is string
+    generate: string
+    source: value # includes values
+    restrictions:
+      allowed:
+        - testing
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      db-name: testing
+    target_field: test
+    should_pass: false
+    description: Key found in kvdb
+  - arguments:
+      db-name: testing
+    target_field: k
+    should_pass: true
+    description: Key not found in kvdb

@@ -8,6 +8,7 @@ import pytz
 
 from wazuh.core.common import LOGTEST_SOCKET, DECIMALS_DATE_FORMAT, origin_module
 from wazuh.core.wazuh_socket import WazuhSocketJSON, create_wazuh_socket_message
+from wazuh.core.exception import WazuhError
 
 
 def send_logtest_msg(command: str = None, parameters: dict = None) -> dict:
@@ -28,6 +29,7 @@ def send_logtest_msg(command: str = None, parameters: dict = None) -> dict:
     full_message = create_wazuh_socket_message(origin={'name': 'Logtest', 'module': origin_module.get()},
                                                command=command,
                                                parameters=parameters)
+    # TODO: Review since the Engine will be in charge of having an API to test events
     logtest_socket = WazuhSocketJSON(LOGTEST_SOCKET)
     logtest_socket.send(full_message)
     response = logtest_socket.receive(raw=True)
@@ -40,3 +42,19 @@ def send_logtest_msg(command: str = None, parameters: dict = None) -> dict:
         pass
 
     return response
+
+
+def validate_dummy_logtest() -> None:
+    """Validates a dummy log test by sending a log test message.
+
+    Raises
+    ------
+    WazuhError
+        If an error occurs during the log test with error code 1113.
+    """
+    command = "log_processing"
+    parameters = {"location": "dummy", "log_format": "syslog", "event": "Hello"}
+
+    response = send_logtest_msg(command, parameters)
+    if response.get('data', {}).get('codemsg', -1) == -1:
+        raise WazuhError(1113)

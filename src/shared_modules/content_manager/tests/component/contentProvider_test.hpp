@@ -44,13 +44,13 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
+                    "consumerName": "ContentProviderTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
                     "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/content-provider-tests",
-                    "dataFormat": "json",
                     "contentFileName": "sample.json"
                 }
             }

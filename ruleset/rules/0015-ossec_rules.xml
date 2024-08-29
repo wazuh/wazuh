@@ -116,7 +116,6 @@
     <match>^Starting syscheck scan|^Ending syscheck scan.|</match>
     <match>^Starting OpenSCAP scan|^Ending OpenSCAP scan.|</match>
     <match>^Starting CIS-CAT scan|^Ending CIS-CAT scan.|</match>
-    <match>^Starting vulnerability scan|^Ending vulnerability scan.|</match>
     <match>^Starting Azure-logs scan.|^Ending Azure-logs scan.</match>
     <description>Ignoring scan messages.</description>
     <group>rootcheck,syscheck,pci_dss_10.6.1,gdpr_IV_35.7.d,gdpr_IV_30.1.g,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
@@ -472,7 +471,7 @@
     <description>Active response related to $(script) has been activated, but may not have an effect because the firewall is $(status)</description>
     <group>active_response,pci_dss_11.4,gdpr_IV_35.7.d,nist_800_53_SI.4,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,tsc_CC7.4,</group>
   </rule>
-  
+
   <!-- logcollector rules -->
 
   <rule id="700" level="0">

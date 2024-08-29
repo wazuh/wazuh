@@ -58,8 +58,7 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
                                          only_logs_after: str or None):
     """Test if the instances of AWSBucket are created properly."""
     kwargs = utils.get_aws_bucket_parameters(db_table_name=utils.TEST_TABLE_NAME, bucket=utils.TEST_BUCKET,
-                                             profile=utils.TEST_AWS_PROFILE, access_key=utils.TEST_ACCESS_KEY,
-                                             secret_key=utils.TEST_SECRET_KEY, iam_role_arn=utils.TEST_IAM_ROLE_ARN,
+                                             profile=utils.TEST_AWS_PROFILE, iam_role_arn=utils.TEST_IAM_ROLE_ARN,
                                              account_alias=utils.TEST_ACCOUNT_ALIAS, prefix=utils.TEST_PREFIX,
                                              suffix=utils.TEST_SUFFIX, aws_organization_id=utils.TEST_ORGANIZATION_ID,
                                              region=utils.TEST_REGION, discard_field=utils.TEST_DISCARD_FIELD,
@@ -70,7 +69,6 @@ def test_aws_bucket_initializes_properly(mock_wazuh_integration, mock_version, m
                                              skip_on_error=True, reparse=True, only_logs_after=only_logs_after)
     integration = aws_bucket.AWSBucket(**kwargs)
     mock_wazuh_integration.assert_called_with(integration, service_name="s3",
-                                              access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
                                               profile=kwargs["profile"], iam_role_arn=kwargs["iam_role_arn"],
                                               region=kwargs["region"], discard_field=kwargs["discard_field"],
                                               discard_regex=kwargs["discard_regex"],
@@ -913,26 +911,21 @@ def test_aws_logs_bucket_load_information_from_file(mock_wazuh_aws_database, moc
 
 
 @pytest.mark.parametrize('profile', [utils.TEST_AWS_PROFILE, None])
-@pytest.mark.parametrize('secret_key', [utils.TEST_SECRET_KEY, None])
-@pytest.mark.parametrize('access_key', [utils.TEST_ACCESS_KEY, None])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhAWSDatabase.__init__')
 @patch('aws_bucket.AWSBucket.__init__', side_effect=aws_bucket.AWSBucket.__init__)
-def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_database, mock_sts, access_key, secret_key,
-                                                profile):
+def test_aws_custom_bucket_initializes_properly(mock_bucket, mock_wazuh_aws_database, mock_sts, profile):
     """Test if the instances of AWSCustomBucket are created properly."""
 
     mock_client = MagicMock()
     mock_sts.return_value = mock_client
 
     instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket,
-                                       profile=profile,
-                                       secret_key=secret_key,
-                                       access_key=access_key)
+                                       profile=profile)
     mock_bucket.assert_called_once()
 
     assert instance.retain_db_records == aws_bucket.MAX_RECORD_RETENTION
-    mock_sts.assert_called_with(access_key, secret_key, profile=profile)
+    mock_sts.assert_called_with(profile=profile)
     mock_client.get_caller_identity.assert_called_once()
     assert instance.macie_location_pattern == re.compile(r'"lat":(-?0+\d+\.\d+),"lon":(-?0+\d+\.\d+)')
     assert instance.check_prefix

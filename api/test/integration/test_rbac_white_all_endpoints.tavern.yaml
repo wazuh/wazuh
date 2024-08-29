@@ -2801,10 +2801,10 @@ stages:
 test_name: GET /sca/{agent_id}/checks/{policy_id}
 
 stages:
-  - name: Try to request policy checks for 000
+  - name: Try to request policy checks for 001
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/sca/000/checks/cis_debian9_L1"
+      url: "{protocol:s}://{host:s}:{port:d}/sca/001/checks/cis_debian9_L1"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

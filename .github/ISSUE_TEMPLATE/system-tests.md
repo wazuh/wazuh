@@ -1,8 +1,8 @@
 ---
-name: Release Candidate - System tests 
+name: Release Candidate - System tests
 about: Report the results after running system tests.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - System tests'
-labels: 'module/cluster, module/rbac'
+title: Release [WAZUH VERSION] - [STAGE] - System tests
+labels: level/task, type/test
 assignees: ''
 
 ---
@@ -25,15 +25,15 @@ To run tests in an AWS EC2 virtual environment, the following requirements will 
 |------------------------------|-------------------------------------------|
 |Basic_cluster                 |Ubuntu 22.04.2 LTS C5.XLarge 15GB SSD      |
 |Big_cluster_40_agents         |Ubuntu 22.04.2 LTS T3.Large 60GB SSD       |
-|Agentless_cluster             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
+|Agentless_cluster             |Ubuntu 22.04.2 LTS C5a.XLarge 30GB SSD     |
 |Four_manager_disconnected_node|Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
 |One_manager_agent             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
 |Manager_agent                 |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
-|Enrollment_cluster            |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       | 
+|Enrollment_cluster            |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
 |Basic_environment             |Ubuntu 22.04.2 LTS T3.Large 30GB SSD       |
 
 
-These requirements should be requested to the @wazuh/cicd team via https://github.com/wazuh/internal-devel-requests.
+These requirements should be requested to the @wazuh/devel-devops team via https://github.com/wazuh/internal-devel-requests.
 
 For further information, check https://github.com/wazuh/wazuh-qa/tree/master/tests/system/README.md
 
@@ -46,7 +46,7 @@ All individual test checks must be marked as:
 | Skip | The test was not run. It must be properly justified and reported in an issue.  |
 | Fail | The test failed. A new issue must be opened to evaluate and address the problem. |
 
-All test results must have one the following statuses: 
+All test results must have one the following statuses:
 |                                  |                                            |
 |---------------------------------|--------------------------------------------|
 | :green_circle:  | All checks passed. |
@@ -77,4 +77,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ] @wazuh/devel-qa-release

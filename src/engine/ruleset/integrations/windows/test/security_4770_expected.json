@@ -1,0 +1,121 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "kerberos-service-ticket-renewed",
+      "category": [
+        "authentication"
+      ],
+      "code": "4770",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-08-07T03:26:23.466552900Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A Kerberos service ticket was renewed",
+    "related": {
+      "ip": [
+        "::ffff:10.0.0.12"
+      ],
+      "user": [
+        "WIN2008R2$@CONTOSO.LOCAL"
+      ]
+    },
+    "service": {
+      "name": "krbtgt"
+    },
+    "source": {
+      "ip": "::ffff:10.0.0.12",
+      "port": 49964
+    },
+    "user": {
+      "domain": "CONTOSO.LOCAL",
+      "name": "WIN2008R2$@CONTOSO.LOCAL"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "IpAddress": "::ffff:10.0.0.12",
+        "IpPort": "49964",
+        "ServiceName": "krbtgt",
+        "ServiceSid": "S-1-5-21-3457937927-2839227994-823803824-502",
+        "TargetDomainName": "CONTOSO.LOCAL",
+        "TargetUserName": "WIN2008R2$@CONTOSO.LOCAL",
+        "TicketEncryptionType": "0x12",
+        "TicketEncryptionTypeDescription": "aes256-cts-hmac-sha1-96",
+        "TicketOptions": "0x2",
+        "TicketOptionsDescription": [
+          "Renew"
+        ]
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4770"
+        },
+        "EventRecordID": {
+          "#text": "166481"
+        },
+        "Execution": {
+          "@ProcessID": "520",
+          "@ThreadID": "1084"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "14337"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-08-07T03:26:23.466552900Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      }
+    }
+  }
+]

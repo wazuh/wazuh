@@ -1,0 +1,14 @@
+- name: LOGS_ROTATE_BASED_ON_FILE_SIZE_IN_MB
+  description: Logs rotates based on file size in MB
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 1m
+  metadata:
+    size_in_kb: 1024
+- name: LOGS_ROTATE_BASED_ON_FILE_SIZE_IN_KB
+  description: Logs rotates based on file size in KB
+  configuration_parameters:
+    ENABLED: yes
+    SIZE: 1500k
+  metadata:
+    size_in_kb: 1500

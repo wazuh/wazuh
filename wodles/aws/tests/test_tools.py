@@ -126,7 +126,7 @@ def test_arg_valid_regions_raises_exception_when_invalid_region_provided():
         aws_tools.arg_valid_regions('invalid-region')
 
 
-@pytest.mark.parametrize('arg_string', ["900", "3600"])
+@pytest.mark.parametrize('arg_string', ["900", "43200"])
 def test_arg_valid_iam_role_duration(arg_string: str):
     """Test 'arg_valid_iam_role_duration' function returns the expected duration.
 
@@ -148,7 +148,7 @@ def test_arg_valid_bucket_name_raises_exception_when_invalid_bucket_name_provide
         aws_tools.arg_valid_bucket_name('--ol-s3-invalid')
 
 
-@pytest.mark.parametrize('arg_string', ["899", "3601"])
+@pytest.mark.parametrize('arg_string', ["899", "43201"])
 def test_arg_valid_iam_role_duration_raises_exception_when_invalid_duration_provided(arg_string):
     """Test 'arg_valid_iam_role_duration' function raises an 'ArgumentTypeError' error
     when the duration is not between 15m and 12h.

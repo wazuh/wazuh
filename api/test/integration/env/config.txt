@@ -7,7 +7,6 @@
 
 | Agent | Name          | Groups                       | Status          |
 |-------|---------------|------------------------------|-----------------|
-| 000   | wazuh-master  |                              | active          |
 | 001   | wazuh-agent1  | default,group1               | active          |
 | 002   | wazuh-agent2  | default,group2               | active          |
 | 003   | wazuh-agent3  | default,group3               | active          |

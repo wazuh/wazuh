@@ -1,0 +1,269 @@
+[
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/f5/f5-apm.log",
+            "message": "October 2019/10/18 03:14:14 tem very-high giatnula[71]: Rule: enimadmi <<qui>: APM_EVENT=deny | aecon | sedq ***failure***",
+            "origin": "/var/log/f5/f5-apm.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "f5-apm"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "October 2019/10/18 03:14:14 tem very-high giatnula[71]: Rule: enimadmi <<qui>: APM_EVENT=deny | aecon | sedq ***failure***",
+            "code": "giatnula",
+            "action": "deny",
+            "dataset": "f5.bigipapm",
+            "module": "f5"
+        },
+        "host": {
+            "id": "001"
+        },
+        "@timestamp": "2019-10-18T03:14:14.000Z",
+        "log": {
+            "level": "very-high"
+        },
+        "process": {
+            "pid": 71
+        },
+        "user": {
+            "name": "aecon"
+        },
+        "observer": {
+            "product": "Big-IP",
+            "type": "Access",
+            "vendor": "F5"
+        },
+        "rsa": {
+            "internal": {
+                "messageid": "giatnula"
+            },
+            "misc": {
+                "severity": "very-high"
+            },
+            "time": {
+                "event_time": "2019-10-18T03:14:14.000Z"
+            }
+        },
+        "service": {
+            "type": "f5"
+        },
+        "tags": [
+            "f5.bigipapm",
+            "forwarded"
+        ]
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/f5/f5-apm.log",
+            "message": "July 2016/07/18 18:40:50 lum high CROND[1675]: (sitvolup) CMD (cancel)",
+            "origin": "/var/log/f5/f5-apm.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "f5-apm"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "July 2016/07/18 18:40:50 lum high CROND[1675]: (sitvolup) CMD (cancel)",
+            "code": "CROND",
+            "dataset": "f5.bigipapm",
+            "module": "f5"
+        },
+        "host": {
+            "id": "001"
+        },
+        "@timestamp": "2016-07-18T18:40:50.000Z",
+        "log": {
+            "level": "high"
+        },
+        "process": {
+            "pid": 1675
+        },
+        "rsa": {
+            "misc": {
+                "action": [
+                    "cancel"
+                ],
+                "severity": "high"
+            },
+            "internal": {
+                "messageid": "CROND"
+            },
+            "time": {
+                "event_time": "2016-07-18T18:40:50.000Z"
+            }
+        },
+        "user": {
+            "name": "sitvolup"
+        },
+        "observer": {
+            "product": "Big-IP",
+            "type": "Access",
+            "vendor": "F5"
+        },
+        "service": {
+            "type": "f5"
+        },
+        "tags": [
+            "f5.bigipapm",
+            "forwarded"
+        ]
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/f5/f5-apm.log",
+            "message": "April 2017/04/02 01:27:07 caboNem medium laudan[7589]: 01490107: :oconse: mag: AD module: authentication with 'tob' failed: Client 'dolores2519.mail.host' not found in Kerberos database, principal name:deF itempo",
+            "origin": "/var/log/f5/f5-apm.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "f5-apm"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "April 2017/04/02 01:27:07 caboNem medium laudan[7589]: 01490107: :oconse: mag: AD module: authentication with 'tob' failed: Client 'dolores2519.mail.host' not found in Kerberos database, principal name:deF itempo",
+            "code": "01490107",
+            "dataset": "f5.bigipapm",
+            "module": "f5"
+        },
+        "host": {
+            "id": "001"
+        },
+        "@timestamp": "2017-04-02T01:27:07.000Z",
+        "log": {
+            "level": "medium"
+        },
+        "process": {
+            "pid": 7589
+        },
+        "related": {
+            "user": "tob",
+            "hosts": [
+                "dolores2519.mail.host"
+            ]
+        },
+        "user": {
+            "name": "tob"
+        },
+        "rsa": {
+            "web": {
+                "fqdn": "dolores2519.mail.host"
+            },
+            "db": {
+                "index": "itempo"
+            },
+            "internal": {
+                "messageid": "01490107"
+            },
+            "misc": {
+                "log_session_id": "mag",
+                "severity": "medium"
+            },
+            "time": {
+                "event_time": "2017-04-02T01:27:07.000Z"
+            }
+        },
+        "observer": {
+            "product": "Big-IP",
+            "type": "Access",
+            "vendor": "F5"
+        },
+        "service": {
+            "type": "f5"
+        },
+        "tags": [
+            "f5.bigipapm",
+            "forwarded"
+        ]
+    },
+    {
+        "wazuh": {
+            "queue": 49,
+            "location": "[001] (ubuntu-agent) any->/var/log/f5/f5-apm.log",
+            "message": "March 2017/03/18 18:24:33 ptasnula high syslog-ng[2638]: ill",
+            "origin": "/var/log/f5/f5-apm.log",
+            "registered_ip": "any",
+            "decoders": [
+                "core-ossec-message",
+                "core-localfile",
+                "integrations",
+                "f5-apm"
+            ],
+            "source": "logcollector"
+        },
+        "agent": {
+            "id": "001",
+            "name": "ubuntu-agent",
+            "type": "wazuh"
+        },
+        "event": {
+            "original": "March 2017/03/18 18:24:33 ptasnula high syslog-ng[2638]: ill",
+            "code": "syslog-ng",
+            "dataset": "f5.bigipapm",
+            "module": "f5"
+        },
+        "host": {
+            "id": "001"
+        },
+        "@timestamp": "2017-03-18T18:24:33.000Z",
+        "log": {
+            "level": "high"
+        },
+        "process": {
+            "pid": 2638
+        },
+        "rsa": {
+            "internal": {
+                "messageid": "syslog-ng"
+            },
+            "misc": {
+                "client": "ill",
+                "severity": "high"
+            },
+            "time": {
+                "event_time": "2017-03-18T18:24:33.000Z"
+            }
+        },
+        "observer": {
+            "product": "Big-IP",
+            "type": "Access",
+            "vendor": "F5"
+        },
+        "service": {
+            "type": "f5"
+        },
+        "tags": [
+            "f5.bigipapm",
+            "forwarded"
+        ]
+    }
+]

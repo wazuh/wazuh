@@ -2,7 +2,7 @@
   description: Check if the blocking time, for IP addresses detected as brute-force attack, works.
   configuration_parameters:
     BLOCK_TIME: 10
-    MAX_LOGIN_ATTEMPTS: 10
+    MAX_LOGIN_ATTEMPTS: 3
     MAX_REQUEST_PER_MINUTE: 300
   metadata:
     expected_message: |

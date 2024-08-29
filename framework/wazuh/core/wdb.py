@@ -159,7 +159,7 @@ class WazuhDBConnection:
         """Check input queries have the correct format
 
         Accepted query formats:
-        - agent 000 sql sql_sentence
+        - agent 001 sql sql_sentence
         - global sql sql_sentence
 
         Parameters

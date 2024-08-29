@@ -37,7 +37,6 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
 
 chown root:wheel $SERVICE
 chmod u=rw-,go=r-- $SERVICE
-launchctl load $SERVICE
 
 echo '
 #!/bin/sh

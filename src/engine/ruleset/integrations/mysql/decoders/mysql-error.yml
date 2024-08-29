@@ -1,0 +1,56 @@
+name: decoder/mysql-error/0
+
+metadata:
+  module: mysql
+  dataset: mysql.error
+  title: MySQL Server error log
+  description: Decoder for MySQL Server error logs
+  compatibility: This decoder has been tested with logs from MySQL server version 5.7 and 8.0
+  versions:
+    - "MySQL 5.7"
+    - "MySQL 8.0"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-06-01
+  references:
+    - https://dev.mysql.com/doc/refman/5.7/en/error-log.html
+    - https://dev.mysql.com/doc/refman/8.0/en/error-log.html
+
+parents:
+  - decoder/integrations/0
+
+#TODO: Once the events arrive tagged, uncomment following lines
+# check:
+#   - event.module: mysql
+#   - event.dataset: mysql.error
+
+parse:
+  logpar:
+    # Version 8.0:
+    # 2023-06-01T16:25:09.714481Z 0 [System] [MY-013169] [Server] /usr/sbin/mysqld (mysqld 8.0.33-0ubuntu0.22.04.2) initializing of server in progress as process 29486
+    # 2021-04-28T09:36:34.222753Z 0 [ERROR] [MY-011292] [Server] Plugin mysqlx reported: 'Preparation of I/O interfaces failed, X Protocol won't be accessible'
+    # Version 5.7:
+    # 2023-05-31T16:20:39.576833Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+    # 2023-05-31T16:20:47.213373Z 0 [Note] InnoDB: PUNCH HOLE support available
+    # Multiline event:
+    # 2023-06-09T15:33:07.602593Z 0 [Note] /usr/sbin/mysqld: ready for connections.
+    # Version: '5.7.33-0ubuntu0.16.04.1'  socket: '/var/run/mysqld/mysqld.sock'  port: 3306  (Ubuntu)
+    - event.original: <@timestamp/%FT%TZ> <~mysql.thread_id> [<log.level>] (?[<event.code>] [<event.provider>] )<message>
+
+    # mysqld_safe
+    # 161209 13:08:33 mysqld_safe Starting mysqld daemon with databases from /usr/local/var/mysql
+    - event.original: <@timestamp/%y%m%d %T> mysqld_safe <message>
+
+normalize:
+  - map:
+      - event.module: mysql
+      - event.dataset: mysql.error
+      - event.kind: event
+      - event.category: +array_append/database
+      - event.type: +array_append/info
+      - wazuh.decoders: +array_append/mysql-error
+  - check:
+      - log.level: ERROR
+    map:
+      - event.type: +array_append/error

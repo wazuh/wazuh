@@ -1,0 +1,48 @@
+name: decoder/wazuh-indexer-deprecation/0
+
+metadata:
+  module: wazuh-indexer
+  title: Wazuh indexer deprecation logs
+  description: Decoder for Wazuh indexer deprecation logs
+  compatibility: This decoder has been tested with logs from Wazuh version 4.4
+  versions:
+    - "4.4"
+  author:
+    name: Wazuh Inc.
+    email: info@wazuh.com
+    date: 2023-07-03
+  references:
+    - "https://documentation.wazuh.com/current/getting-started/components/wazuh-indexer.html"
+    - "https://opensearch.org/docs/latest/monitoring-your-cluster/logs/"
+
+check:
+  - wazuh.origin: /var/log/wazuh-indexer/wazuh-cluster_deprecation.json
+  # TODO: Once the events arrive tagged, uncomment the following two lines
+  # - event.module: wazuh-indexer
+  # - event.dataset: wazuh-indexer-deprecation
+
+parse|event.original:
+  - <_json_event/json>
+
+#TODO: Add temporal fields to schema
+normalize:
+  - map:
+      - _json_event.timestamp: replace(',','.')
+  - parse|_json_event.timestamp:
+      - <@timestamp/%FT%TZ>
+  - map:
+      - event.module: wazuh-indexer
+      - event.dataset: wazuh-indexer-deprecation
+      - wazuh.decoders: array_append(wazuh-indexer-deprecation)
+      - event.kind: event
+      - event.category: array_append(database)
+      - event.type: array_append(info)
+      - log.level: $_json_event.level
+      - log.logger: $_json_event.component
+      - host.name: $_json_event.node\.name
+      - host.id: $_json_event.node\.id
+      - cluster.name: $_json_event.cluster\.name
+      - cluster.uuid: $_json_event.cluster\.uuid
+      - node.name: $_json_event.node\.name
+      - node.id: $_json_event.node\.id
+      - message: $_json_event.message

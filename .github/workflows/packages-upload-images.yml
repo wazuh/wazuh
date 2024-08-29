@@ -1,0 +1,201 @@
+run-name: Package - Upload Docker package building images
+name: Package - Upload Docker package building images
+
+on:
+  push:
+    branches:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - 'master'
+    paths:
+      - 'packages/**'
+
+jobs:
+  Upload-package-building-images:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+
+      - name: Get changed files
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            pkg_deb_manager_builder_amd64:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/debs/amd64/manager/**'
+              - 'packages/debs/utils/**'
+            pkg_rpm_manager_builder_amd64:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/amd64/manager/**'
+              - 'packages/rpms/utils/**'
+            pkg_deb_agent_builder_amd64:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/debs/amd64/agent/**'
+              - 'packages/debs/utils/**'
+            pkg_deb_agent_builder_i386:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/debs/i386/agent/**'
+              - 'packages/debs/utils/**'
+            pkg_rpm_agent_builder_amd64:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/amd64/agent/**'
+              - 'packages/rpms/utils/**'
+            pkg_rpm_agent_builder_i386:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/i386/agent/**'
+              - 'packages/rpms/utils/**'
+            pkg_rpm_legacy_builder_amd64:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/amd64/legacy/**'
+              - 'packages/rpms/utils/**'
+            pkg_rpm_legacy_builder_i386:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/i386/legacy/**'
+              - 'packages/rpms/utils/**'
+            pkg_deb_agent_builder_arm64:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/debs/arm64/agent/**'
+              - 'packages/debs/utils/**'
+            pkg_deb_agent_builder_armhf:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/debs/armhf/agent/**'
+              - 'packages/debs/utils/**'
+            pkg_rpm_agent_builder_arm64:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/arm64/agent/**'
+              - 'packages/rpms/utils/**'
+            pkg_rpm_agent_builder_armhf:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/armhf/agent/**'
+              - 'packages/rpms/utils/**'
+            compile_windows_agent:
+              - 'packages/windows/**'
+            commom_wpk_builder:
+              - 'packages/wpk/wpkpack.py'
+              - 'packages/wpk/run.sh'
+              - 'packages/wpk/generate_wpk_package.sh'
+              - 'packages/wpk/common/**'
+
+      - name: Set TAG and WAZUH_AGENT_PACKAGES_BRANCH
+        run: |
+          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' src/VERSION)
+          echo "TAG=$VERSION" >> $GITHUB_ENV;
+
+      - name: Request pkg_deb_manager_builder_amd64 update
+        if: steps.changes.outputs.pkg_deb_manager_builder_amd64 == 'true'
+        run: |
+          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Request pkg_rpm_manager_builder_amd64 update
+        if: steps.changes.outputs.pkg_rpm_manager_builder_amd64 == 'true'
+        run: |
+          gh workflow run packages-upload-manager-images.yml -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Request pkg_deb_agent_builder_amd64 update
+        if: steps.changes.outputs.pkg_deb_agent_builder_amd64 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=amd64 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_deb_agent_builder_i386 update
+        if: steps.changes.outputs.pkg_deb_agent_builder_i386 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=i386 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_rpm_agent_builder_amd64 update
+        if: steps.changes.outputs.pkg_rpm_agent_builder_amd64 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_rpm_agent_builder_i386 update
+        if: steps.changes.outputs.pkg_rpm_agent_builder_i386 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_rpm_legacy_builder_amd64 update
+        if: steps.changes.outputs.pkg_rpm_legacy_builder_amd64 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f legacy=true -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_rpm_legacy_builder_i386 update
+        if: steps.changes.outputs.pkg_rpm_legacy_builder_i386 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=i386 -f legacy=true -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_deb_agent_builder_arm64 update
+        if: steps.changes.outputs.pkg_deb_agent_builder_arm64 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-arm.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=arm64 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_deb_agent_builder_armhf update
+        if: steps.changes.outputs.pkg_deb_agent_builder_armhf == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-arm.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f architecture=armhf -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_rpm_agent_builder_arm64 update
+        if: steps.changes.outputs.pkg_rpm_agent_builder_arm64 == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-arm.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=arm64 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_rpm_agent_builder_armhf update
+        if: steps.changes.outputs.pkg_rpm_agent_builder_armhf == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-arm.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=armhf -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request compile_windows_agent update
+        if: steps.changes.outputs.compile_windows_agent == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=windows -f architecture=i386 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request commom_wpk_builder update
+        if: steps.changes.outputs.commom_wpk_builder == 'true'
+        run: |
+          gh workflow run packages-upload-wpk-images.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=common -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}

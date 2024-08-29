@@ -16,4 +16,7 @@
     <rootkit_trojans>etc/rootcheck/rootkit_trojans.txt</rootkit_trojans>
 
     <skip_nfs>yes</skip_nfs>
+
+    <ignore>/var/lib/containerd</ignore>
+    <ignore>/var/lib/docker/overlay2</ignore>
   </rootcheck>

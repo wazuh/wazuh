@@ -14,19 +14,16 @@
 #include "socketDBWrapper.hpp"
 
 // temp header
-#include "wazuhDBQueryBuilder.hpp"
 #include <chrono>
 #include <thread>
 
 TEST_F(SocketDBWrapperTest, EmptyTest)
 {
     m_query = "SELECT * FROM test_table;";
-    m_responses = std::vector<std::string> {""};
+    m_responses = std::vector<std::string> {" "};
 
     nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    // The exception captured here is the timeout
-    EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
+    EXPECT_THROW(SocketDBWrapper::instance().query(m_query, output), std::exception);
 }
 
 TEST_F(SocketDBWrapperTest, ErrorTest)
@@ -35,8 +32,7 @@ TEST_F(SocketDBWrapperTest, ErrorTest)
     m_responses = std::vector<std::string> {R"(err Things happened)"};
 
     nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
+    EXPECT_THROW(SocketDBWrapper::instance().query(m_query, output), std::exception);
 }
 
 TEST_F(SocketDBWrapperTest, UnknownTest)
@@ -45,8 +41,7 @@ TEST_F(SocketDBWrapperTest, UnknownTest)
     m_responses = std::vector<std::string> {R"(unk Things happened)"};
 
     nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
+    EXPECT_THROW(SocketDBWrapper::instance().query(m_query, output), std::exception);
 }
 
 TEST_F(SocketDBWrapperTest, IgnoreTest)
@@ -55,8 +50,7 @@ TEST_F(SocketDBWrapperTest, IgnoreTest)
     m_responses = std::vector<std::string> {R"(ign Things happened)"};
 
     nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
+    EXPECT_THROW(SocketDBWrapper::instance().query(m_query, output), std::exception);
 }
 
 TEST_F(SocketDBWrapperTest, DueTest)
@@ -68,8 +62,7 @@ TEST_F(SocketDBWrapperTest, DueTest)
                                             R"(ok {"status":"SUCCESS"})"};
 
     nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_NO_THROW(socketDBWrapper.query(m_query, output));
+    EXPECT_NO_THROW(SocketDBWrapper::instance().query(m_query, output));
 
     ASSERT_EQ(output[0].at("field"), "value1");
     ASSERT_EQ(output[1].at("field"), "value2");
@@ -82,19 +75,7 @@ TEST_F(SocketDBWrapperTest, InvalidTest)
     m_responses = std::vector<std::string> {R"(Invalid)"};
 
     nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
-}
-
-TEST_F(SocketDBWrapperTest, TimeoutTest)
-{
-    m_query = "SELECT * FROM test_table;";
-    m_responses = std::vector<std::string> {R"(ok [{"field": "value"}])"};
-    m_sleepTime = DB_WRAPPER_QUERY_WAIT_TIME + 10;
-
-    nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_THROW(socketDBWrapper.query(m_query, output), std::exception);
+    EXPECT_THROW(SocketDBWrapper::instance().query(m_query, output), std::exception);
 }
 
 TEST_F(SocketDBWrapperTest, OkTest)
@@ -103,23 +84,20 @@ TEST_F(SocketDBWrapperTest, OkTest)
     m_responses = std::vector<std::string> {R"(ok [{"field": "value"}])"};
 
     nlohmann::json output;
-    SocketDBWrapper socketDBWrapper(TEST_SOCKET);
-    EXPECT_NO_THROW(socketDBWrapper.query(m_query, output));
+    EXPECT_NO_THROW(SocketDBWrapper::instance().query(m_query, output));
 
     ASSERT_EQ(output[0].at("field"), "value");
 }
 
 TEST_F(SocketDBWrapperTestNoSetUp, NoSocketTest)
 {
-    std::unique_ptr<SocketDBWrapper> socketDBWrapper;
-    EXPECT_NO_THROW(socketDBWrapper = std::make_unique<SocketDBWrapper>(TEST_SOCKET));
+    SocketDBWrapper::instance();
     std::this_thread::sleep_for(std::chrono::seconds(2));
-    EXPECT_NO_THROW(socketDBWrapper.reset());
+    EXPECT_NO_THROW(SocketDBWrapper::instance().teardown());
 }
 
 TEST_F(SocketDBWrapperTestNoSetUp, NoSocketTestNoSleep)
 {
-    std::unique_ptr<SocketDBWrapper> socketDBWrapper;
-    EXPECT_NO_THROW(socketDBWrapper = std::make_unique<SocketDBWrapper>(TEST_SOCKET));
-    EXPECT_NO_THROW(socketDBWrapper.reset());
+    SocketDBWrapper::instance();
+    EXPECT_NO_THROW(SocketDBWrapper::instance().teardown());
 }

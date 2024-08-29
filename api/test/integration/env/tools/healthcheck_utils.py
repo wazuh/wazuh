@@ -80,11 +80,12 @@ def get_agent_health_base():
             if not agent_restarted and re.match(r'.*Agent is restarting due to shared configuration changes.*', log):
                 agent_restarted = True
             if agent_restarted and re.match(r'.*Connected to the server.*', log):
-                # Wait to avoid the worst case:
-                # +10 seconds for the agent to report the worker
-                # +10 seconds for the worker to report master
-                # After this time, the agent appears as active in the master node
-                time.sleep(20)
+                # Wait to avoid the worst case scenario:
+                # +10 seconds for the agent to report to the worker
+                # +10 seconds for the worker to report to the master
+                # +10 seconds for the shared configuration to be synced
+                # After this time, the agent appears as active and synced in the master node
+                time.sleep(30)
                 return 0
     return 1
 

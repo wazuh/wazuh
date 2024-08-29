@@ -1,5 +1,5 @@
 """
-copyright: Copyright (C) 2015-2023, Wazuh Inc.
+copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
            Created by Wazuh, Inc. <info@wazuh.com>.
 
@@ -60,10 +60,12 @@ tags:
 import json
 import pytest
 import requests
+from requests.adapters import HTTPAdapter, Retry
 from pathlib import Path
 
 from . import TEST_CASES_FOLDER_PATH
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
+from wazuh_testing.constants.api import WAZUH_API_PROTOCOL
 from wazuh_testing.modules.api.utils import login, get_base_url, set_authorization_header
 from wazuh_testing.utils.configuration import get_test_cases_data
 
@@ -139,10 +141,18 @@ def test_response_postprocessing(test_configuration, test_metadata, truncate_mon
     expected_content_type = test_metadata['expected_content_type']
 
     url = get_base_url() + endpoint_url
-    authentication_headers, _ = login() if use_login_token else (set_authorization_header('user', 'pass'), None)
+    session = requests.Session()
+
+    if use_login_token:
+        authentication_headers, _ = login()
+    else:
+        authentication_headers = set_authorization_header('user', 'pass')
+        retry = Retry(total=None, connect=3, backoff_factor=0.5)
+        adapter = HTTPAdapter(max_retries=retry)
+        session.mount(f"{WAZUH_API_PROTOCOL}://", adapter)
 
     # Make the API request
-    response = getattr(requests, method)(url, headers=authentication_headers, verify=False, json=json_body)
+    response = session.request(method=method, url=url, headers=authentication_headers, verify=False, json=json_body)
 
     response_text = json.loads(response.text)
     # Verify the response content

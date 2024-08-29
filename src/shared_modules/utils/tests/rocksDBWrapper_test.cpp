@@ -189,6 +189,20 @@ TEST_F(RocksDBWrapperTest, TestDeleteAll)
 }
 
 /**
+ * @brief Tests the deleteAll function with column family
+ */
+TEST_F(RocksDBWrapperTest, TestDeleteAllColumnFamily)
+{
+    db_wrapper->createColumn("column_A");
+    db_wrapper->put("key6", "value6", "column_A");
+    db_wrapper->put("key7", "value7", "column_A");
+    EXPECT_NO_THROW(db_wrapper->deleteAll());
+    std::string value {};
+    EXPECT_FALSE(db_wrapper->get("key6", value, "column_A")); // The key should have been deleted
+    EXPECT_FALSE(db_wrapper->get("key7", value, "column_A")); // The key should have been deleted
+}
+
+/**
  * @brief Tests the deleteAll function with an empty database
  */
 TEST_F(RocksDBWrapperTest, TestDeleteAllEmptyDB)
@@ -428,8 +442,6 @@ TEST_F(RocksDBWrapperTest, CreateMultipleColumns)
     constexpr auto COLUMN_NAME_B {"column_B"};
     constexpr auto COLUMN_NAME_C {"column_C"};
 
-    EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME_A));
-    EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME_B));
     EXPECT_NO_THROW(db_wrapper->createColumn(COLUMN_NAME_C));
 }
 
@@ -548,4 +560,22 @@ TEST_F(RocksDBWrapperTest, PutAndGetLastKeyValueFromColumn)
     const auto lastPair {db_wrapper->getLastKeyValue(COLUMN_NAME)};
     EXPECT_EQ(lastPair.first, KEY_B);
     EXPECT_EQ(lastPair.second, VALUE_B);
+}
+
+TEST_F(RocksDBWrapperTest, GetAllColumnFamiliesTest)
+{
+    constexpr auto COLUMN_NAME_A {"column_A"};
+    constexpr auto COLUMN_NAME_B {"column_B"};
+    constexpr auto COLUMN_NAME_C {"column_C"};
+
+    db_wrapper->createColumn(COLUMN_NAME_A);
+    db_wrapper->createColumn(COLUMN_NAME_B);
+    db_wrapper->createColumn(COLUMN_NAME_C);
+
+    const auto columnFamilies {db_wrapper->getAllColumns()};
+    EXPECT_EQ(columnFamilies.size(), 4);
+    EXPECT_EQ(columnFamilies[0], rocksdb::kDefaultColumnFamilyName);
+    EXPECT_EQ(columnFamilies[1], COLUMN_NAME_A);
+    EXPECT_EQ(columnFamilies[2], COLUMN_NAME_B);
+    EXPECT_EQ(columnFamilies[3], COLUMN_NAME_C);
 }

@@ -27,7 +27,7 @@
  * @tparam ValueType The type of the values associated with the keys.
  */
 template<typename KeyType, typename ValueType>
-class LRUCache
+class LRUCache final
 {
 public:
     /**
@@ -35,7 +35,7 @@ public:
      *
      * @param capacity The maximum number of key-value pairs the cache can hold.
      */
-    explicit LRUCache(size_t capacity)
+    explicit LRUCache(const size_t capacity)
         : m_capacity(capacity) {};
 
     /**
@@ -85,6 +85,63 @@ public:
             return m_map[key];
         }
         return {};
+    }
+
+    /**
+     * @brief Checks if the cache is full.
+     *
+     * This function checks if the cache is full by comparing the current size of the cache
+     * with its capacity.
+     *
+     * @return true if the cache is full, false otherwise.
+     */
+    bool isFull() const
+    {
+        return m_map.size() == m_capacity;
+    }
+
+    /**
+     * @brief Checks if a key exists in the cache.
+     *
+     * This function checks if a given key exists in the cache.
+     *
+     * @param key The key to be checked.
+     * @return true if the key exists in the cache, false otherwise.
+     */
+    bool isHit(const KeyType& key) const
+    {
+        return m_map.find(key) != m_map.end();
+    }
+
+    /**
+     * @brief Iterates over the cache data and applies a function to each key-value pair.
+     *
+     * This function iterates over all key-value pairs in the cache and applies the given handler function
+     * to each pair. The iteration stops if the handler function returns false.
+     *
+     * @tparam Handler The type of the handler function. It should be callable with (const KeyType&, const ValueType&).
+     * @param handler The function to be applied to each key-value pair. It should return a boolean value.
+     *                If the handler returns false, the iteration stops.
+     */
+    template<typename Handler>
+    void forEach(Handler&& handler) const
+    {
+        for (const auto& [key, value] : m_map)
+        {
+            if (!handler(key, value))
+            {
+                break;
+            }
+        }
+    }
+
+    /**
+     * @brief Clears the cache by removing all key-value pairs.
+     */
+    void clear() noexcept
+    {
+        m_map.clear();
+        m_list.clear();
     }
 
 private:

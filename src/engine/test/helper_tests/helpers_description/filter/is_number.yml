@@ -1,0 +1,41 @@
+# Name of the helper function
+name: is_number
+
+metadata:
+  description: |
+    Checks if the value stored in field is of type numeric.
+    If they're not, the function evaluates to false. In case of error, the function will evaluate to false.
+    This helper function is typically used in the check stage
+
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: number
+  generate: integer
+
+test:
+  - target_field:
+      key: value
+    should_pass: false
+    description: Is object
+  - target_field: [1,2,3,4]
+    should_pass: false
+    description: Is array
+  - target_field: hello
+    should_pass: false
+    description: Not is string
+  - target_field: true
+    should_pass: false
+    description: Not is boolean
+  - target_field: 23
+    should_pass: true
+    description: Is number
+  - target_field: 23.23
+    should_pass: true
+    description: Is number

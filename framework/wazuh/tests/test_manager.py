@@ -63,7 +63,7 @@ manager_status = {'wazuh-agentlessd': 'running', 'wazuh-analysisd': 'running', '
  'wazuh-execd': 'running', 'wazuh-integratord': 'running', 'wazuh-logcollector': 'running',
  'wazuh-maild': 'running', 'wazuh-remoted': 'running', 'wazuh-reportd': 'running',
  'wazuh-syscheckd': 'running', 'wazuh-clusterd': 'running', 'wazuh-modulesd': 'running',
- 'wazuh-db': 'running', 'wazuh-apid': 'running'}
+ 'wazuh-db': 'running', 'wazuh-apid': 'running', 'wazuh-comms-apid': 'running'}
 
 
 @patch('wazuh.core.manager.status', return_value=manager_status)
@@ -289,7 +289,7 @@ def test_get_config(mock_act_conf):
     get_config('component', 'config')
 
     # Assert whether get_active_configuration() method receives the expected parameters.
-    mock_act_conf.assert_called_once_with(agent_id='000', component='component', configuration='config')
+    mock_act_conf.assert_called_once_with(component='component', configuration='config')
 
 
 def test_get_config_ko():

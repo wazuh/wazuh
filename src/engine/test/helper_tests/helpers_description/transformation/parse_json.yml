@@ -1,0 +1,51 @@
+# Name of the helper function
+name: parse_json
+
+metadata:
+  description: |
+    This parser is designed to interpret and convert strings formatted in JSON notation into a JSON.
+    It is particularly useful for extracting structured data from stringified JSON representations.
+    Upon invocation, the parser reads the input string and attempts to validate it as a proper JSON format.
+    If the validation is successful, the input is transformed into a JSON object
+    which is then assigned to the specified field. If the input is not valid JSON, the parser does not modify the output.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: '{"key": {"innerKey": "value"}}'
+    target_field: any_value
+    should_pass: true
+    expected:
+      key:
+        innerKey: value
+    description: Success json parse
+  - arguments:
+      input_field: '{"key": "innerKey": "value"}}'
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: Failure json parse

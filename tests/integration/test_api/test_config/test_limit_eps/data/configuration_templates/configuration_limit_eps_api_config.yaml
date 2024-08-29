@@ -1,0 +1,22 @@
+- blocks:
+    upload_configuration:
+      limits:
+        eps:
+          allow: ALLOWED
+  sections:
+    - section: global
+      elements:
+        - limits:
+            elements:
+              - eps:
+                  elements:
+                    - maximum:
+                        value: 100
+                    - timeframe:
+                        value: 10
+    - section: remote
+      elements:
+        - connection:
+            value: secure
+        - port:
+            value: 1514

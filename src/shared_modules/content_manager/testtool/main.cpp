@@ -22,7 +22,6 @@
  * @deleteDownloadedContent: If true, the downloaded content will be deleted.
  * @url: URL where the content is located.
  * @outputFolder: if defined, the content will be downloaded to this folder.
- * @dataFormat: Format of the content downloaded or after decompression.
  * @contentFileName: Name for the downloaded file (unless using the 'offline' or 'file' contentSource).
  * @offset (integer): Api offset used to override (if greater) the one set on the database.
  */
@@ -34,13 +33,13 @@ static const nlohmann::json CONFIG_PARAMETERS =
             "ondemand": true,
             "configData":
             {
+                "consumerName": "ContentManagerTestTool",
                 "contentSource": "api",
                 "compressionType": "raw",
                 "versionedContent": "false",
                 "deleteDownloadedContent": true,
                 "url": "https://jsonplaceholder.typicode.com/todos/1",
                 "outputFolder": "/tmp/testProvider",
-                "dataFormat": "json",
                 "contentFileName": "example.json",
                 "databasePath": "/tmp/content_updater/rocksdb",
                 "offset": 0

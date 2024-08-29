@@ -1,0 +1,74 @@
+---
+name: decoder/sonicwall-firewall/0
+
+metadata:
+  module: Firewall
+  title: Sonicwall-Firewall logs decoder
+  description: Decoder for Firmware module logs belonging to Sonicwall
+  version: [6.5]
+  author:
+    name: Wazuh Inc. info@wazuh.com
+    date: 2023-01-12
+  references:
+    - https://www.sonicwall.com/es-mx/support/technical-documentation
+
+parents:
+  - decoder/sonicwall-syslog/0
+
+# Since the event is first parsed by the syslog, event.original is
+# not used here but the message field where the syslog saved the rest of the event information.
+check:
+  - message: +regex_match/^id\=[[:alpha:]]*? sn\=[[:alnum:]]*? time\=.*? fw
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: sonicwall
+  # - event.dataset: sonicwall.firewall
+
+parse:
+  logpar:
+    # The syslog decoder captures this part of the original event "Jan 3 13:45:36 192.168.5.1"
+    # and stores in message this "id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw= 89.160.20.156 pri=6
+    # c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000"
+
+    # Jan  3 13:45:36 192.168.5.1 id=firewall sn=000SERIAL time="2007-01-03 14:48:06" fw=89.160.20.156 pri=6 c=262144 m=98 msg="Connection Opened" n=23419 src=2.2.2.2:36701:WAN dst=89.160.20.156:50000:WAN proto=tcp/50000
+    - message: <~tmp/kv/=/ /"/'>
+
+normalize:
+  - map:
+      - event.action: $~tmp.msg
+      - event.code: $~tmp.m
+      - event.dataset: sonicwall.firewall
+      - event.kind: event
+      - event.module: sonicwall
+      - fileset.name: firewall
+      - input.type: log
+      - observer.product: Firewalls
+      - observer.type: Firewall
+      - observer.vendor: Sonicwall
+      - rsa.internal.messageid: $~tmp.m
+      - rsa.time.event_time: $event.start
+      - service.type: sonicwall
+      - tags: +array_append/forwarded/sonicwall.firewall
+      - \@timestamp: $event.start
+      - wazuh.decoders: +array_append/sonicwall-firewall
+  - check:
+      - ~tmp.src: exists()
+    logpar:
+      - ~tmp.src: <~tmp.src.ip/ip>:<~tmp.src.port/long>:<~tmp.src.interface.name>
+    map:
+      - observer.ingress.interface.name: $~tmp.src.interface.name
+      - rsa.network.sinterface: $~tmp.src.interface.name
+      - source.ip: $~tmp.src.ip
+      - source.port: $~tmp.src.port
+      - related.ip: +array_append/$~tmp.src.ip
+  - check:
+      - ~tmp.msg: Connection Opened
+    map:
+      - rsa.internal.event_desc: $~tmp.msg
+      - rsa.internal.msg: $~tmp.msg
+      - event.action: delete()
+  - check:
+      - event.action: exists()
+    map:
+      - rsa.misc.action: +array_append/$~tmp.msg
+  - map:
+      - ~tmp: delete()

@@ -1,0 +1,54 @@
+name: Python unit tests coverage
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+  pull_request:
+    paths:
+      - '.github/workflows/python-unit-tests-coverage.yml'
+
+jobs:
+  build:
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
+      PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.10']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      
+      - name: Download integration tests framework
+        run: |
+          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_NAME}
+          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
+              QA_BRANCH=${BRANCH_BASE}
+          else
+              QA_BRANCH="main"
+          fi
+          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip wheel
+          pip install -r framework/requirements-dev.txt --no-build-isolation
+          pip install -r qa-integration-framework/requirements.txt --no-build-isolation
+
+      - name: Run tests coverage
+        run: |
+          cd qa-integration-framework/src/wazuh_testing/scripts
+          python pytest_coverage.py -p /home/runner/work/wazuh/wazuh

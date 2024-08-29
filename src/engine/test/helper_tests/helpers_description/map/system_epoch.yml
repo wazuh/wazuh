@@ -1,0 +1,18 @@
+# Name of the helper function
+name: system_epoch
+
+metadata:
+  description: |
+    Get unix epoch time in seconds from system clock. The result operation is mapped to “field”.
+    If the “field” already exists, then it will be replaced.
+  keywords:
+    - time
+
+helper_type: map
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: False
+
+output:
+  type: number
+  subset: integer

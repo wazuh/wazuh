@@ -1,0 +1,40 @@
+# Name of the helper function
+name: is_public_ip
+
+metadata:
+  description: |
+    Checks if the IP address stored in the field is a public ip.
+    Assumes that the ip is public if it is not within the following networks:
+    IPv4:
+      - 10.0.0.0/8
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 127.0.0.0/8
+    IPv6:
+      - fe80::/10
+      - fc00::/7
+      - ::1/128
+    This helper function is typically used in the check stage
+
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+target_field:
+  type: string
+  generate: ip
+
+test:
+  - target_field: 111.111.1.11
+    should_pass: true
+    description: Check IP valid
+  - target_field: 3002:0bd6:0000:0000:0000:ee00:0033:6778
+    should_pass: true
+    description: Check IP valid
+  - target_field: 6778
+    should_pass: false
+    description: Check IP invalid

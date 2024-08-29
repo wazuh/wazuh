@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+import "engine.proto";
+import "google/protobuf/struct.proto"; // For Value
+
+package com.wazuh.api.engine.metrics;
+
+/*
+ * This API is used to manage the metrics of the Wazuh manager
+ */
+
+/***************************************************
+ * Prints all collected metrics
+ *
+ * command: metrics/dump (<resource>/<action>)
+ **************************************************/
+message Dump_Request
+{
+    // Nothing
+}
+
+message Dump_Response
+{
+    ReturnStatus status = 1;                  // Status of the query
+    optional string error = 2;                // Error message if status is ERROR
+    optional google.protobuf.Value value = 3; // Value of the resource if status is OK
+}
+
+/***************************************************
+ * Print a single metric as json
+ *
+ * command: metrics/get (<resource>/<action>)
+ **************************************************/
+message Get_Request
+{
+    optional string scopeName = 1;      // Metric scope name
+    optional string instrumentName = 2; // Metric instrument name
+}
+
+message Get_Response
+{
+    ReturnStatus status = 1;                  // Status of the query
+    optional string error = 2;                // Error message if status is ERROR
+    optional google.protobuf.Value value = 3; // Content of the resource if status is OK
+}
+
+/***************************************************
+ * Enable or disable a specific instrument
+ *
+ * command: metrics/enable (<resource>/<action>)
+ **************************************************/
+message Enable_Request
+{
+    optional string scopeName = 1;      // Metric scope name
+    optional string instrumentName = 2; // Metric instrument name
+    optional bool status = 3;           // Action
+}
+
+message Enable_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string content = 3; // Content of the resource if status is OK
+}
+
+/***************************************************
+ * Prints name, status and instruments types
+ *
+ * command: metrics/list (<resource>/<action>)
+ **************************************************/
+message List_Request
+{
+    // Nothing
+}
+
+message List_Response
+{
+    ReturnStatus status = 1;                  // Status of the query
+    optional string error = 2;                // Error message if status is ERROR
+    optional google.protobuf.Value value = 3; // Value of the resource if status is OK
+}
+
+/***************************************************
+ * Generate dummy metrics for testing
+ *
+ * command: metrics/test (<resource>/<action>)
+ **************************************************/
+message Test_Request
+{
+    // Nothing
+}
+
+message Test_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    repeated string content = 3; // Content of the resource if status is OK
+}

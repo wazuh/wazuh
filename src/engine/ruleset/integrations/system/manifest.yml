@@ -1,0 +1,5 @@
+name: integration/system/0
+
+decoders:
+  - decoder/sysmon-linux/0
+  - decoder/system-auth/0

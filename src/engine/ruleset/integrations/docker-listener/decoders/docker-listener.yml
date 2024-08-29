@@ -1,0 +1,222 @@
+name: decoder/docker-listener/0
+
+metadata:
+  title: Wazuh docker listener integration
+  description: Process events that comes from the Docker listener wodle
+  module: Docker-listener
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4 and docker 24.0.2
+  versions:
+   - "4.4.3"
+   - "24.0.2" #TODO: check backward compatibility
+  author:
+    email: info@wazuh.com
+    name: Wazuh, Inc.
+    date: 2023-06-01
+  references:
+    - https://documentation.wazuh.com/current/container-security/docker-monitor/index.html
+    - https://docs.docker.com/engine/reference/commandline/events/
+
+parents:
+  - decoder/integrations/0
+
+check:
+  - wazuh.origin: Wazuh-Docker
+  - event.original: +starts_with/{
+
+parse:
+  logpar:
+    - event.original: <json_event/json>
+
+definitions:
+  MAP_ContainerStatusToEventType:
+    attach:
+      - access
+      - connection
+    commit: creation
+    copy: change
+    create: creation
+    destroy: deletion
+    detach: connection
+    die: end
+    exec_create:
+      - creation
+      - start
+    exec_detach:
+      - change
+      - start
+    exec_die: end
+    exec_start:
+      - creation
+      - start
+    export: change
+    health_status: info
+    kill: end
+    oom: error
+    pause: change
+    rename: change
+    resize: change
+    restart: start
+    start: start
+    stop: end
+    top: info
+    unpause: start
+    update: change
+
+  MAP_ImageActionToEventType:
+    delete: deletion
+    import: creation
+    load: start
+    pull: start
+    push: creation
+    save: change
+    tag: indicator
+    untag: indicator
+
+  MAP_PluginActionToEventType:
+    enable: start
+    disable: end
+    install: creation
+    remove: deletion
+
+  MAP_VolumeActionToEventType:
+    create: creation
+    destroy: deletion
+    mount: start
+    unmount: end
+
+  MAP_NetworkActionToEventType:
+    create: creation
+    connect:
+      - connection
+      - start
+    destroy:
+      - deletion
+      - end
+    disconnect:
+      - connection
+      - end
+    remove: deletion
+
+  MAP_BaseActionToEventType:
+    create: creation
+    remove: deletion
+    update: change
+
+normalize:
+ - check: exists($json_event.docker)
+   map:
+    - event.module: docker-listener
+    - event.dataset: wodle-docker-listener
+    - event.kind: event # alert or metric kind can be a possibility too
+    - event.outcome: unknown
+    - container.id: $json_event.docker.id
+    - event.start: +date_from_epoch/$json_event.docker.time
+
+  # Containers
+ - check:
+    - json_event.docker.Type: container
+   logpar:
+      - json_event.docker.status: '<~tmp.docker_status>(?:<~tmp.docker_command>)'
+   map:
+    - event.category: +array_append/host/session
+    - event.type: +get_key_in/$MAP_ContainerStatusToEventType/$~tmp.docker_status
+    - event.outcome: success
+    - event.duration: $json_event.docker.Actor.Attributes.execDuration
+    - container.image.name: $json_event.docker.from
+    - process.command_line: $~tmp.docker_command
+    - process.exit_code: $json_event.docker.Actor.Attributes.exitCode
+    - process.pid: $json_event.docker.execID
+ - check: +string_equal/$json_event.docker.Type/container AND +string_not_equal/$json_event.docker.Actor.Attributes.exitCode/0
+   map:
+    - event.outcome: failed
+
+  # Images
+ - check:
+    - json_event.docker.Type: image
+   map:
+    - event.category: +array_append/host/session
+    - event.type: +get_key_in/$MAP_ImageActionToEventType/$json_event.docker.status
+    - container.image.name: $json_event.docker.Actor.Attributes.name
+
+  # Plugins
+ - check:
+    - json_event.docker.Type: plugin
+   map:
+    - event.category: +array_append/package
+    - event.type: +get_key_in/$MAP_PluginActionToEventType/$json_event.docker.Action
+    - container.id: $json_event.docker.Actor.ID
+    #Custom field
+    - ~plugin.name: $json_event.docker.Actor.Attributes.name
+
+  # Volumes
+ - check:
+    - json_event.docker.Type: volume
+   map:
+    - event.category: +array_append/file/driver
+    - event.type: +get_key_in/$MAP_VolumeActionToEventType/$json_event.docker.Action
+    - container.id: $json_event.docker.Actor.ID
+    #Custom field
+    - ~volume.attributes: $json_event.docker.Actor.Attributes
+
+  # Networks
+ - check:
+    - json_event.docker.Type: network
+   map:
+    - event.category: +array_append/network
+    - event.type: +get_key_in/$MAP_NetworkActionToEventType/$json_event.docker.Action
+    - container.id: $json_event.docker.Actor.ID
+    - network.type: $json_event.docker.Actor.Attributes.type
+    - network.name: $json_event.docker.Actor.Attributes.name
+
+  # Daemons
+ - check:
+    - json_event.docker.Type: daemon
+   map:
+    - event.category: +array_append/process
+    - event.type: +array_append/end/start
+
+  # Services
+ - check:
+    - json_event.docker.Type: service
+   map:
+    - event.category: +array_append/process
+    - event.type: +get_key_in/$MAP_BaseActionToEventType/$json_event.docker.Action
+    - container.id: $json_event.docker.Actor.ID
+    - service.name: $json_event.docker.Actor.Attributes.name
+
+  # Nodes
+ - check:
+    - json_event.docker.Type: node
+   map:
+    - event.category: +array_append/host/network
+    - event.type: +get_key_in/$MAP_BaseActionToEventType/$json_event.docker.Action
+    - service.node.name: $json_event.docker.Actor.Attributes.name
+    #Custom field
+    - ~node.attributes: $json_event.docker.Actor.Attributes
+
+  # Secrets
+ - check:
+    - json_event.docker.Type: secret
+   map:
+    - event.category: +array_append/file/authentication
+    - event.type: +get_key_in/$MAP_BaseActionToEventType/$json_event.docker.Action
+    - container.id: $json_event.docker.Actor.ID
+    #Custom field
+    - ~secret.name : $json_event.docker.Actor.Attributes.name
+
+  # Configs
+ - check:
+    - json_event.docker.Type: config
+   map:
+    - event.category: +array_append/configuration/file
+    - event.type: +get_key_in/$MAP_BaseActionToEventType/$json_event.docker.Action
+    - container.id: $json_event.docker.Actor.ID
+    #Custom field
+    - ~configuration.name : $json_event.docker.Actor.Attributes.name
+
+ - map:
+    - wazuh.decoders: +array_append/docker-listener
+    #cleanup
+    - json_event: delete()
+    - ~tmp: delete()

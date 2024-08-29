@@ -14,7 +14,7 @@ else
   sed -i "s:<key>key</key>:<key>9d273b53510fef702b54a92e9cffc82e</key>:g" /var/ossec/etc/ossec.conf
   sed -i "s:<node>NODE_IP</node>:<node>$1</node>:g" /var/ossec/etc/ossec.conf
   sed -i "s:<node_name>node01</node_name>:<node_name>$2</node_name>:g" /var/ossec/etc/ossec.conf
-  sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scripts/wazuh-apid.py
+  sed -i "s:validate_responses=False:validate_responses=True:g" /var/ossec/api/scripts/wazuh_apid.py
 fi
 
 if [ "$3" != "master" ]; then

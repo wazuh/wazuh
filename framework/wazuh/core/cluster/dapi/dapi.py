@@ -30,7 +30,7 @@ from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
 from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
-from wazuh.core.wazuh_socket import wazuh_sendsync
+from wazuh.core.wazuh_socket import wazuh_sendasync
 
 pools = common.mp_pools.get()
 
@@ -102,9 +102,7 @@ class DistributedAPI:
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
-            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db')
-            if common.WAZUH_INSTALL_TYPE != "local":
-                self.basic_services += ('wazuh-remoted',)
+            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db', 'wazuh-remoted')
         else:
             self.basic_services = basic_services
 
@@ -731,8 +729,8 @@ class SendSyncRequestQueue(WazuhRequestQueue):
             try:
                 request = json.loads(request, object_hook=c_common.as_wazuh_object)
                 self.logger.debug(f"Receiving SendSync request ({request['daemon_name']}) from {names[0]} ({names[1]})")
-                result = await wazuh_sendsync(**request)
-                task_id = await node.send_string(result.encode())
+                result = await wazuh_sendasync(**request)
+                task_id = await node.send_string(result)
             except Exception as e:
                 self.logger.error(f"Error in SendSync (parameters {request}): {str(e)}", exc_info=False)
                 with contextlib.suppress(Exception):

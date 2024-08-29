@@ -42,13 +42,13 @@ protected:
                 "interval": 1,
                 "ondemand": false,
                 "configData": {
+                    "consumerName": "ContentRegisterTest",
                     "contentSource": "cti-offset",
                     "compressionType": "raw",
                     "versionedContent": "false",
                     "deleteDownloadedContent": false,
                     "url": "http://localhost:4444/raw/consumers",
                     "outputFolder": "/tmp/content-register-tests",
-                    "dataFormat": "json",
                     "contentFileName": "sample.json"
                 }
             }

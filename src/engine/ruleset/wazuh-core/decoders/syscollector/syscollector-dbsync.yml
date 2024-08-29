@@ -1,0 +1,115 @@
+name: decoder/syscollector-dbsync/0
+
+metadata:
+  module: wazuh-agent/syscollector/syscollector-dbsync
+  title: Syscollector Decoder event for dbsync
+  description: >
+    Third stage filter of syscollector event decoder with type "dbsync_"
+    if succes will query to wdb and map on "wazuh.syscollector..."
+    -> only for wazuh managers with version 4.4 and above.
+  versions:
+    - "4.4.0"
+  compatibility: >
+    This decoder has been tested on Wazuh version 4.4.
+  author:
+    name: Wazuh, Inc.
+    url: https://wazuh.com
+    date: 2023/03/08
+  references:
+    - https://documentation.wazuh.com/current/user-manual/capabilities/syscollector.html#using-syscollector-information-to-trigger-alerts
+    - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/wodle-syscollector.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-db.html#syscollector-tables
+
+parents:
+  - decoder/syscollector-base/0
+
+check:
+  - json_event.type: starts_with(dbsync_)
+  - json_event.operation: is_string()
+  - json_event.data: is_object()
+
+# processes
+# {"data":{"argvs":null,"checksum":"71ece4e42dd41b4b06df00e3f5c4fab33aacc1c5","cmd":null,"egroup":"root","euser":"root","fgroup":"root","name":"kworker/1:2-eve","nice":0,"nlwp":1,"pgrp":0,"pid":"4188","ppid":2,"priority":20,"processor":1,"resident":0,"rgroup":"root","ruser":"root","scan_time":"2023/03/10 03:27:12","session":0,"sgroup":"root","share":0,"size":0,"start_time":1678418235,"state":"R","stime":14,"suser":"root","tgid":4188,"tty":0,"utime":0,"vm_size":0},"operation":"INSERTED","type":"dbsync_processes"}
+# osinfo
+#  {"data":{"architecture":"x86_64","checksum":"1678418832385321534","hostname":"vm-centos8","os_major":"8","os_minor":"3","os_name":"Centos Linux","os_patch":"2011","os_platform":"centos","os_version":"8.3.2011","release":"4.18.0-240.1.1.el8_3.x86_64","scan_time":"2023/03/10 03:27:12","sysname":"Linux","version":"#1 SMP Thu Nov 19 17:20:08 UTC 2020"},"operation":"MODIFIED","type":"dbsync_osinfo"}
+# hwinfo
+#  {"data":{"board_serial":"0","checksum":"f7605acc23c70cbb76290a45d956dbab27f5eebc","cpu_cores":2,"cpu_mhz":2371.0,"cpu_name":"AMD Ryzen 5 4500U with Radeon Graphics","ram_free":1691948,"ram_total":2024444,"ram_usage":17,"scan_time":"2023/03/10 03:37:16"},"operation":"MODIFIED","type":"dbsync_hwinfo"}
+# ports
+#  {"data":{"checksum":"631a5cbb816346c903708bbc14cbc50597272601","inode":26875,"item_id":"fffd4d8c20cacb413ae6c1f39a3a52389375701d","local_ip":"10.0.2.15","local_port":68,"pid":0,"process":null,"protocol":"udp","remote_ip":"10.0.2.2","remote_port":67,"rx_queue":0,"scan_time":"2023/03/14 12:41:19","state":null,"tx_queue":0},"operation":"INSERTED","type":"dbsync_ports"}
+# packages
+#  {"data":{"architecture":"x86_64","checksum":"0d7e29ef72b657c96512b43efa6637ad0431b2e5","description":"Tool to analyse BIOS DMI data","format":"rpm","groups":"Unspecified","install_time":"1607103514","item_id":"bbb009a26c1b5bc26c093e9fbcd9b01d0fd227d4","location":null,"multiarch":null,"name":"dmidecode","priority":null,"scan_time":"2023/03/14 15:09:43","size":222289,"source":null,"vendor":"CentOS","version":"1:3.2-6.el8"},"operation":"DELETED","type":"dbsync_packages"}
+# network_iface
+#  {"data":{"adapter":null,"checksum":"052a00a969cb2d54a97890b20ea9af156b74d42d","item_id":"d4aa8b01955e438235d586585492f3f5edceec1b","mac":"52:54:00:27:8b:50","mtu":1500,"name":"eth0","rx_bytes":510595,"rx_dropped":0,"rx_errors":0,"rx_packets":4522,"scan_time":"2023/03/10 03:27:12","state":"up","tx_bytes":616053,"tx_dropped":0,"tx_errors":0,"tx_packets":4186,"type":"ethernet"},"operation":"MODIFIED","type":"dbsync_network_iface"}
+# network_address
+#  {"data":{"address":"fe80::a00:27ff:fe0d:a1e5","broadcast":null,"checksum":"7bdb80f090fb4aa51756a4fd0382a1b08ee3e0be","dhcp":"unknown","iface":"eth1","item_id":"4a53b37f2fb0d3ef21c7ff8b5e1b9072b578b82f","metric":null,"netmask":"ffff:ffff:ffff:ffff::","proto":1,"scan_time":"2023/03/14 15:32:01"},"operation":"INSERTED","type":"dbsync_network_address"}
+# network_protocol
+# {"data":{"checksum":"ea17673e7422c0ab04c4f1f111a5828be8cd366a","dhcp":"unknown","gateway":"192.168.0.1|600","iface":"enp4s0","item_id":"9dff246584835755137820c975f034d089e90b6f","metric":" ","type":"ipv6"},"operation":"INSERTED","type":"dbsync_network_protocol"}
+# hotfixes
+# {"data":{"scan_time":"2021/10/29 14:26:24","hotfix":"KB123456","checksum":"abcdef0123456789"}, "type":"dbsync_hotfixes","operation":"MODIFIED"}
+
+normalize:
+  - map:
+      - wazuh.decoders: array_append(syscollector-dbsync)
+
+      - do_update_kvdb: false
+      - _empty: "''"
+
+  - check: exists($json_event.data.address) OR exists($json_event.data.mac) OR exists($json_event.data.os_version) OR exists($json_event.data.release) OR string_not_equal($json_event.data.hostname,$_empty) OR string_not_equal($json_event.data.os_name,$_empty) OR string_not_equal($json_event.data.os_platform,$_empty) OR string_not_equal($json_event.data.sysname,$_empty)
+    map:
+      - do_update_kvdb: true
+
+  # Avoid updating when architecture field not from osinfo
+  - check: string_not_equal($json_event.data.architecture,$_empty) AND string_equal($json_event.type,osinfo)
+    map:
+      - do_update_kvdb: true
+
+# TODO: shouldn't we here check if the wdb must be updated?
+  - map:
+      - json_event.type: replace(dbsync_, '')
+      - _query: concat('agent ', $agent.id, ' dbsync ', $json_event.type, ' ', $json_event.operation, ' ', $json_event.data)
+      - query_response: wdb_update($_query)
+      - json_event.data.checksum: delete()
+
+# TODO: what is this for?
+  - check:
+      - query_response: false
+    map:
+      - do_update_kvdb: false
+      - fail_query: $_query
+
+    # Mapping result fields to wazuh.syscollector
+  - check: $query_response == true AND string_equal($json_event.type,processes)
+    map:
+      - wazuh.syscollector.process: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,ports)
+    map:
+      - wazuh.syscollector.port: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,hotfixes)
+    map:
+      - wazuh.syscollector.hotfix: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,hwinfo)
+    map:
+      - wazuh.syscollector.hardware: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,network_address)
+    map:
+      - wazuh.syscollector.netinfo.addr: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,network_protocol)
+    map:
+      - wazuh.syscollector.netinfo.proto: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,network_iface)
+    map:
+      - wazuh.syscollector.netinfo.iface: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,osinfo)
+    map:
+      - wazuh.syscollector.os: $json_event.data
+
+  - check: $query_response == true AND string_equal($json_event.type,packages)
+    map:
+      - wazuh.syscollector.program: $json_event.data

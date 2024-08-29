@@ -14,14 +14,14 @@ from enum import Enum
 from os.path import exists
 from typing import Dict, Optional, Union
 
-import aiohttp
 import certifi
+import httpx
 import wazuh
 from api import configuration
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
 from wazuh.core.cluster.utils import get_manager_status
-from wazuh.core.configuration import GLOBAL_KEY, get_active_configuration, get_ossec_conf
+from wazuh.core.configuration import get_active_configuration, get_cti_url
 from wazuh.core.utils import get_utc_now, get_utc_strptime, tail
 from wazuh.core.wazuh_socket import WazuhSocket
 
@@ -29,12 +29,12 @@ from wazuh.core.wazuh_socket import WazuhSocket
 _re_logtest = re.compile(r"^.*(?:ERROR: |CRITICAL: )(?:\[.*\] )?(.*)$")
 
 OSSEC_LOG_FIELDS = ['timestamp', 'tag', 'level', 'description']
-CTI_URL = get_ossec_conf(section=GLOBAL_KEY).get(GLOBAL_KEY, {}).get('cti-url', 'https://cti.wazuh.com')
+CTI_URL = get_cti_url()
 RELEASE_UPDATES_URL = os.path.join(CTI_URL, 'api', 'v1', 'ping')
 ONE_DAY_SLEEP = 60 * 60 * 24
 WAZUH_UID_KEY = 'wazuh-uid'
 WAZUH_TAG_KEY = 'wazuh-tag'
-
+USER_AGENT_KEY = 'user-agent'
 
 class LoggingFormat(Enum):
     plain = "plain"
@@ -105,7 +105,7 @@ def get_wazuh_active_logging_format() -> LoggingFormat:
     LoggingFormat
         Wazuh active log format. Can either be `plain` or `json`. If it has both types, `plain` will be returned.
     """
-    active_logging = get_active_configuration(agent_id="000", component="com", configuration="logging")['logging']
+    active_logging = get_active_configuration(component="com", configuration="logging")['logging']
     return LoggingFormat.plain if active_logging['plain'] == "yes" else LoggingFormat.json
 
 
@@ -268,19 +268,13 @@ def get_api_conf() -> dict:
     return copy.deepcopy(configuration.api_conf)
 
 
-def _get_connector() -> aiohttp.TCPConnector:
-    """Return a TCPConnector with default ssl context.
-
-    Returns
-    -------
-    aiohttp.TCPConnector
-        Instance with default ssl connector.
-    """
-    ssl_context = ssl.create_default_context(cafile=certifi.where())
-    return aiohttp.TCPConnector(ssl=ssl_context)
+def _get_ssl_context() -> ssl.SSLContext:
+    """Return a default ssl context."""
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 def get_update_information_template(
+        uuid: str,
         update_check: bool,
         current_version: str = f"v{wazuh.__version__}",
         last_check_date: Optional[datetime] = None
@@ -289,6 +283,8 @@ def get_update_information_template(
 
     Parameters
     ----------
+    uuid : str
+        Wazuh UID to include in the result.
     update_check : bool
         Indicates if the check is enabled or not.
     current_version : str, optional
@@ -302,6 +298,7 @@ def get_update_information_template(
         Template with the given data.
     """
     return {
+        'uuid': uuid,
         'last_check_date': last_check_date if last_check_date is not None else '',
         'current_version': current_version,
         'update_check': update_check,
@@ -325,39 +322,36 @@ async def query_update_check_service(installation_uid: str) -> dict:
         Updates information.
     """
     current_version = f'v{wazuh.__version__}'
-    headers = {WAZUH_UID_KEY: installation_uid, WAZUH_TAG_KEY: current_version}
+    headers = {
+        WAZUH_UID_KEY: installation_uid,
+        WAZUH_TAG_KEY: current_version,
+        USER_AGENT_KEY: f'Wazuh UpdateCheckService/{current_version}'
+    }
 
     update_information = get_update_information_template(
+        uuid=installation_uid,
         update_check=True,
         current_version=current_version,
         last_check_date=get_utc_now()
     )
 
-    update_information['uuid'] = installation_uid
-
-    async with aiohttp.ClientSession(connector=_get_connector()) as session:
+    async with httpx.AsyncClient(verify=_get_ssl_context()) as client:
         try:
-            async with session.get(RELEASE_UPDATES_URL, headers=headers) as response:
-                response_data = await response.json()
+            response = await client.get(RELEASE_UPDATES_URL, headers=headers, follow_redirects=True)
+            response_data = response.json()
 
-                update_information['status_code'] = response.status
+            update_information['status_code'] = response.status_code
 
-                if response.status == 200:
-                    if len(response_data['data']['major']):
-                        update_information['last_available_major'].update(
-                            **response_data['data']['major'][-1]
-                        )
-                    if len(response_data['data']['minor']):
-                        update_information['last_available_minor'].update(
-                            **response_data['data']['minor'][-1]
-                        )
-                    if len(response_data['data']['patch']):
-                        update_information['last_available_patch'].update(
-                            **response_data['data']['patch'][-1]
-                        )
-                else:
-                    update_information['message'] = response_data['errors']['detail']
-        except aiohttp.ClientError as err:
+            if response.status_code == 200:
+                if len(response_data['data']['major']):
+                    update_information['last_available_major'].update(**response_data['data']['major'][-1])
+                if len(response_data['data']['minor']):
+                    update_information['last_available_minor'].update(**response_data['data']['minor'][-1])
+                if len(response_data['data']['patch']):
+                    update_information['last_available_patch'].update(**response_data['data']['patch'][-1])
+            else:
+                update_information['message'] = response_data['errors']['detail']
+        except httpx.RequestError as err:
             update_information.update({'message': str(err), 'status_code': 500})
         except Exception as err:
             update_information.update({'message': str(err), 'status_code': 500})

@@ -44,16 +44,28 @@ private:
         getParameters(context);
 
         // First, make a get request to the API to get the consumer offset.
-        const auto consumerLastOffset {getCtiBaseParameters(m_url).lastOffset};
+        const auto ctiParameters {getCtiBaseParameters(m_url)};
+        auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
+        if (stopCondition->check())
+        {
+            logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted.");
+            return;
+        }
+
+        // Validate and set the consumer last offset.
+        if (!ctiParameters.lastOffset.has_value())
+        {
+            throw std::runtime_error {"Can't download offsets due to missing CTI metadata"};
+        }
+        const auto& consumerLastOffset {ctiParameters.lastOffset.value()};
 
         // Iterate until the current offset is equal to the consumer offset.
         auto pathsArray = nlohmann::json::array();
-        auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
         while (context.currentOffset < consumerLastOffset)
         {
             if (stopCondition->check())
             {
-                logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted");
+                logWarn(WM_CONTENTUPDATER, "The offsets download has been interrupted.");
                 return;
             }
 

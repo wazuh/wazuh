@@ -1,5 +1,5 @@
 ---
-name: Issue 
+name: Issue
 about: Report a bug or make a feature request.
 title: ''
 labels: ''

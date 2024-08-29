@@ -40,7 +40,6 @@ stages:
         error: 0
         data:
           affected_items:
-            - "000"
             - "001"
             - "002"
             - "003"
@@ -54,7 +53,7 @@ stages:
             - "011"
             - "012"
           failed_items: []
-          total_affected_items: 13
+          total_affected_items: 12
           total_failed_items: 0
 
 ---
@@ -555,8 +554,6 @@ stages:
                 state: !anystr
                 tx_queue: !anyint
             - <<: *ports_response
-              agent_id: '000'
-            - <<: *ports_response
               agent_id: '001'
             - <<: *ports_response
               agent_id: '002'
@@ -681,7 +678,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
       params:
-        agents_list: '000,003,005,007' # Only the agent 000 will have results
+        agents_list: '003,005,007'
     response:
       status_code: 200
       verify_response_with:

@@ -48,18 +48,16 @@ def main(args):
     try:
         # Read arguments
         bad_arguments: bool = False
+        msg = ''
         if len(args) >= 4:
-            msg = '{0} {1} {2} {3} {4}'.format(
-                args[1], args[2], args[3], args[4] if len(args) > 4 else '', args[5] if len(args) > 5 else ''
-            )
             debug_enabled = len(args) > 4 and args[4] == 'debug'
         else:
-            msg = '# ERROR: Wrong arguments'
+            msg = '# ERROR: Wrong arguments\n'
             bad_arguments = True
 
         # Logging the call
         with open(LOG_FILE, 'a') as f:
-            f.write(msg + '\n')
+            f.write(msg)
 
         if bad_arguments:
             debug('# ERROR: Exiting, bad arguments. Inputted: %s' % args)

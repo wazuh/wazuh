@@ -3,9 +3,11 @@
 freezegun==0.3.15
 py==1.11.0
 pytest==7.3.1
-pytest-aiohttp==1.0.4
 pytest-asyncio==0.18.1
+pytest-cov==4.1.0
 pytest-html==2.1.1
-pytest-trio==0.7.0
 tavern==1.23.5
 aiohttp>=3.10.2 # not directly required, pinned by Snyk to avoid a vulnerability
+pytest-trio==0.8.0
+
+

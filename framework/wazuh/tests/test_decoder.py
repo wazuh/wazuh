@@ -257,7 +257,8 @@ def test_validate_upload_delete_dir(relative_dirname, res_path, err_code):
 @patch('wazuh.decoder.upload_file')
 @patch('wazuh.decoder.remove')
 @patch('wazuh.decoder.safe_move')
-def test_upload_file(mock_safe_move, mock_remove, mock_upload_file,
+@patch('wazuh.decoder.validate_dummy_logtest')
+def test_upload_file(mock_logtest, mock_safe_move, mock_remove, mock_upload_file,
                      mock_xml, mock_full_copy, mock_delete, mock_wazuh_paths,
                      file, relative_dirname, overwrite, decoder_path):
     """Test uploading a decoder file.

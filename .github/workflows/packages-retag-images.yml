@@ -1,0 +1,73 @@
+name: Package - Retag Docker images
+on:
+  workflow_dispatch:
+    inputs:
+      old_version:
+        description: |
+          Tag name refering old tag
+          (Use a version name. Ex 4.8.0)
+        required: false
+        default: none
+      new_version:
+        description: |
+          Retagging tag
+          (Use a version name. Ex 4.8.0
+          Must be newer than old one.)
+        required: false
+        default: none
+      single_docker_image:
+        description: |
+          Docker image name. Used to retag only
+          the provided image.
+        required: false
+        default: ''
+  push:
+    branches:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - 'master'
+    paths:
+      - 'src/VERSION'
+
+jobs:
+  Upload-package-building-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    name: Package - Retag Docker images
+
+    steps:
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: 'true'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: 'false'
+
+      - name: Checkout repository previous commit
+        uses: actions/checkout@v4
+        with:
+            fetch-depth: 2
+      - run: git checkout HEAD^
+
+      - name: Get old version from src/VERSION
+        run: |
+          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          echo "OLD_VERSION=$VERSION" >> $GITHUB_ENV;
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get new version from src/VERSION
+        run: |
+          VERSION=$(sed 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)/\1/' $GITHUB_WORKSPACE/src/VERSION)
+          echo "NEW_VERSION=$VERSION" >> $GITHUB_ENV;
+
+      - name: Run retag script
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            new_version=${{ inputs.new_version }}
+            old_version=${{ inputs.old_version }}
+          else
+            new_version=${{ env.NEW_VERSION }}
+            old_version=${{ env.OLD_VERSION }}
+          fi
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/retag_image.sh ${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }} ${{ github.actor}} $old_version $new_version ${{ inputs.single_docker_image }}

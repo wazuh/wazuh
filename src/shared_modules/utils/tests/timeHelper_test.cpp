@@ -69,8 +69,14 @@ TEST_F(TimeUtilsTest, CheckCompactTimestampInvalidFormat)
 
 TEST_F(TimeUtilsTest, TimestampToISO8601)
 {
-    EXPECT_EQ("2020-12-28T18:00:00.000Z", Utils::timestampToISO8601("2020/12/28 15:00:00"));
-    EXPECT_EQ("2020-12-29T00:00:00.000Z", Utils::timestampToISO8601("2020/12/28 21:00:00"));
+    // Get timestamp in local time
+    const auto timestamp {Utils::getTimestamp(std::time(nullptr), false)};
+    // Get current ISO8601 timestamp in UTC
+    const auto currentISO8601 {Utils::getCurrentISO8601()};
+    // replace milliseconds to 000Z to align with timestamp format
+    const auto currentISO8601ZeroMs {currentISO8601.substr(0, currentISO8601.size() - 4) + "000Z"};
+
+    EXPECT_EQ(currentISO8601ZeroMs, Utils::timestampToISO8601(timestamp));
     EXPECT_EQ("", Utils::timestampToISO8601("21:00:00"));
 }
 

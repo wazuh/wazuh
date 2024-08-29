@@ -1,0 +1,222 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "process_creation",
+      "category": [
+        "process"
+      ],
+      "code": "1",
+      "dataset": "sysmon",
+      "kind": "event",
+      "module": "sysmon-linux",
+      "original": "Jun  7 03:17:01 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T03:17:01.396167000Z\"/><EventRecordID>20466</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 03:17:01.403</Data><Data Name=\"ProcessGuid\">{924935dc-f6ad-647f-557b-c0aebb550000}</Data><Data Name=\"ProcessId\">6125</Data><Data Name=\"Image\">/usr/bin/run-parts</Data><Data Name=\"FileVersion\">-</Data><Data Name=\"Description\">-</Data><Data Name=\"Product\">-</Data><Data Name=\"Company\">-</Data><Data Name=\"OriginalFileName\">-</Data><Data Name=\"CommandLine\">run-parts --report /etc/cron.hourly</Data><Data Name=\"CurrentDirectory\">/</Data><Data Name=\"User\">root</Data><Data Name=\"LogonGuid\">{924935dc-0000-0000-0000-000000000000}</Data><Data Name=\"LogonId\">0</Data><Data Name=\"TerminalSessionId\">17</Data><Data Name=\"IntegrityLevel\">no level</Data><Data Name=\"Hashes\">-</Data><Data Name=\"ParentProcessGuid\">{924935dc-f6ad-647f-95e9-f31f8e550000}</Data><Data Name=\"ParentProcessId\">6124</Data><Data Name=\"ParentImage\">/usr/bin/dash</Data><Data Name=\"ParentCommandLine\">/bin/sh</Data><Data Name=\"ParentUser\">root</Data></EventData></Event>",
+      "outcome": "success",
+      "provider": "Linux-Sysmon",
+      "start": "2023-06-07T03:17:01.396167000Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "hostname": "202-u20-dev-agent",
+      "id": "001",
+      "name": "202-u20-dev-agent"
+    },
+    "log": {
+      "level": "Information"
+    },
+    "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T03:17:01.396167000Z\"/><EventRecordID>20466</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 03:17:01.403</Data><Data Name=\"ProcessGuid\">{924935dc-f6ad-647f-557b-c0aebb550000}</Data><Data Name=\"ProcessId\">6125</Data><Data Name=\"Image\">/usr/bin/run-parts</Data><Data Name=\"FileVersion\">-</Data><Data Name=\"Description\">-</Data><Data Name=\"Product\">-</Data><Data Name=\"Company\">-</Data><Data Name=\"OriginalFileName\">-</Data><Data Name=\"CommandLine\">run-parts --report /etc/cron.hourly</Data><Data Name=\"CurrentDirectory\">/</Data><Data Name=\"User\">root</Data><Data Name=\"LogonGuid\">{924935dc-0000-0000-0000-000000000000}</Data><Data Name=\"LogonId\">0</Data><Data Name=\"TerminalSessionId\">17</Data><Data Name=\"IntegrityLevel\">no level</Data><Data Name=\"Hashes\">-</Data><Data Name=\"ParentProcessGuid\">{924935dc-f6ad-647f-95e9-f31f8e550000}</Data><Data Name=\"ParentProcessId\">6124</Data><Data Name=\"ParentImage\">/usr/bin/dash</Data><Data Name=\"ParentCommandLine\">/bin/sh</Data><Data Name=\"ParentUser\">root</Data></EventData></Event>",
+    "process": {
+      "args": [
+        "run-parts",
+        "--report",
+        "/etc/cron.hourly"
+      ],
+      "command_line": "run-parts --report /etc/cron.hourly",
+      "entity_id": "{924935dc-f6ad-647f-557b-c0aebb550000}",
+      "executable": "/usr/bin/run-parts",
+      "name": "run-parts",
+      "parent": {
+        "args": [
+          "/bin/sh"
+        ],
+        "command_line": "/bin/sh",
+        "entity_id": "{924935dc-f6ad-647f-95e9-f31f8e550000}",
+        "executable": "/usr/bin/dash",
+        "name": "dash",
+        "pid": 6124
+      },
+      "pid": 6125,
+      "working_directory": "/"
+    },
+    "related": {
+      "hosts": [
+        "202-u20-dev-agent"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "sysmon-linux"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/kern.log",
+      "origin": "/test/kern.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "process_creation",
+      "category": [
+        "process"
+      ],
+      "code": "1",
+      "dataset": "sysmon",
+      "kind": "event",
+      "module": "sysmon-linux",
+      "original": "Jun  7 03:10:01 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T03:10:01.856271000Z\"/><EventRecordID>20378</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 03:10:01.862</Data><Data Name=\"ProcessGuid\">{924935dc-f509-647f-9589-f2b36f550000}</Data><Data Name=\"ProcessId\">6119</Data><Data Name=\"Image\">/usr/bin/dash</Data><Data Name=\"FileVersion\">-</Data><Data Name=\"Description\">-</Data><Data Name=\"Product\">-</Data><Data Name=\"Company\">-</Data><Data Name=\"OriginalFileName\">-</Data><Data Name=\"CommandLine\">/bin/sh -c test -e /run/systemd/system || SERVICE_MODE=1 /sbin/e2scrub_all -A -r</Data><Data Name=\"CurrentDirectory\">/root</Data><Data Name=\"User\">root</Data><Data Name=\"LogonGuid\">{924935dc-0000-0000-0000-000000000000}</Data><Data Name=\"LogonId\">0</Data><Data Name=\"TerminalSessionId\">16</Data><Data Name=\"IntegrityLevel\">no level</Data><Data Name=\"Hashes\">-</Data><Data Name=\"ParentProcessGuid\">{00000000-0000-0000-0000-000000000000}</Data><Data Name=\"ParentProcessId\">6118</Data><Data Name=\"ParentImage\">-</Data><Data Name=\"ParentCommandLine\">-</Data><Data Name=\"ParentUser\">-</Data></EventData></Event>",
+      "outcome": "success",
+      "provider": "Linux-Sysmon",
+      "start": "2023-06-07T03:10:01.856271000Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "hostname": "202-u20-dev-agent",
+      "id": "001",
+      "name": "202-u20-dev-agent"
+    },
+    "log": {
+      "level": "Information"
+    },
+    "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T03:10:01.856271000Z\"/><EventRecordID>20378</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 03:10:01.862</Data><Data Name=\"ProcessGuid\">{924935dc-f509-647f-9589-f2b36f550000}</Data><Data Name=\"ProcessId\">6119</Data><Data Name=\"Image\">/usr/bin/dash</Data><Data Name=\"FileVersion\">-</Data><Data Name=\"Description\">-</Data><Data Name=\"Product\">-</Data><Data Name=\"Company\">-</Data><Data Name=\"OriginalFileName\">-</Data><Data Name=\"CommandLine\">/bin/sh -c test -e /run/systemd/system || SERVICE_MODE=1 /sbin/e2scrub_all -A -r</Data><Data Name=\"CurrentDirectory\">/root</Data><Data Name=\"User\">root</Data><Data Name=\"LogonGuid\">{924935dc-0000-0000-0000-000000000000}</Data><Data Name=\"LogonId\">0</Data><Data Name=\"TerminalSessionId\">16</Data><Data Name=\"IntegrityLevel\">no level</Data><Data Name=\"Hashes\">-</Data><Data Name=\"ParentProcessGuid\">{00000000-0000-0000-0000-000000000000}</Data><Data Name=\"ParentProcessId\">6118</Data><Data Name=\"ParentImage\">-</Data><Data Name=\"ParentCommandLine\">-</Data><Data Name=\"ParentUser\">-</Data></EventData></Event>",
+    "process": {
+      "args": [
+        "/bin/sh",
+        "-c",
+        "test",
+        "-e",
+        "/run/systemd/system",
+        "||",
+        "SERVICE_MODE=1",
+        "/sbin/e2scrub_all",
+        "-A",
+        "-r"
+      ],
+      "command_line": "/bin/sh -c test -e /run/systemd/system || SERVICE_MODE=1 /sbin/e2scrub_all -A -r",
+      "entity_id": "{924935dc-f509-647f-9589-f2b36f550000}",
+      "executable": "/usr/bin/dash",
+      "name": "dash",
+      "parent": {
+        "entity_id": "{00000000-0000-0000-0000-000000000000}",
+        "pid": 6118
+      },
+      "pid": 6119,
+      "working_directory": "/root"
+    },
+    "related": {
+      "hosts": [
+        "202-u20-dev-agent"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "sysmon-linux"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/kern.log",
+      "origin": "/test/kern.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "process_creation",
+      "category": [
+        "process"
+      ],
+      "code": "1",
+      "dataset": "sysmon",
+      "kind": "event",
+      "module": "sysmon-linux",
+      "original": "Jun  7 00:00:15 202-u20-dev-agent sysmon: <Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T00:00:15.897258000Z\"/><EventRecordID>18058</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 00:00:15.904</Data><Data Name=\"ProcessGuid\">{924935dc-c88f-647f-2544-01b206560000}</Data><Data Name=\"ProcessId\">6012</Data><Data Name=\"Image\">/usr/bin/tar</Data><Data Name=\"FileVersion\">-</Data><Data Name=\"Description\">-</Data><Data Name=\"Product\">-</Data><Data Name=\"Company\">-</Data><Data Name=\"OriginalFileName\">-</Data><Data Name=\"CommandLine\">tar -df alternatives.tar.0 -C /var/lib/dpkg alternatives</Data><Data Name=\"CurrentDirectory\">/var/backups</Data><Data Name=\"User\">root</Data><Data Name=\"LogonGuid\">{924935dc-0000-0000-0000-000000000000}</Data><Data Name=\"LogonId\">0</Data><Data Name=\"TerminalSessionId\">4294967295</Data><Data Name=\"IntegrityLevel\">no level</Data><Data Name=\"Hashes\">-</Data><Data Name=\"ParentProcessGuid\">{924935dc-c88f-647f-95c9-e4a72f560000}</Data><Data Name=\"ParentProcessId\">5957</Data><Data Name=\"ParentImage\">/usr/bin/dash</Data><Data Name=\"ParentCommandLine\">/bin/sh</Data><Data Name=\"ParentUser\">root</Data></EventData></Event>",
+      "outcome": "success",
+      "provider": "Linux-Sysmon",
+      "start": "2023-06-07T00:00:15.897258000Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "hostname": "202-u20-dev-agent",
+      "id": "001",
+      "name": "202-u20-dev-agent"
+    },
+    "log": {
+      "level": "Information"
+    },
+    "message": "<Event><System><Provider Name=\"Linux-Sysmon\" Guid=\"{ff032593-a8d3-4f13-b0d6-01fc615a0f97}\"/><EventID>1</EventID><Version>5</Version><Level>4</Level><Task>1</Task><Opcode>0</Opcode><Keywords>0x8000000000000000</Keywords><TimeCreated SystemTime=\"2023-06-07T00:00:15.897258000Z\"/><EventRecordID>18058</EventRecordID><Correlation/><Execution ProcessID=\"5856\" ThreadID=\"5856\"/><Channel>Linux-Sysmon/Operational</Channel><Computer>202-u20-dev-agent</Computer><Security UserId=\"0\"/></System><EventData><Data Name=\"RuleName\">-</Data><Data Name=\"UtcTime\">2023-06-07 00:00:15.904</Data><Data Name=\"ProcessGuid\">{924935dc-c88f-647f-2544-01b206560000}</Data><Data Name=\"ProcessId\">6012</Data><Data Name=\"Image\">/usr/bin/tar</Data><Data Name=\"FileVersion\">-</Data><Data Name=\"Description\">-</Data><Data Name=\"Product\">-</Data><Data Name=\"Company\">-</Data><Data Name=\"OriginalFileName\">-</Data><Data Name=\"CommandLine\">tar -df alternatives.tar.0 -C /var/lib/dpkg alternatives</Data><Data Name=\"CurrentDirectory\">/var/backups</Data><Data Name=\"User\">root</Data><Data Name=\"LogonGuid\">{924935dc-0000-0000-0000-000000000000}</Data><Data Name=\"LogonId\">0</Data><Data Name=\"TerminalSessionId\">4294967295</Data><Data Name=\"IntegrityLevel\">no level</Data><Data Name=\"Hashes\">-</Data><Data Name=\"ParentProcessGuid\">{924935dc-c88f-647f-95c9-e4a72f560000}</Data><Data Name=\"ParentProcessId\">5957</Data><Data Name=\"ParentImage\">/usr/bin/dash</Data><Data Name=\"ParentCommandLine\">/bin/sh</Data><Data Name=\"ParentUser\">root</Data></EventData></Event>",
+    "process": {
+      "args": [
+        "tar",
+        "-df",
+        "alternatives.tar.0",
+        "-C",
+        "/var/lib/dpkg",
+        "alternatives"
+      ],
+      "command_line": "tar -df alternatives.tar.0 -C /var/lib/dpkg alternatives",
+      "entity_id": "{924935dc-c88f-647f-2544-01b206560000}",
+      "executable": "/usr/bin/tar",
+      "name": "tar",
+      "parent": {
+        "args": [
+          "/bin/sh"
+        ],
+        "command_line": "/bin/sh",
+        "entity_id": "{924935dc-c88f-647f-95c9-e4a72f560000}",
+        "executable": "/usr/bin/dash",
+        "name": "dash",
+        "pid": 5957
+      },
+      "pid": 6012,
+      "working_directory": "/var/backups"
+    },
+    "related": {
+      "hosts": [
+        "202-u20-dev-agent"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "sysmon-linux"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/kern.log",
+      "origin": "/test/kern.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

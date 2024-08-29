@@ -1,0 +1,61 @@
+# Name of the helper function
+name: parse_between
+
+metadata:
+  description: |
+    Evaluates if the content of the input field is a string that begins with the `start` delimiter and ends
+    with the `end` delimiter. If so, it extracts the text found between these delimiters
+    and stores this extracted substring in `field`
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only values
+  start:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+  end:
+    type: string  # Accept only string
+    generate: string
+    source: value # includes only values
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      input_field: "[Hello, World!]"
+      start: "["
+      end: "]"
+    target_field: any_value
+    should_pass: true
+    expected: Hello, World!
+    description: Success between parse
+  - arguments:
+      input_field: (Start) Middle End
+      start: (
+      end: )
+    target_field: any_value
+    should_pass: false
+    description: Failure between parse
+  - arguments:
+      input_field: Start and End
+      start: Start
+      end: End
+    target_field: any_value
+    should_pass: true
+    expected: " and "
+    description: Success between parse

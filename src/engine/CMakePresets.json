@@ -1,0 +1,173 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 1
+  },
+  "configurePresets": [
+    {
+      "name": "debug",
+      "description": "Build the project in debug mode",
+      "displayName": "Debug",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+      }
+    },
+    {
+      "name": "debug-ninja",
+      "description": "Build the project in debug mode with Ninja",
+      "displayName": "Debug (Ninja)",
+      "generator": "Ninja",
+      "inherits": "debug"
+    },
+    {
+      "name": "debug-asan",
+      "description": "Build the project in debug mode with AddressSanitizer",
+      "displayName": "Debug (AddressSanitizer)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_CXX_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS": "-fsanitize=address -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=address",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+      }
+    },
+    {
+      "name": "debug-asan-ninja",
+      "description": "Build the project in debug mode with AddressSanitizer and Ninja",
+      "displayName": "Debug (AddressSanitizer, Ninja)",
+      "generator": "Ninja",
+      "inherits": "debug-asan"
+    },
+    {
+      "name": "debug-ubsan",
+      "description": "Build the project in debug mode with UndefinedBehaviorSanitizer",
+      "displayName": "Debug (UndefinedBehaviorSanitizer)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_CXX_FLAGS": "-fsanitize=undefined -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS": "-fsanitize=undefined -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=undefined",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=undefined",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+      }
+    },
+    {
+      "name": "debug-ubsan-ninja",
+      "description": "Build the project in debug mode with UndefinedBehaviorSanitizer and Ninja",
+      "displayName": "Debug (UndefinedBehaviorSanitizer, Ninja)",
+      "generator": "Ninja",
+      "inherits": "debug-ubsan"
+    },
+    {
+      "name": "debug-tsan",
+      "description": "Build the project in debug mode with ThreadSanitizer",
+      "displayName": "Debug (ThreadSanitizer)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer",
+        "CMAKE_C_FLAGS": "-fsanitize=thread -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=thread",
+        "CMAKE_SHARED_LINKER_FLAGS": "-fsanitize=thread",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+      }
+    },
+    {
+      "name": "debug-tsan-ninja",
+      "description": "Build the project in debug mode with ThreadSanitizer and Ninja",
+      "displayName": "Debug (ThreadSanitizer, Ninja)",
+      "generator": "Ninja",
+      "inherits": "debug-tsan"
+    },
+    {
+      "name": "debug-coverage",
+      "description": "Build the project in debug mode with code coverage",
+      "displayName": "Debug (Code Coverage)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "CMAKE_CXX_FLAGS": "-g -O0 --coverage -fprofile-update=atomic",
+        "CMAKE_C_FLAGS": "-g -O0 --coverage -fprofile-update=atomic",
+        "CMAKE_EXE_LINKER_FLAGS": "--coverage -fprofile-update=atomic",
+        "CMAKE_SHARED_LINKER_FLAGS": "--coverage -fprofile-update=atomic",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays",
+        "ENABLE_COVERAGE_REPORT": "ON"
+      }
+    },
+    {
+      "name": "debug-coverage-ninja",
+      "description": "Build the project in debug mode with code coverage and Ninja",
+      "displayName": "Debug (Code Coverage, Ninja)",
+      "generator": "Ninja",
+      "inherits": "debug-coverage"
+    },
+    {
+      "name": "release",
+      "generator": "Unix Makefiles",
+      "displayName": "Release",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+      }
+    },
+    {
+      "name": "release-ninja",
+      "generator": "Ninja",
+      "displayName": "Release (Ninja)",
+      "inherits": "release"
+    },
+    {
+      "name": "relwithdebinfo",
+      "generator": "Unix Makefiles",
+      "displayName": "RelWithDebInfo",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+      }
+    },
+    {
+      "name": "relwithdebinfo-ninja",
+      "generator": "Ninja",
+      "displayName": "RelWithDebInfo (Ninja)",
+      "inherits": "relwithdebinfo"
+    },
+    {
+      "name": "minsize",
+      "generator": "Unix Makefiles",
+      "displayName": "MinSizeRel",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "MinSizeRel",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_OVERLAY_PORTS": "${sourceDir}/ports-overlays"
+      }
+    },
+    {
+      "name": "minsize-ninja",
+      "generator": "Ninja",
+      "displayName": "MinSizeRel (Ninja)",
+      "inherits": "minsize"
+    }
+  ]
+}

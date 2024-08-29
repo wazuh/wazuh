@@ -1,0 +1,9 @@
+<decoder name="test_decoder_example">
+    <program_name>test_decoder_example</program_name>
+</decoder>
+
+<decoder name="wazuh">
+  <prematch>^prematch_no_pn: </prematch>
+</decoder>
+
+

@@ -41,12 +41,17 @@ TEST_F(JsonArrayParserTest, ArrayWithSimpleObjects)
     expectedItems.push(R"({"cve":"CVE-2005-AAAA"})"_json);
     expectedItems.push(R"({"cve":"CVE-2008-AAAA"})"_json);
     expectedItems.push(R"({"cve":"CVE-2012-AAAA"})"_json);
-
+    auto currentId = 1;
     // This callback will validate the extracted items
-    auto callback = [&expectedItems](nlohmann::json&& item)
+    auto callback = [&](nlohmann::json&& item, const size_t itemId)
     {
         // Check that the current item equals the one at the front of the expected queue
         EXPECT_EQ(expectedItems.front(), item);
+
+        // Check that the item id is correct
+        EXPECT_EQ(itemId, currentId);
+
+        ++currentId;
 
         // Remove item from queue
         expectedItems.pop();
@@ -78,7 +83,7 @@ TEST_F(JsonArrayParserTest, ArrayIsEmpty)
     createTestFile(testData, testFilepath);
 
     // The array is empty, this callback should never be called
-    auto callback = [](nlohmann::json&& /*item*/)
+    auto callback = [](nlohmann::json&& /*item*/, const size_t /*itemId*/)
     {
         // Execution should never reach here
         EXPECT_TRUE(false) << "The callback should not have been called.";
@@ -109,7 +114,7 @@ TEST_F(JsonArrayParserTest, ArrayIsNotFound)
     createTestFile(testData, testFilepath);
 
     // The array does not exist, this callback should never be called
-    auto callback = [](nlohmann::json&& /*item*/)
+    auto callback = [](nlohmann::json&& /*item*/, const size_t /*itemId*/)
     {
         // Execution should never reach here
         EXPECT_TRUE(false) << "The callback should not have been called.";
@@ -141,7 +146,7 @@ TEST_F(JsonArrayParserTest, TargetArrayInsideArrayIsNotFound)
     createTestFile(testData, testFilepath);
 
     // The array does not exist, this callback should never be called
-    auto callback = [](nlohmann::json&& /*item*/)
+    auto callback = [](nlohmann::json&& /*item*/, const size_t /*itemId*/)
     {
         // Execution should never reach here
         EXPECT_TRUE(false) << "The callback should not have been called.";
@@ -183,11 +188,17 @@ TEST_F(JsonArrayParserTest, ArrayWithDifferentTypeValues)
     expectedItems.push(R"(0.56)"_json);
     expectedItems.push(R"({"key":"value"})"_json);
 
+    auto currentId = 1;
+
     // This callback will validate the extracted items
-    auto callback = [&expectedItems](nlohmann::json&& item)
+    auto callback = [&](nlohmann::json&& item, const size_t itemId)
     {
         // Check that the current item equals the one at the front of the expected queue
         EXPECT_EQ(expectedItems.front(), item);
+
+        // Check that the item id is correct
+        EXPECT_EQ(itemId, currentId);
+        ++currentId;
 
         // Remove item from queue
         expectedItems.pop();
@@ -228,11 +239,17 @@ TEST_F(JsonArrayParserTest, ArrayWithComplexObjects)
     expectedItems.push(R"({"cve":{"id":"CVE-2006-AAAA","data":{"key":"value2"},"nestedArray":[6,7,8]}})"_json);
     expectedItems.push(R"({"cve":{"id":"CVE-2007-AAAA","data":{"key":"value3"},"nestedArray":[9,10,11]}})"_json);
 
+    auto currentId = 1;
+
     // This callback will validate the extracted items
-    auto callback = [&expectedItems](nlohmann::json&& item)
+    auto callback = [&](nlohmann::json&& item, const size_t itemId)
     {
         // Check that the current item equals the one at the front of the expected queue
         EXPECT_EQ(expectedItems.front(), item);
+
+        // Check that the item id is correct
+        EXPECT_EQ(itemId, currentId);
+        ++currentId;
 
         // Remove item from queue
         expectedItems.pop();
@@ -287,11 +304,17 @@ TEST_F(JsonArrayParserTest, ReceiveJsonBody)
     const auto expectedBodyCallbackCount {1};
     auto bodyCallbackCount {0};
 
+    auto currentId = 1;
+
     // This callback will validate the extracted items
-    auto itemCallback = [&expectedItems](nlohmann::json&& item)
+    auto itemCallback = [&](nlohmann::json&& item, const size_t itemId)
     {
         // Check that the current item equals the one at the front of the expected queue
         EXPECT_EQ(expectedItems.front(), item);
+
+        // Check that the item id is correct
+        EXPECT_EQ(itemId, currentId);
+        ++currentId;
 
         // Remove item from queue
         expectedItems.pop();
@@ -353,11 +376,17 @@ TEST_F(JsonArrayParserTest, ReceiveJsonBodyTopLevelArray)
     )"_json;
     auto bodyCallbackCount {0};
 
+    auto currentId = 1;
+
     // This callback will validate the extracted items
-    auto itemCallback = [&expectedItems](nlohmann::json&& item)
+    auto itemCallback = [&](nlohmann::json&& item, const size_t itemId)
     {
         // Check that the current item equals the one at the front of the expected queue
         EXPECT_EQ(expectedItems.front(), item);
+
+        // Check that the item id is correct
+        EXPECT_EQ(itemId, currentId);
+        ++currentId;
 
         // Remove item from queue
         expectedItems.pop();
@@ -408,11 +437,17 @@ TEST_F(JsonArrayParserTest, TopLevelArray)
     expectedItems.push(R"({"cve":"CVE-2008-AAAA"})"_json);
     expectedItems.push(R"({"cve":"CVE-2012-AAAA"})"_json);
 
+    auto currentId = 1;
+
     // This callback will validate the extracted items
-    auto callback = [&expectedItems](nlohmann::json&& item)
+    auto callback = [&](nlohmann::json&& item, const size_t itemId)
     {
         // Check that the current item equals the one at the front of the expected queue
         EXPECT_EQ(expectedItems.front(), item);
+
+        // Check that the item id is correct
+        EXPECT_EQ(itemId, currentId);
+        ++currentId;
 
         // Remove item from queue
         expectedItems.pop();
@@ -473,11 +508,17 @@ TEST_F(JsonArrayParserTest, ComplexJsonPointer)
     )"_json;
     auto bodyCallbackCount {0};
 
+    auto currentId = 1;
+
     // This callback will validate the extracted items
-    auto itemCallback = [&expectedItems](nlohmann::json&& item)
+    auto itemCallback = [&](nlohmann::json&& item, const size_t itemId)
     {
         // Check that the current item equals the one at the front of the expected queue
         EXPECT_EQ(expectedItems.front(), item);
+
+        // Check that the item id is correct
+        EXPECT_EQ(itemId, currentId);
+        ++currentId;
 
         // Remove item from queue
         expectedItems.pop();
@@ -533,7 +574,7 @@ TEST_F(JsonArrayParserTest, StopParsingWithObjectItems)
     auto itemCallbackCounter {0};
 
     // This callback will return false and stop the parsing when the item with "CVE-2012-AAAA" is received
-    auto callback = [&itemCallbackCounter](nlohmann::json&& item)
+    auto callback = [&itemCallbackCounter](nlohmann::json&& item, const size_t /*itemId*/)
     {
         // Increment callback counter
         ++itemCallbackCounter;
@@ -580,7 +621,7 @@ TEST_F(JsonArrayParserTest, StopParsingWitValueItems)
     auto itemCallbackCounter {0};
 
     // This callback will return false and stop the parsing when two items are received
-    auto callback = [&itemCallbackCounter](nlohmann::json&& item)
+    auto callback = [&itemCallbackCounter](nlohmann::json&& item, const size_t /*itemId*/)
     {
         // Increment callback counter
         ++itemCallbackCounter;
@@ -619,7 +660,7 @@ TEST_F(JsonArrayParserTest, JsonWithWrongSyntax)
     const auto testFilepath {m_testFolder / "JsonWithWrongSyntax.json"};
     createTestFile(testData, testFilepath);
 
-    auto callback = [](nlohmann::json&& /*item*/)
+    auto callback = [](nlohmann::json&& /*item*/, const size_t /*itemId*/)
     {
         return true;
     };
@@ -638,7 +679,7 @@ TEST_F(JsonArrayParserTest, InexistentFile)
     const auto testArrayPointer {"/test_array"_json_pointer};
     const auto testFilepath {m_testFolder / "inexistent.json"};
 
-    auto callback = [](nlohmann::json&& /*item*/)
+    auto callback = [](nlohmann::json&& /*item*/, const size_t /*itemId*/)
     {
         return true;
     };

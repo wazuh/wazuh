@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.config;
+
+/***************************************************
+ * Get the runtime configuration of the manager
+ *
+ * The argument name is optional. If it is not provided, the whole configuration is returned.
+ * command: config.runtime/get (<resource>/<action>)
+ **************************************************/
+message RuntimeGet_Request
+{
+    optional string name = 1; // Name of the configuration option (its optional)
+}
+
+message RuntimeGet_Response
+{
+    ReturnStatus status = 1;     // Status of the query
+    optional string error = 2;   // Error message if status is ERROR
+    optional string content = 3; // Content of the configuration option if status is OK
+}
+
+/***************************************************
+ * Update the runtime configuration of the manager
+ *
+ * command: config.runtime/put (<resource>/<action>)
+ **************************************************/
+message RuntimePut_Request
+{
+    optional string name = 1;    // Name of the configuration option
+    optional string content = 2; // Content of the configuration option
+}
+// message RuntimePut_Response -> Return a GenericStatus_Response
+
+/**********************************************************
+ * Save the runtime configuration of the manager to disk
+ *
+ * The argument path is optional. If it is not provided, the configuration is saved to the default path.
+ * command: config.runtime/save (<resource>/<action>)
+ *********************************************************/
+message RuntimeSave_Request
+{
+    optional string path = 1; // Path to the file where the configuration will be saved
+}
+
+// message RuntimeSave_Response -> Return a GenericStatus_Response

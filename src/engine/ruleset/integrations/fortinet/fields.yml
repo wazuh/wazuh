@@ -1,0 +1,9 @@
+fortinet.firewall.severity:
+  description: >
+    The severity of the event as reported by the Fortinet firewall.
+  type: keyword
+
+fortinet.firewall:
+  description: >
+    The event reported by the Fortinet firewall.
+  type: object

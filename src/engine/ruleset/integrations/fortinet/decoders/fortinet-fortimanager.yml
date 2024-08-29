@@ -1,0 +1,207 @@
+---
+name: decoder/fortinet-fortimanager/0
+
+metadata:
+  module: fortinet
+  title: Decoder for Fortinet FortiManager Endpoint Security
+  description: Decoder for Fortinet FortiManager Endpoint Security
+  version: [6.0.x, 6.2.x]
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/20
+  references:
+    - https://docs.fortinet.com/document/fortimanager/7.2.1/log-message-reference/683345/introduction
+
+parents:
+  - decoder/integrations/0
+
+check:
+  - event.original: +regex_match/(?i)logver=
+#TODO: Once the events arrive tagged, uncomment these lines below and remove the above regex
+  # - event.module: fortinet
+  # - event.dataset: fortinet.fortimanager
+
+parse:
+  logpar:
+    # logver=iusm devname="modtempo" devid="olab" vd=nto date=2016-1-29 time=6:09:59 logid=sse type=exercita subtype=der level=very-high eventtime=odoco logtime=ria srcip=10.20.234.169 srcport=1001 srcintf=eth5722 srcintfrole=vol dstip=10.44.173.44 dstport=6125 dstintf=enp0s3068 dstintfrole=nseq poluuid=itinvol sessionid=psa proto=21 action=allow policyid=ntium policytype=psaq crscore=13.800000 craction=eab crlevel=aliqu appcat=Ute service=lupt srccountry=dolore dstcountry=sequa trandisp=abo tranip=10.189.58.145 tranport=5273 duration=14.119000 sentbyte=7880 rcvdbyte=449 sentpkt=mqui app=nci
+    # date=2016-2-12 time=1:12:33 logver=litesse devid=orev devname=pisciv logid=uii type=umexe subtype=estlabo level=high vd=iatnu srcip=10.182.84.248 srcport=4880 srcintf=enp0s208 dstip=10.162.33.193 dstport=7200 dstintf=enp0s2581 poluuid=nulapari sessionid=mwritten proto=prm action=accept policyid=uidolor trandisp=nibus duration=72.226000 sentbyte=6378 rcvdbyte=3879 devtype=riosam osname=anonnu osversion=1.410 mastersrcmac=ameaqu srcmac=01:00:5e:84:66:6c crscore=145.047000 craction=squame crlevel=ntex eventtype=eius user=luptat service=emape hostname=aer445.host profile=eumiu reqtype=uame url=https://www.example.net/orisn/cca.htm?ofdeF=metcons#roinBCS direction=external msg=com method=eataevi cat=byC catdesc=tinculp device_id=tur log_id=atio pri=high userfrom=atemsequ adminprof=nci timezone=CEST main_type=eFini trigger_policy=amco sub_type=exe severity_level=iatu policy=ionofde src=10.62.4.246 src_port=189 dst=10.171.204.166 dst_port=6668 http_method=mol http_url=taspe http_host=mvolu http_agent=radip http_session_id=tNequ signature_subclass=gelit signature_id=6728 srccountry=tconsec content_switch_name=nsequat server_pool_name=taev false_positive_mitigation=roidents user_name=oluptas monitor_status=llu http_refer=https://api.example.org/tamremap/tur.html?radipis=isetq#estqui http_version=uasiarch dev_id=emaper threat_weight=ssitasp history_threat_weight=eum threat_level=sum ftp_mode=uaerat ftp_cmd=boreet cipher_suite=onev msg_id=tenima
+    # logver=seq dtime=2016-02-26 20:15:08.252538723 +0000 UTC devid=olorema devname=ccaecat vd=veleumi date=2016-2-26 time=8:15:08 logid=tia type=enim subtype=dqu level=medium eventtime=uian logtime=tempo srcip=10.200.188.142 srcport=4665 srcintf=eth4496 srcintfrole=eetd dstip=10.94.103.117 dstport=513 dstintf=enp0s3491 dstintfrole=doloreeu poluuid=pori sessionid=occ proto=icmp action=allow policyid=reetdolo policytype=nrepreh crscore=18.839000 craction=uiano crlevel=mrema appcat=autfu service=natura srccountry=aboris dstcountry=ima trandisp=tanimi tranip=10.15.159.80 tranport=6378 duration=121.916000 sentbyte=6517 rcvdbyte=13 sentpkt=ugiatqu app=eacomm
+    - event.original: <~kvMap/kv/=/ /"/'>
+
+normalize:
+
+  # generic_fortinetmgr (has signature_id)
+  - check:
+      - ~kvMap.signature_id: exists()
+    map:
+      - destination.bytes: $~kvMap.rcvdbyte
+      - destination.ip: $~kvMap.dst
+      - destination.port: $~kvMap.dst_port
+      - event.code: $~kvMap.log_id
+      - event.timezone: $~kvMap.timezone
+      - host.hostname: $~kvMap.hostname
+      - http.request.referrer: $~kvMap.http_refer
+      - log.level: $~kvMap.pri
+      - network.bytes: $~kvMap.sentbyte
+      - network.bytes: +int_calculate/sum/$~kvMap.rcvdbyte
+      - observer.egress.interface.name: $~kvMap.dstintf
+      - observer.ingress.interface.name: $~kvMap.srcintf
+      - observer.serial_number: $~kvMap.device_id
+      - observer.version: $~kvMap.osversion
+      - related.hosts: +array_append/$~kvMap.devname
+      - related.hosts: +array_append/$~kvMap.hostname
+      - related.hosts: +array_append/$~kvMap.http_host
+      - related.ip: +array_append/$~kvMap.dst
+      - related.ip: +array_append/$~kvMap.src
+      - related.user: +array_append/$~kvMap.user_name
+      - rsa.internal.event_desc: $~kvMap.msg
+      - rsa.internal.messageid: generic_fortinetmgr
+      - rsa.investigations.event_vcat: $~kvMap.eventtype
+      - rsa.misc.OS: $~kvMap.osname
+      - rsa.misc.action: +array_append/$~kvMap.action
+      - rsa.misc.action: +array_append/$~kvMap.http_method
+      - rsa.misc.client: $~kvMap.http_agent
+      - rsa.misc.context: $~kvMap.trandisp
+      - rsa.misc.hardware_id: $~kvMap.device_id
+      - rsa.misc.log_session_id: $~kvMap.http_session_id
+      - rsa.misc.policy_id: $~kvMap.policyid
+      - rsa.misc.policy_name: $~kvMap.policy
+      - rsa.misc.reference_id: $~kvMap.log_id
+      - rsa.misc.rule_name: $~kvMap.profile
+      - rsa.misc.sig_id: $~kvMap.signature_id
+      - rsa.misc.version: $~kvMap.osversion
+      - rsa.misc.vsys: $~kvMap.vd
+      - rsa.network.alias_host: +array_append/$~kvMap.hostname
+      - rsa.network.interface: $~kvMap.dstintf
+      - rsa.network.network_service: $~kvMap.service
+      - rsa.network.sinterface: $~kvMap.srcintf
+      - rsa.threat.threat_desc: $~kvMap.threat_level
+      - rsa.time.duration_time: $~kvMap.duration
+      - rsa.time.timezone: $~kvMap.timezone
+      - rsa.web.reputation_num: $~kvMap.crscore
+      - rsa.web.web_ref_domain: $~kvMap.http_host
+      - rule.name: $~kvMap.profile
+      - source.bytes: $~kvMap.sentbyte
+      - source.ip: $~kvMap.src
+      - source.mac: $~kvMap.srcmac
+      - source.port: $~kvMap.srcport
+      - url: +parse_uri/$~kvMap.url
+      - user.name: $~kvMap.user_name
+
+  # generic_fortinetmgr_1 (hasn't signature_id and has vd)
+  - check:
+      - ~kvMap.signature_id: not_exists()
+      - ~kvMap.vd: exists()
+    map:
+      - destination.bytes: $~kvMap.rcvdbyte
+      - destination.geo.country_name: $~kvMap.dstcountry
+      - destination.ip: $~kvMap.dstip
+      - destination.nat.ip: $~kvMap.tranip
+      - destination.nat.port: $~kvMap.tranport
+      - destination.port: $~kvMap.dstport
+      - event.code: $~kvMap.logid
+      - log.level: $~kvMap.level
+      - network.bytes: $~kvMap.sentbyte
+      - network.bytes: +int_calculate/sum/$~kvMap.rcvdbyte
+      - network.direction: $~kvMap.direction
+      - observer.egress.interface.name: $~kvMap.dstintf
+      - observer.ingress.interface.name: $~kvMap.srcintf
+      - observer.serial_number: $~kvMap.devid
+      - related.hosts: +array_append/$~kvMap.devname
+      - related.ip: +array_append/$~kvMap.dstip
+      - related.ip: +array_append/$~kvMap.srcip
+      - related.ip: +array_append/$~kvMap.tranip
+      - rsa.internal.messageid: generic_fortinetmgr_1
+      - rsa.misc.action: +array_append/$~kvMap.action
+      - rsa.misc.context: $~kvMap.trandisp
+      - rsa.misc.fcatnum: $~kvMap.cat
+      - rsa.misc.filter: $~kvMap.catdesc
+      - rsa.misc.hardware_id: $~kvMap.device_id
+      - rsa.misc.log_session_id: $~kvMap.session_id
+      - rsa.misc.obj_name: $~kvMap.app
+      - rsa.misc.policy_id: $~kvMap.policyid
+      - rsa.misc.reference_id: $~kvMap.logid
+      - rsa.misc.vsys: $~kvMap.vd
+      - rsa.network.interface: $~kvMap.dstintf
+      - rsa.network.network_service: $~kvMap.service
+      - rsa.network.sinterface: $~kvMap.srcintf
+      - rsa.time.duration_time: $~kvMap.duration
+      - rsa.time.event_time_str: $~kvMap.eventtime
+      - rsa.web.reputation_num: $~kvMap.crscore
+      - source.bytes: $~kvMap.sentbyte
+      - source.geo.country_name: $~kvMap.srccountry
+      - source.ip: $~kvMap.srcip
+      - source.port: $~kvMap.srcport
+
+  # event_fortinetmgr  (hasn't signature_id and hasn't vd)
+  - check:
+      - ~kvMap.signature_id: not_exists()
+      - ~kvMap.vd: not_exists()
+    map:
+      - event.code: $~kvMap.log_id
+      - log.level: $~kvMap.pri
+      - observer.serial_number: $~kvMap.device_id
+      - related.hosts: +array_append/$~kvMap.adom
+      - related.hosts: +array_append/$~kvMap.devname
+      - related.user: +array_append/$~kvMap.user
+      - rsa.db_index: $~kvMap.msg
+      - rsa.internal.event_desc: $~kvMap.desc
+      - rsa.internal.messageid: event_fortinetmgr
+      - rsa.misc.action: +array_append/$~kvMap.action
+      - rsa.misc.hardware_id: $~kvMap.device_id
+      - rsa.misc.log_session_id: $~kvMap.session_id
+      - rsa.misc.reference_id: $~kvMap.log_id
+      - server.domain: $~kvMap.adom
+      - user.name: $~kvMap.user
+      - rsa.network.domain: $server.domain
+
+  # Checks if a valid fortinet log was found
+  - check: $rsa.internal.messageid==generic_fortinetmgr OR $rsa.internal.messageid==generic_fortinetmgr_1 OR $rsa.internal.messageid==event_fortinetmgr
+    map:
+      - \@timestamp: +concat/$~kvMap.date/T/$~kvMap.time/.000Z
+      - event.action: +downcase/$~kvMap.action
+      - event.dataset: fortinet.fortimanager
+      - event.module: fortinet
+      - fileset.name: fortimanager
+      - input.type: log
+      - network.protocol: $~kvMap.proto
+      - observer.product: FortiManager
+      - observer.type: Configuration
+      - observer.vendor: Fortinet
+      - rsa.misc.category: $~kvMap.subtype
+      - rsa.misc.event_source: $~kvMap.devname
+      - rsa.misc.event_source: $~kvMap.devname
+      - rsa.misc.event_type: $~kvMap.type
+      - rsa.misc.severity: $~kvMap.pri
+      - rsa.time.event_time: $\@timestamp
+      - service.type: fortinet
+      - tags: +array_append/$event.dataset
+      - tags: +array_append/forwarded
+
+  # Finally maps the network protocol numbers to strings
+  - check: +int_equal/$network.protocol/0
+    map:
+      - network.protocol: hoport
+
+  - check: +int_equal/$network.protocol/1
+    map:
+      - network.protocol: icmp
+
+  - check: +int_equal/$network.protocol/3
+    map:
+      - network.protocol: ggp
+
+  - check: +int_equal/$network.protocol/6
+    map:
+      - network.protocol: tcp
+
+  - check: +int_equal/$network.protocol/17
+    map:
+      - network.protocol: udp
+
+  - check: +int_equal/$network.protocol/21
+    map:
+      - network.protocol: prm
+  - map:
+    - wazuh.decoders: +array_append/fortinet-fortimanager
+    - ~kvMap: delete()

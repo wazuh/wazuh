@@ -6,15 +6,14 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-from aiohttp import web_response
+from connexion.lifecycle import ConnexionResponse
 
 with patch('wazuh.common.wazuh_uid'):
     with patch('wazuh.common.wazuh_gid'):
         sys.modules['wazuh.rbac.orm'] = MagicMock()
         import wazuh.rbac.decorators
         from api.controllers.default_controller import (BasicInfo, DATE_FORMAT,
-                                                        datetime, default_info,
-                                                        socket)
+                                                        default_info, socket)
         from wazuh.tests.util import RBAC_bypasser
         from wazuh.core.utils import get_utc_now
         wazuh.rbac.decorators.expose_resources = RBAC_bypasser
@@ -38,4 +37,4 @@ async def test_default_info(mock_wresult, mock_lspec):
     }
     mock_lspec.assert_called_once_with()
     mock_wresult.assert_called_once_with({'data': BasicInfo.from_dict(data)})
-    assert isinstance(result, web_response.Response)
+    assert isinstance(result, ConnexionResponse)

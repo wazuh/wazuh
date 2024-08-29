@@ -10,6 +10,9 @@ from time import mktime
 
 import aws_bucket
 
+sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
+import aws_tools
+
 
 class AWSConfigBucket(aws_bucket.AWSLogsBucket):
     """
@@ -76,7 +79,7 @@ class AWSConfigBucket(aws_bucket.AWSLogsBucket):
             parsed_date = re.sub(self._leading_zero_regex, r'/\g<num>', date)
             return marker.replace(date, parsed_date)
         except AttributeError:
-            print(f"ERROR: There was an error while trying to extract a date from the marker '{marker}'")
+            aws_tools.error(f"There was an error while trying to extract a date from the marker '{marker}'")
             sys.exit(16)
 
     def marker_only_logs_after(self, aws_region: str, aws_account_id: str) -> str:

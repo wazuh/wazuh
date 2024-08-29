@@ -1,0 +1,61 @@
+run-name: Package - Upload pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ inputs.docker_image_tag }}
+name: Package - Upload manager images amd64
+
+on:
+  workflow_dispatch:
+    inputs:
+      docker_image_tag:
+        description: |
+          Tag name of the Docker image to be uploaded.
+          Use 'developer' to set branch name as tag.
+          Use 'auto' to set branch version as tag.
+          If using a custom tag, use only '-', '_', '.' and alphanumeric characters.
+          Default is 'auto'.
+        required: false
+        default: auto
+      system:
+        type: choice
+        description: |
+          System image to upload [deb, rpm].
+        options:
+          - deb
+          - rpm
+      source_reference:
+        description: |
+          Branch from wazuh/wazuh repository to use.
+        required: true
+
+jobs:
+  Upload-package-building-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 140
+    name: Package - Upload pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ inputs.docker_image_tag }}
+
+    steps:
+      - name: Checkout wazuh/wazuh repository
+        uses: actions/checkout@v4
+        with:
+          repository: wazuh/wazuh
+          ref: ${{ inputs.source_reference }}
+
+      - name: Set TAG
+        run: |
+          VERSION=$(sed 's/.*\([0-9]\.[0-9]*\.[0-9]*\).*/\1/' ./src/VERSION)
+          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then
+            echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
+            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference }})" >> $GITHUB_ENV;
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
+          fi
+
+      - name: Copy build.sh and utils to Dockerfile path
+        run: |
+          dockerfile_path="packages/${{ inputs.system }}s/amd64/manager"
+          echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
+          cp packages/build.sh $dockerfile_path
+          cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
+
+      - name: Build and push image pkg_${{ inputs.system }}_manager_builder_amd64 with tag ${{ env.TAG }} to Github Container Registry
+        run:
+          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_manager_builder_amd64 ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}

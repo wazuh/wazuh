@@ -1,0 +1,49 @@
+# Name of the helper function
+name: sca_decoder
+
+metadata:
+  description: |
+    Special SCA event decoding function, receives an SCA event and the agent id.
+    The operation also updates the WDB. This helper wasn't developed to be used by the external users
+    it will only take care of wdb managing. This helper function is typically used in the map stage.
+  keywords:
+    - undefined
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  sca_event:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only values
+  agent_id:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only values
+
+skipped:
+  - success_cases # TODO: Parameter '{}' reference not found" ? Change trace message
+
+target_field:
+  type: boolean
+  generate: boolean
+
+test:
+  - arguments:
+      sca_event:
+        type: check
+        id: 631388619
+        policy: CIS Benchmark for CentOS Linux 8
+        policy_id: cis_centos8_linux
+        check:
+          id: 6500
+          title: Ensure mounting of cramfs
+          result: failed
+      agent_id: "007"
+    target_field: false
+    should_pass: false
+    description: Error querying policy monitoring database

@@ -1,0 +1,127 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "kerberos-service-ticket-requested",
+      "category": [
+        "authentication"
+      ],
+      "code": "4769",
+      "dataset": "security",
+      "kind": "event",
+      "module": "windows",
+      "outcome": "success",
+      "provider": "Microsoft-Windows-Security-Auditing",
+      "start": "2015-08-07T18:13:46.043256100Z",
+      "type": [
+        "start"
+      ]
+    },
+    "host": {
+      "id": "001",
+      "name": "DC01.contoso.local"
+    },
+    "log": {
+      "level": "information"
+    },
+    "message": "A Kerberos service ticket was requested",
+    "related": {
+      "ip": [
+        "::ffff:10.0.0.12"
+      ],
+      "user": [
+        "dadmin@CONTOSO.LOCAL"
+      ]
+    },
+    "service": {
+      "name": "WIN2008R2$"
+    },
+    "source": {
+      "ip": "::ffff:10.0.0.12",
+      "port": 49272
+    },
+    "user": {
+      "domain": "CONTOSO.LOCAL",
+      "name": "dadmin@CONTOSO.LOCAL"
+    },
+    "wazuh": {
+      "decoders": [
+        "windows-event",
+        "windows-security"
+      ],
+      "location": "[001] (wazuh-agent-1) any->EventChannel",
+      "origin": "EventChannel",
+      "queue": 102,
+      "registered_ip": "any",
+      "source": "logcollector"
+    },
+    "windows": {
+      "EventData": {
+        "IpAddress": "::ffff:10.0.0.12",
+        "IpPort": "49272",
+        "LogonGuid": "{F85C455E-C66E-205C-6B39-F6C60A7FE453}",
+        "ServiceName": "WIN2008R2$",
+        "ServiceSid": "S-1-5-21-3457937927-2839227994-823803824-2102",
+        "Status": "0x0",
+        "StatusDescription": "KDC_ERR_NONE",
+        "TargetDomainName": "CONTOSO.LOCAL",
+        "TargetUserName": "dadmin@CONTOSO.LOCAL",
+        "TicketEncryptionType": "0x12",
+        "TicketEncryptionTypeDescription": "aes256-cts-hmac-sha1-96",
+        "TicketOptions": "0x40810000",
+        "TicketOptionsDescription": [
+          "Name-canonicalize",
+          "Renewable",
+          "Forwardable"
+        ],
+        "TransmittedServices": "-"
+      },
+      "System": {
+        "Channel": {
+          "#text": "Security"
+        },
+        "Computer": {
+          "#text": "DC01.contoso.local"
+        },
+        "Correlation": {},
+        "EventID": {
+          "#text": "4769"
+        },
+        "EventRecordID": {
+          "#text": "166746"
+        },
+        "Execution": {
+          "@ProcessID": "520",
+          "@ThreadID": "1496"
+        },
+        "Keywords": {
+          "#text": "0x8020000000000000"
+        },
+        "Level": {
+          "#text": "0"
+        },
+        "Opcode": {
+          "#text": "0"
+        },
+        "Provider": {
+          "@Guid": "{54849625-5478-4994-A5BA-3E3B0328C30D}",
+          "@Name": "Microsoft-Windows-Security-Auditing"
+        },
+        "Security": {},
+        "Task": {
+          "#text": "14337"
+        },
+        "TimeCreated": {
+          "@SystemTime": "2015-08-07T18:13:46.043256100Z"
+        },
+        "Version": {
+          "#text": "0"
+        }
+      }
+    }
+  }
+]

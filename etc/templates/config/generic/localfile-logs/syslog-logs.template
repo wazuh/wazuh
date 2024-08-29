@@ -1,10 +1,10 @@
-syslog:/var/log/messages
+[!journald] syslog:/var/log/messages
 syslog:/var/log/authlog
-syslog:/var/log/auth.log
-syslog:/var/log/secure
+[!journald] syslog:/var/log/auth.log
+[!journald] syslog:/var/log/secure
 syslog:/var/log/secure.log
 syslog:/var/log/system.log
-syslog:/var/log/syslog
+[!journald] syslog:/var/log/syslog
 syslog:/var/log/ipfilter.log
 syslog:/var/adm/ipsec.log
 syslog:/var/adm/syslog
@@ -19,9 +19,11 @@ syslog:/var/log/proftpd.log
 syslog:/var/log/vsftpd.log
 syslog:/var/log/radius.log
 syslog:/var/log/radius/radius.log
-syslog:/var/log/mail.info
-syslog:/var/log/mail.notice
-syslog:/var/log/maillog
+[!journald] syslog:/var/log/mail.info
+[!journald] syslog:/var/log/mail.notice
+[!journald] syslog:/var/log/mail.err
+[!journald] syslog:/var/log/mail.log
+[!journald] syslog:/var/log/maillog
 syslog:/usr/local/squid/var/logs/access.log
 syslog:/var/log/squid/access.log
 syslog:/var/log/horde.log
@@ -29,4 +31,4 @@ syslog:/var/log/asl.log
 syslog:/var/log/dpkg.log
 syslog:/var/log/vmware/hostd.log
 syslog:/var/log/proftpd/proftpd.log
-syslog:/var/log/kern.log
+[!journald] syslog:/var/log/kern.log

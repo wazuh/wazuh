@@ -1,8 +1,0 @@
-
-<group name="syscollector,">
-
-    <rule id="969696" level="3" >
-        <if_sid>123a</if_sid>
-        <description>Custom Rule with invalid if_sid</description>
-    </rule>
-</group>

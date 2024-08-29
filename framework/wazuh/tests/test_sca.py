@@ -61,7 +61,7 @@ EXPECTED_SCA_CHECKS_ITEMS = [
 @patch('wazuh.core.sca.WazuhDBQuerySCA.__exit__')
 @patch('wazuh.core.sca.WazuhDBQuerySCA.__init__', return_value=None)
 @patch('wazuh.core.agent.Agent.get_basic_information')
-@patch('wazuh.sca.get_agents_info', return_value=['000'])
+@patch('wazuh.sca.get_agents_info', return_value=['001'])
 def test_get_sca_list(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuerySCA__init__,
                       mock_WazuhDBQuerySCA__exit__, mock_WazuhDBQuerySCA_run):
     """Test that the get_sca_list function works properly."""
@@ -69,9 +69,9 @@ def test_get_sca_list(mock_get_agents_info, mock_get_basic_information, mock_Waz
     params = {'offset': 5, 'limit': 20, 'sort': {'fields': ['name'], 'order': 'asc'},
               'search': {'negation': False, 'value': 'search_string'}, 'select': ['policy_id', 'name'],
               'distinct': False, 'filters': {'pass': 50}}
-    result = get_sca_list(agent_list=['000'], q='name~value', **params)
+    result = get_sca_list(agent_list=['001'], q='name~value', **params)
 
-    mock_WazuhDBQuerySCA__init__.assert_called_once_with(agent_id='000', query='name~value', count=True,
+    mock_WazuhDBQuerySCA__init__.assert_called_once_with(agent_id='001', query='name~value', count=True,
                                                          get_data=True, **params)
     assert isinstance(result, AffectedItemsWazuhResult)
     assert result.affected_items == ['test_items']
@@ -82,12 +82,12 @@ def test_get_sca_list(mock_get_agents_info, mock_get_basic_information, mock_Waz
 def test_get_sca_list_failed_item(mock_get_agents_info):
     """Test that the get_sca_list function works properly when there are failed items."""
 
-    result = get_sca_list(agent_list=['000'])
+    result = get_sca_list(agent_list=['001'])
 
     code = list(result.failed_items.keys())[0].code
     agent = list(result.failed_items.values())[0]
     assert code == 1701, f'"1701" code was expected but "{code}" was received.'
-    assert agent == {'000'}, 'Set of agents IDs {"000"} was expected but ' \
+    assert agent == {'001'}, 'Set of agents IDs {"001"} was expected but ' \
                              f'"{agent}" was received.'
     assert isinstance(result, AffectedItemsWazuhResult)
 
@@ -101,7 +101,7 @@ def test_get_sca_list_failed_item(mock_get_agents_info):
 @patch('wazuh.core.sca.WazuhDBQuerySCACheckIDs.__init__', return_value=None)
 @patch('wazuh.core.sca.WazuhDBQuery.__exit__')
 @patch('wazuh.core.agent.Agent.get_basic_information')
-@patch('wazuh.sca.get_agents_info', return_value=['000'])
+@patch('wazuh.sca.get_agents_info', return_value=['001'])
 def test_get_sca_checks(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuery__exit__,
                         mock_WazuhDBQuerySCACheckIDs__init__, mock_WazuhDBQuerySCACheckIDs_run,
                         mock_WazuhDBQuerySCACheck__init__, mock_WazuhDBQuerySCACheck_run,
@@ -110,7 +110,7 @@ def test_get_sca_checks(mock_get_agents_info, mock_get_basic_information, mock_W
 
     # Parameters and function execution
     policy_id, agent_id, offset, limit, filters, search, sort, q, distinct, select = \
-        'test_policy_id', '000', 5, 10, {'rationale': 'rationale_test'}, \
+        'test_policy_id', '001', 5, 10, {'rationale': 'rationale_test'}, \
         {'negation': False, 'value': 'search_string'}, {'fields': ['title'], 'order': 'asc'}, 'title~test', False, None
 
     result = get_sca_checks(policy_id=policy_id, agent_list=[agent_id], q=q, offset=offset, limit=limit,
@@ -136,14 +136,14 @@ def test_get_sca_checks(mock_get_agents_info, mock_get_basic_information, mock_W
 @patch('wazuh.core.sca.WazuhDBQueryDistinctSCACheck.__init__', return_value=None)
 @patch('wazuh.core.sca.WazuhDBQuery.__exit__')
 @patch('wazuh.core.agent.Agent.get_basic_information')
-@patch('wazuh.sca.get_agents_info', return_value=['000'])
+@patch('wazuh.sca.get_agents_info', return_value=['001'])
 def test_get_sca_checks_distinct(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuery__exit__,
                                  mock_WazuhDBQueryDistinctSCACheck__init__, mock_WazuhDBQueryDistinctSCACheck_run):
     """Test that the get_sca_checks function works properly when distinct is True."""
 
     # Parameters and function execution
     policy_id, agent_id, offset, limit, filters, search, sort, q, distinct, select = \
-        'test_policy_id', '000', 5, 10, {'rationale': 'rationale_test'}, \
+        'test_policy_id', '001', 5, 10, {'rationale': 'rationale_test'}, \
         {'negation': False, 'value': 'search_string'}, {'fields': ['title'], 'order': 'asc'}, 'title~test', True, \
         ['test']
 
@@ -182,7 +182,7 @@ def test_get_sca_checks_distinct(mock_get_agents_info, mock_get_basic_informatio
 @patch('wazuh.core.sca.WazuhDBQuerySCACheckIDs.__init__', return_value=None)
 @patch('wazuh.core.sca.WazuhDBQuery.__exit__')
 @patch('wazuh.core.agent.Agent.get_basic_information')
-@patch('wazuh.sca.get_agents_info', return_value=['000'])
+@patch('wazuh.sca.get_agents_info', return_value=['001'])
 def test_get_sca_checks_select(mock_get_agents_info, mock_get_basic_information, mock_WazuhDBQuery__exit__,
                                mock_WazuhDBQuerySCACheckIDs__init__, mock_WazuhDBQuerySCACheckIDs_run,
                                mock_WazuhDBQuerySCACheck__init__, mock_WazuhDBQuerySCACheck_run,
@@ -191,7 +191,7 @@ def test_get_sca_checks_select(mock_get_agents_info, mock_get_basic_information,
     """Test that the get_sca_checks function works properly when select is used."""
 
     # Parameters and function execution
-    policy_id, agent_id = 'test_policy_id', '000'
+    policy_id, agent_id = 'test_policy_id', '001'
     result = get_sca_checks(policy_id=policy_id, agent_list=[agent_id], select=select_parameter)
 
     # Assertions
@@ -220,11 +220,11 @@ def test_get_sca_checks_select(mock_get_agents_info, mock_get_basic_information,
 def test_get_sca_checks_failed_item(mock_get_agents_info):
     """Test that the get_sca_checks function works properly when there are failed items."""
 
-    result = get_sca_checks(agent_list=['000'])
+    result = get_sca_checks(agent_list=['001'])
 
     code = list(result.failed_items.keys())[0].code
     agent = list(result.failed_items.values())[0]
     assert code == 1701, f'"1701" code was expected but "{code}" was received.'
-    assert agent == {'000'}, 'Set of agents IDs {"000"} was expected but ' \
+    assert agent == {'001'}, 'Set of agents IDs {"001"} was expected but ' \
                              f'"{agent}" was received.'
     assert isinstance(result, AffectedItemsWazuhResult)

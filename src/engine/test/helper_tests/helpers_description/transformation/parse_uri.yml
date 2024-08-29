@@ -1,0 +1,64 @@
+# Name of the helper function
+name: parse_uri
+
+metadata:
+  description: |
+    This parser is used to obtain, if possible, information from a valid URI.
+    The result will be an ECS url object encoded as a JSON string. This parser takes no arguments.
+    Checks whether an input contains a valid URI format and, if so, it evaluates to true and transforms
+    it to a ECS url object encoded as a JSON string which is then stored on the field, otherwise it evaluates to false.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: http://someurl.com
+    target_field: any_value
+    should_pass: true
+    expected:
+      original: http://someurl.com/
+      scheme: http
+      domain: someurl.com
+      path: "/"
+    description: Success uri parse
+  - arguments:
+      input_field: www.someurl.com
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure uri parse
+  - arguments:
+      input_field: www.someurl.com
+    target_field: true
+    should_pass: false
+    expected: true
+    description: Failure uri parse
+  - arguments:
+      input_field: www.someurl.com
+    target_field: [true]
+    should_pass: false
+    expected: [true]
+    description: Failure uri parse

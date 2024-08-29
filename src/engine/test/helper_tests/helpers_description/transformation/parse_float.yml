@@ -1,0 +1,55 @@
+# Name of the helper function
+name: parse_float
+
+metadata:
+  description: |
+    Evaluates if the content of the input field is a string that can be successfully converted into a floating-point number.
+    It converts and stores the floating-point number in `field`, as floating-point numbers inherently support decimals.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      input_field: "23.45234"
+    target_field: any_value
+    should_pass: true
+    expected: 23.45233917236328
+    description: Success float parse
+  - arguments:
+      input_field: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure float parse
+  - arguments:
+      input_field: hello
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: Failure float parse
+  - arguments:
+      input_field: hello
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: Failure float parse

@@ -205,7 +205,7 @@ def test_is_safe_path():
     assert is_safe_path('etc/ossec.conf', relative=True)
     assert is_safe_path('ruleset/decoders/decoder.xml', relative=False)
     assert not is_safe_path('/api/configuration/api.yaml', basedir='non-existent', relative=False)
-    assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh-apid.py', relative=True)
+    assert not is_safe_path('etc/lists/../../../../../../var/ossec/api/scripts/wazuh_apid.py', relative=True)
     assert not is_safe_path('../etc/rules/rule.xml', relative=False)
     assert not is_safe_path('../etc/rules/rule.xml')
     assert not is_safe_path('/..')
@@ -253,7 +253,7 @@ def test_validation_json_ok(value, format):
     """Verify that each value is of the indicated format."""
     assert (js.validate({"key": value},
                         schema={'type': 'object', 'properties': {'key': {'type': 'string', 'format': format}}},
-                        format_checker=js.draft4_format_checker) is None)
+                        format_checker=js.Draft4Validator.FORMAT_CHECKER) is None)
 
 
 @pytest.mark.parametrize('value, format', [
@@ -292,7 +292,7 @@ def test_validation_json_ko(value, format):
         js.validate({"key": value},
                     schema={'type': 'object',
                             'properties': {'key': {'type': 'string', 'format': format}}},
-                    format_checker=js.draft4_format_checker)
+                    format_checker=js.Draft4Validator.FORMAT_CHECKER)
 
 
 @pytest.mark.parametrize("component, configuration, expected_response", [

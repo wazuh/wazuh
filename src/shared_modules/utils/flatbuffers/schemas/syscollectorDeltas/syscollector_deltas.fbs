@@ -27,6 +27,8 @@ table dbsync_network_address {
     broadcast:string;
     checksum:string;
     item_id:string;
+    metric:string;
+    dhcp:string;
 }
 
 table dbsync_network_iface {
@@ -35,7 +37,7 @@ table dbsync_network_iface {
     adapter:string;
     type:string;
     state:string;
-    mtu:uint32;
+    mtu:long;
     mac:string;
     tx_packets:long;
     rx_packets:long;
@@ -166,7 +168,6 @@ table AgentInfo {
     agent_ip:string;
     agent_name:string;
     agent_version:string;
-    node_name:string;
 }
 
 table Delta {

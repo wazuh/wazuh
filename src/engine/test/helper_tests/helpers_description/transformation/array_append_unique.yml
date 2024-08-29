@@ -1,0 +1,57 @@
+# Name of the helper function
+name: array_append_unique
+
+metadata:
+  description: |
+    Appends the string values or any Json type by reference to the target array field.
+    This helper function is typically used in the map stage.
+    If the target field exists and is not an array it will be overridden, if it does not exist it will be created.
+    Currently this operations will fails as soon as one reference parameter is not found or the element trying to be
+    added already exists in the array.
+
+  keywords:
+    - array
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both # includes values or references (their names start with $)
+
+# adding elements of different type of target_field is not allowed
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      any_object: hello
+    target_field: [hola, hello, salut, ciao]
+    should_pass: false
+    expected: [hola, hello, salut, ciao]
+    description: Failure array append unique
+  - arguments:
+      any_object: 5
+    target_field: [1,2,3,4,5]
+    should_pass: false
+    expected: [1,2,3,4,5]
+    description: Failure array append unique
+  - arguments:
+      any_object: 5
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5]
+    description: Success array append unique

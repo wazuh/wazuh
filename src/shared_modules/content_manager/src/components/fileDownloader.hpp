@@ -70,7 +70,8 @@ private:
 
         // Download and store file.
         logDebug2(WM_CONTENTUPDATER, "Downloading file from '%s'", url.string().c_str());
-        HTTPRequest::instance().download(HttpURL(url), outputFilePath, onError);
+        HTTPRequest::instance().download(
+            HttpURL(url), outputFilePath, onError, {}, {}, context.spUpdaterBaseContext->httpUserAgent);
 
         // Just process the new file if the hash is different from the last one.
         auto downloadFileHash {Utils::asciiToHex(Utils::hashFile(outputFilePath))};
@@ -82,11 +83,9 @@ private:
             return;
         }
 
-        // Store new hash.
-        context.spUpdaterBaseContext->downloadedFileHash = std::move(downloadFileHash);
-
         // Download finished: Update context paths.
         context.data.at("paths").push_back(outputFilePath);
+        context.data["fileMetadata"]["hash"] = std::move(downloadFileHash);
     }
 
 public:

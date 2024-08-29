@@ -1,8 +1,8 @@
 ---
-name: API/Framework issue 
+name: API/Framework issue
 about: Report a bug or make a feature request.
 title: ''
-labels: 'team/framework'
+labels: team/framework
 assignees: ''
 
 ---

@@ -101,8 +101,7 @@ class TestingLogger:
     {'api_timeout': 15},
     {'api_timeout': 5}
 ])
-@patch('wazuh.core.cluster.dapi.dapi.common.WAZUH_INSTALL_TYPE', return_value='local')
-def test_DistributedAPI(install_type_mock, kwargs):
+def test_DistributedAPI(kwargs):
     """Test constructor from DistributedAPI class.
 
     Parameters
@@ -645,12 +644,12 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
 
         node = NodeMock()
         with patch.object(node, "send_request", Exception("break while true")):
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect=Exception("break while true")):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect=Exception("break while true")):
                 server.clients = {"wazuh": node}
                 sendsync.logger = logging.getLogger("sendsync")
                 with pytest.raises(Exception):
                     await sendsync.run()
 
-            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
+            with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendasync", side_effect="noerror"):
                 with pytest.raises(Exception):
                     await sendsync.run()

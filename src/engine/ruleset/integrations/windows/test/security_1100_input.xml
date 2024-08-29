@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<Events>
+<Event xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
+    <System>
+        <Provider Name="Microsoft-Windows-Eventlog" Guid="{fc65ddd8-d6ef-4962-83d5-6e5cfe9ce148}">
+        </Provider>
+        <EventID>1100</EventID>
+        <Version>0</Version>
+        <Level>4</Level>
+        <Task>103</Task>
+        <Opcode>0</Opcode>
+        <Keywords>0x4020000000000000</Keywords>
+        <TimeCreated SystemTime="2023-11-07T10:12:04.123456Z">
+        </TimeCreated>
+        <EventRecordID>14257</EventRecordID>
+        <Correlation>
+        </Correlation>
+        <Execution ProcessID="123" ThreadID="456">
+        </Execution>
+        <Channel>Security</Channel>
+        <Computer>WIN-TEST.local</Computer>
+        <Security>
+        </Security>
+    </System>
+    <UserData>
+        <ServiceShutdown xmlns="http://manifests.microsoft.com/win/2004/08/windows/eventlog">
+        </ServiceShutdown>
+    </UserData>
+</Event>
+</Events>

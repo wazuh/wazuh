@@ -557,7 +557,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:Defaults\s*\t*use_pty'
-      - 'd:/etc/sudoers -> r: \.* -> r:Defaults\s*\t*use_pty'
+      - 'd:/etc/sudoers.d/ -> r: \.* -> r:Defaults\s*\t*use_pty'
 
   # 1.3.3 Ensure sudo log file exists (Automated)
   - id: 33027
@@ -575,7 +575,7 @@ checks:
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:Defaults\s*\t*logfile=\S+'
-      - 'd:/etc/sudoers -> r: \.* -> r:Defaults\s*\t*logfile=\S+'
+      - 'd:/etc/sudoers.d/ -> r: \.* -> r:Defaults\s*\t*logfile=\S+'
 
   ###############################################
   # 1.4 Filesystem Integrity Checking

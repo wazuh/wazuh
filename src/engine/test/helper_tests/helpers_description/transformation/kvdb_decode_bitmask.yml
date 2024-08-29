@@ -1,0 +1,75 @@
+# Name of the helper function
+name: kvdb_decode_bitmask
+
+metadata:
+  description: |
+    Decodes values based on a bitmask using a reference table constructed at compile time.
+    This table is generated from a object json stored in KVDB
+    - Compile Time:
+        The function searches the db_name database for the value corresponding to table_name.
+        table_name should contain a JSON object with up to 32 keys ranging from "0" to "31".
+        These keys represent positions in a 32-bit binary number, with the least significant bit (LSB) positioned on the right.
+        The values associated with these keys provide descriptions for each bit position or flag and must all be of the same JSON type.
+        Using this information, a reference table is constructed.
+
+    - Execution Time:
+        The function retrieves the value of $maskRef, which is a string containing a hexadecimal value.
+        This hexadecimal value is decomposed and acts as a mask.
+        For each bit set to 1 in this mask, the function looks up the reference table to fetch the corresponding value or description.
+        If a value doesn't exist in the table for a particular bit, that bit is skipped.
+        An array containing all the values corresponding to the activated bits in the mask is returned.
+
+
+    - Special Notes:
+        It's not mandatory for the table to have all bit values. If a bit's value is missing, it is simply skipped.
+        If the resulting array is empty, the function fails, and it neither creates nor overwrites the value of field.
+
+  keywords:
+    - kvdb
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db_name:
+    type: string  # Accept only object
+    generate: string
+    source: value # Includes only values
+  table_name:
+    type: string  # Accept only object
+    generate: string
+    source: value # Includes only values
+  mask:
+    type: string  # Accept only string
+    generate: hexadecimal
+    source: reference # Includes only references (their names start with $)
+
+# Database not exists
+skipped:
+  - success_cases
+  - different_target_field_type
+
+target_field:
+  type: string
+  generate: string
+
+test:
+  - arguments:
+      db_name: testing
+      table_name: test_bitmask
+      mask: "33"
+    target_field: "any_value"
+    should_pass: true
+    expected: ["some_data"]
+    description: Success decode bitmask
+  - arguments:
+      db_name: testing
+      table_name: test_bitmask
+      mask: "99"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure decode bitmask. Values is out of range 0-0xFFFFFFFFFFFFFFFF

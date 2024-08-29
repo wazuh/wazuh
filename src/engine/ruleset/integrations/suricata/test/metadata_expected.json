@@ -1,0 +1,185 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "destination": {
+      "address": "10.31.64.240",
+      "bytes": 876,
+      "domain": "testmynids.org",
+      "ip": "10.31.64.240",
+      "mac": "00-1b-17-00-01-18",
+      "packets": 5,
+      "port": 47592
+    },
+    "event": {
+      "category": [
+        "network",
+        "intrusion_detection"
+      ],
+      "kind": "alert",
+      "type": [
+        "allowed"
+      ]
+    },
+    "host": {
+      "id": "001"
+    },
+    "http": {
+      "request": {
+        "method": "GET"
+      },
+      "response": {
+        "body": {
+          "bytes": 39
+        },
+        "status_code": 200
+      },
+      "version": "HTTP/1.1"
+    },
+    "message": "Potentially Bad Traffic",
+    "network": {
+      "bytes": 1372,
+      "packets": 11,
+      "protocol": "http",
+      "transport": "tcp"
+    },
+    "related": {
+      "hosts": [
+        "testmynids.org"
+      ],
+      "ip": [
+        "175.16.199.1",
+        "10.31.64.240"
+      ]
+    },
+    "rule": {
+      "category": "Potentially Bad Traffic",
+      "id": "2100498",
+      "name": "GPL ATTACK_RESPONSE id check returned root"
+    },
+    "source": {
+      "address": "175.16.199.1",
+      "bytes": 496,
+      "ip": "175.16.199.1",
+      "mac": "00-03-2d-3f-e5-63",
+      "packets": 6,
+      "port": 80
+    },
+    "suricata": {
+      "alert": {
+        "action": "allowed",
+        "category": "Potentially Bad Traffic",
+        "gid": 1,
+        "metadata": {
+          "attack_target": [
+            "smtp-server",
+            "server"
+          ],
+          "capec_id": [
+            "248"
+          ],
+          "created_at": [
+            "2019-06-01"
+          ],
+          "cve": [
+            "2019-91325"
+          ],
+          "cvss_v2_base": [
+            "8.1"
+          ],
+          "cvss_v2_temporal": [
+            "7.9"
+          ],
+          "cvss_v3_base": [
+            "7.3"
+          ],
+          "cvss_v3_temporal": [
+            "7.1"
+          ],
+          "cwe_id": [
+            "20"
+          ],
+          "filename": [
+            "exploit.rules"
+          ],
+          "hostile": [
+            "src_ip"
+          ],
+          "mitre_attack": [
+            "t1190"
+          ],
+          "priority": [
+            "medium"
+          ],
+          "protocols": [
+            "tcp",
+            "smtp"
+          ],
+          "rule_source": [
+            "acme-rule-factory"
+          ],
+          "updated_at": [
+            "2019-06-11"
+          ]
+        },
+        "rev": 7,
+        "severity": 2,
+        "signature": "GPL ATTACK_RESPONSE id check returned root",
+        "signature_id": 2100498
+      },
+      "app_proto": "http",
+      "dest_ip": "10.31.64.240",
+      "dest_port": 47592,
+      "ether": {
+        "dest_mac": "00:1b:17:00:01:18",
+        "src_mac": "00:03:2d:3f:e5:63"
+      },
+      "event_type": "alert",
+      "flow": {
+        "bytes_toclient": 876,
+        "bytes_toserver": 496,
+        "pkts_toclient": 5,
+        "pkts_toserver": 6,
+        "start": "2020-02-15T21:22:18.572927+0100"
+      },
+      "flow_id": 1805461738637547,
+      "http": {
+        "hostname": "testmynids.org",
+        "http_content_type": "text/html",
+        "http_method": "GET",
+        "http_user_agent": "curl/7.58.0",
+        "length": 39,
+        "protocol": "HTTP/1.1",
+        "status": 200,
+        "url": "/uid/index.html"
+      },
+      "in_iface": "enp6s0",
+      "proto": "TCP",
+      "src_ip": "175.16.199.1",
+      "src_port": 80,
+      "timestamp": "2020-02-20T05:24:13.544352+0100"
+    },
+    "url": {
+      "domain": "testmynids.org",
+      "original": "/uid/index.html",
+      "path": "/uid/index.html",
+      "query": ""
+    },
+    "user_agent": {
+      "original": "curl/7.58.0"
+    },
+    "wazuh": {
+      "decoders": [
+        "suricata"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/var/log/suricata/eve.json",
+      "origin": "/var/log/suricata/eve.json",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

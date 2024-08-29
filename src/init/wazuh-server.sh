@@ -13,8 +13,8 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 
 # Installation info
-VERSION="v4.9.0"
-REVISION="40900"
+VERSION="v5.0.0"
+REVISION="50000"
 TYPE="server"
 
 ###  Do not modify below here ###
@@ -27,7 +27,7 @@ fi
 
 AUTHOR="Wazuh Inc."
 USE_JSON=false
-DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid"
+DAEMONS="wazuh-clusterd wazuh-modulesd wazuh-monitord wazuh-logcollector wazuh-remoted wazuh-syscheckd wazuh-analysisd wazuh-maild wazuh-execd wazuh-db wazuh-authd wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd wazuh-apid wazuh-comms-apid"
 OP_DAEMONS="wazuh-clusterd wazuh-maild wazuh-agentlessd wazuh-integratord wazuh-dbd wazuh-csyslogd"
 DEPRECATED_DAEMONS="ossec-authd"
 
@@ -42,7 +42,7 @@ LOCK_PID="${LOCK}/pid"
 # This number should be more than enough (even if it is
 # started multiple times together). It will try for up
 # to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="10"
+MAX_ITERATION="60"
 
 MAX_KILL_TRIES=600
 
@@ -79,7 +79,7 @@ lock()
         # Waiting 1 second before trying again
         sleep 1;
         i=`expr $i + 1`;
-        pid=`cat ${LOCK_PID}` 2>/dev/null
+        pid=$(cat ${LOCK_PID} 2>/dev/null)
 
         if [ $? = 0 ]
         then
@@ -277,8 +277,8 @@ start_service()
     checkpid;
 
     # Delete all files in temporary folder
-    TO_DELETE="$DIR/tmp/*"
-    rm -rf $TO_DELETE
+    TO_DELETE="$DIR/tmp"
+    find $TO_DELETE -mindepth 1 -not -path "$TO_DELETE/vd_*_vd_*.tar" -not -path "$TO_DELETE/vd_*_vd_*.tar.xz" -delete
 
     # Stop deprecated daemons that could keep alive on updates
     for i in ${DEPRECATED_DAEMONS}; do

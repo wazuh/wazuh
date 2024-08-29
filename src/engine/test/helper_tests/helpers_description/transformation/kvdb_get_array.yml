@@ -1,0 +1,45 @@
+# Name of the helper function
+name: kvdb_get_array
+
+metadata:
+  description: |
+    Looks in the database for each key found in $array_ref, and appends the values to field.
+    Best effort, if a key is not present in the DB, skip it.
+
+  keywords:
+    - kvdb
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  db_name:
+    type: string  # Accept only object
+    generate: string
+    source: value # Includes only values
+  array_key:
+    type: array  # Accept only string
+    generate: string
+    source: both # Includes values or references (their names start with $)
+
+# target_field type not comprobed
+# Database not exists
+skipped:
+  - different_target_field_type
+  - success_cases # key indicate by target_field not found
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      db_name: testing
+      array_key: [test]
+    target_field: true
+    should_pass: true
+    expected: false
+    description: Success kvdb get array

@@ -1,0 +1,248 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+Vagrant.configure("2") do |config|
+    config.vm.box = "generic/ubuntu2004"
+    config.vm.hostname = "engine"
+    config.vm.define "engine" do |engine|
+    end
+    config.vm.network "public_network"
+    config.vm.synced_folder ".", "/vagrant", disabled: true
+
+    config.vm.provider "libvirt" do |vm|
+        vm.cpus = 8
+        vm.memory = 8192
+    end
+
+    config.vm.provider "virtualbox" do |vm|
+        vm.name = "engine"
+        vm.check_guest_additions = false
+        vm.memory = 8192
+        vm.cpus = 8
+    end
+
+    config.vm.provider "hyperv" do |h|
+        h.vmname = "engine"
+        h.enable_checkpoints = true
+        h.enable_automatic_checkpoints = true
+        h.enable_enhanced_session_mode = true
+        h.memory = 8192
+        h.maxmemory = 8192
+        h.cpus = 8
+    end
+
+    config.ssh.forward_agent = true
+
+    # Import MM_LICENCE_KEY from environment variable
+    config.vm.provision "engineFirstRun", type: "shell", env: { "MM_LICENCE_KEY" => ENV['MM_LICENCE_KEY'] },
+    inline: <<-SHELL
+
+        # Uncomment the following line to forces the Maxmind license key to be set
+        # MM_LICENCE_KEY="your_maxmind_licence_key"
+
+        echo "Installing dependencies to build the engine"
+
+        #Dependencies
+        apt-get update
+        apt-get install build-essential dkms linux-headers-$(uname -r) gcc g++ make libc6-dev automake autoconf gnupg apt-transport-https libtool libssl-dev jq tig linux-tools-common linux-tools-generic linux-tools-`uname -r` bpfcc-tools sysstat python3-pip -y
+
+        #Delta installation, required for engine-diff
+        wget https://github.com/dandavison/delta/releases/download/0.16.5/git-delta-musl_0.16.5_amd64.deb
+        dpkg -i git-delta-musl_0.16.5_amd64.deb
+        rm git-delta-musl_0.16.5_amd64.deb
+
+        #CMake 3.24 installation from its release page
+        curl -sL https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.tar.gz | tar -xz -C /usr/local --strip-components=1
+        export PATH=$PATH:/usr/local/bin
+
+        echo "--- Downlading the engine from github ---"
+        su vagrant -c "mkdir engine"
+        cd engine
+        su vagrant -c "git clone --branch master  https://github.com/wazuh/wazuh.git"
+        # Make symbolic link to the engine folder
+        su vagrant -c "cd && ln -s engine/wazuh/src/engine/ project"
+        cd wazuh/src/engine
+        su vagrant -c "mkdir build"
+        ENGINE_SRC_DIR=$(pwd)
+
+        # Compare dependencies
+        pip3 install --system pandas
+
+        # Install engine tools python script
+        pip3 install --system $ENGINE_SRC_DIR/tools/engine-suite
+
+        # Install api and cli communication libs for python script
+        pip3 install --system $ENGINE_SRC_DIR/tools/api-communication
+        pip3 install --system $ENGINE_SRC_DIR/test/integration_tests/it-utils
+
+        # Install Internal tools
+        pip3 install --system $ENGINE_SRC_DIR/tools/evtx2xml
+        # Check event
+        SCRIPT_CHECKEVENT_SRC="$ENGINE_SRC_DIR/tools/checkEventsDiff.sh"
+        SCRIPT_CHECKEVENT_TARGET="/usr/local/bin/engine-checkevents"
+        echo -e '#!/bin/bash\nsudo '$SCRIPT_CHECKEVENT_SRC' "$@"' | tee "$SCRIPT_CHECKEVENT_TARGET" > /dev/null
+        chmod +x "$SCRIPT_CHECKEVENT_TARGET"
+
+        # Add autocompletion to profile
+        echo "source $ENGINE_SRC_DIR/tools/vagrant/autocompletion.sh" >> /etc/profile
+
+        echo "--- Building the engine from its source code ---"
+        ulimit -s unlimited
+        su vagrant -c "cmake -S . -B build/"
+        su vagrant -c "cmake --build build/ --config Debug --target main -j $(nproc)"
+
+        #check if main was built, if not throw error
+        if [ ! -f ./build/main ]; then
+            echo "* ERROR BUILDING ENGINE *"
+            exit -1
+        fi
+
+        # Configure and install manager
+        echo "--- Setting up Wazuh in 127.0.0.1 ---"
+        WAZUH_INSTALL=/home/vagrant/wazuh-install
+        mkdir -p  $WAZUH_INSTALL && cd $WAZUH_INSTALL
+        curl -sO https://packages.wazuh.com/4.8/wazuh-install.sh
+        if [ $? -ne 0 ]; then
+            echo "Failed to download wazuh-install.sh"
+            exit 1
+        fi
+        curl -sO https://packages.wazuh.com/4.8/config.yml
+        if [ $? -ne 0 ]; then
+            echo "Failed to download config.yml"
+            exit 1
+        fi
+        sed -i 's/ip: "<indexer-node-ip>"/ip: "127.0.0.1"/' config.yml
+        sed -i 's/ip: "<wazuh-manager-ip>"/ip: "127.0.0.1"/' config.yml
+        sed -i 's/ip: "<dashboard-node-ip>"/ip: "127.0.0.1"/' config.yml
+        bash wazuh-install.sh --generate-config-files
+        bash wazuh-install.sh -a
+
+        #Change password to admin/wazuhEngine5+ because it must have lower, uper, numbers and symbol
+        /usr/share/wazuh-indexer/plugins/opensearch-security/tools/wazuh-passwords-tool.sh -u admin -p "wazuhEngine5+"
+
+        #Replace filebeat & elastic for engine
+        cd $HOME
+        cp $ENGINE_SRC_DIR/extension/elasticsearch/7.x/wazuh-template.json /etc/filebeat/
+        cp $ENGINE_SRC_DIR/extension/filebeat/7.x/filebeat.yml /etc/filebeat/
+
+        # Create index pattern
+        echo "--- Setting up dashboards index pattern  ---"
+        curl -s --cacert /etc/filebeat/certs/root-ca.pem -u 'admin:wazuhEngine5+' -X POST "https://127.0.0.1/api/saved_objects/index-pattern/wazuh-alerts-5x-*" -H 'osd-xsrf: true' -H 'Content-Type: application/json' -d   '{"attributes": {"title": "wazuh-alerts-5.x-*", "timeFieldName": "@timestamp" }}'
+
+        systemctl restart filebeat.service
+
+        # Install opensearch security plugin
+        echo "--- Setting up opensearch security analytics plugin ---"
+        # /usr/share/wazuh-indexer/bin/opensearch-plugin install org.opensearch.plugin:opensearch-security-analytics:2.8.0.0
+        sudo -u wazuh-dashboard /usr/share/wazuh-dashboard/bin/opensearch-dashboards-plugin install securityAnalyticsDashboards
+        systemctl restart wazuh-indexer.service wazuh-dashboard.service
+
+        WAZUH_DIR=/var/ossec
+        ENGINE_DIR=$WAZUH_DIR/engine
+
+        echo "--- Setting up the engine ---"
+        systemctl stop wazuh-manager
+        rm $WAZUH_DIR/queue/sockets/queue
+        mkdir -p $ENGINE_DIR/store/schema
+        mkdir $WAZUH_DIR/etc/kvdb/
+        mkdir $WAZUH_DIR/etc/kvdb_test/
+        # Copy needed files in the store so the engine can start
+        mkdir $ENGINE_DIR/store/schema/wazuh-logpar-types
+        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-logpar-types.json $ENGINE_DIR/store/schema/wazuh-logpar-types/0
+        mkdir $ENGINE_DIR/store/schema/wazuh-asset
+        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-asset.json $ENGINE_DIR/store/schema/wazuh-asset/0
+        mkdir $ENGINE_DIR/store/schema/wazuh-policy
+        cp $ENGINE_SRC_DIR/ruleset/schemas/wazuh-policy.json $ENGINE_DIR/store/schema/wazuh-policy/0
+        mkdir $ENGINE_DIR/store/schema/engine-schema
+        cp $ENGINE_SRC_DIR/ruleset/schemas/engine-schema.json $ENGINE_DIR/store/schema/engine-schema/0
+
+        echo "--- Enabling the engine ---"
+        cp $ENGINE_SRC_DIR/build/main $ENGINE_DIR/wazuh-engine
+        chmod 755 $ENGINE_DIR/wazuh-engine
+        cp $ENGINE_SRC_DIR/tools/vagrant/wazuh-bin-engine.sh $WAZUH_DIR/bin/wazuh-engine
+        chmod 755 $WAZUH_DIR/bin/wazuh-engine
+        chown -R wazuh:wazuh $ENGINE_DIR
+        chown wazuh:wazuh $WAZUH_DIR/bin/wazuh-engine
+        sed -e "s/'wazuh-analysisd', //g" -i $(find $WAZUH_DIR -name dapi.py | grep python)
+        sed -e "s/wazuh-analysisd /wazuh-engine /g" -i $WAZUH_DIR/bin/wazuh-control
+        systemctl restart wazuh-manager
+
+        sleep 2s
+
+        echo "--- Loading ruleset & enabling wazuh environment  ---"
+        cd $ENGINE_SRC_DIR/ruleset
+        engine-integration add -n system wazuh-core/
+        engine-integration add -n wazuh integrations/syslog/
+        engine-integration add -n wazuh integrations/system/
+        engine-integration add -n wazuh integrations/windows/
+        engine-integration add -n wazuh integrations/apache-http/
+        engine-integration add -n wazuh integrations/suricata/
+
+        # Add filter for route
+        $ENGINE_DIR/wazuh-engine catalog -n system create filter < filters/allow-all.yml
+
+        # Download the GeoIP database if key is provided
+        if [ -n "$MM_LICENCE_KEY" ]; then
+            echo "--- Downloading the GeoIP databases ---"
+            ENGINE_DIR=$ENGINE_DIR $ENGINE_SRC_DIR/tools/download_mmdbs.sh $MM_LICENCE_KEY
+        fi
+
+        cd $HOME
+        echo "Creating default policy 'policy/wazuh/0'..."
+        $ENGINE_DIR/wazuh-engine policy add -p policy/wazuh/0 -f
+        $ENGINE_DIR/wazuh-engine policy parent-set decoder/integrations/0
+        $ENGINE_DIR/wazuh-engine policy parent-set -n wazuh decoder/integrations/0
+        $ENGINE_DIR/wazuh-engine policy parent-set -n wazuh rule/enrichment/0
+        $ENGINE_DIR/wazuh-engine policy asset-add -n system integration/wazuh-core/0
+        $ENGINE_DIR/wazuh-engine policy asset-add -n wazuh integration/syslog/0
+        $ENGINE_DIR/wazuh-engine policy asset-add -n wazuh integration/system/0
+        $ENGINE_DIR/wazuh-engine policy asset-add -n wazuh integration/windows/0
+        $ENGINE_DIR/wazuh-engine policy asset-add -n wazuh integration/apache-http/0
+        $ENGINE_DIR/wazuh-engine policy asset-add -n wazuh integration/suricata/0
+        echo "$($ENGINE_DIR/wazuh-engine policy get -n wazuh system user)"
+
+        echo "Enabling default environment..."
+        $ENGINE_DIR/wazuh-engine router add default filter/allow-all/0 1000 policy/wazuh/0
+        echo
+
+        echo "Creating integrations of engine-test..."
+        # TODO: think about a better way to do this, maybe save the default information in kvdb
+        echo "{}" > /var/ossec/etc/engine-test.conf
+        engine-test add -i windows -f eventchannel
+        engine-test add -i syslog -f syslog -o /tmp/syslog.log
+        engine-test add -i remote-syslog -f remote-syslog -o 127.0.0.1
+
+        # Add user vagrant to wazuh group
+        usermod -a -G wazuh vagrant
+
+        # Create folder for engine core dumps
+        mkdir -p /coredumps
+
+        # Install code-server
+        CS_USER=vagrant
+        CS_HOME=/home/$CS_USER
+        curl -fsSL https://code-server.dev/install.sh | sh
+
+        # Create base config
+        systemctl enable --now code-server@$CS_USER
+        sleep 4s
+
+        # set config files
+        sed -i 's/code-server/code-server \\/home\\/vagrant\\/engine\\/wazuh\\/src\\/engine/g'    /lib/systemd/system/code-server@.service
+        systemctl daemon-reload
+        echo "bind-addr: 0.0.0.0:8040" | tee  $CS_HOME/.config/code-server/config.yaml
+        echo "auth: password"  | tee -a  $CS_HOME/.config/code-server/config.yaml
+        echo "password: wazuhEngine5+" | tee -a  $CS_HOME/.config/code-server/config.yaml
+        echo "cert: false" | tee -a  $CS_HOME/.config/code-server/config.yaml
+        systemctl restart code-server@$CS_USER
+
+        # Install and configs extensions
+        mkdir $CS_HOME/engine/wazuh/src/engine/.vscode
+        # extension: redhat yml
+        su - vagrant -c 'code-server --install-extension redhat.vscode-yaml'
+        # code-server --install-extension redhat.vscode-yaml
+        cat $CS_HOME/engine/wazuh/src/engine/tools/vagrant/vscode-settings.json | tee $CS_HOME/engine/wazuh/src/engine/.vscode/settings.json
+
+        chown -R $CS_USER:$CS_USER $CS_HOME/
+    SHELL
+
+end

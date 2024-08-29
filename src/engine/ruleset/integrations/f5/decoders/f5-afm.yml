@@ -1,0 +1,80 @@
+---
+name: decoder/f5-afm/0
+
+metadata:
+  module: F5
+  title: F5 AFM Decoder
+  description: Decodes F5 BIG-IP Advanced Firewall Manager logs
+  compatibility: >
+    This module has been tested against F5 BIG-IP version 16.1.0
+  author:
+    name: Wazuh, Inc.
+    date: 2023/01/10
+  references:
+    - https://support.f5.com/csp/article/K05327372
+
+parents:
+  - decoder/integrations/0
+
+#TODO: Once the events arrive tagged, uncomment these lines below
+# check:
+#   - event.module: f5
+#   - event.dataset: f5.bigipafm
+
+parse:
+  logpar:
+    # iusm modtempo olab6078.home olaboris tur itv [F5@odoco acl_policy_name=ria acl_policy_type=min acl_rule_name=ite action=Closed hostname=tatemac3541.api.corp bigip_mgmt_ip=10.228.193.207 context_name=liqua context_type=ciade date_time=Jan 29 2016 06:09:59 dest_ip=10.125.114.51 dst_geo=umq dest_port=2288 device_product=pexe device_vendor=nes device_version=1.2262 drop_reason=reveri errdefs_msgno=boNemoe errdefs_msg_name=equepor flow_id=eni ip_protocol=ipv6 severity=low partition_name=ehend route_domain=ritquiin sa_translation_pool=umqui sa_translation_type=reeufugi source_ip=10.208.121.85 src_geo=sperna source_port=884 source_user=billoi translated_dest_ip=10.165.201.71 translated_dest_port=6153 translated_ip_protocol=tatemU translated_route_domain=deF translated_source_ip=10.11.196.142 translated_source_port=5222 translated_vlan=iatnu vlan=3810
+    - event.original: <~>F5@<~tmp.rsa_obj_name> <~tmp.kv1> date_time=<@timestamp/%b %d %Y %H:%M:%S> <~tmp.kv2>
+
+normalize:
+  - map:
+    - ~tmp.kv: +concat/$~tmp.kv1/ /$~tmp.kv2
+    - ~tmp.kvMap: +parse_key_value/$~tmp.kv/=/ /'/'
+    - destination.geo.country_name: $~tmp.kvMap.dst_geo
+    - destination.nat.ip: $~tmp.kvMap.translated_dest_ip
+    - destination.nat.port: $~tmp.kvMap.translated_dest_port
+    - destination.port: $~tmp.kvMap.dest_port
+    - event.action: $~tmp.kvMap.action
+    - event.code: $~tmp.kvMap.errdefs_msgno
+    - event.dataset: f5.bigipafm
+    - event.module: f5
+    - host.ip: $~tmp.kvMap.bigip_mgmt_ip
+    - host.name: $~tmp.kvMap.hostname
+    - log.level: $~tmp.kvMap.severity
+    - network.protocol: $~tmp.kvMap.ip_protocol
+    - observer.product: $~tmp.kvMap.device_product
+    - observer.type: Firewall
+    - observer.vendor: F5
+    - observer.version: $~tmp.kvMap.device_version
+    - related.hosts: +array_append/$~tmp.kvMap.hostname
+    - related.ip: +array_append/$~tmp.kvMap.bigip_mgmt_ip
+    - related.ip: +array_append/$~tmp.kvMap.source_ip
+    - related.ip: +array_append/$~tmp.kvMap.translated_dest_ip
+    - related.ip: +array_append/$~tmp.kvMap.translated_source_ip
+    - related.user: +array_append/$~tmp.kvMap.source_user
+    - rsa.internal.messageid: BIGIP_AFM
+    - rsa.investigations.ec_activity: Disable
+    - rsa.investigations.ec_subject: NetworkComm
+    - rsa.investigations.ec_theme: Communication
+    - rsa.misc.action: +array_append/$~tmp.kvMap.action
+    - rsa.misc.context: $~tmp.kvMap.context_name
+    - rsa.misc.event_type: $~tmp.kvMap.errdefs_msg_name
+    - rsa.misc.obj_name: $~tmp.rsa_obj_name
+    - rsa.misc.policy_name: $~tmp.kvMap.acl_policy_name
+    - rsa.misc.rule_name: $~tmp.kvMap.acl_rule_name
+    - rsa.misc.severity: $~tmp.kvMap.severity
+    - rsa.misc.version: $~tmp.kvMap.device_version
+    - rsa.network.alias_host: +array_append/$~tmp.kvMap.hostname
+    - rsa.network.vlan: $~tmp.kvMap.vlan
+    - rsa.time.event_time_str: $@timestamp
+    - rule.name: $~tmp.kvMap.acl_rule_name
+    - service.type: f5
+    - source.geo.country_name: $~tmp.kvMap.src_geo
+    - source.ip: $~tmp.kvMap.source_ip
+    - source.nat.ip: $~tmp.kvMap.translated_source_ip
+    - source.nat.port: $~tmp.kvMap.translated_source_port
+    - source.port: $~tmp.kvMap.source_port
+    - tags: [f5.bigipafm, forwarded]
+    - user.name: $~tmp.kvMap.source_user
+    - wazuh.decoders: +array_append/f5-afm
+    - ~tmp: delete()

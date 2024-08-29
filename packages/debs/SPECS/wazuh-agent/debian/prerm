@@ -1,0 +1,59 @@
+#!/bin/sh
+# prerm script for wazuh-manager
+
+set -e
+
+DIR="/var/ossec"
+
+case "$1" in
+    upgrade|deconfigure)
+
+      # Stop the services before uninstalling the package
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
+          systemctl stop wazuh-agent > /dev/null 2>&1
+      elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "running" > /dev/null 2>&1; then
+          service wazuh-agent stop > /dev/null 2>&1
+      fi
+
+    ;;
+
+    remove)
+
+      # Stop the services before uninstalling the package
+      # Check for systemd
+      if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-agent > /dev/null 2>&1; then
+          systemctl stop wazuh-agent > /dev/null 2>&1
+      # Check for SysV
+      elif command -v service > /dev/null 2>&1 && service wazuh-agent status 2>/dev/null | grep "running" > /dev/null 2>&1; then
+          service wazuh-agent stop > /dev/null 2>&1
+      fi
+
+      # Save the conffiles
+      mkdir -p ${DIR}/tmp/conffiles
+      # Save the client.keys
+      if [ -f ${DIR}/etc/client.keys ]; then
+        cp -p ${DIR}/etc/client.keys ${DIR}/tmp/conffiles
+      fi
+      # Save the local_internal_options.conf
+      if [ -f ${DIR}/etc/local_internal_options.conf ]; then
+        cp -p ${DIR}/etc/local_internal_options.conf ${DIR}/tmp/conffiles
+      fi
+      # Save the ossec.conf
+      if [ -f ${DIR}/etc/ossec.conf ]; then
+        cp -p ${DIR}/etc/ossec.conf ${DIR}/tmp/conffiles
+      fi
+      
+    ;;
+
+    failed-upgrade)
+
+    ;;
+
+    *)
+      echo "prerm called with unknown argument \`$1'" >&2
+      exit 1
+    ;;
+
+esac
+
+exit 0

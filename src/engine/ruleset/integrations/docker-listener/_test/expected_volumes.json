@@ -1,0 +1,390 @@
+[
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"create\", \"Actor\": {\"ID\": \"b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f\", \"Attributes\": {\"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686330777, \"timeNano\": 1686330777750633528}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"create\", \"Actor\": {\"ID\": \"b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f\", \"Attributes\": {\"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686330777, \"timeNano\": 1686330777750633528}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:12:57Z",
+            "category":
+            [
+                "file",
+                "driver"
+            ],
+            "type": "creation"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "container":
+        {
+            "id": "b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f"
+        },
+        "~volume":
+        {
+            "attributes":
+            {
+                "driver": "local"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"create\", \"Actor\": {\"ID\": \"hello\", \"Attributes\": {\"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686325418, \"timeNano\": 1686325418724174697}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"create\", \"Actor\": {\"ID\": \"hello\", \"Attributes\": {\"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686325418, \"timeNano\": 1686325418724174697}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T15:43:38Z",
+            "category":
+            [
+                "file",
+                "driver"
+            ],
+            "type": "creation"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "container":
+        {
+            "id": "hello"
+        },
+        "~volume":
+        {
+            "attributes":
+            {
+                "driver": "local"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"destroy\", \"Actor\": {\"ID\": \"b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f\", \"Attributes\": {\"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686331181, \"timeNano\": 1686331181111407274}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"destroy\", \"Actor\": {\"ID\": \"b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f\", \"Attributes\": {\"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686331181, \"timeNano\": 1686331181111407274}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:19:41Z",
+            "category":
+            [
+                "file",
+                "driver"
+            ],
+            "type": "deletion"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "container":
+        {
+            "id": "b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f"
+        },
+        "~volume":
+        {
+            "attributes":
+            {
+                "driver": "local"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"mount\", \"Actor\": {\"ID\": \"b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f\", \"Attributes\": {\"container\": \"0811bd793c3e53148a6be66d64afce109a6a75eed3bf1786b1e6ae686b17b194\", \"destination\": \"/data\", \"driver\": \"local\", \"propagation\": \"\", \"read/write\": \"true\"}}, \"scope\": \"local\", \"time\": 1686330782, \"timeNano\": 1686330782708929354}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"mount\", \"Actor\": {\"ID\": \"b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f\", \"Attributes\": {\"container\": \"0811bd793c3e53148a6be66d64afce109a6a75eed3bf1786b1e6ae686b17b194\", \"destination\": \"/data\", \"driver\": \"local\", \"propagation\": \"\", \"read/write\": \"true\"}}, \"scope\": \"local\", \"time\": 1686330782, \"timeNano\": 1686330782708929354}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:13:02Z",
+            "category":
+            [
+                "file",
+                "driver"
+            ],
+            "type": "start"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "container":
+        {
+            "id": "b72e0321cc8e99421ea1cba2a9bf5b9d3c7af70a5923f3957315c8ab65c93f6f"
+        },
+        "~volume":
+        {
+            "attributes":
+            {
+                "container": "0811bd793c3e53148a6be66d64afce109a6a75eed3bf1786b1e6ae686b17b194",
+                "destination": "/data",
+                "driver": "local",
+                "propagation": "",
+                "read/write": "true"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"mount\", \"Actor\": {\"ID\": \"hello\", \"Attributes\": {\"container\": \"ed849856b6bbf94b17cc90601084b149db10cf066e7b055aa8c6e7f2a0dbe1a1\", \"destination\": \"/world\", \"driver\": \"local\", \"propagation\": \"\", \"read/write\": \"true\"}}, \"scope\": \"local\", \"time\": 1686325518, \"timeNano\": 1686325518808856078}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"mount\", \"Actor\": {\"ID\": \"hello\", \"Attributes\": {\"container\": \"ed849856b6bbf94b17cc90601084b149db10cf066e7b055aa8c6e7f2a0dbe1a1\", \"destination\": \"/world\", \"driver\": \"local\", \"propagation\": \"\", \"read/write\": \"true\"}}, \"scope\": \"local\", \"time\": 1686325518, \"timeNano\": 1686325518808856078}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T15:45:18Z",
+            "category":
+            [
+                "file",
+                "driver"
+            ],
+            "type": "start"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "container":
+        {
+            "id": "hello"
+        },
+        "~volume":
+        {
+            "attributes":
+            {
+                "container": "ed849856b6bbf94b17cc90601084b149db10cf066e7b055aa8c6e7f2a0dbe1a1",
+                "destination": "/world",
+                "driver": "local",
+                "propagation": "",
+                "read/write": "true"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"unmount\", \"Actor\": {\"ID\": \"2e7e3ae0f520d1f7b8abe9d34f0f03cba88f168d8e335a024492439509210111\", \"Attributes\": {\"container\": \"bad14c8a29548bfc1b65cf8f915fd3570f9a21a029163ea0ce7c6b64f3845075\", \"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686331181, \"timeNano\": 1686331181272714800}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"unmount\", \"Actor\": {\"ID\": \"2e7e3ae0f520d1f7b8abe9d34f0f03cba88f168d8e335a024492439509210111\", \"Attributes\": {\"container\": \"bad14c8a29548bfc1b65cf8f915fd3570f9a21a029163ea0ce7c6b64f3845075\", \"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686331181, \"timeNano\": 1686331181272714800}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T17:19:41Z",
+            "category":
+            [
+                "file",
+                "driver"
+            ],
+            "type": "end"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "container":
+        {
+            "id": "2e7e3ae0f520d1f7b8abe9d34f0f03cba88f168d8e335a024492439509210111"
+        },
+        "~volume":
+        {
+            "attributes":
+            {
+                "container": "bad14c8a29548bfc1b65cf8f915fd3570f9a21a029163ea0ce7c6b64f3845075",
+                "driver": "local"
+            }
+        }
+    },
+    {
+        "wazuh":
+        {
+            "queue": 49,
+            "location": "[003] (vm-ubuntu22) any->Wazuh-Docker",
+            "message": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"unmount\", \"Actor\": {\"ID\": \"hello\", \"Attributes\": {\"container\": \"ed849856b6bbf94b17cc90601084b149db10cf066e7b055aa8c6e7f2a0dbe1a1\", \"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686325519, \"timeNano\": 1686325519191951086}}",
+            "origin": "Wazuh-Docker",
+            "registered_ip": "any",
+            "decoders":
+            [
+                "core-wazuh-message",
+                "core-localfile",
+                "integrations",
+                "docker-listener"
+            ],
+            "source": "logcollector"
+        },
+        "agent":
+        {
+            "id": "003",
+            "name": "vm-ubuntu22",
+            "type": "wazuh"
+        },
+        "event":
+        {
+            "original": "{\"integration\": \"docker\", \"docker\": {\"Type\": \"volume\", \"Action\": \"unmount\", \"Actor\": {\"ID\": \"hello\", \"Attributes\": {\"container\": \"ed849856b6bbf94b17cc90601084b149db10cf066e7b055aa8c6e7f2a0dbe1a1\", \"driver\": \"local\"}}, \"scope\": \"local\", \"time\": 1686325519, \"timeNano\": 1686325519191951086}}",
+            "module": "docker-listener",
+            "dataset": "wodle-docker-listener",
+            "kind": "event",
+            "outcome": "unknown",
+            "created": "2023-06-09T15:45:19Z",
+            "category":
+            [
+                "file",
+                "driver"
+            ],
+            "type": "end"
+        },
+        "host":
+        {
+            "id": "003"
+        },
+        "container":
+        {
+            "id": "hello"
+        },
+        "~volume":
+        {
+            "attributes":
+            {
+                "container": "ed849856b6bbf94b17cc90601084b149db10cf066e7b055aa8c6e7f2a0dbe1a1",
+                "driver": "local"
+            }
+        }
+    }
+]

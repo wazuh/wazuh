@@ -16,22 +16,71 @@ from operator import eq
 from os import listdir, path, remove, stat, walk
 from uuid import uuid4
 
+from jsonschema import ValidationError, validate, validators
 from wazuh import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core import common
+from wazuh.core.cluster.utils import (
+    AGENT_CHUNK_SIZE,
+    AGENT_RECONNECTION_STABILITY_TIME,
+    AGENT_RECONNECTION_TIME,
+    FREQUENCY,
+    HAPROXY_HELPER,
+    HAPROXY_PORT,
+    HAPROXY_PROTOCOL,
+    IMBALANCE_TOLERANCE,
+    REMOVE_DISCONNECTED_NODE_AFTER,
+    get_cluster_items,
+    read_config,
+)
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.cluster.utils import get_cluster_items, read_config
-from wazuh.core.utils import blake2b, mkdir_with_mode, get_utc_now, get_date_from_timestamp, to_relative_path
+from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode, to_relative_path
 
 logger = logging.getLogger('wazuh')
 
 # Separators used in compression/decompression functions to delimit files.
 FILE_SEP = '|@@//@@|'
 PATH_SEP = '|//@@//|'
+MIN_PORT = 1024
+MAX_PORT = 65535
 
+HAPROXY_HELPER_SCHEMA = {
+    'type': 'object',
+    'properties': {
+        HAPROXY_PORT: {'type': 'integer', 'minimum': MIN_PORT, 'maximum': MAX_PORT},
+        HAPROXY_PROTOCOL: {'type': 'string', 'enum': ['http', 'https']},
+        FREQUENCY: {'type': 'integer', 'minimum': 10},
+        AGENT_RECONNECTION_STABILITY_TIME: {'type': 'integer', 'minimum': 10},
+        AGENT_CHUNK_SIZE: {'type': 'integer', 'minimum': 100},
+        AGENT_RECONNECTION_TIME: {'type': 'integer', 'minimum': 0},
+        IMBALANCE_TOLERANCE: {'type': 'number', 'exclusiveMinimum': 0, 'maximum': 1},
+        REMOVE_DISCONNECTED_NODE_AFTER: {'type': 'integer', 'minimum': 0},
+    },
+}
 
 #
 # Cluster
 #
+
+def validate_haproxy_helper_config(config: dict):
+    """Validate the values of the give HAProxy helper configuration.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration to validate.
+
+    Raises
+    ------
+    WazuhError(3004)
+        If there any invalid value.
+    """
+    try:
+        validate(config, HAPROXY_HELPER_SCHEMA, cls=validators.Draft202012Validator)
+    except ValidationError as error:
+        raise WazuhError(
+            3004,
+            f'Invalid value for {error.path.pop()}. {error.message}'
+        )
 
 
 def check_cluster_config(config):
@@ -71,8 +120,8 @@ def check_cluster_config(config):
     elif not isinstance(config['port'], int):
         raise WazuhError(3004, "Port has to be an integer.")
 
-    elif not 1024 < config['port'] < 65535:
-        raise WazuhError(3004, "Port must be higher than 1024 and lower than 65535.")
+    elif not MIN_PORT < config['port'] < MAX_PORT:
+        raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
 
     if len(config['nodes']) > 1:
         logger.warning(
@@ -83,6 +132,8 @@ def check_cluster_config(config):
 
     if len(invalid_elements) != 0:
         raise WazuhError(3004, f"Invalid elements in node fields: {', '.join(invalid_elements)}.")
+
+    validate_haproxy_helper_config(config.get(HAPROXY_HELPER, {}))
 
 
 def get_node():
@@ -374,7 +425,7 @@ def compress_files(name, list_path, cluster_control_json=None, max_zip_size=None
             except zlib.error as e:
                 raise WazuhError(3001, str(e))
             except Exception as e:
-                result_logs['debug'][file].append(f"Exception raised: " + str(WazuhException(3001, str(e))))
+                result_logs['debug'][file].append("Exception raised: " + str(WazuhException(3001, str(e))))
                 update_cluster_control(file, cluster_control_json, exists=False)
 
         try:

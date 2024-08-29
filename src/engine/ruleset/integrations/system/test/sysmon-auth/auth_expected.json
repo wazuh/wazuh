@@ -1,0 +1,619 @@
+[
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 21 21:54:44 server01 sshd[1001]: Accepted publickey for user01 from 192.168.1.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84",
+      "outcome": "success",
+      "start": "2024-02-21T21:54:44.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted publickey for user01 from 192.168.1.2 port 63673 ssh2: RSA 39:33:99:e9:a0:dc:f2:33:a3:e5:72:3b:7c:3a:56:84",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.2"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.2",
+      "domain": "192.168.1.2",
+      "ip": "192.168.1.2",
+      "port": 63673
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication",
+        "session"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 00:13:35 server01 sshd[1001]: Accepted password for user01 from 192.168.1.3 port 58803 ssh2",
+      "outcome": "success",
+      "start": "2024-02-23T00:13:35.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Accepted password for user01 from 192.168.1.3 port 58803 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.3"
+      ],
+      "user": [
+        "user01"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.3",
+      "domain": "192.168.1.3",
+      "ip": "192.168.1.3",
+      "port": 58803
+    },
+    "user": {
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 21 21:56:12 server01 sshd[1001]: Invalid user user04 from 192.168.1.2",
+      "outcome": "failure",
+      "start": "2024-02-21T21:56:12.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "Invalid user user04 from 192.168.1.2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "ip": [
+        "192.168.1.2"
+      ],
+      "user": [
+        "user04"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.2",
+      "domain": "192.168.1.2",
+      "ip": "192.168.1.2"
+    },
+    "user": {
+      "name": "user04"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "action": "ssh_login",
+      "category": [
+        "authentication"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 20 08:35:22 server02 sshd[1001]: Failed password for root from 192.168.1.4 port 29160 ssh2",
+      "outcome": "failure",
+      "start": "2024-02-20T08:35:22.000Z",
+      "type": [
+        "info"
+      ]
+    },
+    "host": {
+      "hostname": "server02",
+      "id": "001"
+    },
+    "message": "Failed password for root from 192.168.1.4 port 29160 ssh2",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server02"
+      ],
+      "ip": [
+        "192.168.1.4"
+      ],
+      "user": [
+        "root"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.4",
+      "domain": "192.168.1.4",
+      "ip": "192.168.1.4",
+      "port": 29160
+    },
+    "user": {
+      "name": "root"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 21 23:35:33 server01 sudo: user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+      "outcome": "success",
+      "start": "2024-02-21T23:35:33.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/0 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+    "process": {
+      "command_line": "/bin/ls",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 19 15:30:04 server02 sshd[1001]: Did not receive identification string from 192.168.1.4",
+      "outcome": "success",
+      "start": "2024-02-19T15:30:04.000Z"
+    },
+    "host": {
+      "hostname": "server02",
+      "id": "001"
+    },
+    "message": "Did not receive identification string from 192.168.1.4",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server02"
+      ],
+      "ip": [
+        "192.168.1.4"
+      ]
+    },
+    "source": {
+      "address": "192.168.1.4",
+      "domain": "192.168.1.4",
+      "ip": "192.168.1.4"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 23 00:08:48 server01 sudo: user01 : TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/secure",
+      "outcome": "success",
+      "start": "2024-02-23T00:08:48.000Z"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "user01 : TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/cat /var/log/secure",
+    "process": {
+      "command_line": "/bin/cat /var/log/secure",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user01",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user01"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "process"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 24 00:13:02 server03 sudo: user02 : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+      "outcome": "success",
+      "start": "2024-02-24T00:13:02.000Z"
+    },
+    "host": {
+      "hostname": "server03",
+      "id": "001"
+    },
+    "message": "user02 : user NOT in sudoers ; TTY=pts/1 ; PWD=/home/user01 ; USER=root ; COMMAND=/bin/ls",
+    "process": {
+      "command_line": "/bin/ls",
+      "name": "sudo",
+      "working_directory": "/home/user01"
+    },
+    "related": {
+      "hosts": [
+        "server03"
+      ],
+      "user": [
+        "user02",
+        "root"
+      ]
+    },
+    "user": {
+      "effective": {
+        "name": "root"
+      },
+      "name": "user02"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:47:05 server01 groupadd[1001]: new group: name=user03, GID=48",
+      "outcome": "success",
+      "start": "2024-02-22T11:47:05.000Z",
+      "type": [
+        "group",
+        "creation"
+      ]
+    },
+    "group": {
+      "id": "48",
+      "name": "user03"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "new group: name=user03, GID=48",
+    "process": {
+      "name": "groupadd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ]
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "category": [
+        "iam"
+      ],
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 11:47:05 server01 useradd[1001]: new user: name=user03, UID=48, GID=48, home=/usr/share/httpd, shell=/sbin/nologin",
+      "outcome": "success",
+      "start": "2024-02-22T11:47:05.000Z",
+      "type": [
+        "user",
+        "creation"
+      ]
+    },
+    "group": {
+      "id": "48"
+    },
+    "host": {
+      "hostname": "server01",
+      "id": "001"
+    },
+    "message": "new user: name=user03, UID=48, GID=48, home=/usr/share/httpd, shell=/sbin/nologin",
+    "process": {
+      "name": "useradd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server01"
+      ],
+      "user": [
+        "user03"
+      ]
+    },
+    "user": {
+      "id": "48",
+      "name": "user03"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  },
+  {
+    "agent": {
+      "id": "001",
+      "name": "wazuh-agent-1",
+      "type": "wazuh-agent"
+    },
+    "event": {
+      "dataset": "system-auth",
+      "kind": "event",
+      "module": "system",
+      "original": "Feb 22 12:53:50 server04 sshd[1001]: error: PAM: User not known to the underlying authentication module for illegal user user04 from user04.local",
+      "outcome": "success",
+      "start": "2024-02-22T12:53:50.000Z"
+    },
+    "host": {
+      "hostname": "server04",
+      "id": "001"
+    },
+    "message": "error: PAM: User not known to the underlying authentication module for illegal user user04 from user04.local",
+    "process": {
+      "name": "sshd",
+      "pid": 1001
+    },
+    "related": {
+      "hosts": [
+        "server04"
+      ],
+      "user": [
+        "user04"
+      ]
+    },
+    "source": {
+      "address": "user04.local",
+      "domain": "user04.local"
+    },
+    "user": {
+      "name": "user04"
+    },
+    "wazuh": {
+      "decoders": [
+        "syslog",
+        "system-auth"
+      ],
+      "location": "[001] (wazuh-agent-1) any->/test/auth.log",
+      "origin": "/test/auth.log",
+      "queue": 49,
+      "registered_ip": "any",
+      "source": "logcollector"
+    }
+  }
+]

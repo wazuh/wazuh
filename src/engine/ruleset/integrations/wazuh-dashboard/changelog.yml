@@ -1,0 +1,4 @@
+items:
+    - version: 0.0.1-dev
+      short: Created integration for Wazuh Dashboard
+      pr: "[#17633](https://github.com/wazuh/wazuh/pull/17633)"

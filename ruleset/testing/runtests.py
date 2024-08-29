@@ -245,10 +245,11 @@ class OssecTester(object):
                 elif failed_test["actual_rule"] != failed_test["expected_rule"]:
                     summary = "Hit a different rule. Expected: " + failed_test["expected_rule"] + ". Got: " + failed_test["actual_rule"]
                 elif failed_test["actual_level"] != failed_test["expected_level"]:
-                    summary["summary"] = "Unexpected alert level. Expected: " + failed_test["expected_level"] + ". Got: " + failed_test["actual_level"]
+                    summary = "Unexpected alert level. Expected: " + failed_test["expected_level"] + ". Got: " + failed_test["actual_level"]
 
                 print("----------------------------------------")
-                print("Failed test: " + failed_test["line_name"])
+                print("Failed test: " + failed_test["section"])
+                print("Failed log: " + failed_test["line_name"])
                 print("Summary: " + summary)
                 print(template.format("", "Expected", "Result"))
                 print(template.format("------", "------", "------"))

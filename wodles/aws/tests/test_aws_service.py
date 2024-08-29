@@ -36,9 +36,10 @@ def test_aws_service_initializes_properly(mock_wazuh_integration, mock_version, 
     mock_sts.return_value = mock_client
     kwargs = utils.get_aws_service_parameters(db_table_name=utils.TEST_TABLE_NAME,
                                               service_name=utils.TEST_SERVICE_NAME, reparse=True,
-                                              access_key=utils.TEST_ACCESS_KEY, secret_key=utils.TEST_SECRET_KEY,
                                               profile=utils.TEST_AWS_PROFILE, iam_role_arn=utils.TEST_IAM_ROLE_ARN,
-                                              only_logs_after=utils.TEST_ONLY_LOGS_AFTER, region=utils.TEST_REGION,
+                                              only_logs_after=utils.TEST_ONLY_LOGS_AFTER,
+                                              account_alias=utils.TEST_ACCOUNT_ALIAS,
+                                              region=utils.TEST_REGION,
                                               discard_field=utils.TEST_DISCARD_FIELD,
                                               discard_regex=utils.TEST_DISCARD_REGEX,
                                               sts_endpoint=utils.TEST_STS_ENDPOINT,
@@ -46,7 +47,6 @@ def test_aws_service_initializes_properly(mock_wazuh_integration, mock_version, 
                                               iam_role_duration=utils.TEST_IAM_ROLE_DURATION)
     instance = aws_service.AWSService(**kwargs)
     mock_wazuh_integration.assert_called_with(instance, service_name=utils.TEST_SERVICE_NAME,
-                                              access_key=kwargs["access_key"], secret_key=kwargs["secret_key"],
                                               profile=kwargs["profile"], iam_role_arn=kwargs["iam_role_arn"],
                                               region=kwargs["region"], discard_field=kwargs["discard_field"],
                                               discard_regex=kwargs["discard_regex"],
@@ -58,7 +58,7 @@ def test_aws_service_initializes_properly(mock_wazuh_integration, mock_version, 
     assert instance.reparse
     assert instance.region == utils.TEST_REGION
     assert instance.only_logs_after == utils.TEST_ONLY_LOGS_AFTER
-    mock_sts.assert_called_with(kwargs["access_key"], kwargs["secret_key"], kwargs["profile"])
+    mock_sts.assert_called_with(kwargs["profile"])
     mock_client.get_caller_identity.assert_called_once()
 
 

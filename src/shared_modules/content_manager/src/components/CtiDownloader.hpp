@@ -22,10 +22,25 @@
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
+
+static const unsigned int TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME {90};
+static const unsigned int GENERIC_ERROR_INITIAL_RETRY_TIME {1};
+
+/**
+ * @brief CTI download error types.
+ *
+ */
+enum class CtiErrorType
+{
+    NO_ERROR,
+    GENERIC_SERVER_ERROR,
+    TOO_MANY_REQUESTS
+};
 
 /**
  * @brief Custom exception used to identify server HTTP errors when downloading from the CTI server.
@@ -33,16 +48,19 @@
  */
 class cti_server_error : public std::exception // NOLINT
 {
-    std::string m_errorMessage; ///< Exception message.
+    const std::string m_errorMessage; ///< Exception message.
+    const CtiErrorType m_errorType;   ///< Exception error type.
 
 public:
     /**
      * @brief Class constructor.
      *
      * @param errorMessage Exception message.
+     * @param errorType Error code.
      */
-    explicit cti_server_error(std::string errorMessage)
+    explicit cti_server_error(std::string errorMessage, CtiErrorType errorType)
         : m_errorMessage(std::move(errorMessage))
+        , m_errorType(errorType)
     {
     }
 
@@ -54,6 +72,16 @@ public:
     const char* what() const noexcept override
     {
         return m_errorMessage.c_str();
+    }
+
+    /**
+     * @brief Returns the type of error.
+     *
+     * @return const CtiErrorType Error type.
+     */
+    const CtiErrorType type() const noexcept
+    {
+        return m_errorType;
     }
 };
 
@@ -72,9 +100,9 @@ protected:
      */
     struct CtiBaseParameters
     {
-        int lastOffset {};               ///< Last available offset from CTI.
-        std::string lastSnapshotLink {}; ///< Last snapshot URL from CTI.
-        int lastSnapshotOffset {};       ///< Last offset within the last snapshot.
+        std::optional<int> lastOffset {};               ///< Last available offset from CTI.
+        std::optional<std::string> lastSnapshotLink {}; ///< Last snapshot URL from CTI.
+        std::optional<int> lastSnapshotOffset {};       ///< Last offset within the last snapshot.
     };
 
     /**
@@ -85,26 +113,67 @@ protected:
      */
     CtiBaseParameters getCtiBaseParameters(const std::string& ctiURL)
     {
-        CtiBaseParameters parameters;
+        nlohmann::json rawMetadata;
 
         // Routine that stores the necessary parameters.
-        const auto onSuccess {[&parameters](const std::string& response)
+        const auto onSuccess {[&rawMetadata](const std::string& response)
                               {
-                                  const auto responseData = nlohmann::json::parse(response).at("data");
+                                  logDebug2(WM_CONTENTUPDATER, "CTI raw metadata: '%s'", response.c_str());
 
-                                  parameters.lastOffset = responseData.at("last_offset").get<int>();
-                                  parameters.lastSnapshotLink =
-                                      responseData.at("last_snapshot_link").get<std::string>();
-                                  parameters.lastSnapshotOffset = responseData.at("last_snapshot_offset").get<int>();
+                                  if (!nlohmann::json::accept(response))
+                                  {
+                                      throw std::runtime_error {"Invalid CTI metadata format"};
+                                  }
+
+                                  auto responseJSON = nlohmann::json::parse(response);
+                                  if (!responseJSON.contains("data"))
+                                  {
+                                      throw std::runtime_error {"No 'data' field in CTI metadata"};
+                                  }
+
+                                  rawMetadata = std::move(responseJSON.at("data"));
                               }};
 
         // Make a get request to the API to get the consumer offset.
         performQueryWithRetry(ctiURL, onSuccess);
 
-        logDebug2(WM_CONTENTUPDATER, "CTI last offset: '%d'", parameters.lastOffset);
-        logDebug2(WM_CONTENTUPDATER, "CTI last snapshot link: '%s'", parameters.lastSnapshotLink.c_str());
-        logDebug2(WM_CONTENTUPDATER, "CTI snapshot last offset: '%d'", parameters.lastSnapshotOffset);
+        // Return if interrupted.
+        if (m_spUpdaterContext->spUpdaterBaseContext->spStopCondition->check())
+        {
+            return CtiBaseParameters();
+        }
 
+        // Lambda that validates a metadata field.
+        const auto isKeyValueValid {
+            [&rawMetadata](const std::string& key)
+            {
+                if (!rawMetadata.contains(key))
+                {
+                    logWarn(WM_CONTENTUPDATER, "Missing CTI metadata key: %s.", key.c_str());
+                    return false;
+                }
+
+                const auto& data {rawMetadata.at(key)};
+                if (data.is_null() || (data.is_string() && data.get_ref<const std::string&>().empty()))
+                {
+                    logWarn(WM_CONTENTUPDATER, "Null or empty CTI metadata value for key: %s.", key.c_str());
+                    return false;
+                }
+
+                return true;
+            }};
+
+        CtiBaseParameters parameters;
+        parameters.lastOffset = isKeyValueValid("last_offset")
+                                    ? std::optional<int>(rawMetadata.at("last_offset").get<int>())
+                                    : std::nullopt;
+        parameters.lastSnapshotLink =
+            isKeyValueValid("last_snapshot_link")
+                ? std::optional<std::string>(rawMetadata.at("last_snapshot_link").get<std::string>())
+                : std::nullopt;
+        parameters.lastSnapshotOffset = isKeyValueValid("last_snapshot_offset")
+                                            ? std::optional<int>(rawMetadata.at("last_snapshot_offset").get<int>())
+                                            : std::nullopt;
         return parameters;
     }
 
@@ -128,39 +197,78 @@ protected:
             {
                 const std::string exceptionMessage {"Error " + std::to_string(statusCode) + " from server: " + message};
 
-                // If there is an error from the server, throw a different exception.
+                if (statusCode == 429)
+                {
+                    throw cti_server_error {exceptionMessage, CtiErrorType::TOO_MANY_REQUESTS};
+                }
+
                 if (statusCode >= 500 && statusCode <= 599)
                 {
-                    throw cti_server_error {exceptionMessage};
+                    throw cti_server_error {exceptionMessage, CtiErrorType::GENERIC_SERVER_ERROR};
                 }
                 throw std::runtime_error {exceptionMessage};
             }};
 
-        constexpr auto INITIAL_SLEEP_TIME {0};
-        auto sleepTime {INITIAL_SLEEP_TIME};
-        auto retryAttempt {0};
-        auto retry {true};
+        unsigned int sleepTime {0};
+        unsigned int retryAttempt;
+        auto lastErrorType {CtiErrorType::NO_ERROR};
         auto& stopCondition {m_spUpdaterContext->spUpdaterBaseContext->spStopCondition};
 
-        while (retry && !(stopCondition->waitFor(std::chrono::seconds(sleepTime))))
+        while (!stopCondition->waitFor(std::chrono::seconds(sleepTime)))
         {
             try
             {
-                m_urlRequest.get(HttpURL(URL + queryParameters), onSuccess, onError, outputFilepath);
-                retry = false;
+                m_urlRequest.get(HttpURL(URL + queryParameters),
+                                 onSuccess,
+                                 onError,
+                                 outputFilepath,
+                                 DEFAULT_HEADERS,
+                                 {},
+                                 m_spUpdaterContext->spUpdaterBaseContext->httpUserAgent);
+                return;
             }
             catch (const cti_server_error& e)
             {
-                constexpr auto SLEEP_TIME_THRESHOLD {30};
+                logDebug1(WM_CONTENTUPDATER, e.what());
 
-                logError(WM_CONTENTUPDATER, e.what());
-
-                // Increase sleep time exponentially, up to the threshold
-                if (sleepTime < SLEEP_TIME_THRESHOLD)
+                switch (e.type())
                 {
-                    sleepTime = std::min(SLEEP_TIME_THRESHOLD, static_cast<int>(std::pow(2, retryAttempt)));
-                    ++retryAttempt;
+                    case CtiErrorType::GENERIC_SERVER_ERROR:
+                    {
+                        if (CtiErrorType::GENERIC_SERVER_ERROR == lastErrorType)
+                        {
+                            // Increase sleep time exponentially, up to the threshold
+                            constexpr auto SLEEP_TIME_THRESHOLD {30};
+                            if (sleepTime < SLEEP_TIME_THRESHOLD)
+                            {
+                                sleepTime = std::min(SLEEP_TIME_THRESHOLD, static_cast<int>(std::pow(2, retryAttempt)));
+                                ++retryAttempt;
+                            }
+                        }
+                        else
+                        {
+                            // First time with this particular error.
+                            sleepTime = GENERIC_ERROR_INITIAL_RETRY_TIME;
+                            retryAttempt = 0;
+                        }
+                        break;
+                    }
+
+                    case CtiErrorType::TOO_MANY_REQUESTS:
+                    {
+                        sleepTime = m_tooManyRequestsRetryTime;
+                        break;
+                    }
+
+                    // LCOV_EXCL_START
+                    default:
+                        throw std::runtime_error {"Invalid CTI error type"};
+                        // LCOV_EXCL_STOP
                 }
+
+                lastErrorType = e.type();
+
+                logDebug1(WM_CONTENTUPDATER, "Retrying download in %d seconds", sleepTime);
             }
         }
     }
@@ -175,6 +283,7 @@ protected:
     IURLRequest& m_urlRequest;                          ///< Interface to perform HTTP requests.
     const std::string m_componentName;                  ///< Stage name.
     std::shared_ptr<UpdaterContext> m_spUpdaterContext; ///< Updater context.
+    const unsigned int m_tooManyRequestsRetryTime; ///< Time between retries when receiving a "too many requests" error.
 
 public:
     // LCOV_EXCL_START
@@ -186,10 +295,14 @@ public:
      *
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
      * @param componentName Component name used to update the stage status.
+     * @param tooManyRequestsRetryTime Time between retries when a "too many requests" error is received.
      */
-    explicit CtiDownloader(IURLRequest& urlRequest, std::string componentName)
+    explicit CtiDownloader(IURLRequest& urlRequest,
+                           std::string componentName,
+                           unsigned int tooManyRequestsRetryTime = TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME)
         : m_urlRequest(urlRequest)
         , m_componentName(std::move(componentName))
+        , m_tooManyRequestsRetryTime(tooManyRequestsRetryTime)
     {
     }
 

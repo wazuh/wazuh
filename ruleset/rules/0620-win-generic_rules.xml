@@ -51,7 +51,7 @@
 
   <rule id="64104" level="0">
     <if_sid>60009,60010,60011,60012</if_sid>
-    <field name="win.system.channel">^Microsoft-Windows-TerminalServices$</field>
+    <field name="win.system.channel">^Microsoft-Windows-TerminalServices-Gateway/Operational$</field>
     <description>Group of Windows rules for Terminal Services</description>
     <options>no_full_log</options>
   </rule>

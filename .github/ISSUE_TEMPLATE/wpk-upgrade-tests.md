@@ -1,8 +1,8 @@
 ---
-name: Release Candidate - WPK upgrade tests 
+name: Release Candidate - WPK upgrade tests
 about: Report the results after upgrade agent via WPK.
-title: 'Release [WAZUH VERSION] - Release Candidate [RC VERSION] - WPK upgrade tests'
-labels: 'WPK, core'
+title: Release [WAZUH VERSION] - Release Candidate [RC VERSION] - WPK upgrade tests
+labels: ''
 assignees: ''
 
 ---
@@ -202,4 +202,4 @@ The definition of done for this one is the validation of the conclusions and the
 
 All checks from below must be accepted in order to close this issue.
 
-- [ ] 
+- [ ]

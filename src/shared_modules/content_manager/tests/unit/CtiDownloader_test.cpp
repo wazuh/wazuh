@@ -15,6 +15,7 @@
 #include "fakes/fakeServer.hpp"
 #include "updaterContext.hpp"
 #include "gtest/gtest.h"
+#include <chrono>
 #include <memory>
 
 const auto OK_STATUS = R"([{"stage":"CtiDummyDownloader","status":"ok"}])"_json;
@@ -24,8 +25,9 @@ constexpr auto CONTENT_TYPE {"raw"};
 constexpr auto FAKE_CTI_URL {"http://localhost:4444/snapshot/consumers"};
 constexpr auto RAW_URL {"http://localhost:4444/raw"};
 
-constexpr auto DEFAULT_LAST_OFFSET {0};
-constexpr auto DEFAULT_LAST_SNAPSHOT_LINK {""};
+constexpr auto TOO_MANY_REQUESTS_RETRY_TIME {1};
+constexpr auto TOO_MANY_REQUESTS_RETRY_TIME_MS {TOO_MANY_REQUESTS_RETRY_TIME * 1000};
+constexpr auto GENERIC_ERROR_INITIAL_RETRY_TIME_MS {GENERIC_ERROR_INITIAL_RETRY_TIME * 1000};
 
 /**
  * @class CtiDummyDownloader
@@ -43,56 +45,33 @@ private:
      */
     void download(UpdaterContext& context) override
     {
-        const auto parameters {
-            getCtiBaseParameters(context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>())};
-        m_lastOffset = parameters.lastOffset;
-        m_lastSnapshotLink = parameters.lastSnapshotLink;
-        m_lastSnapshotOffset = parameters.lastSnapshotOffset;
+        m_parameters = std::make_shared<CtiBaseParameters>(
+            getCtiBaseParameters(context.spUpdaterBaseContext->configData.at("url").get_ref<const std::string&>()));
     }
 
-    int m_lastOffset {DEFAULT_LAST_OFFSET};                      ///< Last offset downloaded from CTI.
-    std::string m_lastSnapshotLink {DEFAULT_LAST_SNAPSHOT_LINK}; ///< Last snapshot link downloaded from CTI.
-    int m_lastSnapshotOffset {DEFAULT_LAST_OFFSET};              ///< Last offset within the snapshot.
+    std::shared_ptr<CtiBaseParameters> m_parameters; ///< Parameters used on tests.
 
 public:
     /**
      * @brief Class constructor.
      *
      * @param urlRequest Object to perform the HTTP requests to the CTI API.
+     * @param tooManyRequestsRetryTime Time between retries when a "too many requests" error is received.
      */
-    explicit CtiDummyDownloader(IURLRequest& urlRequest)
-        : CtiDownloader(urlRequest, "CtiDummyDownloader")
+    explicit CtiDummyDownloader(IURLRequest& urlRequest,
+                                unsigned int tooManyRequestsRetryTime = TOO_MANY_REQUESTS_DEFAULT_RETRY_TIME)
+        : CtiDownloader(urlRequest, "CtiDummyDownloader", tooManyRequestsRetryTime)
     {
     }
 
     /**
-     * @brief Returns the CTI last offset.
+     * @brief Returns the CTI base parameters.
      *
-     * @return int Last offset.
+     * @return CtiBaseParameters Downloaded parameters.
      */
-    int getLastOffset() const
+    std::shared_ptr<CtiBaseParameters> getParameters() const
     {
-        return m_lastOffset;
-    }
-
-    /**
-     * @brief Returns the snapshot last offset.
-     *
-     * @return int Last snapshot offset.
-     */
-    int getLastSnapshotOffset() const
-    {
-        return m_lastSnapshotOffset;
-    }
-
-    /**
-     * @brief Returns the CTI last snapshot link.
-     *
-     * @return std::string Last snapshot link.
-     */
-    std::string getLastSnapshotLink() const
-    {
-        return m_lastSnapshotLink;
+        return m_parameters;
     }
 };
 
@@ -109,8 +88,9 @@ void CtiDownloaderTest::SetUp()
 
 void CtiDownloaderTest::TearDown()
 {
-    // Clear fake server errors queue.
+    // Clear fake server errors queue and records.
     m_spFakeServer->clearErrorsQueue();
+    m_spFakeServer->clearRecords();
 }
 
 void CtiDownloaderTest::SetUpTestSuite()
@@ -155,16 +135,17 @@ TEST_F(CtiDownloaderTest, BaseParametersDownload)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
-    EXPECT_EQ(downloader.getLastOffset(), 3);
-    EXPECT_EQ(downloader.getLastSnapshotLink(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
-    EXPECT_EQ(downloader.getLastSnapshotOffset(), 3);
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
 }
 
 /**
- * @brief Tests the correct download of the parameters with the retry feature.
+ * @brief Tests the correct download of the parameters with the retry feature when a 5XX error is received.
  *
  */
-TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetry)
+TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryGenericServerError)
 {
     // Push server error.
     m_spFakeServer->pushError(500);
@@ -183,9 +164,96 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetry)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
-    EXPECT_EQ(downloader.getLastOffset(), 3);
-    EXPECT_EQ(downloader.getLastSnapshotLink(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
-    EXPECT_EQ(downloader.getLastSnapshotOffset(), 3);
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+
+    // Check amount of queries and timestamps.
+    const auto& records {m_spFakeServer->getRecords()};
+    ASSERT_EQ(records.size(), 3);
+    const auto& firstQueryTimestamp {records.front().timestamp};
+    const auto& lastQueryTimestamp {records.back().timestamp};
+    const auto milliseconds {
+        std::chrono::duration_cast<std::chrono::milliseconds>(lastQueryTimestamp - firstQueryTimestamp).count()};
+    EXPECT_GE(milliseconds, TOO_MANY_REQUESTS_RETRY_TIME_MS * 2);
+}
+
+/**
+ * @brief Tests the correct download of the parameters with the retry feature when a "too many requests" error is
+ * received.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryTooManyRequestsError)
+{
+    // Push error.
+    m_spFakeServer->pushError(429);
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), TOO_MANY_REQUESTS_RETRY_TIME)};
+
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+
+    // Check amount of queries and timestamps.
+    const auto& records {m_spFakeServer->getRecords()};
+    ASSERT_EQ(records.size(), 2);
+    const auto& firstQueryTimestamp {records.front().timestamp};
+    const auto& lastQueryTimestamp {records.back().timestamp};
+    const auto milliseconds {
+        std::chrono::duration_cast<std::chrono::milliseconds>(lastQueryTimestamp - firstQueryTimestamp).count()};
+    EXPECT_GE(milliseconds, TOO_MANY_REQUESTS_RETRY_TIME_MS);
+}
+
+/**
+ * @brief Tests the correct download of the parameters with the retry feature when different server errors are received.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadWithRetryDifferentErrors)
+{
+    // Push error.
+    m_spFakeServer->pushError(429);
+    m_spFakeServer->pushError(550);
+    m_spFakeServer->pushError(429);
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance(), TOO_MANY_REQUESTS_RETRY_TIME)};
+
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 3);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "localhost:4444/" + SNAPSHOT_FILE_NAME);
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 3);
+
+    // Check amount of queries and timestamps.
+    const auto& records {m_spFakeServer->getRecords()};
+    ASSERT_EQ(records.size(), 4);
+    const auto& firstQueryTimestamp {records.front().timestamp};
+    const auto& lastQueryTimestamp {records.back().timestamp};
+    const auto milliseconds {
+        std::chrono::duration_cast<std::chrono::milliseconds>(lastQueryTimestamp - firstQueryTimestamp).count()};
+    EXPECT_GE(milliseconds, TOO_MANY_REQUESTS_RETRY_TIME_MS * 2 + GENERIC_ERROR_INITIAL_RETRY_TIME_MS);
 }
 
 /**
@@ -228,6 +296,9 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadClientError)
     expectedData["offset"] = 0;
 
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check amount of queries.
+    ASSERT_EQ(m_spFakeServer->getRecords().size(), 1);
 }
 
 /**
@@ -250,7 +321,205 @@ TEST_F(CtiDownloaderTest, BaseParametersDownloadInterrupted)
     EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 
     // Check expected base parameters.
-    EXPECT_EQ(downloader.getLastOffset(), DEFAULT_LAST_OFFSET);
-    EXPECT_EQ(downloader.getLastSnapshotLink(), DEFAULT_LAST_SNAPSHOT_LINK);
-    EXPECT_EQ(downloader.getLastSnapshotOffset(), DEFAULT_LAST_OFFSET);
+    const auto parameters {downloader.getParameters()};
+    EXPECT_FALSE(parameters->lastOffset.has_value());
+    EXPECT_FALSE(parameters->lastSnapshotLink.has_value());
+    EXPECT_FALSE(parameters->lastSnapshotOffset.has_value());
+}
+
+/**
+ * @brief Tests the download of metadata with invalid JSON format.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataInvalidFormat)
+{
+    std::string mockMetadata = R"({data":{})";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_THROW(downloader.handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+}
+
+/**
+ * @brief Tests the download of metadata with missing last_snapshot_offset key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingLastSnapshotOffsetKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_offset": 100,
+                "last_snapshot_link": "some_link"
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 100);
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "some_link");
+    EXPECT_FALSE(parameters->lastSnapshotOffset.has_value());
+}
+
+/**
+ * @brief Tests the download of metadata with missing last_snapshot_link key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingLastSnapshotLinkKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_offset": 100,
+                "last_snapshot_offset": 50
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 100);
+    EXPECT_FALSE(parameters->lastSnapshotLink.has_value());
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 50);
+}
+
+/**
+ * @brief Tests the download of metadata with missing last_offset key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingLastOffsetKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "some_link",
+                "last_snapshot_offset": 50
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_FALSE(parameters->lastOffset.has_value());
+    EXPECT_EQ(parameters->lastSnapshotLink.value(), "some_link");
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 50);
+}
+
+/**
+ * @brief Tests the download of metadata with an empty last_snapshot_link key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataEmptyLastSnapshotLinkKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "data":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "",
+                "last_snapshot_offset": 50,
+                "last_offset": 100
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_NO_THROW(downloader.handleRequest(m_spUpdaterContext));
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = OK_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
+
+    // Check expected base parameters.
+    const auto parameters {downloader.getParameters()};
+    EXPECT_EQ(parameters->lastOffset.value(), 100);
+    EXPECT_FALSE(parameters->lastSnapshotLink.has_value());
+    EXPECT_EQ(parameters->lastSnapshotOffset.value(), 50);
+}
+
+/**
+ * @brief Tests the download of metadata without 'data' key.
+ *
+ */
+TEST_F(CtiDownloaderTest, BaseParametersDownloadMetadataMissingDataKey)
+{
+    std::string mockMetadata = R"(
+        {
+            "metadata":
+            {
+                "ignored_key": true,
+                "last_snapshot_link": "some_link",
+                "last_snapshot_offset": 50,
+                "last_offset": 100
+            }
+        }
+    )";
+    m_spFakeServer->setCtiMetadata(std::move(mockMetadata));
+
+    auto downloader {CtiDummyDownloader(HTTPRequest::instance())};
+    ASSERT_THROW(downloader.handleRequest(m_spUpdaterContext), std::runtime_error);
+
+    // Check expected data.
+    nlohmann::json expectedData;
+    expectedData["paths"] = m_spUpdaterContext->data.at("paths");
+    expectedData["stageStatus"] = FAIL_STATUS;
+    expectedData["type"] = CONTENT_TYPE;
+    expectedData["offset"] = 0;
+    EXPECT_EQ(m_spUpdaterContext->data, expectedData);
 }

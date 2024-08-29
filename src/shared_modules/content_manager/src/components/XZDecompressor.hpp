@@ -1,5 +1,5 @@
 /*
- * Wazuh content manager
+ * Wazuh Content Manager
  * Copyright (C) 2015, Wazuh Inc.
  * May 02, 2023.
  *
@@ -19,7 +19,11 @@
 #include "utils/chainOfResponsability.hpp"
 #include "utils/stringHelper.h"
 #include "utils/xzHelper.hpp"
+#include <filesystem>
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
 /**
  * @class XZDecompressor
@@ -37,40 +41,30 @@ private:
      */
     void decompress(UpdaterContext& context) const
     {
-        constexpr auto COMPONENT_NAME {"XZDecompressor"};
-
         for (auto& path : context.data.at("paths"))
         {
+            // Copy input path.
             std::filesystem::path inputPath {path};
-            try
-            {
-                // Update the output folder and file name, and update the path in the context.
-                // Ex: assumings compressionType = xz and dataFormat = json
-                // from: /tmp/output_folder/downloads/file.xz
-                // to: /tmp/output_folder/contents/file.json
-                Utils::replaceAll(path.get_ref<std::string&>(), DOWNLOAD_FOLDER, CONTENTS_FOLDER);
-                Utils::replaceAll(path.get_ref<std::string&>(),
-                                  context.spUpdaterBaseContext->configData.at("compressionType").get<std::string>(),
-                                  context.spUpdaterBaseContext->configData.at("dataFormat").get<std::string>());
-                std::filesystem::path outputPath {path};
+            auto outputPath {path.get<std::string>()};
 
-                logDebug2(WM_CONTENTUPDATER,
-                          "Decompressing '%s' into '%s'",
-                          inputPath.string().c_str(),
-                          outputPath.string().c_str());
-                Utils::XzHelper(inputPath, outputPath).decompress();
-            }
-            catch (const std::exception& e)
-            {
-                // Set the status of the stage
-                Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, context);
+            // Replace downloads folder for contents folder.
+            // For example, for an output folder equal to '/tmp/output' and a path equal to
+            // '/tmp/output/downloads/file.json.xz', the new path will be '/tmp/output/contents/file.json.xz'.
+            const auto& outputFolder {context.spUpdaterBaseContext->outputFolder};
+            Utils::replaceFirst(
+                outputPath, (outputFolder / DOWNLOAD_FOLDER).string(), (outputFolder / CONTENTS_FOLDER).string());
 
-                throw std::runtime_error("XZDecompressor - Could not decompress the file " + inputPath.string() +
-                                         " because: " + e.what());
-            }
+            // Remove .xz extension.
+            outputPath = Utils::rightTrim(outputPath, inputPath.extension());
+
+            // Decompress.
+            logDebug2(
+                WM_CONTENTUPDATER, "Decompressing '%s' into '%s'", inputPath.string().c_str(), outputPath.c_str());
+            Utils::XzHelper(inputPath, outputPath).decompress();
+
+            // Decompression finished: Update context path.
+            path = std::move(outputPath);
         }
-
-        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, context);
     }
 
 public:
@@ -83,8 +77,22 @@ public:
     std::shared_ptr<UpdaterContext> handleRequest(std::shared_ptr<UpdaterContext> context) override
     {
         logDebug1(WM_CONTENTUPDATER, "XZDecompressor - Starting process");
+        constexpr auto COMPONENT_NAME {"XZDecompressor"};
 
-        decompress(*context);
+        try
+        {
+            decompress(*context);
+        }
+        catch (const std::exception& e)
+        {
+            // Push error state.
+            Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_FAIL, *context);
+
+            throw std::runtime_error("Decompression failed: " + std::string(e.what()));
+        }
+
+        // Push success state.
+        Components::pushStatus(COMPONENT_NAME, Components::Status::STATUS_OK, *context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
     }

@@ -11,8 +11,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # Installation info
-VERSION="v4.9.0"
-REVISION="40900"
+VERSION="v5.0.0"
+REVISION="50000"
 TYPE="agent"
 
 ###  Do not modify below here ###
@@ -29,7 +29,7 @@ LOCK_PID="${LOCK}/pid"
 # This number should be more than enough (even if it is
 # started multiple times together). It will try for up
 # to 10 attempts (or 10 seconds) to execute.
-MAX_ITERATION="10"
+MAX_ITERATION="60"
 
 MAX_KILL_TRIES=600
 
@@ -63,7 +63,7 @@ lock()
         # Waiting 1 second before trying again
         sleep 1;
         i=`expr $i + 1`;
-        pid=`cat ${LOCK_PID}` 2>/dev/null
+        pid=$(cat ${LOCK_PID} 2>/dev/null)
 
         if [ $? = 0 ]
         then
