@@ -402,8 +402,8 @@ Public Function SetWazuhPermissions()
         ' Remove last backslash from home_dir
         install_dir = Left(home_dir, Len(home_dir) - 1)
 
-        remEveryonePerms = "icacls """ & install_dir & """ /reset /t"
-        WshShell.run remEveryonePerms, 0, True
+        remResetPerms = "icacls """ & install_dir & """ /reset /t"
+        WshShell.run remResetPerms, 0, True
 
         setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:r /q"
         WshShell.run setPermsInherit, 0, True
@@ -414,27 +414,18 @@ Public Function SetWazuhPermissions()
         grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:(OI)(CI)F"
         WshShell.run grantSystemPerm, 0, True
 
-        userSID = GetUserSID()
-        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(OI)(CI)RX"
-        WshShell.run grantUserPerm, 0, True
+        grantAuthenticatedUsersPermItems = "icacls """ & install_dir & """\* /grant *S-1-5-11:(OI)(CI)RX"
+        WshShell.run grantAuthenticatedUsersPermItems, 0, True
 
-        ' Remove Everyone group for ossec.conf
-        remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
-        WshShell.run remEveryonePerms, 0, True
-    End If
-End Function
+        grantAuthenticatedUsersPermDir = "icacls """ & install_dir & """ /grant *S-1-5-11:RX /t"
+        WshShell.run grantAuthenticatedUsersPermDir, 0, True
 
-Private Function GetUserSID()
-    GetUserSID = ""
-    Dim sDomain, oWMI, sDomUser
+        ' Remove Everyone group for ossec.conf and client.keys
+        remEveryonePermsConf = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-5-11 /q"
+        WshShell.run remEveryonePermsConf, 0, True
 
-    sDomain = CreateObject("WScript.Network").UserDomain
-    sDomUser = CreateObject( "WScript.Shell" ).ExpandEnvironmentStrings( "%USERNAME%" )
-
-    On Error Resume Next
-    Set oWMI = GetObject("winmgmts:{impersonationlevel=impersonate}!" & "/root/cimv2:Win32_UserAccount.Domain='" & sDomain & "'" & ",Name='" & sDomUser & "'")
-    If Err.Number = 0 Then
-        GetUserSID = oWMI.SID
+        remEveryonePermsKeys = "icacls """ & home_dir & "client.keys" & """ /remove *S-1-5-11 /q"
+        WshShell.run remEveryonePermsKeys, 0, True
     End If
 End Function
 
