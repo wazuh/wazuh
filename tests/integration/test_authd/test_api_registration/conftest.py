@@ -21,7 +21,7 @@ def wait_for_api_startup_module():
     """
     # Set the default values
     logs_format = 'plain'
-    host = '0.0.0.0'
+    host = ['0.0.0.0', '::']
     port = WAZUH_API_PORT
 
     # Check if specific values were set or set the defaults
