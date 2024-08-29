@@ -56,11 +56,12 @@ public:
 
         const auto osCPE = ScannerHelper::parseCPE(data->osCPEName(m_databaseFeedManager->cpeMappings()).data());
 
-        auto vulnerabilityScan = [&, functionName = logging::getLambdaName(__FUNCTION__, "vulnerabilityScan").c_str()](
+        auto vulnerabilityScan = [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "vulnerabilityScan")](
                                      const std::string& cnaName,
                                      const PackageData& package,
                                      const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
         {
+            const auto functionName = getLambdaName.c_str();
             try
             {
                 VersionObjectType objectType = VersionObjectType::DPKG;

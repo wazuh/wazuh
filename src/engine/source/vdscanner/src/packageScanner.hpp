@@ -87,8 +87,9 @@ private:
              &data,
              &cnaName,
              &vulnerabilityScan,
-             functionName = logging::getLambdaName(__FUNCTION__, "scanPackage").c_str()](const PackageData& package)
+             getLambdaName = logging::getLambdaName(__FUNCTION__, "scanPackage")](const PackageData& package)
         {
+            const auto functionName = getLambdaName.c_str();
             LOG_DEBUG_L(
                 functionName,
                 "Initiating a vulnerability scan for package '{}' ({}) ({}) with CVE Numbering Authorities (CNA)"
@@ -558,12 +559,12 @@ public:
      */
     std::shared_ptr<TScanContext> handleRequest(std::shared_ptr<TScanContext> data) override
     {
-        auto vulnerabilityScan =
-            [&data, this, functionName = logging::getLambdaName(__FUNCTION__, "vulnerabilityScan").c_str()](
-                const std::string& cnaName,
-                const PackageData& package,
-                const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
+        auto vulnerabilityScan = [&data, this, getLambdaName = logging::getLambdaName(__FUNCTION__, "scanPackage")](
+                                     const std::string& cnaName,
+                                     const PackageData& package,
+                                     const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
         {
+            const auto functionName = getLambdaName.c_str();
             try
             {
                 /* Preliminary verifications before version matching. We return if the basic conditions are not met. */
