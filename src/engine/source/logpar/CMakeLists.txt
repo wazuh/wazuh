@@ -22,4 +22,5 @@ add_executable(logpar_utest
 )
 target_link_libraries(logpar_utest PRIVATE logpar GTest::gtest_main schemf::mocks)
 
+gtest_discover_tests(logpar_utest)
 endif(ENGINE_BUILD_TEST)

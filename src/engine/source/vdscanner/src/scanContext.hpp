@@ -534,7 +534,6 @@ public:
      */
     void moveResponseData(nlohmann::json& data) { responseData.push_back(std::move(data)); }
 
-    // LCOV_EXCL_STOP
 private:
     const ScannerType m_type;
     const nlohmann::json& packageData;
