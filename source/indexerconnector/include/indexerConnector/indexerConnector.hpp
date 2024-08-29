@@ -12,9 +12,17 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
-#include "base/utils/threadEventDispatcher.hpp"
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <queue>
+
 #include <nlohmann/json.hpp>
-#include <string>
+
+#include <base/utils/threadEventDispatcher.hpp>
+
+#include <indexerConnector/iindexerconnector.hpp>
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
@@ -33,7 +41,7 @@ using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<voi
  * @brief IndexerConnector class.
  *
  */
-class EXPORTED IndexerConnector final
+class EXPORTED IndexerConnector : public IIndexerConnector
 {
     /**
      * @brief Initialized status.
@@ -61,9 +69,7 @@ public:
     ~IndexerConnector();
 
     /**
-     * @brief Publish a message into the queue map.
-     *
-     * @param message Message to be published.
+     * @copydoc IIndexerConnector::publish
      */
     void publish(const std::string& message);
 };

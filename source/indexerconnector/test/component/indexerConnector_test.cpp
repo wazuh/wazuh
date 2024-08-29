@@ -12,7 +12,7 @@
 #include "base/logging.hpp"
 #include "base/utils/stringUtils.hpp"
 #include "fakeIndexer.hpp"
-#include "indexerConnector.hpp"
+#include "indexerConnector/indexerConnector.hpp"
 #include "gtest/gtest.h"
 #include <chrono>
 #include <filesystem>

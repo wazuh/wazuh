@@ -9,7 +9,7 @@
  * Foundation.
  */
 
-#include "indexerConnector.hpp"
+#include "indexerConnector/indexerConnector.hpp"
 #include "HTTPRequest.hpp"
 #include "base/logging.hpp"
 #include "secureCommunication.hpp"

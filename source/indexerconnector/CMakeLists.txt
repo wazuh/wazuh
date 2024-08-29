@@ -1,5 +1,11 @@
 project(indexerconnector)
 
+# INTERFACE_AUTOMOC_MACRO_NAMES
+add_library(indexerconnector_iindexerconnector INTERFACE)
+target_include_directories(indexerconnector_iindexerconnector INTERFACE ${CMAKE_CURRENT_LIST_DIR}/interface)
+target_link_libraries(indexerconnector_iindexerconnector INTERFACE base)
+add_library(indexerconnector::iindexerconnector ALIAS indexerconnector_iindexerconnector)
+
 # Include directories
 include_directories(include)
 
