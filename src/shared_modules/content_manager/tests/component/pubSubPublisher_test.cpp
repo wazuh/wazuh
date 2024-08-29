@@ -10,12 +10,11 @@
  */
 
 #include "pubSubPublisher_test.hpp"
-#include "routerProvider.hpp"
 #include "gtest/gtest.h"
 #include <memory>
 #include <stdexcept>
 #include <string>
-#if 0
+
 /*
  * @brief Tests the instantiation of the PubSubPublisher class
  */
@@ -30,14 +29,9 @@ TEST_F(PubSubPublisherTest, instantiation)
  */
 TEST_F(PubSubPublisherTest, TestPublishEmptyData)
 {
-    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
-    m_spUpdaterBaseContext->spChannel->start();
-
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
-
-    m_spUpdaterBaseContext->spChannel->stop();
 
     EXPECT_FALSE(m_spUpdaterContext->data.empty());
 }
@@ -47,50 +41,10 @@ TEST_F(PubSubPublisherTest, TestPublishEmptyData)
  */
 TEST_F(PubSubPublisherTest, TestPublishValidData)
 {
-    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
-    m_spUpdaterBaseContext->spChannel->start();
-
     m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
     m_spUpdaterContext->data.at("paths").push_back("/dummy/path");
 
     EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
 
-    m_spUpdaterBaseContext->spChannel->stop();
-
     EXPECT_FALSE(m_spUpdaterContext->data.empty());
 }
-
-/*
- * @brief Tests publish valid data without start the RouterProvider.
- */
-TEST_F(PubSubPublisherTest, TestPublishValidDataWithouStartTheRouterProvider)
-{
-    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
-
-    m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data = R"({ "type": "raw", "paths": ["/dummy/path"], "stageStatus": [] })"_json;
-
-    EXPECT_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext), std::runtime_error);
-
-    EXPECT_THROW(m_spUpdaterBaseContext->spChannel->stop(), std::runtime_error);
-
-    EXPECT_FALSE(m_spUpdaterContext->data.empty());
-}
-
-/*
- * @brief Tests publish empty data without start the RouterProvider.
- */
-TEST_F(PubSubPublisherTest, TestPublishEmptyDataWithouStartTheRouterProvider)
-{
-    m_spUpdaterBaseContext->spChannel = std::make_shared<RouterProvider>("component-tests");
-
-    m_spUpdaterContext->spUpdaterBaseContext = m_spUpdaterBaseContext;
-    m_spUpdaterContext->data.clear();
-
-    EXPECT_NO_THROW(m_spPubSubPublisher->handleRequest(m_spUpdaterContext));
-
-    EXPECT_THROW(m_spUpdaterBaseContext->spChannel->stop(), std::runtime_error);
-
-    EXPECT_TRUE(m_spUpdaterContext->data.empty());
-}
-#endif

@@ -14,7 +14,6 @@
 
 #include "conditionSync.hpp"
 #include "fakes/fakeServer.hpp"
-#include "mocks/mockRouterProvider.hpp"
 #include "gtest/gtest.h"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
@@ -41,7 +40,6 @@ protected:
     const unsigned int INITIAL_OFFSET {1}; ///< Initial offset to be inserted on the database.
     const std::filesystem::path m_inputFilesDir {std::filesystem::current_path() /
                                                  "input_files"}; ///< Input files folder.
-    std::shared_ptr<MockRouterProvider> m_spMockRouterProvider;  ///< Router provider used on tests.
 
     /**
      * @brief Sets initial conditions for each test case.
@@ -70,8 +68,6 @@ protected:
         // An initial offset different from zero is inserted in order to avoid the snapshot download.
         m_parameters.at("configData")["databasePath"] = DATABASE_PATH;
         m_parameters.at("configData")["offset"] = INITIAL_OFFSET;
-
-        m_spMockRouterProvider = std::make_shared<MockRouterProvider>();
     }
     /**
      * @brief Tear down routine for tests

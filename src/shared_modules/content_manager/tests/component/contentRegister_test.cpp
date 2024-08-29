@@ -12,7 +12,7 @@
 #include "contentRegister_test.hpp"
 #include "contentManager.hpp"
 #include "contentRegister.hpp"
-#if 0
+
 /*
  * @brief Tests instantiation of the ContentRegister class
  */
@@ -26,7 +26,7 @@ TEST_F(ContentRegisterTest, TestInstantiation)
 
     EXPECT_NO_THROW(contentModule.start(nullptr));
 
-    EXPECT_NO_THROW(std::make_shared<ContentRegister>(topicName, m_parameters));
+    EXPECT_NO_THROW(std::make_shared<ContentRegister>(topicName, m_parameters, [](const std::string& msg) {}));
 
     EXPECT_NO_THROW(contentModule.stop());
 }
@@ -46,7 +46,7 @@ TEST_F(ContentRegisterTest, TestInstantiationWithOnDemandEnabled)
 
     EXPECT_NO_THROW(contentModule.start(nullptr));
 
-    EXPECT_NO_THROW(std::make_shared<ContentRegister>(topicName, m_parameters));
+    EXPECT_NO_THROW(std::make_shared<ContentRegister>(topicName, m_parameters, [](const std::string& msg) {}));
 
     EXPECT_NO_THROW(contentModule.stop());
 }
@@ -65,10 +65,9 @@ TEST_F(ContentRegisterTest, TestInstantiationAndChangeSchedulerInterval)
 
     EXPECT_NO_THROW(contentModule.start(nullptr));
 
-    auto contentRegister {std::make_shared<ContentRegister>(topicName, m_parameters)};
+    auto contentRegister {std::make_shared<ContentRegister>(topicName, m_parameters, [](const std::string& msg) {})};
 
     EXPECT_NO_THROW(contentRegister->changeSchedulerInterval(interval + 1));
 
     EXPECT_NO_THROW(contentModule.stop());
 }
-#endif
