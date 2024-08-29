@@ -26,8 +26,18 @@ class Buffer:
         ----------
         msg : Message
             The message to be added to the buffer.
+
+        Returns
+        -------
+        bool
+            `True` if the message was successfully added to the buffer, `False` if adding
+            the message would exceed the buffer's limits.
         """
-        self._buffer.append(msg)
+        if self.check_count_limit() or self.check_size_limit():
+            return False
+        else:
+            self._buffer.append(msg)
+            return True
 
     def get_length(self) -> int:
         """Gets the current length of the buffer.

@@ -12,6 +12,21 @@ def test_bulk_action_values():
     assert BulkAction.DELETE.value == "delete"
 
 
+def test_bulk_action_exists_with_valid_action():
+    """Test the exists method with valid actions."""
+    assert BulkAction.exists("create") is True
+    assert BulkAction.exists("index") is True
+    assert BulkAction.exists("update") is True
+    assert BulkAction.exists("delete") is True
+
+
+def test_bulk_action_exists_with_invalid_action():
+    """Test the exists method with invalid actions."""
+    assert BulkAction.exists("invalid_action") is False
+    assert BulkAction.exists("") is False
+    assert BulkAction.exists("CREATE") is False
+
+
 def test_bulk_metadata_decode():
     """Test decoding of BulkMetadata into a dictionary."""
     metadata = BulkMetadata(index="test_index", doc_id="1", action=BulkAction.CREATE)

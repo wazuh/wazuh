@@ -23,6 +23,14 @@ class BulkAction(str, Enum):
     UPDATE = "update"
     DELETE = "delete"
 
+    @classmethod
+    def exists(cls, action: str) -> bool:
+        try:
+            cls(action)
+        except ValueError:
+            return False
+        return True
+
 
 class BulkMetadata:
     """Class to handle metadata for a bulk action in OpenSearch.
