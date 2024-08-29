@@ -19,6 +19,22 @@
 #include <sstream>
 #include <string>
 
+#ifdef WIN32
+
+static struct tm* gmtime_r(const time_t* timep, struct tm* result)
+{
+    errno = gmtime_s(result, timep);
+    return errno == 0 ? result : nullptr;
+}
+
+static struct tm* localtime_r(const time_t* timep, struct tm* result)
+{
+    errno = localtime_s(result, timep);
+    return errno == 0 ? result : nullptr;
+}
+
+#endif
+
 namespace Utils
 {
 #pragma GCC diagnostic push
@@ -27,8 +43,10 @@ namespace Utils
     static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
+        struct tm buf;
+
         // gmtime: result expressed as a UTC time
-        tm* localTime {utc ? gmtime(&time) : localtime(&time)};
+        tm* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
 
         if (localTime == nullptr)
         {
@@ -66,8 +84,10 @@ namespace Utils
     static std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
+        struct tm buf;
+
         // gmtime: result expressed as a UTC time
-        tm const* localTime {utc ? gmtime(&time) : localtime(&time)};
+        tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
 
         if (localTime == nullptr)
         {
@@ -92,7 +112,8 @@ namespace Utils
         auto itt = std::chrono::system_clock::to_time_t(now);
 
         std::ostringstream ss;
-        tm* localTime = gmtime(&itt);
+        struct tm buf;
+        tm* localTime = gmtime_r(&itt, &buf);
 
         if (localTime == nullptr)
         {
@@ -125,7 +146,7 @@ namespace Utils
         auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
-        struct tm* localTime = gmtime(&time);
+        struct tm* localTime = gmtime_r(&time, &tm);
 
         if (localTime == nullptr)
         {
@@ -155,7 +176,8 @@ namespace Utils
         auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
-        tm* localTime = gmtime(&time);
+        struct tm buf;
+        tm* localTime = gmtime_r(&time, &buf);
 
         if (localTime == nullptr)
         {
