@@ -27,7 +27,6 @@ All notable changes to this project will be documented in this file.
 
 - Changed error messages about `recv()` messages from wazuh-db to debug logs. ([#20285](https://github.com/wazuh/wazuh/pull/20285))
 - Sanitized the `integrations` directory code. ([#21195](https://github.com/wazuh/wazuh/pull/21195))
-- Modified multiple cluster commands to be asynchronous. ([#22640](https://github.com/wazuh/wazuh/pull/22640))
 
 ### Agent
 
@@ -67,11 +66,13 @@ All notable changes to this project will be documented in this file.
 - Improved logging of errors in Azure and AWS modules. ([#16314](https://github.com/wazuh/wazuh/issues/16314))
 
 #### Removed
+
 - Dropped support for Python 3.7 in cloud integrations. ([#22583](https://github.com/wazuh/wazuh/pull/22583))
 
 ### RESTful API
 
 #### Added
+
 - Added support in the Wazuh API to parse `journald` configurations from the `ossec.conf` file. ([#23094](https://github.com/wazuh/wazuh/pull/23094))
 - Added user-agent to the CTI service request. ([#24360](https://github.com/wazuh/wazuh/pull/24360))
 
@@ -91,11 +92,13 @@ All notable changes to this project will be documented in this file.
     - Changed the `PUT /manager/configuration` endpoint response status code when uploading a file with invalid content-type.
 
 #### Fixed
+
 - Improved XML validation to match the Wazuh internal XML validator. ([#20507](https://github.com/wazuh/wazuh/pull/20507))
 - Fixed bug in `GET /groups`. ([#22428](https://github.com/wazuh/wazuh/pull/22428))
 - Fixed the `GET /agents/outdated` endpoint query. ([#24946](https://github.com/wazuh/wazuh/pull/24946))
 
 #### Removed
+
 - Removed the `cache` configuration option from the Wazuh API. ([#22416](https://github.com/wazuh/wazuh/pull/22416))
 
 ### Ruleset
