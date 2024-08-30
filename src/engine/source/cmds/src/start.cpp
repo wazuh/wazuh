@@ -21,6 +21,7 @@
 #include <api/policy/policy.hpp>
 #include <api/router/handlers.hpp>
 #include <api/tester/handlers.hpp>
+#include <apiserver/apiServer.hpp>
 #include <base/logging.hpp>
 #include <base/parseEvent.hpp>
 #include <bk/rx/controller.hpp>
@@ -44,6 +45,7 @@
 #include <sockiface/unixSocketFactory.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
+#include <vdscanner/scanOrchestrator.hpp>
 #include <wdb/wdbManager.hpp>
 
 #include "base/utils/getExceptionStack.hpp"
@@ -57,6 +59,7 @@ struct QueueTraits : public moodycamel::ConcurrentQueueDefaultTraits
     static constexpr size_t IMPLICIT_INITIAL_INDEX_SIZE = 8192;
 };
 std::shared_ptr<engineserver::EngineServer> g_engineServer {};
+std::shared_ptr<apiserver::ApiServer> g_apiServer {};
 
 void sigintHandler(const int signum)
 {
@@ -64,6 +67,12 @@ void sigintHandler(const int signum)
     {
         g_engineServer->request_stop();
         g_engineServer.reset();
+    }
+
+    if (g_apiServer)
+    {
+        g_apiServer->stop();
+        g_apiServer.reset();
     }
 }
 
@@ -186,6 +195,7 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<wazuhdb::WDBManager> wdbManager;
     std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::IPolicy> policyManager;
+    std::shared_ptr<vdscanner::ScanOrchestrator> vdScanner;
 
     try
     {
@@ -389,6 +399,33 @@ void runStart(ConfHandler confManager)
             LOG_DEBUG("Geo API registered.");
         }
 
+        // VD Scanner
+        {
+            vdScanner = std::make_shared<vdscanner::ScanOrchestrator>("{}");
+        }
+        // API Server
+        {
+            g_apiServer = std::make_shared<apiserver::ApiServer>();
+            g_apiServer->addRoute(apiserver::Method::POST,
+                                  "/v1/vulnerabilityscanner",
+                                  [vdScanner](const auto& req, auto& res)
+                                  {
+                                      vdScanner->processEvent(req.body, res.body);
+                                      res.set_header("Content-Type", "application/json");
+                                  });
+
+            g_apiServer->addRoute(apiserver::Method::POST,
+                                  "/v1/stateless",
+                                  [orchestrator](const auto& req, auto& res)
+                                  {
+                                      auto response = std::make_shared<json::Json>(req.body.c_str());
+                                      orchestrator->pushJsonEvent(response);
+                                      res.set_header("Content-Type", "application/json");
+                                  });
+
+            LOG_DEBUG("API Server configured.");
+        }
+
         // Server
         {
             using namespace engineserver;
@@ -432,6 +469,7 @@ void runStart(ConfHandler confManager)
     // Start server
     try
     {
+        g_apiServer->start();
         server->start();
     }
     catch (const std::exception& e)

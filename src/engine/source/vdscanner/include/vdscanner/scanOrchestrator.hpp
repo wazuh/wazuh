@@ -17,6 +17,8 @@
 #include <nlohmann/json_fwd.hpp>
 #include <string>
 
+namespace vdscanner
+{
 enum class PayloadType
 {
     PackageList = 0,
@@ -60,5 +62,5 @@ private:
     mutable std::shared_mutex m_mutex;
     nlohmann::json m_configuration;
 };
-
+} // namespace vdscanner
 #endif // _SCAN_ORCHESTRATOR_HPP
