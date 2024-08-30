@@ -90,8 +90,6 @@ struct Options
     bool queueDropFlood;
     // Loggin
     std::string level;
-    std::string logOutput;
-    bool logTruncate;
     // TZ_DB
     std::string tzdbPath;
     bool tzdbAutoUpdate;
@@ -111,8 +109,6 @@ void runStart(ConfHandler confManager)
 
     // Log config
     const auto level = confManager->get<std::string>("server.log_level");
-    const auto logOutput = confManager->get<std::string>("server.log_output");
-    const auto logTruncate = confManager->get<bool>("server.log_truncate");
 
     // Server config
     const auto serverThreads = confManager->get<int>("server.server_threads");
@@ -128,14 +124,11 @@ void runStart(ConfHandler confManager)
     // Logging init
     logging::LoggingConfig logConfig;
     logConfig.level = logging::strToLevel(level);
-    logConfig.truncate = logTruncate;
-    logConfig.filePath = logOutput;
 
     exitHandler.add([]() { logging::stop(); });
     logging::start(logConfig);
 
-    LOG_DEBUG("Logging configuration: filePath='{}', level='{}', flushInterval={}ms.",
-              logConfig.filePath,
+    LOG_DEBUG("Logging configuration: level='{}', flushInterval={}ms.",
               logging::levelToStr(logConfig.level),
               logConfig.flushInterval);
     LOG_INFO("Logging initialized.");
@@ -468,17 +461,6 @@ void configure(CLI::App_p app)
             }()))
         ->default_val(ENGINE_LOG_LEVEL)
         ->envname(ENGINE_LOG_LEVEL_ENV);
-
-    serverApp->add_option("--log_output", options->logOutput, "Sets the logging output.")
-        ->default_val(ENGINE_LOG_OUTPUT)
-        ->envname(ENGINE_LOG_OUTPUT_ENV);
-
-    serverApp
-        ->add_option("--log_truncate",
-                     options->logTruncate,
-                     "Allows whether or not to delete the log file at each start of the engine")
-        ->default_val(ENGINE_LOG_TRUNCATE)
-        ->envname(ENGINE_LOG_TRUNCATE_ENV);
 
     // Server module
     serverApp
