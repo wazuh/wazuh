@@ -40,7 +40,6 @@ with patch('wazuh.common.wazuh_uid'):
             get_group_file,
             get_group_files,
             get_list_group,
-            get_sync_agent,
             post_group,
             put_group_config,
             put_multiple_agent_single_group,
@@ -291,31 +290,6 @@ async def test_delete_single_agent_multiple_groups(mock_exc, mock_dapi, mock_rem
                 'group_list': None
                 }
     mock_dapi.assert_called_once_with(f=agent.remove_agent_from_groups,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
-    mock_exc.assert_called_once_with(mock_dfunc.return_value)
-    mock_remove.assert_called_once_with(f_kwargs)
-    assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_sync_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
-    """Verify 'get_sync_agent' endpoint is working as expected."""
-    result = await get_sync_agent(agent_id='001')
-    f_kwargs = {'agent_list': ['001']
-                }
-    mock_dapi.assert_called_once_with(f=agent.get_agents_sync_group,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
                                       is_async=False,
