@@ -363,7 +363,7 @@ async def delete_single_agent_multiple_groups(agent_id: str, groups_list: str = 
     dapi = DistributedAPI(f=agent.remove_agent_from_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -765,7 +765,7 @@ async def delete_multiple_agent_single_group(group_id: str, agents_list: str = N
     dapi = DistributedAPI(f=agent.remove_agents_from_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -805,7 +805,7 @@ async def put_multiple_agent_single_group(group_id: str, agents_list: str = None
     dapi = DistributedAPI(f=agent.assign_agents_to_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']

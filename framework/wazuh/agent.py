@@ -731,6 +731,7 @@ def create_group(group_id: str) -> WazuhResult:
             raise WazuhError(1713, extra_message=group_id)
 
     # Create group in /etc/shared
+    # TODO(#25122): Change file names (extension may change)
     agent_conf_template = path.join(common.SHARED_PATH, 'agent-template.conf')
     try:
         mkdir_with_mode(group_path)
@@ -788,7 +789,7 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
 @expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1751, 1752]})
-def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
+async def assign_agents_to_group(group_list: list = None, agent_list: list = None, replace: bool = False,
                            replace_list: list = None) -> AffectedItemsWazuhResult:
     """Assign a list of agents to a group.
 
@@ -838,7 +839,7 @@ def assign_agents_to_group(group_list: list = None, agent_list: list = None, rep
 
     for agent_id in agent_list:
         try:
-            Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
+            await Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
@@ -852,7 +853,7 @@ def assign_agents_to_group(group_list: list = None, agent_list: list = None, rep
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710, 1734, 1745]})
-def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
+async def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Removes an agent assignation with a list of groups.
 
     Parameters
@@ -892,7 +893,7 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
         try:
             if group_id not in system_groups:
                 raise WazuhResourceNotFound(1710)
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
+            await Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(group_id)
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
@@ -905,7 +906,7 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"], post_proc_func=None)
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1734]})
-def remove_agents_from_group(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
+async def remove_agents_from_group(agent_list: list = None, group_list: list = None) -> AffectedItemsWazuhResult:
     """Remove the assignations of a list of agents with a specified group.
 
     Parameters
@@ -941,7 +942,7 @@ def remove_agents_from_group(agent_list: list = None, group_list: list = None) -
         try:
             if agent_id not in system_agents:
                 raise WazuhResourceNotFound(1701)
-            Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
+            await Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
             result.affected_items.append(agent_id)
         except WazuhException as e:
             result.add_failed_item(id_=agent_id, error=e)
@@ -1242,37 +1243,7 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_file_conf(group_list: list = None, type_conf: str = None, raw: bool = False,
-                  filename: str = None) -> WazuhResult:
-    """Read configuration file for a specified group.
-
-    Parameters
-    ----------
-    group_list : list
-        List with the group ID.
-    type_conf : str
-        Type of file.
-    raw : bool
-        Respond in raw format.
-    filename : str
-        Filename to read config from.
-
-    Returns
-    -------
-    WazuhResult
-        WazuhResult object with the configuration.
-    """
-    # We access unique group_id from list, this may change if and when we decide to add option to get configuration
-    # files for a list of groups
-    group_id = group_list[0]
-
-    return WazuhResult({'data': configuration.get_file_conf(filename, group_id=group_id, type_conf=type_conf,
-                                                            raw=raw)})
-
-
-@expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset: int = 0,
-                   limit: int = common.DATABASE_LIMIT) -> WazuhResult:
+def get_agent_conf(group_list: list = None, filename: str = 'agent.conf') -> WazuhResult:
     """Read agent conf for a specified group.
 
     Parameters
@@ -1281,10 +1252,6 @@ def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset
         List with the group ID.
     filename : str
         Filename to read config from. Default: 'agent.conf'
-    offset : int
-        First item to return.
-    limit : int
-        Maximum number of items to return. Default: common.DATABASE_LIMIT
 
     Returns
     -------
@@ -1296,7 +1263,7 @@ def get_agent_conf(group_list: list = None, filename: str = 'agent.conf', offset
     group_id = group_list[0]
 
     return WazuhResult(
-        {'data': configuration.get_agent_conf(group_id=group_id, filename=filename, offset=offset, limit=limit)})
+        {'data': configuration.get_agent_conf(group_id=group_id, filename=filename)})
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)

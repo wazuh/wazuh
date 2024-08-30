@@ -71,6 +71,20 @@ class AgentsIndex(BaseIndex):
 
         return ids
 
+    async def delete_groups(self, group_names: List[str]):
+        """Delete multiple agents that match with the given parameters.
+
+        Parameters
+        ----------
+        group_names : List[str]
+            Groups to delete.
+        """
+        indexes = ','.join([self.INDEX, *self.SECONDARY_INDEXES])
+        body = {IndexerKey.FILTER: {IndexerKey.BOOL: {IndexerKey.TERMS: {'groups': group_names}}}}
+        parameters = {IndexerKey.INDEX: indexes, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
+
+        _ = await self._client.update_by_query(**parameters, refresh='true')
+
     async def search(self, query: dict) -> dict:
         """Perform a search operation with the given query.
 

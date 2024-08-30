@@ -28,6 +28,7 @@ class IndexerKey(str, Enum):
     TERMS = 'terms'
     CONFLICTS = 'conflicts'
     ITEMS = 'items'
+    FILTER = 'filter'
 
 
 class BaseIndex:
