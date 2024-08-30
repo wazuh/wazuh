@@ -182,34 +182,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: DELETE /agents/{agent_id}/group/{group_id}
-
-stages:
-  - name: Try to remove agent 001 from group1
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group1"
-      method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /agents/{agent_id}/group/{group_id}
-
-stages:
-  - name: Try to remove agent 005 from all groups
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/001/group/group1"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
 test_name: GET /agents/{agent_id}/key
 
 stages:

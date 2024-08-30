@@ -49,7 +49,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_outdated_agents,
             get_upgrade_result,
             reconnect_agents,
-            remove_agent_from_group,
             remove_agent_from_groups,
             remove_agents_from_group,
             restart_agents,
@@ -835,61 +834,6 @@ def test_agent_assign_agents_to_group_exceptions(socket_mock, send_mock, mock_ad
     except WazuhException as ex:
         assert catch_exception
         assert ex == expected_error
-
-
-@pytest.mark.parametrize('group_id, agent_id', [
-    ('default', '001'),
-    ('group-1', '005')
-])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
-@patch('wazuh.core.agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_groups')
-@patch('wazuh.agent.get_agents_info')
-def test_agent_remove_agent_from_group(mock_get_agents, mock_get_groups, mock_unset, group_id, agent_id):
-    """Test `remove_agent_from_group` function from agent module. Does not check its raised exceptions.
-
-    Parameters
-    ----------
-    group_id : str
-        Name of the group from where the agent will be removed.
-    agent_id : str
-        ID of the agent to be removed from the group.
-    """
-    expected_msg = f"Agent '{agent_id}' removed from '{group_id}'"
-    mock_get_agents.return_value = short_agent_list
-    mock_unset.return_value = expected_msg
-    mock_get_groups.return_value = {group_id}
-
-    result = remove_agent_from_group(group_list=[group_id], agent_list=[agent_id])
-    mock_unset.assert_called_once_with(agent_id=agent_id, group_id=group_id, force=True)
-    assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert result.dikt['message'] == expected_msg
-
-
-@pytest.mark.parametrize('group_id, agent_id, expected_error', [
-    ('any-group', '100', WazuhResourceNotFound(1701)),
-    ('group-1', '005', WazuhResourceNotFound(1710)),
-])
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
-@patch('wazuh.agent.get_groups', side_effect={'default'})
-def test_agent_remove_agent_from_group_exceptions(group_mock, agents_info_mock, group_id, agent_id, expected_error):
-    """Test `remove_agent_from_group` function from agent module raises the expected exceptions if an invalid 'agent_id'
-    or 'group_id' are specified.
-
-    Parameters
-    ----------
-    group_id : str
-        The invalid group id to use.
-    agent_id : str
-        the invalid agent id to use.
-    expected_error : WazuhError
-        The WazuhError object expected to be raised by remove_agent_from_group with the given parameters.
-    """
-    try:
-        remove_agent_from_group(group_list=[group_id], agent_list=[agent_id])
-        pytest.fail('An exception should be raised for the given configuration.')
-    except (WazuhError, WazuhResourceNotFound) as error:
-        assert error == expected_error
 
 
 @pytest.mark.parametrize('group_list, agent_list', [

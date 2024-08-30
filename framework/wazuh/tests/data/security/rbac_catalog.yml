@@ -131,8 +131,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - DELETE /agents/{agent_id}/group
-          - DELETE /agents/{agent_id}/group/{group_id}
-          - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
       group:modify_assignments:
@@ -147,8 +145,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - DELETE /agents/{agent_id}/group
-          - DELETE /agents/{agent_id}/group/{group_id}
-          - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
       agent:reconnect:
