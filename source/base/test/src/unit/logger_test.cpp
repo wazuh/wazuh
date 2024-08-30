@@ -186,3 +186,89 @@ INSTANTIATE_TEST_CASE_P(
                                       std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)")),
                       std::make_tuple(logging::Level::Critical,
                                       std::regex(R"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \d+:\d+ (\w+): .*)"))));
+
+class LoggerTestLevelsParam
+    : public ::testing::TestWithParam<std::tuple<logging::Level, std::vector<std::string>, std::vector<std::string>>>
+{
+public:
+    void TearDown() override { logging::stop(); }
+};
+
+TEST_P(LoggerTestLevelsParam, LogLevelTest)
+{
+    auto [level, expectedMessages, unexpectedMessages] = GetParam();
+    ASSERT_NO_THROW(logging::start(logging::LoggingConfig {.level = level}));
+
+    if (level >= logging::Level::Warn)
+    {
+        testing::internal::CaptureStderr();
+    }
+    else
+    {
+        testing::internal::CaptureStdout();
+    }
+
+    LOG_TRACE("TRACE message");
+    LOG_DEBUG("DEBUG message");
+    LOG_INFO("INFO message");
+    LOG_WARNING("WARNING message");
+    LOG_ERROR("ERROR message");
+    LOG_CRITICAL("CRITICAL message");
+
+    std::string output;
+    if (level >= logging::Level::Warn)
+    {
+        output = testing::internal::GetCapturedStderr();
+    }
+    else
+    {
+        output = testing::internal::GetCapturedStdout();
+    }
+
+    for (const auto& message : expectedMessages)
+    {
+        EXPECT_NE(output.find(message), std::string::npos) << "Expected to find: " << message;
+    }
+
+    for (const auto& message : unexpectedMessages)
+    {
+        EXPECT_EQ(output.find(message), std::string::npos) << "Did not expect to find: " << message;
+    }
+}
+
+INSTANTIATE_TEST_CASE_P(
+    LevelsTest,
+    LoggerTestLevelsParam,
+    ::testing::Values(
+        // Level Trace: only "INFO message" should appear
+        std::make_tuple(logging::Level::Trace,
+                        std::vector<std::string> {"INFO message"},
+                        std::vector<std::string> {
+                            "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
+
+        // Level Trace: only "INFO message" should appear
+        std::make_tuple(logging::Level::Debug,
+                        std::vector<std::string> {"INFO message"},
+                        std::vector<std::string> {
+                            "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
+
+        // Level Info: only "INFO message" should appear
+        std::make_tuple(logging::Level::Info,
+                        std::vector<std::string> {"INFO message"},
+                        std::vector<std::string> {
+                            "TRACE message", "DEBUG message", "WARNING message", "ERROR message", "CRITICAL message"}),
+
+        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        std::make_tuple(logging::Level::Warn,
+                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
+                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"}),
+
+        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        std::make_tuple(logging::Level::Err,
+                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
+                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"}),
+
+        // Level Critical: "CRITICAL message", "ERROR message", and "WARNING message" should appear
+        std::make_tuple(logging::Level::Critical,
+                        std::vector<std::string> {"WARNING message", "ERROR message", "CRITICAL message"},
+                        std::vector<std::string> {"INFO message", "DEBUG message", "TRACE message"})));
