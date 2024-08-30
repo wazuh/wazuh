@@ -16,7 +16,6 @@ from wazuh.core.agent import (
     GROUP_REQUIRED_FIELDS,
     Agent,
     WazuhDBQueryAgents,
-    WazuhDBQueryGroup,
     WazuhDBQueryGroupByAgents,
     create_upgrade_tasks,
     get_agents_info,
@@ -570,31 +569,27 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
 
     if group_list:
         system_groups = get_groups()
+
         # Add failed items
         for invalid_group in set(group_list) - system_groups:
+            group_list.remove(invalid_group)
             result.add_failed_item(id_=invalid_group, error=WazuhResourceNotFound(1710))
 
-        rbac_filters = get_rbac_filters(system_resources=system_groups, permitted_resources=group_list)
+        for name in group_list:
+            group = {'name': name}
 
-        with WazuhDBQueryGroup(**rbac_filters, limit=None) as group_query:
-            query_data = group_query.run()
+            full_entry = path.join(common.SHARED_PATH, name)
 
-            for group in query_data['items']:
-                if group_list and group['name'] not in group_list:
-                    continue
+            # merged.mg and agent.conf sum
+            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
+            if merged_sum:
+                group['mergedSum'] = merged_sum
 
-                full_entry = path.join(common.SHARED_PATH, group['name'])
+            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+            if conf_sum:
+                group['configSum'] = conf_sum
 
-                # merged.mg and agent.conf sum
-                merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-                if merged_sum:
-                    group['mergedSum'] = merged_sum
-
-                conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
-                if conf_sum:
-                    group['configSum'] = conf_sum
-
-                affected_groups.append(group)
+            affected_groups.append(group)
 
         data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
                             sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,

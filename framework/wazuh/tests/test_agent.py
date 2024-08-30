@@ -518,11 +518,8 @@ async def test_agent_add_agent_ko(create_indexer_mock, name, id, key):
     (['group-1', 'group-2', 'group-3'], 'mergedSum=a336982f3c020cd558a16113f752fd5b', ['group-1', 'group-2']),
     ([], '', []) # An empty group_list should return nothing
 ])
-@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agent_groups(socket_mock, send_mock, group_list, q, expected_result):
+def test_agent_get_agent_groups(group_list, q, expected_result):
     """Test `get_agent_groups` from agent module.
 
     This will check if the provided groups exists.
@@ -542,26 +539,17 @@ def test_agent_get_agent_groups(socket_mock, send_mock, group_list, q, expected_
         assert item['configSum']
 
 
-@pytest.mark.parametrize('db_global, system_groups, error_code', [
-    (test_global_bd_path, 'invalid_group', 1710)
-])
+@pytest.mark.parametrize('system_groups, error_code', [('invalid_group', 1710)])
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agent_groups_exceptions(socket_mock, send_mock, mock_get_groups, db_global, system_groups,
-                                           error_code):
-    """Test `get_agent_groups` function from agent module raises the expected exceptions if an invalid 'global.db' path
-    or group is specified.
-
-    """
+def test_agent_get_agent_groups_exceptions(mock_get_groups, system_groups, error_code):
+    """Test that the `get_agent_groups` function raises the expected exceptions if an invalid group is specified."""
     mock_get_groups.return_value = {'valid-group'}
-    with patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=db_global):
-        try:
-            group_result = get_agent_groups(group_list=[system_groups])
-            assert group_result.failed_items
-            assert next(iter(group_result.failed_items)).code == error_code
-        except WazuhException as e:
-            assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
+    try:
+        group_result = get_agent_groups(group_list=[system_groups])
+        assert group_result.failed_items
+        assert next(iter(group_result.failed_items)).code == error_code
+    except WazuhException as e:
+        assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
 
 
 @pytest.mark.parametrize('group_list', [
