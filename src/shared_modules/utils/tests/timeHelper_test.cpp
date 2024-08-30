@@ -45,6 +45,15 @@ TEST_F(TimeUtilsTest, CheckTimestampInvalidFormat)
     EXPECT_FALSE(std::regex_match(timestamp, std::regex(DATE_FORMAT_REGEX_STR)));
 }
 
+TEST_F(TimeUtilsTest, CheckTimestampError)
+{
+    constexpr auto DATE_FORMAT_REGEX_STR {
+        "[0-9]{4}/([0-9]|1[0-2]){2}/(([0-9]|1[0-2]){2}) (([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2}):(([0-9]|1[0-2]){2})"};
+    const auto timestamp {Utils::getTimestamp(72057594037927936)};
+    EXPECT_EQ("1970/01/01 00:00:00", timestamp);
+    EXPECT_TRUE(std::regex_match(timestamp, std::regex(DATE_FORMAT_REGEX_STR)));
+}
+
 TEST_F(TimeUtilsTest, CheckCompactTimestampValidFormat)
 {
     constexpr auto DATE_FORMAT_REGEX_STR {
