@@ -2,7 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import hashlib
+import contextlib
 import operator
 from os import chmod, listdir, path
 from typing import Union
@@ -37,7 +37,6 @@ from wazuh.core.utils import (
     chown_r,
     full_copy,
     get_hash,
-    md5,
     mkdir_with_mode,
     process_array,
 )
@@ -855,42 +854,6 @@ def assign_agents_to_group(group_list: list = None, agent_list: list = None, rep
     return result
 
 
-@expose_resources(actions=["group:modify_assignments"], resources=['group:id:{group_list}'], post_proc_func=None)
-@expose_resources(actions=["agent:modify_group"], resources=['agent:id:{agent_list}'], post_proc_func=None)
-def remove_agent_from_group(group_list: list = None, agent_list: list = None) -> WazuhResult:
-    """Removes an agent assignation with a specified group.
-
-    Parameters
-    ----------
-    group_list : list
-        List with the group ID.
-    agent_list : list
-        List with the agent ID.
-
-    Raises
-    ------
-    WazuhResourceNotFound(1701)
-        Agent was not found.
-    WazuhResourceNotFound(1710)
-        Group was not found.
-
-    Returns
-    -------
-    WazuhResult
-        Confirmation message.
-    """
-    group_id = group_list[0]
-    agent_id = agent_list[0]
-
-    # Check if agent and group exist
-    if agent_id not in get_agents_info():
-        raise WazuhResourceNotFound(1701)
-    if group_id not in get_groups():
-        raise WazuhResourceNotFound(1710)
-
-    return WazuhResult({'message': Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)})
-
-
 @expose_resources(actions=["agent:modify_group"], resources=["agent:id:{agent_list}"], post_proc_func=None)
 @expose_resources(actions=["group:modify_assignments"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710, 1734, 1745]})
@@ -926,10 +889,8 @@ def remove_agent_from_groups(agent_list: list = None, group_list: list = None) -
 
     # We move default group to last position in case it is contained in group_list. When an agent is removed from all
     # groups it is reverted to 'default'. We try default last to avoid removing it and then adding again.
-    try:
+    with contextlib.suppress(ValueError):
         group_list.append(group_list.pop(group_list.index('default')))
-    except ValueError:
-        pass
 
     system_groups = get_groups()
     for group_id in group_list:
@@ -1283,59 +1244,6 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
 
     return WazuhResult(
         {'data': my_agent.get_config(component=component, config=config, agent_version=my_agent.version)})
-
-
-@expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701]})
-def get_agents_sync_group(agent_list: list = None) -> AffectedItemsWazuhResult:
-    """Get agents configuration sync status.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    agent_list : list
-        List of agent IDs.
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Agent group sync status information.
-    """
-    result = AffectedItemsWazuhResult(all_msg='Sync info was returned for all selected agents',
-                                      some_msg='Sync info was not returned for some selected agents',
-                                      none_msg='No sync info was returned',
-                                      )
-
-    system_agents = get_agents_info()
-    for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            else:
-                # Check if agent exists and it is active
-                agent_info = Agent(agent_id).get_basic_information()
-                # Check if it has a multigroup
-                if len(agent_info['group']) > 1:
-                    multi_group = ','.join(agent_info['group'])
-                    multi_group = hashlib.sha256(multi_group.encode()).hexdigest()[:8]
-                    group_merged_path = path.join(common.MULTI_GROUPS_PATH, multi_group, "merged.mg")
-                else:
-                    group_merged_path = path.join(common.SHARED_PATH, agent_info['group'][0], "merged.mg")
-                result.affected_items.append({'id': agent_id,
-                                              'synced': md5(group_merged_path) == agent_info['mergedSum']})
-        except (IOError, KeyError):
-            # The file couldn't be opened and therefore the group has not been synced
-            result.affected_items.append({'id': agent_id, 'synced': False})
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=lambda i: i['id'])
-
-    return result
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
