@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.12.4)
 
-project(scan_orchestrator)
+project(vdscanner)
 
 enable_testing()
 
-file(GLOB SCAN_ORCHESTRATOR_SRC
+file(GLOB VDSCANNER_SRC
     "src/*.cpp"
     "src/versionMatcher/*.cpp"
     )
@@ -12,13 +12,13 @@ file(GLOB SCAN_ORCHESTRATOR_SRC
 # Add fpic flag
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_library(scan_orchestrator STATIC
-    ${SCAN_ORCHESTRATOR_SRC}
+add_library(vdscanner STATIC
+    ${VDSCANNER_SRC}
     )
 
-target_include_directories(scan_orchestrator PUBLIC include)
+target_include_directories(vdscanner PUBLIC include)
 
-target_link_libraries(scan_orchestrator PUBLIC database_feed)
+target_link_libraries(vdscanner PUBLIC database_feed)
 
 add_subdirectory(tool)
 
@@ -44,6 +44,6 @@ add_executable(vdscanner_utest
     ${UNIT_SRC_DIR}/scanContext_test.cpp
 )
 target_compile_definitions(vdscanner_utest PUBLIC FLATBUFFER_SCHEMAS_DIR="${CMAKE_CURRENT_LIST_DIR}/../feedmanager/schemas/")
-target_link_libraries(vdscanner_utest GTest::gmock GTest::gtest_main scan_orchestrator feedmanager::mocks)
+target_link_libraries(vdscanner_utest GTest::gmock GTest::gtest_main vdscanner feedmanager::mocks)
 gtest_discover_tests(vdscanner_utest)
 endif(ENGINE_BUILD_TEST)

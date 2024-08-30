@@ -11,7 +11,7 @@
 
 #include "argsParser.hpp"
 #include "base/logging.hpp"
-#include "scanOrchestrator.hpp"
+#include "vdscanner/scanOrchestrator.hpp"
 #include <exception>
 #include <httplib.h>
 
@@ -39,7 +39,7 @@ int main(const int argc, const char* argv[])
             throw std::runtime_error("Error: Unable to open configuration file.");
         }
 
-        ScanOrchestrator scanOrchestrator(configurationData);
+        vdscanner::ScanOrchestrator scanOrchestrator(configurationData);
 
         httplib::Server svr;
 

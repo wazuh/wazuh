@@ -1,7 +1,9 @@
-#include "scanOrchestrator.hpp"
+#include "vdscanner/scanOrchestrator.hpp"
 #include "base/logging.hpp"
 #include "factoryOrchestrator.hpp"
 #include "scanContext.hpp"
+
+using namespace vdscanner;
 
 static const std::map<std::string, PayloadType, std::less<>> SCAN_TYPE {{"packagelist", PayloadType::PackageList},
                                                                         {"fullscan", PayloadType::FullScan}};
