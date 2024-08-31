@@ -430,6 +430,11 @@ Public Function SetWazuhPermissions()
         remAuthenticatedUsersPermsKeys = "icacls """ & home_dir & "client.keys" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsKeys, 0, True
 
+        ' Remove the Authenticated Users group from the tmp directory to avoid
+        ' inherited permissions on client.keys and ossec.conf when using win32ui.
+        remAuthenticatedUsersPermsTmpDir = "icacls """ & home_dir & "tmp" & """ /remove:g *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsTmpDir, 0, True
+
     End If
 End Function
 
