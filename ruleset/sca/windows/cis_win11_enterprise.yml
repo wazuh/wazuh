@@ -759,7 +759,7 @@ checks:
     impact: "None - this is the default behavior. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network client: Digitally sign communications (if server agrees)."
     references:
-      - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-'
+      - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-R2-and-2012/jj852251(v=ws.11)'
     compliance:
       - cis: ["2.3.8.2"]
       - cis_csc_v8: ["3.10"]
@@ -826,7 +826,7 @@ checks:
     impact: "The Microsoft network server will not communicate with a Microsoft network client unless that client agrees to perform SMB packet signing. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (always)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-digitally-sign-communications-always'
     compliance:
       - cis: ["2.3.9.2"]
       - cis_csc_v8: ["3.10"]
@@ -849,7 +849,7 @@ checks:
     impact: "The Microsoft network server will negotiate SMB packet signing as requested by the client. That is, if packet signing has been enabled on the client, packet signing will be negotiated. The Windows 2000 Server, Windows 2000 Professional, Windows Server 2003, Windows XP Professional and Windows Vista implementations of the SMB file and print sharing protocol support mutual authentication, which prevents session hijacking attacks and supports message authentication to prevent man-in-the-middle attacks. SMB signing provides this authentication by placing a digital signature into each SMB, which is then verified by both the client and the server. Implementation of SMB signing may negatively affect performance, because each packet needs to be signed and verified. If these settings are enabled on a server that is performing multiple roles, such as a small business server that is serving as a Domain Controller, file server, print server, and application server performance may be substantially slowed. Additionally, if you configure computers to ignore all unsigned SMB communications, older applications and operating systems will not be able to connect. However, if you completely disable all SMB signing, computers will be vulnerable to session hijacking attacks. When SMB signing policies are enabled on Domain Controllers running Windows Server 2003 and member computers running Windows Vista SP1 or Windows Server 2008 group policy processing will fail. A hotfix is available from Microsoft that resolves this issue; see Microsoft Knowledge Base article 950876 for more details: Group Policy settings are not applied on member computers that are running Windows Server 2008 or Windows Vista SP1 when certain SMB signing policies are enabled."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Digitally sign communications (if client agrees)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/smbv1-microsoft-network-server-digitally-sign-communications-if-client-agrees'
     compliance:
       - cis: ["2.3.9.3"]
       - cis_csc_v8: ["3.10"]
@@ -872,7 +872,7 @@ checks:
     impact: "None - this is the default behavior. If logon hours are not used in your organization, this policy setting will have no impact. If logon hours are used, existing user sessions will be forcibly terminated when their logon hours expire."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Disconnect clients when logon hours expire."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-disconnect-clients-when-logon-hours-expire'
     compliance:
       - cis: ["2.3.9.4"]
       - cis_csc_v7: ["16.13"]
@@ -890,7 +890,7 @@ checks:
     impact: "All Windows operating systems support both a client-side SMB component and a server-side SMB component. This setting affects the server SMB behavior, and its implementation should be carefully evaluated and tested to prevent disruptions to file and print serving capabilities. If configured to Accept if provided by client, the SMB server will accept and validate the SPN provided by the SMB client and allow a session to be established if it matches the SMB server's list of SPN's for itself. If the SPN does NOT match, the session request for that SMB client will be denied. If configured to Required from client, the SMB client MUST send a SPN name in session setup, and the SPN name provided MUST match the SMB server that is being requested to establish a connection. If no SPN is provided by client, or the SPN provided does not match, the session is denied."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Accept if provided by client (configuring to Required from client also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Microsoft network server: Server SPN target name validation level."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/microsoft-network-server-server-spn-target-name-validation-level'
     compliance:
       - cis: ["2.3.9.5"]
       - cis_csc_v8: ["4.1"]
@@ -917,7 +917,7 @@ checks:
     impact: "None - this is the default behavior. It will be impossible to establish trusts with Windows NT 4.0-based domains. Also, client computers that run older versions of the Windows operating system such as Windows NT 3.51 and Windows 95 will experience problems when they try to use resources on the server."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-do-not-allow-anonymous-enumeration-of-sam-accounts'
     compliance:
       - cis: ["2.3.10.2"]
     condition: any
@@ -934,7 +934,7 @@ checks:
     impact: "It will be impossible to establish trusts with Windows NT 4.0-based domains. Also, client computers that run older versions of the Windows operating system such as Windows NT 3.51 and Windows 95 will experience problems when they try to use resources on the server. Users who access file and print servers anonymously will be unable to list the shared network resources on those servers; the users will have to authenticate before they can view the lists of shared folders and printers. However, even with this policy setting enabled, anonymous users will have access to resources with permissions that explicitly include the built-in group, ANONYMOUS LOGON."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Do not allow anonymous enumeration of SAM accounts and shares."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-do-not-allow-anonymous-enumeration-of-sam-accounts-and-shares'
     compliance:
       - cis: ["2.3.10.3"]
     condition: all
@@ -968,7 +968,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Let Everyone permissions apply to anonymous users."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-let-everyone-permissions-apply-to-anonymous-users'
     compliance:
       - cis: ["2.3.10.5"]
     condition: any
@@ -985,7 +985,7 @@ checks:
     impact: "This configuration will disable null session access over named pipes, and applications that rely on this feature or on unauthenticated access to named pipes will no longer function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to <blank> (i.e. None): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Named Pipes that can be accessed anonymously."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-named-pipes-that-can-be-accessed-anonymously'
     compliance:
       - cis: ["2.3.10.6"]
     condition: any
@@ -1002,7 +1002,7 @@ checks:
     impact: "None - this is the default behavior. However, if you remove the default registry paths from the list of accessible ones, remote management tools such as the Microsoft Baseline Security Analyzer and Microsoft Systems Management Server could fail, as they require remote access to the registry to properly monitor and manage computers. Note: If you want to allow remote access, you must also enable the Remote Registry service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\ProductOptions System\\CurrentControlSet\\Control\\Server Applications SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-remotely-accessible-registry-paths'
     compliance:
       - cis: ["2.3.10.7"]
     condition: any
@@ -1019,7 +1019,7 @@ checks:
     impact: "None - this is the default behavior. However, if you remove the default registry paths from the list of accessible ones, remote management tools such as the Microsoft Baseline Security Analyzer and Microsoft Systems Management Server could fail, as they require remote access to the registry to properly monitor and manage computers. Note: If you want to allow remote access, you must also enable the Remote Registry service."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: System\\CurrentControlSet\\Control\\Print\\Printers System\\CurrentControlSet\\Services\\Eventlog SOFTWARE\\Microsoft\\OLAP Server SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Print SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows System\\CurrentControlSet\\Control\\ContentIndex System\\CurrentControlSet\\Control\\Terminal Server System\\CurrentControlSet\\Control\\Terminal Server\\UserConfig System\\CurrentControlSet\\Control\\Terminal Server\\DefaultUserConfiguration SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Perflib System\\CurrentControlSet\\Services\\SysmonLog Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Remotely accessible registry paths and sub-paths."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-remotely-accessible-registry-paths-and-subpaths'
     compliance:
       - cis: ["2.3.10.8"]
     condition: all
@@ -1046,7 +1046,7 @@ checks:
     impact: "None - this is the default behavior. If you choose to enable this setting and are supporting Windows NT 4.0 domains, you should check if any of the named pipes are required to maintain trust relationships between the domains, and then add the pipe to the Network access: Named pipes that can be accessed anonymously list: - COMNAP: SNA session access - COMNODE: SNA session access - SQL\\QUERY: SQL instance access - SPOOLSS: Spooler service - LLSRPC: License Logging service - NETLOGON: Net Logon service - LSARPC: LSA access - SAMR: Remote access to SAM objects - BROWSER: Computer Browser service Previous to the release of Windows Server 2003 with Service Pack 1 (SP1) these named pipes were allowed anonymous access by default, but with the increased hardening in Windows Server 2003 with SP1 these pipes must be explicitly added if needed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict anonymous access to Named Pipes and Shares."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-restrict-anonymous-access-to-named-pipes-and-shares'
     compliance:
       - cis: ["2.3.10.9"]
     condition: any
@@ -1063,7 +1063,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Administrators: Remote Access: Allow: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Restrict clients allowed to make remote calls to SAM."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-restrict-clients-allowed-to-make-remote-sam-calls'
     compliance:
       - cis: ["2.3.10.10"]
     condition: any
@@ -1099,7 +1099,7 @@ checks:
     impact: "None - this is the default configuration for domain-joined computers."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Classic - local users authenticate as themselves: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network access: Sharing and security model for local accounts."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-access-sharing-and-security-model-for-local-accounts'
     compliance:
       - cis: ["2.3.10.12"]
     condition: all
@@ -1116,7 +1116,7 @@ checks:
     impact: "Services running as Local System that use Negotiate when reverting to NTLM authentication will use the computer identity. This might cause some authentication requests between Windows operating systems to fail and log an error."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Allow Local System to use computer identity for NTLM."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-allow-local-system-to-use-computer-identity-for-ntlm'
     compliance:
       - cis: ["2.3.11.1"]
     condition: all
@@ -1200,7 +1200,7 @@ checks:
     impact: "None - this is the default behavior. Earlier operating systems such as Windows 95, Windows 98, and Windows ME as well as some third-party applications will fail."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Do not store LAN Manager hash value on next password change."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-do-not-store-lan-manager-hash-value-on-next-password-change'
     compliance:
       - cis: ["2.3.11.5"]
       - cis_csc_v8: ["3.11"]
@@ -1226,7 +1226,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Force logoff when logon hours expire."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-force-logoff-when-logon-hours-expire'
     compliance:
       - cis: ["2.3.11.6"]
       - cis_csc_v7: ["16.13"]
@@ -1244,7 +1244,7 @@ checks:
     impact: "Clients use NTLMv2 authentication only and use NTLMv2 session security if the server supports it; Domain Controllers refuse LM and NTLM (accept only NTLMv2 authentication). Clients that do not support NTLMv2 authentication will not be able to authenticate in the domain and access domain resources by using LM and NTLM."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Send NTLMv2 response only. Refuse LM & NTLM: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: LAN Manager authentication level."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-lan-manager-authentication-level'
     compliance:
       - cis: ["2.3.11.7"]
       - cis_csc_v8: ["3.10"]
@@ -1269,7 +1269,7 @@ checks:
     impact: "None - this is the default behavior. However, if you choose instead to configure the server to require LDAP signatures then you must also configure the client. If you do not configure the client it will not be able to communicate with the server, which could cause many features to fail, including user authentication, Group Policy, and logon scripts, because the caller will be told that the LDAP BIND command request failed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Negotiate signing (configuring to Require signing also conforms to the benchmark): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: LDAP client signing requirements."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-ldap-client-signing-requirements'
     compliance:
       - cis: ["2.3.11.8"]
       - cis_csc_v8: ["3.10"]
@@ -1292,6 +1292,8 @@ checks:
     rationale: "You can enable both options for this policy setting to help protect network traffic that uses the NTLM Security Support Provider (NTLM SSP) from being exposed or tampered with by an attacker who has gained access to the same network. In other words, these options help protect against man-in-the-middle attacks."
     impact: "NTLM connections will fail if NTLMv2 protocol and strong encryption (128-bit) are not both negotiated. Client applications that are enforcing these settings will be unable to communicate with older servers that do not support them."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Require NTLMv2 session security, Require 128-bit encryption: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Minimum session security for NTLM SSP based (including secure RPC) clients."
+    references:
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-minimum-session-security-for-ntlm-ssp-based-including-secure-rpc-clients'
     compliance:
       - cis: ["2.3.11.9"]
       - cis_csc_v8: ["3.10"]
@@ -1340,7 +1342,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enable auditing for all accounts: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Network security: Restrict NTLM: Audit Incoming NTLM Traffic."
     references:
       - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-restrict-ntlm-audit-incoming-ntlm-traffic'
-      - 'https://learn.microsoft.com/en-us/defender-for-identity/configure-windows-event-'
+      - 'https://learn.microsoft.com/en-us/defender-for-identity/configure-windows-event-collection#event-id-8004'
     compliance:
       - cis: ["2.3.11.11"]
       - cis_csc_v8: ["8.5"]
@@ -1366,7 +1368,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Audit all or higher: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\Restrict NTLM: Outgoing NTLM traffic to remote servers."
     references:
       - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/network-security-restrict-ntlm-audit-incoming-ntlm-traffic'
-      - 'https://learn.microsoft.com/en-us/defender-for-identity/configure-windows-event-'
+      - 'https://learn.microsoft.com/en-us/defender-for-identity/configure-windows-event-collection#event-id-8004'
     compliance:
       - cis: ["2.3.11.12"]
       - cis_csc_v8: ["8.5"]
@@ -1408,7 +1410,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\System objects: Strengthen default permissions of internal system objects (e.g. Symbolic Links)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/system-objects-strengthen-default-permissions-of-internal-system-objects'
     compliance:
       - cis: ["2.3.15.2"]
       - cis_csc_v8: ["4.1"]
@@ -1486,7 +1488,7 @@ checks:
     impact: "When an application installation package is detected that requires elevation of privilege, the user is prompted to enter an administrative user name and password. If the user enters valid credentials, the operation continues with the applicable privilege."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Detect application installations and prompt for elevation."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-detect-application-installations-and-prompt-for-elevation'
     compliance:
       - cis: ["2.3.17.4"]
     condition: all
@@ -1554,7 +1556,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Local Policies\\Security Options\\User Account Control: Virtualize file and registry write failures to per-user locations."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/user-account-control-virtualize-file-and-registry-write-failures-to-per-user-locations'
     compliance:
       - cis: ["2.3.17.8"]
     condition: any
@@ -2107,7 +2109,7 @@ checks:
     impact: "The Simple TCP/IP services (Character Generator, Daytime, Discard, Echo and Quote of the Day) will not be available."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled or ensure the service is not installed. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Simple TCP/IP Services."
     references:
-      - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-'
+      - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2008-r2-and-2008/cc725973(v=ws.10)'
     compliance:
       - cis: ["5.27"]
       - cis_csc_v8: ["4.8"]
@@ -2401,7 +2403,7 @@ checks:
     impact: "Connected Xbox accessories may not function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Accessory Management Service."
     references:
-      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-'
+      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-enterprise-release-1703-benchmark-v1-0-0'
     compliance:
       - cis: ["5.41"]
       - cis_csc_v8: ["4.8"]
@@ -2423,7 +2425,7 @@ checks:
     impact: "Connections to Xbox Live may fail and applications that interact with that service may also fail."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Auth Manager."
     references:
-      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-'
+      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-enterprise-release-1703-benchmark-v1-0-0'
     compliance:
       - cis: ["5.42"]
       - cis_csc_v8: ["4.8"]
@@ -2445,7 +2447,7 @@ checks:
     impact: "Game save data will not upload to or download from Xbox Live."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Game Save."
     references:
-      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-'
+      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-enterprise-release-1703-benchmark-v1-0-0'
     compliance:
       - cis: ["5.43"]
       - cis_csc_v8: ["4.8"]
@@ -2467,7 +2469,7 @@ checks:
     impact: "Connections to Xbox Live may fail and applications that interact with that service may also fail."
     remediation: "To establish the recommended configuration via GP, set the following UI path to: Disabled. Computer Configuration\\Policies\\Windows Settings\\Security Settings\\System Services\\Xbox Live Networking Service."
     references:
-      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-'
+      - 'https://www.cisecurity.org/insights/blog/update-cis-microsoft-windows-10-enterprise-release-1703-benchmark-v1-0-0'
     compliance:
       - cis: ["5.44"]
       - cis_csc_v8: ["4.8"]
@@ -2489,7 +2491,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to On (recommended): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Domain Profile\\Firewall state."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.1.1"]
       - cis_csc_v8: ["4.5"]
@@ -2514,7 +2516,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Block (default): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Domain Profile\\Inbound connections."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.1.2"]
       - cis_csc_v8: ["4.5"]
@@ -2539,7 +2541,7 @@ checks:
     impact: "Windows Firewall will not display a notification when a program is blocked from receiving inbound connections."
     remediation: "To establish the recommended configuration via GP, set the following UI path to No: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Domain Profile\\Settings Customize\\Display a notification."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.1.3"]
       - cis_csc_v8: ["4.5"]
@@ -2564,7 +2566,7 @@ checks:
     impact: "The log file will be stored in the specified file."
     remediation: "To establish the recommended configuration via GP, set the following UI path to %SystemRoot%\\System32\\logfiles\\firewall\\domainfw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Domain Profile\\Logging Customize\\Name."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.1.4"]
       - cis_csc_v8: ["8.2"]
@@ -2655,7 +2657,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to On (recommended): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Firewall state."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.2.1"]
       - cis_csc_v8: ["4.5"]
@@ -2680,7 +2682,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Block (default): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Inbound connections."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.2.2"]
       - cis_csc_v8: ["4.5"]
@@ -2728,7 +2730,8 @@ checks:
     impact: "The log file will be stored in the specified file."
     remediation: "To establish the recommended configuration via GP, set the following UI path to %SystemRoot%\\System32\\logfiles\\firewall\\privatefw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Name."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/configure-the-windows-firewall-log'
     compliance:
       - cis: ["9.2.4"]
       - cis_csc_v8: ["8.2"]
@@ -2753,7 +2756,7 @@ checks:
     impact: "The log file size will be limited to the specified size, old events will be overwritten by newer ones when the limit is reached."
     remediation: "To establish the recommended configuration via GP, set the following UI path to 16,384 KB or greater: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Size limit (KB)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/configure-the-windows-firewall-log'
     compliance:
       - cis: ["9.2.5"]
       - cis_csc_v8: ["8.3"]
@@ -2775,7 +2778,7 @@ checks:
     impact: "Information about dropped packets will be recorded in the firewall log file."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Yes: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Log dropped packets."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/configure-the-windows-firewall-log'
     compliance:
       - cis: ["9.2.6"]
       - cis_csc_v8: ["4.5", "8.5"]
@@ -2800,7 +2803,7 @@ checks:
     impact: "Information about successful connections will be recorded in the firewall log file."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Yes: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Private Profile\\Logging Customize\\Log successful connections."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/configure-the-windows-firewall-log'
     compliance:
       - cis: ["9.2.7"]
       - cis_csc_v8: ["4.5", "8.5"]
@@ -2825,7 +2828,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to On (recommended): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Firewall state."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.3.1"]
       - cis_csc_v8: ["4.5"]
@@ -2850,7 +2853,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Block (default): Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Inbound connections."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/best-practices-configuring'
     compliance:
       - cis: ["9.3.2"]
       - cis_csc_v8: ["4.5"]
@@ -2944,7 +2947,7 @@ checks:
     impact: "The log file will be stored in the specified file."
     remediation: "To establish the recommended configuration via GP, set the following UI path to %SystemRoot%\\System32\\logfiles\\firewall\\publicfw.log: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Windows Defender Firewall with Advanced Security\\Windows Defender Firewall with Advanced Security\\Windows Firewall Properties\\Public Profile\\Logging Customize\\Name."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-firewall/configure-the-windows-firewall-log'
     compliance:
       - cis: ["9.3.6"]
       - cis_csc_v8: ["8.2"]
@@ -3035,7 +3038,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Account Logon\\Audit Credential Validation."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-credential-validation'
     compliance:
       - cis: ["17.1.1"]
       - cis_csc_v8: ["8.5"]
@@ -3130,7 +3133,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit PNP Activity."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-pnp-activity'
     compliance:
       - cis: ["17.3.1"]
       - cis_csc_v8: ["8.5"]
@@ -3153,7 +3156,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Detailed Tracking\\Audit Process Creation."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-process-creation'
     compliance:
       - cis: ["17.3.2"]
       - cis_csc_v8: ["8.5"]
@@ -3176,7 +3179,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Account Lockout."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-account-lockout'
     compliance:
       - cis: ["17.5.1"]
       - cis_csc_v8: ["8.5"]
@@ -3199,7 +3202,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Group Membership."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-group-membership'
     compliance:
       - cis: ["17.5.2"]
       - cis_csc_v8: ["8.5"]
@@ -3222,7 +3225,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logoff."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-logoff'
     compliance:
       - cis: ["17.5.3"]
       - cis_csc_v8: ["8.5"]
@@ -3245,7 +3248,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Logon."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-logon'
     compliance:
       - cis: ["17.5.4"]
       - cis_csc_v8: ["8.5"]
@@ -3268,7 +3271,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Other Logon/Logoff Events."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-other-logonlogoff-events'
     compliance:
       - cis: ["17.5.5"]
       - cis_csc_v8: ["8.5"]
@@ -3291,7 +3294,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Logon/Logoff\\Audit Special Logon."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-special-logon'
     compliance:
       - cis: ["17.5.6"]
       - cis_csc_v8: ["8.5"]
@@ -3314,7 +3317,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Detailed File Share."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-detailed-file-share'
     compliance:
       - cis: ["17.6.1"]
       - cis_csc_v8: ["8.5"]
@@ -3337,7 +3340,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit File Share."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-file-share'
     compliance:
       - cis: ["17.6.2"]
       - cis_csc_v8: ["8.5"]
@@ -3383,7 +3386,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Object Access\\Audit Removable Storage."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-removable-storage'
     compliance:
       - cis: ["17.6.4"]
       - cis_csc_v8: ["8.5"]
@@ -3406,7 +3409,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Policy Change\\Audit Audit Policy Change."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-audit-policy-change'
     compliance:
       - cis: ["17.7.1"]
       - cis_csc_v8: ["8.5"]
@@ -3521,7 +3524,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\Privilege Use\\Audit Sensitive Privilege Use."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-sensitive-privilege-use'
     compliance:
       - cis: ["17.8.1"]
       - cis_csc_v8: ["8.5"]
@@ -3544,7 +3547,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit IPsec Driver."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-ipsec-driver'
     compliance:
       - cis: ["17.9.1"]
       - cis_csc_v8: ["8.5"]
@@ -3567,7 +3570,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit Other System Events."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-other-system-events'
     compliance:
       - cis: ["17.9.2"]
       - cis_csc_v8: ["8.5"]
@@ -3590,7 +3593,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit Security State Change."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-security-state-change'
     compliance:
       - cis: ["17.9.3"]
       - cis_csc_v8: ["8.5"]
@@ -3613,7 +3616,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to include Success: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit Security System Extension."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-security-system-extension'
     compliance:
       - cis: ["17.9.4"]
       - cis_csc_v8: ["8.5"]
@@ -3636,7 +3639,7 @@ checks:
     impact: "If no audit settings are configured, or if audit settings are too lax on the computers in your organization, security incidents might not be detected or not enough evidence will be available for network forensic analysis after security incidents occur. However, if audit settings are too severe, critically important entries in the Security log may be obscured by all of the meaningless entries and computer performance and the available amount of data storage may be seriously affected. Companies that operate in certain regulated industries may have legal obligations to log certain events or activities."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Success and Failure: Computer Configuration\\Policies\\Windows Settings\\Security Settings\\Advanced Audit Policy Configuration\\Audit Policies\\System\\Audit System Integrity."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/auditing/audit-system-integrity'
     compliance:
       - cis: ["17.9.5"]
       - cis_csc_v8: ["8.5"]
@@ -3733,8 +3736,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Apply UAC restrictions to local accounts on network logons Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/access-'
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/disabling-'
+      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/local-accounts'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/disabling-smbv1-through-group-policy/ba-p/701069'
     compliance:
       - cis: ["18.4.1"]
       - cis_csc_v7: ["4.3"]
@@ -3796,7 +3799,7 @@ checks:
     impact: "Some legacy OSes (e.g. Windows XP, Server 2003 or older), applications and appliances may no longer be able to communicate with the system once SMBv1 is disabled. We recommend careful testing be performed to determine the impact prior to configuring this as a widespread control, and where possible, remediate any incompatibilities found with the vendor of the incompatible system. Microsoft is also maintaining a thorough (although not comprehensive) list of known SMBv1 incompatibilities at this link: SMB1 Product Clearinghouse | Storage at Microsoft."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Configure SMB v1 server Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/disabling-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/disabling-smbv1-through-group-policy/ba-p/701069'
     compliance:
       - cis: ["18.4.4"]
       - cis_csc_v8: ["4.8"]
@@ -3821,7 +3824,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Enable Certificate Padding Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link."
     references:
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2013-3900'
-      - 'https://learn.microsoft.com/en-us/windows/win32/api/wintrust/nf-wintrust-'
+      - 'https://learn.microsoft.com/en-us/windows/win32/api/wintrust/nf-wintrust-winverifytrust'
     compliance:
       - cis: ["18.4.5"]
     condition: all
@@ -3838,7 +3841,7 @@ checks:
     impact: "After you enable SEHOP, existing versions of Cygwin, Skype, and Armadillo-protected applications may not work correctly."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\Enable Structured Exception Handling Overwrite Protection (SEHOP) Note: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link. More information is available at MSKB 956607: How to enable Structured Exception Handling Overwrite Protection (SEHOP) in Windows operating systems."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/override-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/override-mitigation-options-for-app-related-security-policies'
     compliance:
       - cis: ["18.4.6"]
       - cis_csc_v8: ["10.5"]
@@ -3860,7 +3863,7 @@ checks:
     impact: "NetBIOS name resolution queries will require a defined and available WINS server for external NetBIOS name resolution. If a WINS server is not defined or not reachable, and the desired hostname is not defined in the local cache, local LMHOSTS or HOSTS files, NetBIOS name resolution will fail."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: P-node (recommended): Computer Configuration\\Policies\\Administrative Templates\\MS Security Guide\\NetBT NodeType configuration Note: This change does not take effect until the computer has been restarted. Note #2: This Group Policy path does not exist by default. An additional Group Policy template (SecGuide.admx/adml) is required - it is available from Microsoft at this link. Please note that this setting is only available in the Security baseline (FINAL) for Windows 10 v1903 and Windows Server v1903 (or newer) release of SecGuide.admx/adml, so if you previously downloaded this template, you may need to update it from a newer Microsoft baseline to get this new NetBT NodeType configuration setting."
     references:
-      - 'https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-'
+      - 'https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-cifs/45170055-a0cd-4910-9228-801d5bf7ac84'
     compliance:
       - cis: ["18.4.7"]
       - cis_csc_v8: ["4.1"]
@@ -3912,8 +3915,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (AutoAdminLogon) Enable Automatic Logon Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/recovery-console-allow-automatic-administrative-logon'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.1"]
       - cis_csc_v8: ["3.11"]
@@ -3973,7 +3976,7 @@ checks:
     impact: "Users will not be able to automatically store their logon credentials for dial-up and VPN connections."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(DisableSavePassword) Prevent the dial-up password from being saved Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.4"]
       - cis_csc_v8: ["4.1"]
@@ -3998,7 +4001,7 @@ checks:
     impact: "When Routing and Remote Access Service (RRAS) is configured as an autonomous system boundary router (ASBR), it does not correctly import connected interface subnet routes. Instead, this router injects host routes into the OSPF routes. However, the OSPF router cannot be used as an ASBR router, and when connected interface subnet routes are imported into OSPF the result is confusing routing tables with strange routing paths."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (EnableICMPRedirect) Allow ICMP redirects to override OSPF generated routes Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.5"]
       - cis_csc_v8: ["4.1", "4.8"]
@@ -4021,7 +4024,7 @@ checks:
     impact: "Keep-alive packets are not sent by default by Windows. However, some applications may configure the TCP stack flag that requests keep-alive packets. For such configurations, you can lower this value from the default setting of two hours to five minutes to disconnect inactive sessions more quickly."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 300,000 or 5 minutes: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (KeepAliveTime) How often keep-alive packets are sent in milliseconds Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.6"]
     condition: all
@@ -4038,7 +4041,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (NoNameReleaseOnDemand) Allow the computer to ignore NetBIOS name release requests except from WINS servers Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.7"]
       - cis_csc_v8: ["4.2"]
@@ -4063,7 +4066,7 @@ checks:
     impact: "Windows will not automatically detect and configure default gateway addresses on the computer."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (PerformRouterDiscovery) Allow IRDP to detect and configure Default Gateway addresses Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.8"]
       - cis_csc_v8: ["4.8"]
@@ -4087,7 +4090,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS: (SafeDllSearchMode) Enable Safe DLL search mode Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.9"]
       - cis_csc_v8: ["10.5"]
@@ -4133,7 +4136,7 @@ checks:
     impact: "TCP starts a retransmission timer when each outbound segment is passed to the IP. If no acknowledgment is received for the data in a given segment before the timer expires, then the segment is retransmitted up to three times."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions IPv6) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.11"]
       - cis_csc_v8: ["4.2"]
@@ -4157,7 +4160,7 @@ checks:
     impact: "TCP starts a retransmission timer when each outbound segment is passed to the IP. If no acknowledgment is received for the data in a given segment before the timer expires, then the segment is retransmitted up to three times."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 3: Computer Configuration\\Policies\\Administrative Templates\\MSS (Legacy)\\MSS:(TcpMaxDataRetransmissions) How many times unacknowledged data is retransmitted Note: This Group Policy path does not exist by default. An additional Group Policy template (MSS-legacy.admx/adml) is required - it is available from this TechNet blog post: The MSS settings - Microsoft Security Guidance blog."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/the-mss-settings/ba-p/701055'
     compliance:
       - cis: ["18.5.12"]
       - cis_csc_v8: ["4.2"]
@@ -4203,7 +4206,7 @@ checks:
     impact: "If the option Enabled: Require DoH is chosen, this could limit third-party products from logging DNS traffic (in transit) as the traffic would be encrypted while in transit. The Require DoH option could also lead to domain-joined systems not functioning properly within the environment. The option Enabled: Allow DoH will perform DoH queries if the configured DNS servers support it. If they don't support it, classic name resolution will be used. This is the safest option. Note: Per Microsoft, don't enable the Enabled: Require DoH option for domain-joined computers as Active Directory Domain Services is heavily reliant on DNS because the Windows Server DNS Server service does not support DoH queries."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Allow DoH (configuring to Enabled: Require DoH also conforms to the benchmark): Computer Configuration\\Policies\\Administrative Templates\\Network\\DNS Client\\Configure DNS over HTTPS (DoH) name resolution Note: This Group Policy path is provided by the Group Policy template DnsClient.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/networking/dns/doh-client-'
+      - 'https://learn.microsoft.com/en-us/windows-server/networking/dns/doh-client-support'
     compliance:
       - cis: ["18.6.4.1"]
       - cis_csc_v8: ["3.10"]
@@ -4291,7 +4294,7 @@ checks:
     impact: "The SMB client will reject insecure guest logons. This was not originally the default behavior in older versions of Windows, but Microsoft changed the default behavior starting with Windows 10 R1709: Guest access in SMB2 disabled by default in Windows 10 and Windows Server 2016."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Lanman Workstation\\Enable insecure guest logons Note: This Group Policy path is provided by the Group Policy template LanmanWorkstation.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/guest-'
+      - 'https://learn.microsoft.com/en-us/troubleshoot/windows-server/networking/guest-access-in-smb2-is-disabled-by-default'
     compliance:
       - cis: ["18.6.8.1"]
       - cis_csc_v7: ["9.2"]
@@ -4344,7 +4347,7 @@ checks:
     impact: "Microsoft Peer-to-Peer Networking Services are turned off in their entirety, and all applications dependent on them will stop working."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Microsoft Peer-to-Peer Networking Services\\Turn off Microsoft Peer-to-Peer Networking Services Note: This Group Policy path is provided by the Group Policy template P2P - pnrp.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/dotnet/framework/network-programming/peer-'
+      - 'https://learn.microsoft.com/en-us/dotnet/framework/network-programming/peer-name-resolution-protocol'
     compliance:
       - cis: ["18.6.10.2"]
       - cis_csc_v8: ["4.8"]
@@ -4412,8 +4415,6 @@ checks:
     rationale: "Allowing regular users to set a network location increases the risk and attack surface."
     impact: "Domain users must elevate when setting a network's location."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Network Connections\\Require domain users to elevate when setting a network's location Note: This Group Policy path is provided by the Group Policy template NetworkConnections.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
-    references:
-      - 'https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-'
     compliance:
       - cis: ["18.6.11.4"]
       - cis_csc_v7: ["4.3"]
@@ -4546,8 +4547,6 @@ checks:
     rationale: "The potential concern is that a user would unknowingly allow network traffic to flow between the insecure public network and the enterprise managed network."
     impact: "The computer responds to automatic and manual network connection attempts based on the following circumstances: Automatic connection attempts - When the computer is already connected to a domain based network, all automatic connection attempts to non-domain networks are blocked. - When the computer is already connected to a non-domain based network, automatic connection attempts to domain based networks are blocked. Manual connection attempts - When the computer is already connected to either a non-domain based network or a domain based network over media other than Ethernet, and a user attempts to create a manual connection to an additional network in violation of this policy setting, the existing network connection is disconnected and the manual connection is allowed. - When the computer is already connected to either a non-domain based network or a domain based network over Ethernet, and a user attempts to create a manual connection to an additional network in violation of this policy setting, the existing Ethernet connection is maintained and the manual connection attempt is blocked."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Network\\Windows Connection Manager\\Prohibit connection to non-domain networks when connected to domain authenticated network Note: This Group Policy path is provided by the Group Policy template WCM.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
-    references:
-      - 'https://learn.microsoft.com/en-us/windows/configuration/manage-wifi-sense-in-'
     compliance:
       - cis: ["18.6.21.2"]
       - cis_csc_v7: ["12.4"]
@@ -4612,7 +4611,7 @@ checks:
     impact: "None - this is default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Redirection Guard Enabled: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure Redirection Guard Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-version-22h2-security-baseline/ba-p/3632520'
     compliance:
       - cis: ["18.7.2"]
       - cis_csc_v8: ["10.5"]
@@ -4634,7 +4633,7 @@ checks:
     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: RPC over TCP: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC connection settings: Protocol to use for outgoing RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-'
+      - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-11-rpc-connection-updates-for-print#allow-rpc-over-tcp-communication'
     compliance:
       - cis: ["18.7.3"]
     condition: all
@@ -4651,7 +4650,7 @@ checks:
     impact: "Warning: Many existing print configurations may be using the older named pipes protocol and therefore will cease to function."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Default: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Configure RPC connection settings: Use authentication for outgoing RPC connections Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-'
+      - 'https://learn.microsoft.com/en-us/troubleshoot/windows-client/printing/windows-11-rpc-connection-updates-for-print#allow-rpc-over-tcp-communication'
     compliance:
       - cis: ["18.7.4"]
     condition: all
@@ -4713,8 +4712,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled. Computer Configuration\\Policies\\Administrative Templates\\Printers\\Limits print driver installation to Administrators Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     references:
-      - 'https://support.microsoft.com/en-us/topic/kb5005010-restricting-installation-of-'
-      - 'https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-'
+      - 'https://support.microsoft.com/en-us/topic/kb5005010-restricting-installation-of-new-printer-drivers-after-applying-the-july-6-2021-updates-31b91c02-05bc-4ada-a7ea-183b129578a7'
+      - 'https://support.microsoft.com/en-gb/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872'
     compliance:
       - cis: ["18.7.8"]
     condition: any
@@ -4731,7 +4730,7 @@ checks:
     impact: "None - this is default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Limit Queue-specific files to Color profiles: Computer Configuration\\Policies\\Administrative Templates\\Printers\\Manage processing of Queue-specific files Note: This Group Policy path is provided by the Group Policy template Printing.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-hardware/drivers/print/installing-'
+      - 'https://learn.microsoft.com/en-us/windows-hardware/drivers/print/installing-queue-specific-files'
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
     compliance:
       - cis: ["18.7.9"]
@@ -4758,8 +4757,8 @@ checks:
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34481'
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527'
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
-      - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-'
-      - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
+      - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-change/'
+      - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872'
     compliance:
       - cis: ["18.7.10"]
     condition: any
@@ -4780,8 +4779,8 @@ checks:
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34481'
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-34527'
       - 'https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-36958'
-      - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-'
-      - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-'
+      - 'https://msrc-blog.microsoft.com/2021/08/10/point-and-print-default-behavior-change/'
+      - 'https://support.microsoft.com/en-us/topic/kb5005652-manage-new-point-and-print-default-driver-installation-behavior-cve-2021-34481-873642bf-2634-49c5-a23b-6d8e9a302872'
     compliance:
       - cis: ["18.7.11"]
     condition: all
@@ -4830,7 +4829,7 @@ checks:
     impact: "Process command line information will be included in the event logs, which can contain sensitive or private information such as passwords or user data. Warning: There are potential risks of capturing credentials and sensitive information which could be exposed to users who have read-access to event logs. Microsoft provides a feature called \"Protected Event Logging\" to better secure event log data. For assistance with protecting event logging, visit: About Logging Windows - PowerShell | Microsoft Docs."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Audit Process Creation\\Include command line in process creation events Note: This Group Policy path is provided by the Group Policy template AuditSettings.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-'
+      - 'https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging_windows?view=powershell-7.2#protected-event-logging'
     compliance:
       - cis: ["18.9.3.1"]
       - cis_csc_v8: ["8.8"]
@@ -4851,7 +4850,7 @@ checks:
     impact: "Client applications which use CredSSP will not be able to fall back to the insecure versions and services using CredSSP will not accept unpatched clients. This setting should not be deployed until all remote hosts support the newest version, which is achieved by ensuring that all Microsoft security updates at least through May 2018 are installed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Force Updated Clients: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Encryption Oracle Remediation Note: This Group Policy path is provided by the Group Policy template CredSsp.admx/adml that is included with the Microsoft Windows 10 Release 1803 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/win32/secauthn/credential-security-'
+      - 'https://learn.microsoft.com/en-us/windows/win32/secauthn/credential-security-support-provider'
     compliance:
       - cis: ["18.9.4.1"]
       - cis_csc_v8: ["10.5"]
@@ -4873,7 +4872,7 @@ checks:
     impact: "The host will support the Restricted Admin Mode and Windows Defender Remote Credential Guard features."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Credentials Delegation\\Remote host allows delegation of non-exportable credentials Note: This Group Policy path is provided by the Group Policy template CredSsp.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/remote-'
+      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/remote-credential-guard'
     compliance:
       - cis: ["18.9.4.2"]
       - cis_csc_v7: ["16.5"]
@@ -5145,7 +5144,7 @@ checks:
     impact: "Group Policy settings within the Administrative Templates folder (and other policies that store values in the registry) will be reapplied even when the system is in use, which may have a slight impact on performance."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, then set the Do not apply during periodic background processing option to FALSE (unchecked): Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Configure registry policy processing Note: This Group Policy path is provided by the Group Policy template GroupPolicy.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/previous-'
+      - 'https://learn.microsoft.com/en-us/previous-versions/ms813374(v=msdn.10)?redirectedfrom=MSDN'
     compliance:
       - cis: ["18.9.19.2"]
       - cis_csc_v8: ["4.1"]
@@ -5170,7 +5169,7 @@ checks:
     impact: "Group Policy settings within the Administrative Templates folder (and other policies that store values in the registry) will be reapplied even if they have not been changed, which may cause Group Policy refreshes to take longer."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, then set the Process even if the Group Policy objects have not changed option to TRUE (checked): Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Configure registry policy processing Note: This Group Policy path is provided by the Group Policy template GroupPolicy.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/previous-'
+      - 'https://learn.microsoft.com/en-us/previous-versions/ms813374(v=msdn.10)?redirectedfrom=MSDN'
     compliance:
       - cis: ["18.9.19.3"]
       - cis_csc_v8: ["4.1"]
@@ -5195,7 +5194,7 @@ checks:
     impact: "Built-in security template settings will be reapplied by Group Policy even when the system is in use, which may have a slight impact on performance."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, then set the Do not apply during periodic background processing option to FALSE (unchecked): Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Configure security policy processing Note: This Group Policy path is provided by the Group Policy template GroupPolicy.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/previous-'
+      - 'https://learn.microsoft.com/en-us/previous-versions/ms813374(v=msdn.10)?redirectedfrom=MSDN'
     compliance:
       - cis: ["18.9.19.4"]
       - cis_csc_v8: ["4.1"]
@@ -5220,7 +5219,7 @@ checks:
     impact: "Built-in security template settings will be reapplied even if they have not been changed, which may cause Group Policy refreshes to take longer."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, then set the Process even if the Group Policy objects have not changed option to TRUE (checked): Computer Configuration\\Policies\\Administrative Templates\\System\\Group Policy\\Configure security policy processing Note: This Group Policy path is provided by the Group Policy template GroupPolicy.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/previous-'
+      - 'https://learn.microsoft.com/en-us/previous-versions/ms813374(v=msdn.10)?redirectedfrom=MSDN'
     compliance:
       - cis: ["18.9.19.5"]
       - cis_csc_v8: ["4.1"]
@@ -5629,7 +5628,7 @@ checks:
     impact: "The passwords managed by Windows LAPS will only be retrievable from the configured directory type."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Active Directory or Enabled: Azure Active Directory: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Configure password backup directory Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.1"]
     condition: all
@@ -5646,7 +5645,7 @@ checks:
     impact: "None - this is the default behavior. Planned password expiration longer than password age dictated by \"Password Settings\" policy is NOT allowed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Do not allow password expiration time longer than required by policy Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.2"]
     condition: all
@@ -5663,7 +5662,7 @@ checks:
     impact: "None - this is the default behavior. If the domain functional level is set at or above Windows Server 2016, the Windows LAPS managed account password is encrypted automatically, if it is set at a lower domain functional level, the Windows LAPS managed account password will not be backed up to the directory."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Enable password encryption Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.3"]
       - cis_csc_v8: ["3.10"]
@@ -5688,7 +5687,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Complexity option to Large letters + small letters + numbers + special characters: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Password Settings Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.4"]
       - cis_csc_v8: ["5.2"]
@@ -5711,7 +5710,7 @@ checks:
     impact: "Windows LAPS-generated passwords will be required to have a length of 15 characters (or more, if selected)."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Length option to 15 or more: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Password Settings Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.5"]
       - cis_csc_v8: ["5.2"]
@@ -5734,7 +5733,7 @@ checks:
     impact: "None - this is the default behavior, unless set to fewer than 30 days."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled, and configure the Password Age (Days) option to 30 or fewer: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Password Settings Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.6"]
       - cis_csc_v8: ["5.2"]
@@ -5756,7 +5755,7 @@ checks:
     impact: "After 8 hours, the Windows LAPS managed account password will be reset and log off the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 8 or fewer hours, but not 0: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Post- authentication actions: Grace period (hours) Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.7"]
     condition: all
@@ -5773,7 +5772,7 @@ checks:
     impact: "After the grace period expires, the Windows LAPS managed account password will be reset and logged off the system or the OS will be restarted."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Reset the password and logoff the managed account or higher: Computer Configuration\\Policies\\Administrative Templates\\System\\LAPS\\Post- authentication actions: Actions Note: This Group Policy path may not exist by default. It is provided by the Group Policy template LAPS.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v3.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-'
+      - 'https://learn.microsoft.com/en-us/windows-server/identity/laps/laps-management-policy-settings'
     compliance:
       - cis: ["18.9.25.8"]
     condition: all
@@ -5812,7 +5811,7 @@ checks:
     impact: "Once this setting has been applied (Enabled), removing the group policy setting (set to Not Configured) will not reverse the impact. In order to reverse the impact, you must explicitly configure this setting to Disabled and follow Microsoft's documentation on disabling the UEFI Lock."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Enabled with UEFI Lock: Computer Configuration\\Policies\\Administrative Templates\\System\\Local Security Authority\\Configures LSASS to run as a protected process."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-'
+      - 'https://learn.microsoft.com/en-us/windows-server/security/credentials-protection-and-management/configuring-additional-lsa-protection'
       - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/credential-guard/credential-guard-manage#disabling-windows-defender-credential-guard-with-uefi-lock'
       - 'https://learn.microsoft.com/en-us/previous-versions/windows/it-pro/windows-server-2012-r2-and-2012/dn408187(v=ws.11)#to-disable-lsa-protection'
     compliance:
@@ -6019,7 +6018,7 @@ checks:
     impact: "Network connectivity in standby (while on battery) is not guaranteed. This connectivity restriction currently only applies to WLAN networks only, but is subject to change (according to Microsoft)."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (on battery) Note: This Group Policy path is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-hardware/design/device-'
+      - 'https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby'
     compliance:
       - cis: ["18.9.33.6.1"]
       - cis_csc_v7: ["9.2"]
@@ -6038,7 +6037,7 @@ checks:
     impact: "Network connectivity in standby (while plugged in) is not guaranteed. This connectivity restriction currently only applies to WLAN networks only, but is subject to change (according to Microsoft)."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\System\\Power Management\\Sleep Settings\\Allow network connectivity during connected-standby (plugged in) Note: This Group Policy path is provided by the Group Policy template Power.admx/adml that is included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-hardware/design/device-'
+      - 'https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/modern-standby'
     compliance:
       - cis: ["18.9.33.6.2"]
       - cis_csc_v7: ["9.2"]
@@ -6488,7 +6487,7 @@ checks:
     impact: "Windows will require all users on the device to use anti-spoofing for facial features, on devices which support it."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Biometrics\\Facial Features\\Configure enhanced anti-spoofing Note: This Group Policy path is provided by the Group Policy template Biometrics.admx/adml that is included with the Microsoft Windows 10 Release 1511 Administrative Templates (or newer). Note #2: In the Windows 10 Release 1511 and Windows 10 Release 1607 & Server 2016 Administrative Templates, this setting was initially named Use enhanced anti-spoofing when available. It was renamed to Configure enhanced anti-spoofing starting with the Windows 10 Release 1703 Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-'
+      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-biometrics-in-enterprise'
     compliance:
       - cis: ["18.10.8.1.1"]
       - cis_csc_v7: ["8.3"]
@@ -7606,7 +7605,7 @@ checks:
     impact: "Note that setting values of 0 or 1 will degrade certain experiences on the device."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Diagnostic data off (not recommended) or Enabled: Send required diagnostic data: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Allow Diagnostic Data Note: This Group Policy path is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Allow Telemetry, but it was renamed to Allow Diagnostic Data starting with the Windows 11 Release 21H2 Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-'
+      - 'https://learn.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-data-in-your-organization'
     compliance:
       - cis: ["18.10.15.1"]
       - cis_csc_v7: ["9.2"]
@@ -7624,8 +7623,6 @@ checks:
     rationale: "Sending any data to a third-party vendor is a security concern and should only be done on an as needed basis."
     impact: "The Connected User Experience and Telemetry service will be blocked from automatically using an authenticated proxy."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Disable Authenticated Proxy usage: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Data Collection and Preview Builds\\Configure Authenticated Proxy usage for the Connected User Experience and Telemetry service Note: This Group Policy path is provided by the Group Policy template DataCollection.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
-    references:
-      - 'https://learn.microsoft.com/en-us/windows/privacy/configure-windows-diagnostic-'
     compliance:
       - cis: ["18.10.15.2"]
       - cis_csc_v7: ["9.2"]
@@ -8051,7 +8048,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\File Explorer\\Turn off Data Execution Prevention for Explorer Note: This Group Policy path is provided by the Group Policy template Explorer.admx/adml that is included with the Microsoft Windows 7 & Server 2008 R2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/win32/memory/data-execution-'
+      - 'https://learn.microsoft.com/en-us/windows/win32/memory/data-execution-prevention'
     compliance:
       - cis: ["18.10.28.3"]
       - cis_csc_v8: ["10.5"]
@@ -8158,7 +8155,7 @@ checks:
     impact: "All applications and services on the device will be prevented from new authentications using consumer Microsoft accounts via the Windows OnlineID and WebAccountManager APIs. Authentications performed directly by the user in web browsers or in apps that use OAuth will remain unaffected."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft accounts\\Block all consumer Microsoft account user authentication Note: This Group Policy path is provided by the Group Policy template MSAPolicy.admx/adml that is included with the Microsoft Windows 10 Release 1703 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/access-'
+      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/access-control/microsoft-accounts#bkmk-restrictuse'
     compliance:
       - cis: ["18.10.41.1"]
       - cis_csc_v8: ["5.6"]
@@ -8180,7 +8177,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\MAPS\\Configure local setting override for reporting to Microsoft MAPS Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-'
+      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/enable-cloud-protection-microsoft-defender-antivirus?view=o365-worldwide'
     compliance:
       - cis: ["18.10.42.5.1"]
       - cis_csc_v8: ["4.8"]
@@ -8226,7 +8223,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Microsoft Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     references:
       - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/enable-attack-surface-reduction?view=o365-worldwide'
-      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-'
+      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/attack-surface-reduction?view=o365-worldwide'
     compliance:
       - cis: ["18.10.42.6.1.1"]
       - cis_csc_v8: ["10.5"]
@@ -8249,7 +8246,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path so that 26190899-1602-49e8-8b27-eb1d0a1ce869, 3b576869-a4ec-4529-8536-b80a7769e899, 56a863a9-875e-4185-98a7-b882c64b5ce5, 5beb7efe-fd9a-4556-801d-275e5ffc04cc, 75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84, 7674ba52-37eb-4a4f-a9a1-f0f9a1619a2c, 92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b, 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2, b2b3f03d-6a65-4f7b-a9c7-1c7ef74a9ba4, be9ba2d9-53ea-4cdc-84e5-9b1eeee46550, d3e037e1-3eb8-44c8-a917-57927947596d, d4f940ab-401b-4efc-aadc-ad5f3c50688a, and e6db77e5-3df2-4cf1-b95a-636979351e5b are each set to a value of 1: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Microsoft Defender Exploit Guard\\Attack Surface Reduction\\Configure Attack Surface Reduction rules: Set the state for each ASR rule Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     references:
       - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/enable-attack-surface-reduction?view=o365-worldwide'
-      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-'
+      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/attack-surface-reduction?view=o365-worldwide'
     compliance:
       - cis: ["18.10.42.6.1.2"]
       - cis_csc_v8: ["10.5"]
@@ -8291,7 +8288,7 @@ checks:
     impact: "Users and applications will not be able to access dangerous domains."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender Antivirus\\Windows Defender Exploit Guard\\Network Protection\\Prevent users and apps from accessing dangerous websites Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1709 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-'
+      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/network-protection?view=o365-worldwide'
     compliance:
       - cis: ["18.10.42.6.3.1"]
       - cis_csc_v8: ["9.3", "10.5"]
@@ -8365,7 +8362,7 @@ checks:
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Real-Time Protection\\Turn off real-time protection Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer)."
     references:
       - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-antivirus/configure-real-time-protection-microsoft-defender-antivirus'
-      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-'
+      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/configure-protection-features-microsoft-defender-antivirus?view=o365-worldwide'
     compliance:
       - cis: ["18.10.42.10.2"]
       - cis_csc_v8: ["10.1"]
@@ -8520,7 +8517,7 @@ checks:
     impact: "Applications that are identified by Microsoft as PUA will be blocked at download and install time."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Block: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Configure detection for potentially unwanted applications Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with the Microsoft Windows 10 Release 1809 & Server 2019 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-'
+      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/detect-block-potentially-unwanted-apps-microsoft-defender-antivirus?view=o365-worldwide'
     compliance:
       - cis: ["18.10.42.16"]
       - cis_csc_v8: ["10.1"]
@@ -8545,7 +8542,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Microsoft Defender Antivirus\\Turn off Microsoft Defender AntiVirus Note: This Group Policy path is provided by the Group Policy template WindowsDefender.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Turn off Windows Defender, but it was renamed to Windows Defender Antivirus starting with the Windows 10 Release 1703 Administrative Templates. It was again renamed to Turn off Microsoft Defender Antivirus starting with the Windows 10 Release 2004 Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-'
+      - 'https://learn.microsoft.com/en-us/microsoft-365/security/defender-endpoint/microsoft-defender-antivirus-windows?view=o365-worldwide'
     compliance:
       - cis: ["18.10.42.17"]
       - cis_csc_v8: ["10.1"]
@@ -8720,7 +8717,7 @@ checks:
     impact: "Users can't access OneDrive from the OneDrive app and file picker. Windows Store apps can't access OneDrive using the WinRT API. OneDrive doesn't appear in the navigation pane in File Explorer. OneDrive files aren't kept in sync with the cloud. Users can't automatically upload photos and videos from the camera roll folder. Note: If your organization uses Office 365, be aware that this setting will prevent users from saving files to OneDrive/SkyDrive. Note #2: If your organization has decided to implement OneDrive for Business and therefore needs to except itself from this recommendation, we highly suggest that you also obtain and utilize the OneDrive.admx/adml template that is bundled with the latest OneDrive client, as noted at this link (this template is not included with the Windows Administrative Templates). Two alternative OneDrive settings in particular from that template are worth your consideration: - Allow syncing OneDrive accounts for only specific organizations - a computer - based setting that restricts OneDrive client connections to only approved tenant IDs. - Prevent users from synchronizing personal OneDrive accounts - a user-based setting that prevents use of consumer OneDrive (i.e. non-business)."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\OneDrive\\Prevent the usage of OneDrive for file storage Note: This Group Policy path is provided by the Group Policy template SkyDrive.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). However, we strongly recommend you only use the version included with the Microsoft Windows 10 Release 1607 & Server 2016 Administrative Templates (or newer). Older versions of the templates had conflicting settings in different template files for both OneDrive & SkyDrive, until it was cleaned up properly in the above version. Note #2: In older Microsoft Windows Administrative Templates, this setting was named Prevent the usage of SkyDrive for file storage, but it was renamed starting with the Windows 10 RTM (Release 1507) Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/office365/servicedescriptions/onedrive-for-'
+      - 'https://learn.microsoft.com/en-us/office365/servicedescriptions/onedrive-for-business-service-description'
     compliance:
       - cis: ["18.10.50.1"]
       - cis_csc_v8: ["4.8"]
@@ -8825,7 +8822,7 @@ checks:
     impact: "UI Automation clients on the local computer will not be able to interact with remote apps."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Device and Resource Redirection\\Allow UI Automation redirection Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with the Microsoft Windows 10 Release 21H2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/dotnet/framework/ui-automation/ui-automation-'
+      - 'https://learn.microsoft.com/en-us/dotnet/framework/ui-automation/ui-automation-overview'
     compliance:
       - cis: ["18.10.56.3.3.1"]
       - cis_csc_v8: ["4.8"]
@@ -9033,7 +9030,7 @@ checks:
     impact: "Only client computers that support Network Level Authentication can connect to the RD Session Host server. Note: Some third party two-factor authentication solutions (e.g. RSA Authentication Agent) can be negatively affected by this setting, as Network Level Authentication will expect the user's Windows password upon initial connection attempt (before the RDP logon screen), and once successfully authenticated, pass the credential along to that Windows session on the RDP host (to complete the login). If a two-factor agent is present and expecting a different credential at the RDP logon screen, this initial connection may result in a failed logon attempt, and also effectively cause a “double logon” requirement for each and every new RDP session."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Require user authentication for remote connections by using Network Level Authentication Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates. Note #2: In the Microsoft Windows Vista Administrative Templates, this setting was initially named Require user authentication using RDP 6.0 for remote connections, but it was renamed starting with the Windows Server 2008 (non-R2) Administrative Templates."
     references:
-      - 'https://social.technet.microsoft.com/wiki/contents/articles/5490.configure-'
+      - 'https://social.technet.microsoft.com/wiki/contents/articles/5490.configure-network-level-authentication-for-remote-desktop-services-connections.aspx'
     compliance:
       - cis: ["18.10.56.3.9.4"]
       - cis_csc_v8: ["3.10"]
@@ -9058,7 +9055,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: High Level: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Remote Desktop Services\\Remote Desktop Session Host\\Security\\Set client connection encryption level Note: This Group Policy path is provided by the Group Policy template TerminalServer.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-'
+      - 'https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-rdpbcgr/f1c7c93b-94cc-4551-bb90-532a0185246a'
     compliance:
       - cis: ["18.10.56.3.9.5"]
       - cis_csc_v8: ["3.10"]
@@ -9437,7 +9434,7 @@ checks:
     impact: "Enhanced Phishing Protection may automatically collect additional content for security analysis from a suspicious website or app when users enter their work or school password into a website or app."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Automatic Data Collection This Group Policy path may not exist by default. It is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 23H2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/operating-system-'
+      - 'https://learn.microsoft.com/en-us/windows/security/operating-system-security/virus-and-threat-protection/microsoft-defender-smartscreen/enhanced-phishing-protection?tabs=intune'
     compliance:
       - cis: ["18.10.75.1.1"]
       - cis_csc_v8: ["10.5"]
@@ -9459,7 +9456,7 @@ checks:
     impact: "In some cases, Windows Defender SmartScreen may block legitimate websites, that have been incorrectly flagged by Microsoft."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Notify Malicious Note: This Group Policy path is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/phishing-protection-microsoft-defender-smartscreen?tabs=intune'
     compliance:
       - cis: ["18.10.75.1.2"]
       - cis_csc_v8: ["10.5"]
@@ -9481,7 +9478,7 @@ checks:
     impact: "Password reuse may be detected as a false positive by Microsoft."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Notify Password Reuse Note: This Group Policy path is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/phishing-protection-microsoft-defender-smartscreen?tabs=gpo'
     compliance:
       - cis: ["18.10.75.1.3"]
       - cis_csc_v8: ["10.5"]
@@ -9503,7 +9500,7 @@ checks:
     impact: "Saved passwords may be detected as false positives by Microsoft."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Notify Unsafe App Note: This Group Policy path is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/phishing-protection-microsoft-defender-smartscreen?tabs=gpo'
     compliance:
       - cis: ["18.10.75.1.4"]
       - cis_csc_v8: ["10.5"]
@@ -9525,7 +9522,7 @@ checks:
     impact: "None - this is default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Enhanced Phishing Protection\\Service Enabled Note: This Group Policy path is provided by the Group Policy template WebThreatDefense.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/phishing-protection-microsoft-defender-smartscreen?tabs=gpo'
     compliance:
       - cis: ["18.10.75.1.5"]
       - cis_csc_v8: ["10.5"]
@@ -9547,7 +9544,7 @@ checks:
     impact: "Users will be warned and prevented from running unrecognized programs downloaded from the Internet."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Warn and prevent bypass: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Defender SmartScreen\\Explorer\\Configure Windows Defender SmartScreen Note: This Group Policy path is provided by the Group Policy template WindowsExplorer.admx/adml that is included with the Microsoft Windows 8.0 & Server 2012 (non-R2) Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Configure Windows SmartScreen, but it was renamed starting with the Windows 10 Release 1703 Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/microsoft-defender-smartscreen/microsoft-defender-smartscreen-overview'
     compliance:
       - cis: ["18.10.75.2.1"]
       - cis_csc_v8: ["10.5"]
@@ -9593,8 +9590,8 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: 1 (Enhanced Sign-in Security Enabled): Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Hello for Business\\Enable ESS with Supported Peripherals Note: This Group Policy path is provided by the Group Policy template Passport.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows-hardware/design/device-'
-      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-'
+      - 'https://learn.microsoft.com/en-us/windows-hardware/design/device-experiences/restore-scpc-config-for-admins'
+      - 'https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-faq'
     compliance:
       - cis: ["18.10.78.1"]
       - cis_csc_v8: ["10.5"]
@@ -9667,7 +9664,7 @@ checks:
     impact: "None - this is the default behavior."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Installer\\Always install with elevated privileges Note: This Group Policy path is provided by the Group Policy template MSI.admx/adml that is included with all versions of the Microsoft Windows Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/win32/msi/using-windows-installer-'
+      - 'https://learn.microsoft.com/en-us/windows/win32/msi/using-windows-installer-with-uac'
     compliance:
       - cis: ["18.10.80.2"]
       - cis_csc_v7: ["4.3"]
@@ -9706,8 +9703,8 @@ checks:
     impact: "Winlogon will not send Multiple Provider Router (MPR) notifications on the system."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Logon Options\\Enable MPR notifications for the system Note: This Group Policy path is provided by the Group Policy template WinLogon.admx/adml that is included with the Microsoft Windows 11 Release 22H2 Administrative Templates v1.0 (or newer)."
     references:
-      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-'
-      - 'https://learn.microsoft.com/en-us/windows/win32/secauthn/multiple-provider-'
+      - 'https://techcommunity.microsoft.com/t5/microsoft-security-baselines/windows-11-version-22h2-security-baseline/ba-p/3632520'
+      - 'https://learn.microsoft.com/en-us/windows/win32/secauthn/multiple-provider-router'
     compliance:
       - cis: ["18.10.81.1"]
       - cis_csc_v8: ["4.8"]
@@ -9731,7 +9728,7 @@ checks:
     impact: "The device does not store the user's credentials for automatic sign-in after a Windows Update restart. The users' lock screen apps are not restarted after the system restarts. The user is required to present the logon credentials in order to proceed after restart."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Logon Options\\Sign-in and lock last interactive user automatically after a restart Note: This Group Policy path is provided by the Group Policy template WinLogon.admx/adml that is included with the Microsoft Windows 8.1 & Server 2012 R2 Administrative Templates (or newer). Note #2: In older Microsoft Windows Administrative Templates, this setting was initially named Sign-in last interactive user automatically after a system-initiated restart, but it was renamed starting with the Windows 10 Release 1903 Administrative Templates."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/interactive-logon-do-not-display-last-user-name'
     compliance:
       - cis: ["18.10.81.2"]
       - cis_csc_v7: ["16.11"]
@@ -9750,7 +9747,7 @@ checks:
     impact: "PowerShell script input will be logged to the Applications and Services Logs\\Microsoft\\Windows\\PowerShell\\Operational Event Log channel, which can contain credentials and sensitive information. Note: Configuring this setting to Enabled generates a high volume of event logs which will be overwritten if the log size is not expanded or offloaded to a log collection system. Warning: There are potential risks of capturing credentials and sensitive information in the PowerShell logs, which could be exposed to users who have read-access to those logs. Microsoft provides a feature called \"Protected Event Logging\" to better secure event log data. For assistance with protecting event logging, visit: About Logging Windows - PowerShell | Microsoft Docs."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Script Block Logging Note: This Group Policy path is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-'
+      - 'https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_logging_windows?view=powershell-7.2#protected-event-logging'
     compliance:
       - cis: ["18.10.86.1"]
       - cis_csc_v8: ["8.8"]
@@ -9771,7 +9768,7 @@ checks:
     impact: "PowerShell transcript input will be logged to PowerShell_transcript output files, which are saved to the My Documents folder (within a separate subfolder for each day) of each users' profile by default. Optionally, a specific output directory name can be specified, which will contain all PowerShell transcript logs in a subfolder of My Documents. If specifying a full path outside the users My Documents folder, other users on the system could have access to view these logs, which may contain sensitive information such as passwords. Warning: There are potential risks of capturing credentials and sensitive information in PowerShell_transcript output files, which could be exposed to users who have read access to the files. Warning #2: PowerShell Transcription is not compatible with the natively installed PowerShell v4 on Microsoft Windows 10 Release 1511 and Server 2012 R2 and below. If this recommendation is set as prescribed, PowerShell will need to be updated to at least v5.1 or newer. For more information on updating PowerShell, please see Windows PowerShell System Requirements - PowerShell | Microsoft Learn."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Enabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows PowerShell\\Turn on PowerShell Transcription Note: This Group Policy path is provided by the Group Policy template PowerShellExecutionPolicy.admx/adml that is included with the Microsoft Windows 10 RTM (Release 1507) Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-'
+      - 'https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_group_policy_settings?view=powershell-7.2#turn-on-powershell-transcription'
     compliance:
       - cis: ["18.10.86.2"]
       - cis_csc_v8: ["8.8"]
@@ -9982,7 +9979,7 @@ checks:
     impact: "The copy and paste function to/from the Windows Sandbox will be disabled. Therefore, files will not be able to be moved to/from the Windows Sandbox via the clipboard."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Sandbox\\Allow clipboard sharing with Windows Sandbox Note: This Group Policy path is provided by the Group Policy template WindowsSandbox.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-sandbox/windows-sandbox-configure-using-wsb-file'
     compliance:
       - cis: ["18.10.90.1"]
       - cis_csc_v8: ["4.8"]
@@ -10004,7 +10001,7 @@ checks:
     impact: "Network access to/from the Windows Sandbox will be disabled. Therefore, files will not be able to be moved to/from the Windows Sandbox via the network."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Sandbox\\Allow networking in Windows Sandbox Note: This Group Policy path is provided by the Group Policy template WindowsSandbox.admx/adml that is included with the Microsoft Windows 11 Release 21H2 Administrative Templates (or newer)."
     references:
-      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-'
+      - 'https://learn.microsoft.com/en-us/windows/security/threat-protection/windows-sandbox/windows-sandbox-configure-using-wsb-file'
     compliance:
       - cis: ["18.10.90.2"]
       - cis_csc_v8: ["4.8"]
@@ -10214,7 +10211,7 @@ checks:
     impact: "New features will not be available on the system until the feature update that includes these features and enhancements is installed."
     remediation: "To establish the recommended configuration via GP, set the following UI path to Disabled: Computer Configuration\\Policies\\Administrative Templates\\Windows Components\\Windows Update\\Manage updates offered from Windows Update\\Enable optional updates This Group Policy path may not exist by default. It is provided by the Group Policy template WindowsUpdate.admx/adml that is included with the Microsoft Windows 11 Release 23H2 Administrative Templates (or newer)."
     references:
-      - 'https://techcommunity.microsoft.com/t5/windows-it-pro-blog/enable-and-control-'
+      - 'https://techcommunity.microsoft.com/t5/windows-it-pro-blog/enable-and-control-optional-updates-for-your-organization/ba-p/3905218'
     compliance:
       - cis: ["18.10.92.4.4"]
       - cis_csc_v8: ["7.3"]
