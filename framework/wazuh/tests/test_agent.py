@@ -44,7 +44,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_distinct_agents,
             get_file_conf,
             get_full_overview,
-            get_group_files,
             get_outdated_agents,
             get_upgrade_result,
             reconnect_agents,
@@ -551,67 +550,6 @@ def test_agent_get_agent_groups_exceptions(mock_get_groups, system_groups, error
         assert e.code == error_code, 'The exception was raised as expected but "error_code" does not match.'
 
 
-@pytest.mark.parametrize('group_list', [
-    ['group-1'],
-    ['invalid-group']
-])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
-@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
-def test_agent_get_group_files(group_list):
-    """Test `get_group_files` from agent module.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of groups to get their files.
-    """
-    result = get_group_files(group_list=group_list)
-    # Assert 'items' contains agent.conf, merged.mg and ar.conf and 'hash' is not empty
-    if result.total_failed_items != 0:
-        assert list(result.failed_items.keys())[0].code == 1710
-    else:
-        assert result.total_affected_items == 3
-        assert set(item['filename'] for item in result.affected_items).difference(
-            set(['agent.conf', 'merged.mg', 'ar.conf'])) == set()
-        for item in result.affected_items:
-            assert item['hash']
-
-
-@pytest.mark.parametrize('shared_path, group_list, group_exists, side_effect, expected_exception', [
-    (test_shared_path, ['none'], False, None, WazuhResourceNotFound(1710)),
-    ('invalid-path', ['default'], True, None, WazuhError(1006)),
-    (test_shared_path, ['default'], True, WazuhError(1405), WazuhError(1405)),
-    (test_shared_path, ['default'], True, WazuhException(1400), WazuhInternalError(1727))
-])
-@patch('wazuh.agent.process_array')
-@patch('wazuh.core.agent.Agent.group_exists')
-def test_agent_get_group_files_exceptions(mock_group_exists, mock_process_array, shared_path, group_list, group_exists,
-                                          side_effect, expected_exception):
-    """Test `get_group_files` function from agent module raises the expected exceptions if an invalid 'global.db' path
-    is specified.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of groups to get their files.
-    group_exists : bool
-        Value to be returned by the mocked function `group_exists`.
-    side_effect : Exception
-        Exception type to be raised by the mocked `process_array` function.
-    expected_exception : Exception
-        Exception expected to be raised by `get_group_files` with the given parameters.
-    """
-    with patch('wazuh.core.common.SHARED_PATH', new=shared_path):
-        mock_group_exists.return_value = group_exists
-        mock_process_array.side_effect = side_effect
-        try:
-            result = get_group_files(group_list=group_list)
-            assert list(result.failed_items.keys())[0] == expected_exception
-        except (WazuhError, WazuhInternalError) as e:
-            assert e.code == expected_exception.code, 'The exception raised is not the one expected.'
-
-
 @pytest.mark.parametrize('group_id', [
     'non-existent-group',
     'invalid-group'
@@ -668,7 +606,7 @@ def test_create_group_exceptions(group_id, exception, exception_code):
     exception : Exception
         The expected exception to be raised by `create_group`.
     exception_code : int
-        Expected error code for the Wazuh Exception object raised by `get_group_files` with the given parameters.
+        Expected error code for the Wazuh Exception object raised by `create_group` with the given parameters.
     """
     try:
         create_group(group_id)
