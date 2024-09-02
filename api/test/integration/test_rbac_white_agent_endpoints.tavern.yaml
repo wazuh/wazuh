@@ -1244,42 +1244,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: PUT /agents/group/{group_id}/restart
-
-stages:
-
-    # PUT /agents/group/default/restart
-  - name: Restart all agents from group default (Partially allowed)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/group/default/restart"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
-      status_code: 200
-      json:
-        error: 2
-        data:
-          affected_items:
-            - "004"
-          total_affected_items: 1
-          failed_items:
-            - error:
-                code: 4000
-              id:
-                - "002"
-                - "006"
-                - "008"
-                - "010"
-          total_failed_items: 4
-        message: !anystr
-
----
 test_name: PUT /agents/reconnect
 
 stages:

@@ -1201,55 +1201,6 @@ async def get_group_file(group_id: str, file_name: str, raw: bool = False, prett
     return json_response(data, pretty=pretty)
 
 
-async def restart_agents_by_group(group_id: str, pretty: bool = False,
-                                  wait_for_complete: bool = False) -> ConnexionResponse:
-    """Restart all agents from a group.
-
-    Parameters
-    ----------
-    group_id : str
-        Group name.
-    pretty : bool, optional
-        Show results in human-readable format. Default `False`
-    wait_for_complete : bool, optional
-        Disable timeout response. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'group_list': [group_id], 'select': ['id'], 'limit': None}
-    dapi = DistributedAPI(f=agent.get_agents_in_group,
-                          f_kwargs=f_kwargs,
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    agents = raise_if_exc(await dapi.distribute_function())
-
-    agent_list = [a['id'] for a in agents.affected_items]
-    if not agent_list:
-        data = AffectedItemsWazuhResult(none_msg='Restart command was not sent to any agent')
-        return json_response(data, pretty=pretty)
-
-    f_kwargs = {'agent_list': agent_list}
-    dapi = DistributedAPI(f=agent.restart_agents_by_group,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_agent_no_group(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = DATABASE_LIMIT, select=None, sort=None, search=None, q=None) -> ConnexionResponse:
     """Get agents without group.

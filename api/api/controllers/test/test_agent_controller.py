@@ -48,7 +48,6 @@ with patch('wazuh.common.wazuh_uid'):
             reconnect_agents,
             restart_agent,
             restart_agents,
-            restart_agents_by_group,
             restart_agents_by_node,
         )
 
@@ -863,58 +862,6 @@ async def test_get_group_file(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, ConnexionResponse)
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("mock_request", ["agent_controller"], indirect=True)
-@pytest.mark.parametrize('mock_alist', [CustomAffectedItems(empty=True), CustomAffectedItems()])
-@patch('api.configuration.api_conf')
-@patch('api.controllers.agent_controller.DistributedAPI.distribute_function', return_value=AsyncMock())
-@patch('api.controllers.agent_controller.remove_nones_to_dict')
-@patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
-@patch('api.controllers.agent_controller.AffectedItemsWazuhResult', return_value={})
-async def test_restart_agents_by_group(mock_aiwr, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_alist,
-                                      mock_request):
-    """Verify 'restart_agents_by_group' endpoint is working as expected."""
-    with patch('api.controllers.agent_controller.raise_if_exc', return_value=mock_alist) as mock_exc:
-        result = await restart_agents_by_group(group_id='001')
-        f_kwargs = {'group_list': ['001'],
-                    'select': ['id'],
-                    'limit': None
-                    }
-        calls_get_agents = [call(f=agent.get_agents_in_group,
-                                 f_kwargs=f_kwargs,
-                                 request_type='local_master',
-                                 is_async=False,
-                                 wait_for_complete=False,
-                                 logger=ANY,
-                                 rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                 )
-                            ]
-        calls_restart_agents_by_group = [call(f=agent.restart_agents_by_group,
-                                              f_kwargs=mock_remove.return_value,
-                                              request_type='distributed_master',
-                                              is_async=False,
-                                              wait_for_complete=False,
-                                              logger=ANY,
-                                              rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                              )
-                                         ]
-        if not mock_alist.affected_items:
-            mock_dapi.assert_has_calls(calls_get_agents)
-            assert mock_dapi.call_count == 1
-            mock_aiwr.assert_called_once_with(none_msg='Restart command was not sent to any agent')
-        else:
-            f_kwargs = {'agent_list': [mock_exc.return_value.affected_items[0]['id']]
-                        }
-            mock_dapi.assert_has_calls(calls_get_agents,
-                                       calls_restart_agents_by_group)
-            assert mock_dapi.call_count == 2
-            mock_exc.assert_has_calls([call(mock_dfunc.return_value),
-                                       call(mock_dfunc.return_value)])
-            assert mock_exc.call_count == 2
-            mock_remove.assert_called_once_with(f_kwargs)
-        assert isinstance(result, ConnexionResponse)
 
 
 @pytest.mark.asyncio

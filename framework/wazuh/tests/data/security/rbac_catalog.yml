@@ -174,7 +174,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/{agent_id}/restart
-          - PUT /agents/group/{group_id}/restart
           - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
       agent:upgrade:
