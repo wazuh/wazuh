@@ -1092,55 +1092,6 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
     return json_response(data, pretty=pretty)
 
 
-async def get_group_file(group_id: str, file_name: str, raw: bool = False, pretty: bool = False,
-                              wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get the files placed under the group directory.
-
-    Parameters
-    ----------
-    group_id : str
-        Group ID.
-    file_name : str
-        Name of the file to be obtained.
-    raw : bool
-        Respond in raw format.
-    pretty: bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    web.Response
-        API response.
-    """
-    f_kwargs = {'group_list': [group_id],
-                'filename': file_name,
-                'type_conf': request.query_params.get('type', None),
-                'raw': raw}
-
-    dapi = DistributedAPI(f=agent.get_file_conf,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    if raw:
-        mimetype, _ = mimetypes.guess_type(file_name)
-        if mimetype is None:
-            mimetype = 'text/plain'
-        if file_name == 'agent.conf':
-            mimetype = 'application/xml'
-
-        return ConnexionResponse(body=data['data'], content_type=mimetype+'; charset=utf-8')
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_agent_no_group(pretty: bool = False, wait_for_complete: bool = False, offset: int = 0,
                              limit: int = DATABASE_LIMIT, select=None, sort=None, search=None, q=None) -> ConnexionResponse:
     """Get agents without group.

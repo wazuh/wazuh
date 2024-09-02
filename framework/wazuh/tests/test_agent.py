@@ -42,7 +42,6 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agents_summary_os,
             get_agents_summary_status,
             get_distinct_agents,
-            get_file_conf,
             get_full_overview,
             get_outdated_agents,
             get_upgrade_result,
@@ -1200,29 +1199,6 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
         pytest.fail('An exception should be raised.')
     except WazuhError as error:
         assert error == WazuhError(1740)
-
-
-@pytest.mark.parametrize('filename, group_list', [
-    ('agent.conf', ['default'])
-])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
-@patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
-def test_agent_get_file_conf(filename, group_list):
-    """Test `get_file_conf` from agent module.
-
-    Parameters
-    ----------
-    filename : str
-        Name of the agent.
-    group_list : List of str
-        List of group names.
-    """
-    result = get_file_conf(filename=filename, group_list=group_list)
-    assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
-    assert 'data' in result.dikt
-    assert isinstance(result.dikt['data'], dict)
-    assert 'total_affected_items' in result.dikt['data']
-    assert result.dikt['data']['total_affected_items'] == 1
 
 
 @pytest.mark.parametrize('group_list', [
