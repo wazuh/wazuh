@@ -423,8 +423,8 @@ Public Function SetWazuhPermissions()
         grantAuthenticatedUsersPermFolder = "icacls """ & install_dir & """ /grant *S-1-5-11:RX"
         WshShell.run grantAuthenticatedUsersPermFolder, 0, True
 
-        ' Remove Authenticated Users group for ossec.conf and client.key
-        remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-5-11 /q"
+        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf  and client.key
+        remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "*ossec.conf" & """ /remove *S-1-5-11 /q"
         WshShell.run remAuthenticatedUsersPermsConf, 0, True
 
         remAuthenticatedUsersPermsKeys = "icacls """ & home_dir & "client.keys" & """ /remove *S-1-5-11 /q"
