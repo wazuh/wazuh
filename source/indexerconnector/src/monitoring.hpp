@@ -62,9 +62,14 @@ enum Type : std::size_t
 
 /**
  * @brief Monitoring class.
+ * This class is used to monitor the health of the servers.
+ * It checks the health of the servers and updates the status in the values map.
+ * The class has a thread that checks the health of the servers at a given interval.
  *
  */
-class Monitoring final
+
+template<typename THTTPRequest = HTTPRequest>
+class TMonitoring final
 {
     std::map<std::string, bool, std::less<>> m_values;
     std::thread m_thread;
@@ -74,7 +79,7 @@ class Monitoring final
     uint32_t m_interval {INTERVAL};
 
 public:
-    ~Monitoring()
+    ~TMonitoring()
     {
         m_stop = true;
         m_condition.notify_one();
@@ -91,9 +96,9 @@ public:
      * @param interval Interval for monitoring.
      * @param secureCommunication Object that provides secure communication.
      */
-    explicit Monitoring(const std::vector<std::string>& values,
-                        const uint32_t interval = INTERVAL,
-                        const SecureCommunication& secureCommunication = {})
+    explicit TMonitoring(const std::vector<std::string>& values,
+                         const uint32_t interval = INTERVAL,
+                         const SecureCommunication& secureCommunication = {})
         : m_interval(interval)
     {
         // Initialize the map with the values, all servers are available.
@@ -111,7 +116,8 @@ public:
                 {
                     std::unique_lock lock(m_mutex);
                     // Wait for the interval.
-                    m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
+                    m_condition.wait_for(
+                        lock, std::chrono::milliseconds(m_interval), [this]() { return m_stop.load(); });
 
                     // If the thread is not stopped, check the health of the servers.
                     if (!m_stop)
@@ -120,7 +126,7 @@ public:
                         for (auto& value : m_values)
                         {
                             // Get the health of the server.
-                            HTTPRequest::instance().get(
+                            THTTPRequest::instance().get(
                                 {HttpURL(value.first + "/_cat/health?v"), {}, secureCommunication, headers},
                                 {[&](std::string response)
                                  {
@@ -178,5 +184,7 @@ public:
         return m_values.at(value);
     }
 };
+
+using Monitoring = TMonitoring<>;
 
 #endif // _MONITORING_HPP
