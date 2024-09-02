@@ -1,7 +1,5 @@
 project(indexerconnector_utest)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../mocks/)
-
 file(GLOB SOURCES
         *.cpp
 )

@@ -12,7 +12,7 @@
 #ifndef _TRAMPOLINE_HTTP_REQUEST_HPP
 #define _TRAMPOLINE_HTTP_REQUEST_HPP
 
-#include "MockHTTTPRequest.hpp"
+#include "mockHTTTPRequest.hpp"
 #include "base/utils/singleton.hpp"
 
 extern std::shared_ptr<MockHTTPRequest> spHTTPRequest;
@@ -24,7 +24,10 @@ class TrampolineHTTPRequest final : public Singleton<TrampolineHTTPRequest>
 {
 public:
     TrampolineHTTPRequest() {};
-    virtual ~TrampolineHTTPRequest() = default;
+    virtual ~TrampolineHTTPRequest()
+    { // Reset trampoline
+        spHTTPRequest.reset();
+    };
 
     /**
      * @brief Performs a HTTP GET request.

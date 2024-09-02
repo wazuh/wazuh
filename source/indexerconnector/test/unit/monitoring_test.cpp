@@ -10,8 +10,8 @@
  */
 
 #include "monitoring_test.hpp"
-#include "MockHTTTPRequest.hpp"
-#include "TrampolineHTTPRequest.hpp"
+#include "mockHTTTPRequest.hpp"
+#include "trampolineHTTPRequest.hpp"
 
 /**
  * @brief Test instantiation and check the availability of an unregistered server.
@@ -143,9 +143,6 @@ TEST_F(MonitoringTest, TestInstantiationWithGreenRedServers)
 
     // Verify that the red server is marked as not available
     EXPECT_FALSE(m_monitoring->isAvailable(RED_SERVER));
-
-    // Reset trampoline
-    spHTTPRequest.reset();
 }
 
 /**
