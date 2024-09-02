@@ -8,6 +8,8 @@ import sys
 import copy
 from unittest.mock import patch, mock_open, MagicMock
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -72,7 +74,7 @@ def test_aws_guardduty_bucket_check_guardduty_type_handles_exceptions(mock_wazuh
         instance.client = MagicMock()
         instance.client.list_objects_v2.side_effect = Exception
         instance.check_guardduty_type()
-    assert e.value.code == constants.UNEXPECTED_ERROR_WORKING_WITH_S3
+    assert e.value.code == wodles.aws.tests.aws_constants.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
 @patch('aws_bucket.AWSLogsBucket.get_base_prefix', return_value='base_prefix/')

@@ -8,6 +8,7 @@ import sys
 from datetime import datetime
 from unittest.mock import patch, MagicMock, mock_open
 
+import wodles.aws.tests.aws_constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
@@ -102,7 +103,7 @@ def test_aws_vpc_flow_bucket_get_ec2_client_handles_exceptions_on_ec2_client_err
             pytest.raises(SystemExit) as e:
         instance.get_ec2_client(test_constants.TEST_REGION,
                                 test_constants.TEST_AWS_PROFILE)
-    assert e.value.code == constants.INVALID_CREDENTIALS_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.INVALID_CREDENTIALS_ERROR_CODE
 
 
 @patch('vpcflow.AWSVPCFlowBucket.get_ec2_client')

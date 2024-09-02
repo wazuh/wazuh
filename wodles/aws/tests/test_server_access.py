@@ -9,6 +9,8 @@ import re
 from unittest.mock import patch, MagicMock, mock_open
 import botocore
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -150,13 +152,13 @@ def test_aws_server_access_iter_files_in_bucket_handles_exceptions(mock_sts):
             instance.client.list_objects_v2.return_value = test_constants.LIST_OBJECT_V2_NO_PREFIXES
             instance.iter_files_in_bucket(test_constants.TEST_ACCOUNT_ID,
                                           test_constants.TEST_REGION)
-        assert e.value.code == constants.INVALID_KEY_FORMAT_ERROR_CODE
+        assert e.value.code == wodles.aws.tests.aws_constants.INVALID_KEY_FORMAT_ERROR_CODE
 
         with pytest.raises(SystemExit) as e:
             mock_build_filter.side_effect = Exception
             instance.iter_files_in_bucket(test_constants.TEST_ACCOUNT_ID,
                                           test_constants.TEST_REGION)
-        assert e.value.code == constants.UNEXPECTED_ERROR_WORKING_WITH_S3
+        assert e.value.code == wodles.aws.tests.aws_constants.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -183,14 +185,14 @@ def test_aws_server_access_check_bucket_handles_exceptions_when_empty_bucket(moc
 
     with pytest.raises(SystemExit) as e:
         instance.check_bucket()
-    assert e.value.code == constants.EMPTY_BUCKET_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.EMPTY_BUCKET_ERROR_CODE
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (constants.THROTTLING_EXCEPTION_ERROR_NAME, constants.THROTTLING_ERROR_CODE),
-    (constants.INVALID_CREDENTIALS_ERROR_NAME, constants.INVALID_CREDENTIALS_ERROR_CODE),
-    (constants.INVALID_REQUEST_TIME_ERROR_NAME, constants.INVALID_REQUEST_TIME_ERROR_CODE),
-    ("OtherClientError", constants.UNKNOWN_ERROR_CODE)
+    (constants.THROTTLING_EXCEPTION_ERROR_NAME, wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE),
+    (constants.INVALID_CREDENTIALS_ERROR_NAME, wodles.aws.tests.aws_constants.INVALID_CREDENTIALS_ERROR_CODE),
+    (constants.INVALID_REQUEST_TIME_ERROR_NAME, wodles.aws.tests.aws_constants.INVALID_REQUEST_TIME_ERROR_CODE),
+    ("OtherClientError", wodles.aws.tests.aws_constants.UNKNOWN_ERROR_CODE)
 ])
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
 def test_aws_server_access_check_bucket_handles_exceptions_on_client_error(mock_sts,

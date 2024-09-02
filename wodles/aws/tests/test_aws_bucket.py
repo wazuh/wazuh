@@ -14,6 +14,8 @@ from unittest.mock import MagicMock, patch, mock_open
 import botocore
 import pytest
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -310,8 +312,8 @@ def test_aws_bucket_find_account_ids(mock_prefix):
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (constants.THROTTLING_EXCEPTION_ERROR_NAME, constants.THROTTLING_ERROR_CODE),
-    ('OtherClientException', constants.UNKNOWN_ERROR_CODE)
+    (constants.THROTTLING_EXCEPTION_ERROR_NAME, wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE),
+    ('OtherClientException', wodles.aws.tests.aws_constants.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.get_base_prefix', return_value=test_constants.TEST_PREFIX)
 def test_aws_bucket_find_account_ids_handles_exceptions_on_client_error(mock_prefix, error_code: str, exit_code: int):
@@ -335,7 +337,7 @@ def test_aws_bucket_find_account_ids_handles_exceptions_on_key_error(mock_prefix
 
     with pytest.raises(SystemExit) as e:
         bucket.find_account_ids()
-    assert e.value.code == constants.INVALID_PREFIX_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.INVALID_PREFIX_ERROR_CODE
 
 
 @pytest.mark.parametrize('object_list', [test_constants.LIST_OBJECT_V2,
@@ -357,8 +359,8 @@ def test_aws_bucket_find_regions(mock_prefix, object_list: dict):
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (constants.THROTTLING_EXCEPTION_ERROR_NAME, constants.THROTTLING_ERROR_CODE),
-    ('OtherClientException', constants.UNKNOWN_ERROR_CODE)
+    (constants.THROTTLING_EXCEPTION_ERROR_NAME, wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE),
+    ('OtherClientException', wodles.aws.tests.aws_constants.UNKNOWN_ERROR_CODE)
 ])
 @patch('aws_bucket.AWSBucket.get_service_prefix', return_value=test_constants.TEST_PREFIX)
 def test_aws_bucket_find_regions_handles_exceptions_on_client_error(mock_prefix, error_code: str, exit_code: int):
@@ -484,19 +486,19 @@ def test_aws_bucket_get_log_file(mock_load_from_file, expected_result):
 
 @pytest.mark.parametrize('exception, error_message, exit_code', [
     (TypeError, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: TypeError()',
-     constants.DECOMPRESS_FILE_ERROR_CODE),
+     wodles.aws.tests.aws_constants.DECOMPRESS_FILE_ERROR_CODE),
     (zipfile.BadZipfile, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: BadZipFile()',
-     constants.DECOMPRESS_FILE_ERROR_CODE),
+     wodles.aws.tests.aws_constants.DECOMPRESS_FILE_ERROR_CODE),
     (zipfile.LargeZipFile, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: LargeZipFile()',
-     constants.DECOMPRESS_FILE_ERROR_CODE),
+     wodles.aws.tests.aws_constants.DECOMPRESS_FILE_ERROR_CODE),
     (IOError, f'Failed to decompress file {test_constants.TEST_LOG_KEY}: OSError()',
-     constants.DECOMPRESS_FILE_ERROR_CODE),
+     wodles.aws.tests.aws_constants.DECOMPRESS_FILE_ERROR_CODE),
     (ValueError, f'Failed to parse file {test_constants.TEST_LOG_KEY}: ValueError()',
-     constants.PARSE_FILE_ERROR_CODE),
+     wodles.aws.tests.aws_constants.PARSE_FILE_ERROR_CODE),
     (csv.Error, f'Failed to parse file {test_constants.TEST_LOG_KEY}: Error()',
-     constants.PARSE_FILE_ERROR_CODE),
+     wodles.aws.tests.aws_constants.PARSE_FILE_ERROR_CODE),
     (Exception, f'Unknown error reading/parsing file {test_constants.TEST_LOG_KEY}: Exception()',
-     constants.UNKNOWN_ERROR_CODE)
+     wodles.aws.tests.aws_constants.UNKNOWN_ERROR_CODE)
 ])
 @pytest.mark.parametrize('skip_on_error', [True, False])
 @patch('aws_bucket.AWSBucket.load_information_from_file')
@@ -733,8 +735,8 @@ def test_aws_bucket_iter_files_in_bucket(mock_build_filter, mock_debug,
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (constants.THROTTLING_EXCEPTION_ERROR_NAME, constants.THROTTLING_ERROR_CODE),
-    ('OtherClientException', constants.UNKNOWN_ERROR_CODE),
+    (constants.THROTTLING_EXCEPTION_ERROR_NAME, wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE),
+    ('OtherClientException', wodles.aws.tests.aws_constants.UNKNOWN_ERROR_CODE),
 ])
 def test_aws_bucket_iter_files_in_bucket_handles_exceptions_on_error(error_code, exit_code):
     """Test 'iter_files_in_bucket' method handles exceptions raised when trying to fetch objects from AWS
@@ -755,7 +757,7 @@ def test_aws_bucket_iter_files_in_bucket_handles_exceptions_on_error(error_code,
             mock_build_filter.side_effect = Exception
             bucket.iter_files_in_bucket(test_constants.TEST_ACCOUNT_ID,
                                         test_constants.TEST_REGION)
-        assert e.value.code == constants.UNEXPECTED_ERROR_WORKING_WITH_S3
+        assert e.value.code == wodles.aws.tests.aws_constants.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
 def test_aws_bucket_check_bucket():
@@ -790,10 +792,10 @@ def test_aws_bucket_check_bucket_exits_when_empty():
 
 
 @pytest.mark.parametrize('error_code, exit_code', [
-    (constants.THROTTLING_EXCEPTION_ERROR_NAME, constants.THROTTLING_ERROR_CODE),
-    (constants.INVALID_CREDENTIALS_ERROR_NAME, constants.INVALID_CREDENTIALS_ERROR_CODE),
-    (constants.INVALID_REQUEST_TIME_ERROR_NAME, constants.INVALID_REQUEST_TIME_ERROR_CODE),
-    ("OtherClientError", constants.UNKNOWN_ERROR_CODE)
+    (constants.THROTTLING_EXCEPTION_ERROR_NAME, wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE),
+    (constants.INVALID_CREDENTIALS_ERROR_NAME, wodles.aws.tests.aws_constants.INVALID_CREDENTIALS_ERROR_CODE),
+    (constants.INVALID_REQUEST_TIME_ERROR_NAME, wodles.aws.tests.aws_constants.INVALID_REQUEST_TIME_ERROR_CODE),
+    ("OtherClientError", wodles.aws.tests.aws_constants.UNKNOWN_ERROR_CODE)
 ])
 def test_aws_bucket_check_bucket_handles_exceptions_on_client_error(error_code: str, exit_code: int):
     """Test 'check_bucket' method handles the different botocore client exceptions and exits with the expected code
@@ -826,7 +828,7 @@ def test_aws_bucket_check_bucket_handles_exceptions_on_endpoint_error():
         bucket.client.get_paginator.side_effect = botocore.exceptions.EndpointConnectionError(
             endpoint_url='endpoint.aws.com')
         bucket.check_bucket()
-    assert e.value.code == constants.INVALID_ENDPOINT_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.INVALID_ENDPOINT_ERROR_CODE
 
 
 @pytest.mark.parametrize('prefix', [test_constants.TEST_PREFIX, None])

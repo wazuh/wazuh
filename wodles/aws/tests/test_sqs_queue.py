@@ -8,6 +8,8 @@ from unittest.mock import patch
 import pytest
 import json
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -83,7 +85,7 @@ def test_aws_sqs_queue_delete_message_handles_exception_when_deleting_message(mo
 
     with pytest.raises(SystemExit) as e:
         instance.delete_message(SAMPLE_MESSAGE)
-    assert e.value.code == constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert e.value.code == wodles.aws.tests.aws_constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url', return_value=SAMPLE_URL)
@@ -113,7 +115,7 @@ def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mo
 
     with pytest.raises(SystemExit) as e:
         instance.fetch_messages()
-    assert e.value.code == constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert e.value.code == wodles.aws.tests.aws_constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
 @patch('sqs_queue.AWSSQSQueue.fetch_messages', return_value=SAMPLE_RAW_MESSAGE)

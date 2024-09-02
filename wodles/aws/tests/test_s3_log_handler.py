@@ -10,6 +10,8 @@ from unittest.mock import patch, MagicMock, call
 import pytest
 import json
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -87,7 +89,7 @@ def test_aws_sl_subscriber_bucket_obtain_logs_handles_exception(mock_wazuh_integ
 
     with pytest.raises(SystemExit) as e:
         instance.obtain_logs(test_constants.TEST_BUCKET, SAMPLE_PARQUET_KEY)
-    assert e.value.code == constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert e.value.code == wodles.aws.tests.aws_constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
 @patch('s3_log_handler.AWSSLSubscriberBucket.obtain_logs')
@@ -287,7 +289,7 @@ def test_sec_hub_obtain_logs_handles_exception():
                 with pytest.raises(SystemExit) as e:
                     s3_log_handler.AWSSecurityHubSubscriberBucket().obtain_logs(bucket=test_constants.TEST_BUCKET,
                                                                                 log_path=test_constants.TEST_LOG_KEY)
-                assert e.value.code == constants.PARSE_FILE_ERROR_CODE
+                assert e.value.code == wodles.aws.tests.aws_constants.PARSE_FILE_ERROR_CODE
 
 
 @pytest.mark.parametrize("discard_log", [True, False])

@@ -8,6 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_constants as test_constants
 
@@ -72,12 +74,15 @@ def test_main(mock_arguments, args: list[str], class_):
 
 
 @pytest.mark.parametrize('args, error_code', [
-    (['main', '--bucket', 'bucket-name', '--type', 'invalid'], constants.INVALID_TYPE_ERROR_CODE),
-    (['main', '--service', 'invalid'], constants.INVALID_TYPE_ERROR_CODE),
-    (['main', '--subscriber', 'invalid'], constants.INVALID_TYPE_ERROR_CODE),
-    (['main', '--service', 'cloudwatchlogs', '--regions', 'in-valid-1'], constants.INVALID_REGION_ERROR_CODE),
-    (['main', '--service', 'inspector', '--regions', 'in-valid-1'], constants.INVALID_REGION_ERROR_CODE),
-    (['main', '--service', 'inspector', '--regions', 'af-south-1'], constants.INVALID_REGION_ERROR_CODE)
+    (['main', '--bucket', 'bucket-name', '--type', 'invalid'], wodles.aws.tests.aws_constants.INVALID_TYPE_ERROR_CODE),
+    (['main', '--service', 'invalid'], wodles.aws.tests.aws_constants.INVALID_TYPE_ERROR_CODE),
+    (['main', '--subscriber', 'invalid'], wodles.aws.tests.aws_constants.INVALID_TYPE_ERROR_CODE),
+    (['main', '--service', 'cloudwatchlogs', '--regions', 'in-valid-1'],
+     wodles.aws.tests.aws_constants.INVALID_REGION_ERROR_CODE),
+    (['main', '--service', 'inspector', '--regions', 'in-valid-1'],
+     wodles.aws.tests.aws_constants.INVALID_REGION_ERROR_CODE),
+    (['main', '--service', 'inspector', '--regions', 'af-south-1'],
+     wodles.aws.tests.aws_constants.INVALID_REGION_ERROR_CODE)
 ])
 def test_main_type_ko(args: list[str], error_code: int):
     """Test 'main' function handles exceptions when receiving invalid buckets or services.

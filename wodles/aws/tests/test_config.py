@@ -10,6 +10,8 @@ from unittest.mock import patch, MagicMock
 import re
 from datetime import datetime
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -80,7 +82,7 @@ def test_aws_config_bucket_marker_only_logs_after_handles_exceptions(mock_marker
             instance.marker_only_logs_after(test_constants.TEST_ACCOUNT_ID,
                                             test_constants.TEST_REGION)
 
-        assert e.value.code == constants.THROTTLING_ERROR_CODE
+        assert e.value.code == wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE
 
 
 @patch('aws_bucket.AWSBucket.marker_custom_date')

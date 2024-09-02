@@ -7,6 +7,8 @@ import os
 import sys
 from unittest.mock import patch, mock_open
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -100,7 +102,7 @@ def test_cisco_umbrella_load_information_from_file_handles_exceptions(mock_sts_c
     with patch('aws_bucket.AWSBucket.decompress_file'), \
             pytest.raises(SystemExit) as e:
         instance.load_information_from_file(test_constants.TEST_LOG_KEY)
-    assert e.value.code == constants.INVALID_TYPE_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.INVALID_TYPE_ERROR_CODE
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')

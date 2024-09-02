@@ -11,6 +11,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -157,10 +159,10 @@ def test_aws_cloudwatchlogs_remove_aws_log_stream_handles_exceptions(mock_debug,
         'ERROR: Error trying to remove "{}" log stream from "{}" log group.'.format(TEST_LOG_STREAM, TEST_LOG_GROUP), 0)
 
     mock_delete_log_stream.side_effect = botocore.exceptions.ClientError(
-        {'Error': {'Code': constants.THROTTLING_ERROR_CODE}}, "name")
+        {'Error': {'Code': wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE}}, "name")
     with pytest.raises(SystemExit) as e:
         instance.remove_aws_log_stream(TEST_LOG_GROUP, TEST_LOG_STREAM)
-    assert e.value.code == constants.THROTTLING_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE
 
 
 @pytest.mark.parametrize('end_time', [None, TEST_END_TIME - 1])
@@ -248,10 +250,10 @@ def test_aws_cloudwatchlogs_get_alerts_within_range_handles_exceptions_on_client
     mock_client_get_log_events = instance.client.get_log_events
 
     mock_client_get_log_events.side_effect = botocore.exceptions.ClientError(
-        {'Error': {'Code': constants.THROTTLING_ERROR_CODE}}, "name")
+        {'Error': {'Code': wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE}}, "name")
     with pytest.raises(SystemExit) as e:
         instance.get_alerts_within_range(TEST_LOG_GROUP, TEST_LOG_STREAM, 'token', TEST_START_TIME, TEST_END_TIME)
-    assert e.value.code == constants.THROTTLING_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')
@@ -431,10 +433,10 @@ def test_aws_cloudwatchlogs_get_log_streams_handles_exceptions(mock_debug, mock_
             TEST_LOG_GROUP), 0)
 
     mock_describe_log_streams.side_effect = botocore.exceptions.ClientError(
-        {'Error': {'Code': constants.THROTTLING_ERROR_CODE}}, "name")
+        {'Error': {'Code': wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE}}, "name")
     with pytest.raises(SystemExit) as e:
         instance.get_log_streams(TEST_LOG_GROUP)
-    assert e.value.code == constants.THROTTLING_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE
 
 
 @patch('wazuh_integration.WazuhIntegration.get_sts_client')

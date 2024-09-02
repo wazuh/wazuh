@@ -15,6 +15,8 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
 import aws_constants as test_constants
@@ -206,7 +208,7 @@ def test_wazuh_integration_get_client_handles_exceptions_on_botocore_error():
             patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
             wazuh_integration.WazuhIntegration(**utils.get_wazuh_integration_parameters())
-        assert e.value.code == constants.INVALID_CREDENTIALS_ERROR_CODE
+        assert e.value.code == wodles.aws.tests.aws_constants.INVALID_CREDENTIALS_ERROR_CODE
 
 
 @pytest.mark.parametrize('profile', [
@@ -247,7 +249,7 @@ def test_wazuh_integration_get_sts_client_handles_exceptions_when_invalid_creds_
     with patch('wazuh_integration.boto3.Session', return_value=mock_boto_session):
         with pytest.raises(SystemExit) as e:
             instance.get_sts_client(profile=None)
-        assert e.value.code == constants.INVALID_CREDENTIALS_ERROR_CODE
+        assert e.value.code == wodles.aws.tests.aws_constants.INVALID_CREDENTIALS_ERROR_CODE
 
 
 @pytest.mark.parametrize("dump_json", [True, False])
@@ -272,8 +274,8 @@ def test_wazuh_integration_send_msg(dump_json):
 
 
 @pytest.mark.parametrize("error_code, expected_exit_code", [
-    (111, constants.UNABLE_TO_CONNECT_SOCKET_ERROR_CODE),
-    (1, constants.SENDING_MESSAGE_SOCKET_ERROR_CODE),
+    (111, wodles.aws.tests.aws_constants.UNABLE_TO_CONNECT_SOCKET_ERROR_CODE),
+    (1, wodles.aws.tests.aws_constants.SENDING_MESSAGE_SOCKET_ERROR_CODE),
     (90, None)
 ])
 def test_wazuh_integration_send_msg_socket_error(error_code, expected_exit_code):
@@ -346,16 +348,16 @@ def test_aws_wazuh_integration_decompress_file_handles_exceptions_when_decompres
     with patch('gzip.open', side_effect=[gzip.BadGzipFile, zlib.error, TypeError]), \
             pytest.raises(SystemExit) as e:
         integration.decompress_file(integration.bucket, 'test.gz')
-    assert e.value.code == constants.DECOMPRESS_FILE_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.DECOMPRESS_FILE_ERROR_CODE
 
     with patch('zipfile.ZipFile', side_effect=zipfile.BadZipFile), \
             pytest.raises(SystemExit) as e:
         integration.decompress_file(integration.bucket, 'test.zip')
-    assert e.value.code == constants.DECOMPRESS_FILE_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.DECOMPRESS_FILE_ERROR_CODE
 
     with pytest.raises(SystemExit) as e:
         integration.decompress_file(integration.bucket, 'test.snappy')
-    assert e.value.code == constants.DECOMPRESS_FILE_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.DECOMPRESS_FILE_ERROR_CODE
 
 
 def test_wazuh_integration_send_msg_handles_exceptions():
@@ -366,7 +368,7 @@ def test_wazuh_integration_send_msg_handles_exceptions():
         mock_socket.side_effect = TypeError
         with pytest.raises(SystemExit) as e:
             instance.send_msg(test_constants.TEST_MESSAGE)
-        assert e.value.code == constants.SENDING_MESSAGE_SOCKET_ERROR_CODE
+        assert e.value.code == wodles.aws.tests.aws_constants.SENDING_MESSAGE_SOCKET_ERROR_CODE
 
 
 @patch('wazuh_integration.utils.find_wazuh_path', return_value=test_constants.TEST_WAZUH_PATH)
@@ -405,7 +407,7 @@ def test_wazuh_aws_database_create_table_handles_exceptions_when_table_not_creat
 
     with pytest.raises(SystemExit) as e:
         instance.create_table("")
-    assert e.value.code == constants.UNABLE_TO_CREATE_DB
+    assert e.value.code == wodles.aws.tests.aws_constants.UNABLE_TO_CREATE_DB
 
 
 @pytest.mark.parametrize("table_list", [
@@ -444,7 +446,7 @@ def test_wazuh_aws_database_db_initialization_handles_exceptions():
 
     with pytest.raises(SystemExit) as e:
         instance.init_db("")
-    assert e.value.code == constants.METADATA_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.METADATA_ERROR_CODE
 
 
 def test_wazuh_aws_database_close_db():
@@ -509,7 +511,7 @@ def test_wazuh_aws_database_check_metadata_version_handles_exceptions(custom_dat
 
     with pytest.raises(SystemExit) as e:
         instance.check_metadata_version()
-    assert e.value.code == constants.METADATA_ERROR_CODE
+    assert e.value.code == wodles.aws.tests.aws_constants.METADATA_ERROR_CODE
 
 
 def test_wazuh_aws_database_delete_deprecated_tables(custom_database):
