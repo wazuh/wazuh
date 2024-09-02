@@ -1,7 +1,7 @@
 /*
- * Wazuh Indexer Connector - Monitoring tests
+ * Wazuh Indexer Connector - ServerSelector tests
  * Copyright (C) 2015, Wazuh Inc.
- * August 30, 2024.
+ * September 08, 2023.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,22 +9,26 @@
  * Foundation.
  */
 
-#include "mockHTTTPRequest.hpp"
-#include "monitoring.hpp"
-#include <gtest/gtest.h>
-#include <memory>
+#ifndef _SERVER_SELECTOR_TEST_HPP
+#define _SERVER_SELECTOR_TEST_HPP
 
-#ifndef _MONITORING_TEST_HPP
-#define _MONITORING_TEST_HPP
+#include "mockHTTTPRequest.hpp"
+#include "serverSelector.hpp"
+#include <gtest/gtest.h>
+#include <string>
+#include <vector>
+
+// Define the global spHTTPRequest
+std::shared_ptr<MockHTTPRequest> spHTTPRequest = std::make_shared<MockHTTPRequest>();
 
 auto constexpr MONITORING_HEALTH_CHECK_INTERVAL {2u};
 const std::string GREEN_SERVER {"http://localhost:9200"};
 const std::string RED_SERVER {"http://localhost:9300"};
 
 /**
- * @brief Runs unit tests for Monitoring class
+ * @brief Runs unit tests for ServerSelector class
  */
-class MonitoringTest : public ::testing::Test
+class ServerSelectorTest : public ::testing::Test
 {
 protected:
     std::vector<std::string> m_servers; ///< Servers
@@ -42,14 +46,15 @@ protected:
     }
 
     /**
-     * @brief Cleans up after each test case.
+     * @brief Resets variables after each test case.
      */
     // cppcheck-suppress unusedFunction
-    void TearDown() override
+    void TearDown()
     {
+
         // Clear the servers
         m_servers.clear();
     }
 };
 
-#endif // _MONITORING_TEST_HPP
+#endif // _SERVER_SELECTOR_TEST_HPP

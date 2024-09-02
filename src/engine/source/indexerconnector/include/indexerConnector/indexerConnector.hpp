@@ -32,7 +32,8 @@
 
 static constexpr auto DEFAULT_INTERVAL = 60u;
 
-class ServerSelector;
+template<typename TMonitoring = void>
+class TServerSelector;
 class SecureCommunication;
 
 using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
