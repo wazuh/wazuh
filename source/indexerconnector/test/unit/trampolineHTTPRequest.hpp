@@ -12,8 +12,8 @@
 #ifndef _TRAMPOLINE_HTTP_REQUEST_HPP
 #define _TRAMPOLINE_HTTP_REQUEST_HPP
 
-#include "mockHTTTPRequest.hpp"
 #include "base/utils/singleton.hpp"
+#include "mockHTTTPRequest.hpp"
 
 extern std::shared_ptr<MockHTTPRequest> spHTTPRequest;
 
