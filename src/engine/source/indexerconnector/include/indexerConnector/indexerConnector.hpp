@@ -61,6 +61,18 @@ public:
      * @param timeout Server selector time interval.
      * @param workingThreads Number of working threads used by the dispatcher. More than one results in an unordered
      * processing.
+     * @note Example of the configuration:
+     *  {
+     *      "name": "wazuh-alerts-5.x",
+     *      "host": ["localhost:9200"],
+     *      "user": "admin",
+     *      "password": "admin",
+     *      "ssl": {
+     *          "certificate_authorities": "/etc/ssl/certs/ca.pem",
+     *          "certificate": "/etc/ssl/certs/cert.pem",
+     *          "key": "/etc/ssl/certs/key.pem"
+     *      }
+     *  }
      */
     explicit IndexerConnector(const nlohmann::json& config,
                               const uint32_t& timeout = DEFAULT_INTERVAL,

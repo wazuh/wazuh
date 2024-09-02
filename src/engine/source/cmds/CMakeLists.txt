@@ -36,6 +36,7 @@ target_link_libraries(cmds
     geo::igeo
     vdscanner
     apiserver
+    indexerconnector
 )
 
 target_include_directories(cmds

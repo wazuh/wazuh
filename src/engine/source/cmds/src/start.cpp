@@ -30,6 +30,7 @@
 #include <defs/defs.hpp>
 #include <geo/downloader.hpp>
 #include <geo/manager.hpp>
+#include <indexerConnector/indexerConnector.hpp>
 #include <kvdb/kvdbManager.hpp>
 #include <logpar/logpar.hpp>
 #include <logpar/registerParsers.hpp>
@@ -196,6 +197,14 @@ void runStart(ConfHandler confManager)
     std::shared_ptr<rbac::RBAC> rbac;
     std::shared_ptr<api::policy::IPolicy> policyManager;
     std::shared_ptr<vdscanner::ScanOrchestrator> vdScanner;
+    std::shared_ptr<IIndexerConnector> iConnector;
+
+    // TODO Temporary function, remove after the migration to the new configuration system
+    const auto getEnvOrDefault = [](const char* envVar, const std::string& defaultValue) -> std::string
+    {
+        const char* val = std::getenv(envVar);
+        return val ? std::string(val) : defaultValue;
+    };
 
     try
     {
@@ -274,6 +283,30 @@ void runStart(ConfHandler confManager)
             LOG_INFO("HLP initialized.");
         }
 
+        // Indexer Connector
+        {
+            nlohmann::json indexerConfig;
+
+            indexerConfig["name"] = getEnvOrDefault("WENGINE_ICONNECTOR_NAME", "test-basic-index");
+            indexerConfig["hosts"] =
+                nlohmann::json::array({getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")});
+            indexerConfig["username"] = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin");
+            indexerConfig["password"] = getEnvOrDefault("WENGINE_ICONNECTOR_PASSWORD", "WazuhEngine5+");
+
+            // SSL configuration
+            nlohmann::json ssl;
+            ssl["certificate_authorities"] = getEnvOrDefault("WENGINE_ICONNECTOR_CA", "");
+            ssl["certificate"] = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", "");
+            ssl["key"] = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "");
+            if (ssl.find("certificate_authorities") != ssl.end() && ssl["certificate_authorities"] != "")
+            {
+                indexerConfig["ssl"] = ssl;
+            }
+
+            // Create connector and wait until the connection is established.
+            iConnector = std::make_shared<IndexerConnector>(indexerConfig, 60, 1);
+        }
+
         // Builder and registry
         {
             builder::BuilderDeps builderDeps;
@@ -285,6 +318,7 @@ void runStart(ConfHandler confManager)
             builderDeps.wdbManager =
                 std::make_shared<wazuhdb::WDBManager>(std::string(wazuhdb::WDB_SOCK_PATH), builderDeps.sockFactory);
             builderDeps.geoManager = geoManager;
+            builderDeps.iConnector = iConnector;
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
             builder = std::make_shared<builder::Builder>(store, schema, defs, builderDeps);
             LOG_INFO("Builder initialized.");
