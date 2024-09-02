@@ -1290,7 +1290,6 @@ def test_agent_get_file_conf(filename, group_list):
 @pytest.mark.parametrize('group_list', [
     ['default']
 ])
-@patch('wazuh.core.common.DATABASE_PATH_GLOBAL', new=test_global_bd_path)
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_agent_conf(group_list):
     """Test `get_agent_agent_conf` function from agent module.

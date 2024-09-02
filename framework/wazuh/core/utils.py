@@ -24,6 +24,7 @@ from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 
+import yaml
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
 from defusedxml.minidom import parseString
@@ -1159,6 +1160,46 @@ def load_wazuh_xml(xml_path, data=None):
                '\n]>\n'
 
     return fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+
+
+def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
+    """Load Wazuh YAML configuration files.
+    
+    Parameters
+    ----------
+    filepath : str
+        File path.
+    data : str
+        YAML formatted string.
+    
+    Raises
+    ------
+    WazuhError(1006)
+        File does not exist or lack of permissions.
+    WazuhError(1132)
+        Invalid YAML syntax.
+    
+    Returns
+    -------
+    dict
+        Dictionary with the content.
+    """
+    if not data:
+        try:
+            with open(filepath) as f:
+                data = f.read()
+        except Exception as e:
+            raise WazuhError(1006, extra_message=str(e))
+
+    try:
+        parsed_data = yaml.safe_load(data)
+    except yaml.YAMLError as e:
+        raise WazuhError(1132, extra_message=str(e))
+    
+    # TODO(#25121): Validate configuration
+
+    return parsed_data
+
 
 
 class WazuhVersion:

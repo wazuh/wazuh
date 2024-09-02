@@ -158,7 +158,7 @@ def test_read_option_journald(configuration_file, expected_values):
 
 def test_agentconf2json():
     xml_conf = configuration.load_wazuh_xml(
-        os.path.join(parent_directory, tmp_path, 'configuration/default/agent1.conf'))
+        os.path.join(parent_directory, tmp_path, 'configuration/default/agent.conf'))
 
     assert configuration._agentconf2json(xml_conf=xml_conf)[0]['filters'] == {'name': 'agent_name'}
 
@@ -272,12 +272,13 @@ def test_get_agent_conf():
             configuration.get_agent_conf(group_id='default', filename='noexists.conf')
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
+        with patch('wazuh.core.configuration.load_wazuh_yaml', side_effect=Exception):
             with pytest.raises(WazuhError, match=".* 1101 .*"):
-                assert isinstance(configuration.get_agent_conf(group_id='default'), dict)
+                result = configuration.get_agent_conf(group_id='default')
+                assert isinstance(result, dict)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        assert configuration.get_agent_conf(group_id='default', filename='agent1.conf')['total_affected_items'] == 1
+        assert configuration.get_agent_conf(group_id='default', filename='agent.yml')['total_affected_items'] == 1
 
 
 def test_get_agent_conf_multigroup():

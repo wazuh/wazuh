@@ -16,6 +16,7 @@ from xml.etree.ElementTree import Element
 from wazuh.core.common import OSSEC_TMP_PATH
 
 import pytest
+import yaml
 from defusedxml.ElementTree import parse
 from freezegun import freeze_time
 
@@ -159,6 +160,11 @@ test_xml = '''
 
 <!-- Example -->
 '''
+
+test_yaml = '''
+key: value
+'''
+
 
 @patch('os.chown')
 @patch('wazuh.core.common.wazuh_uid')
@@ -692,8 +698,7 @@ def test_plain_dict_to_nested_dict():
     assert result == mock_nested_dict
 
 
-@patch('wazuh.core.utils.compile', return_value='Something')
-def test_basic_load_wazuh_xml(mock_compile):
+def test_basic_load_wazuh_xml():
     """Test basic load_wazuh_xml functionality."""
     with patch('wazuh.core.utils.open') as f:
         f.return_value.__enter__.return_value = StringIO(test_xml)
@@ -720,14 +725,37 @@ def test_load_wazuh_xml():
 
         assert elements_equal(original, result.find('dummy_tag'))
 
-@pytest.mark.parametrize('expected_exception', [
-    (1113)
-])
+
+@pytest.mark.parametrize('expected_exception', [1113])
 def test_load_wazuh_xml_ko(expected_exception):
-    """Test load_wazuh_xml fails gracefully when reading an invalid utf-8 character sequence"""
-    file_path = os.path.join(test_data_path, 'test_load_wazuh_xml_ko/invalid_utf8.xml')
+    """Test `load_wazuh_xml` fails gracefully when reading an invalid utf-8 character sequence."""
+    file_path = os.path.join(test_data_path, 'test_load_wazuh_xml_ko', 'invalid_utf8.xml')
     with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
         utils.load_wazuh_xml(file_path)
+
+
+def test_basic_load_wazuh_yaml():
+    """Test basic `load_wazuh_yaml` functionality."""
+    with patch('wazuh.core.utils.open') as f:
+        f.return_value.__enter__.return_value = StringIO(test_yaml)
+        result = utils.load_wazuh_yaml('test_file')
+
+        assert isinstance(result, dict)
+
+
+def test_load_wazuh_yaml_read_ko():
+    """Test `load_wazuh_yaml` fails gracefully when reading invalid files."""
+    file_path = os.path.join(test_data_path, 'test_load_wazuh_yaml_ko', 'invalid_utf8.yaml')
+    with pytest.raises(WazuhException, match=f'.*{1006}.*'):
+        utils.load_wazuh_yaml(file_path)
+
+
+@patch('wazuh.core.utils.yaml.safe_load', side_effect=yaml.YAMLError)
+def test_load_wazuh_yaml_data_ko(safe_load_mock):
+    """Test `load_wazuh_yaml` fails gracefully when parsing invalid data."""
+    with pytest.raises(WazuhException, match=f'.*{1132}.*'):
+        utils.load_wazuh_yaml('', data='1')
+
 
 @pytest.mark.parametrize('version1, version2', [
     ('Wazuh v3.5.0', 'Wazuh v3.5.2'),

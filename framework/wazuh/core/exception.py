@@ -130,6 +130,7 @@ class WazuhException(Exception):
                               'To solve this, check your connection to the Virus Total API or disable the public key'
                               ' protection in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
+        1132: {'message': 'YAML syntax error', 'remediation': 'Please, ensure file content has correct YAML'},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'

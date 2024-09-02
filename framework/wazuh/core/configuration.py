@@ -20,7 +20,7 @@ from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
+from wazuh.core.utils import cut_array, load_wazuh_xml, load_wazuh_yaml, safe_move
 
 logger = logging.getLogger('wazuh')
 
@@ -714,18 +714,13 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     return data
 
 
-def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                   filename: str = 'agent.conf', raw: bool = False) -> Union[dict, str]:
+def get_agent_conf(group_id: str = None, filename: str = 'agent.conf', raw: bool = False) -> Union[dict, str]:
     """Return agent.conf as dictionary.
 
     Parameters
     ----------
     group_id : str
         ID of the group with the agent.conf we want to get.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return.
     filename : str
         Name of the file to get. Default: 'agent.conf'
     raw : bool
@@ -753,21 +748,18 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
         raise WazuhError(1006, agent_conf)
 
     try:
-        # Read RAW file
         if filename == 'agent.conf' and raw:
+            # Read RAW file
             with open(agent_conf, 'r') as raw_data:
                 data = raw_data.read()
                 return data
-        # Parse XML to JSON
         else:
-            # Read XML
-            xml_data = load_wazuh_xml(agent_conf)
-
-            data = _agentconf2json(xml_data)
+            # Parse YAML
+            data = load_wazuh_yaml(agent_conf)
     except Exception as e:
         raise WazuhError(1101, str(e))
 
-    return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
+    return {'total_affected_items': len(data), 'affected_items': data}
 
 
 def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
