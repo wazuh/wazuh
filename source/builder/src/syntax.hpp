@@ -27,6 +27,8 @@ constexpr auto DEFINITIONS_KEY = "definitions"; ///< Key for the definitions sta
 constexpr auto OUTPUTS_KEY = "outputs";         ///< Key for the outputs stage in an asset.
 constexpr auto FILE_OUTPUT_KEY = "file";        ///< Key for the file output stage in an asset.
 constexpr auto FILE_OUTPUT_PATH_KEY = "path";   ///< Key for the file output path in an asset.
+constexpr auto INDEXER_OUTPUT_KEY = "wazuh-indexer";       ///< Key for the INDEXER output stage in an asset.
+constexpr auto INDEXER_OUTPUT_INDEX_KEY = "index";        ///< Key for the INDEXER output stage in an asset.
 
 constexpr auto CONDITION_NAME =
     "condition"; ///< Name of the condition expression in the asset to be displayed in traces.
