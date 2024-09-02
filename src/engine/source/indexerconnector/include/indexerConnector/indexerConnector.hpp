@@ -30,7 +30,7 @@
 #define EXPORTED
 #endif
 
-static constexpr auto DEFAULT_INTERVAL = 60u;
+static constexpr auto DEFAULT_INTERVAL = 60000u;
 
 template<typename TMonitoring = void>
 class TServerSelector;
