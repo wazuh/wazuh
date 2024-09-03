@@ -458,7 +458,7 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     return data
 
 
-def get_agent_conf(group_id: str = None, filename: str = 'agent.conf', raw: bool = False) -> Union[dict, str]:
+def get_agent_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
     """Return agent.conf as dictionary.
 
     Parameters
@@ -484,22 +484,19 @@ def get_agent_conf(group_id: str = None, filename: str = 'agent.conf', raw: bool
     dict or str
         agent.conf as dictionary.
     """
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    filepath = os_path.join(common.SHARED_PATH, f'{group_id }.conf')
+    if not os_path.exists(filepath):
         raise WazuhResourceNotFound(1710, group_id)
-    agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
-
-    if not os_path.exists(agent_conf):
-        raise WazuhError(1006, agent_conf)
 
     try:
-        if filename == 'agent.conf' and raw:
+        if raw:
             # Read RAW file
-            with open(agent_conf, 'r') as raw_data:
+            with open(filepath, 'r') as raw_data:
                 data = raw_data.read()
                 return data
         else:
             # Parse YAML
-            data = load_wazuh_yaml(agent_conf)
+            data = load_wazuh_yaml(filepath)
     except Exception as e:
         raise WazuhError(1101, str(e))
 
