@@ -53,25 +53,25 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                                              indexName));
     }
 
-    auto name = fmt::format("write.output({})", indexName);
+    auto name = fmt::format("write.output({}/{})", syntax::asset::INDEXER_OUTPUT_KEY, indexName);
     const auto successTrace = fmt::format("{} -> Success", name);
     const auto failureTrace = fmt::format("{} -> The indexer connector is disabled", name);
 
-    return base::Term<base::EngineOp>::create(
-        name,
-        [iConnector, successTrace, failureTrace, runState = buildCtx->runState()](
-            base::Event event) -> base::result::Result<base::Event>
-        {
-            if (!iConnector)
-            {
-                RETURN_FAILURE(runState, event, failureTrace);
-            }
+    return base::Term<base::EngineOp>::create(name,
+                                              [iConnector, successTrace, failureTrace, runState = buildCtx->runState()](
+                                                  base::Event event) -> base::result::Result<base::Event>
+                                              {
+                                                  if (!iConnector)
+                                                  {
+                                                      RETURN_FAILURE(runState, event, failureTrace);
+                                                  }
 
-            const auto pushEvent = fmt::format(R"({{"id": "auto", "operation": "ADD", "data": {} }})", event->str());
-            iConnector->publish(pushEvent);
+                                                  const auto pushEvent = fmt::format(
+                                                      R"({{"operation": "ADD", "data": {} }})", event->str());
+                                                  iConnector->publish(pushEvent);
 
-            RETURN_SUCCESS(runState, event, successTrace);
-        });
+                                                  RETURN_SUCCESS(runState, event, successTrace);
+                                              });
 }
 
 StageBuilder getIndexerOutputBuilder(const std::shared_ptr<IIndexerConnector>& indexerPtr)

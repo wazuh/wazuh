@@ -3,7 +3,9 @@
 
 #include <string>
 
-class IIndexerConnector {
+class IIndexerConnector
+{
+
 public:
     virtual ~IIndexerConnector() = default;
 

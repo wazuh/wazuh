@@ -26,6 +26,16 @@ target_link_libraries(indexerconnector
   urlrequest
 )
 
+if(ENGINE_BUILD_TEST)
+    # Mocks
+    set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/mocks)
+
+    add_library(indexerconnector_mocks INTERFACE)
+    target_include_directories(indexerconnector_mocks INTERFACE ${TEST_MOCK_DIR})
+    target_link_libraries(indexerconnector_mocks INTERFACE GTest::gmock indexerconnector::iindexerconnector)
+    add_library(indexerconnector::mocks ALIAS indexerconnector_mocks)
+endif()
+
 add_library(indexerconnector_test INTERFACE)
 target_include_directories(indexerconnector_test INTERFACE ${CMAKE_CURRENT_LIST_DIR}/src)
 add_library(indexerconnector::test ALIAS indexerconnector_test)

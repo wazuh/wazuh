@@ -286,8 +286,8 @@ void runStart(ConfHandler confManager)
         // Indexer Connector
         {
             nlohmann::json indexerConfig;
-
-            indexerConfig["name"] = getEnvOrDefault("WENGINE_ICONNECTOR_NAME", "test-basic-index");
+            // TODO Change index to `wazuh-alerts-5.x-%{+yyyyy.MM.dd}` when supported placeholder is available
+            indexerConfig["name"] = getEnvOrDefault("WENGINE_ICONNECTOR_INDEX", "test-basic-index");
             indexerConfig["hosts"] =
                 nlohmann::json::array({getEnvOrDefault("WENGINE_ICONNECTOR_HOSTS", "http://127.0.0.1:9200")});
             indexerConfig["username"] = getEnvOrDefault("WENGINE_ICONNECTOR_USERNAME", "admin");
