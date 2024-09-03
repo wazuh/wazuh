@@ -3,11 +3,13 @@ import logging.config
 import os
 import signal
 import ssl
+import atexit
 from argparse import ArgumentParser, Namespace
 from functools import partial
 from sys import exit
 from typing import Any, Callable, Dict
 from multiprocessing import Process
+from multiprocessing.util import _exit_function
 
 from brotli_asgi import BrotliMiddleware
 from fastapi import FastAPI
@@ -120,6 +122,11 @@ def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
     return context
 
 
+def post_worker_init(worker):
+    """Unregisters the _exit_function from the worker processes"""
+    atexit.unregister(_exit_function)
+
+
 def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict) -> dict:
     """Get the gunicorn app configuration options.
 
@@ -158,7 +165,8 @@ def get_gunicorn_options(pid: int, foreground_mode: bool, log_config_dict: dict)
         'ssl_context': ssl_context,
         'ciphers': '',
         'logconfig_dict': log_config_dict,
-        'user': os.getuid()
+        'user': os.getuid(),
+        'post_worker_init': post_worker_init
     }
 
 
@@ -231,21 +239,28 @@ def signal_handler(
     terminate_processes(mux_demux_manager, batcher_process)
 
 
-def terminate_processes( mux_demux_manager: MuxDemuxManager, batcher_process: Process):
-    """It terminates the batcher process, shutting down the mux/demux manager, and deleting
+def terminate_processes(parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process):
+    """Terminates the batcher process, shuts down the MuxDemux manager, and deletes
     any child and main process IDs.
 
-        Parameters
+    This function checks if the current process ID matches the parent process ID.
+    If they match, it proceeds to terminate the batcher process, shuts down the
+    MuxDemux manager, and removes the corresponding process IDs from the system.
+
+    Parameters
     ----------
+    parent_pid : int
+        The parent process ID used to verify if the termination should proceed.
     mux_demux_manager : MuxDemuxManager
         The MuxDemux manager instance to be shut down.
     batcher_process : Process
         The batcher process to be terminated.
     """
-    batcher_process.terminate()
-    mux_demux_manager.shutdown()
-    pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
-    pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
+    if parent_pid == os.getpid():
+        batcher_process.terminate()
+        mux_demux_manager.shutdown()
+        pyDaemonModule.delete_child_pids(MAIN_PROCESS, pid, logger)
+        pyDaemonModule.delete_pid(MAIN_PROCESS, pid)
 
 
 if __name__ == '__main__':
@@ -283,7 +298,8 @@ if __name__ == '__main__':
     mux_demux_manager, batcher_process = create_batcher_process(config=batcher_config)
 
     pid = os.getpid()
-    signal.signal(signal.SIGTERM, partial(signal_handler, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process))
+    signal.signal(signal.SIGTERM, partial(
+        signal_handler, parent_pid=pid, mux_demux_manager=mux_demux_manager, batcher_process=batcher_process))
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     try:
@@ -297,4 +313,4 @@ if __name__ == '__main__':
         logger.error(f'Internal error when trying to start the Wazuh Communications API. {e}')
         exit(1)
     finally:
-        terminate_processes(mux_demux_manager, batcher_process)
+        terminate_processes(pid, mux_demux_manager, batcher_process)

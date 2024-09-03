@@ -1,4 +1,5 @@
 import asyncio
+import os
 import uuid
 import queue
 import signal
@@ -169,7 +170,7 @@ class Batcher:
         signal_number : int
             The signal number indicating the type of signal received (e.g., SIGINT, SIGTERM).
         """
-        logger.info(f"Batcher - Received signal {signal_number}, initiating shutdown.")
+        logger.info(f'Batcher pid {os.getpid()}- Received signal {signal_number}, initiating shutdown.')
         self._shutdown_event.set()
 
 
