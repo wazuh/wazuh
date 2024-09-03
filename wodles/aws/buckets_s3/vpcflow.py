@@ -6,6 +6,7 @@ import csv
 import sys
 from os import path
 from typing import Iterator
+
 from aws_bucket import AWSLogsBucket
 try:
     import boto3
@@ -18,6 +19,7 @@ from datetime import datetime
 
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
+import constants
 
 
 class AWSVPCFlowBucket(AWSLogsBucket):
@@ -152,7 +154,7 @@ class AWSVPCFlowBucket(AWSLogsBucket):
 
         boto_session = boto3.Session(**conn_args)
 
-        if region not in aws_tools.ALL_REGIONS:
+        if region not in constants.ALL_REGIONS:
             raise ValueError(f"Invalid region '{region}'")
 
         try:

@@ -8,15 +8,18 @@ import sys
 import copy
 from unittest.mock import patch, MagicMock
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import botocore
+import wodles.aws.tests.aws_constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
+import aws_constants as test_constants
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'buckets_s3'))
-import aws_bucket
 import config
 
 TEST_CONFIG_SCHEMA = "schema_config_test.sql"
@@ -28,7 +31,7 @@ DAYS_DELTA = 10
 SQL_FIND_LAST_LOG_PROCESSED = """SELECT created_date FROM {table_name} ORDER BY created_date DESC LIMIT 1;"""
 SQL_FIND_LAST_KEY_PROCESSED = """SELECT log_key FROM {table_name} ORDER BY log_key DESC LIMIT 1;"""
 
-utils.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = utils.TEST_LOG_FULL_PATH_CONFIG_1
+test_constants.LIST_OBJECT_V2_NO_PREFIXES['Contents'][0]['Key'] = test_constants.TEST_LOG_FULL_PATH_CONFIG_1
 
 
 @patch('aws_bucket.AWSLogsBucket.__init__')
@@ -58,11 +61,11 @@ def test_aws_config_bucket_marker_only_logs_after(mock_marker_only_logs_after, m
     result_marker: str
         The marker the method should return without padding zeros in the date.
     """
-    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
+    instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket, only_logs_after=test_constants.TEST_ONLY_LOGS_AFTER)
     mock_marker_only_logs_after.return_value = result_marker
 
-    assert instance.marker_only_logs_after(utils.TEST_ACCOUNT_ID,
-                                           utils.TEST_REGION) == instance._remove_padding_zeros_from_marker(marker)
+    assert instance.marker_only_logs_after(test_constants.TEST_ACCOUNT_ID,
+                                           test_constants.TEST_REGION) == instance._remove_padding_zeros_from_marker(marker)
 
 
 @patch('aws_bucket.AWSBucket.marker_only_logs_after')
@@ -76,9 +79,10 @@ def test_aws_config_bucket_marker_only_logs_after_handles_exceptions(mock_marker
     with patch('re.sub') as mock_re_sub:
         with pytest.raises(SystemExit) as e:
             mock_re_sub.side_effect = AttributeError
-            instance.marker_only_logs_after(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+            instance.marker_only_logs_after(test_constants.TEST_ACCOUNT_ID,
+                                            test_constants.TEST_REGION)
 
-        assert e.value.code == utils.THROTTLING_ERROR_CODE
+        assert e.value.code == wodles.aws.tests.aws_constants.THROTTLING_ERROR_CODE
 
 
 @patch('aws_bucket.AWSBucket.marker_custom_date')
@@ -87,12 +91,15 @@ def test_aws_config_bucket_marker_custom_date(mock_marker_custom_date):
     instance = utils.get_mocked_bucket(class_=config.AWSConfigBucket)
     custom_date = datetime(2022, 9, 8)
 
-    mock_marker_custom_date.return_value = os.path.join('AWSLogs', utils.TEST_ACCOUNT_ID, 'Config', utils.TEST_REGION,
+    mock_marker_custom_date.return_value = os.path.join('AWSLogs', test_constants.TEST_ACCOUNT_ID, 'Config',
+                                                        test_constants.TEST_REGION,
                                                         custom_date.strftime(instance.date_format))
 
-    assert instance.marker_custom_date(utils.TEST_ACCOUNT_ID, utils.TEST_REGION,
+    assert instance.marker_custom_date(test_constants.TEST_ACCOUNT_ID,
+                                       test_constants.TEST_REGION,
                                        custom_date) == instance._remove_padding_zeros_from_marker(
-        mock_marker_custom_date(instance, utils.TEST_ACCOUNT_ID, utils.TEST_REGION, custom_date))
+        mock_marker_custom_date(instance, test_constants.TEST_ACCOUNT_ID,
+                                test_constants.TEST_REGION, custom_date))
 
 
 @pytest.mark.parametrize('security_groups', ['securityGroupId', [{'groupId': 'id', 'groupName': 'name'}],
@@ -121,7 +128,7 @@ def test_aws_config_bucket_reformat_msg(mock_reformat,
     security_groups: str or dict
         Security groups values for the securityGroups key.
     """
-    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event = copy.deepcopy(constants.AWS_BUCKET_MSG_TEMPLATE)
     event['aws'].update(
         {
             'configuration': {

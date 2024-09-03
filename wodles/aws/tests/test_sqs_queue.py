@@ -8,11 +8,15 @@ from unittest.mock import patch
 import pytest
 import json
 
+import wodles.aws.tests.aws_constants
+
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '.'))
 import aws_utils as utils
+import aws_constants as test_constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
 import wazuh_integration
+import constants
 
 sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'subscribers'))
 import sqs_queue
@@ -35,12 +39,12 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
                                             mock_bucket_log_handler_init, mock_client, mock_sts_client):
     """Test if the instances of AWSSQSQueue are created properly."""
     mock_sts_client.return_value = mock_client
-    kwargs = utils.get_aws_sqs_queue_parameters(name=utils.TEST_SQS_NAME,
-                                                external_id=utils.TEST_EXTERNAL_ID,
-                                                service_endpoint=utils.TEST_SERVICE_ENDPOINT,
-                                                sts_endpoint=utils.TEST_STS_ENDPOINT,
-                                                iam_role_arn=utils.TEST_IAM_ROLE_ARN,
-                                                iam_role_duration=utils.TEST_IAM_ROLE_DURATION)
+    kwargs = utils.get_aws_sqs_queue_parameters(name=test_constants.TEST_SQS_NAME,
+                                                external_id=test_constants.TEST_EXTERNAL_ID,
+                                                service_endpoint=test_constants.TEST_SERVICE_ENDPOINT,
+                                                sts_endpoint=test_constants.TEST_STS_ENDPOINT,
+                                                iam_role_arn=test_constants.TEST_IAM_ROLE_ARN,
+                                                iam_role_duration=test_constants.TEST_IAM_ROLE_DURATION)
     integration = sqs_queue.AWSSQSQueue(message_processor=mock_message_processor,
                                         bucket_handler=mock_bucket_log_handler_init,
                                         **kwargs)
@@ -81,7 +85,7 @@ def test_aws_sqs_queue_delete_message_handles_exception_when_deleting_message(mo
 
     with pytest.raises(SystemExit) as e:
         instance.delete_message(SAMPLE_MESSAGE)
-    assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert e.value.code == wodles.aws.tests.aws_constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url', return_value=SAMPLE_URL)
@@ -111,7 +115,7 @@ def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mo
 
     with pytest.raises(SystemExit) as e:
         instance.fetch_messages()
-    assert e.value.code == utils.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
+    assert e.value.code == wodles.aws.tests.aws_constants.UNABLE_TO_FETCH_DELETE_FROM_QUEUE
 
 
 @patch('sqs_queue.AWSSQSQueue.fetch_messages', return_value=SAMPLE_RAW_MESSAGE)
