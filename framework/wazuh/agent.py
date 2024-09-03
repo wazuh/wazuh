@@ -5,7 +5,7 @@
 import contextlib
 import operator
 from os import chmod, chown, path
-from typing import Union
+from typing import Optional, Union
 
 from wazuh import __version__
 from wazuh.core import common, configuration
@@ -24,7 +24,7 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.utils import get_document_ids
+from wazuh.core.indexer.utils import get_document_ids, get_source_items
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
@@ -281,16 +281,42 @@ def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701]})
-def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
-               search: dict = None, select: dict = None, filters: dict = None,
-               q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+                  post_proc_kwargs={'exclude_codes': [1701, 1707], 'force': True})
+def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
+    """Restart all agents belonging to a group.
+
+    Parameters
+    ----------
+    agent_list : list, optional
+        List of agents. Default `None`
+
+    Returns
+    -------
+    AffectedItemsWazuhResult
+        Affected items.
+    """
+    return restart_agents(agent_list=agent_list)
+
+
+@expose_resources(
+    actions=["agent:read"], resources=["agent:id:{agents_id}"], post_proc_kwargs={'exclude_codes': [1701]}
+)
+async def get_agents(
+    agents_id: list,
+    filters: Optional[dict] = None,
+    offset: int = 0,
+    limit: int = common.DATABASE_LIMIT,
+    sort: dict = None,
+    select: dict = None,
+) -> AffectedItemsWazuhResult:
     """Gets a list of available agents with basic attributes.
 
     Parameters
     ----------
-    agent_list : list
-        List of agents IDs.
+    agents_id : list
+        List of agent UUIDs to filter.
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
     offset : int
         First element to return in the collection.
     limit : int
@@ -299,42 +325,53 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
         Select fields to return. Format: {"fields":["field1","field2"]}.
     sort : dict
         Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    search : dict
-        Look for elements with the specified string. Format: {"fields": ["field1","field2"]}
-    filters : dict
-        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
-    q : str
-        Query to filter results by.
-    distinct : bool
-        Look for distinct values.
 
     Returns
     -------
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='All selected agents information was returned',
-                                      some_msg='Some agents information was not returned',
-                                      none_msg='No agent information was returned'
-                                      )
-    if agent_list:
-        if filters is None:
-            filters = dict()
+    LAST_LOGIN_KEY = 'last_login'
 
-        system_agents = get_agents_info()
+    result = AffectedItemsWazuhResult(
+        all_msg='All selected agents information was returned',
+        some_msg='Some agents information was not returned',
+        none_msg='No agent information was returned'
+    )
+    if filters is None:
+        filters = dict()
 
-        for agent_id in agent_list:
-            if agent_id not in system_agents:
-                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+    # TODO: The query build should be improved in https://github.com/wazuh/wazuh/issues/25289
+    query_filters = []
+    if agents_id:
+        query_filters.append({IndexerKey.TERMS: {'_id': agents_id}})
 
-        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list, filters=filters)
+    if LAST_LOGIN_KEY in filters:
+        query_filters.append(
+            {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f"{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}"}}}
+        )
+        filters.pop(LAST_LOGIN_KEY)
 
-        with WazuhDBQueryAgents(offset=offset, limit=limit, sort=sort, search=search, select=select,
-                                query=q, **rbac_filters, distinct=distinct) as db_query:
-            data = db_query.run()
+    for key, value in filters.items():
+        query_filters.append({IndexerKey.TERM: {key: value}})
 
-        result.affected_items.extend(data['items'])
-        result.total_affected_items = data['totalItems']
+    query = {
+        IndexerKey.QUERY: {
+            IndexerKey.BOOL: {
+                IndexerKey.FILTER: query_filters
+            }
+        }
+    }
+
+    async with get_indexer_client() as indexer:
+        items = await indexer.agents.search(query, select=select, exclude='key', limit=limit, offset=offset, sort=sort)
+        items = [i for i in get_source_items(items)]
+
+    # TODO: Define when we'll attack the RBAC changes
+    # rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list, filters=filters)
+
+    result.affected_items.extend(items)
+    result.total_affected_items = len(items)
 
     return result
 
