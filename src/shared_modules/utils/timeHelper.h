@@ -19,6 +19,22 @@
 #include <sstream>
 #include <string>
 
+#ifdef WIN32
+
+static struct tm* gmtime_r(const time_t* timep, struct tm* result)
+{
+    errno = gmtime_s(result, timep);
+    return errno == 0 ? result : nullptr;
+}
+
+static struct tm* localtime_r(const time_t* timep, struct tm* result)
+{
+    errno = localtime_s(result, timep);
+    return errno == 0 ? result : nullptr;
+}
+
+#endif
+
 namespace Utils
 {
 #pragma GCC diagnostic push
@@ -27,8 +43,16 @@ namespace Utils
     static std::string getTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
+        struct tm buf;
+
         // gmtime: result expressed as a UTC time
-        tm* localTime {utc ? gmtime(&time) : localtime(&time)};
+        tm* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
+
+        if (localTime == nullptr)
+        {
+            return "1970/01/01 00:00:00";
+        }
+
         // Final timestamp: "YYYY/MM/DD hh:mm:ss"
         // Date
         ss << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
@@ -60,8 +84,16 @@ namespace Utils
     static std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)
     {
         std::stringstream ss;
+        struct tm buf;
+
         // gmtime: result expressed as a UTC time
-        tm const* localTime {utc ? gmtime(&time) : localtime(&time)};
+        tm const* localTime {utc ? gmtime_r(&time, &buf) : localtime_r(&time, &buf)};
+
+        if (localTime == nullptr)
+        {
+            return "1970/01/01 00:00:00";
+        }
+
         // Date
         ss << std::setfill('0') << std::setw(4) << std::to_string(localTime->tm_year + 1900);
         ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_mon + 1);
@@ -80,7 +112,15 @@ namespace Utils
         auto itt = std::chrono::system_clock::to_time_t(now);
 
         std::ostringstream ss;
-        ss << std::put_time(gmtime(&itt), "%FT%T");
+        struct tm buf;
+        tm* localTime = gmtime_r(&itt, &buf);
+
+        if (localTime == nullptr)
+        {
+            return "1970/01/01 00:00:00";
+        }
+
+        ss << std::put_time(localTime, "%FT%T");
 
         // Get milliseconds from the current time
         auto milliseconds =
@@ -106,7 +146,14 @@ namespace Utils
         auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
-        output << std::put_time(gmtime(&time), "%FT%T");
+        struct tm* localTime = gmtime_r(&time, &tm);
+
+        if (localTime == nullptr)
+        {
+            return "";
+        }
+
+        output << std::put_time(localTime, "%FT%T");
 
         // Get milliseconds from the current time
         auto milliseconds =
@@ -129,7 +176,15 @@ namespace Utils
         auto itt = std::chrono::system_clock::from_time_t(time);
 
         std::ostringstream output;
-        output << std::put_time(gmtime(&time), "%FT%T");
+        struct tm buf;
+        tm* localTime = gmtime_r(&time, &buf);
+
+        if (localTime == nullptr)
+        {
+            return "";
+        }
+
+        output << std::put_time(localTime, "%FT%T");
 
         // Get milliseconds from the current time
         auto milliseconds =
