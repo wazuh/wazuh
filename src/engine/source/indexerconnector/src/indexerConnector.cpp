@@ -95,11 +95,8 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
 {
     bulkData.append(R"({"index":{"_index":")");
     bulkData.append(index);
-    if (id.compare("auto") != 0)
-    {
-        bulkData.append(R"(","_id":")");
-        bulkData.append(id);
-    }
+    bulkData.append(R"(","_id":")");
+    bulkData.append(id);
     bulkData.append(R"("}})");
     bulkData.append("\n");
     bulkData.append(data);

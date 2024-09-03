@@ -157,6 +157,7 @@ add_executable(builder_utest
     ${UNIT_SRC_DIR}/builders/stage/parse_test.cpp
     ${UNIT_SRC_DIR}/builders/stage/outputs_test.cpp
     ${UNIT_SRC_DIR}/builders/stage/fileOutput_test.cpp
+    ${UNIT_SRC_DIR}/builders/stage/indexerOutput_test.cpp
 
 )
 target_include_directories(builder_utest PRIVATE ${BUILDER_PRI_INCS} ${TEST_SRC_DIR} ${UNIT_SRC_DIR})
@@ -175,6 +176,7 @@ target_link_libraries(builder_utest
     wdb::mocks
     geo::mocks
     base::test
+    indexerconnector::mocks
 )
 gtest_discover_tests(builder_utest)
 
