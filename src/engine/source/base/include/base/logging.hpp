@@ -1,5 +1,5 @@
-#ifndef _H_LOGGING
-#define _H_LOGGING
+#ifndef _LOGGING_HPP
+#define _LOGGING_HPP
 
 #include <iostream>
 #include <map>
@@ -8,6 +8,8 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+
+#define LAMBDA_SEPARATOR "::<lambda>"
 
 namespace logging
 {
@@ -197,6 +199,11 @@ void stop();
  */
 void testInit();
 
+inline std::string getLambdaName(const char* parentScope, const std::string& lambdaName)
+{
+    return std::string(parentScope) + LAMBDA_SEPARATOR + lambdaName;
+}
+
 } // namespace logging
 
 #define LOG_TRACE(msg, ...)                                                                                            \
@@ -218,4 +225,26 @@ void testInit();
     logging::getDefaultLogger()->log(                                                                                  \
         spdlog::source_loc {__FILE__, __LINE__, SPDLOG_FUNCTION}, spdlog::level::critical, msg, ##__VA_ARGS__)
 
-#endif // _H_LOGGING
+#define LOG_TRACE_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::trace, msg, ##__VA_ARGS__)
+#define LOG_DEBUG_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::debug, msg, ##__VA_ARGS__)
+#define LOG_TRACE_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::trace, msg, ##__VA_ARGS__)
+#define LOG_INFO_L(functionName, msg, ...)                                                                             \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::info, msg, ##__VA_ARGS__)
+#define LOG_WARNING_L(functionName, msg, ...)                                                                          \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::warn, msg, ##__VA_ARGS__)
+#define LOG_ERROR_L(functionName, msg, ...)                                                                            \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::err, msg, ##__VA_ARGS__)
+#define LOG_CRITICAL_L(functionName, msg, ...)                                                                         \
+    logging::getDefaultLogger()->log(                                                                                  \
+        spdlog::source_loc {__FILE__, __LINE__, functionName}, spdlog::level::critical, msg, ##__VA_ARGS__)
+
+#endif // _LOGGING_HPP
