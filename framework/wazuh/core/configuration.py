@@ -6,22 +6,18 @@ import json
 import logging
 import os
 import re
-import subprocess
 import sys
-import tempfile
 from configparser import NoOptionError, RawConfigParser
 from io import StringIO
 from os import path as os_path
-from os import remove
 from types import MappingProxyType
-from typing import List, Union
+from typing import Union
 
 from defusedxml.ElementTree import tostring
-from defusedxml.minidom import parseString
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.utils import cut_array, load_wazuh_xml, load_wazuh_yaml, safe_move, validate_wazuh_configuration
+from wazuh.core.utils import load_wazuh_xml, load_wazuh_yaml, validate_wazuh_configuration, get_group_file_path
 
 logger = logging.getLogger('wazuh')
 
@@ -342,46 +338,6 @@ def _ossecconf2json(xml_conf: str) -> dict:
     return final_json
 
 
-def _agentconf2json(xml_conf: str) -> dict:
-    """Return agent.conf in JSON from XML.
-
-    Parameters
-    ----------
-    xml_conf : str
-        Configuration to be parsed to JSON.
-
-    Returns
-    -------
-    dict
-        Final JSON with the agent.conf content.
-    """
-
-    final_json = []
-
-    for root in xml_conf.iter():
-        if root.tag.lower() == "agent_config":
-            # Get attributes (os, name, profile)
-            filters = {}
-            for attr in root.attrib:
-                filters[attr] = root.attrib[attr]
-
-            # Check if we have read the same filters before (we will need to merge them)
-            previous_config = -1
-            for idx, item in enumerate(final_json):
-                if 'filters' in item and item['filters'] == filters:
-                    previous_config = idx
-                    break
-
-            if previous_config != -1:
-                _conf2json(root, final_json[previous_config]['config'])
-            else:
-                config = {}
-                _conf2json(root, config)
-                final_json.append({'filters': filters, 'config': config})
-
-    return final_json
-
-
 # Main functions
 def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
                    from_import: bool = False, distinct: bool = False) -> dict:
@@ -484,7 +440,7 @@ def get_agent_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
     dict or str
         agent.conf as dictionary.
     """
-    filepath = os_path.join(common.SHARED_PATH, f'{group_id }.conf')
+    filepath = get_group_file_path(group_id)
     if not os_path.exists(filepath):
         raise WazuhResourceNotFound(1710, group_id)
 
@@ -501,57 +457,6 @@ def get_agent_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
         raise WazuhError(1101, str(e))
 
     return {'total_affected_items': len(data), 'affected_items': data}
-
-
-def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                              filename: str = None) -> dict:
-    """Return agent.conf as dictionary.
-
-    Parameters
-    ----------
-    multigroup_id : str
-        ID of the group with the agent.conf we want to get.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return.
-    filename : str
-        Name of the file to get. Default: 'agent.conf'
-
-    Raises
-    ------
-    WazuhResourceNotFound(1710)
-        Group was not found.
-    WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        agent.conf as dictionary.
-    """
-    # Check if a multigroup_id is provided and it exists
-    if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
-        raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
-
-    agent_conf_name = filename if filename else 'agent.conf'
-    agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
-
-    if not os_path.exists(agent_conf):
-        raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
-
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(agent_conf)
-
-        # Parse XML to JSON
-        data = _agentconf2json(xml_data)
-    except Exception:
-        raise WazuhError(1101)
-
-    return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
 
 
 def parse_internal_options(high_name: str, low_name: str) -> str:
@@ -673,7 +578,7 @@ def update_group_configuration(group_id: str, file_content: str) -> str:
     str
         Confirmation message.
     """
-    filepath = os_path.join(common.SHARED_PATH, f'{group_id}.conf')
+    filepath = get_group_file_path(group_id)
 
     if not os_path.exists(filepath):
         raise WazuhResourceNotFound(1710, group_id)
@@ -716,7 +621,7 @@ def update_group_file(group_id: str, file_data: str) -> str:
     if not InputValidator().group(group_id):
         raise WazuhError(1722)
 
-    if not os_path.exists(os_path.join(common.SHARED_PATH, f'{group_id}.conf')):
+    if not os_path.exists(get_group_file_path(group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
     if len(file_data) == 0:

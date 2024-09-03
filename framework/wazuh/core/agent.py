@@ -10,7 +10,7 @@ from base64 import b64encode
 from datetime import datetime, timezone
 from functools import lru_cache
 from json import dumps, loads
-from os import listdir, path
+from os import listdir, path, remove
 from shutil import rmtree
 from typing import List
 
@@ -22,7 +22,7 @@ from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError,
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
-    get_date_from_timestamp
+    get_date_from_timestamp, get_group_file_path, GROUP_FILE_SUFFIX
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
@@ -36,10 +36,6 @@ lock_acquired = False
 
 agent_regex = re.compile(r"^(\d{3,}) [^!].* .* .*$", re.MULTILINE)
 
-GROUP_FIELDS = ['name', 'mergedSum', 'configSum', 'count']
-GROUP_REQUIRED_FIELDS = ['name']
-GROUP_FILES_FIELDS = ['filename', 'hash']
-GROUP_FILES_REQUIRED_FIELDS = ['filename']
 GROUPS_SEPARATOR = ','
 
 
@@ -423,50 +419,6 @@ class WazuhDBQueryGroupByAgents(WazuhDBQueryGroupBy, WazuhDBQueryAgents):
         return WazuhDBQuery._format_data_into_dictionary(self)
 
 
-class WazuhDBQueryMultigroups(WazuhDBQueryAgents):
-    """Class used to query agents with multigroups."""
-
-    def __init__(self, group_id: str, query: str = '', *args: dict, **kwargs: dict):
-        """Class constructor.
-
-        Parameters
-        ----------
-        group_id : str
-            ID of the group.
-        query : str
-            Query.
-        """
-        self.group_id = group_id
-        query = 'group={}'.format(group_id) + (';' + query if query else '')
-        WazuhDBQueryAgents.__init__(self, query=query, *args, **kwargs)
-
-    def _default_query(self) -> str:
-        """Get default query.
-
-        Returns
-        -------
-        str
-            Default query.
-        """
-        return "SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent" if self.group_id != "null" \
-            else "SELECT {0} FROM agent a"
-
-    def _default_count_query(self) -> str:
-        """Get count part for the default query.
-
-        Returns
-        -------
-        str
-            String representing the count part for the default query.
-        """
-        return 'COUNT(DISTINCT a.id)'
-
-    def _get_total_items(self):
-        """Get total items."""
-        self.total_items = self.backend.execute(self.query.format(self._default_count_query()), self.request, True)
-        self.query += ' GROUP BY a.id '
-
-
 class Agent:
     """Wazuh Agent object."""
     fields = {'id': 'id', 'name': 'name', 'ip': 'coalesce(ip,register_ip)', 'status': 'connection_status',
@@ -846,9 +798,9 @@ class Agent:
             Confirmation message.
         """
         # Delete group directory
-        group_path = path.join(common.SHARED_PATH, group_name)
+        group_path = get_group_file_path(group_name)
         if path.exists(group_path):
-            rmtree(group_path)
+            remove(group_path)
 
         async with get_indexer_client() as indexer_client:
             await indexer_client.agents.delete_groups(group_names=[group_name])
@@ -1020,7 +972,7 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhError(1722)
 
-        if path.isdir(path.join(common.SHARED_PATH, group_id)):
+        if path.exists(get_group_file_path(group_id)):
             return True
         else:
             return False
@@ -1080,7 +1032,7 @@ class Agent:
 
     @staticmethod
     async def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
-        """Unset the agent group. If agent has multigroups, it will preserve all previous groups except the last one.
+        """Unset agent group. If agent has multiple groups, it will preserve all previous groups except the last one.
 
         Parameters
         ----------
@@ -1298,8 +1250,9 @@ def get_groups() -> set:
         Names of all groups in the system.
     """
     groups = set()
-    for shared_file in listdir(common.SHARED_PATH):
-        path.isdir(path.join(common.SHARED_PATH, shared_file)) and groups.add(shared_file)
+    for group_file in listdir(common.SHARED_PATH):
+        if group_file.endswith(GROUP_FILE_SUFFIX):
+            groups.add(group_file.removesuffix(GROUP_FILE_SUFFIX))
 
     return groups
 

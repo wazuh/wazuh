@@ -757,6 +757,16 @@ def test_load_wazuh_yaml_data_ko(safe_load_mock):
         utils.load_wazuh_yaml('', data='1')
 
 
+@patch('wazuh.core.common.SHARED_PATH', new='/test')
+def test_get_group_file_path():
+    """Test `get_group_file_path` returns the corrrect path."""
+    group_id = 'default'
+    expected_path = '/test/default.conf'
+    path = utils.get_group_file_path(group_id)
+
+    assert path == expected_path
+
+
 @pytest.mark.parametrize('version1, version2', [
     ('Wazuh v3.5.0', 'Wazuh v3.5.2'),
     ('Wazuh v3.6.1', 'Wazuh v3.6.3'),

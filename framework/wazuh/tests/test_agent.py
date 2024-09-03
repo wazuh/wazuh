@@ -65,7 +65,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data')
 test_agent_path = os.path.join(test_data_path, 'agent')
 test_shared_path = os.path.join(test_agent_path, 'shared')
-test_multigroup_path = os.path.join(test_agent_path, 'multigroups')
 test_global_bd_path = os.path.join(test_data_path, 'global.db')
 
 test_data = InitAgent(data_path=test_data_path)
@@ -1204,7 +1203,7 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
 
 
 @pytest.mark.parametrize('group_list', [
-    ['default']
+    ['group-1']
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_agent_get_agent_conf(group_list):
@@ -1222,11 +1221,11 @@ def test_agent_get_agent_conf(group_list):
 
 
 @pytest.mark.parametrize('group_list', [
-    ['default']
+    ['update']
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 @patch('wazuh.core.configuration.update_group_configuration')
-def test_agent_upload_group_file(mock_upload, group_list):
+def test_agent_upload_group_file(mock_update, group_list):
     """Test `upload_group_file` function from agent module.
 
     Parameters
@@ -1235,7 +1234,7 @@ def test_agent_upload_group_file(mock_upload, group_list):
         List of group names.
     """
     expected_msg = 'Agent configuration was successfully updated'
-    mock_upload.return_value = expected_msg
+    mock_update.return_value = expected_msg
     result = update_group_file(group_list=group_list, file_data="sample")
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'message' in result.dikt

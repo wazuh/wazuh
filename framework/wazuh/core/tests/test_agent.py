@@ -18,6 +18,7 @@ with patch('wazuh.core.common.wazuh_uid'):
         from api.util import remove_nones_to_dict
         from wazuh.core.common import reset_context_cache
         from wazuh.core.indexer.agent import Agent as IndexerAgent
+        from wazuh.core.utils import get_group_file_path
 
 # all necessary params
 
@@ -371,56 +372,6 @@ def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
     assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)'
 
 
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups__init__(mock_socket_conn):
-    """Tests if method __init__ of WazuhDBQueryMultigroups works properly."""
-    query_multigroups = WazuhDBQueryMultigroups(group_id='test')
-
-    assert 'group=test' in query_multigroups.q, 'Query returned does not match the expected one'
-
-
-@pytest.mark.parametrize('group_id', [
-    'null',
-    'test'
-])
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups_default_query(mock_socket_conn, group_id):
-    """Tests if method _default_query of WazuhDBQueryMultigroups works properly.
-
-    Parameters
-    ----------
-    group_id : str
-        Identifier of the group.
-    """
-    query_multigroups = WazuhDBQueryMultigroups(group_id=group_id)
-    result = query_multigroups._default_query()
-
-    if group_id == 'null':
-        assert 'SELECT {0} FROM agent a' in result, 'Query returned does not match the expected one'
-    else:
-        assert 'SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent' in result, \
-            'Query returned does not match the expected one'
-
-
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups_default_count_query(mock_socket_conn):
-    """Tests if method _default_count_query of WazuhDBQueryMultigroups works properly."""
-    query_multigroups = WazuhDBQueryMultigroups(group_id='test')
-    result = query_multigroups._default_count_query()
-
-    assert 'COUNT(DISTINCT a.id)' in result, 'Query returned does not match the expected one'
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups_get_total_items(mock_socket_conn, send_mock):
-    """Tests if method _get_total_items of WazuhDBQueryMultigroups works properly."""
-    query_multigroups = WazuhDBQueryMultigroups(group_id='test')
-    query_multigroups._get_total_items()
-
-    assert 'GROUP BY a.id' in query_multigroups.query, 'Query returned does not match the expected one'
-
-
 @pytest.mark.parametrize('id, ip, name, key', [
     ('1', '127.0.0.1', 'test_agent', 'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747D'),
 ])
@@ -756,7 +707,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.agent.rmtree')
+@patch('wazuh.core.agent.remove')
 @patch('wazuh.core.agent.path.exists', return_value=True)
 @patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
 @patch('wazuh.core.indexer.Indexer._get_opensearch_client', new_callable=AsyncMock)
@@ -764,7 +715,7 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @patch('wazuh.core.indexer.Indexer.close')
 @patch('wazuh.core.indexer.agent.AgentsIndex.delete_groups')
 async def test_agent_delete_single_group(delete_groups_mock, get_os_client_mock, connect_mock, close_mock, mock_exists,
-                                         mock_rmtree):
+                                         mock_remove):
     """Tests if method delete_single_group() works as expected"""
 
     agent = Agent('001')
@@ -773,7 +724,7 @@ async def test_agent_delete_single_group(delete_groups_mock, get_os_client_mock,
     result = await agent.delete_single_group(group)
     assert isinstance(result, dict), 'Result is not a dict'
     assert result['message'] == f"Group '{group}' deleted.", 'Not expected message'
-    mock_rmtree.assert_called_once_with(os.path.join(common.SHARED_PATH, group))
+    mock_remove.assert_called_once_with(get_group_file_path(group))
 
 
 @pytest.mark.parametrize("agent_id, expected_result", [
@@ -1050,7 +1001,7 @@ def test_agent_group_exists(group_exists):
     group_exists : bool
         Expected result
     """
-    with patch('os.path.isdir', return_value=group_exists):
+    with patch('os.path.exists', return_value=group_exists):
         result = Agent.group_exists('default')
         assert result == group_exists, f'Group exists should return {group_exists}'
 
@@ -1286,9 +1237,10 @@ def test_get_groups():
 
     with patch('wazuh.core.common.SHARED_PATH', new=shared):
         try:
+            os.makedirs(shared)
             for group in list(expected_result):
-                os.makedirs(os.path.join(shared, group))
-            open(os.path.join(shared, 'non-dir-file'), 'a').close()
+                with open(os.path.join(shared, f'{group}.conf'), 'w') as f:
+                    f.write('')
 
             result = get_groups()
             assert result == expected_result

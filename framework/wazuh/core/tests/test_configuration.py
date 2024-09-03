@@ -73,23 +73,23 @@ def test_insert_section(json_dst, section_name, section_data):
 
 def test_read_option():
     """Checks insert_section function."""
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/options.conf')) as f:
         data = fromstring(f.read())
         assert configuration._read_option('open-scap', data)[0] == 'directories'
         assert configuration._read_option('syscheck', data)[0] == 'directories'
         assert configuration._read_option('labels', data)[0] == 'directories'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options1.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/options1.conf')) as f:
         data = fromstring(f.read())
         assert configuration._read_option('labels', data)[0] == 'label'
         assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/synchronization.conf')) as f:
         data = fromstring(f.read())
         assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/vulnerability_detection.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
             {'enabled': 'no', 'feed-update-interval': '60m', 'index-status': 'yes'}
@@ -98,7 +98,7 @@ def test_read_option():
             assert configuration._read_option('vulnerability-detection', section) == (section.tag,
                                                                                      EXPECTED_VALUES[section.tag])
 
-    with open(os.path.join(parent_directory, tmp_path, 'configuration/default/indexer.conf')) as f:
+    with open(os.path.join(parent_directory, tmp_path, 'configuration/indexer.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
             {
@@ -143,7 +143,7 @@ def test_read_option():
      )
 ])
 def test_read_option_journald(configuration_file, expected_values):
-    with open(os.path.join(parent_directory, tmp_path, f'configuration/default/{configuration_file}')) as f:
+    with open(os.path.join(parent_directory, tmp_path, f'configuration/{configuration_file}')) as f:
         data = fromstring(f.read())
         list_of_filters = []
 
@@ -155,12 +155,6 @@ def test_read_option_journald(configuration_file, expected_values):
                                                                             expected_values[section.tag])
 
         assert list_of_filters == expected_values["filter"]
-
-def test_agentconf2json():
-    xml_conf = configuration.load_wazuh_xml(
-        os.path.join(parent_directory, tmp_path, 'configuration/default/agent.conf'))
-
-    assert configuration._agentconf2json(xml_conf=xml_conf)[0]['filters'] == {'name': 'agent_name'}
 
 
 def test_get_ossec_conf():
@@ -232,24 +226,6 @@ def test_get_agent_conf():
         assert configuration.get_agent_conf(group_id='default')['total_affected_items'] == 1
 
 
-def test_get_agent_conf_multigroup():
-    with pytest.raises(WazuhError, match=".* 1710 .*"):
-        configuration.get_agent_conf_multigroup()
-
-    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with pytest.raises(WazuhError, match=".* 1006 .*"):
-            configuration.get_agent_conf_multigroup(multigroup_id='multigroup', filename='noexists.conf')
-
-    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
-            with pytest.raises(WazuhError, match=".* 1101 .*"):
-                configuration.get_agent_conf_multigroup(multigroup_id='multigroup')
-
-    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        result = configuration.get_agent_conf_multigroup(multigroup_id='multigroup')
-        assert set(result.keys()) == {'totalItems', 'items'}
-
-
 def test_parse_internal_options():
     with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
                new=os.path.join(parent_directory, tmp_path, 'configuration/noexists.conf')):
@@ -297,25 +273,12 @@ def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
 @patch('wazuh.core.configuration.common.wazuh_gid')
 @patch('wazuh.core.configuration.common.wazuh_uid')
 @patch('builtins.open')
-@patch('wazuh.core.configuration.safe_move')
-def test_update_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh_gid):
+def test_update_group_file(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.update_group_file('noexists', 'given')
     
     with pytest.raises(WazuhError, match=".* 1722 .*"):
         configuration.update_group_file('.invalid', '')
-
-    with patch('wazuh.core.configuration.os_path.exists', return_value=True):
-        with pytest.raises(WazuhError, match=".* 1112 .*"):
-            configuration.update_group_file('default', [])
-
-    with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with patch('wazuh.core.configuration.tempfile.mkstemp', return_value=['mock_handle', 'mock_tmp_file']):
-            with patch('wazuh.core.configuration.subprocess.check_output', return_value=True):
-                with patch('wazuh.core.utils.chown', side_effect=None):
-                    with patch('wazuh.core.utils.chmod', side_effect=None):
-                        assert configuration.update_group_file('default', 'test: value') == \
-                               'Agent configuration was successfully updated'
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with pytest.raises(WazuhError, match=".* 1112 .*"):

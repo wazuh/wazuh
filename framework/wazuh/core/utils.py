@@ -42,6 +42,8 @@ if sys.version_info[0] == 3:
 # Temporary cache
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
+GROUP_FILE_SUFFIX = '.conf'
+
 
 def assign_wazuh_ownership(filepath: str):
     """Create a file if it doesn't exist and assign ownership.
@@ -1211,6 +1213,21 @@ def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
 
     return parsed_data
 
+
+def get_group_file_path(group_id: str) -> str:
+    """Returns the path to the group configuration file.
+    
+    Parameters
+    ----------
+    group_id : str
+        Group ID.
+        
+    Returns
+    -------
+    str
+        Group configuration file path.
+    """
+    return path.join(common.SHARED_PATH, group_id+GROUP_FILE_SUFFIX)
 
 
 class WazuhVersion:

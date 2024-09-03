@@ -10,8 +10,6 @@ from typing import Union
 from wazuh import __version__
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
-    GROUP_FIELDS,
-    GROUP_REQUIRED_FIELDS,
     Agent,
     WazuhDBQueryAgents,
     WazuhDBQueryGroupByAgents,
@@ -33,6 +31,7 @@ from wazuh.core.utils import (
     full_copy,
     get_hash,
     process_array,
+    get_group_file_path
 )
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources
@@ -555,23 +554,16 @@ def get_agent_groups(group_list: list = None, offset: int = 0, limit: int = None
         for name in group_list:
             group = {'name': name}
 
-            full_entry = path.join(common.SHARED_PATH, name)
-
-            # merged.mg and agent.conf sum
-            merged_sum = get_hash(path.join(full_entry, "merged.mg"), hash_algorithm)
-            if merged_sum:
-                group['mergedSum'] = merged_sum
-
-            conf_sum = get_hash(path.join(full_entry, "agent.conf"), hash_algorithm)
+            conf_sum = get_hash(get_group_file_path(name), hash_algorithm)
             if conf_sum:
                 group['configSum'] = conf_sum
 
             affected_groups.append(group)
 
-        data = process_array(affected_groups, offset=offset, limit=limit, allowed_sort_fields=GROUP_FIELDS,
+        data = process_array(affected_groups, offset=offset, limit=limit,
                             sort_by=sort_by, sort_ascending=sort_ascending, search_text=search_text,
-                            complementary_search=complementary_search, q=q, allowed_select_fields=GROUP_FIELDS,
-                            select=select, distinct=distinct, required_fields=GROUP_REQUIRED_FIELDS)
+                            complementary_search=complementary_search, q=q,
+                            select=select, distinct=distinct)
         result.affected_items = data['items']
         result.total_affected_items = data['totalItems']
 
@@ -610,7 +602,7 @@ def create_group(group_id: str) -> WazuhResult:
     if group_id.lower() == "agent-template":
         raise WazuhError(1713, extra_message=group_id)
 
-    group_path = path.join(common.SHARED_PATH, f'{group_id}.conf')
+    group_path = get_group_file_path(group_id)
 
     if group_id.lower() == "default" or path.exists(group_path):
         raise WazuhError(1711, extra_message=group_id)
@@ -1125,15 +1117,13 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list: list = None, filename: str = 'agent.conf') -> WazuhResult:
+def get_agent_conf(group_list: list = None) -> WazuhResult:
     """Read agent conf for a specified group.
 
     Parameters
     ----------
     group_list : list
         List with the group ID.
-    filename : str
-        Filename to read config from. Default: 'agent.conf'
 
     Returns
     -------
@@ -1145,7 +1135,7 @@ def get_agent_conf(group_list: list = None, filename: str = 'agent.conf') -> Waz
     group_id = group_list[0]
 
     return WazuhResult(
-        {'data': configuration.get_agent_conf(group_id=group_id, filename=filename)})
+        {'data': configuration.get_agent_conf(group_id=group_id)})
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
