@@ -308,7 +308,7 @@ class WazuhException(Exception):
         1713: {'message': 'Invalid group ID. Some IDs are restricted for internal purposes',
                'remediation': 'Please, use another group ID'},
         1722: {'message': 'Incorrect format for group_id',
-               'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
+               'remediation': 'Characters supported  a-z, A-Z, 0-9, _ and -. Max length is 255'
                },
         1723: 'Hash algorithm not available',
         1724: {'message': 'Not a valid select field',

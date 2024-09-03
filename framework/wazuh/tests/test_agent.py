@@ -556,7 +556,7 @@ def test_agent_get_agent_groups_exceptions(mock_get_groups, system_groups, error
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 @patch('wazuh.core.common.wazuh_gid', return_value=getgrnam('root'))
 @patch('wazuh.core.common.wazuh_uid', return_value=getpwnam('root'))
-@patch('wazuh.agent.chown_r')
+@patch('wazuh.agent.chown')
 def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
     """Test `create_group` function from agent module.
 
@@ -568,7 +568,7 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
         Name of the group to be created.
     """
     expected_msg = f"Group '{group_id}' created."
-    path_to_group = os.path.join(test_shared_path, group_id)
+    path_to_group = os.path.join(test_shared_path, f'{group_id}.conf')
     try:
         result = create_group(group_id)
         assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
@@ -581,17 +581,17 @@ def test_create_group(chown_mock, uid_mock, gid_mock, group_id):
         assert os.path.exists(path_to_group), \
             f'The path "{path_to_group}" does not exists and should be created by "create_group" function.'
     finally:
-        # Remove the new folder to avoid affecting other tests
-        shutil.rmtree(path_to_group, ignore_errors=True)
+        # Remove the new file to avoid affecting other tests
+        if os.path.exists(path_to_group):
+            os.remove(path_to_group)
 
 
 @pytest.mark.parametrize('group_id, exception, exception_code', [
     ('default', WazuhError, 1711),
-    ('group-1', WazuhError, 1711),
+    ('group-1.conf', WazuhError, 1722),
     ('invalid!', WazuhError, 1722),
     ('delete-me', WazuhInternalError, 1005),
-    ('ar.conf', WazuhError, 1713),
-    ('agent-template.conf', WazuhError, 1713)
+    ('agent-template', WazuhError, 1713)
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
 def test_create_group_exceptions(group_id, exception, exception_code):
@@ -613,7 +613,9 @@ def test_create_group_exceptions(group_id, exception, exception_code):
         assert e.code == exception_code
     finally:
         # Remove the new group file to avoid affecting the next tests
-        shutil.rmtree(os.path.join(test_shared_path, 'delete-me'), ignore_errors=True)
+        path = os.path.join(test_shared_path, f'{group_id}.conf')
+        if os.path.exists(path) and group_id != 'agent-template':
+            os.remove(path)
 
 
 @pytest.mark.parametrize('group_list', [

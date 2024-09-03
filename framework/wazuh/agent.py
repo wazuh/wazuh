@@ -4,15 +4,13 @@
 
 import contextlib
 import operator
-from os import chmod, listdir, path
+from os import chmod, chown, path
 from typing import Union
 
 from wazuh import __version__
 from wazuh.core import common, configuration
 from wazuh.core.agent import (
     GROUP_FIELDS,
-    GROUP_FILES_FIELDS,
-    GROUP_FILES_REQUIRED_FIELDS,
     GROUP_REQUIRED_FIELDS,
     Agent,
     WazuhDBQueryAgents,
@@ -32,11 +30,8 @@ from wazuh.core.indexer.utils import get_source_items_id
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
-    chmod_r,
-    chown_r,
     full_copy,
     get_hash,
-    mkdir_with_mode,
     process_array,
 )
 from wazuh.core.wazuh_queue import WazuhQueue
@@ -612,24 +607,21 @@ def create_group(group_id: str) -> WazuhResult:
     if not InputValidator().group(group_id):
         raise WazuhError(1722)
 
-    group_path = path.join(common.SHARED_PATH, group_id)
+    if group_id.lower() == "agent-template":
+        raise WazuhError(1713, extra_message=group_id)
+
+    group_path = path.join(common.SHARED_PATH, f'{group_id}.conf')
 
     if group_id.lower() == "default" or path.exists(group_path):
-        if not path.isfile(group_path):
-            raise WazuhError(1711, extra_message=group_id)
-        else:
-            raise WazuhError(1713, extra_message=group_id)
+        raise WazuhError(1711, extra_message=group_id)
 
     # Create group in /etc/shared
-    # TODO(#25122): Change file names (extension may change)
     agent_conf_template = path.join(common.SHARED_PATH, 'agent-template.conf')
     try:
-        mkdir_with_mode(group_path)
-        full_copy(agent_conf_template, path.join(group_path, 'agent.conf'))
+        full_copy(agent_conf_template, group_path)
 
-        chown_r(group_path, common.wazuh_uid(), common.wazuh_gid())
-        chmod_r(group_path, 0o660)
-        chmod(group_path, 0o700)
+        chown(group_path, common.wazuh_uid(), common.wazuh_gid())
+        chmod(group_path, 0o660)
         msg = f"Group '{group_id}' created."
     except Exception as e:
         raise WazuhInternalError(1005, extra_message=str(e))
