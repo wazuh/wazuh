@@ -51,7 +51,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             restart_agents,
             restart_agents_by_node,
             upgrade_agents,
-            upload_group_file,
+            update_group_file,
         )
         from wazuh.core.agent import Agent
         from wazuh.core.exception import WazuhResourceNotFound
@@ -1225,7 +1225,7 @@ def test_agent_get_agent_conf(group_list):
     ['default']
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
-@patch('wazuh.core.configuration.upload_group_configuration')
+@patch('wazuh.core.configuration.update_group_configuration')
 def test_agent_upload_group_file(mock_upload, group_list):
     """Test `upload_group_file` function from agent module.
 
@@ -1236,7 +1236,7 @@ def test_agent_upload_group_file(mock_upload, group_list):
     """
     expected_msg = 'Agent configuration was successfully updated'
     mock_upload.return_value = expected_msg
-    result = upload_group_file(group_list=group_list, file_data="sample")
+    result = update_group_file(group_list=group_list, file_data="sample")
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'message' in result.dikt
     assert result.dikt['message'] == expected_msg

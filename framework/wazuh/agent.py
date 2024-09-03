@@ -1149,7 +1149,7 @@ def get_agent_conf(group_list: list = None, filename: str = 'agent.conf') -> Waz
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)
-def upload_group_file(group_list: list = None, file_data: str = None, file_name: str = 'agent.conf') -> WazuhResult:
+def update_group_file(group_list: list = None, file_data: str = None) -> WazuhResult:
     """Update a group file.
 
     Parameters
@@ -1158,8 +1158,6 @@ def upload_group_file(group_list: list = None, file_data: str = None, file_name:
         List with the group ID.
     file_data : str
         Relative path of temporary file to upload.
-    file_name : str
-        Name of the file to update. Default: 'agent.conf'
 
     Returns
     -------
@@ -1170,7 +1168,7 @@ def upload_group_file(group_list: list = None, file_data: str = None, file_name:
     # a list of groups
     group_id = group_list[0]
 
-    return WazuhResult({'message': configuration.upload_group_file(group_id, file_data, file_name=file_name)})
+    return WazuhResult({'message': configuration.update_group_file(group_id, file_data)})
 
 
 def get_full_overview() -> WazuhResult:

@@ -1115,6 +1115,17 @@ def check_virustotal_integration(new_conf: str):
                 raise WazuhError(1130, extra_message='integrations > virustotal')
 
 
+def validate_wazuh_configuration(data: str):
+    """Check that the Wazuh configuration provided is valid.
+    
+    Parameters
+    ----------
+    data : str
+        Configuration content.
+    """
+    # TODO(#25121): Validate configuration
+
+
 def load_wazuh_xml(xml_path, data=None):
     if not data:
         with open(xml_path) as f:
@@ -1191,12 +1202,12 @@ def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
         except Exception as e:
             raise WazuhError(1006, extra_message=str(e))
 
+    validate_wazuh_configuration(data)
+
     try:
         parsed_data = yaml.safe_load(data)
     except yaml.YAMLError as e:
         raise WazuhError(1132, extra_message=str(e))
-    
-    # TODO(#25121): Validate configuration
 
     return parsed_data
 

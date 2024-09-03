@@ -785,7 +785,7 @@ async def test_put_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
             f_kwargs = {'group_list': ['001'],
                         'file_data': mock_dbody.return_value
                         }
-            mock_dapi.assert_called_once_with(f=agent.upload_group_file,
+            mock_dapi.assert_called_once_with(f=agent.update_group_file,
                                               f_kwargs=mock_remove.return_value,
                                               request_type='local_master',
                                               is_async=False,

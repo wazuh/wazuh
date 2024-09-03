@@ -20,7 +20,8 @@ from defusedxml.ElementTree import tostring
 from defusedxml.minidom import parseString
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.utils import cut_array, load_wazuh_xml, load_wazuh_yaml, safe_move
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.utils import cut_array, load_wazuh_xml, load_wazuh_yaml, safe_move, validate_wazuh_configuration
 
 logger = logging.getLogger('wazuh')
 
@@ -653,7 +654,7 @@ def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: i
     return option
 
 
-def upload_group_configuration(group_id: str, file_content: str) -> str:
+def update_group_configuration(group_id: str, file_content: str) -> str:
     """Update group configuration.
 
     Parameters
@@ -667,100 +668,31 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     ------
     WazuhResourceNotFound(1710)
         Group was not found.
-    WazuhError(1113)
-        XML syntax error.
-    WazuhError(1114)
-        Wazuh syntax error.
-    WazuhError(1115)
-        Error executing verify-agent-conf.
-    WazuhInternalError(1743)
-        Error running Wazuh syntax validator.
-    WazuhInternalError(1016)
-        Error moving file.
+    WazuhInternalError(1006)
+        Error writing file.
 
     Returns
     -------
     str
         Confirmation message.
     """
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    filepath = os_path.join(common.SHARED_PATH, f'{group_id}.conf')
+
+    if not os_path.exists(filepath):
         raise WazuhResourceNotFound(1710, group_id)
-    # path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.OSSEC_TMP_PATH)
-    # create temporary file for parsing xml input and validate XML format
-    try:
-        with open(handle, 'w') as tmp_file:
-            custom_entities = {
-                '_custom_open_tag_': '\\<',
-                '_custom_close_tag_': '\\>',
-                '_custom_amp_lt_': '&lt;',
-                '_custom_amp_gt_': '&gt;'
-            }
 
-            # Replace every custom entity
-            for character, replacement in custom_entities.items():
-                file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
-
-            # Beautify xml file using a defusedxml.minidom.parseString
-            xml = parseString(f'<root>\n{file_content}\n</root>')
-
-            # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
-
-            # Revert xml.dom replacements and remove any whitespaces and '\n' between '\' and '<' if present
-            # github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305
-            pretty_xml = re.sub(r'(?:(?<=\\) +)', '', pretty_xml.replace("&amp;", "&").replace("&lt;", "<")
-                                .replace("&quot;", "\"", ).replace("&gt;", ">").replace("\\\n", "\\"))
-
-            # Restore the replaced custom entities
-            for replacement, character in custom_entities.items():
-                pretty_xml = re.sub(replacement, character.replace('\\', '\\\\'), pretty_xml)
-
-            tmp_file.write(pretty_xml)
-    except Exception as e:
-        raise WazuhError(1113, str(e))
+    validate_wazuh_configuration(file_content)
 
     try:
-        # check Wazuh xml format
-        try:
-            subprocess.check_output([os_path.join(common.WAZUH_PATH, "bin", "verify-agent-conf"), '-f', tmp_file_path],
-                                    stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            # extract error message from output.
-            # Example of raw output
-            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
-            # Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207):
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            # \n\n
-            # Example of desired output:
-            # Invalid element in the configuration: 'agent_conf'.
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            if output_regex:
-                raise WazuhError(1114, ' '.join(output_regex))
-            else:
-                raise WazuhError(1115, e.output.decode())
-        except Exception as e:
-            raise WazuhInternalError(1743, str(e))
-
-        # move temporary file to group folder
-        try:
-            new_conf_path = os_path.join(common.SHARED_PATH, group_id, "agent.conf")
-            safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                      permissions=0o660)
-        except Exception as e:
-            raise WazuhInternalError(1016, extra_message=str(e))
-
-        return 'Agent configuration was successfully updated'
+        with open(filepath, 'w') as f:
+            f.write(file_content)
     except Exception as e:
-        # remove created temporary file
-        if os.path.exists(tmp_file_path):
-            remove(tmp_file_path)
-        raise e
+        raise WazuhInternalError(1006, extra_message=str(e))
+
+    return 'Agent configuration was successfully updated'
 
 
-def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.conf') -> str:
+def update_group_file(group_id: str, file_data: str) -> str:
     """Update a group file.
 
     Parameters
@@ -769,34 +701,31 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         Group to update.
     file_data : str
         Upload data.
-    file_name : str
-        File name to update. Default: 'agent.conf'
 
     Raises
     ------
+    WazuhError(1722)
+        If there was a validation error.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1112)
         Empty files are not supported.
-    WazuhError(1111)
-        Remote group file updates are only available in 'agent.conf' file.
 
     Returns
     -------
     str
         Confirmation message in string.
     """
-    # Check if the group exists
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
+
+    if not os_path.exists(os_path.join(common.SHARED_PATH, f'{group_id}.conf')):
         raise WazuhResourceNotFound(1710, group_id)
 
-    if file_name == 'agent.conf':
-        if len(file_data) == 0:
-            raise WazuhError(1112)
+    if len(file_data) == 0:
+        raise WazuhError(1112)
 
-        return upload_group_configuration(group_id, file_data)
-    else:
-        raise WazuhError(1111)
+    return update_group_configuration(group_id, file_data)
 
 
 def get_active_configuration(component: str, configuration: str, agent_id: str = None) -> dict:

@@ -1052,14 +1052,14 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
                            wait_for_complete: bool = False) -> ConnexionResponse:
     """Update group configuration.
 
-    Update a specified group's configuration. This API call expects a full valid XML file with the shared configuration
-    tags/syntax.
+    Update a specified group's configuration. This API call expects a full valid YAML file with the shared configuration
+    syntax.
 
     Parameters
     ----------
     body : bytes
         Bytes object with the new group configuration.
-        The body is obtained from the XML file and decoded in this function.
+        The body is obtained from the YAML file and decoded in this function.
     group_id : str
         Group ID.
     pretty: bool
@@ -1073,13 +1073,13 @@ async def put_group_config(body: bytes, group_id: str, pretty: bool = False,
         API response.
     """
     # Parse body to utf-8
-    Body.validate_content_type(request, expected_content_type='application/xml')
+    Body.validate_content_type(request, expected_content_type='application/x-yaml')
     parsed_body = Body.decode_body(body, unicode_error=1911, attribute_error=1912)
 
     f_kwargs = {'group_list': [group_id],
                 'file_data': parsed_body}
 
-    dapi = DistributedAPI(f=agent.upload_group_file,
+    dapi = DistributedAPI(f=agent.update_group_file,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

@@ -8969,7 +8969,7 @@ paths:
       tags:
         - Groups
       summary: "Get group configuration"
-      description: "Return the group configuration defined in the `agent.conf` file"
+      description: "Return a group's configuration"
       operationId: api.controllers.agent_controller.get_group_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:read'
@@ -9036,8 +9036,8 @@ paths:
       tags:
         - Groups
       summary: "Update group configuration"
-      description: "Update an specified group's configuration. This API call expects a full valid XML file with the
-      shared configuration tags/syntax"
+      description: "Update an specified group's configuration. This API call expects a full valid YAML file with the
+      shared configuration syntax"
       operationId: api.controllers.agent_controller.put_group_config
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/group:update_config'
@@ -9048,7 +9048,7 @@ paths:
       requestBody:
         required: true
         content:
-          application/xml:
+          application/x-yaml:
             schema:
               properties:
                 tmp_file:

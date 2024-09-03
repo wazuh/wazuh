@@ -76,7 +76,6 @@ class WazuhException(Exception):
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
-        1111: "Remote group file updates are only available in 'agent.conf' file",
         1112: {'message': 'Empty files are not supported',
                'remediation': 'Please, provide another file'
                },
