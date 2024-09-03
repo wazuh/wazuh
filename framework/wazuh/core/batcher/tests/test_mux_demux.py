@@ -130,7 +130,7 @@ def test_get_response_from_demux():
 
     demux_queue.put(Message(expected_uid, expected_msg))
 
-    result = queue._get_response_from_demux()
+    result = queue.internal_response_from_demux()
 
     assert demux_queue.empty()
     assert result.uid == expected_uid
@@ -151,7 +151,7 @@ def test_store_response():
     example_uid = "ac5f7bed-363a-4095-bc19-5c1ebffd1be0"
     example_value = "test"
 
-    queue._store_response(Message(example_uid, example_value))
+    queue.internal_store_response(Message(example_uid, example_value))
 
     assert example_uid in dict_test
     assert dict_test[example_uid] == example_value
@@ -166,6 +166,7 @@ def test_mux_demux_manager_initialization():
     assert isinstance(manager.get_queue_process(), Process)
 
     assert manager.get_queue_process().is_alive()
+    manager.shutdown()
 
 
 def test_mux_demux_manager_shutdown():

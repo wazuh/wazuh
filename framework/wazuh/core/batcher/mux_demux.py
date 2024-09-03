@@ -1,6 +1,12 @@
-from multiprocessing import Queue, Process
+import os
+import logging
+import signal
+from multiprocessing import Queue, Process, Event
 from multiprocessing.managers import DictProxy, SyncManager
-from typing import Optional
+from typing import Optional, Any
+
+
+logger = logging.getLogger('wazuh-comms-api')
 
 
 class Message:
@@ -111,15 +117,7 @@ class MuxDemuxQueue:
         else:
             return None
 
-    def run(self):
-        """Continuously retrieves messages from the demux queue and updates the responses."""
-
-        while True:
-            item = self._get_response_from_demux()
-            if isinstance(item, Message):
-                self._store_response(item)
-
-    def _get_response_from_demux(self) -> Message:
+    def internal_response_from_demux(self) -> Message:
         """Retrieves a message from the demux queue.
 
         Returns
@@ -129,7 +127,7 @@ class MuxDemuxQueue:
         """
         return self.demux_queue.get()
 
-    def _store_response(self, msg: Message):
+    def internal_store_response(self, msg: Message):
         """Updates the responses dictionary with the message content.
 
         Parameters
@@ -138,6 +136,58 @@ class MuxDemuxQueue:
             The message whose content will be added to the responses dictionary.
         """
         self.responses[msg.uid] = msg.msg
+
+
+class MuxDemuxRunner(Process):
+    """A multiprocessing Process that manages the MuxDemuxQueue operations, handling
+    signals for graceful shutdown and processing items from the queue.
+
+    The MuxDemuxRunner class runs as a separate process to manage the `MuxDemuxQueue`. It listens
+    for termination signals (SIGTERM, SIGINT) to initiate a graceful shutdown, and continuously
+    processes items from the queue, storing them as responses if they are of the correct type.
+    """
+
+    def __init__(self, queue: MuxDemuxQueue):
+        super().__init__()
+        self.queue = queue
+        self._shutdown_event = Event()
+
+    def _handle_signal(self, signum: int, frame: Any):
+        """Handles termination signals (SIGTERM, SIGINT) by setting the shutdown event.
+
+        Parameters
+        ----------
+        signum : int
+            The signal number received.
+        frame : Any
+            The current stack frame (unused).
+        """
+        logger.info(f'MuxDemuxQueue pid {os.getpid()} - received signal {signum}')
+        self._shutdown_event.set()
+
+    def run(self) -> None:
+        """Main loop of the process. Sets up signal handling, and processes items from
+        the queue until the shutdown event is set.
+
+        This method registers signal handlers for SIGTERM and SIGINT to gracefully terminate the
+        process. It continuously checks the queue for new items, and stores responses if the items
+        are of type `Message`. On encountering an exception, it logs the error and checks the
+        shutdown status to decide whether to continue or terminate.
+        """
+        signal.signal(signal.SIGTERM, self._handle_signal)
+        signal.signal(signal.SIGINT, self._handle_signal)
+
+        while not self._shutdown_event.is_set():
+            try:
+                item = self.queue.internal_response_from_demux()
+                if isinstance(item, Message):
+                    self.queue.internal_store_response(item)
+            except Exception as e:
+                if self._shutdown_event.is_set():
+                    logger.info(f'MuxDemuxQueue pid {os.getpid()} - shutting down')
+                    return
+                else:
+                    logger.error(f'Error with MuxDemuxQueue run: {e}', exc_info=True)
 
 
 class MuxDemuxManager:
@@ -160,7 +210,7 @@ class MuxDemuxManager:
             self.manager.Queue(),
             self.manager.Queue()
         )
-        self.queue_process = Process(target=self.queue.run, args=())
+        self.queue_process = MuxDemuxRunner(queue=self.queue)
         self.queue_process.start()
 
     def get_manager(self) -> SyncManager:
