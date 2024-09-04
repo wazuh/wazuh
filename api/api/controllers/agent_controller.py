@@ -247,8 +247,9 @@ async def reconnect_agents(pretty: bool = False, wait_for_complete: bool = False
     return json_response(data, pretty=pretty)
 
 
-async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
-                         agents_list: str = '*') -> ConnexionResponse:
+async def restart_agents(
+    pretty: bool = False, wait_for_complete: bool = False, agents_id: str = '*'
+) -> ConnexionResponse:
     """Restart all agents or a list of them.
 
     Parameters
@@ -257,7 +258,7 @@ async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agents_list : str
+    agents_id : str
         List of agents IDs. Default: `*`
 
     Returns
@@ -265,20 +266,24 @@ async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'agent_list': agents_list}
+    # if agents_id == '*':
+    #     agents_id = []
 
-    dapi = DistributedAPI(f=agent.restart_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
-                          logger=logger
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
+    # f_kwargs = {'agents_id': agents_id}
 
-    return json_response(data, pretty=pretty)
+    # dapi = DistributedAPI(
+    #     f=agent.restart_agents,
+    #     f_kwargs=remove_nones_to_dict(f_kwargs),
+    #     request_type='local_any',
+    #     is_async=True,
+    #     wait_for_complete=wait_for_complete,
+    #     rbac_permissions=request.context['token_info']['rbac_policies'],
+    #     logger=logger
+    # )
+    # data = raise_if_exc(await dapi.distribute_function())
+
+    # return json_response(data, pretty=pretty)
+    return json_response({'message': 'To be implemented'}, status_code=501)
 
 
 async def restart_agents_by_node(node_id: str, pretty: bool = False,
@@ -431,7 +436,7 @@ async def get_agent_key(agent_id: str, pretty: bool = False, wait_for_complete: 
     return json_response(data, pretty=pretty)
 
 
-async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def restart_agent(agent_uuid: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart an agent.
 
     Parameters
@@ -440,27 +445,29 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agent_id : str
-        Agent ID. All possible values from 001 onwards.
+    agent_uuid : str
+        Agent UUID.
 
     Returns
     -------
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'agent_list': [agent_id]}
+    # f_kwargs = {'agents_id': [agent_uuid]}
 
-    dapi = DistributedAPI(f=agent.restart_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
+    # dapi = DistributedAPI(
+    #     f=agent.restart_agents,
+    #     f_kwargs=remove_nones_to_dict(f_kwargs),
+    #     request_type='local_any',
+    #     is_async=True,
+    #     wait_for_complete=wait_for_complete,
+    #     logger=logger,
+    #     rbac_permissions=request.context['token_info']['rbac_policies']
+    # )
+    # data = raise_if_exc(await dapi.distribute_function())
 
-    return json_response(data, pretty=pretty)
+    # return json_response(data, pretty=pretty)
+    return json_response({'message': 'To be implemented'}, status_code=501)
 
 
 async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,

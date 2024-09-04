@@ -250,14 +250,14 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
     return result
 
 
-@expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1707]})
-def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
+@expose_resources(actions=["agent:restart"], resources=["agent:id:{agents_id}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+async def restart_agents(agents_id: list) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
     Parameters
     ----------
-    agent_list : list
+    agents_id : list
         List of agents IDs.
 
     Returns
@@ -265,42 +265,13 @@ def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     AffectedItemsWazuhResult
         Affected items.
     """
-    result = AffectedItemsWazuhResult(all_msg='Restart command was sent to all agents',
-                                      some_msg='Restart command was not sent to some agents',
-                                      none_msg='Restart command was not sent to any agent'
-                                      )
+    result = AffectedItemsWazuhResult(
+        all_msg='Restart command was sent to all agents',
+        some_msg='Restart command was not sent to some agents',
+        none_msg='Restart command was not sent to any agent'
+    )
 
-    agent_list = set(agent_list)
-
-    if agent_list:
-        system_agents = get_agents_info()
-        rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
-        with WazuhDBQueryAgents(limit=None, select=["id", "status", "version"], **rbac_filters) as query_data:
-            agents_with_data = query_data.run()['items']
-
-        # Add non existent agents to failed_items
-        not_found_agents = agent_list - system_agents
-        [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
-
-        # Add non active agents to failed_items
-        non_active_agents = [agent for agent in agents_with_data if agent['status'] != 'active']
-        [result.add_failed_item(id_=agent['id'], error=WazuhError(1707))
-         for agent in non_active_agents]
-
-        eligible_agents = [agent for agent in agents_with_data if agent not in non_active_agents] if non_active_agents \
-            else agents_with_data
-        with WazuhQueue(common.AR_SOCKET) as wq:
-            for agent in eligible_agents:
-                try:
-                    send_restart_command(agent['id'], agent['version'], wq)
-                    result.affected_items.append(agent['id'])
-                except WazuhException as e:
-                    result.add_failed_item(id_=agent['id'], error=e)
-
-        result.total_affected_items = len(result.affected_items)
-        result.affected_items.sort(key=int)
-
-    return result
+    raise NotImplementedError('Implement once the restart endpoint is defined')
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
