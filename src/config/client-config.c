@@ -555,6 +555,35 @@ int Read_Client_Enrollment(XML_NODE node, agent * logr){
     }
     return 0;
 }
+int Read_AntiTampering(XML_NODE node, void *d1) {
+    /* XML definitions */
+    const char *xml_package_uninstallation = "package_uninstallation";
+
+    anti_tampering *atc = (anti_tampering *)d1;
+
+    for (int j = 0; node[j]; j++) {
+        if (!node[j]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[j]->content) {
+            merror(XML_VALUENULL, node[j]->element);
+            return (OS_INVALID);
+        } else if (!strcmp(node[j]->element, xml_package_uninstallation)) {
+            if (!strcmp(node[j]->content, "yes"))
+                atc->package_uninstallation = true;
+            else if (!strcmp(node[j]->content, "no")) {
+                atc->package_uninstallation = false;
+            } else {
+                merror("Invalid content for tag '%s'.", node[j]->element);
+                return OS_INVALID;
+            }
+        } else {
+            merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        }
+    }
+    return 0;
+}
 
 int Test_Client(const char * path){
     int fail = 0;

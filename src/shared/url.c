@@ -428,7 +428,7 @@ int wurl_request_uncompress_bz2_gz(const char * url, const char * dest, const ch
 }
 #endif
 
-curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, const long timeout) {
+curl_response* wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, const long timeout, const char *userpass, bool ssl_verify) {
     curl_response *response;
     struct curl_slist* headers_list = NULL;
     struct curl_slist* headers_tmp = NULL;
@@ -461,6 +461,12 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
         }
     }
 #endif
+
+    // Ignore SSL verification
+    if (!ssl_verify) {
+        res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        res += curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    }
 
     headers_list = curl_slist_append(headers_list, "User-Agent: curl/7.58.0");
 
@@ -501,6 +507,10 @@ curl_response* wurl_http_request(char *method, char **headers, const char* url, 
     res += curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, WriteMemoryCallback);
     res += curl_easy_setopt(curl, CURLOPT_HEADERDATA, (void *)&req_header);
     res += curl_easy_setopt(curl, CURLOPT_URL, (void *)url);
+
+    if (userpass) {
+        res += curl_easy_setopt(curl, CURLOPT_USERPWD, userpass);
+    }
 
     if (payload) {
         res += curl_easy_setopt(curl, CURLOPT_POSTFIELDS, (void *)payload);

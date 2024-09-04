@@ -428,6 +428,83 @@ fi
 %preun
 
 if [ $1 = 0 ]; then
+  # Path to the primary configuration file
+  AGENT_CONF_PATH="%{_localstatedir}/etc/shared/agent.conf"
+  # Path to the fallback configuration file
+  OSSEC_CONF_PATH="%{_localstatedir}/etc/ossec.conf"
+  # Initialize uninstallation permission variable
+  UNINSTALL_VALIDATION_NEEDED=""
+
+  # Function to extract package_uninstallation value from XML
+  get_package_uninstallation_value() {
+    local file_path="$1"
+    local value=$(sed -n '/<anti_tampering>/,/<\/anti_tampering>/p' "$file_path" | grep -oP '(?<=<package_uninstallation>).*?(?=</package_uninstallation>)' | tr -d '\n')
+    echo "$value"
+  }
+
+  # Function to check anti-tampering configuration
+  check_anti_tampering() {
+    local config_file
+    local uninstall_validation_needed=""
+
+    if [ -f "%{_localstatedir}/etc/shared/agent.conf" ]; then
+      config_file="%{_localstatedir}/etc/shared/agent.conf"
+      uninstall_validation_needed=$(get_package_uninstallation_value "$config_file")
+    fi
+
+    if [ -z "$uninstall_validation_needed" ] && [ -f "%{_localstatedir}/etc/ossec.conf" ]; then
+      config_file="%{_localstatedir}/etc/ossec.conf"
+      uninstall_validation_needed=$(get_package_uninstallation_value "$config_file")
+    fi
+
+    if [ "$uninstall_validation_needed" = "yes" ]; then
+      return 0
+    else
+      return 1
+    fi
+  }
+
+  # Function to validate uninstallation
+  validate_uninstall() {
+    local validation_command
+
+    # Check if the configuration file exists
+    if [ -f "%{_localstatedir}/etc/uninstall_validation.env" ]; then
+      . "%{_localstatedir}/etc/uninstall_validation.env"
+    else
+      echo "INFO: Uninstall configuration file not found, using environment variables."
+    fi
+
+    # Check if the VALIDATION_HOST variables are set
+    if [ -z "$VALIDATION_HOST" ]; then
+      echo "ERROR: Validation host not provided. Uninstallation cannot be continued."
+      exit 1
+    fi
+
+    # Validate uninstallation
+    if [ -n "$VALIDATION_TOKEN" ] && [ -n "$VALIDATION_LOGIN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    elif [ -n "$VALIDATION_TOKEN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-token=${VALIDATION_TOKEN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    elif [ -n "$VALIDATION_LOGIN" ]; then
+      validation_command="%{_localstatedir}/bin/wazuh-agentd --uninstall-auth-login=${VALIDATION_LOGIN} --uninstall-auth-host=${VALIDATION_HOST} --uninstall-ssl-verify=${VALIDATION_SSL_VERIFY}"
+    else
+      echo "ERROR: Validation login or token not provided. Uninstallation cannot be continued."
+      exit 1
+    fi
+
+    if $validation_command; then
+      echo "INFO: Uninstallation authorized, continuing..."
+    else
+      echo "ERROR: Uninstallation not authorized, aborting..."
+      exit 1
+    fi
+  }
+
+  # Check if anti-tampering is enabled
+  if check_anti_tampering; then
+    validate_uninstall
+  fi
 
   # Stop the services before uninstall the package
   # Check for systemd

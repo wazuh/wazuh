@@ -36,6 +36,7 @@
 | agent:upgrade            | agent:id  |                                         | *                                   |
 | agent:modify_group       | agent:id  | 004,005,009,010                         | *                                   |
 | agent:create             | *         |                                         | *                                   |
+| agent:uninstall          | *         |                                         | *                                   |
 | group:read               | group:id  | group2,group3                           | *                                   |
 | group:delete             | group:id  | *                                       | default,group1,group2,group3,pepito |
 | group:update_config      | group:id  | group1                                  | *                                   |

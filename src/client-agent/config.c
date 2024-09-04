@@ -20,6 +20,9 @@ time_t last_connection_time;
 int run_foreground;
 keystore keys;
 agent *agt;
+#ifndef WIN32
+anti_tampering *atc;
+#endif
 int remote_conf;
 int min_eps;
 int rotate_log;
@@ -46,6 +49,10 @@ int ClientConf(const char *cfgfile)
     agt->main_ip_update_interval = 0;
     agt->server_count = 0;
 
+#ifndef WIN32
+    atc->package_uninstallation = false;
+#endif
+
     os_calloc(1, sizeof(wlabel_t), agt->labels);
     modules |= CCLIENT;
 
@@ -67,6 +74,11 @@ int ClientConf(const char *cfgfile)
         ReadConfig(CLABELS | CBUFFER | CAGENT_CONFIG, AGENTCONFIG, &agt->labels, agt);
         ReadConfig(CCLIENT | CAGENT_CONFIG, AGENTCONFIG, agt, NULL);
     }
+#ifndef WIN32
+    if (ReadConfig(ATAMPERING, cfgfile, atc, NULL) < 0) {
+        return OS_INVALID;
+    }
+#endif
 #endif
 
     if (min_eps = getDefine_Int("agent", "min_eps", 1, 1000), agt->events_persec < min_eps) {
@@ -199,6 +211,23 @@ cJSON *getLabelsConfig(void) {
     return root;
 }
 
+#ifndef WIN32
+cJSON *getAntiTamperingConfig(void) {
+
+    if (!atc) {
+        return NULL;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    cJSON *package_uninstallation = cJSON_CreateArray();
+
+    if (atc->package_uninstallation) cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","yes"); else cJSON_AddStringToObject(package_uninstallation,"package_uninstallation","no");
+
+    cJSON_AddItemToObject(root, "package_uninstallation", package_uninstallation);
+
+    return root;
+}
+#endif
 
 cJSON *getAgentInternalOptions(void) {
 

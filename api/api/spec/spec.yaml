@@ -167,6 +167,14 @@ x-rbac-catalog:
         actions: ['agent:restart']
         resources: ['agent:id:050', 'agent:id:049']
         effect: "deny"
+    'agent:uninstall':
+      description: "Check user's permission to uninstall agents"
+      resources:
+        - $ref: '#/x-rbac-catalog/resources/*:*'
+      example:
+        actions: ['agent:uninstall']
+        resources: [ '*:*:*' ]
+        effect: "allow"
     'group:create':
       description: "Create new agent groups"
       resources:
@@ -5436,6 +5444,11 @@ components:
         <td><code>&lt;agent&gt;</code>, <code>&lt;monitord&gt;</code>, <code>&lt;remoted&gt;</code></td>
         </tr>
         <tr>
+        <td>agent</td>
+        <td>anti_tampering</td>
+        <td><code>&lt;anti_tampering&gt;</code></td>
+        </tr>
+        <tr>
         <td>agentless</td>
         <td>agentless</td>
         <td><code>&lt;agentless&gt;</code></td>
@@ -5615,6 +5628,7 @@ components:
         - buffer
         - labels
         - internal
+        - anti_tampering
         - agentless
         - global
         - active_response
@@ -8250,6 +8264,40 @@ paths:
                   total_failed_items: 0
                   failed_items: []
                 message: "All upgrade tasks were returned"
+                error: 0
+        '400':
+          $ref: '#/components/responses/ResponseError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/PermissionDeniedResponse'
+        '405':
+          $ref: '#/components/responses/InvalidHTTPMethodResponse'
+        '429':
+          $ref: '#/components/responses/TooManyRequestsResponse'
+
+  /agents/uninstall:
+    get:
+      tags:
+        - Agents
+      summary: "Check user's permission to uninstall agents"
+      description: "Verify if the user has the necessary permissions to uninstall agents."
+      operationId: api.controllers.agent_controller.get_agent_uninstall_permission
+      x-rbac-actions:
+        - $ref: '#/x-rbac-catalog/actions/agent:uninstall'
+      parameters:
+        - $ref: '#/components/parameters/pretty'
+        - $ref: '#/components/parameters/wait_for_complete'
+      responses:
+        '200':
+          description: "User has the necessary permissions to uninstall agents"
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/ApiResponse'
+              example:
+                message: "User has permission to uninstall agents."
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

@@ -50,7 +50,7 @@ char* __wrap_wurl_http_get(const char * url, __attribute__((unused)) size_t max_
     return mock_type(char *);
 }
 
-curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout) {
+curl_response* __wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, const char *userpass, bool ssl_verify) {
     check_expected(method);
 
     char** ptr = headers;
@@ -59,6 +59,12 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
     }
 
     check_expected(url);
+
+    check_expected(ssl_verify);
+
+    if (userpass) {
+        check_expected(userpass);
+    }
 
     if (payload) {
         check_expected(payload);
@@ -69,6 +75,31 @@ curl_response* __wrap_wurl_http_request(char *method, char **headers, const char
     check_expected(timeout);
 
     return mock_type(curl_response*);
+}
+
+void expect_wrap_wurl_http_request(char *method, char **headers, const char* url, const char *payload, size_t max_size, long timeout, const char *userpass, bool ssl_verify, curl_response* response) {
+    expect_string(__wrap_wurl_http_request, method, method);
+
+    char** ptr = headers;
+    for (char* header = *ptr; header; header=*++ptr) {
+        expect_string(__wrap_wurl_http_request, header, header);
+    }
+
+    expect_string(__wrap_wurl_http_request, url, url);
+
+    expect_value(__wrap_wurl_http_request, ssl_verify, ssl_verify);
+
+    if (userpass) {
+        expect_string(__wrap_wurl_http_request, userpass, userpass);
+    }
+
+    if (payload) {
+        expect_string(__wrap_wurl_http_request, payload, payload);
+    }
+
+    expect_value(__wrap_wurl_http_request, max_size, max_size);
+    expect_value(__wrap_wurl_http_request, timeout, timeout);
+    will_return(__wrap_wurl_http_request, response);
 }
 
 CURL* __wrap_curl_easy_init() {

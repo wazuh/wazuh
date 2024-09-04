@@ -92,6 +92,19 @@ size_t agcom_getconfig(const char * section, char ** output) {
         } else {
             goto error;
         }
+#ifndef WIN32
+    } else if (strcmp(section, "anti_tampering") == 0){
+        if (cfg = getAntiTamperingConfig(), cfg) {
+            os_strdup("ok", *output);
+            json_str = cJSON_PrintUnformatted(cfg);
+            wm_strcat(output, json_str, ' ');
+            os_free(json_str);
+            cJSON_Delete(cfg);
+            return strlen(*output);
+        } else {
+            goto error;
+        }
+#endif
     } else {
         goto error;
     }

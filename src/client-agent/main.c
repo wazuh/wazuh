@@ -12,11 +12,11 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include <getopt.h>
 
 #ifndef ARGV0
 #define ARGV0 "wazuh-agentd"
 #endif
-
 
 /* Prototypes */
 static void help_agentd(char *home_path) __attribute((noreturn));
@@ -42,7 +42,6 @@ static void help_agentd(char *home_path)
     exit(1);
 }
 
-
 int main(int argc, char **argv)
 {
     int c = 0;
@@ -53,6 +52,10 @@ int main(int argc, char **argv)
     const char *user = USER;
     const char *group = GROUPGLOBAL;
     const char *cfg = OSSECCONF;
+    const char *uninstall_auth_login = NULL;
+    const char *uninstall_auth_token = NULL;
+    const char *uninstall_auth_host = NULL;
+    bool ssl_verify = true;
 
     uid_t uid;
     gid_t gid;
@@ -71,7 +74,14 @@ int main(int argc, char **argv)
 
     agent_debug_level = getDefine_Int("agent", "debug", 0, 2);
 
-    while ((c = getopt(argc, argv, "Vtdfhu:g:D:c:")) != -1) {
+    struct option long_opts[] = {
+        {"uninstall-auth-login", 1, NULL, 1},
+        {"uninstall-auth-token", 1, NULL, 2},
+        {"uninstall-auth-host", 1, NULL, 3},
+        {"uninstall-ssl-verify", 2, NULL, 4}
+    };
+
+    while ((c = getopt_long(argc, argv, "Vtdfhu:g:D:c:", long_opts, NULL)) != -1) {
         switch (c) {
             case 'V':
                 print_version();
@@ -113,14 +123,51 @@ int main(int argc, char **argv)
                 }
                 cfg = optarg;
                 break;
+            case 1:
+                if (!optarg) {
+                    merror_exit("--uninstall-auth-login needs an argument");
+                }
+                uninstall_auth_login = optarg;
+                break;
+            case 2:
+                if (!optarg) {
+                    merror_exit("--uninstall-auth-token needs an argument");
+                }
+                uninstall_auth_token = optarg;
+                break;
+            case 3:
+                if (!optarg) {
+                    merror_exit("--uninstall-auth-host needs an argument");
+                }
+                uninstall_auth_host = optarg;
+                break;
+            case 4:
+                if (!optarg || strcmp(optarg, "") == 0 || strcmp(optarg, "true") == 0 || strcmp(optarg, "TRUE") == 0 || strcmp(optarg, "1") == 0) {
+                    ssl_verify = true;
+                } else if (strcmp(optarg, "false") == 0 || strcmp(optarg, "FALSE") == 0 || strcmp(optarg, "0") == 0) {
+                    ssl_verify = false;
+                } else {
+                    merror_exit("--uninstall-ssl-verify accepts 'true'/'false' or '1'/'0' as arguments");
+                }
+                break;
             default:
                 help_agentd(home_path);
                 break;
         }
     }
 
+    /* Anti tampering functionality */
+    if ((uninstall_auth_token || uninstall_auth_login) && uninstall_auth_host) {
+        exit(package_uninstall_validation(uninstall_auth_token, uninstall_auth_login, uninstall_auth_host, ssl_verify));
+    }
+
     agt = (agent *)calloc(1, sizeof(agent));
     if (!agt) {
+        merror_exit(MEM_ERROR, errno, strerror(errno));
+    }
+
+    atc = (anti_tampering *)calloc(1, sizeof(anti_tampering));
+    if (!atc) {
         merror_exit(MEM_ERROR, errno, strerror(errno));
     }
 

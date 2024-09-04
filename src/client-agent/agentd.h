@@ -40,6 +40,9 @@ cJSON *getClientConfig(void);
 cJSON *getBufferConfig(void);
 cJSON *getLabelsConfig(void);
 cJSON *getAgentInternalOptions(void);
+#ifndef WIN32
+cJSON *getAntiTamperingConfig(void);
+#endif
 
 /* Agentd init function */
 void AgentdStart(int uid, int gid, const char *user, const char *group) __attribute__((noreturn));
@@ -103,6 +106,34 @@ void send_agent_stopped_message();
  * @param network_interface network interface through which enrollment is attempted. (Required for IPv6 link-local addresses)
  * */
 int try_enroll_to_server(const char *server_rip, uint32_t network_interface);
+
+/**
+ * Function that makes the request to the API for the request of uninstallation permissions.
+ * @return true if validation is granted, false if denied
+ * @param token API token used for the request
+ * @param host host and port used for the request
+ * @param ssl_verify Enable SSL verification
+ * */
+bool check_uninstall_permission(const char *token, const char *host, bool ssl_verify);
+
+/**
+ * Function to get the API token using a username and password
+ * @return API token or NULL
+ * @param userpass API user and password separated by colon
+ * @param host host and port used for the request
+ * @param ssl_verify Enable SSL verification
+ * */
+char* authenticate_and_get_token(const char *userpass, const char *host, bool ssl_verify);
+
+/**
+ * Function with all the necessary functionality to process the uninstallation validation of the Wazuh agent package.
+ * @param uninstall_auth_token API token used for the request
+ * @param uninstall_auth_login API user and password separated by colon
+ * @param uninstall_auth_host host and port used for the request
+ * @param ssl_verify Enable SSL verification
+ * @return true if validation is granted, false if denied
+ * */
+bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify);
 
 /* Notify server */
 void run_notify(void);
@@ -171,6 +202,7 @@ extern time_t last_connection_time;
 extern int run_foreground;
 extern keystore keys;
 extern agent *agt;
+extern anti_tampering *atc;
 
 static const char AG_IN_UNMERGE[] = "wazuh: Could not unmerge shared file.";
 
