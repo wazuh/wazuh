@@ -1,5 +1,5 @@
-from .types import Documentation
-from .exporter import *
+from helper_test.documentation_generator.types import Documentation
+from helper_test.documentation_generator.exporter import *
 from collections import defaultdict
 from pathlib import Path
 
@@ -7,15 +7,18 @@ from pathlib import Path
 class MarkdownGenerator(IExporter):
     def __init__(self):
         self.content = []
-        self.all_contents = defaultdict(lambda: defaultdict(list))  # Structure to organize by type and keyword
+        # Structure to organize by type and keyword
+        self.all_contents = defaultdict(lambda: defaultdict(list))
         self.helper_name = ""
 
     def create_signature(self, doc: Documentation):
         self.content.append(f"```\n")
         if not doc.is_variadic:
-            self.content.append(f"field: {doc.name}({', '.join(str(v) for v in doc.arguments)})")
+            self.content.append(
+                f"field: {doc.name}({', '.join(str(v) for v in doc.arguments)})")
         else:
-            self.content.append(f"field: {doc.name}({', '.join(str(v) for v in doc.arguments)}, [...])")
+            self.content.append(
+                f"field: {doc.name}({', '.join(str(v) for v in doc.arguments)}, [...])")
         self.content.append(f"```\n")
 
     def create_table(self, arguments: dict, headers: list):
@@ -26,7 +29,8 @@ class MarkdownGenerator(IExporter):
         :return: Table string in Markdown format.
         """
         header_row = '| ' + ' | '.join(headers) + ' |'
-        separator_row = '| ' + ' | '.join(['-' * len(header) for header in headers]) + ' |'
+        separator_row = '| ' + \
+            ' | '.join(['-' * len(header) for header in headers]) + ' |'
 
         rows = []
         for name, info in arguments.items():
@@ -79,7 +83,8 @@ class MarkdownGenerator(IExporter):
         :return: Table string in Markdown format.
         """
         header_row = '| ' + ' | '.join(headers) + ' |'
-        separator_row = '| ' + ' | '.join(['-' * len(header) for header in headers]) + ' |'
+        separator_row = '| ' + \
+            ' | '.join(['-' * len(header) for header in headers]) + ' |'
 
         rows = []
         row = []
@@ -201,4 +206,5 @@ class MarkdownGenerator(IExporter):
             for helper_type, helpers in sorted(self.all_contents.items()):
                 for helper_name, helper_info in sorted(helpers.items()):
                     keywords = ', '.join(sorted(set(helper_info["keywords"])))
-                    file.write(f"| [{helper_name}](documentation.md#{helper_name.lower()}) | {keywords} |\n")
+                    file.write(
+                        f"| [{helper_name}](documentation.md#{helper_name.lower()}) | {keywords} |\n")

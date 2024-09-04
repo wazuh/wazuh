@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from definition_types.types import *
-from definition_types.utils import *
-from .argument import Argument
-from .template import Template
-from .parser import Parser
-from .test_data import TestData
+from helper_test.definition_types.types import *
+from helper_test.definition_types.utils import *
+from helper_test.test_cases_generator.argument import Argument
+from helper_test.test_cases_generator.template import Template
+from helper_test.test_cases_generator.parser import Parser
+from helper_test.test_cases_generator.test_data import TestData
 import json
 
 
@@ -34,14 +34,16 @@ class BuildtimeCases:
                 target_field_type = self.parser.get_target_field_type()
                 if isinstance(target_field_type, list):
                     for tft in target_field_type:
-                        target_field_subtipe = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(tft)
+                        target_field_subtipe = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(
+                            tft)
                         for tfs in target_field_subtipe:
                             argument.configure_target_field(tft, tfs)
                 else:
                     argument.configure_target_field(
                         self.parser.get_target_field_type(),
                         self.parser.get_target_field_subset())
-                self.test_data.create_asset_for_buildtime(parameters, argument.get())
+                self.test_data.create_asset_for_buildtime(
+                    parameters, argument.get())
             else:
                 self.test_data.create_asset_for_buildtime(parameters)
             self.test_data.push_test_data_for_buildtime(description)
@@ -65,7 +67,8 @@ class BuildtimeCases:
                 j = i % self.parser.get_minimum_arguments()
                 argument = Argument()
                 if not isinstance(self.types[j], list):
-                    argument.configure_generation(self.types[j], self.subsets[j], self.sources[j], [])
+                    argument.configure_generation(
+                        self.types[j], self.subsets[j], self.sources[j], [])
                     val = argument.get()
 
             if val != None:
@@ -86,7 +89,8 @@ class BuildtimeCases:
                 argument.configure_target_field(
                     type_,
                     subset)
-            self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+            self.test_data.create_asset_for_buildtime(
+                all_arguments, argument.get())
         else:
             self.test_data.create_asset_for_buildtime(all_arguments)
         self.test_data.push_test_data_for_buildtime(description)
@@ -95,20 +99,23 @@ class BuildtimeCases:
         description = "generate a different source than the one defined in the argument"
 
         for i in range(len(self.types)):
-            new_sources = self.sources[:]  # Copying the list of sources to not modify the original
+            # Copying the list of sources to not modify the original
+            new_sources = self.sources[:]
 
             # Expected a success result if source is both
             if self.sources[i] == "both":
                 continue
 
-            new_source = change_source(self.sources[i])  # Changing the source for this argument
+            # Changing the source for this argument
+            new_source = change_source(self.sources[i])
             new_sources[i] = new_source  # Updating the new list of sources
 
             all_arguments = []
             for j in range(len(self.types)):
                 if not isinstance(self.types[j], list):
                     argument = Argument()
-                    argument.configure_generation(self.types[j], self.subsets[j], new_sources[j], [])
+                    argument.configure_generation(
+                        self.types[j], self.subsets[j], new_sources[j], [])
                     arg = argument.get()
                     if argument.is_reference(arg):
                         all_arguments.append(f"$eventJson.{arg['name']}")
@@ -123,14 +130,17 @@ class BuildtimeCases:
                         argument.configure_target_field(
                             self.parser.get_target_field_type(),
                             self.parser.get_target_field_subset())
-                        self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                        self.test_data.create_asset_for_buildtime(
+                            all_arguments, argument.get())
                     else:
                         for tft in target_field_type:
-                            target_field_subset = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(tft)
+                            target_field_subset = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(
+                                tft)
                             for tfs in target_field_subset:
                                 argument = Argument()
                                 argument.configure_target_field(tft, tfs)
-                                self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                                self.test_data.create_asset_for_buildtime(
+                                    all_arguments, argument.get())
                 else:
                     self.test_data.create_asset_for_buildtime(all_arguments)
                 self.test_data.push_test_data_for_buildtime(description)
@@ -139,13 +149,15 @@ class BuildtimeCases:
         description = "generate a different source than the one defined in the argument"
 
         for i in range(len(self.types)):
-            new_sources = self.sources[:]  # Copying the list of sources to not modify the original
+            # Copying the list of sources to not modify the original
+            new_sources = self.sources[:]
 
             # Expected a success result if source is both
             if self.sources[i] == "both":
                 continue
 
-            new_source = change_source(self.sources[i])  # Changing the source for this argument
+            # Changing the source for this argument
+            new_source = change_source(self.sources[i])
             new_sources[i] = new_source  # Updating the new list of sources
 
             all_arguments = []
@@ -154,7 +166,8 @@ class BuildtimeCases:
                     argument = Argument()
                     argument.configure_generation(
                         self.types[j][0],
-                        CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(self.types[j][0])[0],
+                        CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(
+                            self.types[j][0])[0],
                         new_sources[j],
                         [])
                     arg = argument.get()
@@ -171,14 +184,17 @@ class BuildtimeCases:
                         argument.configure_target_field(
                             self.parser.get_target_field_type(),
                             self.parser.get_target_field_subset())
-                        self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                        self.test_data.create_asset_for_buildtime(
+                            all_arguments, argument.get())
                     else:
                         for tft in target_field_type:
-                            target_field_subset = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(tft)
+                            target_field_subset = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(
+                                tft)
                             for tfs in target_field_subset:
                                 argument = Argument()
                                 argument.configure_target_field(tft, tfs)
-                                self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                                self.test_data.create_asset_for_buildtime(
+                                    all_arguments, argument.get())
                 else:
                     self.test_data.create_asset_for_buildtime(all_arguments)
                 self.test_data.push_test_data_for_buildtime(description)
@@ -209,20 +225,24 @@ class BuildtimeCases:
                                         else:
                                             break
 
-                                    if type(source) is not tuple:  # means this is an allowed restriction
+                                    # means this is an allowed restriction
+                                    if type(source) is not tuple:
                                         argument = Argument()
-                                        argument.configure_generation(type_, subset, source, restriction)
+                                        argument.configure_generation(
+                                            type_, subset, source, restriction)
                                         val = argument.get()
                                         if id in self.forbidden:
                                             if isinstance(val, dict):
                                                 if "name" in val:  # is a reference
                                                     if val["value"] not in self.forbidden[id]:
-                                                        all_arguments.append(f"${val['name']}")
+                                                        all_arguments.append(
+                                                            f"${val['name']}")
                                             elif val not in self.forbidden[id]:
                                                 all_arguments.append(val)
                                         else:
                                             if argument.is_reference(val):
-                                                all_arguments.append(f"${val['name']}")
+                                                all_arguments.append(
+                                                    f"${val['name']}")
                                             else:
                                                 all_arguments.append(val)
                                     else:
@@ -233,10 +253,12 @@ class BuildtimeCases:
                                                                           restriction, ignore_allowed=True)
                                         else:
                                             argument = Argument(source[0])
-                                            argument.configure_generation(type_, subset, source[1], restriction)
+                                            argument.configure_generation(
+                                                type_, subset, source[1], restriction)
                                         val = argument.get()
                                         if argument.is_reference(val):
-                                            all_arguments.append(f"${val['name']}")
+                                            all_arguments.append(
+                                                f"${val['name']}")
                                         else:
                                             all_arguments.append(val)
 
@@ -263,12 +285,15 @@ class BuildtimeCases:
                                                     tft)
                                                 for tfs in target_field_subset:
                                                     argument = Argument()
-                                                    argument.configure_target_field(tft, tfs)
+                                                    argument.configure_target_field(
+                                                        tft, tfs)
                                                     self.test_data.create_asset_for_buildtime(
                                                         all_arguments, argument.get())
                                     else:
-                                        self.test_data.create_asset_for_buildtime(all_arguments)
-                                    self.test_data.push_test_data_for_buildtime(description)
+                                        self.test_data.create_asset_for_buildtime(
+                                            all_arguments)
+                                    self.test_data.push_test_data_for_buildtime(
+                                        description)
 
     def different_types_value_with_various_types(self):
         description = "generate a different value type than the one defined in the argument"
@@ -296,26 +321,31 @@ class BuildtimeCases:
                                     else:
                                         break
 
-                                if type(source) is not tuple:  # means this is an allowed restriction
+                                # means this is an allowed restriction
+                                if type(source) is not tuple:
                                     argument = Argument()
                                     if isinstance(type_, list):
                                         argument.configure_generation(
                                             type_[0],
-                                            CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[0],
+                                            CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[
+                                                0],
                                             source, restriction)
                                     else:
-                                        argument.configure_generation(type_, subset, source, restriction)
+                                        argument.configure_generation(
+                                            type_, subset, source, restriction)
                                     val = argument.get()
                                     if id in self.forbidden:
                                         if isinstance(val, dict):
                                             if "name" in val:  # is a reference
                                                 if val["value"] not in self.forbidden[id]:
-                                                    all_arguments.append(f"${val['name']}")
+                                                    all_arguments.append(
+                                                        f"${val['name']}")
                                         elif val not in self.forbidden[id]:
                                             all_arguments.append(val)
                                     else:
                                         if argument.is_reference(val):
-                                            all_arguments.append(f"${val['name']}")
+                                            all_arguments.append(
+                                                f"${val['name']}")
                                         else:
                                             all_arguments.append(val)
                                 else:
@@ -325,7 +355,8 @@ class BuildtimeCases:
                                         if isinstance(type_, list):
                                             argument.configure_generation(
                                                 type_[0],
-                                                CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[0],
+                                                CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[
+                                                    0],
                                                 source[1], restriction, ignore_allowed=True)
                                         else:
                                             argument.configure_generation(type_, subset, source[1],
@@ -335,11 +366,13 @@ class BuildtimeCases:
                                         if isinstance(type_, list):
                                             argument.configure_generation(
                                                 type_[0],
-                                                CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[0],
+                                                CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[
+                                                    0],
                                                 source[1],
                                                 restriction)
                                         else:
-                                            argument.configure_generation(type_, subset, source[1], restriction)
+                                            argument.configure_generation(
+                                                type_, subset, source[1], restriction)
                                     val = argument.get()
                                     if argument.is_reference(val):
                                         all_arguments.append(f"${val['name']}")
@@ -359,10 +392,13 @@ class BuildtimeCases:
                                     argument.configure_target_field(
                                         self.parser.get_target_field_type(),
                                         self.parser.get_target_field_subset())
-                                    self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                                    self.test_data.create_asset_for_buildtime(
+                                        all_arguments, argument.get())
                                 else:
-                                    self.test_data.create_asset_for_buildtime(all_arguments)
-                                self.test_data.push_test_data_for_buildtime(description)
+                                    self.test_data.create_asset_for_buildtime(
+                                        all_arguments)
+                                self.test_data.push_test_data_for_buildtime(
+                                    description)
 
     def different_allowed_values(self):
         description = "generate a different value allowed than the one defined in the argument"
@@ -370,14 +406,16 @@ class BuildtimeCases:
         template = Template(self.parser)
 
         for combination in template.generate_template():
-            allowed_indices = [i for i, source in enumerate(combination) if isinstance(source, tuple)]
+            allowed_indices = [i for i, source in enumerate(
+                combination) if isinstance(source, tuple)]
 
             if not allowed_indices:
                 continue
 
             for index in allowed_indices:
                 all_arguments = []
-                allowed_applied_as_value = False  # Flag to check if there are any allowed references
+                # Flag to check if there are any allowed references
+                allowed_applied_as_value = False
 
                 for id, (type_, subset, source, restriction) in enumerate(
                         zip(self.types, self.subsets, combination, self.restrictions)):
@@ -386,16 +424,19 @@ class BuildtimeCases:
                         if id == index and isinstance(source, tuple):
                             argument = Argument()
                             # Handle allowed values
-                            argument.configure_generation(type_, subset, source[1], restriction, ignore_allowed=True)
+                            argument.configure_generation(
+                                type_, subset, source[1], restriction, ignore_allowed=True)
                             val = argument.get()
                         else:
                             argument = Argument()
                             # Handle regular values
                             if isinstance(source, tuple):
                                 argument = Argument(source[0])
-                                argument.configure_generation(type_, subset, source[1], restriction)
+                                argument.configure_generation(
+                                    type_, subset, source[1], restriction)
                             else:
-                                argument.configure_generation(type_, subset, source, restriction)
+                                argument.configure_generation(
+                                    type_, subset, source, restriction)
                             val = argument.get()
 
                         if id in self.forbidden and isinstance(val, dict) and "name" in val:
@@ -422,17 +463,22 @@ class BuildtimeCases:
                             argument.configure_target_field(
                                 self.parser.get_target_field_type(),
                                 self.parser.get_target_field_subset())
-                            self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                            self.test_data.create_asset_for_buildtime(
+                                all_arguments, argument.get())
                         else:
                             for tft in target_field_type:
-                                target_field_subset = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(tft)
+                                target_field_subset = CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(
+                                    tft)
                                 for tfs in target_field_subset:
                                     argument = Argument()
                                     argument.configure_target_field(tft, tfs)
-                                    self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                                    self.test_data.create_asset_for_buildtime(
+                                        all_arguments, argument.get())
                     else:
-                        self.test_data.create_asset_for_buildtime(all_arguments)
-                    self.test_data.push_test_data_for_buildtime(description, skip_tag="allowed")
+                        self.test_data.create_asset_for_buildtime(
+                            all_arguments)
+                    self.test_data.push_test_data_for_buildtime(
+                        description, skip_tag="allowed")
 
     def different_allowed_values_with_various_types(self):
         description = "generate a different value allowed than the one defined in the argument"
@@ -440,28 +486,33 @@ class BuildtimeCases:
         template = Template(self.parser)
 
         for combination in template.generate_template():
-            allowed_indices = [i for i, source in enumerate(combination) if isinstance(source, tuple)]
+            allowed_indices = [i for i, source in enumerate(
+                combination) if isinstance(source, tuple)]
 
             if not allowed_indices:
                 continue
 
             for index in allowed_indices:
                 all_arguments = []
-                allowed_applied_as_value = False  # Flag to check if there are any allowed references
+                # Flag to check if there are any allowed references
+                allowed_applied_as_value = False
 
                 for id, (type_, source, restriction) in enumerate(zip(self.types, combination, self.restrictions)):
                     argument = Argument()
 
                     if isinstance(type_, list):
-                        type_, subset = type_[0], CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[0]
+                        type_, subset = type_[0], CORRESPONDENCE_BETWEEN_TYPE_SUBSET.get(type_[0])[
+                            0]
 
                         if id == index and isinstance(source, tuple):
                             # Handle allowed values
-                            argument.configure_generation(type_, subset, source[1], restriction, ignore_allowed=True)
+                            argument.configure_generation(
+                                type_, subset, source[1], restriction, ignore_allowed=True)
                             val = argument.get()
                         else:
                             # Handle regular values
-                            argument.configure_generation(type_, subset, source, restriction)
+                            argument.configure_generation(
+                                type_, subset, source, restriction)
                             val = argument.get()
 
                         if id in self.forbidden and isinstance(val, dict) and "name" in val:
@@ -486,10 +537,13 @@ class BuildtimeCases:
                         argument.configure_target_field(
                             self.parser.get_target_field_type(),
                             self.parser.get_target_field_subset())
-                        self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                        self.test_data.create_asset_for_buildtime(
+                            all_arguments, argument.get())
                     else:
-                        self.test_data.create_asset_for_buildtime(all_arguments)
-                    self.test_data.push_test_data_for_buildtime(description, skip_tag="allowed")
+                        self.test_data.create_asset_for_buildtime(
+                            all_arguments)
+                    self.test_data.push_test_data_for_buildtime(
+                        description, skip_tag="allowed")
 
     def generate_general_value_restrictions(self):
         description = "Generate restrictions of value type"
@@ -505,7 +559,8 @@ class BuildtimeCases:
                 if not isinstance(type_, list):
                     if type(source) is not tuple:
                         argument = Argument()
-                        argument.configure_generation(type_, subset, source, restriction)
+                        argument.configure_generation(
+                            type_, subset, source, restriction)
                         val = argument.get()
                         if id in self.forbidden:
                             if isinstance(val, dict):
@@ -521,8 +576,10 @@ class BuildtimeCases:
                                 all_arguments.append(val)
                     else:
                         argument = Argument(source[0])
-                        argument.configure_generation(type_, subset, source[1], restriction)
-                        argument.set_general_restrictions(self.general_restrictions)
+                        argument.configure_generation(
+                            type_, subset, source[1], restriction)
+                        argument.set_general_restrictions(
+                            self.general_restrictions)
 
                         val = argument.get()
                         if argument.is_reference(val):
@@ -541,7 +598,8 @@ class BuildtimeCases:
                     argument.configure_target_field(
                         self.parser.get_target_field_type(),
                         self.parser.get_target_field_subset())
-                    self.test_data.create_asset_for_buildtime(all_arguments, argument.get())
+                    self.test_data.create_asset_for_buildtime(
+                        all_arguments, argument.get())
                 else:
                     self.test_data.create_asset_for_buildtime(all_arguments)
                 self.test_data.push_test_data_for_buildtime(description)

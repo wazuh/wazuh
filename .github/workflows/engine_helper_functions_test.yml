@@ -63,7 +63,7 @@ jobs:
       run: |
         pip install ${{env.ENGINE_DIR}}/tools/api-communication/
         pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
-        pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine_helper_test
+        pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine-helper-test/
 
     - name: Setup VCPKG
       uses: lukka/run-vcpkg@v11
@@ -82,7 +82,16 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: engine-helper-test-initial-state -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/general.conf
+      run: engine-helper-test -e /tmp/actions init -b ${{env.ENGINE_DIR}}/build/main --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/general.conf
 
-    - name: Helper Functions Test
-      run: engine-helper-test-generate-runner -e /tmp/actions -b ${{env.ENGINE_DIR}}/build/main -i ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/output/
+    - name: Validate helper descriptions
+      run: engine-helper-test -e /tmp/actions validate --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
+
+    - name: Generate tests
+      run: engine-helper-test -e /tmp/actions generate-tests --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_tests/
+
+    - name: Run tests
+      run: engine-helper-test -e /tmp/actions run --input-dir /tmp/helper_tests/
+
+    - name: Validate documentation generation
+      run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
