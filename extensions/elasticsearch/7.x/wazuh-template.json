@@ -215,7 +215,126 @@
       "data.ms-graph.threatDisplayName",
       "data.ms-graph.threatFamilyName",
       "data.ms-graph.title",
+      "data.ms-graph.@odata.type",
+      "data.ms-graph.activationLockBypassCode",
+      "data.ms-graph.activity",
+      "data.ms-graph.activityOperationType",
+      "data.ms-graph.activityResult",
+      "data.ms-graph.activityType",
+      "data.ms-graph.actor.@odata.type",
+      "data.ms-graph.actor.applicationDisplayName",
+      "data.ms-graph.actor.applicationId",
+      "data.ms-graph.actor.auditActorType",
+      "data.ms-graph.actor.ipAddress",
+      "data.ms-graph.actor.servicePrincipalName",
+      "data.ms-graph.actor.type",
+      "data.ms-graph.actor.userId",
+      "data.ms-graph.actor.userPermissions",
+      "data.ms-graph.actor.userPrincipalName",
+      "data.ms-graph.androidSecurityPatchLevel",
       "data.ms-graph.appliedConditionalAccessPolicies",
+      "data.ms-graph.azureADDeviceId",
+      "data.ms-graph.azureADRegistered",
+      "data.ms-graph.complianceState",
+      "data.ms-graph.componentName",
+      "data.ms-graph.configurationManagerClientEnabledFeatures.@odata.type",
+      "data.ms-graph.configurationManagerClientEnabledFeatures.compliancePolicy",
+      "data.ms-graph.configurationManagerClientEnabledFeatures.deviceConfiguration",
+      "data.ms-graph.configurationManagerClientEnabledFeatures.inventory",
+      "data.ms-graph.configurationManagerClientEnabledFeatures.modernApps",
+      "data.ms-graph.configurationManagerClientEnabledFeatures.resourceAccess",
+      "data.ms-graph.configurationManagerClientEnabledFeatures.windowsUpdateForBusiness",
+      "data.ms-graph.correlationId",
+      "data.ms-graph.deviceActionResults.@odata.type",
+      "data.ms-graph.deviceActionResults.actionName",
+      "data.ms-graph.deviceActionResults.actionState",
+      "data.ms-graph.deviceCategoryDisplayName",
+      "data.ms-graph.deviceEnrollmentType",
+      "data.ms-graph.deviceHealthAttestationState.@odata.type",
+      "data.ms-graph.deviceHealthAttestationState.attestationIdentityKey",
+      "data.ms-graph.deviceHealthAttestationState.bitLockerStatus",
+      "data.ms-graph.deviceHealthAttestationState.bootAppSecurityVersion",
+      "data.ms-graph.deviceHealthAttestationState.bootDebugging",
+      "data.ms-graph.deviceHealthAttestationState.bootManagerSecurityVersion",
+      "data.ms-graph.deviceHealthAttestationState.bootManagerVersion",
+      "data.ms-graph.deviceHealthAttestationState.bootRevisionListInfo",
+      "data.ms-graph.deviceHealthAttestationState.codeIntegrity",
+      "data.ms-graph.deviceHealthAttestationState.codeIntegrityCheckVersion",
+      "data.ms-graph.deviceHealthAttestationState.codeIntegrityPolicy",
+      "data.ms-graph.deviceHealthAttestationState.contentNamespaceUrl",
+      "data.ms-graph.deviceHealthAttestationState.contentVersion",
+      "data.ms-graph.deviceHealthAttestationState.dataExcutionPolicy",
+      "data.ms-graph.deviceHealthAttestationState.deviceHealthAttestationStatus",
+      "data.ms-graph.deviceHealthAttestationState.earlyLaunchAntiMalwareDriverProtection",
+      "data.ms-graph.deviceHealthAttestationState.healthAttestationSupportedStatus",
+      "data.ms-graph.deviceHealthAttestationState.healthStatusMismatchInfo",
+      "data.ms-graph.deviceHealthAttestationState.operatingSystemKernelDebugging",
+      "data.ms-graph.deviceHealthAttestationState.operatingSystemRevListInfo",
+      "data.ms-graph.deviceHealthAttestationState.pcr0",
+      "data.ms-graph.deviceHealthAttestationState.pcrHashAlgorithm",
+      "data.ms-graph.deviceHealthAttestationState.resetCount",
+      "data.ms-graph.deviceHealthAttestationState.restartCount",
+      "data.ms-graph.deviceHealthAttestationState.safeMode",
+      "data.ms-graph.deviceHealthAttestationState.secureBoot",
+      "data.ms-graph.deviceHealthAttestationState.secureBootConfigurationPolicyFingerPrint",
+      "data.ms-graph.deviceHealthAttestationState.testSigning",
+      "data.ms-graph.deviceHealthAttestationState.tpmVersion",
+      "data.ms-graph.deviceHealthAttestationState.virtualSecureMode",
+      "data.ms-graph.deviceHealthAttestationState.windowsPE",
+      "data.ms-graph.deviceName",
+      "data.ms-graph.deviceRegistrationState",
+      "data.ms-graph.displayName",
+      "data.ms-graph.easActivated",
+      "data.ms-graph.easDeviceId",
+      "data.ms-graph.emailAddress",
+      "data.ms-graph.enrollmentProfileName",
+      "data.ms-graph.ethernetMacAddress",
+      "data.ms-graph.exchangeAccessState",
+      "data.ms-graph.exchangeAccessStateReason",
+      "data.ms-graph.freeStorageSpaceInBytes",
+      "data.ms-graph.iccid",
+      "data.ms-graph.imei",
+      "data.ms-graph.isEncrypted",
+      "data.ms-graph.isSupervised",
+      "data.ms-graph.jailBroken",
+      "data.ms-graph.managedDeviceName",
+      "data.ms-graph.managedDevices.deviceName",
+      "data.ms-graph.managedDevices.id",
+      "data.ms-graph.managedDeviceOwnerType",
+      "data.ms-graph.managementAgent",
+      "data.ms-graph.manufacturer",
+      "data.ms-graph.meid",
+      "data.ms-graph.model",
+      "data.ms-graph.notes",
+      "data.ms-graph.operatingSystem",
+      "data.ms-graph.osVersion",
+      "data.ms-graph.partnerReportedThreatState",
+      "data.ms-graph.phoneNumber",
+      "data.ms-graph.physicalMemoryInBytes",
+      "data.ms-graph.platform",
+      "data.ms-graph.publisher",
+      "data.ms-graph.remoteAssistanceSessionErrorDetails",
+      "data.ms-graph.remoteAssistanceSessionUrl",
+      "data.ms-graph.requireUserEnrollmentApproval",
+      "data.ms-graph.resources.@odata.type",
+      "data.ms-graph.resources.auditResourceType",
+      "data.ms-graph.resources.displayName",
+      "data.ms-graph.resources.modifiedProperties.@odata.type",
+      "data.ms-graph.resources.modifiedProperties.displayName",
+      "data.ms-graph.resources.modifiedProperties.oldValue",
+      "data.ms-graph.resources.modifiedProperties.newValue",
+      "data.ms-graph.resources.resourceId",
+      "data.ms-graph.resources.type",
+      "data.ms-graph.serialNumber",
+      "data.ms-graph.sizeInByte",
+      "data.ms-graph.subscriberCarrier",
+      "data.ms-graph.totalStorageSpaceInBytes",
+      "data.ms-graph.udid",
+      "data.ms-graph.userDisplayName",
+      "data.ms-graph.userId",
+      "data.ms-graph.userPrincipalName",
+      "data.ms-graph.version",
+      "data.ms-graph.wiFiMacAddress",
       "data.os.architecture",
       "data.os.build",
       "data.os.codename",
@@ -313,6 +432,7 @@
       "data.sca.policy_id",
       "data.sca.scan_id",
       "data.sca.total_checks",
+      "data.scan_id",
       "data.script",
       "data.src_ip",
       "data.src_port",
@@ -1296,7 +1416,435 @@
               "title": {
                 "type": "keyword"
               },
+              "@odata.type": {
+                "type": "keyword"
+              },
+              "activationLockBypassCode": {
+                "type": "keyword"
+              },
+              "activity": {
+                "type": "keyword"
+              },
+              "activityDateTime": {
+                "type": "date"
+              },
+              "activityOperationType": {
+                "type": "keyword"
+              },
+              "activityResult": {
+                "type": "keyword"
+              },
+              "activityType": {
+                "type": "keyword"
+              },
+              "actor": {
+                "type": "nested",
+                "properties": {
+                  "@odata.type": {
+                    "type": "keyword"
+                  },
+                  "applicationDisplayName": {
+                    "type": "keyword"
+                  },
+                  "applicationId": {
+                    "type": "keyword"
+                  },
+                  "auditActorType": {
+                    "type": "keyword"
+                  },
+                  "ipAddress": {
+                    "type": "keyword"
+                  },
+                  "servicePrincipalName": {
+                    "type": "keyword"
+                  },
+                  "type": {
+                    "type": "keyword"
+                  },
+                  "userId": {
+                    "type": "keyword"
+                  },
+                  "userPermissions": {
+                    "type": "text"
+                  },
+                  "userPrincipalName": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "androidSecurityPatchLevel": {
+                "type": "keyword"
+              },
               "appliedConditionalAccessPolicies": {
+                "type": "keyword"
+              },
+              "azureADDeviceId": {
+                "type": "keyword"
+              },
+              "azureADRegistered": {
+                "type": "keyword"
+              },
+              "complianceGracePeriodExpirationDateTime": {
+                "type": "date"
+              },
+              "complianceState": {
+                "type": "keyword"
+              },
+              "componentName": {
+                "type": "keyword"
+              },
+              "configurationManagerClientEnabledFeatures": {
+                "type": "nested",
+                "properties": {
+                  "@odata.type": {
+                    "type": "keyword"
+                  },
+                  "compliancePolicy": {
+                    "type": "keyword"
+                  },
+                  "deviceConfiguration": {
+                    "type": "keyword"
+                  },
+                  "inventory": {
+                    "type": "keyword"
+                  },
+                  "modernApps": {
+                    "type": "keyword"
+                  },
+                  "resourceAccess": {
+                    "type": "keyword"
+                  },
+                  "windowsUpdateForBusiness": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "correlationId": {
+                "type": "keyword"
+              },
+              "deviceActionResults": {
+                "type": "nested",
+                "properties": {
+                  "@odata.type": {
+                    "type": "keyword"
+                  },
+                  "actionName": {
+                    "type": "keyword"
+                  },
+                  "actionState": {
+                    "type": "keyword"
+                  },
+                  "lastUpdatedDateTime": {
+                    "type": "date"
+                  },
+                  "startDateTime": {
+                    "type": "date"
+                  }
+                }
+              },
+              "deviceCategoryDisplayName": {
+                "type": "keyword"
+              },
+              "deviceCount": {
+                "type": "integer"
+              },
+              "deviceEnrollmentType": {
+                "type": "keyword"
+              },
+              "deviceHealthAttestationState": {
+                "type": "nested",
+                "properties": {
+                  "@odata.type": {
+                    "type": "keyword"
+                  },
+                  "attestationIdentityKey": {
+                    "type": "keyword"
+                  },
+                  "bitLockerStatus": {
+                    "type": "keyword"
+                  },
+                  "bootAppSecurityVersion": {
+                    "type": "keyword"
+                  },
+                  "bootDebugging": {
+                    "type": "keyword"
+                  },
+                  "bootManagerSecurityVersion": {
+                    "type": "keyword"
+                  },
+                  "bootManagerVersion": {
+                    "type": "keyword"
+                  },
+                  "bootRevisionListInfo": {
+                    "type": "keyword"
+                  },
+                  "codeIntegrity": {
+                    "type": "keyword"
+                  },
+                  "codeIntegrityCheckVersion": {
+                    "type": "keyword"
+                  },
+                  "codeIntegrityPolicy": {
+                    "type": "keyword"
+                  },
+                  "contentNamespaceUrl": {
+                    "type": "keyword"
+                  },
+                  "contentVersion": {
+                    "type": "keyword"
+                  },
+                  "dataExcutionPolicy": {
+                    "type": "keyword"
+                  },
+                  "deviceHealthAttestationStatus": {
+                    "type": "keyword"
+                  },
+                  "earlyLaunchAntiMalwareDriverProtection": {
+                    "type": "keyword"
+                  },
+                  "healthAttestationSupportedStatus": {
+                    "type": "keyword"
+                  },
+                  "healthStatusMismatchInfo": {
+                    "type": "keyword"
+                  },
+                  "issuedDateTime": {
+                    "type": "date"
+                  },
+                  "lastUpdateDateTime": {
+                    "type": "date"
+                  },
+                  "operatingSystemKernelDebugging": {
+                    "type": "keyword"
+                  },
+                  "operatingSystemRevListInfo": {
+                    "type": "keyword"
+                  },
+                  "pcr0": {
+                    "type": "keyword"
+                  },
+                  "pcrHashAlgorithm": {
+                    "type": "keyword"
+                  },
+                  "resetCount": {
+                    "type": "keyword"
+                  },
+                  "restartCount": {
+                    "type": "keyword"
+                  },
+                  "safeMode": {
+                    "type": "keyword"
+                  },
+                  "secureBoot": {
+                    "type": "keyword"
+                  },
+                  "secureBootConfigurationPolicyFingerPrint": {
+                    "type": "keyword"
+                  },
+                  "testSigning": {
+                    "type": "keyword"
+                  },
+                  "tpmVersion": {
+                    "type": "keyword"
+                  },
+                  "virtualSecureMode": {
+                    "type": "keyword"
+                  },
+                  "windowsPE": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "deviceName": {
+                "type": "keyword"
+              },
+              "deviceRegistrationState": {
+                "type": "keyword"
+              },
+              "displayName": {
+                "type": "keyword"
+              },
+              "easActivated": {
+                "type": "keyword"
+              },
+              "easActivationDateTime": {
+                "type": "date"
+              },
+              "easDeviceId": {
+                "type": "keyword"
+              },
+              "emailAddress": {
+                "type": "keyword"
+              },
+              "enrolledDateTime": {
+                "type": "date"
+              },
+              "enrollmentProfileName": {
+                "type": "keyword"
+              },
+              "ethernetMacAddress": {
+                "type": "keyword"
+              },
+              "exchangeAccessState": {
+                "type": "keyword"
+              },
+              "exchangeAccessStateReason": {
+                "type": "keyword"
+              },
+              "exchangeLastSuccessfulSyncDateTime": {
+                "type": "date"
+              },
+              "freeStorageSpaceInBytes": {
+                "type": "keyword"
+              },
+              "iccid": {
+                "type": "keyword"
+              },
+              "imei": {
+                "type": "keyword"
+              },
+              "isEncrypted": {
+                "type": "keyword"
+              },
+              "isSupervised": {
+                "type": "keyword"
+              },
+              "jailBroken": {
+                "type": "keyword"
+              },
+              "lastSyncDateTime": {
+                "type": "date"
+              },
+              "managedDeviceName": {
+                "type": "keyword"
+              },
+              "managedDevices": {
+                "type": "nested",
+                "properties": {
+                  "deviceName": {
+                    "type": "keyword"
+                  },
+                  "id": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "managedDeviceOwnerType": {
+                "type": "keyword"
+              },
+              "managementAgent": {
+                "type": "keyword"
+              },
+              "managementCertificateExpirationDate": {
+                "type": "date"
+              },
+              "manufacturer": {
+                "type": "keyword"
+              },
+              "meid": {
+                "type": "keyword"
+              },
+              "model": {
+                "type": "keyword"
+              },
+              "notes": {
+                "type": "keyword"
+              },
+              "operatingSystem": {
+                "type": "keyword"
+              },
+              "osVersion": {
+                "type": "keyword"
+              },
+              "partnerReportedThreatState": {
+                "type": "keyword"
+              },
+              "phoneNumber": {
+                "type": "keyword"
+              },
+              "physicalMemoryInBytes": {
+                "type": "keyword"
+              },
+              "platform": {
+                "type": "keyword"
+              },
+              "publisher": {
+                "type": "keyword"
+              },
+              "remoteAssistanceSessionErrorDetails": {
+                "type": "keyword"
+              },
+              "remoteAssistanceSessionUrl": {
+                "type": "keyword"
+              },
+              "requireUserEnrollmentApproval": {
+                "type": "keyword"
+              },
+              "resources": {
+                "type": "nested",
+                "properties": {
+                  "@odata.type": {
+                    "type": "keyword"
+                  },
+                  "auditResourceType": {
+                    "type": "keyword"
+                  },
+                  "displayName": {
+                    "type": "keyword"
+                  },
+                  "modifiedProperties": {
+                    "type": "nested",
+                    "properties": {
+                      "@odata.type": {
+                        "type": "keyword"
+                      },
+                      "displayName": {
+                        "type": "keyword"
+                      },
+                      "oldValue": {
+                        "type": "keyword"
+                      },
+                      "newValue": {
+                        "type": "keyword"
+                      }
+                    }
+                  },
+                  "resourceId": {
+                    "type": "keyword"
+                  },
+                  "type": {
+                    "type": "keyword"
+                  }
+                }
+              },
+              "serialNumber": {
+                "type": "keyword"
+              },
+              "sizeInByte": {
+                "type": "keyword"
+              },
+              "subscriberCarrier": {
+                "type": "keyword"
+              },
+              "totalStorageSpaceInBytes": {
+                "type": "keyword"
+              },
+              "udid": {
+                "type": "keyword"
+              },
+              "userDisplayName": {
+                "type": "keyword"
+              },
+              "userId": {
+                "type": "keyword"
+              },
+              "userPrincipalName": {
+                "type": "keyword"
+              },
+              "version": {
+                "type": "keyword"
+              },
+              "wiFiMacAddress": {
                 "type": "keyword"
               }
             }
@@ -1743,6 +2291,9 @@
             "type": "keyword"
           },
           "integration": {
+            "type": "keyword"
+          },
+          "scan_id": {
             "type": "keyword"
           },
           "timestamp": {
