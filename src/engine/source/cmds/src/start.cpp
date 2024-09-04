@@ -242,10 +242,11 @@ void runStart(ConfHandler confManager)
             kvdbManager->initialize();
             LOG_INFO("KVDB initialized.");
             exitHandler.add(
-                [kvdbManager]()
+                [kvdbManager, getLambdaName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
                     kvdbManager->finalize();
-                    LOG_INFO("KVDB terminated.");
+                    const auto functionName = getLambdaName.c_str();
+                    LOG_INFO_L(functionName, "KVDB terminated.");
                 });
         }
 
@@ -395,10 +396,11 @@ void runStart(ConfHandler confManager)
             api = std::make_shared<api::Api>(rbac);
             LOG_DEBUG("API created.");
             exitHandler.add(
-                [api]()
+                [api, getLambdaName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                 {
                     eMessage::ShutdownEMessageLibrary();
-                    LOG_INFO("API terminated.");
+                    const auto functionName = getLambdaName.c_str();
+                    LOG_INFO_L(functionName, "API terminated.");
                 });
 
             // Configuration manager
@@ -420,7 +422,12 @@ void runStart(ConfHandler confManager)
             // Policy
             {
                 api::policy::handlers::registerHandlers(policyManager, api);
-                exitHandler.add([]() { LOG_DEBUG("Policy API terminated."); });
+                exitHandler.add(
+                    [getLambdaName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
+                    {
+                        const auto functionName = getLambdaName.c_str();
+                        LOG_DEBUG_L(functionName, "Policy API terminated.");
+                    });
                 LOG_DEBUG("Policy API registered.");
             }
 
