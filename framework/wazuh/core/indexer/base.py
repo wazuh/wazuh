@@ -25,10 +25,12 @@ class IndexerKey(str, Enum):
     FAILURES = 'failures'
     WILDCARD = 'wildcard'
     BODY = 'body'
+    TERM = 'term'
     TERMS = 'terms'
     CONFLICTS = 'conflicts'
     ITEMS = 'items'
     FILTER = 'filter'
+    IDS = 'ids'
 
 
 class BaseIndex:

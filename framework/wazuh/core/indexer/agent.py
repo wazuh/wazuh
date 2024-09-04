@@ -2,6 +2,9 @@ from dataclasses import asdict
 from typing import List
 
 from opensearchpy import exceptions
+# There's no other way to access these classes
+from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
+from opensearchpy._async.helpers.search import AsyncSearch
 
 from wazuh.core.indexer.base import BaseIndex, IndexerKey, remove_empty_values
 from wazuh.core.indexer.models.agent import Agent
@@ -13,6 +16,22 @@ class AgentsIndex(BaseIndex):
 
     INDEX = 'agents'
     SECONDARY_INDEXES = []
+    REMOVE_GROUP_SCRIPT = """
+    def groups = ctx._source.groups.splitOnToken(",");
+    def groups_str = "";
+
+    for (int i=0; i < groups.length; i++) {
+      if (groups[i] != params.group) {
+        if (i != 0) {
+          groups_str += ",";
+        }
+
+        groups_str += groups[i];
+      }
+    }
+
+    ctx._source.groups = groups_str;
+    """
 
     async def create(self, id: str, key: str, name: str) -> Agent:
         """Create a new agent.
@@ -70,20 +89,6 @@ class AgentsIndex(BaseIndex):
         await self._client.delete_by_query(**parameters, refresh='true')
 
         return ids
-
-    async def delete_groups(self, group_names: List[str]):
-        """Delete multiple agents that match with the given parameters.
-
-        Parameters
-        ----------
-        group_names : List[str]
-            Groups to delete.
-        """
-        indexes = ','.join([self.INDEX, *self.SECONDARY_INDEXES])
-        body = {IndexerKey.FILTER: {IndexerKey.BOOL: {IndexerKey.TERMS: {'groups': group_names}}}}
-        parameters = {IndexerKey.INDEX: indexes, IndexerKey.BODY: body, IndexerKey.CONFLICTS: 'proceed'}
-
-        _ = await self._client.update_by_query(**parameters, refresh='true')
 
     async def search(self, query: dict) -> dict:
         """Perform a search operation with the given query.
@@ -148,3 +153,97 @@ class AgentsIndex(BaseIndex):
             await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
+    
+    # Group queries
+
+    async def delete_group(self, group_name: str):
+        """Delete a group that matches the given parameters.
+
+        Parameters
+        ----------
+        group_names : List[str]
+            Groups to delete.
+        """
+        query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
+            .filter(IndexerKey.TERM, groups=group_name) \
+            .script(
+                source=self.REMOVE_GROUP_SCRIPT,
+                lang='painless',
+                params={'group': group_name}
+            )
+        _ = await query.execute()
+    
+    async def get_group_agents(self, group_name: str) -> List[Agent]:
+        """Get the agents belonging to a specific group.
+        
+        Parameters
+        ----------
+        group_name : str
+            Group name.
+
+        Returns
+        -------
+        List[Agent]
+            Agents list.
+        """
+        query = AsyncSearch(using=self._client, index=self.INDEX).filter(IndexerKey.TERM, groups=group_name)
+        response = await query.execute()
+
+        agent_ids = []
+        for hit in response:
+            agent_ids.append(Agent(id=hit.meta.id, **hit.to_dict()))
+
+        return agent_ids
+    
+    async def add_agents_to_group(self, agent_ids: List[str], group_name: str):
+        """Add agents to a group.
+
+        Parameters
+        ----------
+        agent_ids : List[str]
+            Agent IDs.
+        group_name : str
+            Group name.
+        """
+        query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
+            .filter(IndexerKey.IDS, values=agent_ids) \
+            .script(
+                source='ctx._source.groups += ","+params.group',
+                lang='painless',
+                params={'group': group_name}
+            )
+        _ = await query.execute()
+    
+    async def remove_agents_from_group(self, agent_ids: List[str], group_name: str):
+        """Remove agent from a group.
+
+        Parameters
+        ----------
+        agent_ids : List[str]
+            Agent IDs.
+        group_name : str
+            Group name.
+        """
+        if remove:
+            source = self.REMOVE_GROUP_SCRIPT
+        else:
+            if override:
+                source = 'ctx._source.groups = params.group'
+            else:
+                source = """
+                if (ctx._source.groups == null) {
+                    ctx._source.groups = params.group;
+                } else {
+                    ctx._source.groups += ","+params.group;
+                }
+                """
+
+        query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
+            .filter(IndexerKey.IDS, values=agent_ids) \
+            .script(
+                source='ctx._source.groups = ctx._source.groups.replace(","+params.group, "").replace(params.group, "")',
+                lang='painless',
+                params={'group': group_name}
+            )
+        _ = await query.execute()
+
