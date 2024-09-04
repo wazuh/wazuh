@@ -62,7 +62,7 @@ enum Type : std::size_t
 
 /**
  * @brief Monitoring class.
- * This class is used to monitor the health of the servers.
+ * @note This class is used to monitor the health of the servers.
  * It checks the health of the servers and updates the status in the values map.
  * The class has a thread that checks the health of the servers at a given interval.
  *
