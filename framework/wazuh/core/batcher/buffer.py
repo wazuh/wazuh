@@ -35,9 +35,9 @@ class Buffer:
         """
         if self.check_count_limit() or self.check_size_limit():
             return False
-        else:
-            self._buffer.append(msg)
-            return True
+
+        self._buffer.append(msg)
+        return True
 
     def get_length(self) -> int:
         """Gets the current length of the buffer.
