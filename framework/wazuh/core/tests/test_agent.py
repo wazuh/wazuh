@@ -10,6 +10,7 @@ from copy import copy
 from unittest.mock import AsyncMock, patch, mock_open, call
 
 import pytest
+from shutil import rmtree
 
 with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):

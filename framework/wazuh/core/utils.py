@@ -42,7 +42,7 @@ if sys.version_info[0] == 3:
 # Temporary cache
 t_cache = TTLCache(maxsize=4500, ttl=60)
 
-GROUP_FILE_SUFFIX = '.conf'
+GROUP_FILE_EXT = '.conf'
 
 
 def assign_wazuh_ownership(filepath: str):
@@ -1227,7 +1227,7 @@ def get_group_file_path(group_id: str) -> str:
     str
         Group configuration file path.
     """
-    return path.join(common.SHARED_PATH, group_id+GROUP_FILE_SUFFIX)
+    return path.join(common.SHARED_PATH, group_id+GROUP_FILE_EXT)
 
 
 class WazuhVersion:

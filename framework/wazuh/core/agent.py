@@ -10,8 +10,8 @@ from base64 import b64encode
 from datetime import datetime, timezone
 from functools import lru_cache
 from json import dumps, loads
+from pathlib import Path
 from os import listdir, path, remove
-from shutil import rmtree
 from typing import List
 
 from wazuh.core import common, configuration, stats
@@ -22,7 +22,7 @@ from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError,
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
-    get_date_from_timestamp, get_group_file_path, GROUP_FILE_SUFFIX
+    get_date_from_timestamp, get_group_file_path, GROUP_FILE_EXT
 from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.core.wazuh_socket import WazuhSocket, WazuhSocketJSON, create_wazuh_socket_message
 from wazuh.core.wdb import WazuhDBConnection
@@ -1251,8 +1251,9 @@ def get_groups() -> set:
     """
     groups = set()
     for group_file in listdir(common.SHARED_PATH):
-        if group_file.endswith(GROUP_FILE_SUFFIX):
-            groups.add(group_file.removesuffix(GROUP_FILE_SUFFIX))
+        filepath = Path(group_file)
+        if filepath.suffix == GROUP_FILE_EXT:
+            groups.add(filepath.stem)
 
     return groups
 
