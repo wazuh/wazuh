@@ -9,6 +9,7 @@ from typing import Dict, List
 
 from defusedxml import ElementTree as ET
 from jsonschema import Draft4Validator
+from uuid6 import UUID
 
 from wazuh.core import common
 from wazuh.core.exception import WazuhError
@@ -521,3 +522,12 @@ def format_group_names(value):
 @Draft4Validator.FORMAT_CHECKER.checks("group_names_or_all")
 def format_group_names_or_all(value):
     return check_exp(value, _group_names_or_all)
+
+@Draft4Validator.FORMAT_CHECKER.checks("uuid7")
+def format_uuid7(value):
+    ret_val = True
+    try:
+        UUID(value)
+    except ValueError:
+        ret_val = False
+    return ret_val
