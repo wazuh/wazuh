@@ -25,7 +25,15 @@ logger = logging.getLogger('wazuh-api')
 
 
 async def delete_agents(
-        pretty: bool = False, wait_for_complete: bool = False, agents_list: list = None
+    pretty: bool = False,
+    wait_for_complete: bool = False,
+    agents_list: list = None,
+    name: str = None,
+    group: str = None,
+    type: str = None,
+    version: str = None,
+    older_than: str = None,
+    node_name: str = None,
 ) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
@@ -37,6 +45,19 @@ async def delete_agents(
         Disable timeout response.
     agents_list : str
         List of agents IDs. If the 'all' keyword is indicated, all the agents are deleted.
+    name : str
+        Filter by agent name.
+    group : str
+        Filter by agent group.
+    type : str
+        Filter by agents type.
+    version : str
+        Filter by agents version.
+    older_than : str
+        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
+        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
+    node_name : str
+        Filter by node name.
     Returns
     -------
     ConnexionResponse
@@ -45,9 +66,21 @@ async def delete_agents(
     if 'all' in agents_list:
         agents_list = []
 
+    f_kwargs = {
+        'agents_id': agents_list,
+        'filters': {
+            'name': name,
+            'groups': group,
+            'type': type,
+            'version': version,
+            'last_login': older_than,
+            'persistent_connection_node': node_name,
+        },
+    }
+
     dapi = DistributedAPI(
         f=agent.delete_agents,
-        f_kwargs=remove_nones_to_dict({'agent_list': agents_list}),
+        f_kwargs=remove_nones_to_dict(f_kwargs),
         request_type='local_any',
         is_async=True,
         wait_for_complete=wait_for_complete,
@@ -124,7 +157,7 @@ async def get_agents(
             'type': type,
             'version': version,
             'last_login': older_than,
-            'node_name': node_name,
+            'persistent_connection_node': node_name,
         },
         'offset': offset,
         'limit': limit,

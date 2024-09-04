@@ -24,7 +24,7 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.utils import get_document_ids, get_source_items
+from wazuh.core.indexer.utils import get_document_ids, get_source_items, get_source_items_id
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
@@ -57,6 +57,47 @@ ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST = [1823]
 # Error codes generated from upgrade socket error codes that should be excluded in get upgrade results
 # 1813 -> No task in DB
 ERROR_CODES_UPGRADE_SOCKET_GET_UPGRADE_RESULT = [1813]
+
+
+def build_agents_query(agents_id: list, filters: dict) -> dict:
+    """Build the query to filter agents.
+
+    Parameters
+    ----------
+    agents_id : list
+        List of agents ID's.
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}.
+
+    Returns
+    -------
+    dict
+        The query with the given parameters.
+    """
+    # TODO: The query build should be improved in https://github.com/wazuh/wazuh/issues/25289
+
+    LAST_LOGIN_KEY = 'last_login'
+
+    query_filters = []
+    if agents_id:
+        query_filters.append({IndexerKey.TERMS: {'_id': agents_id}})
+
+    if LAST_LOGIN_KEY in filters:
+        query_filters.append(
+            {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f"{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}"}}}
+        )
+        filters.pop(LAST_LOGIN_KEY)
+
+    for key, value in filters.items():
+        query_filters.append({IndexerKey.TERM: {key: value}})
+
+    return {
+        IndexerKey.QUERY: {
+            IndexerKey.BOOL: {
+                IndexerKey.FILTER: query_filters
+            }
+        }
+    }
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"], post_proc_func=None)
@@ -331,8 +372,6 @@ async def get_agents(
     AffectedItemsWazuhResult
         Affected items.
     """
-    LAST_LOGIN_KEY = 'last_login'
-
     result = AffectedItemsWazuhResult(
         all_msg='All selected agents information was returned',
         some_msg='Some agents information was not returned',
@@ -341,27 +380,7 @@ async def get_agents(
     if filters is None:
         filters = dict()
 
-    # TODO: The query build should be improved in https://github.com/wazuh/wazuh/issues/25289
-    query_filters = []
-    if agents_id:
-        query_filters.append({IndexerKey.TERMS: {'_id': agents_id}})
-
-    if LAST_LOGIN_KEY in filters:
-        query_filters.append(
-            {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f"{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}"}}}
-        )
-        filters.pop(LAST_LOGIN_KEY)
-
-    for key, value in filters.items():
-        query_filters.append({IndexerKey.TERM: {key: value}})
-
-    query = {
-        IndexerKey.QUERY: {
-            IndexerKey.BOOL: {
-                IndexerKey.FILTER: query_filters
-            }
-        }
-    }
+    query = build_agents_query(agents_id, filters)
 
     async with get_indexer_client() as indexer:
         items = await indexer.agents.search(query, select=select, exclude='key', limit=limit, offset=offset, sort=sort)
@@ -472,15 +491,17 @@ def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=["agent:delete"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1731]})
-async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
+@expose_resources(actions=["agent:delete"], resources=["agent:id:{agents_id}"],
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
+async def delete_agents(agents_id: list, filters: Optional[dict] = None,) -> AffectedItemsWazuhResult:
     """Delete a list of agents or all of them if receive an empty list.
 
     Parameters
     ----------
-    agent_list : list
+    agents_id : list
         List of agents ID's to be deleted.
+    filters : dict
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
 
     Returns
     -------
@@ -493,25 +514,18 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
         none_msg='No agents were deleted'
     )
 
-    async with get_indexer_client() as indexer_client:
-        if len(agent_list) != 0:
-            available_agents = get_document_ids(
-                await indexer_client.agents.search(query={IndexerKey.QUERY: {IndexerKey.TERMS: {'_id': agent_list}}})
-            )
-            not_found_agents = set(agent_list) - set(available_agents)
+    async with get_indexer_client() as indexer:
+        available_agents = get_source_items_id(
+            await indexer.agents.search(query=build_agents_query(agents_id, filters))
+        )
+        not_found_agents = set(agents_id) - set(available_agents)
 
-            for not_found_id in not_found_agents:
-                result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
+        for not_found_id in not_found_agents:
+            result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
 
-            agent_list = available_agents
-        else:
-            agent_list = get_document_ids(
-                await indexer_client.agents.search(
-                    query={IndexerKey.QUERY: {IndexerKey.WILDCARD: {IndexerKey._ID: '*'}}}
-                )
-            )
+        agents_id = available_agents
 
-        deleted_items = await indexer_client.agents.delete(agent_list)
+        deleted_items = await indexer.agents.delete(agents_id)
 
     result.affected_items = deleted_items
     result.total_affected_items = len(result.affected_items)

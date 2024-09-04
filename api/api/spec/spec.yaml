@@ -7315,6 +7315,12 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list_all'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/olderThanParam'
+        - $ref: '#/components/parameters/node_name'
       responses:
         '200':
           description: "Delete agents"
