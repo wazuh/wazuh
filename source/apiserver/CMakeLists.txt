@@ -1,3 +1,4 @@
+
 set(API_SERVER_SOURCE_DIR ${ENGINE_SOURCE_DIR}/apiserver/src)
 set(API_SERVER_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/apiserver/include)
 
@@ -16,21 +17,16 @@ target_include_directories(apiserver
 )
 
 # Tests
-if(!ENGINE_BUILD_TEST)
+if(ENGINE_BUILD_TEST)
 
 set(TEST_SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/test/src)
-set(UNIT_SRC_DIR ${TEST_SRC_DIR}/unit)
+set(COMPONENT_SRC_DIR ${TEST_SRC_DIR}/component)
 
-add_executable(apiserver_utest
-    ${UNIT_SRC_DIR}/apiServer_test.cpp
+add_executable(apiserver_ctest
+    ${COMPONENT_SRC_DIR}/apiServer_test.cpp
 )
 
-target_include_directories(apiserver_utest
-    PRIVATE
-    ${uvw_SOURCE_DIR}/src/
-)
-
-target_link_libraries(apiserver_utest PRIVATE GTest::gtest_main server libuv::uv_a)
-gtest_discover_tests(apiserver_utest)
+target_link_libraries(apiserver_ctest PRIVATE GTest::gtest_main apiserver)
+gtest_discover_tests(apiserver_ctest)
 
 endif()
