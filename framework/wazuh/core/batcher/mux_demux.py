@@ -114,8 +114,6 @@ class MuxDemuxQueue:
             response = self.responses[uid]
             del self.responses[uid]
             return response
-        else:
-            return None
 
     def internal_response_from_demux(self) -> Message:
         """Retrieves a message from the demux queue.
@@ -162,7 +160,7 @@ class MuxDemuxRunner(Process):
         frame : Any
             The current stack frame (unused).
         """
-        logger.info(f'MuxDemuxQueue pid {os.getpid()} - received signal {signum}')
+        logger.info(f'MuxDemuxQueue pid {os.getpid()} - received signal {signal.Signals(signum).name}')
         self._shutdown_event.set()
 
     def run(self) -> None:

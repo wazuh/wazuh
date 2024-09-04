@@ -38,7 +38,18 @@ MAIN_PROCESS = 'wazuh-comms-apid'
 
 
 def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
-    """Creates a FastAPI application instance and adds middlewares, exceptions handlers and routers to it."""
+    """Creates a FastAPI application instance and adds middlewares, exception handlers, and routers to it.
+
+    Parameters
+    ----------
+    batcher_queue : MuxDemuxQueue
+        The queue instance used for managing batcher processes.
+
+    Returns
+    -------
+    FastAPI
+        The configured FastAPI application instance.
+    """
     app = FastAPI()
     app.add_middleware(SecureHeadersMiddleware)
     app.add_middleware(BrotliMiddleware)
@@ -123,7 +134,7 @@ def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
 
 
 def post_worker_init(worker):
-    """Unregisters the _exit_function from the worker processes"""
+    """Unregisters the _exit_function from the worker processes."""
     atexit.unregister(_exit_function)
 
 
@@ -235,7 +246,7 @@ def signal_handler(
     This function is designed to be used with the `signal` module to handle termination and
     interruption signals (e.g., SIGTERM).
     """
-    logger.info(f"Received signal {signum}, initiating shutdown.")
+    logger.info(f"Received signal {signal.Signals(signum).name}, initiating shutdown.")
     terminate_processes(mux_demux_manager, batcher_process)
 
 
