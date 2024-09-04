@@ -3,18 +3,13 @@
 1. [End to end tests for helper functions](#end-to-end-tests-for-helper-functions)
 1. [Directory structure](#directory-structure)
 1. [Install](#install)
-    1. [engine-helper-test-initial-state](#engine-helper-test-initial-state)
-    1. [engine-helper-test-validator](#engine-helper-test-validator)
-    1. [engine-helper-test-generator](#engine-helper-test-generator)
-    1. [engine-helper-test-generate-runner](#engine-helper-test-generate-runner)
-    1. [engine-helper-test-documentation](#engine-helper-test-documentation)
-1. [How to run all the tests](#how-to-run-all-the-tests)
-1. [How to create an output in particular and in general](#how-to-create-an-output-in-particular-and-in-general)
-    1. [Create an output for a given helper function](#create-an-output-for-a-given-helper-function)
-    2. [Create an output for a set of helper functions belonging to a certain type](#create-an-output-for-a-set-of-helper-functions-belonging-to-a-certain-type)
-1. [How to run a test in particular and in general](#how-to-run-a-test-in-particular-and-in-general)
-    1. [Run a test for a given helper function](#run-a-test-for-a-given-helper-function)
-    2. [Run a test suite of a certain type](#run-a-test-suite-of-a-certain-type)
+1. [Usage](#usage)
+    1. [init](#init)
+    1. [validate](#validate)
+    1. [generate-tests](#generate-tests)
+    1. [run](#run)
+    1. [generate-doc](#generate-doc)
+1. [Running all tests](#running-all-tests)
 1. [How to write a test](#how-to-write-a-test)
     1. [Schema](#schema)
     2. [Arguments property](#arguments-property)
@@ -47,44 +42,7 @@ The tool automatically generates test cases from these YAML files. Each test cas
 helper/
 ├── configuration_files
 ├   └── general.conf
-├── engine_helper_test
-|   └── src
-|     └── definition_types
-|       └── __init__.py
-|       └── types.py
-|       └── utils.py
-|     └── generator_runner
-|       └── __init__.py
-|       └── __main__.py
-|     └── initial_state
-|       └── __init__.py
-|       └── __main__.py
-|     └── runner
-|       └── __init__.py
-|       └── __main__.py
-|     └── test_cases_generator
-|       └── __init__.py
-|       └── __main__.py
-|       └── argument.py
-|       └── buildtime_cases.py
-|       └── generator.py
-|       └── parser.py
-|       └── template.py
-|       └── test_data.py
-|       └── validator.py
-|     └── documentation_generator
-|       └── __init__.py
-|       └── __main__.py
-|       └── documentation.py
-|       └── exporter.py
-|       └── html_generator.py
-|       └── mark_down_generator.py
-|       └── pdf_generator.py
-|       └── types.py
-|    └── .gitignore
-|    └── pyproject.toml
-|    └── setup.cfg
-|    └── setup.py
+├── engine-helper-test
 ├── helpers_description
 |    └── filter
 |     └── ...
@@ -100,174 +58,126 @@ helper/
 
 # Install
 
-The `engine_helper_test` python package contains various scripts to help to create and run helper function tests.
+The `engine-helper-test` python package contains various scripts to help to create and run helper function tests.
 
 
 Requires python 3.8, to install navigate where the Wazuh repository folder is located and run:
 
-`pip install wazuh/src/engine/test/helper_tests/engine_helper_test`
+`pip install wazuh/src/engine/test/helper_tests/engine-helper-test`
 
 If we want to install for developing and modifying the scripts, install in editable mode and the additional dev packages:
 
-`pip install -e wazuh/src/engine/test/helper_tests/engine_helper_test[dev]`
+`pip install -e wazuh/src/engine/test/helper_tests/engine-helper-test[dev]`
 
-## engine-helper-test-initial-state
-
+# Usage
 ```bash
-usage: engine-helper-test-initial-state [-h] -e ENVIRONMENT -b BINARY --mmdb MMDB --conf CONF
+$ engine-helper-test -h
+usage: engine-helper-test [-h] -e ENVIRONMENT {init,validate,generate-tests,run,generate-doc} ...
 
-Update configuration, create kvdbs and mmdbs
+Utility to perform the helper test on the Engine
 
-optional arguments:
+positional arguments:
+  {init,validate,generate-tests,run,generate-doc}
+    init                Update configuration, create kvdbs and mmdbs
+    validate            Validates that the helper descriptions comply with the schema
+    generate-tests      Generates files containing test cases for a given helper
+    run                 Runs the generated test cases and validates their results
+    generate-doc        Generates files containing documentation for a given helper
+
+options:
   -h, --help            show this help message and exit
   -e ENVIRONMENT, --environment ENVIRONMENT
                         Environment directory
+```
+
+## init
+
+```bash
+$ engine-helper-test init -h
+usage: engine-helper-test init [-h] -b BINARY --mmdb MMDB --conf CONF
+
+options:
+  -h, --help            show this help message and exit
   -b BINARY, --binary BINARY
                         Path to the binary file
   --mmdb MMDB           Directory path where the as and geo databases are located
   --conf CONF           File path where the engine configuration file is
 ```
 
-## engine-helper-test-validator
+## validate
 
 ```bash
-usage: engine-helper-test-validator [-h] [--input_file_path INPUT_FILE_PATH] [--folder_path FOLDER_PATH]
-
-Validates that the helper descriptions comply with the schema
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --input_file_path INPUT_FILE_PATH
-                        Absolute or relative path where the description of the helper function is located
-  --folder_path FOLDER_PATH
-                        Absolute or relative path where the directory that contains the descriptions of the auxiliary functions is located
-```
-
-## engine-helper-test-generator
-
-```bash
-usage: engine-helper-test-generator [-h] [--input_file_path INPUT_FILE_PATH] [--folder_path FOLDER_PATH] -o OUTPUT_PATH
-
-Generates files containing test cases for a given helper
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --input_file_path INPUT_FILE_PATH
-                        Absolute or relative path where the description of the helper function is located
-  --folder_path FOLDER_PATH
-                        Absolute or relative path where the directory that contains the descriptions of the auxiliary functions is located
-  -o OUTPUT_PATH, --output_path OUTPUT_PATH
-                        Absolute or relative path of the directory where the generated test files will be located
-```
-
-## engine-helper-test-runner
-
-```bash
-usage: engine-helper-test-runner [-h] -e ENVIRONMENT -b BINARY [--input_file_path INPUT_FILE_PATH] [--folder_path FOLDER_PATH] [--failure_cases] [--success_cases]
-
-Runs the generated test cases and validates their results
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -e ENVIRONMENT, --environment ENVIRONMENT
-                        Environment directory
-  -b BINARY, --binary BINARY
-                        Path to the binary file
-  --input_file_path INPUT_FILE_PATH
-                        Absolute or relative path where the test cases were generated
-  --folder_path FOLDER_PATH
-                        Absolute or relative path where the test cases were generated
-  --failure_cases       Shows only the failure test cases that occurred
-  --success_cases       Shows only the success test cases that occurred
-```
-
-## engine-helper-test-generate-runner
-
-```bash
-usage: engine-helper-test-generate-runner [-h] -e ENVIRONMENT -b BINARY -i INPUT -o OUTPUT
-
-Generate and run all helper test cases
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -e ENVIRONMENT, --environment ENVIRONMENT
-                        Environment directory
-  -b BINARY, --binary BINARY
-                        Path to the binary file
-  -i INPUT, --input INPUT
-                        Absolute or relative path where of the directory where the helper configurations are located
-  -o OUTPUT, --output OUTPUT
-                        Absolute or relative path where the test cases were generated
-```
-
-## engine-helper-test-documentation
-```bash
-usage: engine-helper-test-documentation [-h] [--input_file_path INPUT_FILE_PATH] [--folder_path FOLDER_PATH] [--exporter EXPORTER] [-o OUTPUT_PATH]
-
-Generates files containing documentation for a given helper
+$ engine-helper-test validate -h
+usage: engine-helper-test validate [-h] (--input-file INPUT_FILE | --input-dir INPUT_DIR)
 
 options:
   -h, --help            show this help message and exit
-  --input_file_path INPUT_FILE_PATH
+  --input-file INPUT_FILE
                         Absolute or relative path where the description of the helper function is located
-  --folder_path FOLDER_PATH
+  --input-dir INPUT_DIR
+                        Absolute or relative path where the directory that contains the descriptions of the auxiliary functions is located
+```
+
+## generate-tests
+
+```bash
+$ engine-helper-test generate-tests -h
+usage: engine-helper-test generate-tests [-h] (--input-file INPUT_FILE | --input-dir INPUT_DIR) -o OUTPUT_PATH
+
+options:
+  -h, --help            show this help message and exit
+  --input-file INPUT_FILE
+                        Absolute or relative path where the description of the helper function is located
+  --input-dir INPUT_DIR
+                        Absolute or relative path where the directory that contains the descriptions of the auxiliary functions is located
+  -o OUTPUT_PATH, --output-path OUTPUT_PATH
+                        Absolute or relative path of the directory where the generated test files will be located
+```
+
+## run
+
+```bash
+$ engine-helper-test run -h
+usage: engine-helper-test run [-h] (--input-file INPUT_FILE | --input-dir INPUT_DIR) [--show-failure]
+
+options:
+  -h, --help            show this help message and exit
+  --input-file INPUT_FILE
+                        Absolute or relative path to the test case file
+  --input-dir INPUT_DIR
+                        Absolute or relative path to the directory containing test case files
+  --show-failure        Shows only the failure test cases that occurred
+```
+
+## generate-doc
+
+```bash
+$ engine-helper-test generate-doc -h
+usage: engine-helper-test generate-doc [-h] (--input-file INPUT_FILE | --input-dir INPUT_DIR) [--exporter EXPORTER] -o OUTPUT_PATH
+
+options:
+  -h, --help            show this help message and exit
+  --input-file INPUT_FILE
+                        Absolute or relative path where the description of the helper function is located
+  --input-dir INPUT_DIR
                         Absolute or relative path where the directory that contains the descriptions of the auxiliary functions is located
   --exporter EXPORTER   Absolute or relative path of the directory where the generated test files will be located
-  -o OUTPUT_PATH, --output_path OUTPUT_PATH
+  -o OUTPUT_PATH, --output-path OUTPUT_PATH
                         Absolute or relative path of the directory where the generated documentation files will be located
 ```
 
-# How to run all the tests
+# Running all tests
 
 After completing the installation, you must run the setupEnvironment.py that builds the environment in a certain location.
 
 ```bash
-usage: setupEnvironment.py [-h] [-e ENVIRONMENT]
-
-Setup engine directories.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -e ENVIRONMENT, --environment ENVIRONMENT
-                        Environment directory
+cd ./wazuh/src/engine
+python3 test/setupEnvironment.py -e /tmp/environment
+engine-helper-test -e /tmp/environment init -b build/main --mmdb test/helper_tests/mmdb/ --conf test/helper_tests/configuration_files/general.conf
+engine-helper-test -e /tmp/environment validate --input-dir test/helper_tests/helpers_description/
+engine-helper-test -e /tmp/environment generate-tests --input-dir test/helper_tests/helpers_description/ -o /tmp/helper_tests
+engine-helper-test -e /tmp/environment run --input-dir /tmp/helper_tests
 ```
-
-- `test/setupEnvironment.py -e /tmp/env`
-
-Once the environment is built, the initial state must be initialized
-
-- `engine-helper-test-initial-state -e /tmp/env/ -b build/main --mmdb test/helper_tests/mmdb/ --conf test/helper_tests/configuration_files/general.conf`
-
-At this point you can execute the generation and evaluation of the tests using a single command.
-It is important to clarify that the storage of the generated test cases can only be in temporary directories.
-
-- `engine-helper-test-generate-runner -e /tmp/env/ -b build/main -i test/helper_tests/helpers_description/ -o /tmp/output`
-
-# How to create an output in particular and in general
-
-If you only need to generate test cases for a particular helper or for a helper set of a certain type, it is not necessary to create any environment or establish an initial state.
-
-## Create an output for a given helper function
-
-`engine-helper-test-generator --input_file_path test/helper_tests/helpers_description/map/int_calculate.yml -o /tmp/output`
-
-## Create an output for a set of helper functions belonging to a certain type
-
-`engine-helper-test-generator --folder_path test/helper_tests/helpers_description/map/ -o /tmp/output`
-
-# How to run a test in particular and in general
-To run the generated tests, the environment must be created and the initial state established as explained [here](#how-to-run-all-the-tests)
-
-## Run a test for a given helper function
-After having generated the test cases, whether [particular](#create-an-output-for-a-given-helper-function) or [general](#create-an-output-for-a-set-of-helper-functions-belonging-to-a-certain-type) is possible to execute the tests for a single output
-
-`engine-helper-test-runner -e /tmp/env -b build/main --input_file_path /tmp/output/int_calculate.yml --failure_cases`
-
-## Run a test suite of a certain type
-After having generated the test cases, whether [particular](#create-an-output-for-a-given-helper-function) or [general](#create-an-output-for-a-set-of-helper-functions-belonging-to-a-certain-type) is possible to execute the tests for a single output
-
-`engine-helper-test-runner -e /tmp/env -b build/main --folder_path /tmp/output --failure_cases`
-
 
 # How to write a test
 
@@ -469,19 +379,14 @@ The commands below use absolute paths to the engine directory.
 
 ## Generate documentation for a particular helper function
 ```bash
-engine-helper-test-documentation --input_file_path test/helper_tests/helpers_description/map/int_calculate.yml -o test/helper_tests/documentation
+engine-helper-test -e /tmp/environment generate-doc --input-file test/helper_tests/helpers_description/map/int_calculate.yml -o test/helper_tests/documentation
 ```
 ## Generate documentation for a particular type of helper function
 ```bash
-engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/map -o test/helper_tests/documentation
+engine-helper-test -e /tmp/environment generate-doc --input-dir test/helper_tests/helpers_description/map -o test/helper_tests/documentation
 ```
-```bash
-engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/filter -o test/helper_tests/documentation
-```
-```bash
-engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/transformation -o test/helper_tests/documentation
-```
+
 ## Generate documentation for all helper functions
 ```bash
-engine-helper-test-documentation --folder_path test/helper_tests/helpers_description/ -o docs/helpers/
+engine-helper-test -e /tmp/environment generate-doc --input-dir test/helper_tests/helpers_description/ -o docs/helpers/
 ```
