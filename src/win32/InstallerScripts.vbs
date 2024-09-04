@@ -402,8 +402,8 @@ Public Function SetWazuhPermissions()
         ' Remove last backslash from home_dir
         install_dir = Left(home_dir, Len(home_dir) - 1)
 
-        remEveryonePerms = "icacls """ & install_dir & """ /reset /t"
-        WshShell.run remEveryonePerms, 0, True
+        resetPerms = "icacls """ & install_dir & """ /reset /t"
+        WshShell.run resetPerms, 0, True
 
         setPermsInherit = "icacls """ & install_dir & """ /inheritancelevel:r /q"
         WshShell.run setPermsInherit, 0, True
@@ -414,27 +414,27 @@ Public Function SetWazuhPermissions()
         grantSystemPerm = "icacls """ & install_dir & """ /grant *S-1-5-18:(OI)(CI)F"
         WshShell.run grantSystemPerm, 0, True
 
-        userSID = GetUserSID()
-        grantUserPerm = "icacls """ & install_dir & """ /grant *" & userSID & ":(OI)(CI)RX"
-        WshShell.run grantUserPerm, 0, True
+        grantAuthenticatedUsersPermSubfolders = "icacls """ & install_dir & """\* /grant *S-1-5-11:(OI)(CI)RX"
+        WshShell.run grantAuthenticatedUsersPermSubfolders, 0, True
 
-        ' Remove Everyone group for ossec.conf
-        remEveryonePerms = "icacls """ & home_dir & "ossec.conf" & """ /remove *S-1-1-0 /q"
-        WshShell.run remEveryonePerms, 0, True
-    End If
-End Function
+        grantAuthenticatedUsersPermSubfiles = "icacls """ & install_dir & """\* /grant *S-1-5-11:RX"
+        WshShell.run grantAuthenticatedUsersPermSubfiles, 0, True
 
-Private Function GetUserSID()
-    GetUserSID = ""
-    Dim sDomain, oWMI, sDomUser
+        grantAuthenticatedUsersPermFolder = "icacls """ & install_dir & """ /grant *S-1-5-11:RX"
+        WshShell.run grantAuthenticatedUsersPermFolder, 0, True
 
-    sDomain = CreateObject("WScript.Network").UserDomain
-    sDomUser = CreateObject( "WScript.Shell" ).ExpandEnvironmentStrings( "%USERNAME%" )
+        ' Remove Authenticated Users group for ossec.conf, last-ossec.conf  and client.key
+        remAuthenticatedUsersPermsConf = "icacls """ & home_dir & "*ossec.conf" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsConf, 0, True
 
-    On Error Resume Next
-    Set oWMI = GetObject("winmgmts:{impersonationlevel=impersonate}!" & "/root/cimv2:Win32_UserAccount.Domain='" & sDomain & "'" & ",Name='" & sDomUser & "'")
-    If Err.Number = 0 Then
-        GetUserSID = oWMI.SID
+        remAuthenticatedUsersPermsKeys = "icacls """ & home_dir & "client.keys" & """ /remove *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsKeys, 0, True
+
+        ' Remove the Authenticated Users group from the tmp directory to avoid
+        ' inherited permissions on client.keys and ossec.conf when using win32ui.
+        remAuthenticatedUsersPermsTmpDir = "icacls """ & home_dir & "tmp" & """ /remove:g *S-1-5-11 /q"
+        WshShell.run remAuthenticatedUsersPermsTmpDir, 0, True
+
     End If
 End Function
 
