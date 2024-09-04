@@ -83,21 +83,30 @@ void UnixStream::bind(std::shared_ptr<uvw::Loop> loop)
 
     // Server in case of error
     m_handle->on<uvw::ErrorEvent>(
-        [this](const uvw::ErrorEvent& event, uvw::PipeHandle& handle)
+        [this, getLambdaName = logging::getLambdaName(__FUNCTION__, "handleErrorEvent")](const uvw::ErrorEvent& event,
+                                                                                         uvw::PipeHandle& handle)
         {
-            LOG_ERROR("[Endpoint: {}] Error on socket: {} ({})", m_address, event.name(), event.what());
+            const auto functionName = getLambdaName.c_str();
+            LOG_ERROR_L(functionName, "[Endpoint: {}] Error on socket: {} ({})", m_address, event.name(), event.what());
             close();
         });
 
     // Server in case of close
-    m_handle->on<uvw::CloseEvent>([address = m_address](const uvw::CloseEvent&, uvw::PipeHandle& handle)
-                                  { LOG_INFO("[Endpoint: {}] Closed", address); });
+    m_handle->on<uvw::CloseEvent>(
+        [address = m_address, getLambdaName = logging::getLambdaName(__FUNCTION__, "handleCloseEvent")](
+            const uvw::CloseEvent&, uvw::PipeHandle& handle)
+        {
+            const auto functionName = getLambdaName.c_str();
+            LOG_INFO(functionName, "[Endpoint: {}] Closed", address);
+        });
 
     // Server in case of connection
     m_handle->on<uvw::ListenEvent>(
-        [this](const uvw::ListenEvent&, uvw::PipeHandle& handle)
+        [this, getLambdaName = logging::getLambdaName(__FUNCTION__, "handleListenEvent")](const uvw::ListenEvent&,
+                                                                                          uvw::PipeHandle& handle)
         {
-            LOG_DEBUG("[Endpoint: {}] New connection", m_address);
+            const auto functionName = getLambdaName.c_str();
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] New connection", m_address);
             auto client = createClient();
             handle.accept(*client);
             client->read();
@@ -160,14 +169,21 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
     auto protocolHandler = m_factory->create();
 
     client->on<uvw::DataEvent>(
-        [this, weakClient, sharedAsyncs, timer, protocolHandler](const uvw::DataEvent& data, uvw::PipeHandle& clientRef)
+        [this,
+         weakClient,
+         sharedAsyncs,
+         timer,
+         protocolHandler,
+         getLambdaName = logging::getLambdaName(__FUNCTION__, "clientDataEvent")](const uvw::DataEvent& data,
+                                                                                  uvw::PipeHandle& clientRef)
         {
             // Avoid use _clientRef, it's a reference to the client, but we want to use the shared_ptr
             // to avoid the client release the memory before the workers finish the processing
-
+            const auto functionName = getLambdaName.c_str();
             if (timer->closing())
             {
-                LOG_DEBUG("[Endpoint: {}] Timer already closed, discarding data by timeout...", m_address);
+                LOG_DEBUG_L(
+                    functionName, "[Endpoint: {}] Timer already closed, discarding data by timeout...", m_address);
                 return;
             }
             timer->again();
@@ -180,7 +196,8 @@ std::shared_ptr<uvw::PipeHandle> UnixStream::createClient()
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("[Endpoint: {}] Error processing data, close conexion: {}", m_address, e.what());
+                LOG_WARNING_L(
+                    functionName, "[Endpoint: {}] Error processing data, close conexion: {}", m_address, e.what());
                 timer->close();
                 clientRef.close();
                 return;
@@ -213,22 +230,28 @@ void UnixStream::processMessages(std::weak_ptr<uvw::PipeHandle> wClient,
         // No queue worker, process the message in the main thread
         if (0 == m_taskQueueSize)
         {
-            auto callbackFn =
-                [wClient, address = m_address, protocolHandler, metric = m_metric](const std::string& response) -> void
+            auto callbackFn = [wClient,
+                               address = m_address,
+                               protocolHandler,
+                               metric = m_metric,
+                               getLambdaName = logging::getLambdaName(__FUNCTION__, "handleClientResponse")](
+                                  const std::string& response) -> void
             {
                 auto responseTimer = std::make_shared<base::chrono::Timer>();
+                const auto functionName = getLambdaName.c_str();
 
                 // Check if client is closed
                 auto client = wClient.lock();
                 if (!client)
                 {
-                    LOG_DEBUG("[Endpoint: {}] endpoint: Client already closed (remote close), discarting response",
-                              address);
+                    LOG_DEBUG_L(functionName,
+                                "[Endpoint: {}] endpoint: Client already closed (remote close), discarting response",
+                                address);
                     return;
                 }
                 else if (client->closing())
                 {
-                    LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", address);
+                    LOG_DEBUG_L(functionName, "[Endpoint: {}] Client closed, discarding response", address);
                     return;
                 }
 
@@ -283,20 +306,30 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
     asyncs->push_back(wAsync);
 
     async->on<uvw::AsyncEvent>(
-        [wClient, address = m_address, metric = m_metric, responseTimer, protocolHandler, response, asyncs](
-            const uvw::AsyncEvent&, uvw::AsyncHandle& syncHandle)
+        [wClient,
+         address = m_address,
+         metric = m_metric,
+         responseTimer,
+         protocolHandler,
+         response,
+         asyncs,
+         getLambdaName = logging::getLambdaName(__FUNCTION__, "asyncEvent")](const uvw::AsyncEvent&,
+                                                                             uvw::AsyncHandle& syncHandle)
         {
             // Check if client is closed
             auto client = wClient.lock();
+            const auto functionName = getLambdaName.c_str();
+
             if (!client)
             {
-                LOG_DEBUG("[Endpoint: {}] endpoint: Client already closed (remote close), discarting response",
-                          address);
+                LOG_DEBUG_L(functionName,
+                            "[Endpoint: {}] endpoint: Client already closed (remote close), discarting response",
+                            address);
                 return;
             }
             else if (client->closing())
             {
-                LOG_DEBUG("[Endpoint: {}] Client closed, discarding response", address);
+                LOG_DEBUG_L(functionName, "[Endpoint: {}] Client closed, discarding response", address);
                 return;
             }
 
@@ -329,19 +362,26 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
             }
         });
 
-    auto callbackFn = [asyncs, wAsync, address = m_address, response](const std::string& res) -> void
+    auto callbackFn =
+        [asyncs,
+         wAsync,
+         address = m_address,
+         response,
+         getLambdaName = logging::getLambdaName(__FUNCTION__, "handleResponseAndSend")](const std::string& res) -> void
     {
         *response = res;
-
+        const auto functionName = getLambdaName.c_str();
         auto async = wAsync.lock();
         if (!async)
         {
-            LOG_DEBUG("[Endpoint: {}] endpoint: Async already closed (remote close), discarting response", address);
+            LOG_DEBUG_L(functionName,
+                        "[Endpoint: {}] endpoint: Async already closed (remote close), discarting response",
+                        address);
             return;
         }
         else if (async->closing())
         {
-            LOG_DEBUG("[Endpoint: {}] endpoint: Async already closed, discarting response", address);
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] endpoint: Async already closed, discarting response", address);
             return;
         }
 
@@ -354,22 +394,29 @@ void UnixStream::createAndEnqueueTask(std::weak_ptr<uvw::PipeHandle> wClient,
 
     // On error
     work->on<uvw::ErrorEvent>(
-        [address = m_address, metric = m_metric, &currentTaskQueueSize = m_currentTaskQueueSize](
-            const uvw::ErrorEvent& error, uvw::WorkReq& worker)
+        [address = m_address,
+         metric = m_metric,
+         &currentTaskQueueSize = m_currentTaskQueueSize,
+         getLambdaName = logging::getLambdaName(__FUNCTION__, "workerErrorEvent")](const uvw::ErrorEvent& error,
+                                                                                   uvw::WorkReq& worker)
         {
-            LOG_ERROR("[Endpoint: {}] endpoint: Error processing message: {}", address, error.what());
+            const auto functionName = getLambdaName.c_str();
+            LOG_ERROR_L(functionName, "[Endpoint: {}] endpoint: Error processing message: {}", address, error.what());
             --currentTaskQueueSize;
             metric.m_queueSize->recordValue(currentTaskQueueSize.load());
         });
 
     // On finish
     work->on<uvw::WorkEvent>(
-        [address = m_address, metric = m_metric, &currentTaskQueueSize = m_currentTaskQueueSize](const uvw::WorkEvent&,
-                                                                                                 uvw::WorkReq& work)
+        [address = m_address,
+         metric = m_metric,
+         &currentTaskQueueSize = m_currentTaskQueueSize,
+         getLambdaName = logging::getLambdaName(__FUNCTION__, "WorkerEvent")](const uvw::WorkEvent&, uvw::WorkReq& work)
         {
             --currentTaskQueueSize;
             metric.m_queueSize->recordValue(currentTaskQueueSize.load());
-            LOG_DEBUG("[Endpoint: {}] endpoint: Finish", address);
+            const auto functionName = getLambdaName.c_str();
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] endpoint: Finish", address);
         });
 
     work->queue();
@@ -384,13 +431,15 @@ UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient,
 
     // Timeout, close the client
     timer->on<uvw::TimerEvent>(
-        [wClient, asyncs, address = m_address](const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
+        [wClient, asyncs, address = m_address, getLambdaName = logging::getLambdaName(__FUNCTION__, "timerEvent")](
+            const uvw::TimerEvent&, uvw::TimerHandle& timerRef)
         {
-            LOG_DEBUG("[Endpoint: {}] Client timeout, close connection.", address);
+            const auto functionName = getLambdaName.c_str();
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] Client timeout, close connection.", address);
             auto client = wClient.lock();
             if (wClient.expired())
             {
-                LOG_DEBUG("[Endpoint: {}] Client already closed", address);
+                LOG_DEBUG_L(functionName, "[Endpoint: {}] Client already closed", address);
             }
             else if (client && !client->closing())
             {
@@ -402,7 +451,7 @@ UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient,
                 auto async = wAsync.lock();
                 if (wAsync.expired())
                 {
-                    LOG_DEBUG("[Endpoint: {}] Async Handle already closed", address);
+                    LOG_DEBUG_L(functionName, "[Endpoint: {}] Async Handle already closed", address);
                 }
                 else if (async && !async->closing())
                 {
@@ -414,14 +463,21 @@ UnixStream::createTimer(std::weak_ptr<uvw::PipeHandle> wClient,
         });
 
     timer->on<uvw::ErrorEvent>(
-        [address = m_address](const uvw::ErrorEvent& error, uvw::TimerHandle& timerRef)
+        [address = m_address, getLambdaName = logging::getLambdaName(__FUNCTION__, "timerErrorEvent")](
+            const uvw::ErrorEvent& error, uvw::TimerHandle& timerRef)
         {
-            LOG_ERROR("[Endpoint: {}] Timer error: {}", address, error.what());
+            const auto functionName = getLambdaName.c_str();
+            LOG_ERROR_L(functionName, "[Endpoint: {}] Timer error: {}", address, error.what());
             timerRef.close();
         });
 
-    timer->on<uvw::CloseEvent>([address = m_address](const uvw::CloseEvent&, uvw::TimerHandle&)
-                               { LOG_DEBUG("[Endpoint: {}] Timer closed", address); });
+    timer->on<uvw::CloseEvent>(
+        [address = m_address, getLambdaName = logging::getLambdaName(__FUNCTION__, "timerCloseEvent")](
+            const uvw::CloseEvent&, uvw::TimerHandle&)
+        {
+            const auto functionName = getLambdaName.c_str();
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] Timer closed", address);
+        });
 
     return timer;
 }
@@ -431,7 +487,11 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client,
                                       std::shared_ptr<std::vector<std::weak_ptr<uvw::AsyncHandle>>> asyncs)
 {
 
-    auto gracefullEnd = [timer, asyncs, metric = m_metric, address = m_address](uvw::PipeHandle& client)
+    auto gracefullEnd = [timer,
+                         asyncs,
+                         metric = m_metric,
+                         address = m_address,
+                         getLambdaName = logging::getLambdaName(__FUNCTION__, "gracefullEnd")](uvw::PipeHandle& client)
     {
         if (!timer->closing())
         {
@@ -443,7 +503,8 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client,
             auto sAsync = wAsync.lock();
             if (wAsync.expired())
             {
-                LOG_DEBUG("[Endpoint: {}] Async Handle already closed", address);
+                const auto functionName = getLambdaName.c_str();
+                LOG_DEBUG_L(functionName, "[Endpoint: {}] Async Handle already closed", address);
             }
             else if (sAsync && !sAsync->closing())
             {
@@ -459,33 +520,43 @@ void UnixStream::configureCloseClient(std::shared_ptr<uvw::PipeHandle> client,
 
     // On error
     client->on<uvw::ErrorEvent>(
-        [gracefullEnd, address = m_address](const uvw::ErrorEvent& error, uvw::PipeHandle& client)
+        [gracefullEnd, address = m_address, getLambdaName = logging::getLambdaName(__FUNCTION__, "clientErrorEvent")](
+            const uvw::ErrorEvent& error, uvw::PipeHandle& client)
         {
-            LOG_WARNING("[Endpoint: {}] Client error: {}", address, error.what());
+            const auto functionName = getLambdaName.c_str();
+            LOG_WARNING_L(functionName, "[Endpoint: {}] Client error: {}", address, error.what());
             gracefullEnd(client);
         });
 
     // On close
     client->on<uvw::CloseEvent>(
-        [gracefullEnd, address = m_address](const uvw::CloseEvent&, uvw::PipeHandle& client)
+        [gracefullEnd, address = m_address, getLambdaName = logging::getLambdaName(__FUNCTION__, "clientCloseEvent")](
+            const uvw::CloseEvent&, uvw::PipeHandle& client)
         {
-            LOG_DEBUG("[Endpoint: {}] Client closed connection gracefully", address);
+            const auto functionName = getLambdaName.c_str();
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] Client closed connection gracefully", address);
             gracefullEnd(client);
         });
 
     // On Shutdown
     client->on<uvw::ShutdownEvent>(
-        [gracefullEnd, address = m_address](const uvw::ShutdownEvent&, uvw::PipeHandle& client)
+        [gracefullEnd,
+         address = m_address,
+         getLambdaName = logging::getLambdaName(__FUNCTION__, "clientShutdownEvent")](const uvw::ShutdownEvent&,
+                                                                                      uvw::PipeHandle& client)
         {
-            LOG_DEBUG("[Endpoint: {}] Client shutdown connection", address);
+            const auto functionName = getLambdaName.c_str();
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] Client shutdown connection", address);
             gracefullEnd(client);
         });
 
     // End event
     client->on<uvw::EndEvent>(
-        [gracefullEnd, address = m_address](const uvw::EndEvent&, uvw::PipeHandle& client)
+        [gracefullEnd, address = m_address, getLambdaName = logging::getLambdaName(__FUNCTION__, "clientEndEvent")](
+            const uvw::EndEvent&, uvw::PipeHandle& client)
         {
-            LOG_DEBUG("[Endpoint: {}] Client disconnected gracefully", address);
+            const auto functionName = getLambdaName.c_str();
+            LOG_DEBUG_L(functionName, "[Endpoint: {}] Client disconnected gracefully", address);
             gracefullEnd(client);
         });
 }
