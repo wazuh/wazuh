@@ -20,6 +20,7 @@
 auto constexpr MONITORING_HEALTH_CHECK_INTERVAL {2u};
 const std::string GREEN_SERVER {"http://localhost:9200"};
 const std::string RED_SERVER {"http://localhost:9300"};
+const std::string YELLOW_SERVER {"http://localhost:9400"};
 
 /**
  * @brief Runs unit tests for Monitoring class
