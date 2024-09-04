@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from .types import *
+from helper_test.definition_types.types import *
 from typing import Union
 import sys
 import ast
@@ -142,7 +142,8 @@ def check_restrictions(arguments: list, general_restrictions: list, input: dict 
                     try:
                         eval_argument = ast.literal_eval(arguments[index])
                     except (ValueError, SyntaxError):
-                        eval_argument = arguments[index]  # Use the raw string if eval fails
+                        # Use the raw string if eval fails
+                        eval_argument = arguments[index]
 
                     if eval_argument != value and value not in input_values:
                         break
@@ -151,7 +152,8 @@ def check_restrictions(arguments: list, general_restrictions: list, input: dict 
                     try:
                         eval_argument = ast.literal_eval(arguments[index])
                     except (ValueError, SyntaxError):
-                        eval_argument = arguments[index]  # Use the raw string if eval fails
+                        # Use the raw string if eval fails
+                        eval_argument = arguments[index]
 
                     if eval_argument != value:
                         break

@@ -1,9 +1,9 @@
-from .html_generator import HTMLGenerator
-from .pdf_generator import PDFGenerator
-from .mark_down_generator import MarkdownGenerator
-from .exporter import *
-from .types import *
-from test_cases_generator.parser import Parser
+from helper_test.documentation_generator.html_generator import HTMLGenerator
+from helper_test.documentation_generator.pdf_generator import PDFGenerator
+from helper_test.documentation_generator.mark_down_generator import MarkdownGenerator
+from helper_test.documentation_generator.exporter import *
+from helper_test.documentation_generator.types import *
+from helper_test.test_cases_generator.parser import Parser
 
 
 class ExporterFactory():
@@ -29,10 +29,12 @@ def parse_yaml_to_documentation(parser: Parser):
     )[index], parser.get_restrictions()[index]) for index, (name, arg_info) in enumerate(parser.get_arguments().items())}
 
     if parser.get_helper_type() == "map":
-        output = Output(parser.get_output()["type"], parser.get_output().get("subset"))
+        output = Output(parser.get_output()[
+                        "type"], parser.get_output().get("subset"))
 
     if parser.get_helper_type() != "map":
-        target_field = TargetField(parser.get_target_field_type(), parser.get_target_field_subset())
+        target_field = TargetField(
+            parser.get_target_field_type(), parser.get_target_field_subset())
 
     # TODO: Implement this
     # examples = [

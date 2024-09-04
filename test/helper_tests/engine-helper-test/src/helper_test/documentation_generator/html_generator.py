@@ -1,5 +1,5 @@
-from .types import Documentation
-from .exporter import *
+from helper_test.documentation_generator.types import Documentation
+from helper_test.documentation_generator.exporter import *
 
 
 class HTMLGenerator(IExporter):
