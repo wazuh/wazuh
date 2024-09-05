@@ -73,7 +73,7 @@ jobs:
           retention-days: 1
 
   documentation-apidoc:
-    name: Engine documentation generation
+    name: Engine OPENAPI documentation generation
     runs-on: ubuntu-22.04
 
     steps:

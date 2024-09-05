@@ -120,8 +120,7 @@ def run_process_and_monitor_log(request, run_on_end):
         cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
-    args = ["-c", "engine/source/vdscanner/qa/test_config/config.json",
-            "-l", "log.out",
+    args = ["-l", "log.out",
             "-s", "test.sock"]
 
     command = [cmd] + args

@@ -134,23 +134,6 @@ public:
         }
     }
 
-    /**
-     * @brief Push an event to the event queue
-     *
-     * @param eventStr The event to push
-     */
-    void pushJsonEvent(base::Event event)
-    {
-        try
-        {
-            m_eventQueue->push(std::move(event));
-        }
-        catch (const std::exception& e)
-        {
-            LOG_WARNING("Error parsing event: '{}' (discarding...)", e.what());
-        }
-    }
-
     /**************************************************************************
      * IRouterAPI
      *************************************************************************/

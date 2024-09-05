@@ -22,25 +22,7 @@ int main(const int argc, const char* argv[])
         CmdLineArgs args(argc, argv);
         logging::start({args.getLogFilePath(), logging::Level::Debug});
 
-        std::string configurationData;
-        std::ifstream file(args.getConfigurationFilePath());
-
-        if (file.is_open())
-        {
-            std::string line;
-            while (std::getline(file, line))
-            {
-                configurationData += line;
-            }
-            file.close();
-        }
-        else
-        {
-            throw std::runtime_error("Error: Unable to open configuration file.");
-        }
-
-        vdscanner::ScanOrchestrator scanOrchestrator(configurationData);
-
+        vdscanner::ScanOrchestrator scanOrchestrator;
         httplib::Server svr;
 
         svr.Post("/v1/vulnerabilityscanner",

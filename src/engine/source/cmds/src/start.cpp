@@ -401,8 +401,9 @@ void runStart(ConfHandler confManager)
 
         // VD Scanner
         {
-            vdScanner = std::make_shared<vdscanner::ScanOrchestrator>("{}");
+            vdScanner = std::make_shared<vdscanner::ScanOrchestrator>();
         }
+
         // API Server
         {
             g_apiServer = std::make_shared<apiserver::ApiServer>();
@@ -564,15 +565,6 @@ void runStart(ConfHandler confManager)
                                   [vdScanner](const auto& req, auto& res)
                                   {
                                       vdScanner->processEvent(req.body, res.body);
-                                      res.set_header("Content-Type", "application/json");
-                                  });
-
-            g_apiServer->addRoute(apiserver::Method::POST,
-                                  "/events/stateless",
-                                  [orchestrator](const auto& req, auto& res)
-                                  {
-                                      auto request = std::make_shared<json::Json>(req.body.c_str());
-                                      orchestrator->pushJsonEvent(request);
                                       res.set_header("Content-Type", "application/json");
                                   });
 
