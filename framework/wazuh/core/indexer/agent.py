@@ -161,8 +161,8 @@ class AgentsIndex(BaseIndex):
 
         Parameters
         ----------
-        group_names : List[str]
-            Groups to delete.
+        group_name : str
+            Group to delete.
         """
         query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
             .filter(IndexerKey.TERM, groups=group_name) \
@@ -195,53 +195,51 @@ class AgentsIndex(BaseIndex):
 
         return agent_ids
     
-    async def add_agents_to_group(self, agent_ids: List[str], group_name: str):
+    async def add_agents_to_group(self, group_name: str, agent_ids: List[str]):
         """Add agents to a group.
 
         Parameters
         ----------
-        agent_ids : List[str]
-            Agent IDs.
         group_name : str
             Group name.
+        agent_ids : List[str]
+            Agent IDs.
         """
-        query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
-            .filter(IndexerKey.IDS, values=agent_ids) \
-            .script(
-                source='ctx._source.groups += ","+params.group',
-                lang='painless',
-                params={'group': group_name}
-            )
-        _ = await query.execute()
+        await self._update_groups(group_name=group_name, agent_ids=agent_ids)
     
-    async def remove_agents_from_group(self, agent_ids: List[str], group_name: str):
+    async def remove_agents_from_group(self, group_name: str, agent_ids: List[str]):
         """Remove agent from a group.
 
         Parameters
         ----------
-        agent_ids : List[str]
-            Agent IDs.
         group_name : str
             Group name.
+        agent_ids : List[str]
+            Agent IDs.
+        """
+        await self._update_groups(group_name=group_name, agent_ids=agent_ids, remove=True)
+    
+    async def _update_groups(self, group_name: str, agent_ids: List[str], remove: bool = False):
+        """Add or remove group from multiple agents.
+
+        Parameters
+        ----------
+        group_name : str
+            Group name.
+        agent_ids : List[str]
+            Agent IDs.
+        remove : bool
+            Whether to remove agents from the group. By default it is added.
         """
         if remove:
-            source = self.REMOVE_GROUP_SCRIPT
+            source = 'ctx._source.groups = ctx._source.groups.replace(","+params.group, "").replace(params.group, "")'
         else:
-            if override:
-                source = 'ctx._source.groups = params.group'
-            else:
-                source = """
-                if (ctx._source.groups == null) {
-                    ctx._source.groups = params.group;
-                } else {
-                    ctx._source.groups += ","+params.group;
-                }
-                """
+            source = 'ctx._source.groups += ","+params.group'
 
         query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
             .filter(IndexerKey.IDS, values=agent_ids) \
             .script(
-                source='ctx._source.groups = ctx._source.groups.replace(","+params.group, "").replace(params.group, "")',
+                source=source,
                 lang='painless',
                 params={'group': group_name}
             )
