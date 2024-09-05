@@ -126,17 +126,14 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
     }
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-        [this,
-         selector,
-         secureCommunication,
-         getLambdaName = logging::getLambdaName(__FUNCTION__, "processEventQueue")](std::queue<std::string>& dataQueue)
+        [this, selector, secureCommunication, functionName = logging::getLambdaName(__FUNCTION__, "processEventQueue")](
+            std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
 
             if (m_stopping.load())
             {
-                const auto functionName = getLambdaName.c_str();
-                LOG_DEBUG_L(functionName, "IndexerConnector is stopping, event processing will be skipped.");
+                LOG_DEBUG_L(functionName.c_str(), "IndexerConnector is stopping, event processing will be skipped.");
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
@@ -167,17 +164,13 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
                 // Process data.
                 HTTPRequest::instance().post(
                     {HttpURL(url), bulkData, secureCommunication},
-                    {[getLambdaName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
+                    {[functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
                          const std::string& response)
-                     {
-                         const auto functionName = getLambdaName.c_str();
-                         LOG_DEBUG_L(functionName, "Response: %s", response.c_str());
-                     },
-                     [getLambdaName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
+                     { LOG_DEBUG_L(functionName.c_str(), "Response: %s", response.c_str()); },
+                     [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
                          const std::string& error, const long statusCode)
                      {
-                         const auto functionName = getLambdaName.c_str();
-                         LOG_ERROR_L(functionName, "%s, status code: %ld.", error.c_str(), statusCode);
+                         LOG_ERROR_L(functionName.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
                          throw std::runtime_error(error);
                      }});
             }

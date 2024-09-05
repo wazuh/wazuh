@@ -236,11 +236,10 @@ std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread> startLoopThread(std::
     // Prepare the loop stop handler
     auto stopHandler = loop->resource<uvw::AsyncHandle>();
     stopHandler->on<uvw::AsyncEvent>(
-        [loop, getLambdaName = logging::getLambdaName(__FUNCTION__, "stopHandler")](const uvw::AsyncEvent&,
-                                                                                    uvw::AsyncHandle& handle)
+        [loop, functionName = logging::getLambdaName(__FUNCTION__, "stopHandler")](const uvw::AsyncEvent&,
+                                                                                   uvw::AsyncHandle& handle)
         {
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, "Stopping the loop");
+            LOG_INFO_L(functionName.c_str(), "Stopping the loop");
             handle.close();
             loop->walk([](auto& handle) { handle.close(); });
             loop->stop();
@@ -248,11 +247,10 @@ std::tuple<std::shared_ptr<uvw::AsyncHandle>, std::thread> startLoopThread(std::
         });
     // Prepare the loop thread
     std::thread loopThread(
-        [loop, getLambdaName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
+        [loop, functionName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
         {
             loop->run<uvw::Loop::Mode::DEFAULT>();
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, "Loop thread finished");
+            LOG_INFO_L(functionName.c_str(), "Loop thread finished");
         });
 
     return {stopHandler, std::move(loopThread)};
@@ -267,11 +265,10 @@ startLoopThread(std::shared_ptr<uvw::Loop> loop, std::shared_ptr<ResourceCounter
     // Prepare the loop stop handler
     auto stopHandler = loop->resource<uvw::AsyncHandle>();
     stopHandler->on<uvw::AsyncEvent>(
-        [loop, getLambdaName = logging::getLambdaName(__FUNCTION__, "stopHandler")](const uvw::AsyncEvent&,
-                                                                                    uvw::AsyncHandle& handle)
+        [loop, functionName = logging::getLambdaName(__FUNCTION__, "stopHandler")](const uvw::AsyncEvent&,
+                                                                                   uvw::AsyncHandle& handle)
         {
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, "Stopping the loop");
+            LOG_INFO_L(functionName.c_str(), "Stopping the loop");
             handle.close();
             loop->walk([](auto& handle) { handle.close(); });
             loop->stop();
@@ -279,11 +276,10 @@ startLoopThread(std::shared_ptr<uvw::Loop> loop, std::shared_ptr<ResourceCounter
         });
     // Prepare the loop thread
     std::thread loopThread(
-        [loop, getLambdaName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
+        [loop, functionName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
         {
             loop->run<uvw::Loop::Mode::DEFAULT>();
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, "Loop thread finished");
+            LOG_INFO_L(functionName.c_str(), "Loop thread finished");
         });
     // Prepare the loop thread
     auto counterHandler = loop->resource<uvw::AsyncHandle>();

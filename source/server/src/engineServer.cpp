@@ -60,11 +60,8 @@ EngineServer::EngineServer(int threadPoolSize)
     m_endpoints = std::unordered_map<std::string, std::shared_ptr<Endpoint>>();
 
     m_loop->on<uvw::ErrorEvent>(
-        [getLambdaName = logging::getLambdaName(__FUNCTION__, "handleErrorEvent")](const uvw::ErrorEvent& e, uvw::Loop&)
-        {
-            const auto functionName = getLambdaName.c_str();
-            LOG_ERROR_L(functionName, "Error: {} - {}", e.name(), e.what());
-        });
+        [functionName = logging::getLambdaName(__FUNCTION__, "handleErrorEvent")](const uvw::ErrorEvent& e, uvw::Loop&)
+        { LOG_ERROR_L(functionName.c_str(), "Error: {} - {}", e.name(), e.what()); });
 }
 
 EngineServer::~EngineServer()

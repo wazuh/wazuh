@@ -209,10 +209,9 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
     // Prepare the endpoint
     UnixDatagram endpoint(
         socketPath,
-        [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "handleIncomingDataAndManageWorker")](
+        [&, functionName = logging::getLambdaName(__FUNCTION__, "handleIncomingDataAndManageWorker")](
             const std::string& data)
         {
-            const auto functionName = getLambdaName.c_str();
             if (enableBlockQueueWorkers)
             {
 
@@ -220,14 +219,14 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
                 ss << std::this_thread::get_id();
                 std::string idstr = ss.str();
 
-                LOG_INFO_L(functionName, "Block the worker id: {}", idstr);
+                LOG_INFO_L(functionName.c_str(), "Block the worker id: {}", idstr);
                 // Block the worker
                 std::unique_lock<std::mutex> lock(BlockWokersMutex);
                 BlockWokersCV.wait(lock);
-                LOG_INFO_L(functionName, "Unblock the worker id: {}", idstr);
+                LOG_INFO_L(functionName.c_str(), "Unblock the worker id: {}", idstr);
             }
             processedMessages++;
-            LOG_INFO_L(functionName,
+            LOG_INFO_L(functionName.c_str(),
                        "Processing message [{}]: {}",
                        static_cast<std::size_t>(processedMessages),
                        data.substr(0, 100).c_str());
@@ -242,11 +241,10 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
     // Prepare the loop stop handler
     auto stopHandler = loop->resource<uvw::AsyncHandle>();
     stopHandler->on<uvw::AsyncEvent>(
-        [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "stopHandler")](const uvw::AsyncEvent&,
-                                                                                 uvw::AsyncHandle& handle)
+        [&, functionName = logging::getLambdaName(__FUNCTION__, "stopHandler")](const uvw::AsyncEvent&,
+                                                                                uvw::AsyncHandle& handle)
         {
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, getLambdaName, "Stopping the loop");
+            LOG_INFO_L(functionName.c_str(), "Stopping the loop");
             handle.close();
             loop->walk([](auto& handle) { handle.close(); });
             loop->stop();
@@ -254,11 +252,10 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
         });
     // Prepare the loop thread
     std::thread loopThread(
-        [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
+        [&, functionName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
         {
             loop->run<uvw::Loop::Mode::DEFAULT>();
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, "Loop thread finished");
+            LOG_INFO_L(functionName.c_str(), "Loop thread finished");
         });
 
     // Prepare the sender thread
@@ -274,13 +271,12 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
          &sendedMessages,
          recvBufferSize,
          &isClientBlocked,
-         getLambdaName = logging::getLambdaName(__FUNCTION__, "sendThread")]()
+         functionName = logging::getLambdaName(__FUNCTION__, "sendThread")]()
         {
-            const auto functionName = getLambdaName.c_str();
             for (std::size_t i = 0; i < numMessagesToSend; ++i)
             {
                 std::string message = "Message " + std::to_string(i);
-                LOG_INFO_L(functionName,
+                LOG_INFO_L(functionName.c_str(),
                            "Sending message [{}]: {}",
                            static_cast<std::size_t>(sendedMessages),
                            message.substr(0, 100).c_str());
@@ -288,25 +284,25 @@ TEST_F(UnixDatagramTest, taskQueueSizeTestAndOverflow)
                 sendedMessages++;
             }
             // The queue is full, now fill the send buffer and resv buffer
-            LOG_INFO_L(functionName, "Queue is full");
+            LOG_INFO_L(functionName.c_str(), "Queue is full");
             // Message to fill the recv buffer
             const auto fullRecvBufferMessage = std::string(recvBufferSize, 'B');
             sendUnixDatagram(clientFD, fullRecvBufferMessage);
             sendedMessages++;
-            LOG_INFO_L(functionName, "Recv buffer is full");
+            LOG_INFO_L(functionName.c_str(), "Recv buffer is full");
             // Message to fill the send buffer
             const auto fullBufferMessage = std::string(recvBufferSize, 'A');
             sendUnixDatagram(clientFD, fullBufferMessage);
             sendedMessages++;
-            LOG_INFO_L(functionName, "Send buffer is full");
+            LOG_INFO_L(functionName.c_str(), "Send buffer is full");
 
             // Send a new message to block de client
             const auto blockMessage = std::string {"Blocked message"};
-            LOG_INFO_L(functionName, "Blocking client");
+            LOG_INFO_L(functionName.c_str(), "Blocking client");
             isClientBlocked = true;
             sendUnixDatagram(clientFD, blockMessage);
             sendedMessages++;
-            LOG_INFO_L(functionName, "Client is unblocked");
+            LOG_INFO_L(functionName.c_str(), "Client is unblocked");
             isClientBlocked = false;
         });
 
@@ -371,10 +367,9 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     // Prepare the endpoint
     UnixDatagram endpoint(
         socketPath,
-        [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "handleIncomingDataAndManageWorker")](
+        [&, functionName = logging::getLambdaName(__FUNCTION__, "handleIncomingDataAndManageWorker")](
             const std::string& data)
         {
-            const auto functionName = getLambdaName.c_str();
             if (enableBlockQueueWorkers)
             {
 
@@ -382,14 +377,14 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
                 ss << std::this_thread::get_id();
                 std::string idstr = ss.str();
 
-                LOG_INFO_L(functionName, "Block the worker id: {}", idstr);
+                LOG_INFO_L(functionName.c_str(), "Block the worker id: {}", idstr);
                 // Block the worker
                 std::unique_lock<std::mutex> lock(BlockWokersMutex);
                 BlockWokersCV.wait(lock);
-                LOG_INFO_L(functionName, "Unblock the worker id: {}", idstr);
+                LOG_INFO_L(functionName.c_str(), "Unblock the worker id: {}", idstr);
             }
             processedMessages++;
-            LOG_INFO_L(functionName,
+            LOG_INFO_L(functionName.c_str(),
                        "Processing message [{}]: {}",
                        static_cast<std::size_t>(processedMessages),
                        data.substr(0, 100).c_str());
@@ -404,11 +399,10 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
     // Prepare the loop stop handler
     auto stopHandler = loop->resource<uvw::AsyncHandle>();
     stopHandler->on<uvw::AsyncEvent>(
-        [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "stopHanlder")](const uvw::AsyncEvent&,
-                                                                                 uvw::AsyncHandle& handle)
+        [&, functionName = logging::getLambdaName(__FUNCTION__, "stopHanlder")](const uvw::AsyncEvent&,
+                                                                                uvw::AsyncHandle& handle)
         {
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, "Stopping the loop");
+            LOG_INFO_L(functionName.c_str(), "Stopping the loop");
             handle.close();
             loop->walk([](auto& handle) { handle.close(); });
             loop->stop();
@@ -416,11 +410,10 @@ TEST_F(UnixDatagramTest, StopWhenBufferIsFull)
         });
     // Prepare the loop thread
     std::thread loopThread(
-        [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
+        [&, functionName = logging::getLambdaName(__FUNCTION__, "loopThread")]()
         {
             loop->run<uvw::Loop::Mode::DEFAULT>();
-            const auto functionName = getLambdaName.c_str();
-            LOG_INFO_L(functionName, "Loop thread finished");
+            LOG_INFO_L(functionName.c_str(), "Loop thread finished");
         });
 
     // Send messages to block the queue workers
