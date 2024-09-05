@@ -290,7 +290,7 @@ Store::Store(std::shared_ptr<IDriver> driver)
     }
 
     // Load the cache
-    auto visitor = [this, getLambdaName = logging::getLambdaName(__FUNCTION__, "visitor")](
+    auto visitor = [this, functionName = logging::getLambdaName(__FUNCTION__, "visitor")](
                        const base::Name& name, const NamespaceId& nsid, auto& visitorRef) -> void
     {
         // Is a document of nsid
@@ -306,8 +306,7 @@ Store::Store(std::shared_ptr<IDriver> driver)
 
             if (!m_cache->add(*virtualName, nsid))
             {
-                const auto functionName = getLambdaName.c_str();
-                LOG_WARNING_L(functionName,
+                LOG_WARNING_L(functionName.c_str(),
                               "Document '{}' already exists in some namespace, "
                               "namespace is not consistent, will be ignored",
                               name.fullName());

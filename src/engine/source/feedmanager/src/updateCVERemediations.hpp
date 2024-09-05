@@ -75,14 +75,13 @@ public:
         std::for_each(
             remediations->begin(),
             remediations->end(),
-            [&builder, &updatesVec, getLambdaName = logging::getLambdaName(__FUNCTION__, "processRemediationUpdates")](
+            [&builder, &updatesVec, functionName = logging::getLambdaName(__FUNCTION__, "processRemediationUpdates")](
                 const cve_v5::Remediation* remediation)
             {
                 auto updatesCve5 = remediation->anyOf();
                 if (!updatesCve5)
                 {
-                    const auto functionName = getLambdaName.c_str();
-                    LOG_ERROR_L(functionName, "No updates available.");
+                    LOG_ERROR_L(functionName.c_str(), "No updates available.");
                     return;
                 }
 
