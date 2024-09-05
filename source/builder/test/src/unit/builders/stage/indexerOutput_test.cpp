@@ -128,7 +128,7 @@ MATCHER_P(StartsWith, prefix, "")
     return arg.find(prefix) == 0;
 }
 
-TEST_F(IndexerOutputOperationTest, ouput_success)
+TEST_F(IndexerOutputOperationTest, output_success)
 {
     auto iConnector = std::make_shared<indexerconnector::mocks::MockIConnector>();
     auto builder = getIndexerOutputBuilder(iConnector);
@@ -155,7 +155,7 @@ TEST_F(IndexerOutputOperationTest, ouput_success)
     ASSERT_EQ(*result.payload(), *event);
 }
 
-TEST_F(IndexerOutputOperationTest, ouput_fail)
+TEST_F(IndexerOutputOperationTest, output_fail)
 {
     std::shared_ptr<indexerconnector::mocks::MockIConnector> iConnector {nullptr};
     auto builder = getIndexerOutputBuilder(iConnector);

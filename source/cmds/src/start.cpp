@@ -298,13 +298,13 @@ void runStart(ConfHandler confManager)
             ssl["certificate_authorities"] = getEnvOrDefault("WENGINE_ICONNECTOR_CA", "");
             ssl["certificate"] = getEnvOrDefault("WENGINE_ICONNECTOR_CERT", "");
             ssl["key"] = getEnvOrDefault("WENGINE_ICONNECTOR_KEY", "");
-            if (ssl.find("certificate_authorities") != ssl.end() && ssl["certificate_authorities"] != "")
+            if (ssl.contains("certificate_authorities") && !ssl["certificate_authorities"].empty())
             {
                 indexerConfig["ssl"] = ssl;
             }
 
             // Create connector and wait until the connection is established.
-            iConnector = std::make_shared<IndexerConnector>(indexerConfig, 60, 1);
+            iConnector = std::make_shared<IndexerConnector>(indexerConfig);
         }
 
         // Builder and registry
