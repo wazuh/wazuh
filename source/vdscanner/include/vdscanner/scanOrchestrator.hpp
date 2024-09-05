@@ -17,6 +17,8 @@
 #include <nlohmann/json_fwd.hpp>
 #include <string>
 
+namespace vdscanner
+{
 enum class PayloadType
 {
     PackageList = 0,
@@ -35,7 +37,7 @@ public:
      *
      */
     // LCOV_EXCL_START
-    explicit ScanOrchestrator(const std::string& configuration);
+    ScanOrchestrator();
 
     ~ScanOrchestrator() = default;
     // LCOV_EXCL_STOP
@@ -58,7 +60,6 @@ private:
 
     std::shared_ptr<DatabaseFeedManager> m_databaseFeedManager;
     mutable std::shared_mutex m_mutex;
-    nlohmann::json m_configuration;
 };
-
+} // namespace vdscanner
 #endif // _SCAN_ORCHESTRATOR_HPP

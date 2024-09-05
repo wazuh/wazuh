@@ -20,7 +20,7 @@ from helpers import tail_log, find_regex_in_file
 
 LOGGER = logging.getLogger(__name__)
 socket_path = 'test.sock'
-endpoint = '/v1/vulnerabilityscanner'
+endpoint = '/vulnerability/scan'
 MAX_RETRY = 3
 
 def send_http_request_unixsocket(data):
@@ -112,16 +112,15 @@ def run_process_and_monitor_log(request, run_on_end):
         Path("queue/vd/inventory").rmdir()
 
     # Set the path to the binary
-    cmd = Path("engine/build/source/vdscanner/tool/", "scan_orchestrator_testtool")
-    cmd_alt = Path("engine/source/vdscanner/tool/", "scan_orchestrator_testtool")
+    cmd = Path("engine/build/source/vdscanner/tool/", "vdscanner_testtool")
+    cmd_alt = Path("engine/source/vdscanner/tool/", "vdscanner_testtool")
 
     # Ensure the binary exists
     if not cmd.exists():
         cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
-    args = ["-c", "engine/source/vdscanner/qa/test_config/config.json",
-            "-l", "log.out",
+    args = ["-l", "log.out",
             "-s", "test.sock"]
 
     command = [cmd] + args

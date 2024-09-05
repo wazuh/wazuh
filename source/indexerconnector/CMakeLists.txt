@@ -10,7 +10,7 @@ file(GLOB INDEXER_CONNECTOR_SRC
 add_library(indexerconnector STATIC
     ${INDEXER_CONNECTOR_SRC}
     )
-target_include_directories(scan_orchestrator PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
+target_include_directories(indexerconnector PUBLIC ${CMAKE_CURRENT_LIST_DIR}/include)
 target_link_libraries(indexerconnector RocksDB::rocksdb base urlrequest)
 
 add_library(indexerconnector_test INTERFACE)

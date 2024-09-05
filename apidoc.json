@@ -1,0 +1,7 @@
+{
+    "name": "Wazuh Engine API",
+    "version": "0.1.0",
+    "description": "Wazuh Engine API documentation",
+    "title": "Wazuh Engine API",
+    "url": "sockets/engine.sock"
+}
