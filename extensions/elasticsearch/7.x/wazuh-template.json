@@ -369,6 +369,7 @@
       "data.vulnerability.package.version",
       "data.vulnerability.rationale",
       "data.vulnerability.severity",
+      "data.vulnerability.status",
       "data.vulnerability.title",
       "data.vulnerability.assigner",
       "data.vulnerability.cve_version",
@@ -1933,6 +1934,9 @@
                 "type": "keyword"
               },
               "severity": {
+                "type": "keyword"
+              },
+              "status": {
                 "type": "keyword"
               },
               "title": {
