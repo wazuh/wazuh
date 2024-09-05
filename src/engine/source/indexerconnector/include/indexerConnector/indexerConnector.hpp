@@ -41,7 +41,7 @@ using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<voi
  * @brief IndexerConnector class.
  *
  */
-class EXPORTED IndexerConnector : public IIndexerConnector
+class EXPORTED IndexerConnector final : public IIndexerConnector
 {
     /**
      * @brief Initialized status.
