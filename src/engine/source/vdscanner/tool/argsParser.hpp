@@ -27,17 +27,10 @@ public:
      * @param argv Arguments.
      */
     explicit CmdLineArgs(const int argc, const char* argv[])
-        : m_configurationFilePath {paramValueOf(argc, argv, "-c")}
-        , m_logFilePath {paramValueOf(argc, argv, "-l", std::make_pair(false, "/dev/stdout"))}
+        : m_logFilePath {paramValueOf(argc, argv, "-l", std::make_pair(false, "/dev/stdout"))}
         , m_socketPath {paramValueOf(argc, argv, "-s")}
     {
     }
-
-    /**
-     * @brief Gets the configuration file path.
-     * @return Configuration file path.
-     */
-    const std::string& getConfigurationFilePath() const { return m_configurationFilePath; }
 
     /**
      * @brief Gets the log file path.
@@ -61,11 +54,11 @@ public:
         std::cout << "\nUsage: vd_scanner_testtool <option(s)>\n"
                   << "Options:\n"
                   << "\t-h \t\t\tShow this help message\n"
-                  << "\t-c CONFIG_FILE\t\tSpecifies the configuration file.\n"
+                  << "\t-s SOCKET_FILE\t\tSpecifies the socket file.\n"
                   << "\t-l LOG_FILE\t\tSpecifies the log file to write.\n"
                   << "\nExample:"
-                  << "\n\t./vd_scanner_testtool -c config.json -s test.sock\n"
-                  << "\n\t./vd_scanner_testtool -c config.json -s test.sock -l log.txt\n"
+                  << "\n\t./vd_scanner_testtool -s test.sock\n"
+                  << "\n\t./vd_scanner_testtool -s test.sock -l log.txt\n"
                   << std::endl;
     }
 
@@ -94,7 +87,6 @@ private:
         return required.second;
     }
 
-    const std::string m_configurationFilePath;
     const std::string m_logFilePath;
     const std::string m_socketPath;
 };
