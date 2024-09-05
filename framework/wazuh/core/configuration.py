@@ -414,15 +414,13 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     return data
 
 
-def get_agent_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
-    """Return agent.conf as dictionary.
+def get_group_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
+    """Return group configuration as dictionary.
 
     Parameters
     ----------
     group_id : str
-        ID of the group with the agent.conf we want to get.
-    filename : str
-        Name of the file to get. Default: 'agent.conf'
+        ID of the group with the configuration we want to get.
     raw : bool
         Respond in raw format.
 
@@ -431,30 +429,28 @@ def get_agent_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
-    WazuhError(1101)
-        Requested component does not exist.
+        group configuration does not exist or there is a problem with the permissions.
 
     Returns
     -------
     dict or str
-        agent.conf as dictionary.
+        Group configuration as dictionary.
     """
     filepath = get_group_file_path(group_id)
     if not os_path.exists(filepath):
         raise WazuhResourceNotFound(1710, group_id)
 
-    try:
-        if raw:
+    if raw:
+        try:
             # Read RAW file
             with open(filepath, 'r') as raw_data:
                 data = raw_data.read()
                 return data
-        else:
-            # Parse YAML
-            data = load_wazuh_yaml(filepath)
-    except Exception as e:
-        raise WazuhError(1101, str(e))
+        except Exception as e:
+            raise WazuhError(1006, str(e))
+
+    # Parse YAML
+    data = load_wazuh_yaml(filepath)
 
     return {'total_affected_items': len(data), 'affected_items': data}
 
@@ -589,7 +585,7 @@ def update_group_configuration(group_id: str, file_content: str) -> str:
         with open(filepath, 'w') as f:
             f.write(file_content)
     except Exception as e:
-        raise WazuhInternalError(1006, extra_message=str(e))
+        raise WazuhError(1006, extra_message=str(e))
 
     return 'Agent configuration was successfully updated'
 

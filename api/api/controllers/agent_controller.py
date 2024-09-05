@@ -840,7 +840,7 @@ async def delete_groups(groups_list: str = None, pretty: bool = False,
     dapi = DistributedAPI(f=agent.delete_groups,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -931,18 +931,16 @@ async def get_agents_in_group(group_id: str, pretty: bool = False, wait_for_comp
     offset : int
         First element to return in the collection.
     limit : int
-        Maximum number of elements to return. Default: DATABASE_LIMIT
-    select : str
-        Select which fields to return (separated by comma).
+        Maximum number of elements to return.
     sort : str
         Sorts the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
     search : str
         Look for elements with the specified string.
-    status : str
-        Filters by agent status. Use commas to enter multiple statuses.
     q : str
-        Query to filter results by. For example q&#x3D;&amp;quot;status&#x3D;active&amp;quot;
+        Query to filter results by.
+    select : str
+        Select which fields to return (separated by comma).
     distinct : bool
         Look for distinct values.
 
@@ -951,22 +949,23 @@ async def get_agents_in_group(group_id: str, pretty: bool = False, wait_for_comp
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'group_list': [group_id],
-                'offset': offset,
-                'limit': limit,
-                'sort': parse_api_param(sort, 'sort'),
-                'search': parse_api_param(search, 'search'),
-                'select': select,
-                'filters': {
-                    'status': status,
-                },
-                'q': q,
-                'distinct': distinct}
+    f_kwargs = {
+        'group_list': [group_id],
+        'offset': offset,
+        'limit': limit,
+        'sort_by': parse_api_param(sort, 'sort')['fields'] if sort is not None else ['name'],
+        'sort_ascending': True if sort is None or parse_api_param(sort, 'sort')['order'] == 'asc' else False,
+        'search_text': parse_api_param(search, 'search')['value'] if search is not None else None,
+        'complementary_search': parse_api_param(search, 'search')['negation'] if search is not None else None,
+        'q': q,
+        'select': select,
+        'distinct': distinct
+    }
 
     dapi = DistributedAPI(f=agent.get_agents_in_group,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
-                          is_async=False,
+                          is_async=True,
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies']
@@ -1009,8 +1008,7 @@ async def post_group(pretty: bool = False, wait_for_complete: bool = False) -> C
     return json_response(data, pretty=pretty)
 
 
-async def get_group_config(group_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                           offset: int = 0, limit: int = DATABASE_LIMIT) -> ConnexionResponse:
+async def get_group_config(group_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get group configuration defined in the `agent.conf` file.
 
     Parameters
@@ -1021,21 +1019,15 @@ async def get_group_config(group_id: str, pretty: bool = False, wait_for_complet
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return. Default: DATABASE_LIMIT
 
     Returns
     -------
     ConnexionResponse
         API response.
     """
-    f_kwargs = {'group_list': [group_id],
-                'offset': offset,
-                'limit': limit}
+    f_kwargs = {'group_list': [group_id]}
 
-    dapi = DistributedAPI(f=agent.get_agent_conf,
+    dapi = DistributedAPI(f=agent.get_group_conf,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
                           request_type='local_master',
                           is_async=False,

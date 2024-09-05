@@ -16,7 +16,6 @@ def get_source_items(search_result: dict) -> Iterator[str]:
     Iterator[str]
         Obtained items.
     """
-
     for item in search_result[IndexerKey.HITS][IndexerKey.HITS]:
         yield item[IndexerKey._SOURCE]
 

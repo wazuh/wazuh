@@ -751,11 +751,8 @@ async def test_get_group_config(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
     """Verify 'get_group_config' endpoint is working as expected."""
     result = await get_group_config(
                                     group_id='001')
-    f_kwargs = {'group_list': ['001'],
-                'offset': 0,
-                'limit': DATABASE_LIMIT
-                }
-    mock_dapi.assert_called_once_with(f=agent.get_agent_conf,
+    f_kwargs = {'group_list': ['001']}
+    mock_dapi.assert_called_once_with(f=agent.get_group_conf,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
                                       is_async=False,

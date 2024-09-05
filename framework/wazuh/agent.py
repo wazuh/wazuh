@@ -340,10 +340,10 @@ def get_agents(agent_list: list = None, offset: int = 0, limit: int = common.DAT
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.DATABASE_LIMIT, sort: dict = None,
-                        search: dict = None, select: dict = None, filters: dict = None,
-                        q: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
-    """Gets a list of available agents with basic attributes.
+async def get_agents_in_group(group_list: list, offset: int = 0, limit: int = None, sort_by: list = None,
+                     sort_ascending: bool = True, search_text: str = None, complementary_search: bool = False,
+                     q: str = None, select: str = None, distinct: bool = False) -> AffectedItemsWazuhResult:
+    """Gets the list of agents that belong to a specific group.
 
     Parameters
     ----------
@@ -353,16 +353,18 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
         First element to return in the collection.
     limit : int
         Maximum number of elements to return. Default: common.DATABASE_LIMIT
-    select : dict
-        Select fields to return. Format: {"fields":["field1","field2"]}.
-    sort : dict
-        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
-    search : dict
-        Look for elements with the specified string. Format: {"fields": ["field1","field2"]}
-    filters : dict
-        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+    sort_by : list
+        Fields to sort the items by.
+    sort_ascending : bool
+        Sort in ascending (true) or descending (false) order. Default: True
+    search_text : str
+        Text to search.
+    complementary_search : bool
+        Find items without the text to search. Default: False
     q : str
         Query to filter results by.
+    select : str
+        Select which fields to return (separated by comma).
     distinct : bool
         Look for distinct values.
 
@@ -376,16 +378,27 @@ def get_agents_in_group(group_list: list, offset: int = 0, limit: int = common.D
     AffectedItemsWazuhResult
         Affected items.
     """
+    group_id = group_list[0]
     system_groups = get_groups()
 
-    if group_list[0] not in system_groups:
+    if group_id not in system_groups:
         raise WazuhResourceNotFound(1710)
+    
+    result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
+                                      some_msg='Some groups information was not returned',
+                                      none_msg='No group information was returned'
+                                      )
 
-    q_group = f'group={group_list[0]}'
-    q = f'{q_group};({q})' if q else q_group
+    async with get_indexer_client() as indexer_client:
+        agents = await indexer_client.agents.get_group_agents(group_id)
 
-    return get_agents(offset=offset, limit=limit, sort=sort, search=search, select=select, filters=filters, q=q,
-     distinct=distinct)
+    data = process_array(agents, offset=offset, limit=limit, sort_by=sort_by, sort_ascending=sort_ascending, 
+            search_text=search_text, complementary_search=complementary_search, q=q, select=select,
+            distinct=distinct)
+    result.affected_items = data['items']
+    result.total_affected_items = data['totalItems']
+
+    return result
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
@@ -442,10 +455,10 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
         none_msg='No agents were deleted'
     )
 
-    async with get_indexer_client() as indexer:
+    async with get_indexer_client() as indexer_client:
         if len(agent_list) != 0:
             available_agents = get_source_items_id(
-                await indexer.agents.search(query={IndexerKey.QUERY: {IndexerKey.TERMS: {'_id': agent_list}}})
+                await indexer_client.agents.search(query={IndexerKey.QUERY: {IndexerKey.TERMS: {'_id': agent_list}}})
             )
             not_found_agents = set(agent_list) - set(available_agents)
 
@@ -455,10 +468,12 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
             agent_list = available_agents
         else:
             agent_list = get_source_items_id(
-                await indexer.agents.search(query={IndexerKey.QUERY: {IndexerKey.WILDCARD: {IndexerKey._ID: '*'}}})
+                await indexer_client.agents.search(
+                    query={IndexerKey.QUERY: {IndexerKey.WILDCARD: {IndexerKey._ID: '*'}}}
+                )
             )
 
-        deleted_items = await indexer.agents.delete(agent_list)
+        deleted_items = await indexer_client.agents.delete(agent_list)
 
     result.affected_items = deleted_items
     result.total_affected_items = len(result.affected_items)
@@ -623,7 +638,7 @@ def create_group(group_id: str) -> WazuhResult:
 
 @expose_resources(actions=["group:delete"], resources=["group:id:{group_list}"],
                   post_proc_kwargs={'exclude_codes': [1710, 1712]})
-def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
+async def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
     """Delete a list of groups and remove it from every agent assignations.
 
     Parameters
@@ -649,7 +664,7 @@ def delete_groups(group_list: list = None) -> AffectedItemsWazuhResult:
             elif group_id == 'default':
                 raise WazuhError(1712)
 
-            Agent.delete_single_group(group_id)
+            await Agent.delete_single_group(group_id)
             result.affected_items.append(group_id)
         except WazuhException as e:
             result.add_failed_item(id_=group_id, error=e)
@@ -700,26 +715,20 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
 
-    system_agents = get_agents_info()
+    async with get_indexer_client() as indexer_client:
+        response = await indexer_client.agents.search(query={IndexerKey.QUERY: {IndexerKey.MATCH_ALL: {}}})
+        available_agents = [doc[IndexerKey._ID] for doc in response[IndexerKey.HITS][IndexerKey.HITS]]
 
-    agent_list = set(agent_list)
+        # Check for non-existing agents
+        not_found_agents = set(agent_list) - set(available_agents)
+        for agent_id in not_found_agents:
+            result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+            agent_list.remove(agent_id)
 
-    # Check for non-existing agents
-    not_found_agents = agent_list - system_agents
-    for agent_id in not_found_agents:
-        result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
+        await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list)
 
-    agent_list -= not_found_agents
-
-    for agent_id in agent_list:
-        try:
-            await Agent.add_group_to_agent(group_id, agent_id, replace=replace, replace_list=replace_list)
-            result.affected_items.append(agent_id)
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
-
+    result.affected_items.extend(agent_list)
     result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=int)
 
     return result
 
@@ -807,21 +816,19 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
                                       )
 
     system_groups = get_groups()
-    system_agents = get_agents_info()
-    # Check if group exists
     if group_id not in system_groups:
         raise WazuhResourceNotFound(1710)
 
+    system_agents = get_agents_info()
     for agent_id in agent_list:
-        try:
-            if agent_id not in system_agents:
-                raise WazuhResourceNotFound(1701)
-            await Agent.unset_single_group_agent(agent_id=agent_id, group_id=group_id, force=True)
-            result.affected_items.append(agent_id)
-        except WazuhException as e:
-            result.add_failed_item(id_=agent_id, error=e)
+        if agent_id not in system_agents:
+            raise WazuhResourceNotFound(1701)
+        
+    async with get_indexer_client() as indexer_client:
+        await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=agent_list)
+    
+    result.affected_items.extend(agent_list)
     result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=int)
 
     return result
 
@@ -1117,8 +1124,8 @@ def get_agent_config(agent_list: list = None, component: str = None, config: str
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"], post_proc_func=None)
-def get_agent_conf(group_list: list = None) -> WazuhResult:
-    """Read agent conf for a specified group.
+def get_group_conf(group_list: list = None) -> WazuhResult:
+    """Read the configuration of the specified group.
 
     Parameters
     ----------
@@ -1134,8 +1141,7 @@ def get_agent_conf(group_list: list = None) -> WazuhResult:
     # a list of groups
     group_id = group_list[0]
 
-    return WazuhResult(
-        {'data': configuration.get_agent_conf(group_id=group_id)})
+    return WazuhResult({'data': configuration.get_group_conf(group_id=group_id)})
 
 
 @expose_resources(actions=["group:update_config"], resources=["group:id:{group_list}"], post_proc_func=None)

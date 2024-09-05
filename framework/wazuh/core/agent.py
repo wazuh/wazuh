@@ -20,6 +20,7 @@ from wazuh.core.cluster.utils import get_manager_status
 from wazuh.core.common import AGENT_COMPONENT_STATS_REQUIRED_VERSION, DATE_FORMAT
 from wazuh.core.exception import WazuhException, WazuhError, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
+from wazuh.core.indexer.models.agent import Agent as IndexerAgent
 from wazuh.core.utils import WazuhVersion, plain_dict_to_nested_dict, get_fields_to_nest, WazuhDBQuery, \
     WazuhDBQueryDistinct, WazuhDBQueryGroupBy, WazuhDBBackend, get_utc_now, get_utc_strptime, \
     get_date_from_timestamp, get_group_file_path, GROUP_FILE_EXT
@@ -789,21 +790,24 @@ class Agent:
 
         Parameters
         ----------
-        group_id : str
-            Group ID.
+        group_name : str
+            Group name.
 
         Returns
         -------
         dict
             Confirmation message.
         """
-        # Delete group directory
+        async with get_indexer_client() as indexer_client:
+            await indexer_client.agents.delete_group(group_name)
+
+        # Delete group file
         group_path = get_group_file_path(group_name)
         if path.exists(group_path):
-            remove(group_path)
-
-        async with get_indexer_client() as indexer_client:
-            await indexer_client.agents.delete_groups(group_names=[group_name])
+            try:
+                remove(group_path)
+            except Exception as e:
+                raise WazuhError(1006, extra_message=str(e))
 
         msg = "Group '{0}' deleted.".format(group_name)
         return {'message': msg}
@@ -858,61 +862,6 @@ class Agent:
         return data
 
     @staticmethod
-    async def add_group_to_agent(group_id: str, agent_id: str, replace: bool = False, replace_list: list = None) -> str:
-        """Add an existing group to an agent.
-
-        Parameters
-        ----------
-        group_id: str
-            Name of the group.
-        agent_id: str
-            ID of the agent.
-        replace: bool
-            Whether to append new group to current agent's group or replace it.
-        replace_list: list
-            List of group names that can be replaced.
-
-        Raises
-        ------
-        WazuhInternalError(2007)
-            Body is empty.
-        WazuhError(1752)
-            Could not force single group for the agent.
-        WazuhError(1737)
-            Maximum number of groups reached.
-
-        Returns
-        -------
-        str
-            Confirmation message with agent and group IDs.
-        """
-        if replace_list is None:
-            replace_list = []
-
-        # Get agent's group
-        try:
-            agent_groups = set(await Agent.get_agent_groups(agent_id))
-        except Exception as e:
-            raise WazuhInternalError(2007, extra_message=str(e))
-
-        if replace:
-            if not agent_groups.issubset(set(replace_list)):
-                raise WazuhError(1752)
-        else:
-            # Check if the group already belongs to the agent
-            if group_id in agent_groups:
-                raise WazuhError(1751)
-
-        # Check multigroup limit
-        if len(agent_groups) >= common.MAX_GROUPS_PER_MULTIGROUP:
-            raise WazuhError(1737)
-
-        # Update group
-        await Agent.set_agent_group_relationship(agent_id, group_id, override=replace)
-
-        return f"Agent {agent_id} assigned to {group_id}"
-
-    @staticmethod
     def check_if_delete_agent(id: str, seconds: int) -> bool:
         """Check if we should remove an agent: if time from last connection is greater than <seconds>.
 
@@ -948,6 +897,23 @@ class Agent:
                         remove_agent = True
 
         return remove_agent
+    
+    @staticmethod
+    async def get(agent_id: str) -> IndexerAgent:
+        """Get agent.
+
+        Parameters
+        ----------
+        agent_id : str
+            Agent ID.
+
+        Returns
+        -------
+        IndexerAgent
+            Agent information.
+        """
+        async with get_indexer_client() as indexer_client:
+            return await indexer_client.agents.get(agent_id)
 
     @staticmethod
     def group_exists(group_id: str) -> bool:
@@ -972,10 +938,7 @@ class Agent:
         if not InputValidator().group(group_id):
             raise WazuhError(1722)
 
-        if path.exists(get_group_file_path(group_id)):
-            return True
-        else:
-            return False
+        return path.exists(get_group_file_path(group_id))
 
     @staticmethod
     async def get_agent_groups(agent_id: str) -> List[str]:
@@ -1010,25 +973,13 @@ class Agent:
         override : bool
             Replace all groups with the specified one. Only works if `remove` is False.
         """
-        # TODO(#25121): Update function to accept multiple groups.
         async with get_indexer_client() as indexer_client:
-            agent = await indexer_client.agents.get(agent_id)
-
-            groups = agent.groups.split(GROUPS_SEPARATOR)
             if remove:
-                try:
-                    groups.remove(group_id)
-                except ValueError:
-                    raise WazuhError(1734)
-            else:
-                if override:
-                    groups = [group_id]
-                else:
-                    groups.append(group_id)
-            
-            agent.groups = ','.join(groups)
-
-            _ = await indexer_client.agents.update(agent_id, agent)
+                await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=[agent_id])
+                return
+        
+            await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=[agent_id], 
+                                                            override=override)
 
     @staticmethod
     async def unset_single_group_agent(agent_id: str, group_id: str, force: bool = False) -> str:
@@ -1059,14 +1010,13 @@ class Agent:
         """
         if not force:
             # Check if agent and the group exists
-            Agent(agent_id).get_basic_information()
-
+            _ = await Agent.get(agent_id)
+        
             if not Agent.group_exists(group_id):
                 raise WazuhResourceNotFound(1710)
 
         # Get agent's group
         group_list = set(await Agent.get_agent_groups(agent_id))
-        set_default = False
 
         # Check agent belongs to group group_id
         if group_id not in group_list:
@@ -1074,14 +1024,10 @@ class Agent:
         elif len(group_list) == 1:
             if group_id == 'default':
                 raise WazuhError(1745)
-            else:
-                set_default = True
 
-        # Update group file
         await Agent.set_agent_group_relationship(agent_id, group_id, remove=True)
 
-        return f"Agent '{agent_id}' removed from '{group_id}'." + (" Agent reassigned to group default."
-                                                                   if set_default else "")
+        return f"Agent '{agent_id}' removed from '{group_id}'."
 
     def get_config(self, component: str = '', config: str = '', agent_version: str = '') -> dict:
         """Read agent's loaded configuration.
@@ -1252,7 +1198,8 @@ def get_groups() -> set:
     groups = set()
     for group_file in listdir(common.SHARED_PATH):
         filepath = Path(group_file)
-        if filepath.suffix == GROUP_FILE_EXT:
+        # TODO(#25121): Remove second condition once those files are not longer present
+        if filepath.suffix == GROUP_FILE_EXT and filepath.stem not in ('agent-template', 'ar'):
             groups.add(filepath.stem)
 
     return groups

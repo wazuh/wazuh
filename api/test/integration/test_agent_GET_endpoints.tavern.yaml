@@ -2702,8 +2702,6 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
     response:
       status_code: 200
       json: &groups_id_config_response
@@ -2721,8 +2719,6 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
     response:
       <<: *resource_not_found_group
 
@@ -2733,91 +2729,10 @@ stages:
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
-      params:
-        limit: 1
     response:
       status_code: 400
       json:
         <<: *error_spec
-
-  - name: Pagination
-    request:
-      verify: False
-      <<: *groups_id_config_request
-      params:
-        offset: 0
-        limit: 1
-    response:
-      status_code: 200
-      json:
-        <<: *groups_id_config_response
-
-  - name: Try show agents with offset -1
-    request:
-      verify: False
-      <<: *groups_id_config_request
-      params:
-        offset: -1
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
-
-  - name: Try show agents with offset not integer value
-    request:
-      verify: False
-      <<: *groups_id_config_request
-      params:
-        offset: wrong_offset
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
-
-  - name: Try show agents with offset too large 9999999999999999999
-    request:
-      verify: False
-      <<: *groups_id_config_request
-      params:
-        offset: 9999999999999999999
-    response:
-      status_code: 200
-      json:
-        error: 0
-        data:
-          affected_items: []
-          total_affected_items: 1
-
-  - name: Try show agents with limit 0
-    request:
-      verify: False
-      <<: *groups_id_config_request
-      params:
-        limit: 0
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
-
-  - name: Try show agents with limit not integer value
-    request:
-      verify: False
-      <<: *groups_id_config_request
-      params:
-        limit: wrong_limit
-    response:
-      status_code: 400
-      json:
-        <<: *error_spec
-
-  - name: Try show agents with limit 999999
-    request:
-      verify: False
-      <<: *groups_id_config_request
-      params:
-        limit: 999999
-    response:
-      status_code: 400
 
 ---
 test_name: GET /agents?name=agent_name

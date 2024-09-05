@@ -4,7 +4,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import os
-import shutil
 import sys
 from grp import getgrnam
 from json import dumps
@@ -29,11 +28,10 @@ with patch('wazuh.core.common.wazuh_uid'):
             ERROR_CODES_UPGRADE_SOCKET,
             ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST,
             add_agent,
-            assign_agents_to_group,
             create_group,
             delete_agents,
             delete_groups,
-            get_agent_conf,
+            get_group_conf,
             get_agent_config,
             get_agent_groups,
             get_agents,
@@ -677,86 +675,6 @@ def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expec
     assert len(result.failed_items.keys()) == len(expected_errors)
     assert set(result.failed_items.keys()).difference(set(expected_errors)) == set()
 
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('group_list, agent_list, num_failed', [
-    (['group-1'], ['001'], 0),
-    (['group-1'], ['001', '002', '003', '100'], 1)
-])
-@patch('wazuh.agent.Agent.add_group_to_agent')
-@patch('wazuh.core.agent.Agent.group_exists', return_value=True)
-async def test_assign_agents_to_group(group_exists_mock, add_group_mock, group_list, agent_list, num_failed):
-    """Test `assign_agents_to_group` function from agent module. Does not check its raised exceptions.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of group to apply to the agents
-    agent_list : List of str
-        List of agent ID's.
-    num_failed : int
-        Number of expected failed_items
-    """
-    result = await assign_agents_to_group(group_list, agent_list)
-    # Check typing
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert isinstance(result.affected_items, list)
-    # Check affected items
-    assert result.total_affected_items == len(result.affected_items)
-    assert set(result.affected_items).difference(set(agent_list)) == set()
-    # Check if the number of affected items matches the number of times `add_group_to_agent` was called
-    # `agent_list` must only have those agent IDs without exceptions at this level
-    assert len(result.affected_items) == add_group_mock.call_count
-    # Check failed items
-    assert result.total_failed_items == num_failed
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['none-1'], ['001'], WazuhResourceNotFound(1710), True),
-    (['group-1'], ['100'], WazuhResourceNotFound(1701), False),
-])
-@patch('wazuh.agent.Agent.group_exists')
-@patch('wazuh.agent.Agent.add_group_to_agent')
-async def test_agent_assign_agents_to_group_exceptions(mock_add_group, mock_group_exists, group_list, agent_list,
-                                                       expected_error, catch_exception):
-    """Test that the `assign_agents_to_group` function raises the expected exceptions when using invalid groups.
-
-    Parameters
-    ----------
-    group_list : List of str
-        List of group to apply to the agents
-    agent_list : List of str
-        List of agent ID's.
-    expected_error : WazuhError
-        Expected exception to be raised by `assign_agents_to_group` function using the specified parameters.
-    catch_exception : bool
-        True if the exception will be raised by the function and must be caught. False if the function must return an
-        `AffectedItemsWazuhResult` containing the exceptions in its 'failed_items'.
-    """
-
-    def group_exists(group_id):
-        return group_id != 'none-1'
-
-    def add_group_to_agent(group_id, agent_id, replace=False, replace_list=None):
-        return f"Agent {agent_id} assigned to {group_id}"
-
-    mock_group_exists.side_effect = group_exists
-    mock_add_group.side_effect = add_group_to_agent
-    try:
-        result = await assign_agents_to_group(group_list, agent_list)
-        assert not catch_exception
-        assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-        assert isinstance(result.failed_items, dict)
-        # Check failed items
-        assert result.total_failed_items == len(group_list)
-        assert result.total_failed_items == len(result.failed_items)
-        assert set(result.failed_items.keys()).difference({expected_error}) == set()
-    except WazuhException as ex:
-        assert catch_exception
-        assert ex == expected_error
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize('group_list, agent_list', [
     (['group-1'], ['001'])
@@ -1206,15 +1124,15 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
     ['group-1']
 ])
 @patch('wazuh.core.common.SHARED_PATH', new=test_shared_path)
-def test_agent_get_agent_conf(group_list):
-    """Test `get_agent_agent_conf` function from agent module.
+def test_agent_get_group_conf(group_list):
+    """Test `get_group_conf` function from agent module.
 
     Parameters
     ----------
     group_list : List of str
         List of group names.
     """
-    result = get_agent_conf(group_list=group_list)
+    result = get_group_conf(group_list=group_list)
     assert isinstance(result, WazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert 'total_affected_items' in result.dikt['data']
     assert result.dikt['data']['total_affected_items'] == 1

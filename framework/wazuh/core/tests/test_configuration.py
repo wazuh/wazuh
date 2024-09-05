@@ -214,16 +214,16 @@ def test_get_ossec_conf():
 
 def test_get_agent_conf():
     with pytest.raises(WazuhError, match=".* 1710 .*"):
-        configuration.get_agent_conf(group_id='noexists')
+        configuration.get_group_conf(group_id='noexists')
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.load_wazuh_yaml', side_effect=Exception):
             with pytest.raises(WazuhError, match=".* 1101 .*"):
-                result = configuration.get_agent_conf(group_id='default')
+                result = configuration.get_group_conf(group_id='default')
                 assert isinstance(result, dict)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        assert configuration.get_agent_conf(group_id='default')['total_affected_items'] == 1
+        assert configuration.get_group_conf(group_id='default')['total_affected_items'] == 1
 
 
 def test_parse_internal_options():

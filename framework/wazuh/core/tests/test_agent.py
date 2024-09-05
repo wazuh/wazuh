@@ -900,62 +900,6 @@ def test_agent_get_agents_overview_sort(socket_mock, send_mock, sort, first_id):
     assert agents['items'][0]['id'] == first_id
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize("agent_id, group_id, replace, replace_list", [
-    ('002', 'test_group', False, None),
-    ('002', 'test_group', True, ['default']),
-])
-@patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])
-@patch('wazuh.core.agent.Agent.set_agent_group_relationship')
-async def test_agent_add_group_to_agent(set_agent_group_mock, agent_groups_mock, agent_id, group_id, replace, replace_list):
-    """Test if add_group_to_agent() works as expected and uses the correct parameters.
-
-    Parameters
-    ----------
-    agent_id : str
-        Id of the agent to be searched.
-    group_id : str
-        Name of the group to be added.
-    replace : bool
-        Whether to append new group to current agent's group or replace it.
-    replace_list : list
-        List of Group names that can be replaced.
-    """
-    # Run the method with different options
-    result = await Agent.add_group_to_agent(group_id, agent_id, replace, replace_list)
-    assert result == f'Agent {agent_id} assigned to {group_id}', 'Result is not the expected one'
-    set_agent_group_mock.assert_called_once_with(agent_id, group_id, override=replace)
-
-
-@pytest.mark.asyncio
-@patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])
-@patch('wazuh.core.indexer.Indexer._get_opensearch_client', new_callable=AsyncMock)
-@patch('wazuh.core.indexer.Indexer.connect')
-@patch('wazuh.core.indexer.Indexer.close')
-async def test_agent_add_group_to_agent_ko(agent_groups_mock, get_opensearch_client_mock, connect_mock, close_mock):
-    """Test if add_group_to_agent() raises expected exceptions"""
-    max_groups_number = 128
-
-    # Error getting agent groups
-    with patch('wazuh.core.agent.Agent.get_agent_groups', side_effect=WazuhError(2003)):
-        with pytest.raises(WazuhInternalError, match='.* 2007 .*'):
-            await Agent.add_group_to_agent('test_group', '002')
-
-    # Group cannot be replaced because it is not in replace_list (not enough permissions in rbac)
-    with pytest.raises(WazuhError, match='.* 1752 .*'):
-        await Agent.add_group_to_agent('test_group', '002', replace=True, replace_list=['other'])
-
-    # The group already belongs to the agent
-    with pytest.raises(WazuhError, match='.* 1751 .*'):
-        await Agent.add_group_to_agent('default', '002')
-
-    with patch('wazuh.core.agent.Agent.get_agent_groups',
-               return_value=[f'group_{i}' for i in range(max_groups_number)]):
-        # Multigroup limit exceeded.
-        with pytest.raises(WazuhError, match='.* 1737 .*'):
-            await Agent.add_group_to_agent('test_group', '002')
-
-
 @pytest.mark.parametrize("agent_id, seconds, expected_result", [
     ('002', 10, True),
     ('002', 700, False)
