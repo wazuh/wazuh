@@ -195,7 +195,7 @@ class AgentsIndex(BaseIndex):
 
         return agent_ids
     
-    async def add_agents_to_group(self, group_name: str, agent_ids: List[str]):
+    async def add_agents_to_group(self, group_name: str, agent_ids: List[str], override: bool = False):
         """Add agents to a group.
 
         Parameters
@@ -204,8 +204,10 @@ class AgentsIndex(BaseIndex):
             Group name.
         agent_ids : List[str]
             Agent IDs.
+        override : bool
+            Replace all groups with the specified one.
         """
-        await self._update_groups(group_name=group_name, agent_ids=agent_ids)
+        await self._update_groups(group_name=group_name, agent_ids=agent_ids, override=override)
     
     async def remove_agents_from_group(self, group_name: str, agent_ids: List[str]):
         """Remove agent from a group.
@@ -219,7 +221,7 @@ class AgentsIndex(BaseIndex):
         """
         await self._update_groups(group_name=group_name, agent_ids=agent_ids, remove=True)
     
-    async def _update_groups(self, group_name: str, agent_ids: List[str], remove: bool = False):
+    async def _update_groups(self, group_name: str, agent_ids: List[str], remove: bool = False, override: bool = False):
         """Add or remove group from multiple agents.
 
         Parameters
@@ -230,11 +232,16 @@ class AgentsIndex(BaseIndex):
             Agent IDs.
         remove : bool
             Whether to remove agents from the group. By default it is added.
+        override : bool
+            Replace all groups with the specified one. Only works if `remove` is False.
         """
         if remove:
             source = 'ctx._source.groups = ctx._source.groups.replace(","+params.group, "").replace(params.group, "")'
         else:
-            source = 'ctx._source.groups += ","+params.group'
+            if override:
+                source = 'ctx._source.groups = params.group'
+            else:
+                source = 'ctx._source.groups += ","+params.group'
 
         query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
             .filter(IndexerKey.IDS, values=agent_ids) \

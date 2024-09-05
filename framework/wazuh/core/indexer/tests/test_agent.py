@@ -127,15 +127,16 @@ class TestAgentIndex:
 
         assert result == expected_result
 
-    async def test_add_agents_to_group(self, index_instance: AgentsIndex):
+    @pytest.mark.parametrize('override', [False, True])
+    async def test_add_agents_to_group(self, index_instance: AgentsIndex, override):
         """Check the correct function of `add_agents_to_group` method."""
         group_name = 'foo'
         agent_ids = ['0191c234-6dfa-7776-807a-2e38fbf42c5b', '0191c234-6dfa-747d-97af-4d8f2220252d']
 
         with mock.patch('wazuh.core.indexer.agent.AgentsIndex._update_groups') as mock_update:
-            await index_instance.add_agents_to_group(group_name=group_name, agent_ids=agent_ids)
+            await index_instance.add_agents_to_group(group_name=group_name, agent_ids=agent_ids, override=override)
 
-        mock_update.assert_called_once_with(group_name=group_name, agent_ids=agent_ids)
+        mock_update.assert_called_once_with(group_name=group_name, agent_ids=agent_ids, override=override)
     
     async def test_remove_agents_from_group(self, index_instance: AgentsIndex):
         """Check the correct function of `remove_agents_from_group` method."""
@@ -147,11 +148,17 @@ class TestAgentIndex:
 
         mock_update.assert_called_once_with(group_name=group_name, agent_ids=agent_ids, remove=True)
     
-    async def test__update_groups_add(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
+    @pytest.mark.parametrize('override', [False, True])
+    async def test__update_groups_add(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock, override):
         """Check the correct function of `_update_groups` method."""
         group_name = 'foo'
         agent_ids = ['0191c234-6dfa-7776-807a-2e38fbf42c5b', '0191c234-6dfa-747d-97af-4d8f2220252d']
-        await index_instance._update_groups(group_name=group_name, agent_ids=agent_ids)
+        await index_instance._update_groups(group_name=group_name, agent_ids=agent_ids, override=override)
+
+        if override:
+            source = 'ctx._source.groups = params.group'
+        else:
+            source = 'ctx._source.groups += ","+params.group'
 
         query = {
             IndexerKey.QUERY: {
@@ -164,7 +171,7 @@ class TestAgentIndex:
                 }
             }, 
             'script': {
-                'source': 'ctx._source.groups += ","+params.group',
+                'source': source,
                 'lang': 'painless', 
                 'params': {
                     'group': group_name
