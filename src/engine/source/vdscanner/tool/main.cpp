@@ -25,7 +25,7 @@ int main(const int argc, const char* argv[])
         vdscanner::ScanOrchestrator scanOrchestrator;
         httplib::Server svr;
 
-        svr.Post("/v1/vulnerabilityscanner",
+        svr.Post("/vulnerability/scan",
                  [&](const httplib::Request& req, httplib::Response& res)
                  {
                      std::string response;
