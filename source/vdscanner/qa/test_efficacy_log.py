@@ -20,7 +20,7 @@ from helpers import tail_log, find_regex_in_file
 
 LOGGER = logging.getLogger(__name__)
 socket_path = 'test.sock'
-endpoint = '/v1/vulnerabilityscanner'
+endpoint = '/vulnerability/scan'
 MAX_RETRY = 3
 
 def send_http_request_unixsocket(data):
