@@ -89,22 +89,25 @@ class AgentForce(Model):
 
 class AgentAddedModel(Body):
 
-    def __init__(self, id: str = None, name: str = None, key: str = None):
+    def __init__(self, id: str = None, name: str = None, key: str = None, groups: str = None):
         self.swagger_types = {
             'id': str,
             'name': str,
             'key': str,
+            'groups': str
         }
 
         self.attribute_map = {
             'id': 'id',
             'name': 'name',
-            'key': 'key'
+            'key': 'key',
+            'groups': 'groups'
         }
 
         self._name = name
         self._id = id
         self._key = key
+        self._groups = groups
 
     @property
     def id(self) -> str:
@@ -150,3 +153,18 @@ class AgentAddedModel(Body):
         :param key: Agent key
         """
         self._key = key
+    
+    @property
+    def groups(self):
+        """
+        :return: Agent groups
+        :rtype: str
+        """
+        return self._groups
+
+    @groups.setter
+    def groups(self, groups):
+        """
+        :param groups: Agent groups
+        """
+        self._groups = groups
