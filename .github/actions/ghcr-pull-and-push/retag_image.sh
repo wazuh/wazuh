@@ -1,4 +1,4 @@
-set -x
+set -ex
 GITHUB_PUSH_SECRET=$1
 GITHUB_USER=$2
 OLD_TAG=$3
