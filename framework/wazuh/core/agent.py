@@ -960,7 +960,7 @@ class Agent:
         """
         async with get_indexer_client() as indexer_client:
             agent = await indexer_client.agents.get(agent_id)
-            return agent.groups.split(GROUPS_SEPARATOR)
+            return agent.groups.split(GROUPS_SEPARATOR) if agent.groups else []
 
     @staticmethod
     async def set_agent_group_relationship(agent_id: str, group_id: str, remove: bool = False, override: bool = False):

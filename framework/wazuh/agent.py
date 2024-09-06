@@ -24,7 +24,7 @@ from wazuh.core.cluster.utils import read_cluster_config
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhResourceNotFound
 from wazuh.core.indexer import get_indexer_client
 from wazuh.core.indexer.base import IndexerKey
-from wazuh.core.indexer.utils import get_source_items_id
+from wazuh.core.indexer.utils import get_document_ids
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
 from wazuh.core.utils import (
@@ -378,23 +378,24 @@ async def get_agents_in_group(group_list: list, offset: int = 0, limit: int = No
     AffectedItemsWazuhResult
         Affected items.
     """
-    group_id = group_list[0]
-    system_groups = get_groups()
-
-    if group_id not in system_groups:
-        raise WazuhResourceNotFound(1710)
-    
     result = AffectedItemsWazuhResult(all_msg='All selected groups information was returned',
                                       some_msg='Some groups information was not returned',
                                       none_msg='No group information was returned'
                                       )
 
+    group_id = group_list[0]
+    system_groups = get_groups()
+
+    if group_id not in system_groups:
+        raise WazuhResourceNotFound(1710)
+
     async with get_indexer_client() as indexer_client:
         agents = await indexer_client.agents.get_group_agents(group_id)
 
-    data = process_array(agents, offset=offset, limit=limit, sort_by=sort_by, sort_ascending=sort_ascending, 
+    data = process_array(agents, offset=offset, limit=limit, sort_by=sort_by, sort_ascending=sort_ascending,
             search_text=search_text, complementary_search=complementary_search, q=q, select=select,
-            distinct=distinct)
+            distinct=distinct, allowed_select_fields=Agent.new_fields, allowed_sort_fields=Agent.new_fields)
+
     result.affected_items = data['items']
     result.total_affected_items = data['totalItems']
 
@@ -457,7 +458,7 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
 
     async with get_indexer_client() as indexer_client:
         if len(agent_list) != 0:
-            available_agents = get_source_items_id(
+            available_agents = get_document_ids(
                 await indexer_client.agents.search(query={IndexerKey.QUERY: {IndexerKey.TERMS: {'_id': agent_list}}})
             )
             not_found_agents = set(agent_list) - set(available_agents)
@@ -467,7 +468,7 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
 
             agent_list = available_agents
         else:
-            agent_list = get_source_items_id(
+            agent_list = get_document_ids(
                 await indexer_client.agents.search(
                     query={IndexerKey.QUERY: {IndexerKey.WILDCARD: {IndexerKey._ID: '*'}}}
                 )
@@ -482,17 +483,19 @@ async def delete_agents(agent_list: list) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=["agent:create"], resources=["*:*:*"], post_proc_func=None)
-async def add_agent(id: str, name: str, key: str) -> WazuhResult:
+async def add_agent(id: str, name: str, key: str, groups: str = None) -> WazuhResult:
     """Add a new Wazuh agent.
 
     Parameters
     ----------
     id : str
-        ID of the new agent.
+        New agent ID.
     name : str
-        Name of the new agent.
+        New agent name.
     key : str
-        Key of the new agent.
+        New agent key.
+    groups : str
+        New agent groups.
 
     Raises
     ------
@@ -509,9 +512,9 @@ async def add_agent(id: str, name: str, key: str) -> WazuhResult:
         raise WazuhError(1738)
 
     async with get_indexer_client() as indexer:
-        new_agent = await indexer.agents.create(id=id, name=name, key=key)
+        new_agent = await indexer.agents.create(id=id, name=name, key=key, groups=groups)
 
-    return WazuhResult({'data': {'id': new_agent.id, 'key': new_agent.key}})
+    return WazuhResult({'data': new_agent})
 
 
 @expose_resources(actions=["group:read"], resources=["group:id:{group_list}"],
@@ -715,16 +718,19 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
     if not Agent.group_exists(group_id):
         raise WazuhResourceNotFound(1710)
 
+    if len(agent_list) != 0:
+        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
+    else:
+        query = {IndexerKey.MATCH_ALL: {}}
+
     async with get_indexer_client() as indexer_client:
-        response = await indexer_client.agents.search(query={IndexerKey.QUERY: {IndexerKey.MATCH_ALL: {}}})
-        available_agents = [doc[IndexerKey._ID] for doc in response[IndexerKey.HITS][IndexerKey.HITS]]
+        response = await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+        available_agents = get_document_ids(response)
 
-        # Check for non-existing agents
-        not_found_agents = set(agent_list) - set(available_agents)
-        for agent_id in not_found_agents:
-            result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
-            agent_list.remove(agent_id)
-
+        for not_found_id in set(agent_list) - set(available_agents):
+            result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
+            agent_list.remove(not_found_id)
+            
         await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list)
 
     result.affected_items.extend(agent_list)
@@ -763,8 +769,7 @@ async def remove_agent_from_groups(agent_list: list = None, group_list: list = N
                                       )
 
     # Check if agent exists
-    if agent_id not in get_agents_info():
-        raise WazuhResourceNotFound(1701)
+    _ = await Agent.get(agent_id)
 
     # We move default group to last position in case it is contained in group_list. When an agent is removed from all
     # groups it is reverted to 'default'. We try default last to avoid removing it and then adding again.
@@ -819,12 +824,19 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
     if group_id not in system_groups:
         raise WazuhResourceNotFound(1710)
 
-    system_agents = get_agents_info()
-    for agent_id in agent_list:
-        if agent_id not in system_agents:
-            raise WazuhResourceNotFound(1701)
-        
+    if len(agent_list) != 0:
+        query = {IndexerKey.TERMS: {IndexerKey._ID: agent_list}}
+    else:
+        query = {IndexerKey.MATCH_ALL: {}}
+
     async with get_indexer_client() as indexer_client:
+        response = await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+        available_agents = get_document_ids(response)
+
+        for not_found_id in set(agent_list) - set(available_agents):
+            result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
+            agent_list.remove(not_found_id)
+        
         await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=agent_list)
     
     result.affected_items.extend(agent_list)
