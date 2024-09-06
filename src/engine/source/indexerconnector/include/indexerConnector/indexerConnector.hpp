@@ -12,9 +12,17 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
-#include "base/utils/threadEventDispatcher.hpp"
+#include <atomic>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <queue>
+
 #include <nlohmann/json.hpp>
-#include <string>
+
+#include <base/utils/threadEventDispatcher.hpp>
+
+#include <indexerConnector/iindexerconnector.hpp>
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
@@ -33,7 +41,7 @@ using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<voi
  * @brief IndexerConnector class.
  *
  */
-class EXPORTED IndexerConnector final
+class EXPORTED IndexerConnector final : public IIndexerConnector
 {
     /**
      * @brief Initialized status.
@@ -53,6 +61,18 @@ public:
      * @param timeout Server selector time interval.
      * @param workingThreads Number of working threads used by the dispatcher. More than one results in an unordered
      * processing.
+     * @note Example of the configuration:
+     *  {
+     *      "name": "wazuh-alerts-5.x",
+     *      "host": ["localhost:9200"],
+     *      "user": "admin",
+     *      "password": "admin",
+     *      "ssl": {
+     *          "certificate_authorities": "/etc/ssl/certs/ca.pem",
+     *          "certificate": "/etc/ssl/certs/cert.pem",
+     *          "key": "/etc/ssl/certs/key.pem"
+     *      }
+     *  }
      */
     explicit IndexerConnector(const nlohmann::json& config,
                               const uint32_t& timeout = DEFAULT_INTERVAL,
@@ -61,9 +81,7 @@ public:
     ~IndexerConnector();
 
     /**
-     * @brief Publish a message into the queue map.
-     *
-     * @param message Message to be published.
+     * @copydoc IIndexerConnector::publish
      */
     void publish(const std::string& message);
 };
