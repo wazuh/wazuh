@@ -916,8 +916,7 @@ async def get_list_group(pretty: bool = False, wait_for_complete: bool = False,
 
 async def get_agents_in_group(group_id: str, pretty: bool = False, wait_for_complete: bool = False,
                               offset: int = 0, limit: int = DATABASE_LIMIT, select: str = None, sort: str = None,
-                              search: str = None, status: str = None, q: str = None,
-                              distinct: bool = False) -> ConnexionResponse:
+                              search: str = None, q: str = None, distinct: bool = False) -> ConnexionResponse:
     """Get the list of agents that belongs to the specified group.
 
     Parameters
