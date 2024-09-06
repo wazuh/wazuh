@@ -33,41 +33,44 @@ class AgentsIndex(BaseIndex):
     ctx._source.groups = groups_str;
     """
 
-    async def create(self, id: str, key: str, name: str) -> Agent:
+    async def create(self, id: str, key: str, name: str, groups: str = None) -> dict:
         """Create a new agent.
 
         Parameters
         ----------
         id : str
-            Identifier of the new agent.
-        key : str
-            Key of the new agent.
+            New agent ID.
         name : str
-            Name of the new agent.
-
-        Returns
-        -------
-        Agent
-            The created agent instance.
+            New agent name.
+        key : str
+            New agent key.
+        groups : str
+            New agent groups.
 
         Raises
         ------
         WazuhError(1708)
             When already exists an agent with the provided id.
+
+        Returns
+        -------
+        agent_dict : dict
+            The created agent instance in a dictionary.
         """
-        agent = Agent(raw_key=key, name=name)
+        agent = Agent(raw_key=key, name=name, groups='default' + f',{groups}' if groups else '')
+        agent_dict = asdict(agent, dict_factory=remove_empty_values)
         try:
             await self._client.index(
                 index=self.INDEX,
-                id=agent.id,
-                body=asdict(agent),
+                id=id,
+                body=agent_dict,
                 op_type='create',
                 refresh='wait_for'
             )
         except exceptions.ConflictError:
             raise WazuhError(1708, extra_message=id)
-        else:
-            return agent
+        
+        return agent_dict
 
     async def delete(self, ids: List[str]) -> list:
         """Delete multiple agents that match with the given parameters.
@@ -173,7 +176,7 @@ class AgentsIndex(BaseIndex):
             )
         _ = await query.execute()
     
-    async def get_group_agents(self, group_name: str) -> List[Agent]:
+    async def get_group_agents(self, group_name: str) -> List[dict]:
         """Get the agents belonging to a specific group.
         
         Parameters
@@ -183,17 +186,20 @@ class AgentsIndex(BaseIndex):
 
         Returns
         -------
-        List[Agent]
+        agents : List[dict]
             Agents list.
         """
         query = AsyncSearch(using=self._client, index=self.INDEX).filter(IndexerKey.TERM, groups=group_name)
         response = await query.execute()
 
-        agent_ids = []
+        agents = []
         for hit in response:
-            agent_ids.append(Agent(id=hit.meta.id, **hit.to_dict()))
+            agent = Agent(id=hit.meta.id, **hit.to_dict())
+            if agent.groups is not None:
+                agent.groups = agent.groups.split(',')
+            agents.append(asdict(agent, dict_factory=remove_empty_values))
 
-        return agent_ids
+        return agents
     
     async def add_agents_to_group(self, group_name: str, agent_ids: List[str], override: bool = False):
         """Add agents to a group.

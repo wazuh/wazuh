@@ -13,10 +13,11 @@ from wazuh.core.indexer.models.agent import Agent
 
 class TestAgentIndex:
     index_class = AgentsIndex
+    create_id = '0191480e-7f67-7fd3-8c52-f49a3176360b'
     create_params = {
-        'id': '0191480e-7f67-7fd3-8c52-f49a3176360b',
         'name': 'test',
         'key': '015fb915771223a3fdd7c0c0a5adcab8',
+        'groups': 'group1'
     }
 
     @pytest.fixture
@@ -29,11 +30,15 @@ class TestAgentIndex:
 
     async def test_create(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `create` method."""
-        new_agent = await index_instance.create(**self.create_params)
+        new_agent = await index_instance.create(id=self.create_id, **self.create_params)
 
-        assert isinstance(new_agent, Agent)
+        assert isinstance(new_agent, dict)
         client_mock.index.assert_called_once_with(
-            index=index_instance.INDEX, id=new_agent.id, body=asdict(new_agent), op_type='create', refresh='wait_for'
+            index=index_instance.INDEX,
+            id=self.create_id,
+            body=new_agent,
+            op_type='create',
+            refresh='wait_for'
         )
 
     async def test_create_ko(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
@@ -41,7 +46,7 @@ class TestAgentIndex:
         client_mock.index.side_effect = exceptions.ConflictError
 
         with pytest.raises(WazuhError, match='.*1708.*'):
-            await index_instance.create(**self.create_params)
+            await index_instance.create(id=self.create_id, **self.create_params)
 
     async def test_delete(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `delete` method"""
@@ -108,7 +113,7 @@ class TestAgentIndex:
         agent_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
         search_result = {'_hits': [Hit({'id': agent_id})]}
         client_mock.search.return_value = search_result
-        expected_result = [Agent(id=agent_id)]
+        expected_result = [{'id': agent_id}]
 
         result = await index_instance.get_group_agents(group_name=group_name)
 
