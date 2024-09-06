@@ -55,7 +55,7 @@ class AgentsIndex(BaseIndex):
         WazuhError(1708)
             When already exists an agent with the provided id.
         """
-        agent = Agent(id=id, raw_key=key, name=name)
+        agent = Agent(raw_key=key, name=name)
         try:
             await self._client.index(
                 index=self.INDEX,
@@ -129,7 +129,7 @@ class AgentsIndex(BaseIndex):
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
 
-        return Agent(**data[IndexerKey._SOURCE])
+        return Agent(id=uuid, **data[IndexerKey._SOURCE])
 
     async def update(self, uuid: str, agent: Agent) -> None:
         """Update an agent.

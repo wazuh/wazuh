@@ -20,8 +20,8 @@ def get_source_items(search_result: dict) -> Iterator[str]:
         yield item[IndexerKey._SOURCE]
 
 
-def get_source_items_id(search_result: dict) -> list:
-    """Extract the 'id' of the elements from a search query.
+def get_document_ids(search_result: dict) -> list:
+    """Extract the documents IDs from a search query.
 
     Parameters
     ----------
@@ -33,4 +33,7 @@ def get_source_items_id(search_result: dict) -> list:
     list
         Obtained id items.
     """
-    return [item[IndexerKey._ID] for item in get_source_items(search_result)]
+    document_ids = []
+    for doc in search_result[IndexerKey.HITS][IndexerKey.HITS]:
+        document_ids.append(doc[IndexerKey._ID])
+    return document_ids
