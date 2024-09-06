@@ -632,7 +632,7 @@ async def test_delete_groups(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
     mock_dapi.assert_called_once_with(f=agent.delete_groups,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']
@@ -691,20 +691,19 @@ async def test_get_agents_in_group(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                                        group_id='001')
     f_kwargs = {'group_list': ['001'],
                 'offset': 0,
-                'limit': DATABASE_LIMIT,
-                'sort': None,
-                'search': None,
-                'select': None,
-                'filters': {
-                    'status': None,
-                },
+                'limit': 500,
+                'sort_by': ['name'],
+                'sort_ascending': True,
+                'search_text': None,
+                'complementary_search': None,
                 'q': None,
+                'select': None,
                 'distinct': False
                 }
     mock_dapi.assert_called_once_with(f=agent.get_agents_in_group,
                                       f_kwargs=mock_remove.return_value,
                                       request_type='local_master',
-                                      is_async=False,
+                                      is_async=True,
                                       wait_for_complete=False,
                                       logger=ANY,
                                       rbac_permissions=mock_request.context['token_info']['rbac_policies']

@@ -711,11 +711,11 @@ def test_agent_add_authd_ko(mock_wazuh_socket, mocked_exception, expected_except
 @patch('wazuh.core.agent.remove')
 @patch('wazuh.core.agent.path.exists', return_value=True)
 @patch('wazuh.core.common.SHARED_PATH', new=os.path.join(test_data_path, 'etc', 'shared'))
-@patch('wazuh.core.indexer.Indexer._get_opensearch_client', new_callable=AsyncMock)
+@patch('wazuh.core.indexer.Indexer._get_opensearch_client')
 @patch('wazuh.core.indexer.Indexer.connect')
 @patch('wazuh.core.indexer.Indexer.close')
-@patch('wazuh.core.indexer.agent.AgentsIndex.delete_groups')
-async def test_agent_delete_single_group(delete_groups_mock, get_os_client_mock, connect_mock, close_mock, mock_exists,
+@patch('wazuh.core.indexer.agent.AgentsIndex.delete_group')
+async def test_agent_delete_single_group(delete_group_mock, get_os_client_mock, connect_mock, close_mock, mock_exists,
                                          mock_remove):
     """Tests if method delete_single_group() works as expected"""
 
@@ -958,16 +958,14 @@ def test_agent_group_exists_ko():
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.indexer.Indexer._get_opensearch_client', new_callable=AsyncMock)
-@patch('wazuh.core.indexer.Indexer.connect')
-@patch('wazuh.core.indexer.Indexer.close')
-async def test_agent_get_agent_groups(get_opensearch_client_mock, connect_mock, close_mock):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_get_agent_groups(create_indexer_mock):
     """Test if get_agent_groups() asks for agent's groups correctly."""
-    agent_id = '001'
+    agent_id = '0191c895-3037-7ed6-a8e3-def51ec2bca9'
     groups = ['default', 'group1']
 
-    with patch('wazuh.core.indexer.agent.AgentsIndex.get', return_value=IndexerAgent(groups=','.join(groups))):
-        agent_groups = await Agent.get_agent_groups(agent_id)
+    create_indexer_mock.return_value.agents.get.return_value = IndexerAgent(groups=','.join(groups))
+    agent_groups = await Agent.get_agent_groups(agent_id)
 
     assert agent_groups == groups
 
@@ -979,12 +977,14 @@ async def test_agent_get_agent_groups(get_opensearch_client_mock, connect_mock, 
     (True, True, 'remove'),
     (False, True, 'override')
 ])
-@patch('wazuh.core.indexer.Indexer._get_opensearch_client', new_callable=AsyncMock)
+@patch('wazuh.core.indexer.Indexer._get_opensearch_client')
 @patch('wazuh.core.indexer.Indexer.connect')
 @patch('wazuh.core.indexer.Indexer.close')
-@patch('wazuh.core.indexer.agent.AgentsIndex.update')
-async def test_agent_set_agent_group_relationship(update_agents_mock, get_opensearch_client_mock, connect_mock,
-                                                  close_mock, remove, override, expected_mode):
+@patch('wazuh.core.indexer.agent.AgentsIndex.remove_agents_from_group')
+@patch('wazuh.core.indexer.agent.AgentsIndex.add_agents_to_group')
+async def test_agent_set_agent_group_relationship(add_agents_to_group_mock, remove_agents_from_group_mock, 
+                                                  close_mock, connect_mock, get_opensearch_client_mock, remove, 
+                                                  override, expected_mode):
     """Test if set_agent_group_relationship() uses the correct command to create/remove the relationship between
     an agent and a group.
 
@@ -1006,14 +1006,9 @@ async def test_agent_set_agent_group_relationship(update_agents_mock, get_opense
         await Agent.set_agent_group_relationship(agent_id, group_id, remove, override)
 
     if remove:
-        groups.remove(group_id)
+        remove_agents_from_group_mock.assert_called_with(group_name=group_id, agent_ids=[agent_id])
     else:
-        if override:
-            groups = [group_id]
-        else:
-            groups.append(group_id)
-
-    update_agents_mock.assert_called_with(agent_id, IndexerAgent(groups=','.join(groups)))
+        add_agents_to_group_mock.assert_called_with(group_name=group_id, agent_ids=[agent_id], override=override)
 
 
 @pytest.mark.asyncio
@@ -1025,17 +1020,21 @@ async def test_agent_set_agent_group_relationship_ko(get_client_mock):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('agent_id, group_id, force, previous_groups, set_default', [
-    ('002', 'test_group', False, ['default', 'test_group', 'another_test'], False),
-    ('002', 'test_group', True, ['default', 'test_group', 'another_test'], False),
-    ('002', 'test_group', False, ['test_group'], True),
-    ('002', 'test_group', False, ['test_group', 'another_test'], False)
+@pytest.mark.parametrize('agent_id, group_id, force, previous_groups', [
+    ('002', 'test_group', False, ['default', 'test_group', 'another_test']),
+    ('002', 'test_group', True, ['default', 'test_group', 'another_test']),
+    ('002', 'test_group', False, ['test_group']),
+    ('002', 'test_group', False, ['test_group', 'another_test'])
 ])
 @patch('wazuh.core.agent.Agent.set_agent_group_relationship')
 @patch('wazuh.core.agent.Agent.group_exists', return_value=True)
-@patch('wazuh.core.agent.Agent.get_basic_information')
-async def test_agent_unset_single_group_agent(agent_info_mock, group_exists_mock, set_agent_group_mock, agent_id, group_id,
-                                        force, previous_groups, set_default):
+@patch('wazuh.core.indexer.Indexer._get_opensearch_client')
+@patch('wazuh.core.indexer.Indexer.connect')
+@patch('wazuh.core.indexer.Indexer.close')
+@patch('wazuh.core.indexer.agent.AgentsIndex.get')
+async def test_agent_unset_single_group_agent(get_agent_mock, close_mock, connect_mock, get_os_client_mock, 
+                                              group_exists_mock, set_agent_group_mock, agent_id, group_id, force, 
+                                              previous_groups):
     """Test if unset_single_group_agent() returns expected message and removes group from agent.
 
     Parameters
@@ -1054,16 +1053,15 @@ async def test_agent_unset_single_group_agent(agent_info_mock, group_exists_mock
     with patch('wazuh.core.agent.Agent.get_agent_groups', return_value=previous_groups):
         result = await Agent.unset_single_group_agent(agent_id, group_id, force)
 
-    not force and agent_info_mock.assert_called_once()
+    not force and get_agent_mock.assert_called_once()
 
     set_agent_group_mock.assert_called_once_with(agent_id, group_id, remove=True)
-    assert result == f"Agent '{agent_id}' removed from '{group_id}'." + \
-           (" Agent reassigned to group default." if set_default else ""), 'Result message not as expected.'
+    assert result == f"Agent '{agent_id}' removed from '{group_id}'.", 'Result message not as expected.'
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.agent.Agent.get_basic_information')
-async def test_agent_unset_single_group_agent_ko(agent_information_mock):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_unset_single_group_agent_ko(create_indexer_mock):
     """Test if unset_single_group_agent() raises expected exceptions."""
     # Group does not exists
     with patch('wazuh.core.agent.Agent.group_exists', return_value=False):

@@ -317,16 +317,14 @@ def test_agent_get_agents(socket_mock, send_mock, agent_list, expected_items):
         assert (failed_item.message == 'Agent does not exist' for failed_item in result.failed_items.keys())
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('group, group_exists, expected_agents', [
-    ('default', True, ['001', '002', '005']),
+    ('default', True, ['0191c7fa-26d5-705f-bc3c-f54810d30d79']),
     ('not_exists_group', False, None)
 ])
-@patch('wazuh.agent.get_agents')
 @patch('wazuh.agent.get_groups')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agents_in_group(socket_mock, send_mock, mock_get_groups, mock_get_agents, group, group_exists,
-                                   expected_agents):
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_get_agents_in_group(create_indexer_mock, mock_get_groups, group, group_exists, expected_agents):
     """Test `get_agents_in_group` from agent module.
 
     Parameters
@@ -339,48 +337,20 @@ def test_agent_get_agents_in_group(socket_mock, send_mock, mock_get_groups, mock
         List of agent ID's that belongs to a given group.
     """
     mock_get_groups.return_value = ['default']
+    get_group_agents_mock = AsyncMock(return_value=[{'id': '0191c7fa-26d5-705f-bc3c-f54810d30d79'}])
+    create_indexer_mock.return_value.agents.get_group_agents = get_group_agents_mock
+
     if group_exists:
-        # Since the decorator is mocked, pass `group_list` using `call_args` from mock
-        get_agents_in_group(group_list=[group], select=['id'])
-        kwargs = mock_get_agents.call_args[1]
-        agents = get_agents(agent_list=short_agent_list, **kwargs)
-        assert agents.affected_items
-        assert len(agents.affected_items) == len(expected_agents)
-        for expected_agent, affected_agent in zip(expected_agents, agents.affected_items):
+        result = await get_agents_in_group(group_list=[group], select=['id'])
+        get_group_agents_mock.assert_called_with(group)
+        assert result.affected_items
+        assert len(result.affected_items) == len(expected_agents)
+        for expected_agent, affected_agent in zip(expected_agents, result.affected_items):
             assert expected_agent == next(iter(affected_agent.values()))
     else:
         # If not `group_exists`, expect an error
         with pytest.raises(WazuhResourceNotFound, match='.* 1710 .*'):
-            get_agents_in_group(group_list=[group])
-
-
-@pytest.mark.parametrize('group, q, expected_q', [
-    ('default', '(name~wazuh,status~active)', 'group=default;((name~wazuh,status~active))'),
-    ('default', 'name~wazuh,status~active', 'group=default;(name~wazuh,status~active)')
-])
-@patch('wazuh.agent.get_agents')
-@patch('wazuh.agent.get_groups')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agents_in_group_q_formats(socket_mock, send_mock, mock_get_groups, mock_get_agents, group,
-                                             q, expected_q):
-    """Test the formatting of the `q` parameter in `get_agents_in_group` from agent module.
-
-    Parameters
-    ----------
-    group : str
-        Name of the group to which the agent belongs.
-    q : str
-        Value of the q parameter.
-    expected_q : str
-        Value of the expected q parameter used in the `get_agents` call.
-    """
-    mock_get_groups.return_value = ['default']
-    # Since the decorator is mocked, pass `group_list` using `call_args` from mock
-    get_agents_in_group(group_list=[group], q=q)
-    kwargs = mock_get_agents.call_args.kwargs
-
-    assert kwargs['q'] == expected_q
+            await get_agents_in_group(group_list=[group])
 
 
 @pytest.mark.parametrize('agent_list, expected_items', [
@@ -418,10 +388,10 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
             ([], [], []),
         ]
 )
-@patch('wazuh.agent.get_source_items_id')
+@patch('wazuh.agent.get_document_ids')
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_delete_agents(
-    create_indexer_mock, get_source_items_id_mock, agent_list, available_agents, expected_items
+    create_indexer_mock, get_document_ids_mock, agent_list, available_agents, expected_items
 ):
     """Test `delete_agents` function from agent module.
 
@@ -435,7 +405,7 @@ async def test_agent_delete_agents(
     agents_search_mock = AsyncMock()
     agents_delete_mock = AsyncMock(return_value=expected_items)
 
-    get_source_items_id_mock.return_value = available_agents
+    get_document_ids_mock.return_value = available_agents
     create_indexer_mock.return_value.agents.search = agents_search_mock
     create_indexer_mock.return_value.agents.delete = agents_delete_mock
 
@@ -456,31 +426,33 @@ async def test_agent_delete_agents(
     if len(agent_list) > 1:
         assert list(result.failed_items.values())[0] == set(agent_list[1:])
 
-@pytest.mark.parametrize(
-    'id,name,key', [
-        ('019008da-1575-7375-b54f-ef43e393517ef', 'test', '95fffd306c752289d426e66013881538'),
-    ]
-)
+@pytest.mark.parametrize('id,name,key,groups', [
+    ('019008da-1575-7375-b54f-ef43e393517ef', 'test', '95fffd306c752289d426e66013881538', 'group1'),
+])
 @patch('wazuh.core.indexer.create_indexer')
-async def test_agent_add_agent(create_indexer_mock, name, id, key):
+async def test_agent_add_agent(create_indexer_mock, name, id, key, groups):
     """Test `add_agent` from agent module.
 
     Parameters
     ----------
     id : str
-        ID of the agent.
+        New agent ID.
     name : str
-        Name of the agent.
+        New agent name.
     key : str
-        The agent key.
+        New agent key.
+    groups : str
+        New agent groups.
     """
-    new_agent = IndexerAgent(id=id, name=name, raw_key=key)
+    new_agent = IndexerAgent(id=id, name=name, raw_key=key, groups=groups)
     agents_create_mock = AsyncMock(return_value=new_agent)
     create_indexer_mock.return_value.agents.create = agents_create_mock
-    result = await add_agent(name=name, id=id, key=key)
+    result = await add_agent(name=name, id=id, key=key, groups=groups)
 
-    assert result.dikt['data']['id'] == new_agent.id
-    assert result.dikt['data']['key'] == new_agent.key
+    assert result.dikt['data'].id == new_agent.id
+    assert result.dikt['data'].name == new_agent.name
+    assert result.dikt['data'].key == new_agent.key
+    assert result.dikt['data'].groups == new_agent.groups
 
 
 @pytest.mark.parametrize(
@@ -615,13 +587,14 @@ def test_create_group_exceptions(group_id, exception, exception_code):
             os.remove(path)
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('group_list', [
     ['group-1'],
     ['group-1', 'group-2']
 ])
 @patch('wazuh.agent.get_groups')
 @patch('wazuh.agent.Agent.delete_single_group')
-def test_agent_delete_groups(mock_delete, mock_get_groups, group_list):
+async def test_agent_delete_groups(mock_delete, mock_get_groups, group_list):
     """Test `delete_groups` function from agent module.
 
     Parameters
@@ -634,7 +607,7 @@ def test_agent_delete_groups(mock_delete, mock_get_groups, group_list):
         return set(group_list)
 
     mock_get_groups.side_effect = groups
-    result = delete_groups(group_list)
+    result = await delete_groups(group_list)
     # Check typing
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert isinstance(result.affected_items, list)
@@ -648,6 +621,7 @@ def test_agent_delete_groups(mock_delete, mock_get_groups, group_list):
     assert result.total_failed_items == 0
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize('group_list, expected_errors', [
     (['none-1'], [WazuhResourceNotFound(1710)]),
     (['default'], [WazuhError(1712)]),
@@ -655,7 +629,7 @@ def test_agent_delete_groups(mock_delete, mock_get_groups, group_list):
     (['default', 'none-1'], [WazuhError(1712), WazuhResourceNotFound(1710)]),
 ])
 @patch('wazuh.agent.get_groups')
-def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expected_errors):
+async def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expected_errors):
     """Test `delete_groups` function from agent module returns the expected exceptions when using invalid group lists.
 
     Parameters
@@ -667,7 +641,7 @@ def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expec
         for each invalid group.
     """
     mock_get_groups.side_effect = {'default'}
-    result = delete_groups(group_list)
+    result = await delete_groups(group_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert isinstance(result.failed_items, dict)
     # Check failed items
@@ -677,12 +651,12 @@ def test_agent_delete_groups_other_exceptions(mock_get_groups, group_list, expec
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('group_list, agent_list', [
-    (['group-1'], ['001'])
+    (['group-1'], ['0191c87f-a892-78b1-8452-8180e261075c'])
 ])
+@patch('wazuh.core.agent.Agent.get')
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
-async def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list):
+async def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agent, mock_unset, group_list, agent_list):
     """Test `remove_agent_from_groups` function from agent module.
 
     Parameters
@@ -707,13 +681,13 @@ async def test_agent_remove_agent_from_groups(mock_get_groups, mock_get_agents, 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['any-group'], ['100'], WazuhResourceNotFound(1701), True),
-    (['any-group'], ['005'], WazuhResourceNotFound(1710), False),
+    (['any-group'], ['0191c87f-a892-78b1-8452-8180e261075c'], WazuhResourceNotFound(1701), True),
+    (['any-group'], ['0191c87f-a892-77a3-a988-b73fc8164c32'], WazuhResourceNotFound(1710), False),
 ])
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.core.agent.Agent.get', return_value='0191c87f-a892-78b1-8452-8180e261075c')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
-async def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_agents, mock_unset, group_list,
+async def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_get_agent, mock_unset, group_list,
                                                          agent_list, expected_error, catch_exception):
     """Test `remove_agent_from_groups` function from agent module raises the expected errors when using invalid group
     or agent lists.
@@ -730,10 +704,15 @@ async def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_g
         True if the exception will be raised by the function and must be caught. False if the function must return an
         `AffectedItemsWazuhResult` containing the exceptions in its 'failed_items'.
     """
-    expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
+    expected_msg = f"Agent '{agent_list[0]}' removed from '{group_list[0]}'"
     mock_unset.return_value = expected_msg
     try:
-        result = await remove_agent_from_groups(group_list=group_list, agent_list=agent_list)
+        with patch('wazuh.core.agent.Agent.get', 
+            return_value='0191c87f-a892-78b1-8452-8180e261075c',
+            side_effect=expected_error if catch_exception else None
+        ):
+            result = await remove_agent_from_groups(group_list=group_list, agent_list=agent_list)
+
         assert not catch_exception, \
             'An "WazuhError" exception was expected but was not raised.'
         # Check Typing
@@ -760,12 +739,12 @@ async def test_agent_remove_agent_from_groups_exceptions(mock_get_groups, mock_g
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('group_list, agent_list', [
-    (['group-1'], ['001'])
+    (['group-1'], ['0191c7fa-26d5-705f-bc3c-f54810d30d79'])
 ])
 @patch('wazuh.core.agent.Agent.unset_single_group_agent')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.core.indexer.create_indexer')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
-async def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, mock_unset, group_list, agent_list):
+async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mock, mock_unset, group_list, agent_list):
     """Test `remove_agents_from_group` function from agent module.
 
     Parameters
@@ -775,6 +754,11 @@ async def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, 
     agent_list : List of str
         List of agent ID's.
     """
+    search_mock = AsyncMock(return_value={IndexerKey.HITS: {IndexerKey.HITS: [
+        {IndexerKey._ID: '0191c7fa-26d5-705f-bc3c-f54810d30d79'}
+    ]}})
+    create_indexer_mock.return_value.agents.search = search_mock
+
     expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
     mock_unset.return_value = expected_msg
     result = await remove_agents_from_group(agent_list=agent_list, group_list=group_list)
@@ -790,11 +774,11 @@ async def test_agent_remove_agents_from_group(mock_get_groups, mock_get_agents, 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('group_list, agent_list, expected_error, catch_exception', [
-    (['group-1'], ['100'], WazuhResourceNotFound(1701), False),
+    (['group-1'], ['0191c7fa-26d5-705f-bc3c-f54810d30d79'], WazuhResourceNotFound(1701), False),
 ])
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
+@patch('wazuh.core.indexer.create_indexer')
 @patch('wazuh.agent.get_groups', return_value={'group-1'})
-async def test_agent_remove_agents_from_group_exceptions(group_mock, agents_info_mock, group_list, agent_list,
+async def test_agent_remove_agents_from_group_exceptions(group_mock, create_indexer_mock, group_list, agent_list,
                                                          expected_error, catch_exception):
     """Test `remove_agents_from_group` function from agent module raises the expected exceptions when using invalid
     parameters.
@@ -1298,24 +1282,19 @@ async def test_unset_single_group_agent(agent_patch, set_agent_group_patch, set_
 
     ret_msg = await Agent.unset_single_group_agent(agent_id, group_id, force=True)
 
-    # Response message is different depending on the remaining group. If the only group is removed, 'default'
-    # will be reassigned through wdb and the message will reflect it
-    reassigned_msg = " Agent reassigned to group default." \
-        if len(agent_groups) == 1 and agent_groups[0] == group_id else ''
-
-    assert ret_msg == f"Agent '{agent_id}' removed from '{group_id}'.{reassigned_msg}"
+    assert ret_msg == f"Agent '{agent_id}' removed from '{group_id}'."
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('agent_id, group_id, force, expected_exc', [
-    ('001', 'whatever', False, 1710),
-    ('001', 'not_exists', True, 1734),
-    ('001', 'default', True, 1745),
+    ('0191c87f-a892-77b4-b53f-d5a3ad313665', 'whatever', False, 1710),
+    ('0191c87f-a892-77b4-b53f-d5a3ad313665', 'not_exists', True, 1734),
+    ('0191c87f-a892-77b4-b53f-d5a3ad313665', 'default', True, 1745),
 ])
 @patch('wazuh.core.agent.Agent.get_agent_groups', return_value=['default'])
 @patch('wazuh.core.agent.Agent.group_exists', return_value=False)
-@patch('wazuh.core.agent.Agent.get_basic_information')
-async def test_unset_single_group_agent_ko(agent_basic_mock, group_exists_mock, get_groups_mock, agent_id, group_id,
+@patch('wazuh.core.indexer.create_indexer')
+async def test_unset_single_group_agent_ko(create_indexer_mock, group_exists_mock, get_groups_mock, agent_id, group_id,
                                       force, expected_exc):
     """Test `remove_single_group_agent` method exceptions.
 

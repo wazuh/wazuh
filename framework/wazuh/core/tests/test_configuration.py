@@ -212,12 +212,12 @@ def test_get_ossec_conf():
         distinct=True)['ruleset']['rule_dir'] == ['ruleset/rules', 'etc/rules']
 
 
-def test_get_agent_conf():
+def test_get_group_conf():
     with pytest.raises(WazuhError, match=".* 1710 .*"):
         configuration.get_group_conf(group_id='noexists')
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with patch('wazuh.core.configuration.load_wazuh_yaml', side_effect=Exception):
+        with patch('wazuh.core.configuration.load_wazuh_yaml', side_effect=WazuhError(1101)):
             with pytest.raises(WazuhError, match=".* 1101 .*"):
                 result = configuration.get_group_conf(group_id='default')
                 assert isinstance(result, dict)
@@ -262,7 +262,7 @@ def test_update_group_configuration(mock_open, mock_wazuh_uid, mock_wazuh_gid):
     
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
         with patch('wazuh.core.configuration.open', return_value=Exception):
-            with pytest.raises(WazuhInternalError, match=".* 1006 .*"):
+            with pytest.raises(WazuhError, match=".* 1006 .*"):
                 configuration.update_group_configuration('default', '')
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
