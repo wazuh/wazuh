@@ -1,4 +1,5 @@
 [
+    "Translation for package 'TeamViewer 11' on platform 'windows' found in Level 2 cache.",
     "No match due to default status for Package: teamviewer, Version: 11.0.259193 while scanning for Vulnerability: CVE-2010-3128",
     "No match due to default status for Package: teamviewer, Version: 11.0.259193 while scanning for Vulnerability: CVE-2019-11769",
     "No match due to default status for Package: teamviewer, Version: 11.0.259193 while scanning for Vulnerability: CVE-2019-18251",
