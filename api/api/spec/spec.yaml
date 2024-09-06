@@ -1467,6 +1467,10 @@ components:
           description: "Agent authentication key"
           type: string
           format: alphanumeric_symbols
+        groups:
+          description: "Agent groups"
+          type: string
+          format: group_names
       required:
       - id
       - name
@@ -1475,16 +1479,8 @@ components:
     AgentGroup:
       type: object
       properties:
-        count:
-          type: integer
-          minimum: 0
-          description: "Number of agents belonging to that group"
         name:
           type: string
-        mergedSum:
-          type: string
-          format: hash
-          description: "MD5 checksum of all group shared files merged in a single one (merged.mg)"
         configSum:
           type: string
           format: hash
@@ -7480,6 +7476,7 @@ paths:
               id: 019008da-1575-7375-b54f-ef43e393517ef
               name: NewHost_2
               key: 7b8276c3bf96aff5709346d368f04fed
+              groups: group1
       responses:
         '200':
           description: "Add an agent"
@@ -7496,6 +7493,7 @@ paths:
                 data:
                   id: "019008da-1575-7375-b54f-ef43e393517ef"
                   key: "\u00d6v\u0086\u00a8v\r\u008c\u00f5V\b\u00ba^\u00d4n\u00b1\u0090\u00a4<)\u00ef\u00f4\u00c7\u0016\u0005\u00b3mY\u0093YR5\u00f1L\u00d6wj\u0015\u00d7\u0006'\f@\u00c3a\u0094>g\u001e"
+                  groups: group1
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -8127,10 +8125,10 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '002'
-                    - '006'
-                    - '008'
-                    - '010'
+                    - '0191c764-831f-7ca5-b4e7-d5aec5fbbae2'
+                    - '0191c764-831f-7830-aed7-dc45622ddb28'
+                    - '0191c764-831f-726f-bcb1-63d2d37632e2'
+                    - '0191c764-831f-7b11-9e25-983a0cdb643f'
                   total_affected_items: 4
                   total_failed_items: 0
                   failed_items: []
@@ -8179,15 +8177,15 @@ paths:
               example:
                 data:
                   affected_items:
-                    - '001'
-                    - '002'
+                    - '0191c764-218c-773c-a032-4f68bbe29a33'
+                    - '0191c764-218c-7cd9-81c6-429fd82db675'
                   failed_items:
                     - error:
                         code: 1701
                         message: Agent does not exist
                         remediation: Please, use `GET /agents?select=id,name` to find all available agents
                       id:
-                        - '999'
+                        - '0191c764-218c-7d8b-9b8c-d60e7b81846d'
                   total_affected_items: 2
                   total_failed_items: 1
                   message: Some agents were not assigned to group2 and removed from the other groups
@@ -8767,16 +8765,10 @@ paths:
                 data:
                   affected_items:
                     - name: default
-                      count: 2
-                      mergedSum: f8d49771911ed9d5c45b03a40babd065
                       configSum: ab73af41699f13fdd81903b5f23d8d00
                     - name: dmz
-                      count: 3
-                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
                       configSum: cfbae9ecc10eb15f1b4fc736de6758cc
                     - name: pciserver
-                      count: 0
-                      mergedSum: 220d6c5fc253f251827ee7487341c0fc
                       configSum: ab73af41699f13fdd81903b5f23d8d00
                   total_affected_items: 3
                   total_failed_items: 0
@@ -8849,7 +8841,6 @@ paths:
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
         - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/distinct'
       responses:
@@ -8867,84 +8858,30 @@ paths:
               example:
                 data:
                   affected_items:
-                    - os:
-                        arch: x86_64
-                        codename: Focal Fossa
-                        major: '20'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |b2497efbf876 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
-                        version: 20.04.2 LTS
-                      mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
-                      node_name: worker1
-                      ip: 172.20.0.7
-                      id: 004
-                      manager: wazuh-worker1
-                      group:
+                    - id: 0191bcd6-d5d9-7688-8e4e-a51caa5847a8
+                      groups:
                         - default
                         - group1
                       name: b2497efbf876
-                      configSum: 052374472f3a0d5c8508241dcc455ea7
-                      status: active
-                      dateAdd: 2021-05-27T09:14:19Z
-                      registerIP: any
-                      lastKeepAlive: 2021-05-27T09:23:59Z
-                      version: Wazuh v4.3.0
-                      status_code: 0
-                    - os:
-                        arch: x86_64
-                        codename: Focal Fossa
-                        major: '20'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |600e27371700 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
-                        version: 20.04.2 LTS
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      node_name: worker1
-                      ip: 172.20.0.9
-                      id: 005
-                      manager: wazuh-worker1
-                      group:
+                      type: endpoint
+                      version: Wazuh v5.0.0
+                      last_login: 2024-08-27T10:03:23Z
+                    - id: 0191c761-fd0d-76e3-a0e2-016e9ea453cc
+                      groups:
                         - default
                         - group2
                       name: 600e27371700
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      status: active
-                      dateAdd: 2021-05-27T09:14:19Z
-                      registerIP: any
-                      lastKeepAlive: 2021-05-27T09:23:52Z
-                      version: Wazuh v4.3.0
-                      status_code: 0
-                    - os:
-                        arch: x86_64
-                        codename: Focal Fossa
-                        major: '20'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |4bdac19ce5e3 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
-                        version: 20.04.2 LTS
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      node_name: worker2
-                      ip: 172.20.0.10
-                      id: 006
-                      manager: wazuh-worker2
-                      group:
+                      type: endpoint
+                      version: Wazuh v5.0.0
+                      last_login: 2024-08-27T09:23:52Z
+                    - id: 01912d07-b9b4-7528-bdad-15da902d651c
+                      groups:
                         - default
                         - group3
                       name: 4bdac19ce5e3
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      status: active
-                      dateAdd: 2021-05-27T09:14:19Z
-                      registerIP: any
-                      lastKeepAlive: 2021-05-27T09:23:52Z
-                      version: Wazuh v4.3.0
-                      status_code: 0
+                      type: endpoint
+                      version: Wazuh v5.0.0
+                      last_login: 2024-08-27T12:16:44Z
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
