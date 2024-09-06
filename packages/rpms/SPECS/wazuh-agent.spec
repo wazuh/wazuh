@@ -40,7 +40,9 @@ log analysis, file integrity monitoring, intrusions detection and policy and com
 
 %if 0%{?el} >= 6 || 0%{?rhel} >= 6
 # Build debuginfo package
+%if %{_arch} != ppc64le
 %debug_package
+%endif
 %package wazuh-agent-debuginfo
 Summary: Debug information for package %{name}.
 %description wazuh-agent-debuginfo

@@ -49,6 +49,11 @@ jobs:
               - 'packages/generate_package.sh'
               - 'packages/debs/i386/agent/**'
               - 'packages/debs/utils/**'
+            pkg_deb_agent_builder_ppc64le:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/debs/ppc64le/agent/**'
+              - 'packages/debs/utils/**'
             pkg_rpm_agent_builder_amd64:
               - 'packages/build.sh'
               - 'packages/generate_package.sh'
@@ -58,6 +63,11 @@ jobs:
               - 'packages/build.sh'
               - 'packages/generate_package.sh'
               - 'packages/rpms/i386/agent/**'
+              - 'packages/rpms/utils/**'
+            pkg_rpm_agent_builder_ppc64le:
+              - 'packages/build.sh'
+              - 'packages/generate_package.sh'
+              - 'packages/rpms/ppc64le/agent/**'
               - 'packages/rpms/utils/**'
             pkg_rpm_legacy_builder_amd64:
               - 'packages/build.sh'
@@ -130,6 +140,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
+      - name: Request pkg_deb_agent_builder_ppc64le update
+        if: steps.changes.outputs.pkg_deb_agent_builder_ppc64le == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-ppc.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=deb -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
       - name: Request pkg_rpm_agent_builder_amd64 update
         if: steps.changes.outputs.pkg_rpm_agent_builder_amd64 == 'true'
         run: |
@@ -141,6 +158,13 @@ jobs:
         if: steps.changes.outputs.pkg_rpm_agent_builder_i386 == 'true'
         run: |
           gh workflow run packages-upload-agent-images-amd.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f architecture=amd64 -f source_reference=${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
+
+      - name: Request pkg_rpm_agent_builder_ppc64le update
+        if: steps.changes.outputs.pkg_rpm_agent_builder_ppc64le == 'true'
+        run: |
+          gh workflow run packages-upload-agent-images-ppc.yml --repo wazuh/wazuh-agent-packages -r ${{ github.ref_name }} -f docker_image_tag=${{ env.TAG }} -f system=rpm -f source_reference=${{ github.ref_name }}
         env:
           GH_TOKEN: ${{ secrets.CI_WAZUH_AGENT_PACKAGES }}
 
