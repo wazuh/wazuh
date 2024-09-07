@@ -107,6 +107,16 @@ class AgentsIndex(BaseIndex):
         ----------
         query : dict
             DSL query.
+        select : Optional[str], optional
+            A comma-separated list of fields to include in the response, by default None.
+        exclude : Optional[str], optional
+            A comma-separated list of fields to exclude from the response, by default None.
+        offset : Optional[int], optional
+            The starting index to search from, by default None.
+        limit : Optional[int], optional
+            How many results to include in the response, by default None.
+        sort : Optional[str], optional
+            A comma-separated list of fields to sort by, by default None.
 
         Returns
         -------
