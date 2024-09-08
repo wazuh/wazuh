@@ -64,13 +64,28 @@ class TestAgentIndex:
     async def test_search(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `search` method."""
         query = {'foo': 1, 'bar': 2}
+        select = 'id'
+        exclude = 'key'
+        limit = 10
+        offset = 1
+        sort = 'name'
         search_result = {'baz': 3}
         client_mock.search.return_value = search_result
 
-        result = await index_instance.search(query=query)
+        result = await index_instance.search(
+            query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
+        )
 
         assert result == search_result
-        client_mock.search.assert_called_once_with(index=index_instance.INDEX, body=query)
+        client_mock.search.assert_called_once_with(
+            index=index_instance.INDEX,
+            body=query,
+            _source_includes=select,
+            _source_excludes=exclude,
+            size=limit,
+            from_=offset,
+            sort=sort
+        )
     
     async def test_update(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `update` method."""

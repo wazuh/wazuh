@@ -17,7 +17,6 @@ from wazuh.core.agent import (
     get_agents_info,
     get_groups,
     get_rbac_filters,
-    send_restart_command,
 )
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import read_cluster_config
@@ -356,9 +355,6 @@ async def get_agents(
     async with get_indexer_client() as indexer:
         items = await indexer.agents.search(query, select=select, exclude='key', limit=limit, offset=offset, sort=sort)
         items = [i for i in get_source_items(items)]
-
-    # TODO: Define when we'll attack the RBAC changes
-    # rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list, filters=filters)
 
     result.affected_items.extend(items)
     result.total_affected_items = len(items)
