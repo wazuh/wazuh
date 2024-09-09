@@ -11,7 +11,7 @@ import zipfile
 import re
 import csv
 from datetime import datetime
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch, mock_open, call
 
 import botocore
 import pytest
@@ -546,8 +546,6 @@ def test_aws_bucket_iter_bucket(mock_init, mock_iter):
     bucket.db_cursor.execute.assert_called_with(bucket.sql_db_optimize)
     bucket.db_connector.close.assert_called_once()
 
-
-from unittest.mock import call, patch
 
 @pytest.mark.parametrize('account_id', [[utils.TEST_ACCOUNT_ID], None])
 @pytest.mark.parametrize('regions', [[utils.TEST_REGION], None])
