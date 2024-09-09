@@ -46,9 +46,16 @@ void ContentModuleFacade::addProvider(const std::string& name, const nlohmann::j
 void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
 {
     std::shared_lock<std::shared_mutex> lock {m_mutex};
+    const auto providerIt {m_providers.find(name)};
+    if (providerIt == m_providers.end())
+    {
+        logDebug1(WM_CONTENTUPDATER, "Couldn't start scheduled action: Provider '%s' not found.", name);
+        return;
+    }
+
     try
     {
-        m_providers.at(name)->startActionScheduler(interval);
+        providerIt->second->startActionScheduler(interval);
     }
     catch (const std::exception& e)
     {
@@ -58,9 +65,16 @@ void ContentModuleFacade::startScheduling(const std::string& name, size_t interv
 void ContentModuleFacade::startOndemand(const std::string& name)
 {
     std::shared_lock<std::shared_mutex> lock {m_mutex};
+    const auto providerIt {m_providers.find(name)};
+    if (providerIt == m_providers.end())
+    {
+        logDebug1(WM_CONTENTUPDATER, "Couldn't start on-demand action: Provider '%s' not found.", name);
+        return;
+    }
+
     try
     {
-        m_providers.at(name)->startOnDemandAction();
+        providerIt->second->startOnDemandAction();
     }
     catch (const std::exception& e)
     {
@@ -71,9 +85,16 @@ void ContentModuleFacade::startOndemand(const std::string& name)
 void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const size_t interval)
 {
     std::shared_lock<std::shared_mutex> lock {m_mutex};
+    const auto providerIt {m_providers.find(name)};
+    if (providerIt == m_providers.end())
+    {
+        logDebug1(WM_CONTENTUPDATER, "Couldn't change scheduled interval: Provider '%s' not found.", name);
+        return;
+    }
+
     try
     {
-        m_providers.at(name)->changeSchedulerInterval(interval);
+        providerIt->second->changeSchedulerInterval(interval);
     }
     catch (const std::exception& e)
     {
