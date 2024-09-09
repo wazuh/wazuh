@@ -13,6 +13,7 @@
 #include "mockHTTTPRequest.hpp"
 #include "trampolineHTTPRequest.hpp"
 
+// Generalized lambda for simulating HTTP responses based on server health status
 auto mockHTTPRequestLambda =
     [](const std::string& greenResponse, const std::string& redResponse, const std::string& yellowResponse)
 {
@@ -21,13 +22,18 @@ auto mockHTTPRequestLambda =
                                                         ConfigurationParameters /*configurationParameters*/)
     {
         const auto& url = requestParameters.url.url();
+
         if (url == GREEN_SERVER + "/_cat/health?v")
         {
             postRequestParameters.onSuccess(greenResponse);
         }
-        else if (url == RED_SERVER + "/_cat/health?v" || url == YELLOW_SERVER + "/_cat/health?v")
+        else if (url == RED_SERVER + "/_cat/health?v")
         {
             postRequestParameters.onError(redResponse, 200);
+        }
+        else if (url == YELLOW_SERVER + "/_cat/health?v")
+        {
+            postRequestParameters.onError(yellowResponse, 200);
         }
         else
         {
@@ -36,39 +42,39 @@ auto mockHTTPRequestLambda =
     };
 };
 
+// Responses for each server health state
+const std::string greenResponse =
+    "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
+    "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
+    "shards_percent\n1725296432\t17:00:32\twazuh-"
+    "cluster\tgreen\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
+
+const std::string redResponse = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
+                                "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
+                                "shards_percent\n1725296432\t17:00:32\twazuh-"
+                                "cluster\tred\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
+
+const std::string yellowResponse =
+    "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
+    "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
+    "shards_percent\n1725296432\t17:00:32\twazuh-"
+    "cluster\tyellow\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
+
 /**
- * @brief Test that checks availability of an unregistered server.
+ * @brief Test to check the availability of an unregistered server.
  *
- * This test sets up mock responses for registered servers (green and red).
- * It also verifies the behavior when an unregistered server is queried.
+ * This test sets up mock responses for registered servers (green and red),
+ * and verifies the behavior when an unregistered server is queried.
  */
 TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 {
-    const std::string greenResponse =
-        "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-        "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-        "shards_percent\n1725296432\t17:00:32\twazuh-"
-        "cluster\tgreen\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-
-    const std::string redResponse =
-        "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-        "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-        "shards_percent\n1725296432\t17:00:32\twazuh-"
-        "cluster\tred\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-
-    const std::string yellowResponse =
-        "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-        "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-        "shards_percent\n1725296432\t17:00:32\twazuh-"
-        "cluster\tyellow\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-
-    // Set up the expectations for the MockHTTPRequest with the generalized lambda
+    // Set up expectations for the MockHTTPRequest with the generalized lambda
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
         .WillRepeatedly(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse));
 
     const std::string unregisteredServer {"http://localhost:9500"};
 
-    // Instantiate Monitoring object
+    // Instantiate the Monitoring object
     auto m_monitoring =
         std::make_shared<TMonitoring<TrampolineHTTPRequest>>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
 
@@ -90,35 +96,17 @@ TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 }
 
 /**
- * @brief Test instantiation with both valid servers (green and red).
+ * @brief Test to verify the instantiation and availability of valid servers (green and red).
  *
- * Verifies that Monitoring correctly tracks availability based on the responses.
+ * This test checks that Monitoring correctly tracks server availability based on responses.
  */
 TEST_F(MonitoringTest, TestInstantiationWithGreenRedServers)
 {
-    const std::string greenResponse =
-        "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-        "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-        "shards_percent\n1725296432\t17:00:32\twazuh-"
-        "cluster\tgreen\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-
-    const std::string redResponse =
-        "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-        "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-        "shards_percent\n1725296432\t17:00:32\twazuh-"
-        "cluster\tred\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-
-    const std::string yellowResponse =
-        "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-        "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-        "shards_percent\n1725296432\t17:00:32\twazuh-"
-        "cluster\tyellow\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-
-    // Set up the expectations for the MockHTTPRequest with the generalized lambda
+    // Set up expectations for the MockHTTPRequest with the generalized lambda
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
         .WillRepeatedly(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse));
 
-    // Instantiate Monitoring object
+    // Instantiate the Monitoring object
     auto m_monitoring =
         std::make_shared<TMonitoring<TrampolineHTTPRequest>>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
 
@@ -137,9 +125,9 @@ TEST_F(MonitoringTest, TestInstantiationWithGreenRedServers)
 }
 
 /**
- * @brief Test instantiation without any servers.
+ * @brief Test to verify instantiation without any servers.
  *
- * Verifies that Monitoring can be instantiated without any servers in the input vector.
+ * This test checks that Monitoring can be instantiated with an empty server list.
  */
 TEST_F(MonitoringTest, TestInstantiationWithoutServers)
 {
@@ -149,6 +137,6 @@ TEST_F(MonitoringTest, TestInstantiationWithoutServers)
     auto m_monitoring =
         std::make_shared<TMonitoring<TrampolineHTTPRequest>>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
 
-    // Ensure no exceptions during instantiation even with no servers
+    // Ensure no exceptions during instantiation with an empty server list
     EXPECT_NO_THROW(m_monitoring);
 }
