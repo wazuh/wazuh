@@ -61,12 +61,10 @@ function get_wazuh_installation_directory {
 }
 
 # Check process status
-function check-process
-{
+function check-process {
     $process_id = (Get-Process wazuh-agent).id
     $counter = 10
-    while($process_id -eq $null -And $counter -gt 0)
-    {
+    while($process_id -eq $null -And $counter -gt 0) {
         $counter--
         Start-Service -Name "Wazuh"
         Start-Sleep 2
@@ -76,28 +74,94 @@ function check-process
 }
 
 # Check new version and restart the Wazuh service
-function check-installation
-{
-    $new_version = (Get-Content VERSION)
+function check-installation {
+
+    $actual_version = (Get-Content VERSION)
     $counter = 5
-    while($new_version -eq $current_version -And $counter -gt 0)
-    {
+    while($actual_version -eq $current_version -And $counter -gt 0) {
         write-output "$(Get-Date -format u) - Waiting for the Wazuh-Agent installation to end." >> .\upgrade\upgrade.log
         $counter--
         Start-Sleep 2
-        $new_version = (Get-Content VERSION)
+        $actual_version = (Get-Content VERSION)
     }
-    write-output "$(Get-Date -format u) - Restarting Wazuh-Agent service." >> .\upgrade\upgrade.log
-    Get-Service -Name "Wazuh" | Start-Service
+    write-output "$(Get-Date -format u) - Starting Wazuh-Agent service." >> .\upgrade\upgrade.log
+    Start-Service -Name "Wazuh"
 }
 
-# Stop UI and launch the msi installer
-function install
-{
+# Function to extract the version from the MSI using msiexec
+function get_msi_version {
+    $msiPath = (Get-Item ".\wazuh-agent*.msi").FullName
+    write-output "$(Get-Date -format u) - Extracting the version from MSI file." >> .\upgrade\upgrade.log
+    try {
+        # Extracting the version using msiexec and waiting for it to complete
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=$env:TEMP", "/lv*", "`".\upgrade\msi_output.txt`"" -Wait
+
+        $msi_version = Get-MSIProductVersion ".\upgrade\msi_output.txt"
+        return $msi_version
+
+    } catch {
+        # Log any errors that occur during the process
+        write-output "$(Get-Date -format u) - Couldn't extract MSI version. Error: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        return $null
+    }
+}
+
+function Get-MSIProductVersion {
+    param (
+        [string]$logFilePath
+    )
+
+    # Check if the log file exists
+    if (-not (Test-Path $logFilePath)) {
+        write-output "$(Get-Date -format u) - MSI log file not generated: $logFilePath" >> .\upgrade\upgrade.log
+        return $null
+    }
+
+    try {
+        # Get the line that contains "ProductVersion"
+        $msi_version_info = Get-Content $logFilePath | Select-String "ProductVersion" | ForEach-Object { $_.Line }
+
+        # Check if the version format is valid
+        if (-not ($msi_version_info -match "ProductVersion\s*=\s*([0-9\.]+)")) {
+            write-output "$(Get-Date -format u) - Invalid ProductVersion format in the MSI log: $logFilePath" >> .\upgrade\upgrade.log
+            return $null
+        }
+
+        # Return the version with the 'v' prefix
+        $product_version = "v$($matches[1])"
+        return $product_version
+
+    } catch {
+        # Log any errors that occur
+        write-output "$(Get-Date -format u) - Error extracting ProductVersion from MSI log: $($logFilePath). Error: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        return $null
+    }
+}
+
+
+
+# Stop UI and launch the MSI installer
+function install {
     kill -processname win32ui -ErrorAction SilentlyContinue -Force
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
     write-output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
-    cmd /c start /wait (Get-Item ".\wazuh-agent*.msi").Name -quiet -norestart -log installer.log
+
+    try {
+        $msiPath = (Get-Item ".\wazuh-agent*.msi").Name
+
+        if ($msi_new_version -ne $null -and $msi_new_version -eq $current_version) {
+            write-output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
+            Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log', 'REINSTALL=ALL', 'REINSTALLMODE=vomus') -Wait -NoNewWindow
+        } else {
+            Start-Process -FilePath "msiexec.exe" -ArgumentList @("/i", $msiPath, '-quiet', '-norestart', '-log', 'installer.log') -Wait -NoNewWindow
+        }
+
+    } catch {
+        write-output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        return $false
+    }
+
+    return $true
 }
 
 # Check that the Wazuh installation runs on the expected path
@@ -115,6 +179,15 @@ if ($normalizedWazuhDir -ne $currentDir) {
 # Get current version
 $current_version = (Get-Content VERSION)
 write-output "$(Get-Date -format u) - Current version: $($current_version)." >> .\upgrade\upgrade.log
+
+# Get new msi version
+$msi_new_version = get_msi_version
+if ($msi_new_version -ne $null) {
+  write-output "$(Get-Date -format u) - MSI new version: $($msi_new_version)." >> .\upgrade\upgrade.log
+} else {
+  write-output "$(Get-Date -format u) - Could not find version in MSI file." >> .\upgrade\upgrade.log
+}
+
 
 # Ensure no other instance of msiexec is running by stopping them
 Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
@@ -137,21 +210,18 @@ function Get-AgentStatus {
 
 $status = Get-AgentStatus
 $counter = 30
-while($status -ne "connected"  -And $counter -gt 0)
-{
+while($status -ne "connected"  -And $counter -gt 0) {
     $counter--
     Start-Sleep 2
     $status = Get-AgentStatus
 }
 Write-Output "$(Get-Date -Format u) - Reading status file: status='$status'." >> .\upgrade\upgrade.log
 
-If ($status -ne "connected")
-{
+if ($status -ne "connected") {
     write-output "$(Get-Date -format u) - Upgrade failed." >> .\upgrade\upgrade.log
     write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
 }
-Else
-{
+else {
     write-output "0" | out-file ".\upgrade\upgrade_result" -encoding ascii
     write-output "$(Get-Date -format u) - Upgrade finished successfully." >> .\upgrade\upgrade.log
     $new_version = (Get-Content VERSION)
