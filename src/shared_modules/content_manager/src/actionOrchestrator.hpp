@@ -113,7 +113,8 @@ public:
      */
     explicit ActionOrchestrator(const nlohmann::json& parameters,
                                 std::shared_ptr<ConditionSync> stopActionCondition,
-                                const std::function<void(const std::string&)> fileProcessingCallback)
+                                const std::function<std::tuple<const int, const std::string, const bool>(
+                                    const std::string&, std::atomic<bool>& shouldStop)> fileProcessingCallback)
     {
         try
         {
@@ -155,11 +156,11 @@ public:
         {
             switch (updateData.type)
             {
-                case UpdateType::OFFSET: runOffsetUpdate(std::move(spUpdaterContext), updateData.offset); break;
+                case UpdateType::OFFSET: runOffsetUpdate(spUpdaterContext, updateData.offset); break;
 
-                case UpdateType::FILE_HASH: runFileHashUpdate(std::move(spUpdaterContext), updateData.fileHash); break;
+                case UpdateType::FILE_HASH: runFileHashUpdate(spUpdaterContext, updateData.fileHash); break;
 
-                case UpdateType::CONTENT: runContentUpdate(std::move(spUpdaterContext), updateData.offset == 0); break;
+                case UpdateType::CONTENT: runContentUpdate(spUpdaterContext, updateData.offset == 0); break;
 
                 // LCOV_EXCL_START
                 default:
@@ -167,6 +168,12 @@ public:
                     break;
                     // LCOV_EXCL_STOP
             }
+        }
+        catch (const offset_processing_exception& e)
+        {
+            logWarn(WM_CONTENTUPDATER, "Offset processing failed. Triggered a snapshot download.");
+            cleanContext();
+            runContentUpdate(spUpdaterContext, true);
         }
         catch (const std::exception& e)
         {

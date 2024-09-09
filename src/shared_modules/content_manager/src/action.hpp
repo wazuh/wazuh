@@ -37,9 +37,10 @@ public:
      * @param parameters ActionOrchestrator parameters.
      * @param fileProcessingCallback Callback function in charge of the file processing task.
      */
-    explicit Action(std::string topicName,
-                    nlohmann::json parameters,
-                    const std::function<void(const std::string& message)> fileProcessingCallback)
+    explicit Action(
+        std::string topicName,
+        nlohmann::json parameters,
+        const std::function<std::tuple<const int, const std::string, const bool>(const std::string& message, std::atomic<bool>& shouldStop)> fileProcessingCallback)
         : m_actionInProgress {false}
         , m_cv {}
         , m_topicName {std::move(topicName)}

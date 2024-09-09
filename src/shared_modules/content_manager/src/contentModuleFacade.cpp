@@ -31,9 +31,17 @@ void ContentModuleFacade::stop()
     m_providers.clear();
 }
 
-void ContentModuleFacade::addProvider(const std::string& name,
-                                      const nlohmann::json& parameters,
-                                      const std::function<void(const std::string& message)> fileProcessingCallback)
+void ContentModuleFacade::removeProvider(const std::string& name)
+{
+    std::lock_guard lock {m_mutex};
+    m_providers.erase(name);
+}
+
+void ContentModuleFacade::addProvider(
+    const std::string& name,
+    const nlohmann::json& parameters,
+    const std::function<std::tuple<const int, const std::string, const bool>(
+        const std::string& message, std::atomic<bool>& shouldStop)> fileProcessingCallback)
 {
     std::lock_guard<std::shared_mutex> lock {m_mutex};
     // If already exist throw exception

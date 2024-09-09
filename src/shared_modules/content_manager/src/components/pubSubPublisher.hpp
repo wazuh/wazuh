@@ -18,6 +18,36 @@
 #include <memory>
 
 /**
+ * @brief Identifies an exception when processing offsets.
+ *
+ */
+class offset_processing_exception : public std::exception
+{
+    const std::string m_errorMessage; ///< Exception message.
+
+public:
+    /**
+     * @brief Class constructor.
+     *
+     * @param errorMessage Exception message.
+     */
+    explicit offset_processing_exception(std::string errorMessage)
+        : m_errorMessage(std::move(errorMessage))
+    {
+    }
+
+    /**
+     * @brief Returns the exception message.
+     *
+     * @return const char* Message.
+     */
+    const char* what() const noexcept override
+    {
+        return m_errorMessage.c_str();
+    }
+};
+
+/**
  * @class PubSubPublisher
  *
  * @brief Class in charge of publishing the content as a step of a chain of responsibility.
@@ -31,17 +61,31 @@ private:
      *
      * @param context updater context.
      */
-    void publish(const UpdaterContext& context) const
+    void publish(UpdaterContext& context) const
     {
         // If there is data to publish, send it
         if (context.data.contains("paths") && !context.data.at("paths").empty())
         {
             // serialize the JSON object
-            const auto stringifyJson = context.data.dump();
+            const auto message = context.data.dump();
 
-            logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", stringifyJson.c_str());
+            logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", message.c_str());
 
-            context.spUpdaterBaseContext->fileProcessingCallback(stringifyJson);
+            // TODO: fix bool
+            std::atomic<bool> shouldStop {false};
+            const auto [offset, hash, status] =
+                context.spUpdaterBaseContext->fileProcessingCallback(message, shouldStop);
+
+            // If we were processing offsets and it failed, we need to trigger a snapshot to recover
+            if (context.data.at("type") == "offsets" && !status)
+            {
+                // trigger snapshot
+                throw offset_processing_exception {"Failed to process offsets"};
+            }
+
+            // Update the offset
+            context.currentOffset = offset;
+
             logDebug2(WM_CONTENTUPDATER, "Data published");
             return;
         }
@@ -60,7 +104,7 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "PubSubPublisher - Starting process");
 
-        publish(*context);
+        publish(*context); // Return value  for the function call operator
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
     }

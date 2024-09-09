@@ -44,7 +44,7 @@ public:
         {
             return std::make_shared<UpdateCtiApiOffset>();
         }
-        if (versionUpdaterType.compare("false") == 0)
+        else if (versionUpdaterType.compare("false") == 0)
         {
             return std::make_shared<SkipStep>();
         }

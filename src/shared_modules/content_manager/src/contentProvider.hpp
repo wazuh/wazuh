@@ -38,7 +38,7 @@ public:
      */
     explicit ContentProvider(const std::string& topicName,
                              const nlohmann::json& parameters,
-                             const std::function<void(const std::string& message)> fileProcessingCallback)
+                             FileProcessingCallback fileProcessingCallback)
     {
         m_action = std::make_shared<Action>(topicName, parameters, fileProcessingCallback);
     }

@@ -12,7 +12,15 @@
 #ifndef _SHARED_DEFS_H
 #define _SHARED_DEFS_H
 
+#include <atomic>
+#include <functional>
+#include <string>
+
 #define WM_CONTENTUPDATER "wazuh-modulesd:content-updater"
 
 #include "loggerHelper.h"
+
+using FileProcessingCallback = std::function<std::tuple<const int, const std::string, const bool>(
+    const std::string& message, std::atomic<bool>& shouldStop)>;
+
 #endif // _SHARED_DEFS_H

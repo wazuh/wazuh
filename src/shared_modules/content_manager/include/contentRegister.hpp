@@ -44,8 +44,13 @@ public:
      */
     explicit ContentRegister(std::string topicName,
                              const nlohmann::json& parameters,
-                             const std::function<void(const std::string& message)> fileProcessingCallback);
-    ~ContentRegister() = default;
+                             FileProcessingCallback fileProcessingCallback);
+
+    /**
+     * @brief Destroy the Content Register object and cleanup 
+     * 
+     */
+    ~ContentRegister();
 
     /**
      * @brief Changes schedular interval to a new value.
