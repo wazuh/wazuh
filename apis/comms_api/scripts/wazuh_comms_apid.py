@@ -38,17 +38,17 @@ MAIN_PROCESS = 'wazuh-comms-apid'
 
 
 def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
-    """Creates a FastAPI application instance and adds middlewares, exception handlers, and routers to it.
+    """Create a FastAPI application instance and adds middlewares, exception handlers, and routers to it.
 
     Parameters
     ----------
     batcher_queue : MuxDemuxQueue
-        The queue instance used for managing batcher processes.
+        Queue instance used for managing batcher processes.
 
     Returns
     -------
     FastAPI
-        The configured FastAPI application instance.
+        FastAPI application instance.
     """
     app = FastAPI()
     app.add_middleware(SecureHeadersMiddleware)
@@ -66,7 +66,7 @@ def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
 
 
 def setup_logging(foreground_mode: bool) -> dict:
-    """Sets up the logging module and returns the configuration used.
+    """Set up the logging module and returns the configuration used.
 
     Parameters
     ----------
@@ -121,7 +121,7 @@ def configure_ssl(keyfile: str, certfile: str) -> None:
 
 
 def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
-    """Returns the default SSL context with a custom minimum version.
+    """Return the default SSL context with a custom minimum version.
 
     Returns
     -------
@@ -134,7 +134,7 @@ def ssl_context(conf, default_ssl_context_factory) -> ssl.SSLContext:
 
 
 def post_worker_init(worker):
-    """Unregisters the _exit_function from the worker processes."""
+    """Unregister the _exit_function from the worker processes."""
     atexit.unregister(_exit_function)
 
 
@@ -224,7 +224,7 @@ def signal_handler(
     mux_demux_manager: MuxDemuxManager,
     batcher_process: Process
 ) -> None:
-    """Handles incoming signals for graceful shutdown of the API.
+    """Handle incoming signals for graceful shutdown of the API.
 
     This function is triggered when a termination signal (SIGTERM) is received. It handles the cleanup
     of resources by terminating the batcher process, shutting down the mux/demux manager, and deleting
@@ -251,7 +251,7 @@ def signal_handler(
 
 
 def terminate_processes(parent_pid: int, mux_demux_manager: MuxDemuxManager, batcher_process: Process):
-    """Terminates the batcher process, shuts down the MuxDemux manager, and deletes
+    """Terminate the batcher process, shut down the MuxDemux manager, and delete
     any child and main process IDs.
 
     This function checks if the current process ID matches the parent process ID.

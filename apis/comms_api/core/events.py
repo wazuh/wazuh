@@ -14,7 +14,7 @@ async def create_stateful_events(events: StatefulEvents, batcher_queue: MuxDemux
         List of events to be posted.
 
     batcher_queue : MuxDemuxQueue
-        The queue used by the BatcherClient for processing.
+        Queue used by the BatcherClient for processing.
 
     Returns
     -------

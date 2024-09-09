@@ -17,9 +17,9 @@ async def post_stateful_events(request: Request, events: StatefulEvents) -> JSON
     Parameters
     ----------
     request : Request
-        The incoming HTTP request.
+        Incoming HTTP request.
     events : StatefulEvents
-        The events to be posted.
+        Events to post.
 
     Raises
     ------
@@ -29,7 +29,7 @@ async def post_stateful_events(request: Request, events: StatefulEvents) -> JSON
     Returns
     -------
     JSONResponse
-        The response from the indexer.
+        Response from the Indexer.
     """
     try:
         response = await create_stateful_events(events, request.app.state.batcher_queue)

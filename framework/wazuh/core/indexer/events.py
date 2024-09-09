@@ -27,7 +27,7 @@ class EventsIndex(BaseIndex, MixinBulk):
         events : StatefulEvent
             List of events.
         batcher_client : BatcherClient
-            The client responsible for sending the events to the batcher and managing responses.
+            Client responsible for sending the events to the batcher and managing responses.
 
         Returns
         -------
