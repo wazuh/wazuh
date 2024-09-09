@@ -1337,6 +1337,8 @@ class AWSBucket(WazuhIntegration):
                 error_message = INVALID_REQUEST_TIME_ERROR_MESSAGE
                 exit_number = 19
 
+            print(f"TRACEBACK: {str(error)}")
+            print(f"ERROR CODE: {error_code}")
             print(f"ERROR: {error_message}")
             exit(exit_number)
         except botocore.exceptions.EndpointConnectionError as e:
