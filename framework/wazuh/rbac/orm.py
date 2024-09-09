@@ -3218,19 +3218,17 @@ class DatabaseManager:
         to_id : id
             ID which the resources will be migrated to.
         """
-        list_if_must_run_resources = [AuthenticationManager]
-        list_of_resources = [RolesManager, RulesManager, PoliciesManager, UserRolesManager,
+        resources = [RolesManager, RulesManager, PoliciesManager, UserRolesManager,
                              RolesPoliciesManager, RolesRulesManager]
 
-        for manager in list_if_must_run_resources:
-            with manager(self.sessions[target]) as resource_manager:
-                resource_manager.migrate_data(self, source, target, from_id=from_id, to_id=to_id)
+        with AuthenticationManager(self.sessions[target]) as auth_manager:
+            auth_manager.migrate_data(self, source, target, from_id=from_id, to_id=to_id)
 
         if check_if_reserved_id(from_id=from_id, to_id=to_id):
             logger.warning(f"User {from_id} and {to_id} are part of the default users and can't be updated")
             return
 
-        for manager in list_of_resources:
+        for manager in resources:
             with manager(self.sessions[target]) as resource_manager:
                 resource_manager.migrate_data(self, source, target, from_id=from_id, to_id=to_id)
 
