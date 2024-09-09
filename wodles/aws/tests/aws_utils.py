@@ -42,6 +42,7 @@ TEST_ONLY_LOGS_AFTER = "20220101"
 TEST_ONLY_LOGS_AFTER_WITH_FORMAT = "2022-01-01 00:00:00.0"
 TEST_LOG_KEY = "123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz"
 TEST_FULL_PREFIX = "base/account_id/service/region/"
+TEST_FULL_PREFIX_WAF = "base/account_id/service/region/acl_name"
 TEST_EXTERNAL_ID = "external-id-Sec-Lake"
 
 TEST_SERVICE_ENDPOINT = 'test_service_endpoint'

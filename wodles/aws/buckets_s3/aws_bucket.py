@@ -329,7 +329,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             msg['error_msg'] = error_msg
         return msg
 
-    def get_full_prefix(self, account_id, account_region):
+    def get_full_prefix(self, account_id, account_region, acl_name = None):
         raise NotImplementedError
 
     def get_base_prefix(self):
@@ -380,7 +380,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
                 sys.exit(1)
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
+    def build_s3_filter_args(self, aws_account_id, aws_region, acl_name=None, iterating=False, custom_delimiter='', **kwargs):
         filter_marker = ''
         last_key = None
         if self.reparse:
@@ -413,7 +413,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
 
-        # if nextContinuationToken is not used for processing logs in a bucket
+        if acl_name:
+            filter_args['Prefix'] = f'{filter_args["Prefix"]}{acl_name}/'
+
         if not iterating:
             filter_args['StartAfter'] = filter_marker
             if self.only_logs_after:
@@ -508,9 +510,18 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 if not regions:
                     continue
             for aws_region in regions:
-                aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
-                self.iter_files_in_bucket(aws_account_id, aws_region)
-                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
+                if self.waf_acls:
+                    if isinstance(self.waf_acls, str):
+                        self.waf_acls = [acl.strip() for acl in self.waf_acls.split(',')]
+                        for acl_name in self.waf_acls:
+                            aws_tools.debug("+++ Working on {} - {} - ACL: {}".format(aws_account_id, aws_region, acl_name), 1)
+                            self.get_full_prefix(aws_account_id, aws_region, acl_name)
+                            self.iter_files_in_bucket(aws_account_id, aws_region, acl_name)
+                            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region, acl_name=acl_name)
+                else:
+                    aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                    self.iter_files_in_bucket(aws_account_id, aws_region)
+                    self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def send_event(self, event):
         # Change dynamic fields to strings; truncate values as needed
@@ -567,13 +578,18 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
             yield bucket_file
 
-    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, **kwargs):
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, acl_name=None, **kwargs):
         if aws_account_id is None:
             aws_account_id = self.aws_account_id
         try:
-            bucket_files = self.client.list_objects_v2(
-                **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
-            )
+            if acl_name is None:
+                bucket_files = self.client.list_objects_v2(
+                    **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
+                )
+            else: 
+                bucket_files = self.client.list_objects_v2(
+                    **self.build_s3_filter_args(aws_account_id, aws_region, acl_name, **kwargs)
+                )
             if self.reparse:
                 aws_tools.debug('++ Reparse mode enabled', 2)
 
@@ -590,9 +606,10 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                         date_match = self.date_regex.search(bucket_file['Key'])
                         match_start = date_match.span()[0] if date_match else None
 
-                        if not self._same_prefix(match_start, aws_account_id, aws_region):
-                            aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
-                            continue
+                        if acl_name is None:
+                            if not self._same_prefix(match_start, aws_account_id, aws_region):
+                                aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
+                                continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
                         if self.reparse:
@@ -706,15 +723,9 @@ class AWSLogsBucket(AWSBucket):
             aws_service=self.service)
 
     def get_full_prefix(self, account_id, account_region, acl_name=None):
-        if acl_name is not None:
-            return '{service_prefix}{aws_region}/{acl}/'.format(
-                service_prefix=self.get_service_prefix(account_id),
-                aws_region=account_region,
-                acl=acl_name)
-        else:
-            return '{service_prefix}{aws_region}/'.format(
-                service_prefix=self.get_service_prefix(account_id),
-                aws_region=account_region)
+        return '{service_prefix}{aws_region}/'.format(
+            service_prefix=self.get_service_prefix(account_id),
+            aws_region=account_region)
 
     def get_creation_date(self, log_file):
         # An example of cloudtrail filename would be
