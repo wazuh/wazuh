@@ -5,7 +5,7 @@ from wazuh.core.batcher.mux_demux import Message
 
 
 class Buffer:
-    """Manages the buffer for batching messages.
+    """Manage the buffer for batching messages.
 
     Parameters
     ----------
@@ -20,12 +20,12 @@ class Buffer:
         self._buffer: List[Message] = []
 
     def add_message(self, msg: Message):
-        """Adds a message to the buffer.
+        """Add a message to the buffer.
 
         Parameters
         ----------
         msg : Message
-            The message to be added to the buffer.
+            Message to add to buffer.
 
         Returns
         -------
@@ -40,17 +40,17 @@ class Buffer:
         return True
 
     def get_length(self) -> int:
-        """Gets the current length of the buffer.
+        """Get the current length of the buffer.
 
         Returns
         -------
         int
-            The number of messages currently in the buffer.
+            Number of messages currently in the buffer.
         """
         return len(self._buffer)
 
     def check_count_limit(self) -> bool:
-        """Checks if the buffer has reached the maximum number of messages.
+        """Check if the buffer has reached the maximum number of messages.
 
         Returns
         -------
@@ -60,7 +60,7 @@ class Buffer:
         return self.get_length() >= self.max_elements
 
     def check_size_limit(self) -> bool:
-        """Checks if the buffer has reached the maximum size in bytes.
+        """Check if the buffer has reached the maximum size in bytes.
 
         Returns
         -------
@@ -71,15 +71,15 @@ class Buffer:
         return total_size >= self.max_size
 
     def copy(self) -> List[Message]:
-        """Returns a copy of the buffer.
+        """Return a copy of the buffer.
 
         Returns
         -------
         List[Message]
-            A copy of the list of messages in the buffer.
+            Copy of the list of messages in buffer.
         """
         return self._buffer.copy()
 
     def reset(self):
-        """Clears the buffer."""
+        """Clear the buffer."""
         self._buffer.clear()

@@ -22,12 +22,12 @@ WAIT_TIME_BETWEEN_QUEUE_READ = 0.01
 
 
 class Batcher:
-    """Manages the batching of messages from a MuxDemuxQueue and sends them in bulk to an indexer.
+    """Manage the batching of messages from a MuxDemuxQueue and send them in bulk to an indexer.
 
     Parameters
     ----------
     queue : MuxDemuxQueue
-        The MuxDemuxQueue instance for message multiplexing and demultiplexing.
+        MuxDemuxQueue instance for message multiplexing and demultiplexing.
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
@@ -38,13 +38,13 @@ class Batcher:
         self._shutdown_event: Optional[asyncio.Event] = None
 
     async def _get_from_queue(self) -> Message:
-        """Retrieves a message from the mux queue. If the queue is empty, waits and retries until a message is received
+        """Retrieve a message from the mux queue. If the queue is empty, waits and retries until a message is received
         or the task is cancelled.
 
         Returns
         -------
         Message
-            The message retrieved from the mux queue.
+            Message retrieved from the mux queue.
 
         Raises
         ------
@@ -64,12 +64,12 @@ class Batcher:
                 break
 
     async def _send_buffer(self, events: List[Message]):
-        """Sends a batch of messages to the indexer in bulk. Updates the demux queue with the response messages.
+        """Send a batch of messages to the indexer in bulk and update the demux queue with the response messages.
 
         Parameters
         ----------
         events : List[Message]
-            The list of messages to be sent in bulk.
+            List of messages to be sent.
 
         Raises
         ------
@@ -102,7 +102,7 @@ class Batcher:
             logger.error(f"Error sending message to buffer: {''.join(tb_str)}")
 
     def create_flush_buffer_task(self):
-        """Creates a task to flush the current buffer and reset it. This task sends the buffered messages to the indexer
+        """Create a task to flush the current buffer and reset it. This task sends the buffered messages to the indexer
         and clears the buffer.
         """
         buffer_copy = self._buffer.copy()
@@ -111,7 +111,7 @@ class Batcher:
         self._timer.reset_timer()
 
     async def run(self):
-        """Continuously retrieves messages from the queue and batches them based on the configuration. Handles signals
+        """Continuously retrieve messages from the queue and batch them based on the configuration. Handle signals
         for shutdown and manages the batching logic.
 
         Handles:
@@ -163,24 +163,24 @@ class Batcher:
             await asyncio.gather(*asyncio.all_tasks(), return_exceptions=True)
 
     def _handle_signal(self, signal_number: int):
-        """Handles shutdown signals by setting the shutdown event.
+        """Handle shutdown signals by setting the shutdown event.
 
         Parameters
         ----------
         signal_number : int
-            The signal number indicating the type of signal received (e.g., SIGINT, SIGTERM).
+            Signal number indicating the type of signal received (e.g., SIGINT, SIGTERM).
         """
         logger.info(f'Batcher pid {os.getpid()}- Received signal {signal_number}, initiating shutdown.')
         self._shutdown_event.set()
 
 
 class BatcherProcess(Process):
-    """A process that runs a Batcher instance. This class is used to execute the Batcher in a separate process.
+    """A process that run a Batcher instance. This class is used to execute the Batcher in a separate process.
 
     Parameters
     ----------
     queue : MuxDemuxQueue
-        The MuxDemuxQueue instance for message multiplexing and demultiplexing.
+        MuxDemuxQueue instance for message multiplexing and demultiplexing.
     config : BatcherConfig
         Configuration parameters for batching, such as maximum elements and size.
     """
@@ -191,7 +191,7 @@ class BatcherProcess(Process):
 
     def run(self):
         """
-        Initializes and runs a Batcher instance in the process. This method is called when the process is started.
+        Initialize and run a Batcher instance in the process. This method is called when the process is started.
         """
         batcher = Batcher(queue=self.queue, config=self.config)
         asyncio.run(batcher.run())

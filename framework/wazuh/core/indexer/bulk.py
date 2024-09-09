@@ -38,11 +38,11 @@ class BulkMetadata:
     Parameters
     ----------
     index : str
-        The name of the index in OpenSearch.
+        Name of the index in OpenSearch.
     doc_id : Optional[str]
-        The ID of the document in OpenSearch. Can be None for certain actions.
+        ID of the document in OpenSearch. Can be None for certain actions.
     action : BulkAction
-        The type of bulk action to perform.
+        Type of bulk action to perform.
     """
     def __init__(self, index: str, doc_id: Optional[str], action: BulkAction):
         self.index = index
@@ -55,7 +55,7 @@ class BulkMetadata:
         Returns
         -------
         Dict[str, Dict[str, str]]
-            The metadata in a dictionary format.
+            Metadata in a dictionary format.
         """
         return {str(self.action.value): {'_index': self.index, '_id': self.doc_id}}
 
@@ -66,13 +66,13 @@ class BulkDoc:
     Parameters
     ----------
     index : str
-        The name of the index in OpenSearch.
+        Name of the index in OpenSearch.
     doc_id : Optional[str]
-        The ID of the document in OpenSearch. Can be None for certain actions.
+        ID of the document in OpenSearch. Can be None for certain actions.
     action : BulkAction
-        The type of bulk action to perform.
+        Type of bulk action to perform.
     doc : Optional[Any]
-        The document content. Can be None for delete actions.
+        Document content. Can be None for delete actions.
     """
     def __init__(self, index: str, doc_id: Optional[str], action: BulkAction, doc: Optional[Any]):
         self.metadata = BulkMetadata(index=index, doc_id=doc_id, action=action)
@@ -84,7 +84,7 @@ class BulkDoc:
         Returns
         -------
         List[Dict]
-            A list of dictionaries representing the bulk operation.
+            List of dictionaries representing the bulk operation.
         """
         if self.doc is None:
             return [self.metadata.decode()]
@@ -93,79 +93,79 @@ class BulkDoc:
 
     @classmethod
     def create(cls, index: str, doc_id: Optional[str], doc: Any) -> 'BulkDoc':
-        """Creates a new BulkDoc instance with the 'create' action.
+        """Create a new BulkDoc instance with the 'create' action.
 
         Parameters
         ----------
         index : str
-            The name of the index in OpenSearch.
+            Name of the index in OpenSearch.
         doc_id : Optional[str]
-            The ID of the document in OpenSearch.
+            ID of the document in OpenSearch.
         doc : Any
-            The document content.
+            Document content.
 
         Returns
         -------
         BulkDoc
-            A new instance of BulkDoc with the 'create' action.
+            Instance of BulkDoc with the 'create' action.
         """
         return cls(index=index, doc_id=doc_id, action=BulkAction.CREATE, doc=doc)
 
     @classmethod
     def create_or_update(cls, index: str, doc_id: str, doc: Any) -> 'BulkDoc':
-        """Creates a new BulkDoc instance with the 'create_or_update' action.
+        """Create a new BulkDoc instance with the 'create_or_update' action.
 
         Parameters
         ----------
         index : str
-            The name of the index in OpenSearch.
+            Name of the index in OpenSearch.
         doc_id : str
-            The ID of the document in OpenSearch.
+            ID of the document in OpenSearch.
         doc : Any
-            The document content.
+            Document content.
 
         Returns
         -------
         BulkDoc
-            A new instance of BulkDoc with the 'create_or_update' action.
+            Instance of BulkDoc with the 'create_or_update' action.
         """
         return cls(index=index, doc_id=doc_id, action=BulkAction.CREATE_OR_UPDATE, doc=doc)
 
     @classmethod
     def update(cls, index: str, doc_id: str, doc: Any) -> 'BulkDoc':
-        """Creates a new BulkDoc instance with the 'update' action.
+        """Create a new BulkDoc instance with the 'update' action.
 
         Parameters
         ----------
         index : str
-            The name of the index in OpenSearch.
+            Name of the index in OpenSearch.
         doc_id : str
-            The ID of the document in OpenSearch.
+            ID of the document in OpenSearch.
         doc : Any
-            The document content.
+            Document content.
 
         Returns
         -------
         BulkDoc
-            A new instance of BulkDoc with the 'update' action.
+            Instance of BulkDoc with the 'update' action.
         """
         return cls(index=index, doc_id=doc_id, action=BulkAction.UPDATE, doc=doc)
 
     @classmethod
     def delete(cls, index: str, doc_id: str) -> 'BulkDoc':
-        """Creates a new BulkDoc instance with the 'delete' action.
+        """Create a new BulkDoc instance with the 'delete' action.
 
         Parameters
         ----------
         index : str
-            The name of the index in OpenSearch.
+            Name of the index in OpenSearch.
         doc_id : str
-            The ID of the document in OpenSearch.
+            ID of the document in OpenSearch.
 
         Returns
         -------
         BulkDoc
-            A new instance of BulkDoc with the 'delete' action.
+            Instance of BulkDoc with the 'delete' action.
         """
         return cls(index=index, doc_id=doc_id, action=BulkAction.DELETE, doc=None)
 
@@ -185,12 +185,12 @@ class MixinBulk:
         Parameters
         ----------
         data : List[BulkDoc]
-            A list of BulkDoc instances representing the bulk operations to be performed.
+            List of BulkDoc instances representing the bulk operations to be performed.
 
         Returns
         -------
         Coroutine
-            A coroutine that performs the bulk operation in OpenSearch.
+            Coroutine that performs the bulk operation in OpenSearch.
         """
         bulk_docs = []
         for doc in data:

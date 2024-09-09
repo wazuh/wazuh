@@ -4,7 +4,7 @@ from framework.wazuh.core.batcher.mux_demux import Message
 
 
 def test_add_message():
-    """Tests that a message is correctly added to the buffer."""
+    """Check that the `add_message` method works as expected"""
     buffer = Buffer(max_elements=10, max_size=10)
     buffer.add_message(Message("1", {}))
 
@@ -12,7 +12,7 @@ def test_add_message():
 
 
 def test_add_message_exceeds_count_limit():
-    """Tests that a message is not added when the count limit is exceeded."""
+    """Check that the `add_message` method count limit works as expected"""
     buffer = Buffer(max_elements=1, max_size=10)
     buffer.add_message(Message("1", {}))
     assert len(buffer._buffer) == 1
@@ -23,7 +23,7 @@ def test_add_message_exceeds_count_limit():
 
 
 def test_add_message_exceeds_size_limit():
-    """Tests that a message is not added when the size limit is exceeded."""
+    """Check that the `add_message` method size limit works as expected"""
     buffer = Buffer(max_elements=10, max_size=5)
 
     buffer.add_message(Message("1", {'content': 'abcde'}))
@@ -35,7 +35,7 @@ def test_add_message_exceeds_size_limit():
 
 
 def test_add_message_within_limits():
-    """Tests adding multiple messages without exceeding any limits."""
+    """Check that the `add_message` method size and count limit works as expected"""
     buffer = Buffer(max_elements=5, max_size=3000)
     messages = [Message(str(i), {'content': 'msg'}) for i in range(3)]
 
@@ -46,7 +46,7 @@ def test_add_message_within_limits():
 
 
 def test_get_length():
-    """Tests the get_length method to ensure it returns the correct buffer size."""
+    """Check that the `get_length` method works as expected"""
     buffer = Buffer(max_elements=10, max_size=10)
 
     assert buffer.get_length() == 0
@@ -55,7 +55,7 @@ def test_get_length():
 
 
 def test_check_count_limit_false():
-    """Tests that check_count_limit returns False when the buffer has not reached its maximum number of elements."""
+    """Check that the `check_count_limit` method works as expected with an empty buffer"""
     buffer = Buffer(max_elements=2, max_size=10)
     buffer.add_message(Message("1", {}))
 
@@ -63,7 +63,7 @@ def test_check_count_limit_false():
 
 
 def test_check_count_limit_reached():
-    """Tests that check_count_limit returns True when the buffer reaches its maximum number of elements."""
+    """Check that the `check_count_limit` method works as expected with a full buffer"""
     buffer = Buffer(max_elements=2, max_size=100)
     buffer.add_message(Message("1", {}))
 
@@ -74,7 +74,7 @@ def test_check_count_limit_reached():
 
 
 def test_check_size_limit_false():
-    """Tests that check_size_limit returns False when the buffer size is below the maximum limit."""
+    """Check that the `check_size_limit` method works as expected with an empty buffer"""
     msg = Message("1", {"example": "example"})
     size_of_msg = sys.getsizeof(msg.msg)
 
@@ -85,7 +85,7 @@ def test_check_size_limit_false():
 
 
 def test_check_size_limit_reached():
-    """Tests that check_size_limit returns True when the buffer size reaches the maximum limit."""
+    """Check that the `check_size_limit` method works as expected with a full buffer"""
     msg = Message("1", {"example": "example"})
     size_of_msg = sys.getsizeof(msg.msg)
 
@@ -98,7 +98,7 @@ def test_check_size_limit_reached():
 
 
 def test_copy():
-    """Tests that the copy method returns an accurate copy of the buffer's content."""
+    """Check that the `copy` method works as expected"""
     msg = Message("1", {"example": "example"})
     list_of_msg = [msg for _ in range(4)]
 
@@ -112,7 +112,7 @@ def test_copy():
 
 
 def test_reset():
-    """Tests that the reset method correctly clears the buffer and resets all limits."""
+    """Check that the `reset` method works as expected"""
     msg = Message("1", {"example": "example"})
     list_of_msg = [msg for _ in range(4)]
 

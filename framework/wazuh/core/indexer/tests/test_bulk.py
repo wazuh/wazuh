@@ -13,7 +13,7 @@ def test_bulk_action_values():
 
 
 def test_bulk_action_exists_with_valid_action():
-    """Test the exists method with valid actions."""
+    """Check that the `exists` method works as expected."""
     assert BulkAction.exists("create") is True
     assert BulkAction.exists("index") is True
     assert BulkAction.exists("update") is True
@@ -21,14 +21,14 @@ def test_bulk_action_exists_with_valid_action():
 
 
 def test_bulk_action_exists_with_invalid_action():
-    """Test the exists method with invalid actions."""
+    """Check that the `exists` method works as expected with invalid options"""
     assert BulkAction.exists("invalid_action") is False
     assert BulkAction.exists("") is False
     assert BulkAction.exists("CREATE") is False
 
 
 def test_bulk_metadata_decode():
-    """Test decoding of BulkMetadata into a dictionary."""
+    """Check that the `decode` method works as expected."""
     metadata = BulkMetadata(index="test_index", doc_id="1", action=BulkAction.CREATE)
     expected_output = {"create": {"_index": "test_index", "_id": "1"}}
     assert metadata.decode() == expected_output
@@ -54,13 +54,13 @@ def test_bulk_metadata_decode():
     ],
 )
 def test_bulk_doc_decode(index, doc_id, action, doc, expected_output):
-    """Test decoding of BulkDoc into a list of dictionaries."""
+    """Check that the `decode` method works as expected."""
     bulk_doc = BulkDoc(index=index, doc_id=doc_id, action=action, doc=doc)
     assert bulk_doc.decode() == expected_output
 
 
 def test_bulk_doc_create():
-    """Test the creation of a BulkDoc with the 'create' action."""
+    """Check that the `create` method works as expected."""
     doc = {"field": "value"}
     bulk_doc = BulkDoc.create(index="test_index", doc_id="1", doc=doc)
     assert bulk_doc.metadata.index == "test_index"
@@ -70,7 +70,7 @@ def test_bulk_doc_create():
 
 
 def test_bulk_doc_create_or_update():
-    """Test the creation of a BulkDoc with the 'create_or_update' action."""
+    """Check that the `create_or_update` method works as expected."""
     doc = {"field": "value"}
     bulk_doc = BulkDoc.create_or_update(index="test_index", doc_id="1", doc=doc)
     assert bulk_doc.metadata.index == "test_index"
@@ -80,7 +80,7 @@ def test_bulk_doc_create_or_update():
 
 
 def test_bulk_doc_update():
-    """Test the creation of a BulkDoc with the 'update' action."""
+    """Check that the `update` method works as expected."""
     doc = {"field": "value"}
     bulk_doc = BulkDoc.update(index="test_index", doc_id="1", doc=doc)
     assert bulk_doc.metadata.index == "test_index"
@@ -90,7 +90,7 @@ def test_bulk_doc_update():
 
 
 def test_bulk_doc_delete():
-    """Test the creation of a BulkDoc with the 'delete' action."""
+    """Check that the `delete` method works as expected."""
     bulk_doc = BulkDoc.delete(index="test_index", doc_id="1")
     assert bulk_doc.metadata.index == "test_index"
     assert bulk_doc.metadata.doc_id == "1"
@@ -100,7 +100,7 @@ def test_bulk_doc_delete():
 
 @pytest.mark.asyncio
 async def test_mixin_bulk():
-    """Test the MixinBulk's bulk method."""
+    """Check that the `bulk` method works as expected."""
     class TestClient(MixinBulk):
         _client = AsyncMock()
 

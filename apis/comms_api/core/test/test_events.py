@@ -22,7 +22,7 @@ async def test_send_stateless_events(events_send_mock):
 
 @patch('wazuh.core.indexer.create_indexer', return_value=AsyncMock())
 async def test_create_stateful_events(create_indexer_mock):
-    """Test creating stateful events with mocked indexer client."""
+    """Check that the `create_stateful_events` function works as expected."""
     create_indexer_mock.return_value.events.create = AsyncMock()
     batcher_queue = AsyncMock()
 

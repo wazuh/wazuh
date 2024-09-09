@@ -3,7 +3,7 @@ from typing import Optional
 
 
 class TimerManager:
-    """Manages the timer for sending the buffer.
+    """Manage the timer for sending the buffer.
 
     Parameters
     ----------
@@ -21,16 +21,16 @@ class TimerManager:
         self._timeout_event.set()
 
     def create_timer_task(self):
-        """Creates an asynchronous task to start the event timer."""
+        """Create an asynchronous task to start the event timer."""
         self._timeout_task = asyncio.create_task(self._event_timer())
 
     def reset_timer(self):
-        """Resets the timer by canceling the current timer task (if any) and clearing the timeout event."""
+        """Reset the timer by canceling the current timer task (if any) and clearing the timeout event."""
         if self._timeout_task is not None:
             self._timeout_task.cancel()
             self._timeout_task = None
         self._timeout_event.clear()
 
     async def wait_timeout_event(self):
-        """Asynchronously waits for the timeout event to be set."""
+        """Asynchronously wait for the timeout event to be set."""
         return await self._timeout_event.wait()

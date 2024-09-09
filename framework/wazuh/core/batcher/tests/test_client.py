@@ -7,9 +7,7 @@ from framework.wazuh.core.batcher.client import BatcherClient
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 @patch("builtins.id")
 def test_send_event(id_mock, queue_mock):
-    """Test sending an event through the BatcherClient.
-    Ensures that the event is sent to the mux queue with a unique identifier.
-    """
+    """Check that the `send_event` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
 
     event = {"data": "test event"}
@@ -25,9 +23,7 @@ def test_send_event(id_mock, queue_mock):
 @pytest.mark.asyncio
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 async def test_get_response(queue_mock):
-    """Test getting a response asynchronously through the BatcherClient.
-    Ensures that the response is retrieved correctly after waiting.
-    """
+    """Check that the `get_response` method works as expected."""
     batcher = BatcherClient(queue=queue_mock)
 
     event = {"data": "test event"}
@@ -46,10 +42,7 @@ async def test_get_response(queue_mock):
 @patch("wazuh.core.batcher.mux_demux.MuxDemuxQueue")
 @patch("asyncio.sleep", new_callable=AsyncMock)
 async def test_get_response_wait(sleep_mock, queue_mock):
-    """Test getting a response when the response is pending.
-    Test that it is awaited and then returned the correct response
-    """
-
+    """Check that the `get_response` method works as expected with no response."""
     batcher = BatcherClient(queue=queue_mock)
 
     event = {"data": "test event"}

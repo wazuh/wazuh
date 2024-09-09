@@ -10,14 +10,14 @@ logger = logging.getLogger('wazuh-comms-api')
 
 
 class Message:
-    """A message for the MuxDemuxQueue with an associated unique identifier.
+    """Message for the MuxDemuxQueue with an associated unique identifier.
 
     Parameters
     ----------
     uid : int
-        The unique identifier for the message.
+        Unique identifier for the message.
     msg : dict
-        The message content as a dictionary.
+        Message content as a dictionary.
     """
     def __init__(self, uid: int, msg: dict):
         self.uid = uid
@@ -25,16 +25,16 @@ class Message:
 
 
 class MuxDemuxQueue:
-    """A queue for managing messages between mux and demux components.
+    """Queue for managing messages between mux and demux components.
 
     Parameters
     ----------
     proxy_dict : DictProxy
-        A dictionary-like proxy for managing responses.
+        Dictionary-like proxy for managing responses.
     mux_queue : Queue
-        The queue for multiplexing messages.
+        Queue for multiplexing messages.
     demux_queue : Queue
-        The queue for demultiplexing messages.
+        Queue for demultiplexing messages.
     """
     def __init__(self, proxy_dict: DictProxy, mux_queue: Queue, demux_queue: Queue):
         self.responses = proxy_dict
@@ -42,73 +42,73 @@ class MuxDemuxQueue:
         self.demux_queue = demux_queue
 
     def send_to_mux(self, uid: int, msg: dict) -> int:
-        """Puts a message into the mux queue with an associated unique identifier.
+        """Put a message into the mux queue with an associated unique identifier.
 
         Parameters
         ----------
         uid : int
-            The unique identifier for the message.
+            Unique identifier of the message.
         msg : dict
-            The message content to be put into the mux queue.
+            Message content to be put into the mux queue.
 
         Returns
         -------
         int
-            The unique identifier of the message.
+            Unique identifier of the message.
         """
         msg = Message(uid=uid, msg=msg)
         self.mux_queue.put(msg)
         return uid
 
     def receive_from_mux(self, block: bool = True) -> Message:
-        """Retrieves a message from the mux queue. f the queue
-        is empty and block is False it raises an queue.Empty error
+        """Retrieve a message from the mux queue. If the queue
+        is empty and block is False it raise a queue.Empty error.
 
         Returns
         -------
         Message
-            The message retrieved from the mux queue.
+            Message retrieved from the mux queue.
         """
         message = self.mux_queue.get(block=block)
         return message
 
     def send_to_demux(self, msg: Message):
-        """Puts a message into the demux queue.
+        """Put a message into the demux queue.
 
         Parameters
         ----------
         msg : Message
-            The message to be put into the demux queue.
+            Message to be put into the demux queue.
         """
         self.demux_queue.put(msg)
 
     def is_response_pending(self, uid: int) -> bool:
-        """Checks if a response is available for a given unique identifier.
+        """Check if a response is available for a given unique identifier.
 
         Parameters
         ----------
         uid : int
-            The unique identifier to check.
+            Unique identifier to check.
 
         Returns
         -------
         bool
-            True if the response is available, False otherwise.
+            True if response is available, False otherwise.
         """
         return uid not in self.responses
 
     def receive_from_demux(self, uid: int) -> Optional[dict]:
-        """Retrieves and removes a response from the dictionary for a given unique identifier.
+        """Retrieve and remove a response from the dictionary for a given unique identifier.
 
         Parameters
         ----------
         uid : int
-            The unique identifier for the response.
+            Unique identifier of the response.
 
         Returns
         -------
         Optional[dict]
-            The response dictionary if available, None otherwise.
+            Indexer response if available, None otherwise.
         """
         if not self.is_response_pending(uid):
             response = self.responses[uid]
@@ -116,28 +116,28 @@ class MuxDemuxQueue:
             return response
 
     def internal_response_from_demux(self) -> Message:
-        """Retrieves a message from the demux queue.
+        """Retrieve a message from the demux queue.
 
         Returns
         -------
         Message
-            The message retrieved from the demux queue.
+            Message retrieved from the demux queue.
         """
         return self.demux_queue.get()
 
     def internal_store_response(self, msg: Message):
-        """Updates the responses dictionary with the message content.
+        """Update the responses dictionary with the message content.
 
         Parameters
         ----------
         msg : Message
-            The message whose content will be added to the responses dictionary.
+            Message whose content will be added to the response dictionary.
         """
         self.responses[msg.uid] = msg.msg
 
 
 class MuxDemuxRunner(Process):
-    """A multiprocessing Process that manages the MuxDemuxQueue operations, handling
+    """Multiprocessing Process in charge of managing the MuxDemuxQueue operations, handling
     signals for graceful shutdown and processing items from the queue.
 
     The MuxDemuxRunner class runs as a separate process to manage the `MuxDemuxQueue`. It listens
@@ -151,20 +151,20 @@ class MuxDemuxRunner(Process):
         self._shutdown_event = Event()
 
     def _handle_signal(self, signum: int, frame: Any):
-        """Handles termination signals (SIGTERM, SIGINT) by setting the shutdown event.
+        """Handle termination signals (SIGTERM, SIGINT) by setting the shutdown event.
 
         Parameters
         ----------
         signum : int
-            The signal number received.
+            Signal number received.
         frame : Any
-            The current stack frame (unused).
+            Current stack frame (unused).
         """
         logger.info(f'MuxDemuxQueue pid {os.getpid()} - received signal {signal.Signals(signum).name}')
         self._shutdown_event.set()
 
     def run(self) -> None:
-        """Main loop of the process. Sets up signal handling, and processes items from
+        """Main loop of the process. Set up signal handling, and process items from
         the queue until the shutdown event is set.
 
         This method registers signal handlers for SIGTERM and SIGINT to gracefully terminate the
@@ -189,14 +189,10 @@ class MuxDemuxRunner(Process):
 
 
 class MuxDemuxManager:
-    """Manages the lifecycle and interactions with MuxDemuxQueue and its processes.
+    """Manage the lifecycle and interactions with MuxDemuxQueue and its processes.
 
     The MuxDemuxManager handles the creation, management, and shutdown of the MuxDemuxQueue
     and its associated process.
-
-    Parameters
-    ----------
-    None
     """
     def __init__(self):
         SyncManager.register('MuxDemuxQueue', MuxDemuxQueue)
@@ -212,36 +208,36 @@ class MuxDemuxManager:
         self.queue_process.start()
 
     def get_manager(self) -> SyncManager:
-        """Returns the SyncManager instance.
+        """Return the SyncManager instance.
 
         Returns
         -------
         SyncManager
-            The SyncManager instance.
+            SyncManager instance.
         """
         return self.manager
 
     def get_queue_process(self) -> Process:
-        """Returns the MuxDemuxQueue process instance.
+        """Return the MuxDemuxQueue process instance.
 
         Returns
         -------
         Process
-            The Process instance running the MuxDemuxQueue demux.
+            Process instance running the MuxDemuxQueue demux.
         """
         return self.queue_process
 
     def get_queue(self) -> MuxDemuxQueue:
-        """Returns the MuxDemuxQueue instance.
+        """Return the MuxDemuxQueue instance.
 
         Returns
         -------
         MuxDemuxQueue
-            The MuxDemuxQueue instance.
+            MuxDemuxQueue instance.
         """
         return self.queue
 
     def shutdown(self):
-        """Terminates the MuxDemuxQueue process and shuts down the SyncManager."""
+        """Terminate the MuxDemuxQueue process and shuts down the SyncManager."""
         self.queue_process.terminate()
         self.manager.shutdown()

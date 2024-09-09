@@ -7,9 +7,7 @@ from framework.wazuh.core.batcher.mux_demux import MuxDemuxQueue, Message, MuxDe
 
 
 def test_send_to_mux():
-    """Test sending a message to the mux queue.
-    Ensures that the message is correctly placed in the queue.
-    """
+    """Check that the `send_to_mux` method works as expected."""
     mux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
@@ -30,9 +28,7 @@ def test_send_to_mux():
 
 
 def test_receive_from_mux():
-    """Test receiving a message from the mux queue.
-    Ensures that the message is correctly retrieved from the queue.
-    """
+    """Check that the `receive_from_mux` method works as expected."""
     mux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
@@ -53,9 +49,7 @@ def test_receive_from_mux():
 
 
 def test_send_to_demux():
-    """Test sending a message to the demux queue.
-    Ensures that the message is correctly placed in the queue.
-    """
+    """Check that the `send_to_demux` method works as expected."""
     demux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
@@ -76,9 +70,7 @@ def test_send_to_demux():
 
 
 def test_is_response_pending():
-    """Test if a response is pending for a given UID.
-    Ensures that the response pending status is correctly determined.
-    """
+    """Check that the `is_response_pending` method works as expected."""
     dict_test = dict()
     queue = MuxDemuxQueue(
         proxy_dict=dict_test,
@@ -93,9 +85,7 @@ def test_is_response_pending():
 
 
 def test_receive_from_demux():
-    """Test receiving a response from the demux queue.
-    Ensures that the response is correctly retrieved and removed from the dictionary.
-    """
+    """Check that the `receive_from_demux` method works as expected."""
     dict_test = dict()
     queue = MuxDemuxQueue(
         proxy_dict=dict_test,
@@ -115,9 +105,7 @@ def test_receive_from_demux():
 
 
 def test_get_response_from_demux():
-    """Test getting a response from the demux queue.
-    Ensures that the response is correctly retrieved from the queue.
-    """
+    """Check that the `internal_response_from_demux` method works as expected."""
     demux_queue = Queue()
     queue = MuxDemuxQueue(
         proxy_dict=dict(),
@@ -138,9 +126,7 @@ def test_get_response_from_demux():
 
 
 def test_store_response():
-    """Test storing a response in the dictionary.
-    Ensures that the response is correctly stored.
-    """
+    """Check that the `internal_store_response` method works as expected."""
     dict_test = dict()
     queue = MuxDemuxQueue(
         proxy_dict=dict_test,
@@ -158,9 +144,7 @@ def test_store_response():
 
 
 def test_mux_demux_manager_initialization():
-    """Test the initialization of the MuxDemuxManager.
-    Ensures that the manager and router process are correctly set up and running.
-    """
+    """Check that the `MuxDemuxManager.__init___` method works as expected."""
     manager = MuxDemuxManager()
     assert isinstance(manager.get_manager(), SyncManager)
     assert isinstance(manager.get_queue_process(), Process)
@@ -170,9 +154,7 @@ def test_mux_demux_manager_initialization():
 
 
 def test_mux_demux_manager_shutdown():
-    """Test the shutdown of the MuxDemuxManager.
-    Ensures that the router process is terminated and the manager is shut down.
-    """
+    """Check that the `shutdown` method works as expected."""
     manager = MuxDemuxManager()
     manager.shutdown()
 
