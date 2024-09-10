@@ -85,7 +85,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
     def __init__(self, db_table_name, bucket, reparse, profile, iam_role_arn,
                  only_logs_after, skip_on_error, account_alias, prefix, suffix, delete_file, aws_organization_id,
-                 region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration = None, waf_acls = None):
+                 region, discard_field, discard_regex, sts_endpoint, service_endpoint, iam_role_duration = None):
         # common SQL queries
         self.sql_already_processed = """
             SELECT
@@ -209,7 +209,6 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
         self.date_regex = re.compile(r'(\d{4}/\d{2}/\d{2})')
         self.prefix_regex = re.compile(r"^\d{12}$")
         self.check_prefix = False
-        self.waf_acls = waf_acls
 
     def _same_prefix(self, match_start: int or None, aws_account_id: str, aws_region: str) -> bool:
         """
@@ -329,7 +328,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             msg['error_msg'] = error_msg
         return msg
 
-    def get_full_prefix(self, account_id, account_region, acl_name = None):
+    def get_full_prefix(self, account_id, account_region):
         raise NotImplementedError
 
     def get_base_prefix(self):
@@ -380,7 +379,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 aws_tools.debug(f'ERROR: The "find_account_ids" request failed: {err}', 1)
                 sys.exit(1)
 
-    def build_s3_filter_args(self, aws_account_id, aws_region, acl_name=None, iterating=False, custom_delimiter='', **kwargs):
+    def build_s3_filter_args(self, aws_account_id, aws_region, iterating=False, custom_delimiter='', **kwargs):
         filter_marker = ''
         last_key = None
         if self.reparse:
@@ -398,10 +397,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                     **kwargs
                 })
             try:
-                if self.waf_acls: 
-                    filter_marker = query_last_key.fetchone()[1]
-                else:
-                    filter_marker = query_last_key.fetchone()[0]
+                filter_marker = query_last_key.fetchone()[0]
             except (TypeError, IndexError):
                 # if DB is empty for a region
                 filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
@@ -413,9 +409,7 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
             'Prefix': self.get_full_prefix(aws_account_id, aws_region)
         }
 
-        if acl_name:
-            filter_args['Prefix'] = f'{filter_args["Prefix"]}{acl_name}/'
-
+        # if nextContinuationToken is not used for processing logs in a bucket
         if not iterating:
             filter_args['StartAfter'] = filter_marker
             if self.only_logs_after:
@@ -510,18 +504,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                 if not regions:
                     continue
             for aws_region in regions:
-                if self.waf_acls:
-                    if isinstance(self.waf_acls, str):
-                        self.waf_acls = [acl.strip() for acl in self.waf_acls.split(',')]
-                        for acl_name in self.waf_acls:
-                            aws_tools.debug("+++ Working on {} - {} - ACL: {}".format(aws_account_id, aws_region, acl_name), 1)
-                            self.get_full_prefix(aws_account_id, aws_region, acl_name)
-                            self.iter_files_in_bucket(aws_account_id, aws_region, acl_name)
-                            self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region, acl_name=acl_name)
-                else:
-                    aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
-                    self.iter_files_in_bucket(aws_account_id, aws_region)
-                    self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
+                aws_tools.debug("+++ Working on {} - {}".format(aws_account_id, aws_region), 1)
+                self.iter_files_in_bucket(aws_account_id, aws_region)
+                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region)
 
     def send_event(self, event):
         # Change dynamic fields to strings; truncate values as needed
@@ -578,18 +563,13 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
 
             yield bucket_file
 
-    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, acl_name=None, **kwargs):
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, **kwargs):
         if aws_account_id is None:
             aws_account_id = self.aws_account_id
         try:
-            if acl_name is None:
-                bucket_files = self.client.list_objects_v2(
-                    **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
-                )
-            else: 
-                bucket_files = self.client.list_objects_v2(
-                    **self.build_s3_filter_args(aws_account_id, aws_region, acl_name, **kwargs)
-                )
+            bucket_files = self.client.list_objects_v2(
+                **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
+            )
             if self.reparse:
                 aws_tools.debug('++ Reparse mode enabled', 2)
 
@@ -606,10 +586,9 @@ class AWSBucket(wazuh_integration.WazuhAWSDatabase):
                         date_match = self.date_regex.search(bucket_file['Key'])
                         match_start = date_match.span()[0] if date_match else None
 
-                        if acl_name is None:
-                            if not self._same_prefix(match_start, aws_account_id, aws_region):
-                                aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
-                                continue
+                        if not self._same_prefix(match_start, aws_account_id, aws_region):
+                            aws_tools.debug(f"++ Skipping file with another prefix: {bucket_file['Key']}", 3)
+                            continue
 
                     if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
                         if self.reparse:
@@ -872,7 +851,7 @@ class AWSCustomBucket(AWSBucket):
         else:
             return int(name_regex.group(1).replace('/', '').replace('-', ''))
 
-    def get_full_prefix(self, account_id, account_region, acl_name=None):
+    def get_full_prefix(self, account_id, account_region):
         return self.prefix
 
     def reformat_msg(self, event):

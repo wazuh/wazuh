@@ -29,15 +29,18 @@ class AWSWAFBucket(AWSCustomBucket):
                              'x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto']
 
     def __init__(self, **kwargs):
+        waf_acls = kwargs.pop('waf_acls', None)
         kwargs['db_table_name'] = 'waf'
-        AWSCustomBucket.__init__(self, **kwargs)
+        super().__init__(**kwargs)
+
         if self.check_waf_type():
+            self.waf_acls = waf_acls
             self.service = 'WAFLogs'
             self.type = WAF_NATIVE
             self.empty_bucket_message_template = AWSBucket.empty_bucket_message_template
         else:
             self.type = WAF_KINESIS
-
+    
     def check_waf_type(self):
         """
         Checks if it contains the 'AWSLogs' prefix to determine the type of WAF.
@@ -100,7 +103,7 @@ class AWSWAFBucket(AWSCustomBucket):
             if self.waf_acls:
                 return AWSLogsBucket.get_full_prefix(self, account_id, account_region, self.waf_acls)
             else: 
-                aws_tools.debug(f"+++ WARNING: No waf_acls parameter found", 1)
+                aws_tools.debug(f"+++ WARNING: No waf_acls parameter found, no log will be fetched", 1)
                 sys.exit(9)
         else:
             return self.prefix
@@ -111,10 +114,128 @@ class AWSWAFBucket(AWSCustomBucket):
         else:
             return self.prefix
 
+    def build_s3_filter_args(self, aws_account_id, aws_region, acl_name=None, iterating=False, custom_delimiter='', **kwargs):
+        filter_args = super().build_s3_filter_args(aws_account_id, aws_region, iterating, custom_delimiter, **kwargs)
+
+        if not self.reparse:
+            query_last_key = self.db_cursor.execute(
+                self.sql_find_last_key_processed.format(table_name=self.db_table_name), {
+                    'bucket_path': self.bucket_path,
+                    'aws_region': aws_region,
+                    'prefix': f'{self.prefix}%',
+                    'aws_account_id': aws_account_id,
+                    **kwargs
+                })
+            try:
+                filter_marker = query_last_key.fetchone()[1]
+            except (TypeError, IndexError):
+                filter_marker = self.marker_only_logs_after(aws_region, aws_account_id) if self.only_logs_after \
+                    else self.marker_custom_date(aws_region, aws_account_id, self.default_date)
+            filter_args['StartAfter'] = filter_marker
+
+        if acl_name:
+            filter_args['Prefix'] += f'{acl_name}/'
+
+        return filter_args
+
     def iter_regions_and_accounts(self, account_id, regions):
         if self.type == WAF_NATIVE:
-            AWSBucket.iter_regions_and_accounts(self, account_id, regions)
+            if not account_id:
+                # No accounts provided, so find which exist in s3 bucket
+                account_id = self.find_account_ids()
+            for aws_account_id in account_id:
+                # No regions provided, so find which exist for this AWS account
+                if not regions:
+                    regions = self.find_regions(aws_account_id)
+                    if not regions:
+                        continue
+                for aws_region in regions:
+                    if self.waf_acls:
+                        if isinstance(self.waf_acls, str):
+                            self.waf_acls = [acl.strip() for acl in self.waf_acls.split(',')]
+                            for acl_name in self.waf_acls:
+                                aws_tools.debug("+++ Working on {} - {} - ACL: {}".format(aws_account_id, aws_region, 
+                                acl_name), 1) 
+                                self.get_full_prefix(aws_account_id, aws_region, acl_name)
+                                self.iter_files_in_bucket(aws_account_id, aws_region, acl_name)
+                                self.db_maintenance(aws_account_id=aws_account_id, aws_region=aws_region, acl_name=acl_name)
+                    else: 
+                        self.get_full_prefix(aws_account_id, aws_region)
         else:
             print(WAF_DEPRECATED_MESSAGE.format(release="5.0", url=WAF_URL))
             self.check_prefix = True
             AWSCustomBucket.iter_regions_and_accounts(self, account_id, regions)
+
+    def iter_files_in_bucket(self, aws_account_id=None, aws_region=None, acl_name=None, **kwargs):
+        if aws_account_id is None:
+            aws_account_id = self.aws_account_id
+        try:
+            if acl_name is None:
+                bucket_files = self.client.list_objects_v2(
+                    **self.build_s3_filter_args(aws_account_id, aws_region, **kwargs)
+                )
+            else:
+                bucket_files = self.client.list_objects_v2(
+                    **self.build_s3_filter_args(aws_account_id, aws_region, acl_name, **kwargs)
+                )
+            if self.reparse:
+                aws_tools.debug('++ Reparse mode enabled', 2)
+
+            while True:
+                if 'Contents' not in bucket_files:
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region, **kwargs)
+                    return
+
+                processed_logs = 0
+
+                for bucket_file in self._filter_bucket_files(bucket_files['Contents'], **kwargs):
+
+                    if self.already_processed(bucket_file['Key'], aws_account_id, aws_region, **kwargs):
+                        if self.reparse:
+                            aws_tools.debug(f"++ File previously processed, but reparse flag set: {bucket_file['Key']}",
+                                            1)
+                        else:
+                            aws_tools.debug(f"++ Skipping previously processed file: {bucket_file['Key']}", 1)
+                            continue
+
+                    aws_tools.debug(f"++ Found new log: {bucket_file['Key']}", 2)
+                    # Get the log file from S3 and decompress it
+                    log_json = self.get_log_file(aws_account_id, bucket_file['Key'])
+                    self.iter_events(log_json, bucket_file['Key'], aws_account_id)
+                    # Remove file from S3 Bucket
+                    if self.delete_file:
+                        aws_tools.debug(f"+++ Remove file from S3 Bucket:{bucket_file['Key']}", 2)
+                        self.client.delete_object(Bucket=self.bucket, Key=bucket_file['Key'])
+                    self.mark_complete(aws_account_id, aws_region, bucket_file, **kwargs)
+                    processed_logs += 1
+
+                # This is a workaround in order to work with custom buckets that don't have
+                # base prefix to search the logs
+                if processed_logs == 0:
+                    self._print_no_logs_to_process_message(self.bucket, aws_account_id, aws_region, **kwargs)
+
+                if bucket_files['IsTruncated']:
+                    new_s3_args = self.build_s3_filter_args(aws_account_id, aws_region, True, **kwargs)
+                    new_s3_args['ContinuationToken'] = bucket_files['NextContinuationToken']
+                    bucket_files = self.client.list_objects_v2(**new_s3_args)
+                else:
+                    break
+        except botocore.exceptions.ClientError as error:
+            error_code = error.response.get("Error", {}).get("Code")
+
+            if error_code == THROTTLING_EXCEPTION_ERROR_CODE:
+                error_message = f"{THROTTLING_EXCEPTION_ERROR_MESSAGE.format(name='iter_files_in_bucket')}: {error}"
+                exit_number = 16
+            else:
+                error_message = f'ERROR: The "iter_files_in_bucket" request failed: {error}'
+                exit_number = 1
+            print(f"ERROR: {error_message}")
+            exit(exit_number)
+
+        except Exception as err:
+            if hasattr(err, 'message'):
+                aws_tools.debug(f"+++ Unexpected error: {err.message}", 2)
+            else:
+                aws_tools.debug(f"+++ Unexpected error: {err}", 2)
+            print(f"ERROR: Unexpected error querying/working with objects in S3: {err}")
+            sys.exit(7)

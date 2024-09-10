@@ -434,7 +434,7 @@ def test_aws_bucket_build_s3_filter_args(mock_get_full_prefix, custom_database,
                                                  expected_filter_args['StartAfter'][prefix_len:]. \
                                                      replace('/', custom_delimiter)
 
-    assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, acl_name, iterating,
+    assert expected_filter_args == bucket.build_s3_filter_args(aws_account_id, aws_region, iterating,
                                                                custom_delimiter)
 
 
@@ -549,49 +549,29 @@ def test_aws_bucket_iter_bucket(mock_init, mock_iter):
 
 @pytest.mark.parametrize('account_id', [[utils.TEST_ACCOUNT_ID], None])
 @pytest.mark.parametrize('regions', [[utils.TEST_REGION], None])
-@pytest.mark.parametrize('waf_acls', [None, 'acl1', 'acl2'])
 @patch('aws_bucket.AWSBucket.find_account_ids', return_value=[utils.TEST_ACCOUNT_ID])
 @patch('aws_bucket.AWSBucket.find_regions', side_effect=[[utils.TEST_REGION], None])
 @patch('aws_bucket.AWSBucket.iter_files_in_bucket')
 @patch('aws_bucket.AWSBucket.db_maintenance')
-@patch('aws_bucket.AWSBucket.get_full_prefix', return_value=utils.TEST_FULL_PREFIX_WAF)
-def test_aws_bucket_iter_regions_and_accounts(mock_get_full_prefix, mock_db_maintenance, mock_iter_files,
-                                              mock_find_regions, mock_accounts, regions: list[str],
-                                              account_id: list[str], waf_acls):
-    
+def test_aws_bucket_iter_regions_and_accounts(mock_db_maintenance, mock_iter_files, mock_find_regions, mock_accounts,
+                                              regions: list[str], account_id: list[str]):
+    """Test 'iter_regions_and_accounts' method makes the necessary calls in order to process the bucket's files."""
     bucket = utils.get_mocked_aws_bucket()
-    bucket.waf_acls = waf_acls
 
     bucket.iter_regions_and_accounts(account_id, regions)
 
     if not account_id:
         mock_accounts.assert_called_once()
         account_id = bucket.find_account_ids()
-
     for aws_account_id in account_id:
         if not regions:
             mock_find_regions.assert_called_with(aws_account_id)
             regions = bucket.find_regions(aws_account_id)
             if not regions:
                 continue
-
         for region in regions:
-            if waf_acls:
-                if isinstance(waf_acls, str):
-                    expected_acls = [acl.strip() for acl in waf_acls.split(',')]
-                else:
-                    expected_acls = waf_acls
-
-                expected_calls = [call(aws_account_id, region, acl_name) for acl_name in expected_acls]
-
-                mock_get_full_prefix.assert_has_calls(expected_calls, any_order=True)
-
-                for acl_name in expected_acls:
-                    mock_iter_files.assert_called_with(aws_account_id, region, acl_name)
-                    mock_db_maintenance.assert_called_with(aws_account_id=aws_account_id, aws_region=region, acl_name=acl_name)
-            else:
-                mock_iter_files.assert_called_with(aws_account_id, region)
-                mock_db_maintenance.assert_called_with(aws_account_id=aws_account_id, aws_region=region)
+            mock_iter_files.assert_called_with(aws_account_id, region)
+            mock_db_maintenance.assert_called_with(aws_account_id=aws_account_id, aws_region=region)
 
 
 @patch('aws_bucket.AWSBucket.send_msg')
