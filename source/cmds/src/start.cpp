@@ -157,8 +157,20 @@ void runStart(ConfHandler confManager)
     const auto queueDropFlood = confManager->get<bool>("server.queue_drop_flood");
 
     // TZDB config
-    const auto tzdbPath = confManager->get<std::string>("server.tzdb_path");
-    const auto tzdbAutoUpdate = confManager->get<bool>("server.tzdb_automatic_update");
+    auto getExecutablePath = []() -> std::string
+    {
+        char path[PATH_MAX];
+        ssize_t count = readlink("/proc/self/exe", path, PATH_MAX);
+        if (count != -1)
+        {
+            path[count] = '\0';
+            std::string pathStr(path);
+            return pathStr.substr(0, pathStr.find_last_of('/'));
+        }
+        return {};
+    };
+    const auto tzdbPath = getExecutablePath() + "/tzdb"; // confManager->get<std::string>("server.tzdb_path");
+    const auto tzdbAutoUpdate = false;                   // confManager->get<bool>("server.tzdb_automatic_update");
 
     // Set signal [SIGINT]: Crt+C handler
     {
