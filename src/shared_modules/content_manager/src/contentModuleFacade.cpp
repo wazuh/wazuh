@@ -46,16 +46,14 @@ void ContentModuleFacade::addProvider(const std::string& name, const nlohmann::j
 void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
 {
     std::shared_lock<std::shared_mutex> lock {m_mutex};
-    const auto providerIt {m_providers.find(name)};
-    if (providerIt == m_providers.end())
-    {
-        logDebug1(WM_CONTENTUPDATER, "Couldn't start scheduled action: Provider '%s' not found.", name);
-        return;
-    }
-
     try
     {
-        providerIt->second->startActionScheduler(interval);
+        if (const auto providerIt {m_providers.find(name)}; providerIt != m_providers.end())
+        {
+            providerIt->second->startActionScheduler(interval);
+            return;
+        }
+        logDebug1(WM_CONTENTUPDATER, "Couldn't start scheduled action: Provider '%s' not found.", name.c_str());
     }
     catch (const std::exception& e)
     {
@@ -65,16 +63,14 @@ void ContentModuleFacade::startScheduling(const std::string& name, size_t interv
 void ContentModuleFacade::startOndemand(const std::string& name)
 {
     std::shared_lock<std::shared_mutex> lock {m_mutex};
-    const auto providerIt {m_providers.find(name)};
-    if (providerIt == m_providers.end())
-    {
-        logDebug1(WM_CONTENTUPDATER, "Couldn't start on-demand action: Provider '%s' not found.", name);
-        return;
-    }
-
     try
     {
-        providerIt->second->startOnDemandAction();
+        if (const auto providerIt {m_providers.find(name)}; providerIt != m_providers.end())
+        {
+            providerIt->second->startOnDemandAction();
+            return;
+        }
+        logDebug1(WM_CONTENTUPDATER, "Couldn't start on-demand action: Provider '%s' not found.", name.c_str());
     }
     catch (const std::exception& e)
     {
@@ -85,16 +81,14 @@ void ContentModuleFacade::startOndemand(const std::string& name)
 void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const size_t interval)
 {
     std::shared_lock<std::shared_mutex> lock {m_mutex};
-    const auto providerIt {m_providers.find(name)};
-    if (providerIt == m_providers.end())
-    {
-        logDebug1(WM_CONTENTUPDATER, "Couldn't change scheduled interval: Provider '%s' not found.", name);
-        return;
-    }
-
     try
     {
-        providerIt->second->changeSchedulerInterval(interval);
+        if (const auto providerIt {m_providers.find(name)}; providerIt != m_providers.end())
+        {
+            providerIt->second->changeSchedulerInterval(interval);
+            return;
+        }
+        logDebug1(WM_CONTENTUPDATER, "Couldn't change scheduled interval: Provider '%s' not found.", name.c_str());
     }
     catch (const std::exception& e)
     {
