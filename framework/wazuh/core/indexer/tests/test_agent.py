@@ -98,7 +98,7 @@ class TestAgentIndex:
                 }
             }, 
             'script': {
-                'source': 'ctx._source.groups = ctx._source.groups.replace(","+params.group, "").replace(params.group, "")',
+                'source': AgentsIndex.REMOVE_GROUP_SCRIPT,
                 'lang': 'painless', 
                 'params': {
                     'group': group_name
@@ -163,7 +163,13 @@ class TestAgentIndex:
         if override:
             source = 'ctx._source.groups = params.group'
         else:
-            source = 'ctx._source.groups += ","+params.group'
+            source = """
+                if (ctx._source.groups == null) {
+                    ctx._source.groups = params.group;
+                } else {
+                    ctx._source.groups += ","+params.group;
+                }
+                """
 
         query = {
             IndexerKey.QUERY: {
@@ -202,7 +208,7 @@ class TestAgentIndex:
                 }
             }, 
             'script': {
-                'source': 'ctx._source.groups = ctx._source.groups.replace(","+params.group, "").replace(params.group, "")',
+                'source': AgentsIndex.REMOVE_GROUP_SCRIPT,
                 'lang': 'painless', 
                 'params': {
                     'group': group_name

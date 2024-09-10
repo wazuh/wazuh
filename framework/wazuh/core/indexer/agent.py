@@ -242,12 +242,18 @@ class AgentsIndex(BaseIndex):
             Replace all groups with the specified one. Only works if `remove` is False.
         """
         if remove:
-            source = 'ctx._source.groups = ctx._source.groups.replace(","+params.group, "").replace(params.group, "")'
+            source = self.REMOVE_GROUP_SCRIPT
         else:
             if override:
                 source = 'ctx._source.groups = params.group'
             else:
-                source = 'ctx._source.groups += ","+params.group'
+                source = """
+                if (ctx._source.groups == null) {
+                    ctx._source.groups = params.group;
+                } else {
+                    ctx._source.groups += ","+params.group;
+                }
+                """
 
         query = AsyncUpdateByQuery(using=self._client, index=self.INDEX) \
             .filter(IndexerKey.IDS, values=agent_ids) \
