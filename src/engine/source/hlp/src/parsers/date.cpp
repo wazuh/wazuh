@@ -163,18 +163,20 @@ namespace hlp
 namespace
 {
 /**
- * @brief Load the timezone database and check if the version is the same as the provided.
+ * @brief Try load and check if the timezone database needs to be updated.
  *
- * @param version The version to check
- * @return true if the database is loaded and the version is the same as the provided
+ * @param version Required version
+ * @param autoUpdate if true, check if the database needs to be updated
+ * @return False if the database needs to be downloaded and installed/updated.
+ * @return True if the database is loaded correctly and no update is needed.
  */
-bool loadTimeZoneDB(const std::string& version)
+bool loadTimeZoneDB(const std::string& version, bool autoUpdate)
 {
     try
     {
         const auto& db = date::get_tzdb();
         LOG_INFO("Loaded timezone database version: '{}'", db.version);
-        return version == db.version;
+        return !(autoUpdate && db.version != version);
     }
     catch (std::exception& e)
     {
@@ -217,7 +219,7 @@ void initTZDB(const std::string& path, const bool autoUpdate)
     std::string rv = date::remote_version();
     LOG_DEBUG("Remote timezone database version: '{}'", rv);
 
-    if (loadTimeZoneDB(rv) && !autoUpdate)
+    if (loadTimeZoneDB(rv, autoUpdate))
     {
         return;
     }
