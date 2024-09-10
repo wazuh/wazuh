@@ -5335,13 +5335,6 @@ components:
       description: "Agent ID. All possible values from 001 onwards"
       required: true
       schema:
-        $ref: '#/components/schemas/AgentID'
-    agent_uuid:
-      in: path
-      name: agent_uuid
-      description: "Agent UUID."
-      required: true
-      schema:
         $ref: '#/components/schemas/AgentUUID'
     agent_name:
       in: query
@@ -7647,7 +7640,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/{agent_uuid}/restart:
+  /agents/{agent_id}/restart:
     put:
       tags:
         - Agents
@@ -7659,7 +7652,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agent_uuid'
+        - $ref: '#/components/parameters/agent_id'
       responses:
         '200':
           description: "Agent restarted"

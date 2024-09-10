@@ -436,7 +436,7 @@ async def get_agent_key(agent_id: str, pretty: bool = False, wait_for_complete: 
     return json_response(data, pretty=pretty)
 
 
-async def restart_agent(agent_uuid: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
+async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Restart an agent.
 
     Parameters
@@ -445,7 +445,7 @@ async def restart_agent(agent_uuid: str, pretty: bool = False, wait_for_complete
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agent_uuid : str
+    agent_id : str
         Agent UUID.
 
     Returns
@@ -453,7 +453,7 @@ async def restart_agent(agent_uuid: str, pretty: bool = False, wait_for_complete
     ConnexionResponse
         API response.
     """
-    # f_kwargs = {'agents_id': [agent_uuid]}
+    # f_kwargs = {'agents_id': [agent_id]}
 
     # dapi = DistributedAPI(
     #     f=agent.restart_agents,
