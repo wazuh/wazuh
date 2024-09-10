@@ -9,10 +9,10 @@
  * Foundation.
  */
 
-#include "testtoolArgsParser.hpp"
 #include "keyStore.hpp"
-#include <iostream>
+#include "testtoolArgsParser.hpp"
 #include <functional>
+#include <iostream>
 
 namespace Log
 {
@@ -23,13 +23,13 @@ namespace Log
 
 int main(int argc, char* argv[])
 {
-    CmdLineArgs args(argc, argv);
-    std::string key = args.getKey();
-    std::string column = args.getColumnFamily();
-    std::string value = args.getValue();
-
     try
     {
+        CmdLineArgs args(argc, argv);
+        std::string key = args.getKey();
+        std::string column = args.getColumnFamily();
+        std::string value = args.getValue();
+
         if (value.empty())
         {
             Keystore::get(column, key, value);
