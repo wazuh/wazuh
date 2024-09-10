@@ -12,7 +12,7 @@
 #ifndef _FACTORY_DOWNLOADER_HPP
 #define _FACTORY_DOWNLOADER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "APIDownloader.hpp"
 #include "CtiOffsetDownloader.hpp"
 #include "CtiSnapshotDownloader.hpp"

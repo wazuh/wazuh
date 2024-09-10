@@ -12,7 +12,7 @@
 #ifndef _EXECUTION_CONTEXT_HPP
 #define _EXECUTION_CONTEXT_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
 #include "defs.h"

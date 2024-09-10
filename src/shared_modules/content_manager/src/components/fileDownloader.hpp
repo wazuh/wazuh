@@ -12,7 +12,7 @@
 #ifndef _FILE_DOWNLOADER_HPP
 #define _FILE_DOWNLOADER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "HTTPRequest.hpp"
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"

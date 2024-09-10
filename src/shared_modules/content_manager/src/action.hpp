@@ -40,7 +40,7 @@ public:
     explicit Action(
         std::string topicName,
         nlohmann::json parameters,
-        const std::function<std::tuple<const int, const std::string, const bool>(const std::string& message, std::atomic<bool>& shouldStop)> fileProcessingCallback)
+        const FileProcessingCallback fileProcessingCallback)
         : m_actionInProgress {false}
         , m_cv {}
         , m_topicName {std::move(topicName)}

@@ -12,7 +12,7 @@
 #ifndef _FACTORY_OFFSET_UPDATER_HPP
 #define _FACTORY_OFFSET_UPDATER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "updateCtiApiOffset.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"

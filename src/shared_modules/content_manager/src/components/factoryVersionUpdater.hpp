@@ -12,7 +12,7 @@
 #ifndef _FACTORY_VERSION_UPDATER_HPP
 #define _FACTORY_VERSION_UPDATER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "skipStep.hpp"
 #include "updateCtiApiOffset.hpp"
 #include "updaterContext.hpp"

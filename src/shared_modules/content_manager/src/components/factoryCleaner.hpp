@@ -12,7 +12,7 @@
 #ifndef _FACTORY_CLEANER_HPP
 #define _FACTORY_CLEANER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "cleanUpContent.hpp"
 #include "skipStep.hpp"
 #include "updaterContext.hpp"

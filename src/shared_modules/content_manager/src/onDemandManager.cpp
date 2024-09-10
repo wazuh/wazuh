@@ -10,7 +10,7 @@
  */
 
 #include "onDemandManager.hpp"
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "actionOrchestrator.hpp"
 #include "contentManager.hpp"
 #include "external/nlohmann/json.hpp"

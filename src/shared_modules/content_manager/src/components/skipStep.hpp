@@ -12,7 +12,7 @@
 #ifndef _SKIP_STEP_HPP
 #define _SKIP_STEP_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 

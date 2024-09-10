@@ -12,7 +12,7 @@
 #ifndef _CTI_OFFSET_DOWNLOADER_HPP
 #define _CTI_OFFSET_DOWNLOADER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "CtiDownloader.hpp"
 #include "IURLRequest.hpp"
 #include "updaterContext.hpp"

@@ -12,7 +12,7 @@
 #ifndef _PUB_SUB_PUBLISHER_HPP
 #define _PUB_SUB_PUBLISHER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
@@ -71,10 +71,9 @@ private:
 
             logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", message.c_str());
 
-            // TODO: fix bool
-            std::atomic<bool> shouldStop {false};
+            std::atomic<bool>  {false};
             const auto [offset, hash, status] =
-                context.spUpdaterBaseContext->fileProcessingCallback(message, shouldStop);
+                context.spUpdaterBaseContext->fileProcessingCallback(message, context.spUpdaterBaseContext->spStopCondition);
 
             // If we were processing offsets and it failed, we need to trigger a snapshot to recover
             if (context.data.at("type") == "offsets" && !status)

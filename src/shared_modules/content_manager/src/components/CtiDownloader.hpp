@@ -12,7 +12,7 @@
 #ifndef _CTI_DOWNLOADER_HPP
 #define _CTI_DOWNLOADER_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "IURLRequest.hpp"
 #include "componentsHelper.hpp"
 #include "updaterContext.hpp"

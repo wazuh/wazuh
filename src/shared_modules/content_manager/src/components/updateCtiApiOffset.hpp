@@ -12,7 +12,7 @@
 #ifndef _UPDATE_CTI_API_OFFSET_HPP
 #define _UPDATE_CTI_API_OFFSET_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "componentsHelper.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"

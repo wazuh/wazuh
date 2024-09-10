@@ -12,7 +12,7 @@
 #ifndef _CLEAN_UP_CONTENT_HPP
 #define _CLEAN_UP_CONTENT_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <filesystem>

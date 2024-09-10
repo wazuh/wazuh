@@ -113,8 +113,7 @@ public:
      */
     explicit ActionOrchestrator(const nlohmann::json& parameters,
                                 std::shared_ptr<ConditionSync> stopActionCondition,
-                                const std::function<std::tuple<const int, const std::string, const bool>(
-                                    const std::string&, std::atomic<bool>& shouldStop)> fileProcessingCallback)
+                                const FileProcessingCallback fileProcessingCallback)
     {
         try
         {

@@ -12,7 +12,7 @@
 #ifndef _XZ_DECOMPRESSOR_HPP
 #define _XZ_DECOMPRESSOR_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "componentsHelper.hpp"
 #include "json.hpp"
 #include "updaterContext.hpp"

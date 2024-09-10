@@ -63,8 +63,7 @@ public:
      */
     void addProvider(const std::string& name,
                      const nlohmann::json& parameters,
-                     const std::function<std::tuple<const int, const std::string, const bool>(
-                         const std::string& message, std::atomic<bool>& shouldStop)> fileProcessingCallback);
+                     const FileProcessingCallback fileProcessingCallback);
 
     /**
      * @brief Starts action scheduler.

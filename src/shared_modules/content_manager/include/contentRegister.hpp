@@ -18,6 +18,7 @@
 #include <string_view>
 #include <thread>
 #include <unordered_map>
+#include "sharedDefs.hpp"
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))

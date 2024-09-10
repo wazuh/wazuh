@@ -30,8 +30,7 @@ void ContentModule::stop()
 
 ContentRegister::ContentRegister(std::string name,
                                  const nlohmann::json& parameters,
-                                 const std::function<std::tuple<const int, const std::string, const bool>(
-                                     const std::string& message, std::atomic<bool>& shouldStop)> fileProcessingCallback)
+                                 const FileProcessingCallback fileProcessingCallback)
     : m_name {std::move(name)}
 {
     ContentModuleFacade::instance().addProvider(m_name, parameters, fileProcessingCallback);
@@ -65,7 +64,6 @@ void ContentRegister::changeSchedulerInterval(const size_t newInterval)
 extern "C"
 {
 #endif
-
     void content_manager_start(full_log_fnc_t callbackLog)
     {
         ContentModuleFacade::instance().start(

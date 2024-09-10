@@ -12,7 +12,7 @@
 #ifndef _FACTORY_DECOMPRESSOR_HPP
 #define _FACTORY_DECOMPRESSOR_HPP
 
-#include "../sharedDefs.hpp"
+#include "sharedDefs.hpp"
 #include "XZDecompressor.hpp"
 #include "gzipDecompressor.hpp"
 #include "skipStep.hpp"

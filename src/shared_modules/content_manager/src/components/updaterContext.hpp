@@ -51,10 +51,9 @@ struct UpdaterBaseContext
     /**
      * @brief Callback in charge to process downloaded files.
      *
-     * @return std::tuple<const int, std::string, bool> offset, hash, success status.
+     * @return FileProcessingResult
      */
-    const std::function<std::tuple<const int, const std::string, const bool>(const std::string&, std::atomic<bool>&)>
-        fileProcessingCallback;
+    const FileProcessingCallback fileProcessingCallback;
 
     /**
      * @brief Pointer to the RocksDB instance.
@@ -100,8 +99,7 @@ struct UpdaterBaseContext
      *
      */
     explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition,
-                                const std::function<std::tuple<const int, const std::string, const bool>(
-                                    const std::string&, std::atomic<bool>&)>& fileProcessingCallback)
+                                FileProcessingCallback& fileProcessingCallback)
         : spStopCondition(std::move(spStopCondition))
         , fileProcessingCallback(fileProcessingCallback)
     {
