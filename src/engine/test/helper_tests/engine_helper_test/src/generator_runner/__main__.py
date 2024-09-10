@@ -2,7 +2,6 @@
 
 import argparse
 from pathlib import Path
-import tempfile
 from runner import __main__
 import sys
 import subprocess

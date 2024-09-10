@@ -56,14 +56,6 @@ jobs:
       with:
         python-version: 3.8
 
-    - name: Install dependencies
-      # Install behave
-      run: |
-        pip install ${{env.ENGINE_DIR}}/tools/api-communication/
-        pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
-        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
-        pip install behave
-
     - name: Setup VCPKG
       uses: lukka/run-vcpkg@v11
       with:

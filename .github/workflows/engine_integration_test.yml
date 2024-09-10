@@ -60,9 +60,8 @@ jobs:
       # Install behave
       run: |
         pip install ${{env.ENGINE_DIR}}/tools/api-communication/
-        pip install ${{env.ENGINE_DIR}}/test/integration_tests/it-utils/
-        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
-        pip install behave
+        pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
+        pip install ${{env.ENGINE_DIR}}/test/integration_tests/engine-it
 
     - name: Setup VCPKG
       uses: lukka/run-vcpkg@v11
@@ -81,7 +80,7 @@ jobs:
       run: python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
     - name: Initial state
-      run: python3 ${{env.ENGINE_DIR}}/test/integration_tests/initialState.py -e /tmp/actions
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ init -b ${{env.ENGINE_DIR}}/build/main
 
     - name: Integration Test
-      run: python3 ${{env.ENGINE_DIR}}/test/integration_tests/run.py -e /tmp/actions
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run
