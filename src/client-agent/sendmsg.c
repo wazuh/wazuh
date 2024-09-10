@@ -27,6 +27,7 @@ int send_msg(const char *msg, ssize_t msg_length)
     int retval;
     int error;
 
+    mwarn("Message raw: %s", msg);
     msg_size = CreateSecMSG(&keys, msg, msg_length < 0 ? strlen(msg) : (size_t)msg_length, crypt_msg, 0);
     if (msg_size <= 0) {
         merror(SEC_ERROR);

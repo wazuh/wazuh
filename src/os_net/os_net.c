@@ -667,6 +667,9 @@ int OS_SendSecureTCP(int sock, uint32_t size, const void * msg) {
     *(uint32_t *)buffer = wnet_order(size);
     memcpy(buffer + sizeof(uint32_t), msg, size);
     errno = 0;
+    char hex[OS_SIZE_2048 + 1] = {0};
+    print_hex_string(buffer, bufsz, hex, sizeof(hex));
+    mwarn("Sending message (hex): '%s'", hex);
     retval = send(sock, buffer, bufsz, 0) == (ssize_t)bufsz ? 0 : OS_SOCKTERR;
     free(buffer);
     return retval;
