@@ -78,6 +78,10 @@ int nb_recv(netbuffer_t * buffer, int sock) {
 
     recv_len = recv(sock, sockbuf->data + sockbuf->data_len, receive_chunk, 0);
 
+    char hex3[OS_SIZE_2048 + 1] = {0};
+    print_hex_string(&sockbuf->data[sockbuf->data_len], recv_len, hex3, sizeof(hex3));
+    minfo("Recv message (hex3): '%s'", hex3);
+
     if (recv_len <= 0) {
         goto end;
     }
@@ -88,6 +92,10 @@ int nb_recv(netbuffer_t * buffer, int sock) {
 
     for (i = 0; i + sizeof(uint32_t) <= sockbuf->data_len; i = cur_offset + cur_len) {
         cur_len = wnet_order(*(uint32_t *)(sockbuf->data + i));
+
+        char hex2[OS_SIZE_2048 + 1] = {0};
+        print_hex_string(&sockbuf->data[i], sockbuf->data_len - i, hex2, sizeof(hex2));
+        minfo("Extracted message (hex2): '%s'", hex2);
 
         if (cur_len > OS_MAXSTR) {
             char hex[OS_SIZE_2048 + 1] = {0};
