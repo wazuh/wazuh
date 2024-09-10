@@ -39,11 +39,18 @@ jobs:
     timeout-minutes: 60
 
     steps:
+
+    - name: Install dependencies lzip
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: lzip
+        version: 1.0
+
     - name: Check out repository
       uses: actions/checkout@v4
       with:
         submodules: recursive
-  
+
     - name: Cache CMake and ccache
       uses: hendrikmuhs/ccache-action@v1.2
       with:
