@@ -1,3 +1,14 @@
+# Refactor WIP - Metrics
+set(SRC_DIR ${CMAKE_CURRENT_LIST_DIR}/src)
+set(INC_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
+set(IFACE_DIR ${CMAKE_CURRENT_LIST_DIR}/interface)
+
+add_library(metrics_imetrics INTERFACE)
+target_include_directories(metrics_imetrics INTERFACE ${IFACE_DIR})
+target_link_libraries(metrics_imetrics INTERFACE base)
+add_library(metrics::imetrics ALIAS metrics_imetrics)
+
+
 set(ENGINE_METRICS_SOURCE_DIR ${ENGINE_SOURCE_DIR}/metrics/src)
 set(ENGINE_METRICS_INCLUDE_DIR ${ENGINE_SOURCE_DIR}/metrics/include)
 
