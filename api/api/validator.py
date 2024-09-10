@@ -527,7 +527,9 @@ def format_group_names_or_all(value):
 def format_uuid7(value):
     ret_val = True
     try:
-        UUID(value)
+        uuid = UUID(value)
+        if uuid.version != 7:
+            ret_val = False
     except ValueError:
         ret_val = False
     return ret_val
