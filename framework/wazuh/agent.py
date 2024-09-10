@@ -354,7 +354,6 @@ async def get_agents(
 
     async with get_indexer_client() as indexer:
         items = await indexer.agents.search(query, select=select, exclude='key', limit=limit, offset=offset, sort=sort)
-        items = [i for i in get_source_items(items)]
 
     result.affected_items.extend(items)
     result.total_affected_items = len(items)
@@ -482,9 +481,9 @@ async def delete_agents(agents_id: list, filters: Optional[dict] = None,) -> Aff
     )
 
     async with get_indexer_client() as indexer:
-        available_agents = get_source_items_id(
+        available_agents = [item.id for item in
             await indexer.agents.search(query=build_agents_query(agents_id, filters))
-        )
+        ]
         not_found_agents = set(agents_id) - set(available_agents)
 
         for not_found_id in not_found_agents:

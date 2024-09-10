@@ -8,8 +8,8 @@ from opensearchpy._async.helpers.search import AsyncSearch
 
 from wazuh.core.indexer.base import BaseIndex, IndexerKey, remove_empty_values
 from wazuh.core.indexer.models.agent import Agent
+from wazuh.core.indexer.utils import get_source_items
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
-
 
 class AgentsIndex(BaseIndex):
     """Set of methods to interact with the `agents` index."""
@@ -100,7 +100,7 @@ class AgentsIndex(BaseIndex):
         offset: Optional[int] = None,
         limit: Optional[int] = None,
         sort: Optional[str] = None
-    ) -> dict:
+    ) -> List[Agent]:
         """Perform a search operation with the given query.
 
         Parameters
@@ -124,9 +124,10 @@ class AgentsIndex(BaseIndex):
             The search result.
         """
         parameters = {IndexerKey.INDEX: self.INDEX, IndexerKey.BODY: query}
-        return await self._client.search(
+        results = await self._client.search(
             **parameters, _source_includes=select, _source_excludes=exclude, size=limit, from_=offset, sort=sort
         )
+        return [Agent(**item) for item in get_source_items(results)]
 
     async def get(self, uuid: str) -> Agent:
         """Retrieve an agent information.

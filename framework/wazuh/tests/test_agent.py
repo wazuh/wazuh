@@ -345,10 +345,9 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
             ([], [], []),
         ]
 )
-@patch('wazuh.agent.get_document_ids')
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_delete_agents(
-    create_indexer_mock, get_document_ids_mock, agent_list, available_agents, expected_items
+    create_indexer_mock, agent_list, available_agents, expected_items
 ):
     """Test `delete_agents` function from agent module.
 
@@ -360,10 +359,9 @@ async def test_agent_delete_agents(
         List of expected agent ID's returned by
     """
     filters = {}
-    agents_search_mock = AsyncMock()
+    agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in available_agents])
     agents_delete_mock = AsyncMock(return_value=expected_items)
 
-    get_document_ids_mock.return_value = available_agents
     create_indexer_mock.return_value.agents.search = agents_search_mock
     create_indexer_mock.return_value.agents.delete = agents_delete_mock
 

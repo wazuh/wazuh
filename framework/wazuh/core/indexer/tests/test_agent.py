@@ -69,14 +69,15 @@ class TestAgentIndex:
         limit = 10
         offset = 1
         sort = 'name'
-        search_result = {'baz': 3}
+        search_result = [{'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}]
         client_mock.search.return_value = search_result
 
-        result = await index_instance.search(
-            query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
-        )
+        with mock.patch('wazuh.core.indexer.agent.get_source_items', return_value=search_result):
+            result = await index_instance.search(
+                query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
+            )
 
-        assert result == search_result
+        assert result == [Agent(**item) for item in search_result]
         client_mock.search.assert_called_once_with(
             index=index_instance.INDEX,
             body=query,
