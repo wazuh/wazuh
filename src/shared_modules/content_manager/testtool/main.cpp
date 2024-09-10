@@ -123,11 +123,20 @@ void runOffsetUpdate(const std::string& topicName)
     data["offset"] = OFFSET_UPDATE_VALUE;
     data["topicName"] = topicName;
     const auto putUrl {"http://localhost/offset"};
-    UNIXSocketRequest::instance().put(
-        HttpUnixSocketURL(ONDEMAND_SOCK, putUrl),
-        data,
-        [](const std::string& msg) { std::cout << msg << std::endl; },
-        [](const std::string& msg, const long responseCode) { std::cout << msg << ": " << responseCode << std::endl; });
+
+    const auto onSuccess = [](const std::string& msg)
+    {
+        std::cout << msg << std::endl;
+    };
+
+    const auto onError = [](const std::string& msg, const long responseCode)
+    {
+        std::cout << msg << ": " << responseCode << std::endl;
+    };
+
+    UNIXSocketRequest::instance().put(RequestParameters {.url = HttpUnixSocketURL(ONDEMAND_SOCK, putUrl), .data = data},
+                                      PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                      ConfigurationParameters {});
 }
 
 int main()
@@ -149,13 +158,22 @@ int main()
             runOffsetUpdate(topic_name);
         }
 
+        const auto onSuccess = [](const std::string& msg)
+        {
+            std::cout << msg << std::endl;
+        };
+
+        const auto onError = [](const std::string& msg, const long responseCode)
+        {
+            std::cout << msg << ": " << responseCode << std::endl;
+        };
+
+        const std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";
+
         // OnDemand request
-        std::string url = "http://localhost/ondemand/" + topic_name + "?offset=-1";
-        UNIXSocketRequest::instance().get(
-            HttpUnixSocketURL(ONDEMAND_SOCK, std::move(url)),
-            [](const std::string& msg) { std::cout << msg << std::endl; },
-            [](const std::string& msg, const long responseCode)
-            { std::cout << msg << ": " << responseCode << std::endl; });
+        UNIXSocketRequest::instance().get(RequestParameters {.url = HttpUnixSocketURL(ONDEMAND_SOCK, url)},
+                                          PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                          ConfigurationParameters {});
 
         std::this_thread::sleep_for(std::chrono::seconds(60));
     }

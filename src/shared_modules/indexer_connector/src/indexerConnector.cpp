@@ -147,14 +147,23 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
     postData["size"] = ELEMENTS_PER_QUERY;
     postData["_source"] = nlohmann::json::array({"_id"});
 
-    HTTPRequest::instance().post(
-        HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"),
-        postData.dump(),
-        [&responseJson](const std::string& response) { responseJson = nlohmann::json::parse(response); },
-        [](const std::string& error, const long) { throw std::runtime_error(error); },
-        "",
-        DEFAULT_HEADERS,
-        secureCommunication);
+    {
+        const auto onSuccess = [&responseJson](const std::string& response)
+        {
+            responseJson = nlohmann::json::parse(response);
+        };
+
+        const auto onError = [](const std::string& error, const long statusCode)
+        {
+            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+            throw std::runtime_error(error);
+        };
+
+        HTTPRequest::instance().post(
+            RequestParameters {.url = HttpURL(url + "/" + m_indexName + "/_search?scroll=1m"), .data = postData.dump()},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
+    }
 
     // If the response have more than ELEMENTS_PER_QUERY elements, we need to scroll.
     if (responseJson.at("hits").at("total").at("value").get<int>() > ELEMENTS_PER_QUERY)
@@ -163,23 +172,27 @@ nlohmann::json IndexerConnector::getAgentDocumentsIds(const std::string& url,
         const auto scrollUrl = url + "/_search/scroll";
         const auto scrollData = R"({"scroll":"1m","scroll_id":")" + scrollId + "\"}";
 
+        const auto onError = [](const std::string& error, const long)
+        {
+            throw std::runtime_error(error);
+        };
+
+        const auto onSuccess = [&responseJson](const std::string& response)
+        {
+            auto newResponse = nlohmann::json::parse(response);
+            for (const auto& hit : newResponse.at("hits").at("hits"))
+            {
+                responseJson.at("hits").at("hits").push_back(hit);
+            }
+        };
+
         while (responseJson.at("hits").at("hits").size() < responseJson.at("hits").at("total").at("value").get<int>())
         {
-            HTTPRequest::instance().post(
-                HttpURL(scrollUrl),
-                scrollData,
-                [&responseJson](const std::string& response)
-                {
-                    auto newResponse = nlohmann::json::parse(response);
-                    for (const auto& hit : newResponse.at("hits").at("hits"))
-                    {
-                        responseJson.at("hits").at("hits").push_back(hit);
-                    }
-                },
-                [](const std::string& error, const long) { throw std::runtime_error(error); },
-                "",
-                DEFAULT_HEADERS,
-                secureCommunication);
+            HTTPRequest::instance().post(RequestParameters {.url = HttpURL(scrollUrl),
+                                                            .data = scrollData,
+                                                            .secureCommunication = secureCommunication},
+                                         PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                         ConfigurationParameters {});
         }
     }
 
@@ -261,14 +274,21 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
 
     if (!bulkData.empty())
     {
+        const auto onSuccess = [](const std::string& response)
+        {
+            logDebug2(IC_NAME, "Response: %s", response.c_str());
+        };
+
+        const auto onError = [](const std::string& error, const long statusCode)
+        {
+            logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+            throw std::runtime_error(error);
+        };
+
         HTTPRequest::instance().post(
-            HttpURL(url),
-            bulkData,
-            [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-            [](const std::string& error, const long statusCode) { throw std::runtime_error(error); },
-            "",
-            DEFAULT_HEADERS,
-            secureCommunication);
+            RequestParameters {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
+            PostRequestParameters {.onError = onError},
+            ConfigurationParameters {});
     }
 }
 
@@ -298,22 +318,19 @@ void IndexerConnector::initialize(const nlohmann::json& templateData,
     };
 
     // Initialize template.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
-                                templateData,
-                                onSuccess,
-                                onError,
-                                "",
-                                DEFAULT_HEADERS,
-                                secureCommunication);
+    HTTPRequest::instance().put(
+        RequestParameters {.url = HttpURL(selector->getNext() + "/_index_template/" + m_indexName + "_template"),
+                           .data = templateData,
+                           .secureCommunication = secureCommunication},
+        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+        ConfigurationParameters {});
 
     // Initialize Index.
-    HTTPRequest::instance().put(HttpURL(selector->getNext() + "/" + m_indexName),
-                                templateData.at("template"),
-                                onSuccess,
-                                onError,
-                                "",
-                                DEFAULT_HEADERS,
-                                secureCommunication);
+    HTTPRequest::instance().put(RequestParameters {.url = HttpURL(selector->getNext() + "/" + m_indexName),
+                                                   .data = templateData.at("template"),
+                                                   .secureCommunication = secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                ConfigurationParameters {});
 
     m_initialized = true;
     logInfo(IC_NAME, "IndexerConnector initialized successfully for index: %s.", m_indexName.c_str());
@@ -407,19 +424,23 @@ IndexerConnector::IndexerConnector(
 
             if (!bulkData.empty())
             {
+                auto onSuccess = [](const std::string& response)
+                {
+                    logDebug2(IC_NAME, "Response: %s", response.c_str());
+                };
+
+                auto onError = [](const std::string& error, const long statusCode)
+                {
+                    logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
+                    throw std::runtime_error(error);
+                };
+
                 // Process data.
-                HTTPRequest::instance().post(
-                    HttpURL(url),
-                    bulkData,
-                    [](const std::string& response) { logDebug2(IC_NAME, "Response: %s", response.c_str()); },
-                    [](const std::string& error, const long statusCode)
-                    {
-                        logError(IC_NAME, "%s, status code: %ld.", error.c_str(), statusCode);
-                        throw std::runtime_error(error);
-                    },
-                    "",
-                    DEFAULT_HEADERS,
-                    secureCommunication);
+                HTTPRequest::instance().post(RequestParameters {.url = HttpURL(url),
+                                                                .data = bulkData,
+                                                                .secureCommunication = secureCommunication},
+                                             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                             {});
             }
         },
         DATABASE_BASE_PATH + m_indexName,

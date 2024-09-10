@@ -8,15 +8,13 @@
  * Foundation.
  */
 
-#include "sharedDefs.h"
-#include "packageLinuxParserHelper.h"
 #include "UNIXSocketRequest.hpp"
+#include "packageLinuxParserHelper.h"
+#include "sharedDefs.h"
 
 void getSnapInfo(std::function<void(nlohmann::json&)> callback)
 {
-    UNIXSocketRequest::instance().get(
-        HttpUnixSocketURL("/run/snapd.socket", "http://localhost/v2/snaps"),
-        [&](const std::string & result)
+    const auto onSuccess = [&](const std::string& result)
     {
         auto feed = nlohmann::json::parse(result, nullptr, false).at("result");
 
@@ -34,10 +32,15 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
                 callback(mapping);
             }
         }
-    },
-    [&](const std::string & result, const long responseCode)
+    };
+
+    const auto onError = [&](const std::string& result, const long responseCode)
     {
         std::cerr << "Error retrieving packages using snap unix-socket (" << responseCode << ") " << result << "\n";
-    });
-}
+    };
 
+    UNIXSocketRequest::instance().get(
+        RequestParameters {.url = HttpUnixSocketURL("/run/snapd.socket", "http://localhost/v2/snaps")},
+        PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+        ConfigurationParameters {});
+}

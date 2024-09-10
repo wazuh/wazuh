@@ -128,12 +128,10 @@ class Monitoring final
         };
 
         // Get the health of the server.
-        HTTPRequest::instance().get(HttpURL(serverAddress + "/_cat/health?v"),
-                                    onSuccess,
-                                    onError,
-                                    "",
-                                    {"Accept-Charset: utf-8"},
-                                    authentication);
+        HTTPRequest::instance().get(
+            RequestParameters {.url = HttpURL(serverAddress + "/_cat/health?v"), .secureCommunication = authentication},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+            ConfigurationParameters {});
     }
 
     /**
