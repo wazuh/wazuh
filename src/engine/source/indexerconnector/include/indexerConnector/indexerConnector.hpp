@@ -55,12 +55,16 @@ class EXPORTED IndexerConnector final : public IIndexerConnector
 
 public:
     /**
-     * @brief Class constructor that initializes credential management based on the configuration,
-     * selects the server to be used through a round-robin algorithm among the available servers
-     * (servers are health-checked using the API endpoint /_cat/health), and sets up the dispatcher
-     * to process messages asynchronously using a persistent queue. Messages are dispatched in bulk
-     * either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages
-     * and the interval is 5 seconds.
+     * @brief Class constructor
+     *
+     * @note Does the following:
+     * 1. Initializes credential management based on the configurations.
+     * 2. Selects the server to be used through a round-robin algorithm among the available servers (servers are
+     * health-checked using the API endpoint
+     * /_cat/health)
+     * 3. Sets up the dispatcher to process messages asynchronously using a persistent queue. Messages are dispatched in
+     * bulk either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages and the
+     * interval is 5 seconds.
      *
      * @param config Indexer configuration, including the index name, server list, ssl configuration and user and
      * password.
