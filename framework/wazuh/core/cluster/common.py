@@ -1616,10 +1616,9 @@ class SyncWazuhdb(SyncTask):
             self.logger.info(f"Finished in {(utils.get_utc_now().timestamp() - start_time):.3f}s. Updated 0 chunks.")
         return True
 
-
 def end_sending_agent_information(logger: logging.Logger, start_time: datetime.datetime,
                                   response: str) -> Tuple[bytes, bytes]:
-    """Function called when the master/worker sends the "syn_m_a_e" or "syn_w_g_e" command.
+    """Function called when the master/worker sends the "syn_w_g_e" command.
 
     This method is called once the master finishes processing the agent-info/agent-groups. It logs
     information like the number of chunks that were updated and any error message.
@@ -1651,8 +1650,7 @@ def end_sending_agent_information(logger: logging.Logger, start_time: datetime.d
 
 
 def error_receiving_agent_information(logger, response, info_type):
-    """Function called when the master/worker sends the
-    "syn_m_a_err", "syn_w_g_err" or "syn_w_g_err" command.
+    """Function called when the master/worker sends the "syn_w_g_err" or "syn_w_g_err" command.
 
     Parameters
     ----------

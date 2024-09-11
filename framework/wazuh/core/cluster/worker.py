@@ -147,8 +147,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # a log coming from the "Integrity" logger will look like this:
         # [Worker name] [Integrity] Log information
         # this way the same code can be shared among all sync tasks and logs will differentiate.
-        self.task_loggers = {'Agent-info sync': self.setup_task_logger('Agent-info sync'),
-                             'Agent-groups recv': self.setup_task_logger('Agent-groups recv'),
+        self.task_loggers = {'Agent-groups recv': self.setup_task_logger('Agent-groups recv'),
                              'Agent-groups recv full': self.setup_task_logger('Agent-groups recv full'),
                              'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
@@ -223,13 +222,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.error_receiving_integrity(data.decode())
         elif command == b'syn_g_m_w' or command == b'syn_g_m_w_c':
             return self.setup_sync_integrity(command, data)
-        elif command == b'syn_m_a_e':
-            logger = self.task_loggers['Agent-info sync']
-            start_time = datetime.utcfromtimestamp(self.agent_info_sync_status['date_start'])
-            return c_common.end_sending_agent_information(logger, start_time, data.decode())
-        elif command == b'syn_m_a_err':
-            logger = self.task_loggers['Agent-info sync']
-            return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-info')
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
@@ -552,36 +544,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     await self.send_request(command=b'syn_i_w_m_r', data=f"None {exc}".encode())
 
             await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_integrity'])
-
-    async def sync_agent_info(self):
-        """Obtain information from agents reporting this worker and send it to the master.
-
-        Asynchronous task that is started when the worker connects to the master. It starts an agent-info
-        synchronization process every 'sync_agent_info' seconds.
-
-        A list of JSON chunks with the information of all local agents is retrieved from local wazuh-db socket
-        and sent to the master's wazuh-db.
-        """
-        logger = self.task_loggers["Agent-info sync"]
-        wdb_conn = AsyncWazuhDBConnection()
-        agent_info = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_a_w_m',
-                                          data_retriever=wdb_conn.run_wdb_command,
-                                          get_data_command='global sync-agent-info-get ',
-                                          set_data_command='global sync-agent-info-set')
-
-        while True:
-            try:
-                if self.connected:
-                    start_time = get_utc_now().timestamp()
-                    if await agent_info.request_permission():
-                        logger.info("Starting.")
-                        self.agent_info_sync_status['date_start'] = start_time
-                        chunks = await agent_info.retrieve_information()
-                        await agent_info.sync(start_time=start_time, chunks=chunks)
-            except Exception as e:
-                logger.error(f"Error synchronizing agent info: {e}")
-
-            await asyncio.sleep(self.cluster_items['intervals']['worker']['sync_agent_info'])
 
     async def sync_extra_valid(self, extra_valid: Dict):
         """Merge and send files of the worker node that are missing in the master node.

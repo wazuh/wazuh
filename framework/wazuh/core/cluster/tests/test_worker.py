@@ -251,8 +251,6 @@ async def test_worker_handler_init(event_loop):
     worker_handler = get_worker_handler(event_loop)
     worker_handler.logger = None
     assert worker_handler.client_data == "Testing Testing master 4.0.0".encode()
-    assert "Agent-info sync" in worker_handler.task_loggers
-    assert isinstance(worker_handler.task_loggers["Agent-info sync"], logging.Logger)
     assert "Integrity check" in worker_handler.task_loggers
     assert isinstance(worker_handler.task_loggers["Integrity check"], logging.Logger)
     assert "Integrity sync" in worker_handler.task_loggers
@@ -309,55 +307,37 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             self.local_server = LocalServerDapiMock()
             self.dapi = LocalServerDapiMock()
 
-    # Test the first condition
+    # Test the syn_m_c_ok condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.sync_integrity_ok_from_master",
                return_value=b"ok") as ok_mock:
         assert worker_handler.process_request(command=b"syn_m_c_ok", data=b"data") == b"ok"
         ok_mock.assert_called_once()
         logger_mock.assert_called_with("Command received: 'b'syn_m_c_ok''")
-    # Test the second condition
+    # Test the syn_m_c condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.setup_receive_files_from_master",
                return_value=b"ok") as setup_mock:
         assert worker_handler.process_request(command=b"syn_m_c", data=b"data") == b"ok"
         setup_mock.assert_called_once()
         logger_mock.assert_called_with("Command received: 'b'syn_m_c''")
-    # Test the third condition
+    # Test the syn_m_c_e condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.end_receiving_integrity",
                return_value=b"ok") as integrity_mock:
         assert worker_handler.process_request(command=b"syn_m_c_e", data=b"data") == b"ok"
         integrity_mock.assert_called_once_with(b"data".decode())
         logger_mock.assert_called_with("Command received: 'b'syn_m_c_e''")
-    # Test the fourth condition
+    # Test the syn_m_c_r condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.error_receiving_integrity",
                return_value=b"ok") as error_integrity_mock:
         assert worker_handler.process_request(command=b"syn_m_c_r", data=b"data") == b"ok"
         error_integrity_mock.assert_called_once_with(b"data".decode())
         logger_mock.assert_called_with("Command received: 'b'syn_m_c_r''")
-    # Test the fifth condition
+    # Test the syn_g_m_w condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.setup_sync_integrity",
                return_value=b"ok") as setup_sync_integrity_mock:
         assert worker_handler.process_request(command=b"syn_g_m_w", data=b"data") == b"ok"
         setup_sync_integrity_mock.assert_called_once_with(b"syn_g_m_w", b"data")
         logger_mock.assert_called_with("Command received: 'b'syn_g_m_w''")
-    # Test the sixth condition
-    with patch("wazuh.core.cluster.master.Master.setup_task_logger",
-               worker_handler.setup_task_logger('Agent-info sync')) as setup_task_logger_mock:
-        with patch("wazuh.core.cluster.worker.c_common.end_sending_agent_information",
-                   return_value=b"ok") as sync_mock:
-            assert worker_handler.process_request(
-                command=b"syn_m_a_e", data=b'{"updated_chunks": 4, "error_messages": []}') == b"ok"
-            sync_mock.assert_called_once_with(setup_task_logger_mock,
-                                              datetime.datetime(1970, 1, 1, 0, 0),
-                                              b'{"updated_chunks": 4, "error_messages": []}'.decode())
-            logger_mock.assert_called_with("Command received: 'b'syn_m_a_e''")
-    # Test the seventh condition
-    with patch("wazuh.core.cluster.worker.c_common.error_receiving_agent_information",
-               return_value=b"ok") as error_mock:
-        assert worker_handler.process_request(command=b"syn_m_a_err", data=b"data") == b"ok"
-        error_mock.assert_called_once_with(
-            worker_handler.task_loggers['Agent-info sync'], b"data".decode(), info_type='agent-info')
-        logger_mock.assert_called_with("Command received: 'b'syn_m_a_err''")
-    # Test the eighth condition
+    # Test the dapi_res condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.forward_dapi_response",
                side_effect=b"ok") as forward_dapi_mock:
         assert worker_handler.process_request(command=b"dapi_res",
@@ -366,7 +346,7 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             await asyncio.sleep(0.01)
         forward_dapi_mock.assert_called_with(b"data")
         logger_mock.assert_called_with("Command received: 'b'dapi_res''")
-    # Test the ninth condition
+    # Test the sendsyn_res condition
     with patch("wazuh.core.cluster.worker.WorkerHandler.forward_sendsync_response",
                return_value=b"ok") as forward_sendsync_mock:
         assert worker_handler.process_request(command=b"sendsyn_res",
@@ -375,7 +355,7 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             await asyncio.sleep(0.01)
         forward_sendsync_mock.assert_called_once_with(b"data")
         logger_mock.assert_called_with("Command received: 'b'sendsyn_res''")
-    # Test the tenth condition
+    # Test the dapi_err condition
     worker_handler.server = ManagerMock()
     with patch.object(ClientsMock, "send_request") as send_request_mock:
         assert worker_handler.process_request(command=b"dapi_err",
@@ -384,7 +364,7 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             await asyncio.sleep(0.01)
         send_request_mock.assert_called_once_with(b"dapi_err", b"2")
         logger_mock.assert_called_with("Command received: 'b'dapi_err''")
-    # Test the eleventh condition
+    # Test the sendsyn_err condition
     with patch.object(ClientsMock, "send_request") as send_request_mock:
         assert worker_handler.process_request(command=b"sendsyn_err",
                                               data=b"data 2") == (b'ok', b'SendSync error forwarded to worker')
@@ -392,13 +372,13 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             await asyncio.sleep(0.01)
         send_request_mock.assert_called_once_with(b"err", b"2")
         logger_mock.assert_called_with("Command received: 'b'sendsyn_err''")
-    # Test the twelfth condition
+    # Test the dapi condition
     with patch.object(LocalServerDapiMock, "add_request") as add_request_mock:
         assert worker_handler.process_request(command=b"dapi",
                                               data=b"data") == (b'ok', b'Added request to API requests queue')
         add_request_mock.assert_called_once_with(b"master*data")
         logger_mock.assert_called_with("Command received: 'b'dapi''")
-    # Test the thirteenth condition
+    # Test the random condition
     with patch("wazuh.core.cluster.worker.client.AbstractClient.process_request",
                return_value=True) as process_request_mock:
         assert worker_handler.process_request(command=b"random", data=b"data") is True
@@ -770,75 +750,6 @@ async def test_worker_handler_sync_integrity(request_permission_mock,
         json_dumps_mock.assert_called_with(exception.WazuhClusterError(code=1000, extra_message=str(Exception())),
                                            cls=cluster_common.WazuhJSONEncoder)
         send_request_mock.assert_called_with(command=b'syn_i_w_m_r', data=b'None ' + "".encode())
-
-
-@pytest.mark.asyncio
-@freeze_time('1970-01-01')
-@patch('asyncio.sleep', side_effect=Exception())
-@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
-@patch('wazuh.core.cluster.common.SyncWazuhdb')
-async def test_worker_handler_sync_agent_info(SyncWazuhdb_mock, AsyncWazuhDBConnection_mock, sleep_mock, event_loop):
-    """Check that the agent-info task is properly configured."""
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._info = []
-
-        def info(self, info):
-            self._info.append(info)
-
-    logger = LoggerMock()
-    w_handler = get_worker_handler(event_loop)
-    w_handler.connected = True
-    w_handler.task_loggers['Agent-info sync'] = logger
-    SyncWazuhdb_mock.return_value.request_permission = AsyncMock()
-    SyncWazuhdb_mock.return_value.retrieve_information = AsyncMock()
-    SyncWazuhdb_mock.return_value.sync = AsyncMock()
-
-    try:
-        await w_handler.sync_agent_info()
-    except Exception:
-        pass
-
-    SyncWazuhdb_mock.assert_called_once_with(manager=w_handler, logger=logger, cmd=b'syn_a_w_m', data_retriever=ANY,
-                                             get_data_command='global sync-agent-info-get ',
-                                             set_data_command='global sync-agent-info-set')
-    SyncWazuhdb_mock.return_value.request_permission.assert_called_once()
-    SyncWazuhdb_mock.return_value.retrieve_information.assert_called_once()
-    SyncWazuhdb_mock.return_value.sync.assert_called_once_with(start_time=ANY, chunks=ANY)
-    assert w_handler.agent_info_sync_status == {'date_start': 0.0}
-    assert logger._info == ['Starting.']
-
-
-@pytest.mark.asyncio
-@patch('asyncio.sleep', side_effect=Exception())
-@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
-@patch('wazuh.core.cluster.common.SyncWazuhdb')
-async def test_worker_handler_sync_agent_info_ko(SyncWazuhdb_mock, AsyncWazuhDBConnection_mock, sleep_mock, event_loop):
-    """Check that the agent-info task is properly configured."""
-
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._error = []
-
-        def error(self, info):
-            self._error.append(info)
-
-    logger = LoggerMock()
-    w_handler = get_worker_handler(event_loop)
-    w_handler.connected = True
-    w_handler.task_loggers['Agent-info sync'] = logger
-
-    try:
-        await w_handler.sync_agent_info()
-    except Exception:
-        pass
-
-    assert logger._error == ["Error synchronizing agent info: object MagicMock can't be used in 'await' expression"]
 
 
 @pytest.mark.asyncio
