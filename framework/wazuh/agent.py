@@ -249,14 +249,14 @@ def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhR
     return result
 
 
-@expose_resources(actions=["agent:restart"], resources=["agent:id:{agents_id}"],
+@expose_resources(actions=["agent:restart"], resources=["agent:id:{agents_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
-async def restart_agents(agents_id: list) -> AffectedItemsWazuhResult:
+async def restart_agents(agents_list: list) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
 
     Parameters
     ----------
-    agents_id : list
+    agents_list : list
         List of agents IDs.
 
     Returns
@@ -310,10 +310,10 @@ def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult
 
 
 @expose_resources(
-    actions=["agent:read"], resources=["agent:id:{agents_id}"], post_proc_kwargs={'exclude_codes': [1701]}
+    actions=["agent:read"], resources=["agent:id:{agents_list}"], post_proc_kwargs={'exclude_codes': [1701]}
 )
 async def get_agents(
-    agents_id: list,
+    agents_list: list,
     filters: Optional[dict] = None,
     offset: int = 0,
     limit: int = common.DATABASE_LIMIT,
@@ -324,7 +324,7 @@ async def get_agents(
 
     Parameters
     ----------
-    agents_id : list
+    agents_list : list
         List of agent UUIDs to filter.
     filters : dict
         Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
@@ -350,7 +350,7 @@ async def get_agents(
     if filters is None:
         filters = dict()
 
-    query = build_agents_query(agents_id, filters)
+    query = build_agents_query(agents_list, filters)
 
     async with get_indexer_client() as indexer:
         items = await indexer.agents.search(query, select=select, exclude='key', limit=limit, offset=offset, sort=sort)
@@ -457,14 +457,14 @@ def get_agents_keys(agent_list: list = None) -> AffectedItemsWazuhResult:
     return result
 
 
-@expose_resources(actions=["agent:delete"], resources=["agent:id:{agents_id}"],
+@expose_resources(actions=["agent:delete"], resources=["agent:id:{agents_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1731]})
-async def delete_agents(agents_id: list, filters: Optional[dict] = None,) -> AffectedItemsWazuhResult:
+async def delete_agents(agents_list: list, filters: Optional[dict] = None,) -> AffectedItemsWazuhResult:
     """Delete a list of agents or all of them if receive an empty list.
 
     Parameters
     ----------
-    agents_id : list
+    agents_list : list
         List of agents ID's to be deleted.
     filters : dict
         Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
@@ -482,16 +482,16 @@ async def delete_agents(agents_id: list, filters: Optional[dict] = None,) -> Aff
 
     async with get_indexer_client() as indexer:
         available_agents = [item.id for item in
-            await indexer.agents.search(query=build_agents_query(agents_id, filters))
+            await indexer.agents.search(query=build_agents_query(agents_list, filters))
         ]
-        not_found_agents = set(agents_id) - set(available_agents)
+        not_found_agents = set(agents_list) - set(available_agents)
 
         for not_found_id in not_found_agents:
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
 
-        agents_id = available_agents
+        agents_list = available_agents
 
-        deleted_items = await indexer.agents.delete(agents_id)
+        deleted_items = await indexer.agents.delete(agents_list)
 
     result.affected_items = deleted_items
     result.total_affected_items = len(result.affected_items)

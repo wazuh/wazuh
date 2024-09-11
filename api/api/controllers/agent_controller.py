@@ -67,7 +67,7 @@ async def delete_agents(
         agents_list = []
 
     f_kwargs = {
-        'agents_id': agents_list,
+        'agents_list': agents_list,
         'filters': {
             'name': name,
             'groups': group,
@@ -96,7 +96,7 @@ async def delete_agents(
 async def get_agents(
         pretty: bool = False,
         wait_for_complete: bool = False,
-        agents_id: list = None,
+        agents_list: list = None,
         name: str = None,
         group: str = None,
         type: str = None,
@@ -116,7 +116,7 @@ async def get_agents(
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agents_id : list
+    agents_list : list
         List of agents IDs.
     name : str
         Filter by agent name.
@@ -150,7 +150,7 @@ async def get_agents(
         older_than = f'{older_than}s'
 
     f_kwargs = {
-        'agents_id': agents_id if agents_id is not None else [],
+        'agents_list': agents_list if agents_list is not None else [],
         'filters': {
             'name': name,
             'groups': group,
@@ -248,7 +248,7 @@ async def reconnect_agents(pretty: bool = False, wait_for_complete: bool = False
 
 
 async def restart_agents(
-    pretty: bool = False, wait_for_complete: bool = False, agents_id: str = '*'
+    pretty: bool = False, wait_for_complete: bool = False, agents_list: str = '*'
 ) -> ConnexionResponse:
     """Restart all agents or a list of them.
 
@@ -258,7 +258,7 @@ async def restart_agents(
         Show results in human-readable format.
     wait_for_complete : bool
         Disable timeout response.
-    agents_id : str
+    agents_list : str
         List of agents IDs. Default: `*`
 
     Returns
@@ -266,10 +266,10 @@ async def restart_agents(
     ConnexionResponse
         API response.
     """
-    # if agents_id == '*':
-    #     agents_id = []
+    # if agents_list == '*':
+    #     agents_list = []
 
-    # f_kwargs = {'agents_id': agents_id}
+    # f_kwargs = {'agents_list': agents_list}
 
     # dapi = DistributedAPI(
     #     f=agent.restart_agents,
@@ -453,7 +453,7 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
     ConnexionResponse
         API response.
     """
-    # f_kwargs = {'agents_id': [agent_id]}
+    # f_kwargs = {'agents_list': [agent_id]}
 
     # dapi = DistributedAPI(
     #     f=agent.restart_agents,

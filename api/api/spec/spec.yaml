@@ -1586,7 +1586,7 @@ components:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: uuid
+      format: uuid7
 
     NodeID:
       type: string
@@ -5807,14 +5807,6 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentID'
-    agents_id:
-      in: query
-      name: agents_id
-      description: "List of agent IDs (separated by comma), all agents selected by default if not specified"
-      schema:
-        type: array
-        items:
           $ref: '#/components/schemas/AgentUUID'
     agents_list_all:
       in: query
@@ -7365,7 +7357,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_id'
+        - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/name'
         - $ref: '#/components/parameters/agent_group'
         - $ref: '#/components/parameters/type'
@@ -8456,7 +8448,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_id'
+        - $ref: '#/components/parameters/agents_list'
       responses:
         '200':
           description: "Agents restarted"
