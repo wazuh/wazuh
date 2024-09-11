@@ -40,11 +40,8 @@ jobs:
 
     steps:
 
-    - name: Install dependencies lzip
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: lzip
-        version: 1.1
+    - name: Install dependencies (lzip)
+      run: sudo apt-get install lzip
 
     - name: Check out repository
       uses: actions/checkout@v4

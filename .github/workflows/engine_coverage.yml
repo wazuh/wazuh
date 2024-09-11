@@ -58,11 +58,8 @@ jobs:
       with:
         ref: v2.0
 
-    - name: Install dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: bc lzip
-        version: 1.1
+    - name: Install dependencies (bc lzip)
+      run: sudo apt-get install lzip bc
 
     - name: Check out repository
       uses: actions/checkout@v4
