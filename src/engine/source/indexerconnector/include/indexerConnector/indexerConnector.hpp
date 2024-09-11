@@ -60,8 +60,7 @@ public:
      * @note Does the following:
      * 1. Initializes credential management based on the configurations.
      * 2. Selects the server to be used through a round-robin algorithm among the available servers (servers are
-     * health-checked using the API endpoint
-     * /_cat/health)
+     * health-checked using the API endpoint (/_cat/health)
      * 3. Sets up the dispatcher to process messages asynchronously using a persistent queue. Messages are dispatched in
      * bulk either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages and the
      * interval is 5 seconds.
