@@ -12,11 +12,11 @@
 #ifndef _OFFLINE_DOWNLOADER_HPP
 #define _OFFLINE_DOWNLOADER_HPP
 
-#include "sharedDefs.hpp"
 #include "IURLRequest.hpp"
 #include "componentsHelper.hpp"
 #include "hashHelper.h"
 #include "json.hpp"
+#include "sharedDefs.hpp"
 #include "stringHelper.h"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"

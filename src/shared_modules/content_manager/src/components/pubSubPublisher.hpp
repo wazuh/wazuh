@@ -71,9 +71,9 @@ private:
 
             logDebug2(WM_CONTENTUPDATER, "Data to be published: '%s'", message.c_str());
 
-            std::atomic<bool>  {false};
-            const auto [offset, hash, status] =
-                context.spUpdaterBaseContext->fileProcessingCallback(message, context.spUpdaterBaseContext->spStopCondition);
+            std::atomic<bool> {false};
+            const auto [offset, hash, status] = context.spUpdaterBaseContext->fileProcessingCallback(
+                message, context.spUpdaterBaseContext->spStopCondition);
 
             // If we were processing offsets and it failed, we need to trigger a snapshot to recover
             if (context.data.at("type") == "offsets" && !status)

@@ -12,12 +12,12 @@
 #ifndef _FILE_DOWNLOADER_HPP
 #define _FILE_DOWNLOADER_HPP
 
-#include "sharedDefs.hpp"
 #include "HTTPRequest.hpp"
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
 #include "hashHelper.h"
 #include "json.hpp"
+#include "sharedDefs.hpp"
 #include "stringHelper.h"
 #include "updaterContext.hpp"
 #include <array>

@@ -14,6 +14,7 @@
 
 #include "conditionSync.hpp"
 #include "json.hpp"
+#include "sharedDefs.hpp"
 #include "utils/rocksDBWrapper.hpp"
 #include <external/nlohmann/json.hpp>
 #include <filesystem>
@@ -53,7 +54,7 @@ struct UpdaterBaseContext
      *
      * @return FileProcessingResult
      */
-    const FileProcessingCallback fileProcessingCallback;
+    FileProcessingCallback fileProcessingCallback;
 
     /**
      * @brief Pointer to the RocksDB instance.
@@ -99,7 +100,7 @@ struct UpdaterBaseContext
      *
      */
     explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition,
-                                FileProcessingCallback& fileProcessingCallback)
+                                FileProcessingCallback fileProcessingCallback)
         : spStopCondition(std::move(spStopCondition))
         , fileProcessingCallback(fileProcessingCallback)
     {

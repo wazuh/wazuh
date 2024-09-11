@@ -12,11 +12,11 @@
 #ifndef _EXECUTION_CONTEXT_HPP
 #define _EXECUTION_CONTEXT_HPP
 
-#include "sharedDefs.hpp"
 #include "chainOfResponsability.hpp"
 #include "componentsHelper.hpp"
 #include "defs.h"
 #include "json.hpp"
+#include "sharedDefs.hpp"
 #include "stringHelper.h"
 #include "updaterContext.hpp"
 #include "utils/timeHelper.h"

@@ -12,8 +12,8 @@
 #ifndef _FACTORY_CLEANER_HPP
 #define _FACTORY_CLEANER_HPP
 
-#include "sharedDefs.hpp"
 #include "cleanUpContent.hpp"
+#include "sharedDefs.hpp"
 #include "skipStep.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"

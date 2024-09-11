@@ -12,13 +12,13 @@
 #ifndef _CONTENT_REGISTER_HPP
 #define _CONTENT_REGISTER_HPP
 
+#include "sharedDefs.hpp"
 #include <external/nlohmann/json.hpp>
 #include <memory>
 #include <shared_mutex>
 #include <string_view>
 #include <thread>
 #include <unordered_map>
-#include "sharedDefs.hpp"
 
 #if __GNUC__ >= 4
 #define EXPORTED __attribute__((visibility("default")))
@@ -48,8 +48,8 @@ public:
                              FileProcessingCallback fileProcessingCallback);
 
     /**
-     * @brief Destroy the Content Register object and cleanup 
-     * 
+     * @brief Destroy the Content Register object and cleanup
+     *
      */
     ~ContentRegister();
 
