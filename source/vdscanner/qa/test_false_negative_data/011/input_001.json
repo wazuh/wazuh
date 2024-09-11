@@ -5,10 +5,10 @@
     },
     "packages": [
       {
-        "version": "108.0.5067.29",
+        "version": "9.0.5067.29",
         "vendor": "Opera Software",
         "architecture": " ",
-        "name": "Opera Stable 108.0.5067.29",
+        "name": "Opera Stable 9.0.5067.29",
         "size": 0,
         "format": "win",
         "checksum": "12c8e8d9df8f9a9f54d4aaf43568d10c79f3cc56",
@@ -37,3 +37,4 @@
       "scan_time": "2024/04/24 14:10:57"
     }
   }
+  
