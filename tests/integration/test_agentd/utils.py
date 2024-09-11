@@ -13,6 +13,7 @@ def wait_keepalive():
         Watch ossec.log until "Sending keep alive" message is found
     """
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    print("start waiting keep alive")
     wazuh_log_monitor.start(only_new_events = True, callback=callbacks.generate_callback(AGENTD_SENDING_KEEP_ALIVE), timeout = 100)
     assert (wazuh_log_monitor.callback_result != None), f'Sending keep alive not found'
 
