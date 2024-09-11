@@ -45,6 +45,7 @@ jobs:
         with:
           packages: lzip
           version: 1.1
+          execute_install_scripts: true
 
       - name: Check out repository
         uses: actions/checkout@v4
