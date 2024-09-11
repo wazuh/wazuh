@@ -64,8 +64,10 @@ protected:
         testFileStream.close();
 
         // Updater base context.
-        m_spUpdaterBaseContext =
-            std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {});
+        m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
+            m_spStopActionCondition,
+            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
+            { return {0, "", false}; });
         m_spUpdaterBaseContext->outputFolder = m_outputFolder;
         m_spUpdaterBaseContext->downloadsFolder = m_outputFolder / DOWNLOAD_FOLDER;
         m_spUpdaterBaseContext->contentsFolder = m_outputFolder / CONTENTS_FOLDER;

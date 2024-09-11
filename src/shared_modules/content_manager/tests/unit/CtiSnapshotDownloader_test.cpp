@@ -29,7 +29,10 @@ const auto OUTPUT_DIR {std::filesystem::temp_directory_path() / "CtiSnapshotDown
 void CtiSnapshotDownloaderTest::SetUp()
 {
     // Create base context.
-    auto spBaseContext {std::make_shared<UpdaterBaseContext>(m_spStopActionCondition, [](const std::string& msg) {})};
+    auto spBaseContext {std::make_shared<UpdaterBaseContext>(
+        m_spStopActionCondition,
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
+        { return {0, "", false}; })};
     spBaseContext->downloadsFolder = OUTPUT_DIR;
     spBaseContext->configData["url"] = FAKE_CTI_URL;
 
