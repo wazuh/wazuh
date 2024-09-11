@@ -35,8 +35,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiation)
     EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -53,13 +54,14 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(
-        std::make_shared<ActionOrchestrator>(
-            parameters,
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; }),
-        std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(
+                     parameters,
+                     m_spStopActionCondition,
+                     [](const std::string& msg,
+                        std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+                         return {0, "", false};
+                     }),
+                 std::invalid_argument);
 }
 
 /*
@@ -72,13 +74,14 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutContentSourceInConfigData
 
     m_parameters.at("configData").erase("contentSource");
 
-    EXPECT_THROW(
-        std::make_shared<ActionOrchestrator>(
-            m_parameters,
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; }),
-        std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(
+                     m_parameters,
+                     m_spStopActionCondition,
+                     [](const std::string& msg,
+                        std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+                         return {0, "", false};
+                     }),
+                 std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -93,13 +96,14 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutCompressionTypeInConfigDa
 
     m_parameters.at("configData").erase("compressionType");
 
-    EXPECT_THROW(
-        std::make_shared<ActionOrchestrator>(
-            m_parameters,
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; }),
-        std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(
+                     m_parameters,
+                     m_spStopActionCondition,
+                     [](const std::string& msg,
+                        std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+                         return {0, "", false};
+                     }),
+                 std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -117,8 +121,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitXZCompressionType)
     EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -133,13 +138,14 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutVersionedContentInConfigD
 
     m_parameters.at("configData").erase("versionedContent");
 
-    EXPECT_THROW(
-        std::make_shared<ActionOrchestrator>(
-            m_parameters,
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; }),
-        std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(
+                     m_parameters,
+                     m_spStopActionCondition,
+                     [](const std::string& msg,
+                        std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+                         return {0, "", false};
+                     }),
+                 std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -154,13 +160,14 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutDeleteDownloadedContentIn
 
     m_parameters.at("configData").erase("deleteDownloadedContent");
 
-    EXPECT_THROW(
-        std::make_shared<ActionOrchestrator>(
-            m_parameters,
-            m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; }),
-        std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ActionOrchestrator>(
+                     m_parameters,
+                     m_spStopActionCondition,
+                     [](const std::string& msg,
+                        std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+                         return {0, "", false};
+                     }),
+                 std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -179,8 +186,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -214,8 +222,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -251,8 +260,9 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -279,8 +289,9 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     // Trigger orchestration with an offset of zero.
     constexpr auto OFFSET {0};
@@ -311,7 +322,9 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
         ASSERT_NO_THROW(ActionOrchestrator(m_parameters,
                                            m_spStopActionCondition,
                                            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop)
-                                               -> std::tuple<int, std::string, bool> { return {0, "", false}; })
+                                               -> std::tuple<int, std::string, bool> {
+                                               return {0, "", false};
+                                           })
                             .run(updateData));
     }
 
@@ -344,7 +357,9 @@ TEST_F(ActionOrchestratorTest, RunFileHashUpdate)
     ASSERT_NO_THROW(ActionOrchestrator(m_parameters,
                                        m_spStopActionCondition,
                                        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop)
-                                           -> std::tuple<int, std::string, bool> { return {0, "", false}; })
+                                           -> std::tuple<int, std::string, bool> {
+                                           return {0, "", false};
+                                       })
                         .run(updateData));
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};

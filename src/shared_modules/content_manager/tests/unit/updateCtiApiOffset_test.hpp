@@ -58,7 +58,9 @@ protected:
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
             m_spStopActionCondition,
             [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; });
+            {
+                return {0, "", false};
+            });
         m_spUpdaterBaseContext->spRocksDB = std::make_unique<Utils::RocksDBWrapper>(DATABASE_FOLDER);
         m_spUpdaterBaseContext->spRocksDB->createColumn(Components::Columns::CURRENT_OFFSET);
         m_spUpdaterBaseContext->spRocksDB->put(

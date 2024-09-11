@@ -31,8 +31,9 @@ void CtiSnapshotDownloaderTest::SetUp()
     // Create base context.
     auto spBaseContext {std::make_shared<UpdaterBaseContext>(
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
     spBaseContext->downloadsFolder = OUTPUT_DIR;
     spBaseContext->configData["url"] = FAKE_CTI_URL;
 

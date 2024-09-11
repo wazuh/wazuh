@@ -39,8 +39,9 @@ TEST_F(ActionTest, TestInstantiation)
     EXPECT_NO_THROW(std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -60,7 +61,9 @@ TEST_F(ActionTest, TestInstantiationWhitoutConfigData)
     EXPECT_THROW(std::make_shared<Action>(topicName,
                                           parameters,
                                           [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop)
-                                              -> std::tuple<int, std::string, bool> { return {0, "", false}; }),
+                                              -> std::tuple<int, std::string, bool> {
+                                              return {0, "", false};
+                                          }),
                  std::invalid_argument);
 }
 
@@ -79,8 +82,9 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawData)
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -120,8 +124,9 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -161,8 +166,9 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -194,8 +200,9 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -223,13 +230,15 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
     auto action1 {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
     auto action2 {std::make_shared<Action>(
         topicName,
         parametersWithoutDatabasePath,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -257,8 +266,9 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -300,8 +310,9 @@ TEST_F(ActionTest, ActionOnStartExecution)
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     // Check output folder existence.
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -335,8 +346,9 @@ TEST_F(ActionTest, OnDemandActionCatchException)
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     // Trigger action. No exceptions are expected despite the error.
     ASSERT_NO_THROW(action->runActionOnDemand(ActionOrchestrator::UpdateData::createContentUpdateData(-1)));
@@ -363,8 +375,9 @@ TEST_F(ActionTest, ScheduledActionCatchException)
     auto action {std::make_shared<Action>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     // Start scheduling. First action execution.
     const auto& interval {m_parameters.at("interval").get_ref<size_t&>()};
@@ -393,8 +406,9 @@ TEST_F(ActionTest, RunActionOnDemandOffsetUpdate)
     auto action {Action(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
     action.registerActionOnDemand();
 
     constexpr auto OFFSET {1000};
@@ -419,8 +433,9 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     auto action {Action(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
     action.registerActionOnDemand();
 
     // Download file twice without hash update: Two publications are expected.

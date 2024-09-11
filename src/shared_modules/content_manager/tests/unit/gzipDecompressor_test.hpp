@@ -48,7 +48,9 @@ protected:
         m_spContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
             m_spStopActionCondition,
             [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; });
+            {
+                return {0, "", false};
+            });
         m_spContext->spUpdaterBaseContext->outputFolder = WORKING_DIR;
     }
 

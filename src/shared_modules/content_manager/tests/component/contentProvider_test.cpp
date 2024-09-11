@@ -26,8 +26,9 @@ TEST_F(ContentProviderTest, TestInstantiation)
     EXPECT_NO_THROW(std::make_shared<ContentProvider>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -44,13 +45,13 @@ TEST_F(ContentProviderTest, TestInstantiationWithoutConfigData)
 
     parameters.erase("configData");
 
-    EXPECT_THROW(
-        std::make_shared<ContentProvider>(
-            topicName,
-            parameters,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            { return {0, "", false}; }),
-        std::invalid_argument);
+    EXPECT_THROW(std::make_shared<ContentProvider>(topicName,
+                                                   parameters,
+                                                   [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop)
+                                                       -> std::tuple<int, std::string, bool> {
+                                                       return {0, "", false};
+                                                   }),
+                 std::invalid_argument);
 }
 
 /*
@@ -65,8 +66,9 @@ TEST_F(ContentProviderTest, TestInstantiationAndStartActionScheduler)
     auto contentProvider {std::make_shared<ContentProvider>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_NO_THROW(contentProvider->startActionScheduler(interval));
 
@@ -85,8 +87,9 @@ TEST_F(ContentProviderTest, TestInstantiationAndChangeSchedulerInterval)
     auto contentProvider {std::make_shared<ContentProvider>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_NO_THROW(contentProvider->startActionScheduler(interval));
 

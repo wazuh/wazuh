@@ -29,8 +29,9 @@ TEST_F(ContentRegisterTest, TestInstantiation)
     EXPECT_NO_THROW(std::make_shared<ContentRegister>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        }));
 
     EXPECT_NO_THROW(contentModule.stop());
 }
@@ -53,8 +54,9 @@ TEST_F(ContentRegisterTest, TestInstantiationWithOnDemandEnabled)
     EXPECT_NO_THROW(std::make_shared<ContentRegister>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        }));
 
     EXPECT_NO_THROW(contentModule.stop());
 }
@@ -76,8 +78,9 @@ TEST_F(ContentRegisterTest, TestInstantiationAndChangeSchedulerInterval)
     auto contentRegister {std::make_shared<ContentRegister>(
         topicName,
         m_parameters,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-        { return {0, "", false}; })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+            return {0, "", false};
+        })};
 
     EXPECT_NO_THROW(contentRegister->changeSchedulerInterval(interval + 1));
 
