@@ -1,74 +1,19 @@
 {
     "files":{
-        "etc/": {
-            "permissions": "0o640",
-            "source": "master",
-            "files": ["client.keys"],
-            "recursive": false,
-            "restart": false,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "client keys file database"
-        },
 
         "etc/shared/": {
             "permissions": "0o660",
             "source": "master",
             "files": ["all"],
-            "recursive": true,
+            "recursive": false,
             "restart": false,
             "remove_subdirs_if_empty": true,
             "extra_valid": false,
-            "description": "shared configuration files"
-        },
-
-        "var/multigroups/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["merged.mg"],
-            "recursive": true,
-            "restart": false,
-            "remove_subdirs_if_empty": true,
-            "extra_valid": false,
-            "description": "shared configuration files"
-        },
-
-        "etc/rules/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user rules"
-        },
-
-        "etc/decoders/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user decoders"
-        },
-
-        "etc/lists/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user CDB lists"
+            "description": "group files"
         },
 
         "excluded_files": [
-            "ar.conf",
-            "ossec.conf"
+            "ar.conf"
         ],
 
         "excluded_extensions": [
