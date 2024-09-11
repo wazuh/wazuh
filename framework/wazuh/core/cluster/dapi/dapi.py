@@ -102,7 +102,7 @@ class DistributedAPI:
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
-            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db', 'wazuh-remoted')
+            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-remoted')
         else:
             self.basic_services = basic_services
 
@@ -209,8 +209,7 @@ class DistributedAPI:
               in failed status.
             * Wazuh must be started before using the API is the services are stopped.
 
-        The basic services wazuh needs to be running are: wazuh-modulesd, wazuh-remoted, wazuh-analysisd, wazuh-execd
-        and wazuh-db
+        The basic services wazuh needs to be running are: wazuh-modulesd, wazuh-remoted, wazuh-analysisd and wazuh-execd
         """
         if self.f == wazuh.core.manager.status:
             return

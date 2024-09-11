@@ -22,8 +22,6 @@ from wazuh.core.cluster import server, cluster, common as c_common
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution
 from wazuh.core.common import DECIMALS_DATE_FORMAT
-from wazuh.core.utils import get_utc_now
-from wazuh.core.wdb import AsyncWazuhDBConnection
 
 DEFAULT_DATE: str = 'n/a'
 

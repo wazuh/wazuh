@@ -35,7 +35,6 @@ with patch('wazuh.common.wazuh_uid'):
         import wazuh.core.cluster.common as cluster_common
         import wazuh.core.results as wresults
         from wazuh.core import common
-        from wazuh.core.wdb import AsyncWazuhDBConnection
 
 # Globals
 cluster_items = {"etc/": {"permissions": "0o640", "source": "master", "files": ["client.keys"],
@@ -1249,56 +1248,6 @@ def test_wazuh_common_init():
     wazuh_common_test = cluster_common.WazuhCommon()
     assert wazuh_common_test.sync_tasks == {}
 
-
-@pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection", return_value=AsyncMock())
-async def test_wazuh_common_recalculate_group_hash(asyncwazuhdbconnection_mock):
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._debug = []
-
-        def debug(self, data):
-            """Auxiliary method."""
-            self._debug.append(data)
-
-    logger = LoggerMock()
-    await wazuh_common.recalculate_group_hash(logger)
-    assert logger._debug == ['Recalculating agent-group hash.']
-
-
-@pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection")
-async def test_wazuh_common_recalculate_group_hash_ko(asyncwazuhdbconnection_mock):
-    class LoggerMock:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self._warning = []
-            self._debug = []
-
-        def debug(self, data):
-            """Auxiliary method."""
-            self._debug.append(data)
-
-        def warning(self, data):
-            """Auxiliary method."""
-            self._warning.append(data)
-
-    logger = LoggerMock()
-    asyncwazuhdbconnection_mock.side_effect = [exception.WazuhInternalError(2007), exception.WazuhError(2003)]
-
-    await wazuh_common.recalculate_group_hash(logger)
-    assert logger._debug == ['Recalculating agent-group hash.']
-    assert logger._warning == ['Error 2007 executing recalculate agent-group hash command: '
-                               'Error retrieving data from Wazuh DB']
-
-    logger = LoggerMock()
-    await wazuh_common.recalculate_group_hash(logger)
-    assert logger._debug == ['Recalculating agent-group hash.']
-    assert logger._warning == ['Error 2003 executing recalculate agent-group hash command: Error in wazuhdb request']
-
 def test_wazuh_common_get_logger():
     """Check if a Logger object is properly returned."""
 
@@ -1399,19 +1348,6 @@ def test_wazuh_common_get_node():
         mock_class.get_node()
         manager_mock.assert_called_once()
 
-
-# Test SyncWazuhdb class
-
-def test_sync_wazuh_db_init():
-    """Test the '__init__' method from the SyncWazuhdb class."""
-
-    sync_wazuh_db = cluster_common.SyncWazuhdb(
-        manager=cluster_common.Handler(fernet_key, cluster_items), logger=logging.getLogger("wazuh"), cmd=b"cmd",
-        data_retriever=None, get_data_command="get_command", set_data_command="set_command", pivot_key=None)
-
-    assert sync_wazuh_db.get_data_command == "get_command"
-    assert sync_wazuh_db.set_data_command == "set_command"
-    assert sync_wazuh_db.data_retriever is None
 
 @patch.object(logging, "error")
 @patch('asyncio.new_event_loop')

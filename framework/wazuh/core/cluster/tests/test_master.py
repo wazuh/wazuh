@@ -477,16 +477,13 @@ async def test_master_handler_execute_ko(uuid4_mock):
             await master_handler.execute(command=b'random', data=b"client request", wait_for_complete=True)
 
 
-@patch("wazuh.core.cluster.master.AsyncWazuhDBConnection")
-@patch("wazuh.core.cluster.common.SyncWazuhdb", return_value="SyncWazuhdbMock")
 @patch("wazuh.core.cluster.common.SyncFiles", return_value="SyncFilesMock")
 @patch("os.path.exists", return_value=False)
 @patch("os.path.join", return_value="/some/path")
 @patch("wazuh.core.cluster.master.utils.mkdir_with_mode")
 @patch("wazuh.core.cluster.master.metadata.__version__", "version")
 @patch("wazuh.core.cluster.server.AbstractServerHandler.hello", return_value=(b"ok", "payload"))
-def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mock, path_exists_mock, sync_files_mock,
-                                 sync_db_mock, mock_db_conn):
+def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mock, path_exists_mock, sync_files_mock):
     """Check if the 'hello' command received from worker is being correctly processed."""
 
     master_handler = get_master_handler()

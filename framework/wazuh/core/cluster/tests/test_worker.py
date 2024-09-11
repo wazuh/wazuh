@@ -29,7 +29,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 
         from wazuh.core.cluster import client, worker, common as cluster_common
         from wazuh.core import common as core_common
-        from wazuh.core.wdb import AsyncWazuhDBConnection
 
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
@@ -53,12 +52,6 @@ def get_worker_handler(loop):
                                 loop=loop, on_con_lost=None, name='Testing',
                                 fernet_key='01234567891011121314151617181920', logger=logger,
                                 manager=abstract_client, cluster_items=cluster_items)
-
-
-def get_sync_wazuh_db(worker_handler):
-    return cluster_common.SyncWazuhdb(worker_handler, logging.getLogger("wazuh"), cmd=b"cmd",
-                                      get_data_command="get_command", set_data_command="set_command",
-                                      data_retriever=None)
 
 
 @pytest.mark.asyncio
@@ -93,74 +86,6 @@ async def test_rit_done_callback(event_loop):
             await asyncio.sleep(0.01)
 
         assert receive_task.wazuh_common.check_integrity_free is True
-
-
-# Test SyncWazuhdb class
-@pytest.mark.asyncio
-async def test_sync_wazuh_db_init(event_loop):
-    """Test the '__init__' method from the SyncWazuhdb class."""
-    sync_wazuh_db = get_sync_wazuh_db(get_worker_handler(event_loop))
-    assert sync_wazuh_db.get_data_command == "get_command"
-    assert sync_wazuh_db.set_data_command == "set_command"
-    assert sync_wazuh_db.data_retriever is None
-
-
-@pytest.mark.asyncio
-@freeze_time('1970-01-01')
-@patch("json.dumps", return_value="")
-@patch('wazuh.core.cluster.worker.cluster.run_in_pool', return_value=True)
-async def test_sync_wazuh_db_sync_ok(run_in_pool_mock, json_dumps_mock, event_loop):
-    """Check if the information is being properly sent to the master node."""
-    chunks = True
-
-    def callable_mock(data):
-        """Mock method in order to obtain a particular output."""
-        if chunks:
-            return [data]
-        else:
-            return []
-
-    sync_wazuh_db = get_sync_wazuh_db(get_worker_handler(event_loop))
-    sync_wazuh_db.data_retriever = callable_mock
-
-    # Test try and if
-    with patch.object(logging.getLogger("wazuh"), "debug") as logger_debug_mock:
-        with patch("wazuh.core.cluster.worker.WorkerHandler.send_string", return_value=b"OK") as send_string_mock:
-            with patch("wazuh.core.cluster.worker.WorkerHandler.send_request") as send_request_mock:
-                assert await sync_wazuh_db.sync(start_time=10, chunks=["get_command"]) is True
-                send_request_mock.assert_called_once_with(command=b"cmd", data=b"OK")
-                json_dumps_mock.assert_called_with({"set_data_command": "set_command", "payload": {},
-                                                    "chunks": ["get_command"]})
-                logger_debug_mock.assert_has_calls([call("Sending chunks.")])
-
-            send_string_mock.assert_called_with(b"")
-
-    # Test else
-    chunks = False
-    with patch.object(logging.getLogger("wazuh"), "info") as logger_info_mock:
-        assert await sync_wazuh_db.sync(start_time=10, chunks=[]) is True
-        logger_info_mock.assert_called_once_with("Finished in -10.000s. Updated 0 chunks.")
-
-
-@pytest.mark.asyncio
-@freeze_time('1970-01-01')
-@patch("json.dumps", return_value="")
-@patch("wazuh.core.cluster.worker.WorkerHandler.send_string", return_value=b"Error")
-async def test_sync_wazuh_db_sync_ko(send_string_mock, json_dumps_mock, event_loop):
-    """Test if the proper exceptions are raised when needed."""
-
-    def callable_mock(data):
-        """Mock method in order to obtain a particular output."""
-        return [data]
-
-    sync_wazuh_db = get_sync_wazuh_db(get_worker_handler(event_loop))
-    sync_wazuh_db.data_retriever = callable_mock
-
-    # Test try and if
-    with pytest.raises(exception.WazuhClusterError, match=r".* 3016 .*"):
-        await sync_wazuh_db.sync(start_time=10, chunks=["get_command"])
-    json_dumps_mock.assert_called_with({"set_data_command": "set_command", "payload": {}, "chunks": ["get_command"]})
-    send_string_mock.assert_called_with(b"")
 
 
 # Test WorkerHandler class methods.

@@ -20,7 +20,6 @@ from wazuh.core.cluster import client, cluster, common as c_common
 from wazuh.core.cluster.utils import log_subprocess_execution
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.utils import safe_move, get_utc_now
-from wazuh.core.wdb import AsyncWazuhDBConnection
 
 
 class ReceiveIntegrityTask(c_common.ReceiveFileTask):

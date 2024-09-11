@@ -26,9 +26,7 @@ from wazuh import Wazuh
 from wazuh.core import common, exception
 from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
-from wazuh.core.wdb import AsyncWazuhDBConnection
 
-IGNORED_WDB_EXCEPTIONS = ['Cannot execute Global database query; FOREIGN KEY constraint failed']
 
 class Response:
     """
@@ -1155,22 +1153,6 @@ class WazuhCommon:
         """Class constructor."""
         self.sync_tasks = {}
 
-    @staticmethod
-    async def recalculate_group_hash(logger) -> None:
-        """Recalculate agent-group hash in the DB.
-
-        Parameters
-        ----------
-        logger : Logger object
-            Logger to use during the recalculation process.
-        """
-        try:
-            # Recalculate group hashes before retrieving agent groups info
-            logger.debug('Recalculating agent-group hash.')
-            await AsyncWazuhDBConnection().run_wdb_command(command='global recalculate-agent-group-hashes')
-        except (exception.WazuhInternalError, exception.WazuhError) as e:
-            logger.warning(f'Error {e.code} executing recalculate agent-group hash command: {e.message}')
-
     def get_logger(self, logger_tag: str = '') -> logging.Logger:
         """Get a logger object.
 
@@ -1444,121 +1426,6 @@ class SyncFiles(SyncTask):
             except FileNotFoundError:
                 self.logger.error(f"File {compressed_data} could not be removed/not found. "
                                   f"May be due to a lost connection.")
-
-
-class SyncWazuhdb(SyncTask):
-    """
-    Define methods to send information to the master/worker node (wazuh-db) through send_string protocol.
-    """
-
-    def __init__(self, manager, logger, data_retriever: Callable, cmd: bytes = b'', get_data_command: str = '',
-                 set_data_command: str = '', get_payload: dict = None, set_payload: dict = None, pivot_key: str = ''):
-        """Class constructor.
-
-        Parameters
-        ----------
-        manager : MasterHandler/WorkerHandler object
-            The MasterHandler/WorkerHandler object that creates this one.
-        cmd : bytes
-            Request command to send to the master/worker.
-        get_data_command : str
-            Command to retrieve data from local wazuh-db.
-        set_data_command : str
-            Command to set data in master/worker's wazuh-db.
-        logger : Logger object
-            Logger to use during synchronization process.
-        data_retriever : Callable
-            Function to be called to obtain chunks of data. It must return a list of chunks.
-        get_payload : dict
-            Payload to request information with "get" command.
-        set_payload : dict
-            Payload to write the information with the "set" command.
-        pivot_key : str
-            Key to request the information from the database in case it is not fully contained in a single request.
-        """
-        super().__init__(manager=manager, logger=logger, cmd=cmd)
-        self.get_data_command = get_data_command
-        if get_payload is None:
-            get_payload = {}
-        self.get_payload = get_payload
-        self.set_data_command = set_data_command
-        if set_payload is None:
-            set_payload = {}
-        self.set_payload = set_payload
-        self.pivot_key = pivot_key
-        self.data_retriever = data_retriever
-
-    async def retrieve_information(self):
-        """Collect the required information from the local node's database. This function will collect
-        information until the status is 'ok' or 'err', in which case an exception will be raised.
-
-        The function will determine when it is necessary to use a parameter in the request payload
-        to specify the first value to get in the next query to WDB.
-
-        Returns
-        -------
-        chunks : list
-            List of results obtained from WDB.
-        """
-        pivoting = self.get_payload != {} and self.pivot_key != ''
-        status = ''
-        chunks = []
-        last_pivot_value = 0
-        if pivoting:
-            self.get_payload[self.pivot_key] = last_pivot_value
-
-        try:
-            # Retrieve information from local wazuh-db
-            start_time = time.perf_counter()
-            while status != 'ok':
-                command = self.get_data_command + json.dumps(self.get_payload)
-                result = await self.data_retriever(command=command)
-                status = result[0]
-                if result[1] not in ['[]', '[{"data":[]}]']:
-                    chunks.append(result[1])
-                if pivoting:
-                    try:
-                        last_pivot_value = json.loads(result[1])[-1]['data'][-1]['id']
-                        self.get_payload[self.pivot_key] = last_pivot_value
-                    except (IndexError, KeyError):
-                        pass
-        except exception.WazuhException as e:
-            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
-            return []
-
-        self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(time.perf_counter() - start_time):.3f}s.")
-        return chunks
-
-    async def sync(self, start_time: float, chunks: List):
-        """Start sending information to master/worker node.
-
-        Parameters
-        ----------
-        start_time : float
-            Start time to be used when logging task duration if master/worker's response is not expected.
-        chunks : list
-            Data gathered from the database.
-
-        Returns
-        -------
-        bool
-            True if data was correctly sent to the master/worker node, None otherwise.
-        """
-        if chunks:
-            # Send list of chunks as a JSON string
-            data = json.dumps({'set_data_command': self.set_data_command,
-                               'payload': self.set_payload, 'chunks': chunks}).encode()
-            task_id = await self.server.send_string(data)
-            if task_id.startswith(b'Error'):
-                raise exception.WazuhClusterError(3016, extra_message=f'String with agents information could '
-                                                                      f'not be sent to the master node: {task_id}')
-
-            # Specify under which task_id the JSON can be found in the master/worker.
-            self.logger.debug(f"Sending chunks.")
-            await self.server.send_request(command=self.cmd, data=task_id)
-        else:
-            self.logger.info(f"Finished in {(utils.get_utc_now().timestamp() - start_time):.3f}s. Updated 0 chunks.")
-        return True
 
 
 def asyncio_exception_handler(loop, context: Dict):
