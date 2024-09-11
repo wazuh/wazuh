@@ -24,7 +24,6 @@ import cryptography.fernet
 import wazuh.core.results as wresults
 from wazuh import Wazuh
 from wazuh.core import common, exception
-from wazuh.core import utils
 from wazuh.core.cluster import cluster, utils as cluster_utils
 
 
@@ -122,116 +121,6 @@ class InBuffer:
         self.payload[self.received:len_data + self.received] = data[:self.total - self.received]
         self.received += len_data
         return data[len_data:]
-
-
-class SendStringTask:
-    """
-    Create an asyncio task that can be identified by a task_id specified in advance.
-    """
-    # Due to a CPython bug in the asyncio library, tasks must be hard-referenced so that they are not deleted
-    # by the garbage collector (https://github.com/python/cpython/issues/91887).
-    tasks_hard_reference = set()
-
-    def __init__(self, wazuh_common, logger):
-        """Class constructor.
-
-        Parameters
-        ----------
-        wazuh_common : WazuhCommon object
-            Instance of WazuhCommon.
-        logger : Logger object
-            Logger to use during the reception process.
-        """
-        self.wazuh_common = wazuh_common
-        self.coro = self.set_up_coro()
-        self.task = asyncio.create_task(self.coro())
-        self.tasks_hard_reference.add(self.task)
-        self.task.add_done_callback(self.done_callback)
-        self.logger = logger
-
-    def set_up_coro(self) -> Callable:
-        """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
-
-        Raises
-        -------
-        NotImplementedError
-            If the method is not implemented.
-        """
-        raise NotImplementedError
-
-    def done_callback(self, future=None):
-        """Function to call when the task is finished.
-
-        Remove string and task_id (if exist) from sync_tasks dict. If task was not cancelled, raise stored exception.
-        """
-        self.tasks_hard_reference.discard(self.task)
-        if not self.task.cancelled():
-            task_exc = self.task.exception()
-            if task_exc:
-                self.logger.error(task_exc)
-
-
-class ReceiveStringTask:
-    """
-    Create an asyncio task that can be identified by a task_id specified in advance.
-    """
-
-    def __init__(self, wazuh_common, logger, task_id, info_type='agent-info'):
-        """Class constructor.
-
-        Parameters
-        ----------
-        wazuh_common : WazuhCommon object
-            Instance of WazuhCommon.
-        logger : Logger object
-            Logger to use during the receive process.
-        task_id : bytes
-            Pre-defined task_id to identify this object.
-        info_type : str
-            Information type handled.
-        """
-        self.wazuh_common = wazuh_common
-        self.coro = self.set_up_coro()
-        self.task_id = task_id
-        self.info_type = info_type
-        self.task = asyncio.create_task(self.coro(self.task_id, self.info_type))
-        self.task.add_done_callback(self.done_callback)
-        self.logger = logger
-
-    def __str__(self) -> str:
-        """Magic method str.
-
-        Returns
-        -------
-        str
-            Task id of this object.
-        """
-        return self.task_id.decode()
-
-    def set_up_coro(self) -> Callable:
-        """Define set_up_coro method. It is implemented differently for master, workers and synchronization types.
-
-        Raises
-        -------
-        NotImplementedError
-            If the method is not implemented.
-        """
-        raise NotImplementedError
-
-    def done_callback(self, future=None):
-        """Function to call when the task is finished.
-
-        Remove string and task_id (if exist) from sync_tasks dict. If task was not cancelled, raise stored exception.
-        """
-        if self.task_id in self.wazuh_common.in_str:
-            # pop() is used instead of 'del' so an exception is never raised here
-            self.wazuh_common.in_str.pop(self.task_id, None)
-        if self.task_id in self.wazuh_common.sync_tasks:
-            del self.wazuh_common.sync_tasks[self.task_id]
-        if not self.task.cancelled():
-            task_exc = self.task.exception()
-            if task_exc:
-                self.logger.error(task_exc, exc_info=False)
 
 
 class ReceiveFileTask:
@@ -537,39 +426,6 @@ class Handler(asyncio.Protocol):
             raise exception.WazuhClusterError(3020, extra_message=command.decode())
         return response_data
 
-    async def get_chunks_in_task_id(self, task_id: bytes, error_command: bytes) -> dict:
-        """Function in charge of collecting the chunks stored under task_id.
-
-        Parameters
-        ----------
-        task_id : bytes
-            Pre-defined task_id to identify this object.
-        error_command : bytes
-            Command sent to the sender node in case of error.
-
-        Returns
-        -------
-        data : dict
-            Chunks collected through task_id.
-        """
-        try:
-            # Chunks were stored under 'task_id' as an string.
-            received_string = self.in_str[task_id].payload
-            data = json.loads(received_string.decode())
-        except KeyError as e:
-            with contextlib.suppress(Exception):
-                await self.send_request(command=error_command,
-                                        data=f'error while trying to access string under task_id {str(e)}.'.encode())
-            raise exception.WazuhClusterError(3035, extra_message=f"it should be under task_id {str(e)}, "
-                                                                  f"but it's empty.")
-        except ValueError as e:
-            with contextlib.suppress(Exception):
-                await self.send_request(command=error_command,
-                                        data=f'error while trying to load JSON: {str(e)}'.encode())
-            raise exception.WazuhClusterError(3036, extra_message=str(e))
-
-        return data
-
     async def send_file(self, filename: str, task_id: bytes = None) -> int:
         """Send a file to peer, slicing it into chunks.
 
@@ -684,33 +540,6 @@ class Handler(asyncio.Protocol):
                 exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
             with contextlib.suppress(Exception):
                 await self.send_request(b'dapi_err', exc.encode())
-        finally:
-            # Remove the string after using it
-            self.in_str.pop(string_id, None)
-
-    async def forward_sendsync_response(self, data: bytes):
-        """Forward a sendsync response from master node.
-
-        Parameters
-        ----------
-        data : bytes
-            Bytes containing local client name and string id separated by ' '.
-        """
-        client, string_id = data.split(b' ', 1)
-        client = client.decode()
-        try:
-            await self.get_manager().local_server.clients[client].send_request(b'ok', self.in_str[string_id].payload)
-        except Exception as e:
-            if isinstance(e, exception.WazuhException):
-                if e.code == 3020:
-                    return
-                else:
-                    exc = json.dumps(e, cls=WazuhJSONEncoder)
-            else:
-                exc = json.dumps(exception.WazuhClusterError(1000, extra_message=str(e)), cls=WazuhJSONEncoder)
-            with contextlib.suppress(Exception):
-                self.logger.error(f"Error sending sendsync response to local client: {e}")
-                await self.send_request(b'sendsync_err', exc.encode())
         finally:
             # Remove the string after using it
             self.in_str.pop(string_id, None)

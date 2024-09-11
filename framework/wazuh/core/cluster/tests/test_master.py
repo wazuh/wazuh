@@ -287,7 +287,6 @@ def test_master_handler_process_request(logger_mock):
 
         def __init__(self):
             self.local_server = LocalServer()
-            self.sendsync = DapiMock()
 
     class LocalServer:
         """Auxiliary class."""
@@ -354,13 +353,6 @@ def test_master_handler_process_request(logger_mock):
                 get_health_mock.assert_called_once_with(b"ok")
                 json_dumps_mock.assert_called_once()
 
-    # Test the sendsync condition
-    with patch.object(DapiMock, "add_request") as add_request_mock:
-        assert master_handler.process_request(command=b'sendsync', data=b"data") == (b'ok',
-                                                                                     b'Added request to SendSync '
-                                                                                     b'requests queue')
-        add_request_mock.assert_called_once_with(master_handler.name.encode() + b"*" + b"data")
-
     # Test the random condition
     with patch("wazuh.core.cluster.server.AbstractServerHandler.process_request",
                return_value=b"ok") as process_request_mock:
@@ -372,8 +364,7 @@ def test_master_handler_process_request(logger_mock):
                                   call("Command received: b'syn_e_w_m_e'"), call("Command received: b'syn_i_w_m_r'"),
                                   call("Command received: b'dapi'"), call("Command received: b'dapi_res'"),
                                   call("Command received: b'get_nodes'"),
-                                  call("Command received: b'get_health'"), call("Command received: b'sendsync'"),
-                                  call("Command received: b'random'")])
+                                  call("Command received: b'get_health'"), call("Command received: b'random'")])
 
 
 @pytest.mark.asyncio
@@ -1228,9 +1219,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     assert master_class.task_pool == PoolExecutorMock
     assert master_class.integrity_already_executed == []
     assert isinstance(master_class.dapi, dapi.APIRequestQueue)
-    assert isinstance(master_class.sendsync, dapi.SendSyncRequestQueue)
     assert master_class.dapi.run in master_class.tasks
-    assert master_class.sendsync.run in master_class.tasks
     assert master_class.file_status_update in master_class.tasks
     assert master_class.pending_api_requests == {}
 

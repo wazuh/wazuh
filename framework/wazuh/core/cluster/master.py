@@ -197,9 +197,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         elif command == b'get_health':
             cmd, res = self.get_health(json.loads(data))
             return cmd, json.dumps(res).encode()
-        elif command == b'sendsync':
-            self.server.sendsync.add_request(self.name.encode() + b'*' + data)
-            return b'ok', b'Added request to SendSync requests queue'
         else:
             return super().process_request(command, data)
 
@@ -798,8 +795,7 @@ class Master(server.AbstractServer):
             self.task_pool = None
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
-        self.sendsync = dapi.SendSyncRequestQueue(server=self)
-        self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update])
+        self.tasks.extend([self.dapi.run, self.file_status_update])
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 

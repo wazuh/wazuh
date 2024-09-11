@@ -349,9 +349,8 @@ class LocalServerMaster(LocalServer):
         super().__init__(node=node, **kwargs)
         self.handler_class = LocalServerHandlerMaster
         self.dapi = dapi.APIRequestQueue(server=self)
-        self.sendsync = dapi.SendSyncRequestQueue(server=self)
 
-        self.tasks.extend([self.dapi.run, self.sendsync.run])
+        self.tasks.extend([self.dapi.run])
 
 
 class LocalServerHandlerWorker(LocalServerHandler):
@@ -386,18 +385,6 @@ class LocalServerHandlerWorker(LocalServerHandler):
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data)))
             return b'ok', b'Added request to API requests queue'
-        elif command == b'sendsync':
-            if self.server.node.client is None:
-                raise WazuhClusterError(3023)
-            asyncio.create_task(self.log_exceptions(
-                self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
-            return None, None
-        elif command == b'sendasync':
-            if self.server.node.client is None:
-                raise WazuhClusterError(3023)
-            asyncio.create_task(self.log_exceptions(
-                self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
-            return b'ok', b'Added request to sendsync requests queue'
         else:
             return super().process_request(command, data)
 

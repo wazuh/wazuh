@@ -384,7 +384,6 @@ async def test_LocalServerMaster_init(event_loop):
                                 configuration={}, cluster_items={}, enable_ssl=True)
         assert lsm.handler_class == LocalServerHandlerMaster
         assert isinstance(lsm.dapi, dapi.APIRequestQueue)
-        assert isinstance(lsm.sendsync, dapi.SendSyncRequestQueue)
 
 
 @pytest.mark.asyncio
@@ -421,12 +420,6 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
     with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
         lshw.process_request(command=b"dapi", data=b"bye")
 
-    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
-        lshw.process_request(command=b"sendsync", data=b"bye")
-
-    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
-        lshw.process_request(command=b"sendasync", data=b"bye")
-
     server_mock.node.client = ClientMock()
     with patch.object(server_mock.node.client, "send_request", return_value='') as send_request_mock:
         results = lshw.process_request(command=b"dapi", data=b"bye")
@@ -434,17 +427,6 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
         await asyncio.sleep(0.1)
         send_request_mock.assert_awaited_once_with(b"dapi", b"test1 bye")
         send_request_mock.reset_mock()
-
-        results = lshw.process_request(command=b"sendsync", data=b"bye")
-        assert results == (None, None)
-        await asyncio.sleep(0.1)
-        send_request_mock.assert_awaited_once_with(b"sendsync", b"test1 bye")
-        send_request_mock.reset_mock()
-
-        results = lshw.process_request(command=b"sendasync", data=b"bye")
-        assert results == (b"ok", b"Added request to sendsync requests queue")        
-        await asyncio.sleep(0.1)
-        send_request_mock.assert_awaited_once_with(b"sendsync", b"test1 bye")
 
 
 @pytest.mark.asyncio

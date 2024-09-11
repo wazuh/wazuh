@@ -184,15 +184,6 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             await asyncio.sleep(0.01)
         forward_dapi_mock.assert_called_with(b"data")
         logger_mock.assert_called_with("Command received: 'b'dapi_res''")
-    # Test the sendsyn_res condition
-    with patch("wazuh.core.cluster.worker.WorkerHandler.forward_sendsync_response",
-               return_value=b"ok") as forward_sendsync_mock:
-        assert worker_handler.process_request(command=b"sendsyn_res",
-                                              data=b"data") == (b'ok', b'Response forwarded to worker')
-        while not forward_sendsync_mock.await_count:
-            await asyncio.sleep(0.01)
-        forward_sendsync_mock.assert_called_once_with(b"data")
-        logger_mock.assert_called_with("Command received: 'b'sendsyn_res''")
     # Test the dapi_err condition
     worker_handler.server = ManagerMock()
     with patch.object(ClientsMock, "send_request") as send_request_mock:
@@ -202,14 +193,6 @@ async def test_worker_handler_process_request_ok(logger_mock, event_loop):
             await asyncio.sleep(0.01)
         send_request_mock.assert_called_once_with(b"dapi_err", b"2")
         logger_mock.assert_called_with("Command received: 'b'dapi_err''")
-    # Test the sendsyn_err condition
-    with patch.object(ClientsMock, "send_request") as send_request_mock:
-        assert worker_handler.process_request(command=b"sendsyn_err",
-                                              data=b"data 2") == (b'ok', b'SendSync error forwarded to worker')
-        while not send_request_mock.await_count:
-            await asyncio.sleep(0.01)
-        send_request_mock.assert_called_once_with(b"err", b"2")
-        logger_mock.assert_called_with("Command received: 'b'sendsyn_err''")
     # Test the dapi condition
     with patch.object(LocalServerDapiMock, "add_request") as add_request_mock:
         assert worker_handler.process_request(command=b"dapi",
@@ -285,10 +268,6 @@ async def test_worker_handler_process_request_ko(logger_mock, event_loop):
 
     worker_handler = get_worker_handler(event_loop)
     worker_handler.server = ManagerMock()
-    with pytest.raises(exception.WazuhClusterError, match=r".* 1001 .*"):
-        with patch.object(worker_handler, 'log_exceptions', return_value='') as log_exceptions_mock:
-            worker_handler.process_request(command=b"sendsyn_err", data=b"data 1")
-    logger_mock.assert_called_with("Command received: 'b'sendsyn_err''")
 
 
 @pytest.mark.asyncio

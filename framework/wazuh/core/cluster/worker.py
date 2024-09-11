@@ -142,14 +142,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         elif command == b'dapi_res':
             asyncio.create_task(self.forward_dapi_response(data))
             return b'ok', b'Response forwarded to worker'
-        elif command == b'sendsyn_res':
-            asyncio.create_task(self.forward_sendsync_response(data))
-            return b'ok', b'Response forwarded to worker'
-        elif command == b'sendsyn_err':
-            sendsync_client, error_msg = data.split(b' ', 1)
-            asyncio.create_task(self.log_exceptions(
-                self.server.local_server.clients[sendsync_client.decode()].send_request(b'err', error_msg)))
-            return b'ok', b'SendSync error forwarded to worker'
         elif command == b'dapi':
             self.server.dapi.add_request(b'master*' + data)
             return b'ok', b'Added request to API requests queue'
