@@ -150,7 +150,7 @@ int main()
         ContentRegister registerer {
             topic_name,
             CONFIG_PARAMETERS,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
+            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
             {
                 return {0, "", false};
             }};

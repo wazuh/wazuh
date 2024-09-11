@@ -51,8 +51,7 @@ protected:
         // Create a updater base context
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
             m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            {
+            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
                 return {0, "", false};
             });
         m_spUpdaterBaseContext->outputFolder = "/tmp/api-downloader-tests";

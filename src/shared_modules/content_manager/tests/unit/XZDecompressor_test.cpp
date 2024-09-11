@@ -37,7 +37,7 @@ void XZDecompressorTest::SetUp()
     m_spUpdaterContext = std::make_shared<UpdaterContext>();
     m_spUpdaterContext->spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool> {
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
             return {0, "", false};
         });
     // The input files folder simulates the Content Manager output folder.

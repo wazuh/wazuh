@@ -52,8 +52,7 @@ protected:
         m_spUpdaterContext = std::make_shared<UpdaterContext>();
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
             m_spStopActionCondition,
-            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> std::tuple<int, std::string, bool>
-            {
+            [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
                 return {0, "", false};
             });
         m_spUpdaterBaseContext->configData["outputFolder"] = m_outputFolder.string();
