@@ -64,39 +64,6 @@ def get_sync_wazuh_db(worker_handler):
 
 
 @pytest.mark.asyncio
-async def test_rgit_init(event_loop):
-    """Test the initialization of the ReceiveAgentGroupsTask object."""
-
-    async def coro(task_id: str, data: str):
-        return ''
-
-    def return_coro():
-        return coro
-
-    with patch('wazuh.core.cluster.worker.ReceiveAgentGroupsTask.set_up_coro',
-               side_effect=return_coro) as set_up_coro_mock:
-        receive_agent_groups_task = worker.ReceiveAgentGroupsTask(wazuh_common=get_worker_handler(event_loop),
-                                                                  logger=logging.getLogger("wazuh"), task_id="0101")
-        assert isinstance(receive_agent_groups_task.wazuh_common, cluster_common.WazuhCommon)
-        assert receive_agent_groups_task.task_id == "0101"
-        set_up_coro_mock.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_rgit_set_up_coro(event_loop):
-    """Check if the function is called when the master sends its periodic agent-groups information."""
-
-    with patch('wazuh.core.cluster.worker.WorkerHandler.recv_agent_groups_periodic_information',
-               return_value='') as recv_agent_mock:
-        receive_agent_groups_task = worker.ReceiveAgentGroupsTask(wazuh_common=get_worker_handler(event_loop),
-                                                                  logger=logging.getLogger("wazuh"), task_id="0101")
-        while not receive_agent_groups_task.task.done():
-            await asyncio.sleep(0.01)
-
-        assert receive_agent_groups_task.coro == recv_agent_mock
-
-
-@pytest.mark.asyncio
 async def test_rgcit_set_up_coro(event_loop):
     """Check if the function is called when the master sends its entire agent-groups information."""
 
@@ -109,21 +76,6 @@ async def test_rgcit_set_up_coro(event_loop):
             await asyncio.sleep(0.01)
 
         assert receive_agent_groups_task.coro == recv_agent_mock
-
-
-@pytest.mark.asyncio
-async def test_rgit_done_callback(event_loop):
-    """Check if the agent-groups periodic synchronization process was correct."""
-
-    with patch('wazuh.core.cluster.worker.WorkerHandler.recv_agent_groups_periodic_information',
-               return_value='') as recv_agent_mock:
-        receive_agent_groups_task = worker.ReceiveAgentGroupsTask(wazuh_common=get_worker_handler(event_loop),
-                                                                  logger=logging.getLogger("wazuh"), task_id="0101")
-
-        while not receive_agent_groups_task.task.done():
-            await asyncio.sleep(0.01)
-        recv_agent_mock.assert_awaited_once()
-        assert receive_agent_groups_task.wazuh_common.sync_agent_groups_free is True
 
 
 @pytest.mark.asyncio
@@ -255,7 +207,6 @@ async def test_worker_handler_init(event_loop):
     assert isinstance(worker_handler.task_loggers["Integrity check"], logging.Logger)
     assert "Integrity sync" in worker_handler.task_loggers
     assert isinstance(worker_handler.task_loggers["Integrity sync"], logging.Logger)
-    assert worker_handler.agent_info_sync_status == {'date_start': 0.0}
     assert worker_handler.integrity_check_status == {'date_start': 0.0}
     assert worker_handler.integrity_sync_status == {'date_start': 0.0}
 
@@ -473,8 +424,6 @@ async def test_master_handler_setup_sync_integrity(setup_receive_file_mock, even
     # Test the else condition
     assert worker_handler.setup_sync_integrity(b'unknown', b"data") == b"ok"
 
-    setup_receive_file_mock.has_calls([call(worker.ReceiveAgentGroupsTask, b"ok"), call(None, b"ok")])
-
 
 @pytest.mark.asyncio
 @freeze_time('1970-01-01')
@@ -650,25 +599,9 @@ async def test_worker_handler_recv_agent_groups_information(get_chunks_in_task_i
         def info(self, info):
             self._info.append(info)
 
-    def reset_mock():
-        list(map(lambda x: x.reset_mock(), [get_chunks_in_task_id_mock, update_chunks_wdb_mock,
-                                            send_request_mock, check_agent_groups_checksums_mock]))
-
-    logger = LoggerMock()
     logger_c = LoggerMock()
     worker_handler = get_worker_handler(event_loop)
-    worker_handler.task_loggers['Agent-groups recv'] = logger
     worker_handler.task_loggers['Agent-groups recv full'] = logger_c
-
-    assert await worker_handler.recv_agent_groups_periodic_information(task_id=b'17',
-                                                                       info_type='agent-groups') == 'check'
-    get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_w_g_err')
-    update_chunks_wdb_mock.assert_called_once_with('chunks', 'agent-groups', logger, b'syn_w_g_err')
-    send_request_mock.assert_called_once_with(command=b'syn_w_g_e', data=b'{"updated_chunks": 1}')
-    check_agent_groups_checksums_mock.assert_called_once_with('chunks', logger)
-    assert 'Starting.' in logger._info
-    assert 'Finished in 0.000s. Updated 1 chunks.' in logger._info
-    reset_mock()
 
     assert await worker_handler.recv_agent_groups_entire_information(task_id=b'17', info_type='agent-groups') == 'check'
     get_chunks_in_task_id_mock.assert_called_once_with(b'17', b'syn_wgc_err')

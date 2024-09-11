@@ -1469,7 +1469,7 @@ def test_sync_wazuh_db_init():
 @patch("json.loads", return_value={"updated_chunks": 10, "error_messages": None})
 @patch('wazuh.core.cluster.common.time.perf_counter', return_value=0)
 def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
-    """Check the correct output message when a command "syn_m_a_e", "syn_m_g_e" or "syn_w_g_e" takes place."""
+    """Check the correct output message when a command "syn_m_a_e", "syn_m_g_e" takes place."""
 
     class get_utc_now_mock:
         def __init__(self):
@@ -1502,7 +1502,7 @@ def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
 
 def test_error_receiving_agent_information():
     """Check the correct output message when a command
-    "syn_m_a_err", "syn_m_g_err", "syn_w_g_err" or "syn_w_g_err" takes place."""
+    "syn_m_a_err", "syn_m_g_err", "syn_wgc_err" takes place."""
 
     logger = logging.getLogger('testing')
     with patch.object(logger, "error") as logger_error_mock:

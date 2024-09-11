@@ -23,42 +23,6 @@ from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
 
-class ReceiveAgentGroupsTask(c_common.ReceiveStringTask):
-    """
-    Define the process and variables necessary to receive and process Agent groups (periodic) from the master.
-
-    This task is created when the master finishes sending Agent groups chunks and its destroyed once the worker has
-    updated all the received information.
-    """
-
-    def __init__(self, *args, **kwargs):
-        """Class constructor.
-
-        Parameters
-        ----------
-        args
-            Positional arguments for parent constructor class.
-        kwargs
-            Keyword arguments for parent constructor class.
-        """
-        super().__init__(*args, **kwargs, info_type='agent-groups')
-
-    def set_up_coro(self) -> Callable:
-        """Set up the function to be called when the worker sends its Agent groups."""
-        return self.wazuh_common.recv_agent_groups_periodic_information
-
-    def done_callback(self, future=None):
-        """Check whether the synchronization process was correct and free its lock.
-
-        Parameters
-        ----------
-        future : asyncio.Future object
-            Synchronization process result.
-        """
-        super().done_callback(future)
-        self.wazuh_common.sync_agent_groups_free = True
-
-
 class ReceiveEntireAgentGroupsTask(c_common.ReceiveStringTask):
     """
     Define the process and variables necessary to receive and process Agent groups (entire) from the master.
@@ -147,14 +111,9 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # a log coming from the "Integrity" logger will look like this:
         # [Worker name] [Integrity] Log information
         # this way the same code can be shared among all sync tasks and logs will differentiate.
-        self.task_loggers = {'Agent-groups recv': self.setup_task_logger('Agent-groups recv'),
-                             'Agent-groups recv full': self.setup_task_logger('Agent-groups recv full'),
+        self.task_loggers = {'Agent-groups recv full': self.setup_task_logger('Agent-groups recv full'),
                              'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
-        default_date = datetime.utcfromtimestamp(0)
-        self.sync_agent_groups_from_master = {'date_start_worker': default_date, 'date_end_worker': default_date,
-                                              'n_synced_chunks': 0}
-        self.agent_info_sync_status = {'date_start': 0.0}
         self.integrity_check_status = {'date_start': 0.0}
         self.integrity_sync_status = {'date_start': 0.0}
         self.agent_groups_mismatch_counter = 0
@@ -266,10 +225,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         bytes
             Response message.
         """
-        if sync_type == b'syn_g_m_w':
-            sync_function = ReceiveAgentGroupsTask
-            logger_tag = 'Agent-groups recv'
-        elif sync_type == b'syn_g_m_w_c':
+        if sync_type == b'syn_g_m_w_c':
             sync_function = ReceiveEntireAgentGroupsTask
             logger_tag = 'Agent-groups recv full'
         else:
@@ -418,28 +374,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 await self.send_request(command=b'syn_w_g_c', data=b'')
                 self.agent_groups_mismatch_counter = 0
                 logger.info('Sent request to obtain all agent-groups information from the master node.')
-
-    async def recv_agent_groups_periodic_information(self, task_id: bytes, info_type: str):
-        """Create a process to receive the master periodic agent-groups information.
-
-        Parameters
-        ----------
-        task_id : bytes
-            ID of the string where the JSON chunks are stored.
-        info_type : str
-            Information type handled.
-
-        Returns
-        -------
-        result : bytes
-            Master's response after finishing the synchronization.
-        """
-        logger = self.task_loggers['Agent-groups recv']
-        command = b'syn_w_g_e'
-        error_command = b'syn_w_g_err'
-        timeout = self.cluster_items['intervals']['worker']['timeout_agent_groups']
-
-        return await self.recv_agent_groups_information(task_id, info_type, logger, command, error_command, timeout)
 
     async def recv_agent_groups_entire_information(self, task_id: bytes, info_type: str):
         """Create a process to receive the master entire agent-groups information.
