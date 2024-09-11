@@ -33,9 +33,7 @@ with patch('wazuh.core.common.wazuh_uid'):
 
 logger = logging.getLogger("wazuh")
 cluster_items = {'node': 'master-node',
-                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "timeout_agent_groups": 0,
-                                          "sync_agent_info": 5, "sync_agent_groups": 5,
-                                          "agent_groups_mismatch_limit": 5},
+                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2},
                                "communication": {"timeout_receiving_file": 1, "max_zip_size": 1000, "min_zip_size": 0,
                                                  "zip_limit_tolerance": 0.2, "timeout_cluster_request": 20}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
@@ -944,7 +942,6 @@ async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
 
         def __init__(self):
             self.sync_integrity = "0101"
-            self.sync_agent_info = "info"
 
     task_pool = {'task_pool': ''}
 
@@ -954,7 +951,7 @@ async def test_worker_add_tasks(api_request_queue, acm_mock, event_loop):
 
     nested_worker.client = ClientMock()
     nested_worker.dapi = DapiMock()
-    assert nested_worker.add_tasks() == ['task', ('0101', ()), ('info', ()), ('True', ())]
+    assert nested_worker.add_tasks() == ['task', ('0101', ()), ('True', ())]
 
 
 @pytest.mark.asyncio

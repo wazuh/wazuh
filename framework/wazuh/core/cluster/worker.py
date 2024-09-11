@@ -547,7 +547,6 @@ class Worker(client.AbstractClientManager):
             all coroutines don't need arguments.
         """
         return super().add_tasks() + [(self.client.sync_integrity, tuple()),
-                                      (self.client.sync_agent_info, tuple()),
                                       (self.dapi.run, tuple())]
 
     def get_node(self) -> Dict:

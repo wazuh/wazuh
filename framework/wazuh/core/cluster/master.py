@@ -126,19 +126,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         # Variable used to check whether integrity sync process includes extra_valid files.
         self.extra_valid_requested = False
 
-        # Sync status variables. Used in cluster_control -i and GET/cluster/healthcheck.
+        # Sync status variables. Used in GET/cluster/healthcheck.
         self.integrity_check_status = {'date_start_master': DEFAULT_DATE, 'date_end_master': DEFAULT_DATE}
         self.integrity_sync_status = {'date_start_master': DEFAULT_DATE, 'tmp_date_start_master': DEFAULT_DATE,
                                       'date_end_master': DEFAULT_DATE, 'total_extra_valid': 0,
                                       'total_files': {'missing': 0, 'shared': 0, 'extra': 0, 'extra_valid': 0}}
-        self.sync_agent_info_status = {'date_start_master': DEFAULT_DATE, 'date_end_master': DEFAULT_DATE,
-                                       'n_synced_chunks': 0}
-        self.send_agent_groups_status = {'date_start': DEFAULT_DATE,
-                                         'date_end': DEFAULT_DATE,
-                                         'n_synced_chunks': 0}
-        self.send_full_agent_groups_status = {'date_start': DEFAULT_DATE,
-                                              'date_end': DEFAULT_DATE,
-                                              'n_synced_chunks': 0}
 
         # Variables which will be filled when the worker sends the hello request.
         self.version = ""
@@ -167,8 +159,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                     not key.startswith('tmp')},
                            'last_sync_integrity': {key: value for key, value in self.integrity_sync_status.items() if
                                                    not key.startswith('tmp')},
-                           'last_sync_agentgroup': self.send_agent_groups_status,
-                           'last_sync_full_agentgroup': self.send_full_agent_groups_status,
                            'last_keep_alive': self.last_keepalive}
                 }
 

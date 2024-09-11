@@ -35,14 +35,13 @@ with patch('wazuh.core.common.wazuh_uid'):
 # Global variables
 
 cluster_items = {'node': 'master-node',
-                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2, "sync_agent_info": 5},
+                 'intervals': {'worker': {'connection_retry': 1, "sync_integrity": 2},
                                "communication": {"timeout_receiving_file": 1, "timeout_dapi_request": 1,
                                                  "max_zip_size": 1073741824, "min_zip_size": 31457280,
                                                  "zip_limit_tolerance": 0.2},
                                'master': {'max_locked_integrity_time': 0,
                                           'timeout_extra_valid': 0, 'process_pool_size': 10,
-                                          'recalculate_integrity': 0, 'sync_agent_groups': 1,
-                                          'agent_group_start_delay': 1}},
+                                          'recalculate_integrity': 0}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 
 fernet_key = "0" * 32
@@ -220,10 +219,6 @@ def test_master_handler_init():
             'total_extra_valid': 0,
             'total_files': {'missing': 0, 'shared': 0, 'extra': 0,
                             'extra_valid': 0}}
-        assert master_handler.sync_agent_info_status == {
-            'date_start_master': DEFAULT_DATE,
-            'date_end_master': DEFAULT_DATE,
-            'n_synced_chunks': 0}
         assert master_handler.version == ""
         assert master_handler.cluster_name == ""
         assert master_handler.node_type == ""
