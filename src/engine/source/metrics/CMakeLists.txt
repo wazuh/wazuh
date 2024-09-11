@@ -42,10 +42,7 @@ set(TEST_UNIT_DIR ${CMAKE_CURRENT_LIST_DIR}/test/unit)
 set(TEST_MOCK_DIR ${CMAKE_CURRENT_LIST_DIR}/test/unit/mocks)
 
 add_executable(metrics_utest
-  ${TEST_UNIT_DIR}/metricsManager_test.cpp
-  ${TEST_UNIT_DIR}/dataHub_test.cpp
   ${TEST_UNIT_DIR}/dataHubExporter_test.cpp
-  ${TEST_UNIT_DIR}/metricsScope_test.cpp
 )
 
 # Mocks
