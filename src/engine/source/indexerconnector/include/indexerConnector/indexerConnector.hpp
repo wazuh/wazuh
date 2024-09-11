@@ -55,10 +55,16 @@ class EXPORTED IndexerConnector final : public IIndexerConnector
 
 public:
     /**
-     * @brief Class constructor that initializes the publisher.
+     * @brief Class constructor that initializes credential management based on the configuration,
+     * selects the server to be used through a round-robin algorithm among the available servers
+     * (servers are health-checked using the API endpoint /_cat/health), and sets up the dispatcher
+     * to process messages asynchronously using a persistent queue. Messages are dispatched in bulk
+     * either when the maximum bulk size or the time interval is reached. The bulk size is 1000 messages
+     * and the interval is 5 seconds.
      *
-     * @param config Indexer configuration, including database_path and servers.
-     * @param timeout Server selector time interval.
+     * @param config Indexer configuration, including the index name, server list, ssl configuration and user and
+     * password.
+     * @param timeout Interval for monitoring the server health.
      * @param workingThreads Number of working threads used by the dispatcher. More than one results in an unordered
      * processing.
      * @note Example of the configuration:
@@ -78,12 +84,16 @@ public:
                               const uint32_t& timeout = DEFAULT_INTERVAL,
                               uint8_t workingThreads = 1);
 
-    ~IndexerConnector();
+    /**
+     * @brief Class destructor.
+     * @note It will stop the dispatcher and wait for the threads to finish gracefully.
+     */
+    ~IndexerConnector() override;
 
     /**
      * @copydoc IIndexerConnector::publish
      */
-    void publish(const std::string& message);
+    void publish(const std::string& message) override;
 };
 
 #endif // _INDEXER_CONNECTOR_HPP
