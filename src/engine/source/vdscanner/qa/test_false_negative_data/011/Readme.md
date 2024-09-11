@@ -8,17 +8,18 @@ Vulnerability detection validation for macOS packages `Mail` and homebrew `brotl
 ## Windows
 
 - Input events
-    - [001](input_001.json)
+  - [001](input_001.json)
 
-| Name                       | Version           | Feed | CVE IDs        | Expected    |
-|----------------------------|-------------------|------|----------------|-------------|
-| Opera Stable 108.0.5067.29 | 108.0.5067.29     | NVD  | CVE-2008-7297  | Vulnerable  |
+| Name                     | Version     | Feed | CVE IDs       | Expected      |
+| ------------------------ | ----------- | ---- | ------------- | ------------- |
+| Opera Stable 9.0.5067.29 | 9.0.5067.29 | NVD  | CVE-2008-7297 | No vulnerable |
+| Opera Stable 9.0.5067.29 | 9.0.5067.29 | NVD  | CVE-2010-0653 | Vulnerable    |
 
 ## macOS
 
 - Input events
-    - [002](input_002.json)
+  - [002](input_002.json)
 
-| Name                | Version | Feed | CVE IDs        | Expected    |
-|---------------------|---------|------|----------------|-------------|
-| Mail                | 16.0    | NVD  | CVE-2005-2512  | Vulnerable  |
+| Name | Version | Feed | CVE IDs       | Expected   |
+| ---- | ------- | ---- | ------------- | ---------- |
+| Mail | 16.0    | NVD  | CVE-2005-2512 | Vulnerable |

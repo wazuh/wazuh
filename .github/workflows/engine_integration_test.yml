@@ -43,20 +43,18 @@ jobs:
     steps:
 
     - name: Install dependencies lzip
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: lzip
-        version: 1.0
+      run: sudo apt-get install lzip  
 
     - name: Check out repository
       uses: actions/checkout@v4
       with:
         submodules: recursive
 
-    - name: Cache CMake and ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ${{ github.workflow }}-${{ runner.os }}
+    # Disabled due to not being implemented in the current workflow
+    # - name: Cache CMake and ccache
+    #   uses: hendrikmuhs/ccache-action@v1.2
+    #   with:
+    #     key: ${{ github.workflow }}-${{ runner.os }}
 
     - name: Set up Python
       uses: actions/setup-python@v5
