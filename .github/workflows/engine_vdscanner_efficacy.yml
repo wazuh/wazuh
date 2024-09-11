@@ -51,10 +51,11 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Cache CMake and ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ github.workflow }}-${{ runner.os }}
+      # Disabled due to not being implemented in the current workflow
+      # - name: Cache CMake and ccache
+      #   uses: hendrikmuhs/ccache-action@v1.2
+      #   with:
+      #     key: ${{ github.workflow }}-${{ runner.os }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
