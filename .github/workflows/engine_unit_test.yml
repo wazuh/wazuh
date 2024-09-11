@@ -5,16 +5,16 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - 'src/engine/**'
-      - '.github/workflows/engine_unit_test.yml'
+      - "src/engine/**"
+      - ".github/workflows/engine_unit_test.yml"
 
   workflow_dispatch:
     inputs:
       build_preset:
         type: choice
-        description: 'Choose the CMake build preset'
+        description: "Choose the CMake build preset"
         required: false
-        default: 'release'
+        default: "release"
         options:
           - debug
           - release
@@ -39,38 +39,34 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      - name: Install dependencies (lzip)
+        run: sudo apt-get install lzip
 
-    - name: Install dependencies
-      uses: awalsh128/cache-apt-pkgs-action@latest
-      with:
-        packages: lzip
-        version: 1.0
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-    - name: Check out repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      # Disabled due to not being implemented in the current workflow
+      # - name: Cache CMake and ccache
+      #   uses: hendrikmuhs/ccache-action@v1.2
+      #   with:
+      #     key: ${{ github.workflow }}-${{ runner.os }}
 
-    - name: Cache CMake and ccache
-      uses: hendrikmuhs/ccache-action@v1.2
-      with:
-        key: ${{ github.workflow }}-${{ runner.os }}
+      - name: Setup VCPKG
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: "${{env.ENGINE_DIR}}/vcpkg"
+          vcpkgGitCommitId: "a42af01b72c28a8e1d7b48107b33e4f286a55ef6"
+          vcpkgJsonGlob: "${{env.ENGINE_DIR}}/vcpkg.json"
 
-    - name: Setup VCPKG
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgDirectory: '${{env.ENGINE_DIR}}/vcpkg'
-        vcpkgGitCommitId: 'a42af01b72c28a8e1d7b48107b33e4f286a55ef6'
-        vcpkgJsonGlob: '${{env.ENGINE_DIR}}/vcpkg.json'
+      - name: Configure CMake
+        run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
 
+      - name: Build
+        run: cmake --build ${{env.ENGINE_DIR}}/build --target all_tests -j$(nproc)
 
-    - name: Configure CMake
-      run: cmake --preset=${{env.BUILD_PRESET}} --no-warn-unused-cli -S ${{env.ENGINE_DIR}}
-
-    - name: Build
-      run: cmake --build ${{env.ENGINE_DIR}}/build --target all_tests -j$(nproc)
-
-    - name: Unit Test
-      # Run unit tests using CTest
-      working-directory: ${{env.ENGINE_DIR}}/build
-      run: ctest -T test -C ${{env.BUILD_PRESET}} --output-on-failure
+      - name: Unit Test
+        # Run unit tests using CTest
+        working-directory: ${{env.ENGINE_DIR}}/build
+        run: ctest -T test -C ${{env.BUILD_PRESET}} --output-on-failure
