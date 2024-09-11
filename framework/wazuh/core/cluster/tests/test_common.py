@@ -656,40 +656,6 @@ async def test_handler_get_chunks_in_task_id(send_request_mock):
 
 
 @pytest.mark.asyncio
-@patch('wazuh.core.cluster.common.Handler.send_request')
-async def test_handler_update_chunks_wdb(send_request_mock):
-    """Test that the received chunks are sent correctly to wdb."""
-    logger = LoggerMock()
-    handler = cluster_common.Handler(fernet_key, cluster_items)
-
-    with patch('wazuh.core.cluster.common.send_data_to_wdb',
-               return_value={'total_updated': 0, 'errors_per_folder': {'key': 'value'}, 'generic_errors': ['ERR'],
-                             'updated_chunks': 2, 'time_spent': 6,
-                             'error_messages': [0, 1]}):
-        with patch.object(LoggerMock, "debug") as logger_debug_mock:
-                    assert await handler.update_chunks_wdb(
-                        data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
-                        logger=logger, error_command=b'ERROR') == {'error_messages': [0, 1],
-                                                                   'errors_per_folder': {'key': 'value'},
-                                                                   'generic_errors': ['ERR'],
-                                                                   'time_spent': 6, 'total_updated': 0,
-                                                                   'updated_chunks': 2}
-                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
-
-    # Test Exception
-    send_request_mock.reset_mock()
-    with pytest.raises(exception.WazuhClusterError, match=r'.*Error 3037 - Error while processing Agent-info chunks'):
-        with patch('wazuh.core.cluster.common.send_data_to_wdb', side_effect=exception.WazuhException(2005)):
-            await handler.update_chunks_wdb(data={'chunks': [0, 1, 2, 3, 4]}, info_type='info',
-                                            logger=logger, error_command=b'ERROR')
-
-    send_request_mock.assert_has_calls(
-        [call(command=b'ERROR',
-              data=b'error processing info chunks: '
-                   b'Error 2005 - Could not connect to wdb socket')])
-
-
-@pytest.mark.asyncio
 @patch('os.path.exists', return_value=True)
 @patch('builtins.open', mock_open(read_data=b'chunks'))
 @patch('wazuh.core.cluster.common.Handler.send_request', return_value=b'some data')
@@ -1341,23 +1307,6 @@ def test_wazuh_common_get_logger():
         wazuh_common.get_logger()
 
 
-def test_wazuh_common_setup_send_info():
-    """Check if SendTaskClass class is created and returned."""
-
-    class MyTaskMock:
-
-        def __init__(self) -> None:
-            self.task_id = "key"
-
-    my_task = MyTaskMock()
-    mock_object = MagicMock(return_value=my_task)
-
-    with patch('wazuh.core.cluster.common.WazuhCommon.get_logger'):
-        first_output, second_output = wazuh_common.setup_send_info(mock_object)
-        assert first_output == b'ok'
-        assert isinstance(second_output, bytes)
-
-
 def test_wazuh_common_setup_receive_file():
     """Check if ReceiveFileTask class is created and added to the task dictionary."""
 
@@ -1464,120 +1413,6 @@ def test_sync_wazuh_db_init():
     assert sync_wazuh_db.get_data_command == "get_command"
     assert sync_wazuh_db.set_data_command == "set_command"
     assert sync_wazuh_db.data_retriever is None
-
-
-@patch("json.loads", return_value={"updated_chunks": 10, "error_messages": None})
-@patch('wazuh.core.cluster.common.time.perf_counter', return_value=0)
-def test_end_sending_agent_information(perf_counter_mock, json_loads_mock):
-    """Check the correct output message when a command "syn_m_a_e", "syn_m_g_e" takes place."""
-
-    class get_utc_now_mock:
-        def __init__(self):
-            pass
-
-        def timestamp(self):
-            return 0
-
-    logger = logging.getLogger('testing')
-    with patch('wazuh.core.cluster.common.utils.get_utc_now', side_effect=get_utc_now_mock):
-        with patch.object(logger, "info") as logger_info_mock:
-            assert cluster_common.end_sending_agent_information(
-                logger,
-                datetime.fromtimestamp(0),
-                "response"
-                ) == (b'ok', b'Thanks')
-            json_loads_mock.assert_called_once_with("response")
-            logger_info_mock.assert_called_once_with("Finished in 0.000s. Updated 10 chunks.")
-
-        with patch.object(logger, "error") as logger_error_mock:
-            json_loads_mock.return_value = {"updated_chunks": 10, "error_messages": "error"}
-            assert cluster_common.end_sending_agent_information(
-                logger,
-                datetime.fromtimestamp(0),
-                "response"
-                ) == (b'ok', b'Thanks')
-            logger_error_mock.assert_called_once_with(
-                "Finished in 0.000s. Updated 10 chunks. There were 5 chunks with errors: error")
-
-
-def test_error_receiving_agent_information():
-    """Check the correct output message when a command
-    "syn_m_a_err", "syn_m_g_err", "syn_wgc_err" takes place."""
-
-    logger = logging.getLogger('testing')
-    with patch.object(logger, "error") as logger_error_mock:
-        assert cluster_common.error_receiving_agent_information(logger, "response", "info") == (b'ok', b'Thanks')
-        logger_error_mock.assert_called_once_with("There was an error while processing info on the peer: response")
-
-
-@pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection")
-async def test_send_data_to_wdb(AsyncWazuhDBConnection_mock):
-    """Check if the data chunks are being properly forward to the Wazuh-db socket."""
-
-    class MockAsyncWazuhDBConnection:
-        """Auxiliary class."""
-
-        def __init__(self):
-            self.exceptions = 0
-
-        async def run_wdb_command(self, command):
-            """Auxiliary method."""
-            if self.exceptions == 0:
-                return ''
-            elif self.exceptions == 1:
-                raise Exception('Cannot execute Global database query; FOREIGN KEY constraint failed')
-            else:
-                raise Exception
-
-        def close(self):
-            """Auxiliary method."""
-            pass
-
-    logger = LoggerMock()
-    AsyncWazuhDBConnection_mock.return_value = MockAsyncWazuhDBConnection()
-
-    result = await cluster_common.send_data_to_wdb(logger=logger,
-                                                   data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''})
-    assert result['updated_chunks'] == 2
-
-    AsyncWazuhDBConnection_mock.return_value.exceptions += 1
-    result = await cluster_common.send_data_to_wdb(logger=logger,
-                                                   data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''})
-    assert result['updated_chunks'] == 0
-    assert result['error_messages'] == []
-    assert logger._error == []
-
-    AsyncWazuhDBConnection_mock.return_value.exceptions += 1
-    result = await cluster_common.send_data_to_wdb(logger=logger,
-                                                   data={'chunks': ['1chunk', '2chunk'], 'set_data_command': ''})
-    assert logger._error == ['Wazuh-db response for chunk 1/2 was not "ok": ',
-                             'Wazuh-db response for chunk 2/2 was not "ok": ']
-    assert result['updated_chunks'] == 0
-
-
-@pytest.mark.asyncio
-@patch("wazuh.core.cluster.common.AsyncWazuhDBConnection")
-async def test_send_data_to_wdb_ko(AsyncWazuhDBConnection_mock):
-    """Check if the send_data_to_wdb exceptions are being properly logged."""
-    logger = LoggerMock()
-    AsyncWazuhDBConnection_mock.return_value = MockAsyncWazuhDBConnection()
-    data = {'chunks': ['1chunk', '2chunk'], 'set_data_command': ''}
-
-    AsyncWazuhDBConnection_mock.return_value.exceptions += 1
-    with patch.object(LoggerMock, "debug2") as logger_debug2_mock:
-        with patch.object(LoggerMock, "error") as logger_error_mock:
-            result = await cluster_common.send_data_to_wdb(logger=logger, data=data)
-            assert result['error_messages'] == ['', '']
-
-            logger_debug2_mock.assert_has_calls([call('Chunk 1/2: 1chunk'), call('Chunk 2/2: 2chunk')])
-            logger_error_mock.assert_has_calls([call('Wazuh-db response for chunk 1/2 was not "ok": '),
-                                                call('Wazuh-db response for chunk 2/2 was not "ok": ')])
-
-    with patch.object(LoggerMock, "error") as logger_error_mock:
-        result = await cluster_common.send_data_to_wdb(logger=logger, data={'set_data_command': ''})
-        logger_error_mock.assert_has_calls([call('Error while processing agent-info chunks: \'chunks\'')])
-
 
 @patch.object(logging, "error")
 @patch('asyncio.new_event_loop')

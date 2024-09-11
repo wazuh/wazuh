@@ -106,30 +106,6 @@ class ReceiveExtraValidTask(c_common.ReceiveFileTask):
         self.wazuh_common.sync_integrity_free[0] = True
 
 
-class SendEntireAgentGroupsTask(c_common.SendStringTask):
-    """
-    Define the process and variables necessary to send the entire agent-groups from the master to the worker.
-
-    This task is created when the worker needs the entire agent-groups information.
-    """
-
-    def __init__(self, *args, **kwargs):
-        """Class constructor.
-
-        Parameters
-        ----------
-        args
-            Positional arguments for parent constructor class.
-        kwargs
-            Keyword arguments for parent constructor class.
-        """
-        super().__init__(*args, **kwargs)
-
-    def set_up_coro(self) -> Callable:
-        """Set up the function to be called when the worker needs the entire agent-groups information."""
-        return self.wazuh_common.send_entire_agent_groups_information
-
-
 class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
     """
     Handle incoming requests and sync processes with a worker.
@@ -218,19 +194,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             return self.get_permission(command)
         elif command == b'syn_i_w_m' or command == b'syn_e_w_m':
             return self.setup_sync_integrity(command, data)
-        elif command == b'syn_w_g_c':
-            return self.setup_send_info(command)
         elif command == b'syn_i_w_m_e' or command == b'syn_e_w_m_e':
             return self.end_receiving_integrity_checksums(data.decode())
         elif command == b'syn_i_w_m_r':
             return self.process_sync_error_from_worker(data)
-        elif command == b'syn_wgc_e':
-            logger = self.task_loggers['Agent-groups send full']
-            start_time = datetime.strptime(self.send_full_agent_groups_status['date_start'], DECIMALS_DATE_FORMAT)
-            return c_common.end_sending_agent_information(logger, start_time, data.decode())
-        elif command == b'syn_wgc_err':
-            logger = self.task_loggers['Agent-groups send full']
-            return c_common.error_receiving_agent_information(logger, data.decode(), info_type='agent-groups')
         elif command == b'dapi':
             self.server.dapi.add_request(self.name.encode() + b'*' + data)
             return b'ok', b'Added request to API requests queue'
@@ -328,8 +295,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         cmd, payload = super().hello(name)
 
         self.task_loggers = {'Integrity check': self.setup_task_logger('Integrity check'),
-                             'Integrity sync': self.setup_task_logger('Integrity sync'),
-                             'Agent-groups send full': self.setup_task_logger('Agent-groups send full')}
+                             'Integrity sync': self.setup_task_logger('Integrity sync')}
 
         # Fill more information and check both name and version are correct.
         self.version, self.cluster_name, self.node_type = version.decode(), cluster_name.decode(), node_type.decode()
@@ -493,30 +459,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         return super().setup_receive_file(receive_task_class=sync_function, data=data, logger_tag=logger_tag)
 
-    def setup_send_info(self, sync_type: bytes) -> Tuple[bytes, bytes]:
-        """Start synchronization process.
-
-        Parameters
-        ----------
-        sync_type : bytes
-            Sync process to start.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            Response message.
-        """
-        if sync_type == b'syn_w_g_c':
-            sync_function = SendEntireAgentGroupsTask
-            logger_tag = 'Agent-groups send full'
-        else:
-            sync_function = None
-            logger_tag = ''
-
-        return super().setup_send_info(send_task_class=sync_function, logger_tag=logger_tag)
-
     def process_sync_error_from_worker(self, error_msg: bytes) -> Tuple[bytes, bytes]:
         """Manage error during synchronization process reported by a worker.
 
@@ -553,36 +495,6 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             Response message.
         """
         return super().end_receiving_file(task_and_file_names=task_and_file_names, logger_tag='Integrity check')
-
-    async def send_entire_agent_groups_information(self):
-        """Method in charge of sending all the information related to
-        agent-groups from the master node database to the worker node database.
-
-        This method is activated when the worker node requests this information to the master node.
-        """
-        logger = self.task_loggers['Agent-groups send full']
-        start_time = get_utc_now()
-        logger.info('Starting.')
-
-        await self.recalculate_group_hash(logger)
-
-        sync_object = c_common.SyncWazuhdb(manager=self, logger=logger, cmd=b'syn_g_m_w_c',
-                                           data_retriever=AsyncWazuhDBConnection().run_wdb_command,
-                                           get_data_command='global sync-agent-groups-get ',
-                                           get_payload={"condition": "all", "set_synced": False,
-                                                        "get_global_hash": False, "last_id": 0},
-                                           pivot_key='last_id',
-                                           set_data_command='global set-agent-groups',
-                                           set_payload={'mode': 'override', 'sync_status': 'synced'})
-
-        local_agent_groups_information = await sync_object.retrieve_information()
-        await sync_object.sync(start_time=start_time.timestamp(), chunks=local_agent_groups_information)
-        end_time = get_utc_now()
-
-        # Updates Agent groups full status
-        self.send_full_agent_groups_status['date_start'] = start_time.strftime(DECIMALS_DATE_FORMAT)
-        self.send_full_agent_groups_status['date_end'] = end_time.strftime(DECIMALS_DATE_FORMAT)
-        self.send_full_agent_groups_status['n_synced_chunks'] = len(local_agent_groups_information)
 
     def set_date_end_master(self, logger):
         """Store the datetime when Integrity sync is completed and log 'Finished in' message.
