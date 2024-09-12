@@ -126,13 +126,14 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
     }
 
     m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-        [this, selector, secureCommunication](std::queue<std::string>& dataQueue)
+        [this, selector, secureCommunication, functionName = logging::getLambdaName(__FUNCTION__, "processEventQueue")](
+            std::queue<std::string>& dataQueue)
         {
             std::scoped_lock lock(m_syncMutex);
 
             if (m_stopping.load())
             {
-                LOG_DEBUG("IndexerConnector is stopping, event processing will be skipped.");
+                LOG_DEBUG_L(functionName.c_str(), "IndexerConnector is stopping, event processing will be skipped.");
                 throw std::runtime_error("IndexerConnector is stopping, event processing will be skipped.");
             }
 
@@ -161,14 +162,17 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
             if (!bulkData.empty())
             {
                 // Process data.
-                HTTPRequest::instance().post({HttpURL(url), bulkData, secureCommunication},
-                                             {[](const std::string& response)
-                                              { LOG_DEBUG("Response: %s", response.c_str()); },
-                                              [](const std::string& error, const long statusCode)
-                                              {
-                                                  LOG_ERROR("%s, status code: %ld.", error.c_str(), statusCode);
-                                                  throw std::runtime_error(error);
-                                              }});
+                HTTPRequest::instance().post(
+                    {HttpURL(url), bulkData, secureCommunication},
+                    {[functionName = logging::getLambdaName(__FUNCTION__, "handleSuccessfulPostResponse")](
+                         const std::string& response)
+                     { LOG_DEBUG_L(functionName.c_str(), "Response: %s", response.c_str()); },
+                     [functionName = logging::getLambdaName(__FUNCTION__, "handlePostResponseError")](
+                         const std::string& error, const long statusCode)
+                     {
+                         LOG_ERROR_L(functionName.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                         throw std::runtime_error(error);
+                     }});
             }
         },
         DATABASE_BASE_PATH + m_indexName,

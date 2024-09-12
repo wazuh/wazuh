@@ -56,12 +56,11 @@ public:
 
         const auto osCPE = ScannerHelper::parseCPE(data->osCPEName(m_databaseFeedManager->cpeMappings()).data());
 
-        auto vulnerabilityScan = [&, getLambdaName = logging::getLambdaName(__FUNCTION__, "vulnerabilityScan")](
+        auto vulnerabilityScan = [&, functionName = logging::getLambdaName(__FUNCTION__, "vulnerabilityScan")](
                                      const std::string& cnaName,
                                      const PackageData& package,
                                      const NSVulnerabilityScanner::ScanVulnerabilityCandidate& callbackData)
         {
-            const auto functionName = getLambdaName.c_str();
             try
             {
                 VersionObjectType objectType = VersionObjectType::DPKG;
@@ -73,7 +72,7 @@ public:
                     std::string versionStringLessThanOrEqual {
                         version->lessThanOrEqual() ? version->lessThanOrEqual()->str() : ""};
                     LOG_DEBUG_L(
-                        functionName,
+                        functionName.c_str(),
                         "Scanning OS - '{}' (Installed Version: {}, Security Vulnerability: {}). Identified "
                         "vulnerability: "
                         "Version: {}. Required Version Threshold: {}. Required Version Threshold (or Equal): {}.",
@@ -93,7 +92,7 @@ public:
                             // Version match found, the package status is defined by the vulnerability status.
                             if (version->status() == NSVulnerabilityScanner::Status::Status_affected)
                             {
-                                LOG_DEBUG_L(functionName,
+                                LOG_DEBUG_L(functionName.c_str(),
                                             "Match found, the OS '{}', is vulnerable to '{}'. Current version: '{}' is "
                                             "equal to '{}'. - Agent '{}' (ID: '{}', Version: '{}').",
                                             osCPE.product,
@@ -157,7 +156,7 @@ public:
                                 if (version->status() == NSVulnerabilityScanner::Status::Status_affected)
                                 {
                                     LOG_DEBUG_L(
-                                        functionName,
+                                        functionName.c_str(),
                                         "Match found, the OS '{}', is vulnerable to '{}'. Current version: "
                                         "'{}' ("
                                         "less than '{}' or equal to '{}'). - Agent '{}' (ID: '{}', Version: '{}').",
@@ -188,7 +187,7 @@ public:
                                 else
                                 {
                                     LOG_DEBUG_L(
-                                        functionName,
+                                        functionName.c_str(),
                                         "No match due to default status for OS: {}, Version: {} while scanning "
                                         "for Vulnerability: {}, "
                                         "Installed Version: {}, Required Version Threshold: {}, Required Version "
@@ -210,7 +209,7 @@ public:
                 // No match found, the default status defines the package status.
                 if (callbackData.defaultStatus() == NSVulnerabilityScanner::Status::Status_affected)
                 {
-                    LOG_DEBUG_L(functionName,
+                    LOG_DEBUG_L(functionName.c_str(),
                                 "Match found for OS: {} for vulnerability: {} due to default status.",
                                 osCPE.product,
                                 callbackData.cveId()->str());
@@ -222,7 +221,7 @@ public:
                 }
 
                 LOG_DEBUG_L(
-                    functionName,
+                    functionName.c_str(),
                     "No match due to default status for OS: {}, Version: {} while scanning for Vulnerability: {}",
                     osCPE.product,
                     data->osVersion(),
@@ -233,7 +232,7 @@ public:
             catch (const std::exception& e)
             {
                 // Log the warning and continue with the next vulnerability.
-                LOG_DEBUG_L(functionName,
+                LOG_DEBUG_L(functionName.c_str(),
                             "Failed to scan OS: '{}', CVE Numbering Authorities (CNA): '{}', Error: '{}'",
                             osCPE.product,
                             cnaName,
