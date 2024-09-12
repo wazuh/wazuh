@@ -35,9 +35,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiation)
     EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+        { return {0, "", false}; }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -57,9 +56,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutConfigData)
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(
                      parameters,
                      m_spStopActionCondition,
-                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                         return {0, "", false};
-                     }),
+                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+                     { return {0, "", false}; }),
                  std::invalid_argument);
 }
 
@@ -76,9 +74,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutContentSourceInConfigData
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(
                      m_parameters,
                      m_spStopActionCondition,
-                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                         return {0, "", false};
-                     }),
+                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+                     { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -97,9 +94,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutCompressionTypeInConfigDa
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(
                      m_parameters,
                      m_spStopActionCondition,
-                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                         return {0, "", false};
-                     }),
+                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+                     { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -118,9 +114,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitXZCompressionType)
     EXPECT_NO_THROW(std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        }));
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+        { return {0, "", false}; }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 }
@@ -138,9 +133,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutVersionedContentInConfigD
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(
                      m_parameters,
                      m_spStopActionCondition,
-                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                         return {0, "", false};
-                     }),
+                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+                     { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -159,9 +153,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationWhitoutDeleteDownloadedContentIn
     EXPECT_THROW(std::make_shared<ActionOrchestrator>(
                      m_parameters,
                      m_spStopActionCondition,
-                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                         return {0, "", false};
-                     }),
+                     [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+                     { return {0, "", false}; }),
                  std::invalid_argument);
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -181,9 +174,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+        { return {0, "", false}; })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -217,9 +209,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+        { return {0, "", false}; })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -255,9 +246,8 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+        { return {0, "", false}; })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
 
@@ -284,9 +274,8 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
-        })};
+        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+        { return {0, "", false}; })};
 
     // Trigger orchestration with an offset of zero.
     constexpr auto OFFSET {0};
@@ -317,9 +306,8 @@ TEST_F(ActionOrchestratorTest, RunOffsetUpdate)
         ASSERT_NO_THROW(ActionOrchestrator(m_parameters,
                                            m_spStopActionCondition,
                                            [](const std::string& msg,
-                                              std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                                               return {0, "", false};
-                                           })
+                                              std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+                                           { return {0, "", false}; })
                             .run(updateData));
     }
 
@@ -349,13 +337,12 @@ TEST_F(ActionOrchestratorTest, RunFileHashUpdate)
 
     auto updateData {ActionOrchestrator::UpdateData::createHashUpdateData(HASH_VALUE)};
 
-    ASSERT_NO_THROW(ActionOrchestrator(
-                        m_parameters,
-                        m_spStopActionCondition,
-                        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                            return {0, "", false};
-                        })
-                        .run(updateData));
+    ASSERT_NO_THROW(
+        ActionOrchestrator(m_parameters,
+                           m_spStopActionCondition,
+                           [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+                           { return {0, "", false}; })
+            .run(updateData));
 
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
     const auto fullDatabasePath {DATABASE_PATH / ("updater_" + topicName + "_metadata")};
