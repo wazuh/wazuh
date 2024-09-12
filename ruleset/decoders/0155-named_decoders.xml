@@ -14,6 +14,8 @@
   - Oct 22 10:12:33 junction named[12637]: client 1.2.3.4#32769: query (cache) 'somedomain.com/MX/IN' denied
   - Oct 22 10:12:33 junction named[31687]: /etc/blocked.slave:9892: syntax error near ';'
   - Oct 22 10:12:33 junction named[31687]: reloading configuration failed: unexpected token
+  - Oct 22 10:12:33 junction named[12637]: client 127.0.0.1#62536 (www.example.com): query: www.example.com IN AAAA +SE
+  - Oct 22 10:12:33 junction named[12637]: client ::1#62537 (www.example.net): query: www.example.net IN AAAA -SE
  -->
 <decoder name="named">
   <program_name>^named</program_name>
