@@ -109,7 +109,7 @@ class AWSSubscriberBucket(wazuh_integration.WazuhIntegration, AWSS3LogHandler):
         decoder = json.JSONDecoder()
         while data:
             json_data, json_index = decoder.raw_decode(data)
-            data = data[json_index:]
+            data = data[json_index:].lstrip()
             yield json_data
 
     @staticmethod
