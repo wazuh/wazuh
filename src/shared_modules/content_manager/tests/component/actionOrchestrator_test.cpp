@@ -271,6 +271,7 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
 
     m_parameters["configData"]["url"] = "http://localhost:4444/snapshot/consumers";
+    m_parameters["configData"]["contentSource"] = "cti-snapshot";
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
@@ -283,12 +284,8 @@ TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 
     const auto& outputFolder {m_parameters.at("configData").at("outputFolder").get_ref<const std::string&>()};
 
-    // Check for snapshot existence.
-    const auto snapshotPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + SNAPSHOT_FILE_NAME};
-    EXPECT_TRUE(std::filesystem::exists(snapshotPath));
-
-    // Check for snapshot content existence.
-    const auto contentPath {outputFolder + "/" + CONTENTS_FOLDER + "/" + SNAPSHOT_CONTENT_FILE_NAME};
+    // Check for snapshot file existence.
+    const auto contentPath {outputFolder + "/" + DOWNLOAD_FOLDER + "/" + SNAPSHOT_FILE_NAME};
     EXPECT_TRUE(std::filesystem::exists(contentPath));
 }
 
