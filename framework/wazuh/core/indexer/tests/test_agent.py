@@ -7,7 +7,7 @@ from opensearchpy.helpers.response import Hit
 
 from wazuh.core.exception import WazuhError
 from wazuh.core.indexer.agent import AgentsIndex
-from wazuh.core.indexer.base import IndexerKey
+from wazuh.core.indexer.base import IndexerKey, remove_empty_values
 from wazuh.core.indexer.models.agent import Agent
 
 
@@ -32,11 +32,11 @@ class TestAgentIndex:
         """Check the correct function of `create` method."""
         new_agent = await index_instance.create(id=self.create_id, **self.create_params)
 
-        assert isinstance(new_agent, dict)
+        assert isinstance(new_agent, Agent)
         client_mock.index.assert_called_once_with(
             index=index_instance.INDEX,
             id=self.create_id,
-            body=new_agent,
+            body=asdict(new_agent, dict_factory=remove_empty_values),
             op_type='create',
             refresh='wait_for'
         )
@@ -113,7 +113,7 @@ class TestAgentIndex:
         agent_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
         search_result = {'_hits': [Hit({'id': agent_id})]}
         client_mock.search.return_value = search_result
-        expected_result = [{'id': agent_id}]
+        expected_result = [Agent(id=agent_id)]
 
         result = await index_instance.get_group_agents(group_name=group_name)
 

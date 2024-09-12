@@ -55,7 +55,7 @@ class AgentsIndex(BaseIndex):
         Returns
         -------
         Agent : dict
-            The created agent instance in a dictionary.
+            The created agent instance.
         """
         agent = Agent(raw_key=key, name=name, groups='default' + f',{groups}' if groups else '')
         try:
@@ -175,7 +175,7 @@ class AgentsIndex(BaseIndex):
             )
         _ = await query.execute()
     
-    async def get_group_agents(self, group_name: str) -> List[dict]:
+    async def get_group_agents(self, group_name: str) -> List[Agent]:
         """Get the agents belonging to a specific group.
         
         Parameters
@@ -185,7 +185,7 @@ class AgentsIndex(BaseIndex):
 
         Returns
         -------
-        agents : List[dict]
+        agents : List[Agent]
             Agents list.
         """
         query = AsyncSearch(using=self._client, index=self.INDEX).filter(IndexerKey.TERM, groups=group_name)
@@ -196,7 +196,7 @@ class AgentsIndex(BaseIndex):
             agent = Agent(id=hit.meta.id, **hit.to_dict())
             if agent.groups is not None:
                 agent.groups = agent.groups.split(',')
-            agents.append(asdict(agent, dict_factory=remove_empty_values))
+            agents.append(agent)
 
         return agents
     
