@@ -20,7 +20,8 @@ TYPED_TEST_SUITE_P(SocketTest);
 TYPED_TEST_P(SocketTest, SingleDelayedServerStart)
 {
     constexpr size_t MESSAGE_QUANTITY {1000000};
-    std::string socketPath {"/tmp/echo_sock"};
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
     std::promise<void> promise;
     std::atomic<size_t> counter {0};
 
@@ -71,7 +72,8 @@ TYPED_TEST_P(SocketTest, SingleDelayedServerStart)
 TYPED_TEST_P(SocketTest, SingleDelayedClient)
 {
     constexpr size_t MESSAGE_QUANTITY {1000000};
-    std::string socketPath {"/tmp/echo_sock"};
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
     std::promise<void> promise;
 
     SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
@@ -116,7 +118,8 @@ TYPED_TEST_P(SocketTest, SingleDelayedClient)
 TYPED_TEST_P(SocketTest, MultipleClients)
 {
     constexpr size_t MESSAGE_QUANTITY {10000};
-    std::string socketPath {"/tmp/echo_sock"};
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
     std::promise<void> promise;
     constexpr size_t CLIENTS {10};
 
@@ -176,7 +179,8 @@ TYPED_TEST_P(SocketTest, MultipleClients)
 TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionSendMessageOffline)
 {
     constexpr size_t MESSAGE_QUANTITY {100};
-    std::string socketPath {"/tmp/echo_sock"};
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
     std::promise<void> promise;
 
     SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
@@ -249,7 +253,8 @@ TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionSendMessageOffline)
 TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionOnline)
 {
     constexpr size_t MESSAGE_QUANTITY {100};
-    std::string socketPath {"/tmp/echo_sock"};
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
     std::promise<void> promise;
 
     SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper> server {socketPath};
@@ -322,7 +327,8 @@ TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionOnline)
 TYPED_TEST_P(SocketTest, SingleDelayedClientWithReconnectionServerReset)
 {
     constexpr size_t MESSAGE_QUANTITY {100};
-    std::string socketPath {"/tmp/echo_sock"};
+    std::string socketPath {std::string("/tmp/echo_sock/") +
+                            ::testing::UnitTest::GetInstance()->current_test_info()->name()};
     std::promise<void> promise;
 
     auto server = std::make_unique<SocketServer<Socket<OSPrimitives, TypeParam>, EpollWrapper>>(socketPath);
