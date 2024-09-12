@@ -4,10 +4,10 @@ about: Test compatibility with new OS.
 title: Support new OSs - <OS name & version> - <Specific test name>
 labels: level/task, request/operational, type/maintenance
 assignees: ''
-
 ---
 
 # Description
+
 | Related issue | Epic issue |
 |---|---|
 | Issue number | Issue number|
@@ -20,9 +20,12 @@ assignees: ''
 
 <!-- Uncomment for QA issue
 **QA**
-- [ ] Add new tests according to the OS's tier.
+- [ ] Request a new machine to:
+  - [ ] Test the deployment one-liner for the new OS.
+  - [ ] Do basic E2E test functionality for all stateful modules according to the OS's tier.
+- [ ] Add the new OS to the E2E UX testing template.
+- [ ] Add/update/check new tests according to the OS's tier.
 - [ ] Add proper documentation.
-- [ ] Do basic E2E test functionality for all stateful modules according to the OS's tier.
 -->
 
 <!-- Uncomment for CPPSERVER issue
@@ -59,13 +62,11 @@ assignees: ''
 **Dashboard**
 - [ ] **Central components**: Add support for the new OS to the GitHub Actions package builder.
 - [ ] **Central components**: Smoke test that the package works, including installation and upgrade.
-- [ ] Make sure that the agent-related information in the agent list is correct.
-- [ ] Test the deployment one-liner for the new OS.
 -->
 
 <!-- Uncomment for THREATINTEL issue
 **ThreatIntel**
-- [ ] Define a plan to support the new OS, particularly with regard to SCA policies.
+- [ ] Define a plan to support the new OS, particularly with regard to SCA policies. If there's no official CIS policy for that OS version, we either use an existing draft or we adapt a previous version.
 -->
 
 <!-- Uncomment for AGENT issue
@@ -83,6 +84,7 @@ Result code:
 :yellow_circle: Completed with known issues.
 
 - **Requested checks by tier:**
+
 || Tier 1 | Tier 2 | Tier 3 | Result |
 |-|-|-|-|-|
 | **Log collection - System events** | :white_circle: | :white_circle: | :white_circle: | |
