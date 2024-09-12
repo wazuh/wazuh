@@ -32,6 +32,7 @@ class IndexerKey(str, Enum):
     ITEMS = 'items'
     FILTER = 'filter'
     IDS = 'ids'
+    PAINLESS = 'painless'
 
 
 class BaseIndex:

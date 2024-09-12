@@ -33,7 +33,7 @@ class AgentsIndex(BaseIndex):
     ctx._source.groups = groups_str;
     """
 
-    async def create(self, id: str, key: str, name: str, groups: str = None) -> dict:
+    async def create(self, id: str, key: str, name: str, groups: str = None) -> Agent:
         """Create a new agent.
 
         Parameters
@@ -54,23 +54,22 @@ class AgentsIndex(BaseIndex):
 
         Returns
         -------
-        agent_dict : dict
+        Agent : dict
             The created agent instance in a dictionary.
         """
         agent = Agent(raw_key=key, name=name, groups='default' + f',{groups}' if groups else '')
-        agent_dict = asdict(agent, dict_factory=remove_empty_values)
         try:
             await self._client.index(
                 index=self.INDEX,
                 id=id,
-                body=agent_dict,
+                body=asdict(agent, dict_factory=remove_empty_values),
                 op_type='create',
                 refresh='wait_for'
             )
         except exceptions.ConflictError:
             raise WazuhError(1708, extra_message=id)
         
-        return agent_dict
+        return agent
 
     async def delete(self, ids: List[str]) -> list:
         """Delete multiple agents that match with the given parameters.
@@ -171,7 +170,7 @@ class AgentsIndex(BaseIndex):
             .filter(IndexerKey.TERM, groups=group_name) \
             .script(
                 source=self.REMOVE_GROUP_SCRIPT,
-                lang='painless',
+                lang=IndexerKey.PAINLESS,
                 params={'group': group_name}
             )
         _ = await query.execute()
@@ -259,7 +258,7 @@ class AgentsIndex(BaseIndex):
             .filter(IndexerKey.IDS, values=agent_ids) \
             .script(
                 source=source,
-                lang='painless',
+                lang=IndexerKey.PAINLESS,
                 params={'group': group_name}
             )
         _ = await query.execute()
