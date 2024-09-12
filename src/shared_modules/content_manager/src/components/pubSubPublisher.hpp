@@ -103,7 +103,7 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "PubSubPublisher - Starting process");
 
-        publish(*context); // Return value  for the function call operator
+        publish(*context);
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
     }
