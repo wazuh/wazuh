@@ -17,6 +17,9 @@
 #include "registry/registry.h"
 
 #ifdef WAZUH_UNIT_TESTING
+#ifdef WIN32
+#include "../unit_tests/wrappers/windows/stat64_wrappers.h"
+#endif
 /* Remove static qualifier when unit testing */
 #define static
 
@@ -1314,7 +1317,7 @@ fim_file_data *fim_get_data(const char *file, const directory_t *configuration, 
     data->scanned = 1;
 
     // We won't calculate hash for symbolic links, empty or large files
-    if (S_ISREG(statbuf->st_mode) && (statbuf->st_size > 0 && (size_t)statbuf->st_size < syscheck.file_max_size) &&
+    if (S_ISREG(statbuf->st_mode) && (statbuf->st_size > 0 && statbuf->st_size < syscheck.file_max_size) &&
         (configuration->options & (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM))) {
         if (OS_MD5_SHA1_SHA256_File(file, syscheck.prefilter_cmd, data->hash_md5,
                                     data->hash_sha1, data->hash_sha256, OS_BINARY, syscheck.file_max_size) < 0) {
@@ -1369,7 +1372,7 @@ void fim_get_checksum (fim_file_data * data) {
 
     size = snprintf(0,
             0,
-            "%lu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+            "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
             data->perm ? data->perm : "",
             data->attributes ? data->attributes : "",
@@ -1386,7 +1389,7 @@ void fim_get_checksum (fim_file_data * data) {
     os_calloc(size + 1, sizeof(char), checksum);
     snprintf(checksum,
             size + 1,
-            "%lu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
+            "%llu:%s:%s:%s:%s:%s:%s:%lu:%llu:%s:%s:%s",
             data->size,
             data->perm ? data->perm : "",
             data->attributes ? data->attributes : "",

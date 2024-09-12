@@ -38,6 +38,14 @@
 #define FIM_LINK S_IFLNK
 #endif
 
+/* Win32 does not have lstat */
+#ifdef WIN32
+    #define w_stat(x, y) _stat64(x, y)
+    #define stat _stat64
+#else
+    #define w_stat(x, y) lstat(x, y)
+#endif
+
 /* Global config */
 extern syscheck_config syscheck;
 extern int sys_debug_level;
@@ -117,13 +125,6 @@ typedef struct fim_txn_context_s {
 /* Default value type for cases where type is undefined.
    0x0000000C is the one after the last defined type, REG_QWORD (0x0000000B) */
 #define REG_UNKNOWN 0x0000000C
-#endif
-
-/* Win32 does not have lstat */
-#ifdef WIN32
-    #define w_stat(x, y) stat(x, y)
-#else
-    #define w_stat(x, y) lstat(x, y)
 #endif
 
 /** Function Prototypes **/

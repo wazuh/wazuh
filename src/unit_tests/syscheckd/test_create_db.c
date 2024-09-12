@@ -1163,11 +1163,8 @@ static void test_fim_get_checksum_wrong_size(void **state) {
     strcpy(fim_data->local_data->checksum, "");
 
     fim_get_checksum(fim_data->local_data);
-#ifndef TEST_WINAGENT
+
     assert_string_equal(fim_data->local_data->checksum, "0a0070d140761418be81531ad48f5909f410e161");
-#else
-    assert_string_equal(fim_data->local_data->checksum, "82f41449afd19d3e1ed2ad37c0a35624f09f5dfe");
-#endif
 }
 
 static void test_fim_check_depth_success(void **state) {
@@ -2282,9 +2279,9 @@ static void test_fim_checker_deleted_file(void **state) {
 
     str_lowercase(expanded_path);
 
-    expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, -1);
+    expect_string(wrap__stat64, __file, expanded_path);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, -1);
 
     errno = 1;
 
@@ -2333,9 +2330,9 @@ static void test_fim_checker_deleted_file_enoent(void **state) {
     fim_data->local_data->options = 511;
     strcpy(fim_data->local_data->checksum, "");
 
-    expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, -1);
+    expect_string(wrap__stat64, __file, expanded_path);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, -1);
 
     errno = ENOENT;
 
@@ -2365,9 +2362,9 @@ static void test_fim_checker_fim_regular(void **state) {
         fail();
     }
 
-    expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, expanded_path);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, 0);
 
     str_lowercase(expanded_path);
 
@@ -2399,9 +2396,9 @@ static void test_fim_checker_fim_regular_ignore(void **state) {
 
     str_lowercase(expanded_path);
 
-    expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, expanded_path);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
     will_return(__wrap_HasFilesystem, 0);
@@ -2429,9 +2426,9 @@ static void test_fim_checker_fim_regular_restrict(void **state) {
 
     str_lowercase(expanded_path);
 
-    expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, expanded_path);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
     will_return(__wrap_HasFilesystem, 0);
@@ -2458,9 +2455,9 @@ static void test_fim_checker_fim_regular_warning(void **state) {
 
     str_lowercase(expanded_path);
 
-    expect_string(__wrap_stat, __file, expanded_path);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, expanded_path);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
     will_return(__wrap_HasFilesystem, 0);
@@ -2497,12 +2494,12 @@ static void test_fim_checker_fim_directory(void **state) {
 
     snprintf(expanded_path_test, OS_MAXSTR, "%s\\test", expanded_path);
 
-    expect_string(__wrap_stat, __file, expanded_path);
-    expect_string(__wrap_stat, __file, expanded_path_test);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, &stat_s);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, expanded_path);
+    expect_string(wrap__stat64, __file, expanded_path_test);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, 0);
+    will_return(wrap__stat64, &stat_s);
+    will_return(wrap__stat64, 0);
 
     expect_string(__wrap_HasFilesystem, path, expanded_path);
     expect_string(__wrap_HasFilesystem, path, expanded_path_test);
@@ -2558,9 +2555,9 @@ static void test_fim_checker_root_file_within_recursion_level(void **state) {
     expect_string(__wrap_w_get_file_attrs, file_path, "c:\\test.file");
     will_return(__wrap_w_get_file_attrs, 123456);
 
-    expect_string(__wrap_stat, __file, "c:\\test.file");
-    will_return(__wrap_stat, &statbuf);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, "c:\\test.file");
+    will_return(wrap__stat64, &statbuf);
+    will_return(wrap__stat64, 0);
 
     expect_string(__wrap_HasFilesystem, path, "c:\\test.file");
     will_return(__wrap_HasFilesystem, 0);
@@ -2607,9 +2604,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
         }
         str_lowercase(expanded_dirs[i]);
 
-        expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, &directory_stat);
-        will_return(__wrap_stat, 0);
+        expect_string(wrap__stat64, __file, expanded_dirs[i]);
+        will_return(wrap__stat64, &directory_stat);
+        will_return(wrap__stat64, 0);
 
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
@@ -2669,9 +2666,9 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
         }
         str_lowercase(expanded_dirs[i]);
 
-        expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, &buf);
-        will_return(__wrap_stat, 0);
+        expect_string(wrap__stat64, __file, expanded_dirs[i]);
+        will_return(wrap__stat64, &buf);
+        will_return(wrap__stat64, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
 
@@ -2731,9 +2728,9 @@ static void test_fim_scan_no_limit(void **state) {
         }
         str_lowercase(expanded_dirs[i]);
 
-        expect_string(__wrap_stat, __file, expanded_dirs[i]);
-        will_return(__wrap_stat, &buf);
-        will_return(__wrap_stat, 0);
+        expect_string(wrap__stat64, __file, expanded_dirs[i]);
+        will_return(wrap__stat64, &buf);
+        will_return(wrap__stat64, 0);
         expect_string(__wrap_HasFilesystem, path, expanded_dirs[i]);
         will_return(__wrap_HasFilesystem, 0);
 
@@ -3251,9 +3248,9 @@ static void test_fim_realtime_event_file_exists(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 #else
-    expect_string(__wrap_stat, __file, "/test");
-    will_return(__wrap_stat, &buf);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, "/test");
+    will_return(wrap__stat64, &buf);
+    will_return(wrap__stat64, 0);
 #endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'/test'");
@@ -3293,9 +3290,9 @@ static void test_fim_realtime_event_file_missing(void **state) {
     will_return(__wrap_lstat, &stat_buf);
     will_return(__wrap_lstat, -1);
 #else
-    expect_string(__wrap_stat, __file, path);
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, -1);
+    expect_string(wrap__stat64, __file, path);
+    will_return(wrap__stat64, &stat_buf);
+    will_return(wrap__stat64, -1);
 #endif
     errno = ENOENT;
 
@@ -3321,9 +3318,9 @@ static void test_fim_whodata_event_file_exists(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, 0);
 #else
-    expect_string(__wrap_stat, __file, fim_data->w_evt->path);
-    will_return(__wrap_stat, &buf);
-    will_return(__wrap_stat, 0);
+    expect_string(wrap__stat64, __file, fim_data->w_evt->path);
+    will_return(wrap__stat64, &buf);
+    will_return(wrap__stat64, 0);
 #endif
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
@@ -3345,9 +3342,9 @@ static void test_fim_whodata_event_file_missing(void **state) {
     will_return(__wrap_lstat, &buf);
     will_return(__wrap_lstat, -1);
 #else
-    expect_string(__wrap_stat, __file, fim_data->w_evt->path);
-    will_return(__wrap_stat, &buf);
-    will_return(__wrap_stat, -1);
+    expect_string(wrap__stat64, __file, fim_data->w_evt->path);
+    will_return(wrap__stat64, &buf);
+    will_return(wrap__stat64, -1);
 #endif
     errno = ENOENT;
 
