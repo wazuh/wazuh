@@ -4,6 +4,7 @@
 
 import dataclasses
 import json
+from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -13,6 +14,11 @@ with patch('wazuh.common.wazuh_uid'):
         from api.encoder import prettify, dumps
         from wazuh.core.results import WazuhResult
         from wazuh.core.indexer.agent import Agent
+
+
+@dataclass
+class TestDataclass:
+    version: str
 
 
 def custom_hook(dct):
