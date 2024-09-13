@@ -67,7 +67,7 @@ TEST_F(MonitoringTest, TestSlowServer)
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
 
     // Wait for the first health check to finish + the delay of the server
-    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 1000 + 110));
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 1000 * 2));
 
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
 }
