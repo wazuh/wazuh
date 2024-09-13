@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 from pathlib import Path
-from .types import Documentation
+from helper_test.documentation_generator.types import Documentation
 
 
 class ExporterType(Enum):

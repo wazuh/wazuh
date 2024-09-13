@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from .parser import Parser
-from definition_types.utils import *
+from helper_test.test_cases_generator.parser import Parser
+from helper_test.definition_types.utils import *
 from pathlib import Path
 
 
@@ -33,10 +33,12 @@ class Validator:
             if isinstance(type_, list):
                 for internal_type in type_:
                     if internal_type not in TYPE_MAPPING:
-                        sys.exit(f"Helper {self.parser.get_name()}: Type '{internal_type}' is not supported")
+                        sys.exit(
+                            f"Helper {self.parser.get_name()}: Type '{internal_type}' is not supported")
             else:
                 if type_ not in TYPE_MAPPING:
-                    sys.exit(f"Helper {self.parser.get_name()}: Type '{type_}' is not supported")
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: Type '{type_}' is not supported")
 
     def verify_subset(self):
         """
@@ -45,7 +47,8 @@ class Validator:
         for subset in self.parser.get_subset():
             if subset != "all":
                 if subset not in SUBSET_MAPPING:
-                    sys.exit(f"Helper {self.parser.get_name()}: Subset '{subset}' is not supported")
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: Subset '{subset}' is not supported")
 
     def verify_source(self):
         """
@@ -53,7 +56,8 @@ class Validator:
         """
         for source in self.parser.get_sources():
             if source not in SOURCE_MAPPING:
-                sys.exit(f"Helper {self.parser.get_name()}: Source '{source}' is not supported")
+                sys.exit(
+                    f"Helper {self.parser.get_name()}: Source '{source}' is not supported")
 
     def verify_name(self):
         """
@@ -66,7 +70,8 @@ class Validator:
         Verifies the helper type in the parser.
         """
         if not self.parser.has_helper_type():
-            sys.exit(f"Helper {self.parser.get_name()}: the helper_type property is required")
+            sys.exit(
+                f"Helper {self.parser.get_name()}: the helper_type property is required")
         if self.parser.get_helper_type() not in ["map", "filter", "transformation"]:
             sys.exit(
                 f"Helper {self.parser.get_name()}: invalid value for helper_type. allowed values are ['map', 'filter'', 'transformation']")
@@ -78,11 +83,13 @@ class Validator:
         skips_allowed = ["success_cases", "different_type",
                          "different_source", "different_target_field_type", "allowed"]
         if not isinstance(self.parser.get_skips(), list):
-            sys.exit(f"Helper {self.parser.get_name()}: Only array is supported in the skip property")
+            sys.exit(
+                f"Helper {self.parser.get_name()}: Only array is supported in the skip property")
 
         for skip in self.parser.get_skips():
             if skip not in skips_allowed:
-                sys.exit(f"Helper {self.parser.get_name()}: Skip {skip} is not supported")
+                sys.exit(
+                    f"Helper {self.parser.get_name()}: Skip {skip} is not supported")
 
     def check_consistency_between_type_and_subset(self) -> None:
         """
@@ -122,18 +129,22 @@ class Validator:
                     if argument in self.parser.get_name_id_arguments():
                         count += 1
                 if count < self.parser.get_minimum_arguments():
-                    sys.exit(f"Helper {self.parser.get_name()}: There are arguments in 'test' that were not defined")
+                    sys.exit(
+                        f"Helper {self.parser.get_name()}: There are arguments in 'test' that were not defined")
 
     def verify_output(self):
         output = self.parser.get_output()
         if output:
             if "type" not in output:
-                sys.exit(f"Helper {self.parser.get_name()}: Type attribute is required in output")
+                sys.exit(
+                    f"Helper {self.parser.get_name()}: Type attribute is required in output")
             if not isinstance(output["type"], list) and not isinstance(output["type"], str):
-                sys.exit(f"Helper {self.parser.get_name()}: Type attribute only can only be a list or a value")
+                sys.exit(
+                    f"Helper {self.parser.get_name()}: Type attribute only can only be a list or a value")
         else:
             if self.parser.get_helper_type() == "map":
-                sys.exit(f"Helper {self.parser.get_name()}: Is neccesary define output for helpers the map type")
+                sys.exit(
+                    f"Helper {self.parser.get_name()}: Is neccesary define output for helpers the map type")
 
     def check_consistency_between_output_and_expected_type(self) -> None:
         """
@@ -192,16 +203,19 @@ class Validator:
 
                 # Delete the keys that are in id_name_order
                 id_name_order = self.parser.get_name_id_arguments()
-                filtered_arguments_list = [(k, v) for k, v in arguments_list if k not in id_name_order]
+                filtered_arguments_list = [
+                    (k, v) for k, v in arguments_list if k not in id_name_order]
 
                 # Verify that the remaining keys meet the criteria
                 if filtered_arguments_list:
-                    last_id_name = sorted(id_name_order.items(), key=lambda x: x[1])[-1][0]
+                    last_id_name = sorted(
+                        id_name_order.items(), key=lambda x: x[1])[-1][0]
                     pattern = re.compile(rf'^{last_id_name}_\d+$')
 
                     for k, _ in filtered_arguments_list:
                         if not pattern.match(k):
-                            sys.exit(f"Argument '{k}' does not match the required pattern '{last_id_name}_<number>'")
+                            sys.exit(
+                                f"Argument '{k}' does not match the required pattern '{last_id_name}_<number>'")
 
     def verify_metadata(self):
         metadata = self.parser.get_metadata()

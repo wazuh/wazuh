@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from .parser import Parser
-from .validator import Validator
+from helper_test.test_cases_generator.parser import Parser
+from helper_test.test_cases_generator.validator import Validator
 
 ID_COUNTER = 0
 
@@ -65,8 +65,10 @@ class TestData:
             normalize_list = [{"map": [{"target_field": target_field_value}]}, {"check": [{"target_field": helper}], "map": [
                 {"verification_field": "It is used to verify if the check passed correctly"}]}]
         else:
-            normalize_list = [{"map": [{"target_field": target_field_value}, {"target_field": helper}]}]
-        self.asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+            normalize_list = [
+                {"map": [{"target_field": target_field_value}, {"target_field": helper}]}]
+        self.asset_definition = {
+            "name": "decoder/test/0", "normalize": normalize_list}
 
     def push_test_data_for_buildtime(self, description: str, skip_tag=""):
         """
@@ -96,16 +98,20 @@ class TestData:
         """
         helper = f"{self.parser.get_name()}({', '.join(str(v) for v in arguments)})"
         if self.helper_type == "map":
-            normalize_list = [{"map": [{"eventJson": "parse_json($event.original)"}, {"helper": helper}]}]
+            normalize_list = [{"map": [{"eventJson": "parse_json($event.original)"}, {
+                "helper": helper}]}]
         elif self.helper_type == "filter":
             normalize_list = [
-                {"map": [{"eventJson": "parse_json($event.original)"}, {"target_field": target_field_value}]},
-                {"check": [{"target_field": helper}], "map": [{"verification_field": "It is used to verify if the check passed correctly"}]}
+                {"map": [{"eventJson": "parse_json($event.original)"}, {
+                    "target_field": target_field_value}]},
+                {"check": [{"target_field": helper}], "map": [
+                    {"verification_field": "It is used to verify if the check passed correctly"}]}
             ]
         else:
             normalize_list = [{"map": [{"eventJson": "parse_json($event.original)"}, {"target_field": target_field_value}, {
                 "target_field": helper}]}]
-        self.asset_definition = {"name": "decoder/test/0", "normalize": normalize_list}
+        self.asset_definition = {
+            "name": "decoder/test/0", "normalize": normalize_list}
 
     def push_test_data_for_runtime(self, input: dict, description: str, should_pass=False, skip_tag="", expected=None):
         """
@@ -118,7 +124,8 @@ class TestData:
             skip_tag (str, optional): The skip tag. Defaults to "".
             expected (optional): The expected output. Defaults to None.
         """
-        test_cases = [{"input": input, "id": increase_id(), "should_pass": should_pass}]
+        test_cases = [
+            {"input": input, "id": increase_id(), "should_pass": should_pass}]
         if skip_tag and skip_tag in self.parser.get_skips():
             test_cases[0]["skipped"] = True
         if expected is not None:
@@ -142,7 +149,8 @@ class TestData:
             skip (bool, optional): Whether to skip the test. Defaults to False.
             expected (optional): The expected output. Defaults to None.
         """
-        test_cases = [{"input": input, "id": increase_id(), "should_pass": should_pass}]
+        test_cases = [
+            {"input": input, "id": increase_id(), "should_pass": should_pass}]
         if skip:
             test_cases[0]["skipped"] = True
         if expected is not None:
