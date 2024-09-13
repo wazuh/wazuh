@@ -1163,7 +1163,11 @@ def test_as_wazuh_object_ok():
     # Test the fifth condition
     result = cluster_common.as_wazuh_object({'__unhandled_exc__': {'__class__': 'ValueError',
                                                                    '__args__': ('test',)}})
-    assert isinstance(result, ValueError)
+    assert result == {"ValueError": ["test"]}
+
+    result = cluster_common.as_wazuh_object({'__unhandled_exc__': {'__class__': 'exit',
+                                                                   '__args__': []}})
+    assert result == {"exit": []}
 
     # No condition fulfilled
     assert isinstance(cluster_common.as_wazuh_object({"__wazuh_datetime_bad__": "2021-10-14"}), dict)
