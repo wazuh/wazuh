@@ -14,7 +14,7 @@
 
 void getSnapInfo(std::function<void(nlohmann::json&)> callback)
 {
-    const auto onSuccess = [&](const std::string& result)
+    const auto onSuccess = [&](const std::string & result)
     {
         auto feed = nlohmann::json::parse(result, nullptr, false).at("result");
 
@@ -34,13 +34,15 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback)
         }
     };
 
-    const auto onError = [&](const std::string& result, const long responseCode)
+    const auto onError = [&](const std::string & result, const long responseCode)
     {
         std::cerr << "Error retrieving packages using snap unix-socket (" << responseCode << ") " << result << "\n";
     };
 
+    const auto url = HttpUnixSocketURL("/run/snapd.socket", "http://localhost/v2/snaps");
+
     UNIXSocketRequest::instance().get(
-        RequestParameters {.url = HttpUnixSocketURL("/run/snapd.socket", "http://localhost/v2/snaps")},
+        RequestParameters {.url = url},
         PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
         ConfigurationParameters {});
 }

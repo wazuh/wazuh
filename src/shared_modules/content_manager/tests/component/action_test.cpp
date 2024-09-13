@@ -383,9 +383,9 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     putData["hash"] = std::move(fileHash);
     putData["topicName"] = topicName;
     UNIXSocketRequest::instance().put(
-            RequestParameters {.url = HttpUnixSocketURL(ONDEMAND_SOCK, putUrl), .data = putData},
-            PostRequestParameters {},
-            ConfigurationParameters {});
+        RequestParameters {.url = HttpUnixSocketURL(ONDEMAND_SOCK, putUrl), .data = putData},
+        PostRequestParameters {},
+        ConfigurationParameters {});
 
     // Trigger two more downloads that will be skipped.
     EXPECT_CALL(*spMockRouterProvider, send(::testing::_)).Times(0);
