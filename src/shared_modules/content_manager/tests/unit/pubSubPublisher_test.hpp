@@ -47,7 +47,7 @@ protected:
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
             m_spStopActionCondition,
             [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                return {0, "", false};
+                return {0, "", true};
             });
     }
 };

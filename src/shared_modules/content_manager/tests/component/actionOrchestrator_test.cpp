@@ -279,14 +279,23 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
 TEST_F(ActionOrchestratorTest, RunWithFullContentDownload)
 {
     const auto& topicName {m_parameters.at("topicName").get_ref<const std::string&>()};
-
     m_parameters["configData"]["url"] = "http://localhost:4444/snapshot/consumers";
-    m_parameters["configData"]["contentSource"] = "cti-snapshot";
     auto actionOrchestrator {std::make_shared<ActionOrchestrator>(
         m_parameters,
         m_spStopActionCondition,
-        [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+        [&](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult
+        {
+            int offset = 0;
+            try
+            {
+                auto msgJson = nlohmann::json::parse(msg);
+                offset = msgJson.at("offset");
+            }
+            catch (...)
+            {
+            }
+
+            return {offset, "", true};
         })};
 
     // Trigger orchestration with an offset of zero.
