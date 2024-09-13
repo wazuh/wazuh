@@ -12,14 +12,15 @@
 #ifndef _SERVER_SELECTOR_TEST_HPP
 #define _SERVER_SELECTOR_TEST_HPP
 
-#include "mockHTTTPRequest.hpp"
 #include "serverSelector.hpp"
 #include <gtest/gtest.h>
+#include <httpRequest/mockHttpRequest.hpp>
 #include <string>
 #include <vector>
 
 // Define the global spHTTPRequest
-std::shared_ptr<MockHTTPRequest> spHTTPRequest = std::make_shared<MockHTTPRequest>();
+std::shared_ptr<httprequest::mock::MockHTTPRequest> spHTTPRequest =
+    std::make_shared<httprequest::mock::MockHTTPRequest>();
 
 auto constexpr MONITORING_HEALTH_CHECK_INTERVAL {2u};
 const std::string GREEN_SERVER {"http://localhost:9200"};

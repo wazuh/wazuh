@@ -34,6 +34,11 @@ if(ENGINE_BUILD_TEST)
     target_include_directories(indexerconnector_mocks INTERFACE ${TEST_MOCK_DIR})
     target_link_libraries(indexerconnector_mocks INTERFACE GTest::gmock indexerconnector::iindexerconnector)
     add_library(indexerconnector::mocks ALIAS indexerconnector_mocks)
+
+    add_library(httprequest_mocks INTERFACE)
+    target_include_directories(httprequest_mocks INTERFACE ${TEST_MOCK_DIR})
+    target_link_libraries(httprequest_mocks INTERFACE GTest::gmock)
+    add_library(httprequest::mock ALIAS httprequest_mocks)
 endif()
 
 add_library(indexerconnector_test INTERFACE)

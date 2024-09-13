@@ -10,8 +10,8 @@
  */
 
 #include "monitoring_test.hpp"
-#include "mockHTTTPRequest.hpp"
 #include "trampolineHTTPRequest.hpp"
+#include <httpRequest/mockHttpRequest.hpp>
 
 // Generalized lambda for simulating HTTP responses based on server health status
 auto mockHTTPRequestLambda =

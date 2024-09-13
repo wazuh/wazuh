@@ -9,9 +9,9 @@
  * Foundation.
  */
 
-#include "mockHTTTPRequest.hpp"
 #include "monitoring.hpp"
 #include <gtest/gtest.h>
+#include <httpRequest/mockHttpRequest.hpp>
 #include <memory>
 
 #ifndef _MONITORING_TEST_HPP
