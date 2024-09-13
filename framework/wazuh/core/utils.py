@@ -24,6 +24,7 @@ from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 
+import yaml
 from cachetools import cached, TTLCache
 from defusedxml.ElementTree import fromstring
 from defusedxml.minidom import parseString
@@ -40,6 +41,8 @@ if sys.version_info[0] == 3:
 
 # Temporary cache
 t_cache = TTLCache(maxsize=4500, ttl=60)
+
+GROUP_FILE_EXT = '.conf'
 
 
 def assign_wazuh_ownership(filepath: str):
@@ -1114,6 +1117,17 @@ def check_virustotal_integration(new_conf: str):
                 raise WazuhError(1130, extra_message='integrations > virustotal')
 
 
+def validate_wazuh_configuration(data: str):
+    """Check that the Wazuh configuration provided is valid.
+    
+    Parameters
+    ----------
+    data : str
+        Configuration content.
+    """
+    # TODO(#25121): Validate configuration
+
+
 def load_wazuh_xml(xml_path, data=None):
     if not data:
         with open(xml_path) as f:
@@ -1159,6 +1173,61 @@ def load_wazuh_xml(xml_path, data=None):
                '\n]>\n'
 
     return fromstring(f"{entities}<root_tag>{data}</root_tag>", forbid_entities=False)
+
+
+def load_wazuh_yaml(filepath: str, data: str = None) -> dict:
+    """Load Wazuh YAML configuration files.
+    
+    Parameters
+    ----------
+    filepath : str
+        File path.
+    data : str
+        YAML formatted string.
+    
+    Raises
+    ------
+    WazuhError(1006)
+        File does not exist or lack of permissions.
+    WazuhError(1132)
+        Invalid YAML syntax.
+    
+    Returns
+    -------
+    dict
+        Dictionary with the content.
+    """
+    if not data:
+        try:
+            with open(filepath) as f:
+                data = f.read()
+        except Exception as e:
+            raise WazuhError(1006, extra_message=str(e))
+
+    validate_wazuh_configuration(data)
+
+    try:
+        parsed_data = yaml.safe_load(data)
+    except yaml.YAMLError as e:
+        raise WazuhError(1132, extra_message=str(e))
+
+    return parsed_data
+
+
+def get_group_file_path(group_id: str) -> str:
+    """Returns the path to the group configuration file.
+    
+    Parameters
+    ----------
+    group_id : str
+        Group ID.
+        
+    Returns
+    -------
+    str
+        Group configuration file path.
+    """
+    return path.join(common.SHARED_PATH, group_id+GROUP_FILE_EXT)
 
 
 class WazuhVersion:

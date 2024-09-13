@@ -12,6 +12,7 @@ class IndexerKey(str, Enum):
     _SOURCE = '_source'
     DOC = 'doc'
     MATCH = 'match'
+    MATCH_ALL = 'match_all'
     QUERY = 'query'
     CREATE = 'create'
     DELETE = 'delete'
@@ -25,9 +26,13 @@ class IndexerKey(str, Enum):
     FAILURES = 'failures'
     WILDCARD = 'wildcard'
     BODY = 'body'
+    TERM = 'term'
     TERMS = 'terms'
     CONFLICTS = 'conflicts'
     ITEMS = 'items'
+    FILTER = 'filter'
+    IDS = 'ids'
+    PAINLESS = 'painless'
 
 
 class BaseIndex:

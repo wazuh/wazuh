@@ -76,7 +76,6 @@ class WazuhException(Exception):
         1108: 'Value not found in internal_options.conf',
         1109: 'Option must be a digit',
         1110: 'Option value is out of the limits',
-        1111: "Remote group file updates are only available in 'agent.conf' file",
         1112: {'message': 'Empty files are not supported',
                'remediation': 'Please, provide another file'
                },
@@ -130,6 +129,7 @@ class WazuhException(Exception):
                               'To solve this, check your connection to the Virus Total API or disable the public key'
                               ' protection in the API settings: '
                               f"https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/api/configuration.html"},
+        1132: {'message': 'YAML syntax error', 'remediation': 'Please, ensure file content has correct YAML'},
         # Rule: 1200 - 1299
         1200: {'message': 'Error reading rules from `WAZUH_HOME/etc/ossec.conf`',
                'remediation': f'Please, visit the official documentation (https://documentation.wazuh.com/'
@@ -307,7 +307,7 @@ class WazuhException(Exception):
         1713: {'message': 'Invalid group ID. Some IDs are restricted for internal purposes',
                'remediation': 'Please, use another group ID'},
         1722: {'message': 'Incorrect format for group_id',
-               'remediation': 'Characters supported  a-z, A-Z, 0-9, ., _ and -. Max length is 255'
+               'remediation': 'Characters supported  a-z, A-Z, 0-9, _ and -. Max length is 255'
                },
         1723: 'Hash algorithm not available',
         1724: {'message': 'Not a valid select field',

@@ -3,12 +3,14 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
+from dataclasses import asdict, is_dataclass
 
 import six
 from connexion.jsonifier import JSONEncoder
 
 from api.models.base_model_ import Model
 from wazuh.core.results import AbstractWazuhResult
+from wazuh.core.indexer.base import remove_empty_values
 
 
 class WazuhAPIJSONEncoder(JSONEncoder):
@@ -41,6 +43,8 @@ class WazuhAPIJSONEncoder(JSONEncoder):
             return result
         elif isinstance(o, AbstractWazuhResult):
             return o.render()
+        elif is_dataclass(o):
+            return asdict(o, dict_factory=remove_empty_values)
         return JSONEncoder.default(self, o)
 
 

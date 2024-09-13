@@ -6,21 +6,18 @@ import json
 import logging
 import os
 import re
-import subprocess
 import sys
-import tempfile
 from configparser import NoOptionError, RawConfigParser
 from io import StringIO
 from os import path as os_path
-from os import remove
 from types import MappingProxyType
-from typing import List, Union
+from typing import Union
 
 from defusedxml.ElementTree import tostring
-from defusedxml.minidom import parseString
 from wazuh.core import common, wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhResourceNotFound
-from wazuh.core.utils import cut_array, load_wazuh_xml, safe_move
+from wazuh.core.InputValidator import InputValidator
+from wazuh.core.utils import load_wazuh_xml, load_wazuh_yaml, validate_wazuh_configuration, get_group_file_path
 
 logger = logging.getLogger('wazuh')
 
@@ -341,303 +338,6 @@ def _ossecconf2json(xml_conf: str) -> dict:
     return final_json
 
 
-def _agentconf2json(xml_conf: str) -> dict:
-    """Return agent.conf in JSON from XML.
-
-    Parameters
-    ----------
-    xml_conf : str
-        Configuration to be parsed to JSON.
-
-    Returns
-    -------
-    dict
-        Final JSON with the agent.conf content.
-    """
-
-    final_json = []
-
-    for root in xml_conf.iter():
-        if root.tag.lower() == "agent_config":
-            # Get attributes (os, name, profile)
-            filters = {}
-            for attr in root.attrib:
-                filters[attr] = root.attrib[attr]
-
-            # Check if we have read the same filters before (we will need to merge them)
-            previous_config = -1
-            for idx, item in enumerate(final_json):
-                if 'filters' in item and item['filters'] == filters:
-                    previous_config = idx
-                    break
-
-            if previous_config != -1:
-                _conf2json(root, final_json[previous_config]['config'])
-            else:
-                config = {}
-                _conf2json(root, config)
-                final_json.append({'filters': filters, 'config': config})
-
-    return final_json
-
-
-def _rcl2json(filepath: str) -> dict:
-    """
-    Returns the RCL file as dictionary.
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the RCL file.
-
-    Raises
-    ------
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        RCL file (system_audit, windows_audit) as dictionary.
-    """
-
-    data = {'vars': {}, 'controls': []}
-    # [Application name] [any or all] [reference]
-    # type: '<entry name>;'
-    regex_comment = re.compile(r"^\s*#")
-    regex_title = re.compile(r"^\s*\[(.*)\]\s*\[(.*)\]\s*\[(.*)\]\s*")
-    regex_name_groups = re.compile(r"({\w+:\s+\S+\s*\S*\})")
-    regex_check = re.compile(r"^\s*(\w:.+)")
-    regex_var = re.compile(r"^\s*\$(\w+)=(.+)")
-
-    try:
-        item = {}
-
-        with open(filepath) as f:
-            for line in f:
-                if re.search(regex_comment, line):
-                    continue
-
-                match_title = re.search(regex_title, line)
-                if match_title:
-                    # Previous
-                    data['controls'].append(item)
-
-                    # New
-                    name = match_title.group(1)
-                    condition = match_title.group(2)
-                    reference = match_title.group(3)
-
-                    item = {}
-
-                    # Name
-                    end_name = name.find('{')
-                    item['name'] = name[:end_name].strip()
-
-                    # Extract PCI and CIS from name
-                    name_groups = list()
-                    name_groups.extend(re.findall(regex_name_groups, name))
-
-                    cis, pci = list(), list()
-
-                    for group in name_groups:
-                        # {CIS: 1.1.2 RHEL7}
-                        g_value = group.split(':')[-1][:-1].strip()
-                        if 'CIS' in group:
-                            cis.append(g_value)
-                        elif 'PCI' in group:
-                            pci.append(g_value)
-
-                    item['cis'] = cis
-                    item['pci'] = pci
-
-                    # Conditions
-                    if condition:
-                        item['condition'] = condition
-                    if reference:
-                        item['reference'] = reference
-                    item['checks'] = []
-
-                    continue
-
-                match_checks = re.search(regex_check, line)
-                if match_checks:
-                    item['checks'].append(match_checks.group(1))
-                    continue
-
-                match_var = re.search(regex_var, line)
-                if match_var:
-                    data['vars'][match_var.group(1)] = match_var.group(2)
-                    continue
-
-            # Last item
-            data['controls'].append(item)
-
-    except Exception as e:
-        raise WazuhError(1101, str(e))
-
-    return data
-
-
-def _rootkit_files2json(filepath: str) -> dict:
-    """Return the rootkit file as dictionary.
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the rootkit file.
-
-    Raises
-    ------
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        Rootkit file as dictionary.
-    """
-
-    data = []
-
-    # file_name ! Name ::Link to it
-    regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^(.+)!(.+)::(.+)")
-
-    try:
-        with open(filepath) as f:
-            for line in f:
-                if re.search(regex_comment, line):
-                    continue
-
-                if match_check := re.search(regex_check, line):
-                    new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(),
-                                 'link': match_check.group(3).strip()}
-                    data.append(new_check)
-
-    except Exception as e:
-        raise WazuhError(1101, str(e))
-
-    return data
-
-
-def _rootkit_trojans2json(filepath: str) -> dict:
-    """Return the rootkit trojans file as dictionary.
-
-
-    Parameters
-    ----------
-    filepath : str
-        Path to the rootkit trojans file.
-
-    Raises
-    ------
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        Rootkit trojans file as dictionary.
-    """
-
-    data = []
-
-    # file_name !string_to_search!Description
-    regex_comment = re.compile(r"^\s*#")
-    regex_check = re.compile(r"^(.+)!(.+)!(.+)")
-    regex_binary_check = re.compile(r"^(.+)!(.+)!")
-
-    try:
-        with open(filepath) as f:
-            for line in f:
-                if re.search(regex_comment, line):
-                    continue
-
-                match_check = re.search(regex_check, line)
-                match_binary_check = re.search(regex_binary_check, line)
-                if match_check:
-                    new_check = {'filename': match_check.group(1).strip(), 'name': match_check.group(2).strip(),
-                                 'description': match_check.group(3).strip()}
-                    data.append(new_check)
-                elif match_binary_check:
-                    new_check = {'filename': match_binary_check.group(1).strip(),
-                                 'name': match_binary_check.group(2).strip()}
-                    data.append(new_check)
-
-    except Exception as e:
-        raise WazuhError(1101, str(e))
-
-    return data
-
-
-def _ar_conf2json(file_path: str) -> dict:
-    """Return the lines of the ar.conf file.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the ar.conf file.
-
-    Returns
-    -------
-    dict
-        ar.conf file as dictionary.
-    """
-    with open(file_path) as f:
-        data = [line.strip('\n') for line in f.readlines()]
-    return data
-
-
-def _merged_mg2json(file_path: str) -> List[dict]:
-    """Parse the merged.mg file.
-
-    Parameters
-    ----------
-    file_path : str
-        Path to the merged.mg file.
-
-    Returns
-    -------
-    dict
-        merged.mg file as a list of dictionaries.
-    """
-    data = []
-
-    # ![file_size] [file_name]
-    regex_header = re.compile(r"^!(\d+)\s*(.*)")
-
-    try:
-        item = {}
-        file_content = []
-
-        with open(file_path) as f:
-            # Skip first line
-            next(f)
-
-            for line in f:
-                if match_header := re.search(regex_header, line):
-                    if item:
-                        # Append previous item
-                        item['file_content'] = ''.join(file_content)
-                        data.append(item)
-
-                    file_size = match_header.group(1)
-                    file_name = match_header.group(2)
-                    file_content = []
-                    item = {'file_name': file_name, 'file_size': int(file_size)}
-                    continue
-
-                file_content.append(line)
-
-        # Append last item
-        data.append(item)
-    except Exception as e:
-        raise WazuhError(1101, str(e))
-
-    return data
-
-
 # Main functions
 def get_ossec_conf(section: str = None, field: str = None, conf_file: str = common.OSSEC_CONF,
                    from_import: bool = False, distinct: bool = False) -> dict:
@@ -714,20 +414,13 @@ def get_ossec_conf(section: str = None, field: str = None, conf_file: str = comm
     return data
 
 
-def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                   filename: str = 'agent.conf', raw: bool = False) -> Union[dict, str]:
-    """Return agent.conf as dictionary.
+def get_group_conf(group_id: str = None, raw: bool = False) -> Union[dict, str]:
+    """Return group configuration as dictionary.
 
     Parameters
     ----------
     group_id : str
-        ID of the group with the agent.conf we want to get.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return.
-    filename : str
-        Name of the file to get. Default: 'agent.conf'
+        ID of the group with the configuration we want to get.
     raw : bool
         Respond in raw format.
 
@@ -736,162 +429,30 @@ def get_agent_conf(group_id: str = None, offset: int = 0, limit: int = common.DA
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
-    WazuhError(1101)
-        Requested component does not exist.
+        group configuration does not exist or there is a problem with the permissions.
 
     Returns
     -------
     dict or str
-        agent.conf as dictionary.
+        Group configuration as dictionary.
     """
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    filepath = get_group_file_path(group_id)
+    if not os_path.exists(filepath):
         raise WazuhResourceNotFound(1710, group_id)
-    agent_conf = os_path.join(common.SHARED_PATH, group_id if group_id is not None else '', filename)
-
-    if not os_path.exists(agent_conf):
-        raise WazuhError(1006, agent_conf)
-
-    try:
-        # Read RAW file
-        if filename == 'agent.conf' and raw:
-            with open(agent_conf, 'r') as raw_data:
-                data = raw_data.read()
-                return data
-        # Parse XML to JSON
-        else:
-            # Read XML
-            xml_data = load_wazuh_xml(agent_conf)
-
-            data = _agentconf2json(xml_data)
-    except Exception as e:
-        raise WazuhError(1101, str(e))
-
-    return {'total_affected_items': len(data), 'affected_items': cut_array(data, offset=offset, limit=limit)}
-
-
-def get_agent_conf_multigroup(multigroup_id: str = None, offset: int = 0, limit: int = common.DATABASE_LIMIT,
-                              filename: str = None) -> dict:
-    """Return agent.conf as dictionary.
-
-    Parameters
-    ----------
-    multigroup_id : str
-        ID of the group with the agent.conf we want to get.
-    offset : int
-        First element to return in the collection.
-    limit : int
-        Maximum number of elements to return.
-    filename : str
-        Name of the file to get. Default: 'agent.conf'
-
-    Raises
-    ------
-    WazuhResourceNotFound(1710)
-        Group was not found.
-    WazuhError(1006)
-        agent.conf does not exist or there is a problem with the permissions.
-    WazuhError(1101)
-        Requested component does not exist.
-
-    Returns
-    -------
-    dict
-        agent.conf as dictionary.
-    """
-    # Check if a multigroup_id is provided and it exists
-    if multigroup_id and not os_path.exists(os_path.join(common.MULTI_GROUPS_PATH, multigroup_id)) or not multigroup_id:
-        raise WazuhResourceNotFound(1710, extra_message=multigroup_id if multigroup_id else "No multigroup provided")
-
-    agent_conf_name = filename if filename else 'agent.conf'
-    agent_conf = os_path.join(common.MULTI_GROUPS_PATH, multigroup_id, agent_conf_name)
-
-    if not os_path.exists(agent_conf):
-        raise WazuhError(1006, extra_message=os_path.join("WAZUH_PATH", "var", "multigroups", agent_conf))
-
-    try:
-        # Read XML
-        xml_data = load_wazuh_xml(agent_conf)
-
-        # Parse XML to JSON
-        data = _agentconf2json(xml_data)
-    except Exception:
-        raise WazuhError(1101)
-
-    return {'totalItems': len(data), 'items': cut_array(data, offset=offset, limit=limit)}
-
-
-def get_file_conf(filename: str, group_id: str = None, type_conf: str = None, raw: bool = False) -> dict | str:
-    """Return the configuration file content.
-
-    Parameters
-    ----------
-    group_id : str
-        ID of the group with the file we want to get.
-    filename : str
-        Name of the file to get.
-    type_conf : str
-        Type of the configuration we want to get.
-    raw : bool
-        Respond in raw format.
-
-    Raises
-    ------
-    WazuhResourceNotFound(1710)
-        Group was not found.
-    WazuhError(1006)
-        The file does not exist or there is a problem with the permissions.
-    WazuhError(1104)
-        Invalid file type.
-
-    Returns
-    -------
-    dict or str
-        File content as plain text or dictionary.
-    """
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
-        raise WazuhResourceNotFound(1710, group_id)
-
-    file_path = os_path.join(common.SHARED_PATH, group_id if not filename == 'ar.conf' else '', filename)
-
-    if not os_path.exists(file_path):
-        raise WazuhError(1006, file_path)
 
     if raw:
-        with open(file_path, 'r') as raw_data:
-            data = raw_data.read()
-            return data
+        try:
+            # Read RAW file
+            with open(filepath, 'r') as raw_data:
+                data = raw_data.read()
+                return data
+        except Exception as e:
+            raise WazuhError(1006, str(e))
 
-    types = {
-        'conf': get_agent_conf,
-        'rootkit_files': _rootkit_files2json,
-        'rootkit_trojans': _rootkit_trojans2json,
-        'rcl': _rcl2json
-    }
+    # Parse YAML
+    data = load_wazuh_yaml(filepath)
 
-    if type_conf:
-        if type_conf in types:
-            if type_conf == 'conf':
-                data = types[type_conf](group_id, limit=None, filename=filename, raw=raw)
-            else:
-                data = types[type_conf](file_path)
-        else:
-            raise WazuhError(1104, f'{type_conf}. Valid types: {types.keys()}')
-    else:
-        if filename == 'agent.conf':
-            data = get_agent_conf(group_id, limit=None, filename=filename, raw=raw)
-        elif filename == 'rootkit_files.txt':
-            data = _rootkit_files2json(file_path)
-        elif filename == 'rootkit_trojans.txt':
-            data = _rootkit_trojans2json(file_path)
-        elif filename == 'ar.conf':
-            data = _ar_conf2json(file_path)
-        elif filename == 'merged.mg':
-            data = _merged_mg2json(file_path)
-        else:
-            data = _rcl2json(file_path)
-
-    return data
+    return {'total_affected_items': len(data), 'affected_items': data}
 
 
 def parse_internal_options(high_name: str, low_name: str) -> str:
@@ -991,7 +552,7 @@ def get_internal_options_value(high_name: str, low_name: str, max_: int, min_: i
     return option
 
 
-def upload_group_configuration(group_id: str, file_content: str) -> str:
+def update_group_configuration(group_id: str, file_content: str) -> str:
     """Update group configuration.
 
     Parameters
@@ -1005,100 +566,31 @@ def upload_group_configuration(group_id: str, file_content: str) -> str:
     ------
     WazuhResourceNotFound(1710)
         Group was not found.
-    WazuhError(1113)
-        XML syntax error.
-    WazuhError(1114)
-        Wazuh syntax error.
-    WazuhError(1115)
-        Error executing verify-agent-conf.
-    WazuhInternalError(1743)
-        Error running Wazuh syntax validator.
-    WazuhInternalError(1016)
-        Error moving file.
+    WazuhInternalError(1006)
+        Error writing file.
 
     Returns
     -------
     str
         Confirmation message.
     """
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    filepath = get_group_file_path(group_id)
+
+    if not os_path.exists(filepath):
         raise WazuhResourceNotFound(1710, group_id)
-    # path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.xml', dir=common.OSSEC_TMP_PATH)
-    # create temporary file for parsing xml input and validate XML format
-    try:
-        with open(handle, 'w') as tmp_file:
-            custom_entities = {
-                '_custom_open_tag_': '\\<',
-                '_custom_close_tag_': '\\>',
-                '_custom_amp_lt_': '&lt;',
-                '_custom_amp_gt_': '&gt;'
-            }
 
-            # Replace every custom entity
-            for character, replacement in custom_entities.items():
-                file_content = re.sub(replacement.replace('\\', '\\\\'), character, file_content)
-
-            # Beautify xml file using a defusedxml.minidom.parseString
-            xml = parseString(f'<root>\n{file_content}\n</root>')
-
-            # Remove first line (XML specification: <? xmlversion="1.0" ?>), <root> and </root> tags, and empty lines
-            pretty_xml = '\n'.join(filter(lambda x: x.strip(), xml.toprettyxml(indent='  ').split('\n')[2:-2])) + '\n'
-
-            # Revert xml.dom replacements and remove any whitespaces and '\n' between '\' and '<' if present
-            # github.com/python/cpython/blob/8e0418688906206fe59bd26344320c0fc026849e/Lib/xml/dom/minidom.py#L305
-            pretty_xml = re.sub(r'(?:(?<=\\) +)', '', pretty_xml.replace("&amp;", "&").replace("&lt;", "<")
-                                .replace("&quot;", "\"", ).replace("&gt;", ">").replace("\\\n", "\\"))
-
-            # Restore the replaced custom entities
-            for replacement, character in custom_entities.items():
-                pretty_xml = re.sub(replacement, character.replace('\\', '\\\\'), pretty_xml)
-
-            tmp_file.write(pretty_xml)
-    except Exception as e:
-        raise WazuhError(1113, str(e))
+    validate_wazuh_configuration(file_content)
 
     try:
-        # check Wazuh xml format
-        try:
-            subprocess.check_output([os_path.join(common.WAZUH_PATH, "bin", "verify-agent-conf"), '-f', tmp_file_path],
-                                    stderr=subprocess.STDOUT)
-        except subprocess.CalledProcessError as e:
-            # extract error message from output.
-            # Example of raw output
-            # 2019/01/08 14:51:09 verify-agent-conf: ERROR: (1230):
-            # Invalid element in the configuration: 'agent_conf'.\n2019/01/08 14:51:09 verify-agent-conf: ERROR: (1207):
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            # \n\n
-            # Example of desired output:
-            # Invalid element in the configuration: 'agent_conf'.
-            # Syscheck remote configuration in '/var/ossec/tmp/api_tmp_file_2019-01-08-01-1546959069.xml' is corrupted.
-            output_regex = re.findall(pattern=r"\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2} verify-agent-conf: ERROR: "
-                                              r"\(\d+\): ([\w \/ \_ \- \. ' :]+)", string=e.output.decode())
-            if output_regex:
-                raise WazuhError(1114, ' '.join(output_regex))
-            else:
-                raise WazuhError(1115, e.output.decode())
-        except Exception as e:
-            raise WazuhInternalError(1743, str(e))
-
-        # move temporary file to group folder
-        try:
-            new_conf_path = os_path.join(common.SHARED_PATH, group_id, "agent.conf")
-            safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
-                      permissions=0o660)
-        except Exception as e:
-            raise WazuhInternalError(1016, extra_message=str(e))
-
-        return 'Agent configuration was successfully updated'
+        with open(filepath, 'w') as f:
+            f.write(file_content)
     except Exception as e:
-        # remove created temporary file
-        if os.path.exists(tmp_file_path):
-            remove(tmp_file_path)
-        raise e
+        raise WazuhError(1006, extra_message=str(e))
+
+    return 'Agent configuration was successfully updated'
 
 
-def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.conf') -> str:
+def update_group_file(group_id: str, file_data: str) -> str:
     """Update a group file.
 
     Parameters
@@ -1107,34 +599,31 @@ def upload_group_file(group_id: str, file_data: str, file_name: str = 'agent.con
         Group to update.
     file_data : str
         Upload data.
-    file_name : str
-        File name to update. Default: 'agent.conf'
 
     Raises
     ------
+    WazuhError(1722)
+        If there was a validation error.
     WazuhResourceNotFound(1710)
         Group was not found.
     WazuhError(1112)
         Empty files are not supported.
-    WazuhError(1111)
-        Remote group file updates are only available in 'agent.conf' file.
 
     Returns
     -------
     str
         Confirmation message in string.
     """
-    # Check if the group exists
-    if not os_path.exists(os_path.join(common.SHARED_PATH, group_id)):
+    if not InputValidator().group(group_id):
+        raise WazuhError(1722)
+
+    if not os_path.exists(get_group_file_path(group_id)):
         raise WazuhResourceNotFound(1710, group_id)
 
-    if file_name == 'agent.conf':
-        if len(file_data) == 0:
-            raise WazuhError(1112)
+    if len(file_data) == 0:
+        raise WazuhError(1112)
 
-        return upload_group_configuration(group_id, file_data)
-    else:
-        raise WazuhError(1111)
+    return update_group_configuration(group_id, file_data)
 
 
 def get_active_configuration(component: str, configuration: str, agent_id: str = None) -> dict:

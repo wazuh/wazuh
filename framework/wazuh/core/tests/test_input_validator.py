@@ -2,10 +2,10 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import operator
 from unittest import TestCase
 
 from wazuh.core.InputValidator import InputValidator
-import operator
 
 
 class TestInputValidator(TestCase):
@@ -40,11 +40,11 @@ class TestInputValidator(TestCase):
         result = InputValidator().group('TesT')
         self.assertEqual(result, True)
 
-        result = InputValidator().group(['teSt1', '.test2', '..Test3', '.....'])
+        result = InputValidator().group(['teSt1', 'test2', 'Test3', 'test_1', 'test-1'])
         self.assertEqual(result, True)
 
-        result = InputValidator().group(['.'])
+        result = InputValidator().group('.')
         self.assertEqual(result, False)
 
-        result = InputValidator().group(['..'])
+        result = InputValidator().group(['', '..', '.group', 'group.conf'])
         self.assertEqual(result, False)

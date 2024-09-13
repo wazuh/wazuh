@@ -94,7 +94,6 @@ get_rbac_actions:
         related_endpoints:
           - GET /agents
           - GET /agents/{agent_id}/config/{component}/{configuration}
-          - GET /agents/{agent_id}/group/is_sync
           - GET /agents/{agent_id}/key
           - GET /agents/{agent_id}/daemons/stats
           - GET /agents/{agent_id}/stats/{component}
@@ -131,8 +130,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - DELETE /agents/{agent_id}/group
-          - DELETE /agents/{agent_id}/group/{group_id}
-          - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
       group:modify_assignments:
@@ -147,8 +144,6 @@ get_rbac_actions:
           effect: allow
         related_endpoints:
           - DELETE /agents/{agent_id}/group
-          - DELETE /agents/{agent_id}/group/{group_id}
-          - PUT /agents/{agent_id}/group/{group_id}
           - DELETE /agents/group
           - PUT /agents/group
       agent:reconnect:
@@ -179,7 +174,6 @@ get_rbac_actions:
           effect: deny
         related_endpoints:
           - PUT /agents/{agent_id}/restart
-          - PUT /agents/group/{group_id}/restart
           - PUT /agents/node/{node_id}/restart
           - PUT /agents/restart
       agent:upgrade:
@@ -224,8 +218,6 @@ get_rbac_actions:
           - GET /groups
           - GET /groups/{group_id}/agents
           - GET /groups/{group_id}/configuration
-          - GET /groups/{group_id}/files
-          - GET /groups/{group_id}/files/{file_name}
           - GET /overview/agents
       group:create:
         description: Create new agent groups
