@@ -99,7 +99,8 @@ def main(argv):
                                  discard_regex=options.discard_regex,
                                  sts_endpoint=options.sts_endpoint,
                                  service_endpoint=options.service_endpoint,
-                                 iam_role_duration=options.iam_role_duration
+                                 iam_role_duration=options.iam_role_duration,
+                                 external_id=options.external_id
                                  )
             # check if bucket is empty or credentials are wrong
             bucket.check_bucket()
@@ -152,7 +153,8 @@ def main(argv):
                                        discard_regex=options.discard_regex,
                                        sts_endpoint=options.sts_endpoint,
                                        service_endpoint=options.service_endpoint,
-                                       iam_role_duration=options.iam_role_duration
+                                       iam_role_duration=options.iam_role_duration,
+                                       external_id=options.external_id
                                        )
                 service.get_alerts()
         elif options.subscriber:
