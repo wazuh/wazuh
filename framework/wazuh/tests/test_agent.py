@@ -247,10 +247,9 @@ def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, 
     ]
 )
 @patch('wazuh.agent.build_agents_query')
-@patch('wazuh.agent.get_source_items')
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_get_agents(
-    create_indexer_mock, get_source_items_mock, build_agents_query_mock, agent_list, expected_items, filters, params
+    create_indexer_mock, build_agents_query_mock, agent_list, expected_items, filters, params
 ):
     """Test `get_agents` function from agent module.
 
@@ -262,8 +261,6 @@ async def test_agent_get_agents(
         List of expected agent ID's returned by 'get_agents'.
     """
     agents_search_mock = AsyncMock(return_value=expected_items)
-
-    get_source_items_mock.return_value = expected_items
     create_indexer_mock.return_value.agents.search = agents_search_mock
 
     result = await get_agents(agent_list, filters=filters, **params)
@@ -707,9 +704,7 @@ async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mo
     agent_list : List of str
         List of agent ID's.
     """
-    search_mock = AsyncMock(return_value={IndexerKey.HITS: {IndexerKey.HITS: [
-        {IndexerKey._ID: '0191c7fa-26d5-705f-bc3c-f54810d30d79'}
-    ]}})
+    search_mock = AsyncMock(return_value=[IndexerAgent(id='0191c7fa-26d5-705f-bc3c-f54810d30d79')])
     create_indexer_mock.return_value.agents.search = search_mock
 
     expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
