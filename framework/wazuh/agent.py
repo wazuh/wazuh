@@ -741,8 +741,9 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
         query = {IndexerKey.MATCH_ALL: {}}
 
     async with get_indexer_client() as indexer_client:
-        response = await indexer_client.agents.search(query={IndexerKey.QUERY: query})
-        available_agents = get_document_ids(response)
+        available_agents = [item.id for item in
+            await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+        ]
 
         for not_found_id in set(agent_list) - set(available_agents):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
@@ -847,8 +848,9 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
         query = {IndexerKey.MATCH_ALL: {}}
 
     async with get_indexer_client() as indexer_client:
-        response = await indexer_client.agents.search(query={IndexerKey.QUERY: query})
-        available_agents = get_document_ids(response)
+        available_agents = [item.id for item in
+            await indexer_client.agents.search(query={IndexerKey.QUERY: query})
+        ]
 
         for not_found_id in set(agent_list) - set(available_agents):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
