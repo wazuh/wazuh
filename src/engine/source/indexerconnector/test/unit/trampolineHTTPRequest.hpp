@@ -13,9 +13,9 @@
 #define _TRAMPOLINE_HTTP_REQUEST_HPP
 
 #include "base/utils/singleton.hpp"
-#include "mockHTTTPRequest.hpp"
+#include "httpRequest/mockHttpRequest.hpp"
 
-extern std::shared_ptr<MockHTTPRequest> spHTTPRequest;
+extern std::shared_ptr<httprequest::mock::MockHTTPRequest> spHTTPRequest;
 
 /**
  * @brief Trampoline class for GlobalData class.
