@@ -16,11 +16,6 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.indexer.agent import Agent
 
 
-@dataclass
-class TestDataclass:
-    version: str
-
-
 def custom_hook(dct):
     if 'id' in dct:
         return Agent(**dct)
