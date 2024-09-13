@@ -76,7 +76,7 @@ async def test_delete_agents(
     if 'all' in mock_alist:
         mock_alist = []
     f_kwargs = {
-        'agents_list': mock_alist,
+        'agent_list': mock_alist,
         'filters': {
             'name': 'test',
             'groups': 'test_group',
@@ -113,7 +113,7 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
     result = await get_agents()
 
     f_kwargs = {
-        'agents_list': [],
+        'agent_list': [],
         'filters': {
             'name': None,
             'groups': None,

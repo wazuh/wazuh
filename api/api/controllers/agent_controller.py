@@ -67,7 +67,7 @@ async def delete_agents(
         agents_list = []
 
     f_kwargs = {
-        'agents_list': agents_list,
+        'agent_list': agents_list,
         'filters': {
             'name': name,
             'groups': group,
@@ -150,7 +150,7 @@ async def get_agents(
         older_than = f'{older_than}s'
 
     f_kwargs = {
-        'agents_list': agents_list if agents_list is not None else [],
+        'agent_list': agents_list if agents_list is not None else [],
         'filters': {
             'name': name,
             'groups': group,
@@ -269,7 +269,7 @@ async def restart_agents(
     # if agents_list == '*':
     #     agents_list = []
 
-    # f_kwargs = {'agents_list': agents_list}
+    # f_kwargs = {'agent_list': agents_list}
 
     # dapi = DistributedAPI(
     #     f=agent.restart_agents,
@@ -453,7 +453,7 @@ async def restart_agent(agent_id: str, pretty: bool = False, wait_for_complete: 
     ConnexionResponse
         API response.
     """
-    # f_kwargs = {'agents_list': [agent_id]}
+    # f_kwargs = {'agent_list': [agent_id]}
 
     # dapi = DistributedAPI(
     #     f=agent.restart_agents,

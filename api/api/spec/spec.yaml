@@ -1586,7 +1586,7 @@ components:
       type: string
       minLength: 3
       description: "Agent ID|all"
-      format: uuid7
+      format: uuid
 
     NodeID:
       type: string

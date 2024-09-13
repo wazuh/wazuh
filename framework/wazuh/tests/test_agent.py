@@ -1268,7 +1268,7 @@ async def test_unset_single_group_agent_ko(create_indexer_mock, group_exists_moc
         await Agent.unset_single_group_agent(agent_id, group_id, force=force)
 
 @pytest.mark.parametrize(
-    'agents_id,filters,expected_filters',
+    'agent_list,filters,expected_filters',
     [
         (
             ['019008da-1575-7375-b54f-ef43e393517ef'],
@@ -1281,19 +1281,19 @@ async def test_unset_single_group_agent_ko(create_indexer_mock, group_exists_moc
         )
     ]
 )
-def test_build_agents_query(agents_id, filters, expected_filters):
+def test_build_agents_query(agent_list, filters, expected_filters):
     """Test `build_agents_query` function from agent module works as expected.
 
     Parameters
     ----------
-    agents_id : list
+    agent_list : list
         Agents id.
     filters : dict
         Filters to parse.
     expected_filters : dict
         Expected query.
     """
-    query = build_agents_query(agents_id, filters)
+    query = build_agents_query(agent_list, filters)
 
     assert IndexerKey.QUERY in query
     assert IndexerKey.BOOL in query[IndexerKey.QUERY]
