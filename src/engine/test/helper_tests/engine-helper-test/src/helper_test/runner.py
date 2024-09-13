@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse
 import json
-import os
 import re
 import subprocess
 import sys
@@ -26,66 +24,32 @@ SESSION_NAME = "test"
 NAMESPACE = "user"
 
 
-class Config:
-    """
-    A class to store the configuration of the test runner.
-    """
-    environment_directory: str = ""
-    wazuh_dir: str = ""
-    input_file_path: str = ""
-    folder_path: str = ""
-    binary_path: str = ""
-    only_failure: bool = False
-    only_success: bool = False
-
-
-config = Config()
-
-
-def parse_arguments():
+def configure(subparsers):
     """
     Parses command-line arguments for configuring the environment and selecting test cases to display.
     """
-    parser = argparse.ArgumentParser(description="Runs the generated test cases and validates their results")
-    parser.add_argument("-e", "--environment", required=True, help="Environment directory")
-    parser.add_argument("-b", "--binary", required=True, help="Path to the binary file")
+    parser = subparsers.add_parser('run',
+                                   help="Runs the generated test cases and validates their results")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--input-file", help="Absolute or relative path to the test case file")
+    group.add_argument(
+        "--input-dir", help="Absolute or relative path to the directory containing test case files")
+    parser.add_argument(
+        "--show-failure", help="Shows only the failure test cases that occurred", action="store_true")
 
-    parser.add_argument("--input_file_path", help="Absolute or relative path where the test cases were generated")
-    parser.add_argument("--folder_path", help="Absolute or relative path where the test cases were generated")
-    parser.add_argument("--failure_cases", help="Shows only the failure test cases that occurred", action="store_true")
-    parser.add_argument("--success_cases", help="Shows only the success test cases that occurred", action="store_true")
+    parser.set_defaults(func=run)
 
-    args = parser.parse_args()
+    # if args.input_file_path and args.folder_path:
+    #     args.error("Only one of --input_file_path or --folder_path can be specified.")
 
-    if args.input_file_path and args.folder_path:
-        args.error("Only one of --input_file_path or --folder_path can be specified.")
+    # config.environment_directory = args.environment
+    # config.binary_path = args.binary
 
-    config.environment_directory = args.environment
-    config.binary_path = args.binary
-
-    config.input_file_path = args.input_file_path
-    config.folder_path = args.folder_path
-    config.only_success = args.success_cases
-    config.only_failure = args.failure_cases
-
-
-def check_config_file() -> str:
-    """
-    Checks the existence and validity of the environment directory and configuration file.
-
-    If the environment directory or configuration file is not found, the script exits with an error message.
-    Returns:
-        str: The path to the configuration file if all checks pass.
-    """
-    env_dir = Path(config.environment_directory)
-    serv_conf_file = env_dir / "engine" / "general.conf"
-
-    if not env_dir.is_dir():
-        sys.exit(f"Error: Environment directory {env_dir} not found.")
-    if not serv_conf_file.is_file():
-        sys.exit(f"Error: Configuration file {serv_conf_file} not found.")
-
-    return str(serv_conf_file)
+    # config.input_file_path = args.input_file_path
+    # config.folder_path = args.folder_path
+    # config.only_success = args.success_cases
+    # config.only_failure = args.failure_cases
 
 
 def load_yaml(file_path: str) -> dict:
@@ -102,7 +66,7 @@ def load_yaml(file_path: str) -> dict:
         try:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
-            sys.exit(f"Error loading YAML file: {exc}")
+            raise Exception(f"Error loading YAML file: {exc}")
 
 
 class Evaluator:
@@ -225,7 +189,8 @@ class Evaluator:
             response: The response received from the API call.
         """
         if json.loads(MessageToJson(response)).get("result"):
-            json_response = json.loads(MessageToJson(response))["result"]["output"].get(self.field_mapping)
+            json_response = json.loads(MessageToJson(response))[
+                "result"]["output"].get(self.field_mapping)
         else:
             json_response = None
         failure_test = {
@@ -317,13 +282,15 @@ class Evaluator:
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request, api_tester.RunPost_Response())
+        response = send_recv(api_client, request,
+                             api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
         if not self.skipped:
             if (self.should_pass and field_mapping in output) or (not self.should_pass and field_mapping not in output):
                 if field_mapping in output:
-                    self.handle_map_event_with_field_mapping(response, output, field_mapping)
+                    self.handle_map_event_with_field_mapping(
+                        response, output, field_mapping)
                 else:
                     self.create_success_test()
             else:
@@ -341,7 +308,8 @@ class Evaluator:
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request, api_tester.RunPost_Response())
+        response = send_recv(api_client, request,
+                             api_tester.RunPost_Response())
         output = extract_output_from_response(response)
 
         if not self.skipped:
@@ -362,14 +330,17 @@ class Evaluator:
         """
         self.field_mapping = field_mapping
         request = build_run_post_request(self.input, api_tester.ALL)
-        response = send_recv(api_client, request, api_tester.RunPost_Response())
+        response = send_recv(api_client, request,
+                             api_tester.RunPost_Response())
         output = extract_output_from_response(response)
-        result = extract_transformation_result_from_response(response, self.helper_name)
+        result = extract_transformation_result_from_response(
+            response, self.helper_name)
 
         if not self.skipped:
             if (self.should_pass and result == "Success") or (not self.should_pass and result != "Success"):
                 if field_mapping in output:
-                    self.handle_transform_event_with_field_mapping(response, output, field_mapping)
+                    self.handle_transform_event_with_field_mapping(
+                        response, output, field_mapping)
                 else:
                     self.create_success_test()
             else:
@@ -379,7 +350,8 @@ class Evaluator:
 
 
 def run_command(command: str):
-    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    result = subprocess.run(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     assert result.returncode == 0, f"{result.stderr}"
 
 
@@ -401,7 +373,7 @@ def send_recv(api_client: APIClient, request: Message, expected_response_type: M
         parse_response: Message = ParseDict(response, expected_response_type)
         return parse_response
     except Exception as e:
-        sys.exit(f"Error parsing response: {str(e)}")
+        raise Exception(f"Error parsing response: {e}")
 
 
 def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator) -> bool:
@@ -420,7 +392,8 @@ def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator)
         bool: True if the asset creation is successful, False otherwise.
     """
     request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    response = send_recv(api_client, request,
+                         api_engine.GenericStatus_Response())
     if response.status == api_engine.OK:
         return True
     if result_evaluator.skipped:
@@ -466,7 +439,8 @@ def create_session(api_client: APIClient):
     request = api_tester.SessionPost_Request()
     request.session.name = SESSION_NAME
     request.session.policy = POLICY_NAME
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    response = send_recv(api_client, request,
+                         api_engine.GenericStatus_Response())
     assert response.status == api_engine.OK, f"{response.error}"
 
 
@@ -502,7 +476,7 @@ def delete_kvdb(api_client: APIClient):
     send_recv(api_client, request, api_engine.GenericStatus_Response())
 
 
-def generate_report(successful_tests: list, failed_tests: list) -> str:
+def generate_report(successful_tests: list, failed_tests: list, show_failure: bool) -> str:
     """
     Generates a report of the test results.
 
@@ -516,22 +490,20 @@ def generate_report(successful_tests: list, failed_tests: list) -> str:
     report += f"- Successful test cases: {len(successful_tests)}\n"
     report += f"- Failed test cases: {len(failed_tests)}\n\n"
 
-    if config.only_success:
-        if successful_tests:
-            report += "#### Successful Test Cases\n\n"
-            for i, success_test in enumerate(successful_tests, start=1):
-                report += f"{i}. **Test Case {i}**\n"
-                report += f"   - Helper: {success_test['helper']}\n"
-                report += f"   - Id: {success_test['id']}\n"
+    if successful_tests and not show_failure:
+        report += "#### Successful Test Cases\n\n"
+        for i, success_test in enumerate(successful_tests, start=1):
+            report += f"{i}. **Test Case {i}**\n"
+            report += f"   - Helper: {success_test['helper']}\n"
+            report += f"   - Id: {success_test['id']}\n"
 
-    if config.only_failure:
-        if failed_tests:
-            report += "#### Failed Test Cases\n\n"
-            for i, failed_test in enumerate(failed_tests, start=1):
-                report += f"{i}. **Test Case {i}**\n"
-                report += f"   - Helper: {failed_test['helper']}\n"
-                report += f"   - Id: {failed_test['id']}\n"
-                report += f"   - Description: {failed_test['description']}\n"
+    if failed_tests:
+        report += "#### Failed Test Cases\n\n"
+        for i, failed_test in enumerate(failed_tests, start=1):
+            report += f"{i}. **Test Case {i}**\n"
+            report += f"   - Helper: {failed_test['helper']}\n"
+            report += f"   - Id: {failed_test['id']}\n"
+            report += f"   - Description: {failed_test['description']}\n"
     return report
 
 
@@ -645,7 +617,8 @@ def create_asset_for_buildtime(api_client: APIClient, result_evaluator: Evaluato
         api_client (APIClient): The API client used to make requests.
     """
     request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    response = send_recv(api_client, request,
+                         api_engine.GenericStatus_Response())
     result_evaluator.check_response(response)
 
 
@@ -674,11 +647,13 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
         if result_evaluator.helper_type == "map":
             result_evaluator.tester_run_map(api_client, "helper")
         elif result_evaluator.helper_type == "filter":
-            result_evaluator.tester_run_filter(api_client, "verification_field")
+            result_evaluator.tester_run_filter(
+                api_client, "verification_field")
         elif result_evaluator.helper_type == "transformation":
             result_evaluator.tester_run_transform(api_client, "target_field")
         else:
-            sys.exit(f"Helper type '{result_evaluator.helper_type}' not is valid")
+            raise Exception(
+                f"Helper type '{result_evaluator.helper_type}' is not valid")
 
 
 def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_evaluator: Evaluator):
@@ -708,11 +683,13 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
         if result_evaluator.helper_type == "map":
             result_evaluator.tester_run_map(api_client, "helper")
         elif result_evaluator.helper_type == "filter":
-            result_evaluator.tester_run_filter(api_client, "verification_field")
+            result_evaluator.tester_run_filter(
+                api_client, "verification_field")
         elif result_evaluator.helper_type == "transformation":
             result_evaluator.tester_run_transform(api_client, "target_field")
         else:
-            sys.exit(f"Helper type '{result_evaluator.helper_type}' not is valid")
+            raise Exception(
+                f"Helper type '{result_evaluator.helper_type}' is not valid")
 
 
 def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator, kvdb_path: str):
@@ -762,7 +739,7 @@ def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator,
             execute_multiple_run_tests(api_client, run_test, result_evaluator)
 
 
-def run_test_cases_executor(api_client: APIClient, kvdb_path: str):
+def run_test_cases_executor(input_path: Path, api_client: APIClient, kvdb_path: str) -> Evaluator:
     """
     Execute test cases found in Python files in specific directories.
 
@@ -770,45 +747,93 @@ def run_test_cases_executor(api_client: APIClient, kvdb_path: str):
         api_client (APIClient): The API client used to make requests.
         kvdb_path (str): The path to the key-value database.
     """
+
+    print("Running test cases...")
     result_evaluator = Evaluator()
-    if config.input_file_path:
-        process_file(Path(config.input_file_path), api_client, result_evaluator, kvdb_path)
-    elif config.folder_path:
-        for file in Path(config.folder_path).iterdir():
-            if file.is_file() and (file.suffix in ['.yml', '.yaml']):
-                process_file(file, api_client, result_evaluator, kvdb_path)
+
+    if input_path.is_file():
+        print(f"Processing file: {input_path}")
+        process_file(input_path, api_client, result_evaluator, kvdb_path)
     else:
-        sys.exit("It is necessary to indicate a file or directory that contains a configuration yaml")
+        for file in input_path.rglob("*.yml"):
+            print(f"Processing file: {file}")
+            process_file(file, api_client, result_evaluator, kvdb_path)
+    print("Test cases executed.")
 
-    report = generate_report(result_evaluator.successful, result_evaluator.failure)
-
-    if len(result_evaluator.failure) != 0:
-        sys.exit(report)
-    print(report)
+    return result_evaluator
 
 
-def main():
-    parse_arguments()
+def runner(input_path: Path, env_dir: Path, show_failure: bool):
+    engine_handler = Optional[EngineHandler]
+    success = True
 
-    serv_conf_file = check_config_file()
-    ENVIRONMENT_DIR = Path(config.environment_directory)
-    kvdb_path = ENVIRONMENT_DIR / "engine" / "etc" / "kvdb" / "test.json"
-    socket_path = str(ENVIRONMENT_DIR / "queue" / "sockets" / "engine-api")
+    print("Validating parameters...")
+    bin_path = (env_dir / "bin/wazuh-engine").resolve()
+    if not bin_path.is_file():
+        raise FileNotFoundError(f"Binary file not found: {bin_path}")
 
-    os.environ['ENV_DIR'] = ENVIRONMENT_DIR.as_posix()
-    os.environ['BINARY_DIR'] = config.binary_path
-    os.environ['CONF_FILE'] = serv_conf_file
+    config_path = (env_dir / "engine/general.conf").resolve()
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
-    api_client = APIClient(socket_path)
+    kvdb_path = env_dir / "engine/etc/kvdb/test.json"
+    if not kvdb_path.is_file():
+        raise FileNotFoundError(f"KVDB file not found: {kvdb_path}")
 
-    print("Starting up_down engine")
-    engine_handler = EngineHandler(config.binary_path, serv_conf_file)
-    engine_handler.start()
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input path not found: {input_path}")
 
-    print("running test cases")
-    run_test_cases_executor(api_client, str(kvdb_path))
+    if input_path.is_dir() and not list(input_path.rglob("*.yml")):
+        raise FileNotFoundError(
+            f"No YAML files found in directory: {input_path}")
+    print("Parameters validated.")
 
-    engine_handler.stop()
+    try:
+        print("Starting Engine instance...")
+        engine_handler = EngineHandler(
+            bin_path.as_posix(), config_path.as_posix())
+        engine_handler.start()
+        print("Engine started.")
 
-if __name__ == "__main__":
-    main()
+        result = run_test_cases_executor(
+            input_path, engine_handler.api_client, kvdb_path.as_posix())
+
+        if len(result.failure) != 0:
+            success = False
+
+        print("Generating report...")
+        report = generate_report(
+            result.successful, result.failure, show_failure)
+        print(report)
+
+        print("Stopping Engine instance...")
+        engine_handler.stop()
+        print("Engine stopped.")
+
+    except:
+        if engine_handler:
+            print("Stopping Engine instance...")
+            engine_handler.stop()
+            print("Engine stopped.")
+
+        raise
+
+    if not success:
+        raise Exception("Some test cases failed.")
+
+
+def run(args):
+    input_file = Path(args.get('input_file')).resolve(
+    ) if args.get('input_file') else None
+    input_dir = Path(args.get('input_dir')).resolve(
+    ) if args.get('input_dir') else None
+    env_dir = Path(args.get('environment')).resolve()
+    show_failure = args.get('show_failure')
+
+    try:
+        runner(input_file or input_dir, env_dir, show_failure)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
+
+    sys.exit(0)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
-from .test_data import TestData
-from .buildtime_cases import BuildtimeCases
-from .runtime_cases import RuntimeCases
-from .parser import Parser
-from .validator import Validator
-from definition_types.utils import *
+from helper_test.test_cases_generator.test_data import TestData
+from helper_test.test_cases_generator.buildtime_cases import BuildtimeCases
+from helper_test.test_cases_generator.runtime_cases import RuntimeCases
+from helper_test.test_cases_generator.parser import Parser
+from helper_test.test_cases_generator.validator import Validator
+from helper_test.definition_types.utils import *
 import yaml
 import shutil
 
@@ -62,7 +62,9 @@ class Generator:
             self.runtimeCases.set_parser(self.parser)
             self.runtimeCases.runner()
 
-            output_file_path = output_directory / f"{self.parser.get_name()}.yml"
+            output_file_path = (output_directory /
+                                f"{self.parser.get_name()}.yml").resolve()
+            print(f"Generating output file: {output_file_path}")
             tests = self.testData.get_all_tests()
             tests["helper_type"] = self.helper_type
             with open(output_file_path, "w") as file:

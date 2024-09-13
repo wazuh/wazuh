@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from .parser import Parser
+from helper_test.test_cases_generator.parser import Parser
 import itertools
 
 
@@ -34,7 +34,8 @@ class Template:
                 sources_expanded.append(source)
 
         # If an element is a list, treat it as a single element
-        data_processed = [x if isinstance(x, list) else [x] for x in sources_expanded]
+        data_processed = [x if isinstance(
+            x, list) else [x] for x in sources_expanded]
 
         # Generate all possible combinations
         combinations = list(itertools.product(*data_processed))
@@ -63,7 +64,8 @@ class Template:
                 for partial_comb in comb_list:
                     for allowed in allowed_values:
                         new_partial_comb = list(partial_comb)
-                        new_partial_comb[arg_index] = (allowed, new_partial_comb[arg_index])
+                        new_partial_comb[arg_index] = (
+                            allowed, new_partial_comb[arg_index])
                         new_comb_list.append(new_partial_comb)
                 comb_list = new_comb_list
             processed_combinations.extend([tuple(comb) for comb in comb_list])
@@ -93,8 +95,10 @@ class Template:
                 for partial_comb in comb_list:
                     new_partial_comb = list(partial_comb)
                     for arg_name, value in condition.items():
-                        arg_index = self.parser.get_name_id_arguments()[arg_name]
-                        new_partial_comb[arg_index] = (value, new_partial_comb[arg_index])
+                        arg_index = self.parser.get_name_id_arguments()[
+                            arg_name]
+                        new_partial_comb[arg_index] = (
+                            value, new_partial_comb[arg_index])
                     new_comb_list.append(new_partial_comb)
                 comb_list = new_comb_list
             processed_combinations.extend([tuple(comb) for comb in comb_list])
