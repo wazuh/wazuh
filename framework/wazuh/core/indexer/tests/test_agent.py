@@ -111,7 +111,7 @@ class TestAgentIndex:
         """Check the correct function of `get_group_agents` method."""
         group_name = 'foo'
         agent_id = '0191c248-095c-75e6-89ec-612fa5727c2e'
-        search_result = {'_hits': [Hit({'id': agent_id})]}
+        search_result = {'_hits': [Hit({IndexerKey._SOURCE: {'id': agent_id}})]}
         client_mock.search.return_value = search_result
         expected_result = [Agent(id=agent_id)]
 

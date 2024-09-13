@@ -57,7 +57,7 @@ class AgentsIndex(BaseIndex):
         Agent : dict
             The created agent instance.
         """
-        agent = Agent(raw_key=key, name=name, groups='default' + f',{groups}' if groups else '')
+        agent = Agent(id=id, raw_key=key, name=name, groups='default' + f',{groups}' if groups else '')
         try:
             await self._client.index(
                 index=self.INDEX,
@@ -131,7 +131,7 @@ class AgentsIndex(BaseIndex):
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
 
-        return Agent(id=uuid, **data[IndexerKey._SOURCE])
+        return Agent(**data[IndexerKey._SOURCE])
 
     async def update(self, uuid: str, agent: Agent) -> None:
         """Update an agent.
@@ -193,10 +193,7 @@ class AgentsIndex(BaseIndex):
 
         agents = []
         for hit in response:
-            agent = Agent(id=hit.meta.id, **hit.to_dict())
-            if agent.groups is not None:
-                agent.groups = agent.groups.split(',')
-            agents.append(agent)
+            agents.append(Agent(**hit.to_dict()))
 
         return agents
     

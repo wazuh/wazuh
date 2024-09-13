@@ -55,6 +55,8 @@ class Agent:
     def __post_init__(self, raw_key: str | None):
         if raw_key is not None:
             self.key = self.hash_key(raw_key).decode('latin-1')
+        if self.groups is not None:
+            self.groups = self.groups.split(',')
 
     @staticmethod
     def hash_key(raw_key: str) -> bytes:
