@@ -19,6 +19,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <json.hpp>
 #include <map>
 #include <mutex>
 #include <string>
@@ -26,44 +27,15 @@
 #include <unordered_set>
 #include <vector>
 
+constexpr auto MONITORING_NAME {"monitoring"};
+
 // 60 seconds interval for monitoring
 constexpr auto INTERVAL = 60u;
 
 // 5 seconds timeout for health check requests
 constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
 
-namespace HealthCheckRows
-{
-    enum Type : std::size_t
-    {
-        HEADER = 0,
-        DATA,
-        SIZE
-    };
-};
-
-namespace HealthCheckColumns
-{
-    enum Type : std::size_t
-    {
-        EPOCH = 0,
-        TIMESTAMP,
-        CLUSTER,
-        STATUS,
-        NODE_TOTAL,
-        NODE_DATA,
-        DISCOVERED_CLUSTER_MANAGER,
-        SHARDS,
-        PRI,
-        RELO,
-        INIT,
-        UNASSIGN,
-        PENDING_TASKS,
-        MAX_TASK_WAIT_TIME,
-        ACTIVE_SHARDS_PERCENT,
-        SIZE
-    };
-};
+constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 
 /**
  * @brief Monitoring class.
@@ -97,25 +69,35 @@ class Monitoring final
         // On success callback
         const auto onSuccess = [&serverStatus](std::string response)
         {
-            // Remove the tabs and double spaces.
-            Utils::replaceAll(response, "\t", " ");
-            response = Utils::trimRepeated(response, ' ');
+            // Parse the response without throwing exceptions
+            // Response example:
+            // [
+            //     {
+            //         "epoch": "1726271464",
+            //         "timestamp": "23:51:04",
+            //         "cluster": "wazuh-cluster",
+            //         "status": "green",
+            //         "node.total": "1",
+            //         "node.data": "1",
+            //         "discovered_cluster_manager": "true",
+            //         "shards": "166",
+            //         "pri": "166",
+            //         "relo": "0",
+            //         "init": "0",
+            //         "unassign": "0",
+            //         "pending_tasks": "0",
+            //         "max_task_wait_time": "-",
+            //         "active_shards_percent": "100.0%"
+            //     }
+            // ]
 
-            // Split the response by rows.
-            const auto rows {Utils::split(response, '\n')};
+            const auto data = nlohmann::json::parse(response, nullptr, false).at(0);
 
-            // Check if the response has the expected number of rows.
-            if (HealthCheckRows::SIZE == rows.size())
+            // Check if the server is green
+            if (!data.is_discarded() && data.contains(SERVER_HEALTH_FIELD_NAME) &&
+                data.at(SERVER_HEALTH_FIELD_NAME).get_ref<const std::string&>().compare("green") == 0)
             {
-                // Split the data row by spaces.
-                const auto fields {Utils::split(rows.at(HealthCheckRows::DATA), ' ')};
-
-                // Check if the response has the expected number of columns and if the status is green.
-                if (fields.size() == HealthCheckColumns::SIZE &&
-                    fields.at(HealthCheckColumns::STATUS).compare("green") == 0)
-                {
-                    serverStatus = true;
-                }
+                serverStatus = true;
             }
         };
 
@@ -127,7 +109,7 @@ class Monitoring final
 
         // Get the health of the server.
         HTTPRequest::instance().get(
-            RequestParameters {.url = HttpURL(serverAddress + "/_cat/health?v"), .secureCommunication = authentication},
+            RequestParameters {.url = HttpURL(serverAddress + "/_cat/health"), .secureCommunication = authentication},
             PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
             ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
     }
@@ -182,7 +164,7 @@ public:
 
         // Start the thread, that will check the health of the servers.
         m_thread = std::thread(
-            [this, authentication, serverAddresses]()
+            [this, authentication]()
             {
                 while (!m_stop)
                 {
