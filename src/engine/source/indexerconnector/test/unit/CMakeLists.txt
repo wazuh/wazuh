@@ -8,8 +8,10 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME}
         indexerconnector::test
+        httprequest::mock
         urlrequest
         GTest::gtest_main
+        GTest::gmock_main
         pthread
         base
 )

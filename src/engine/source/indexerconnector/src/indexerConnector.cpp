@@ -117,7 +117,7 @@ IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t&
     initConfiguration(secureCommunication, config);
 
     // Initialize publisher.
-    auto selector {std::make_shared<ServerSelector>(config.at("hosts"), timeout, secureCommunication)};
+    auto selector {std::make_shared<TServerSelector<Monitoring>>(config.at("hosts"), timeout, secureCommunication)};
 
     // Validate threads number
     if (workingThreads <= 0)

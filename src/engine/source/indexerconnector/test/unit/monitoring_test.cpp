@@ -1,7 +1,7 @@
 /*
  * Wazuh Indexer Connector - Monitoring tests
  * Copyright (C) 2015, Wazuh Inc.
- * September 08, 2023.
+ * August 30, 2024.
  *
  * This program is free software; you can redistribute it
  * and/or modify it under the terms of the GNU General Public
@@ -9,161 +9,134 @@
  * Foundation.
  */
 
-#include "base/logging.hpp"
-#include "fakeOpenSearchServer.hpp"
-#include "monitoring.hpp"
-#include <chrono>
-#include <gtest/gtest.h>
-#include <memory>
-#include <thread>
+#include "monitoring_test.hpp"
+#include "trampolineHTTPRequest.hpp"
+#include <httpRequest/mockHttpRequest.hpp>
 
-/**
- * @brief Runs unit tests for Monitoring class
- */
-class MonitoringTest : public ::testing::Test
+// Generalized lambda for simulating HTTP responses based on server health status
+auto mockHTTPRequestLambda =
+    [](const std::string& greenResponse, const std::string& redResponse, const std::string& yellowResponse)
 {
-protected:
-    inline static std::unique_ptr<FakeOpenSearchServer>
-        m_fakeOpenSearchGreenServer; ///< pointer to FakeOpenSearchServer class
-
-    inline static std::unique_ptr<FakeOpenSearchServer>
-        m_fakeOpenSearchRedServer; ///< pointer to FakeOpenSearchServer class
-
-    std::shared_ptr<Monitoring> m_monitoring; ///< pointer to Monitoring class
-
-    std::vector<std::string> m_servers; ///< Servers
-
-    /**
-     * @brief Sets initial conditions for each test case.
-     */
-    // cppcheck-suppress unusedFunction
-    void SetUp() override
+    return [greenResponse, redResponse, yellowResponse](RequestParameters requestParameters,
+                                                        PostRequestParameters postRequestParameters,
+                                                        ConfigurationParameters /*configurationParameters*/)
     {
-        logging::testInit();
-        // Register the host and port of the green server
-        m_servers.emplace_back("http://localhost:9209");
-        // Register the host and port of the red server
-        m_servers.emplace_back("http://localhost:9210");
-    }
+        const auto& url = requestParameters.url.url();
 
-    /**
-     * @brief Creates the fakeOpenSearchServers for the runtime of the test suite
-     */
-    // cppcheck-suppress unusedFunction
-    static void SetUpTestSuite()
-    {
-        const std::string host {"localhost"};
-
-        if (!m_fakeOpenSearchGreenServer)
+        if (url == GREEN_SERVER + "/_cat/health?v")
         {
-            m_fakeOpenSearchGreenServer = std::make_unique<FakeOpenSearchServer>(host, 9209, "green");
+            postRequestParameters.onSuccess(greenResponse);
         }
-
-        if (!m_fakeOpenSearchRedServer)
+        else if (url == RED_SERVER + "/_cat/health?v")
         {
-            m_fakeOpenSearchRedServer = std::make_unique<FakeOpenSearchServer>(host, 9210, "red");
+            postRequestParameters.onError(redResponse, 200);
         }
-    }
-
-    /**
-     * @brief Resets fakeOpenSearchServers causing the shutdown of the test server.
-     */
-    // cppcheck-suppress unusedFunction
-    static void TearDownTestSuite()
-    {
-        m_fakeOpenSearchGreenServer.reset();
-        m_fakeOpenSearchRedServer.reset();
-    }
+        else if (url == YELLOW_SERVER + "/_cat/health?v")
+        {
+            postRequestParameters.onError(yellowResponse, 200);
+        }
+        else
+        {
+            postRequestParameters.onError("Unknown server", 404);
+        }
+    };
 };
 
-// Healt check interval for the servers
-constexpr auto MONITORING_HEALTH_CHECK_INTERVAL {5u};
+// Responses for each server health state
+const std::string greenResponse =
+    "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
+    "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
+    "shards_percent\n1725296432\t17:00:32\twazuh-"
+    "cluster\tgreen\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
+
+const std::string redResponse = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
+                                "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
+                                "shards_percent\n1725296432\t17:00:32\twazuh-"
+                                "cluster\tred\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
+
+const std::string yellowResponse =
+    "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
+    "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
+    "shards_percent\n1725296432\t17:00:32\twazuh-"
+    "cluster\tyellow\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
 
 /**
- * @brief Test instantiation and check the availability of valid servers.
+ * @brief Test to check the availability of an unregistered server.
  *
- */
-TEST_F(MonitoringTest, TestInstantiationWithValidServers)
-{
-    const auto hostGreenServer {m_servers.at(0)};
-    const auto hostRedServer {m_servers.at(1)};
-
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
-
-    // All servers are available the first time.
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
-
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
-
-    // It's true because the green server is available
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-
-    // It's false because the red server isn't available
-    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
-}
-
-/**
- * @brief Test instantiation without servers.
- *
- */
-TEST_F(MonitoringTest, TestInstantiationWithoutServers)
-{
-    m_servers.clear();
-
-    // It doesn't throw an exception because the class Monitoring accepts vector without servers
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
-}
-
-/**
- * @brief Test instantiation and check the availability of an invalid server.
- *
- */
-TEST_F(MonitoringTest, TestInvalidServer)
-{
-    const auto invalidServer {"http://localhost:9400"};
-
-    m_servers.clear();
-    m_servers.emplace_back(invalidServer);
-
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
-
-    // All servers are available the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(invalidServer));
-
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
-
-    // It's false because the server isn't valid
-    EXPECT_FALSE(m_monitoring->isAvailable(invalidServer));
-}
-
-/**
- * @brief Test instantiation and check the availability of an unregistered server.
- *
+ * This test sets up mock responses for registered servers (green and red),
+ * and verifies the behavior when an unregistered server is queried.
  */
 TEST_F(MonitoringTest, TestCheckIfAnUnregisteredServerIsAvailable)
 {
-    const auto unregisteredServer {"http://localhost:9400"};
-    const auto hostGreenServer {m_servers.at(0)};
-    const auto hostRedServer {m_servers.at(1)};
+    // Set up expectations for the MockHTTPRequest with the generalized lambda
+    EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse));
 
-    EXPECT_NO_THROW(m_monitoring = std::make_shared<Monitoring>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL));
+    const std::string unregisteredServer {"http://localhost:9500"};
 
-    // All servers are available the first time
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
-    EXPECT_TRUE(m_monitoring->isAvailable(hostRedServer));
+    // Instantiate the Monitoring object
+    auto m_monitoring =
+        std::make_shared<TMonitoring<TrampolineHTTPRequest>>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
 
-    // Interval to check the health of the servers
-    std::this_thread::sleep_for(std::chrono::seconds(MONITORING_HEALTH_CHECK_INTERVAL + 5));
+    // Ensure no exceptions during instantiation
+    EXPECT_NO_THROW(m_monitoring);
 
-    // It's true because the green server is available
-    EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
+    // Verify availability of registered servers
+    EXPECT_TRUE(m_monitoring->isAvailable(GREEN_SERVER));
+    EXPECT_TRUE(m_monitoring->isAvailable(RED_SERVER));
 
-    // It's false because the red server isn't available
-    EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
+    // Check server health status after interval
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
-    // It throws an exception because this is an unregistered server
+    EXPECT_TRUE(m_monitoring->isAvailable(GREEN_SERVER));
+    EXPECT_FALSE(m_monitoring->isAvailable(RED_SERVER));
+
+    // Unregistered server should throw an exception
     EXPECT_THROW(m_monitoring->isAvailable(unregisteredServer), std::out_of_range);
+}
+
+/**
+ * @brief Test to verify the instantiation and availability of valid servers (green and red).
+ *
+ * This test checks that Monitoring correctly tracks server availability based on responses.
+ */
+TEST_F(MonitoringTest, TestInstantiationWithGreenRedServers)
+{
+    // Set up expectations for the MockHTTPRequest with the generalized lambda
+    EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse));
+
+    // Instantiate the Monitoring object
+    auto m_monitoring =
+        std::make_shared<TMonitoring<TrampolineHTTPRequest>>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
+
+    // Ensure no exceptions during instantiation
+    EXPECT_NO_THROW(m_monitoring);
+
+    // Verify availability of green and red servers
+    EXPECT_TRUE(m_monitoring->isAvailable(GREEN_SERVER));
+    EXPECT_TRUE(m_monitoring->isAvailable(RED_SERVER));
+
+    // Check server health status after interval
+    std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
+
+    EXPECT_TRUE(m_monitoring->isAvailable(GREEN_SERVER));
+    EXPECT_FALSE(m_monitoring->isAvailable(RED_SERVER));
+}
+
+/**
+ * @brief Test to verify instantiation without any servers.
+ *
+ * This test checks that Monitoring can be instantiated with an empty server list.
+ */
+TEST_F(MonitoringTest, TestInstantiationWithoutServers)
+{
+    m_servers.clear(); // Clear all servers
+
+    // Instantiate Monitoring object without servers
+    auto m_monitoring =
+        std::make_shared<TMonitoring<TrampolineHTTPRequest>>(m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
+
+    // Ensure no exceptions during instantiation with an empty server list
+    EXPECT_NO_THROW(m_monitoring);
 }
