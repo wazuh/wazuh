@@ -1,3 +1,5 @@
+
+
 # Wazuh Open Source Project Security Policy
 
 Version: 2023-06-12
@@ -16,11 +18,11 @@ Please submit your findings as security advisories under the "Security" tab in t
 ## Vulnerability Disclosure Policy
 Upon receiving a report of a potential vulnerability, our team will initiate an investigation. If the reported issue is confirmed as a vulnerability, we will take the following steps:
 
-- Acknowledgment: We will acknowledge the receipt of your vulnerability report and begin our investigation.
-- Validation: We will validate the issue and work on reproducing it in our environment.
-- Remediation: We will work on a fix and thoroughly test it
-- Release & Disclosure: After 90 days from the discovery of the vulnerability, or as soon as a fix is ready and thoroughly tested (whichever comes first), we will release a security update for the affected project. We will also publicly disclose the vulnerability by publishing a CVE (Common Vulnerabilities and Exposures) and acknowledging the discovering party.
-- Exceptions: In order to preserve the security of the Wazuh community at large, we might extend the disclosure period to allow users to patch their deployments.
+1. Acknowledgment: We will acknowledge the receipt of your vulnerability report and begin our investigation.
+2. Validation: We will validate the issue and work on reproducing it in our environment.
+3. Remediation: We will work on a fix and thoroughly test it
+4. Release & Disclosure: After 90 days from the discovery of the vulnerability, or as soon as a fix is ready and thoroughly tested (whichever comes first), we will release a security update for the affected project. We will also publicly disclose the vulnerability by publishing a CVE (Common Vulnerabilities and Exposures) and acknowledging the discovering party.
+5. Exceptions: In order to preserve the security of the Wazuh community at large, we might extend the disclosure period to allow users to patch their deployments.
 
 This 90-day period allows for end-users to update their systems and minimizes the risk of widespread exploitation of the vulnerability.
 
@@ -42,4 +44,4 @@ We ask that all users and contributors respect this policy and the security of o
 ## Changes to this Security Policy
 This policy may be revised from time to time. Each version of the policy will be identified at the top of the page by its effective date.
 
-If you have any questions about this Security Policy, please contact us at [security@wazuh.com](mailto:security@wazuh.com).
+If you have any questions about this Security Policy, please contact us at [security@wazuh.com](mailto:security@wazuh.com)
