@@ -805,9 +805,9 @@ checks:
       - soc_2: ["CC6.3", "CC6.6"]
     condition: all
     rules:
-      - "c:systemctl is-enabled apport.service -> r:disabled"
+      - "not c:systemctl is-enabled apport.service -> r:^active"
       - "not f:/etc/default/apport -> n:enabled=(\\d+) compare != 0"
-      - "not c:systemctl is-active apport.service -> r:active"
+      - "not c:systemctl is-active apport.service -> r:^active"
 
   # 1.5.4 Ensure core dumps are restricted. (Automated)
   - id: 28532
@@ -826,9 +826,9 @@ checks:
     condition: all
     rules:
       - "c:sysctl fs.suid_dumpable -> r:^fs.suid_dumpable = 0"
-      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled"
-      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable = 0'
-      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:\p hard core 0'
+      - "c:systemctl is-enabled coredump.service -> r:enabled|masked|disabled|^Failed to get unit file state for coredump.service: No such file or directory"
+      - 'c:grep -Rh "fs.suid_dumpable" /etc/sysctl.conf /etc/sysctl.d/ -> !r:^\s*\t*# && r:fs.suid_dumpable=0'
+      - 'c:grep -Rh "hard core 0" /etc/security/limits.conf /etc/security/limits.d/ -> !r:^\s*\t*# && r:^* hard core 0'
 
   # 1.6.1.1 Ensure AppArmor is installed. (Automated)
   - id: 28533
@@ -876,10 +876,10 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:apparmor=1'
-      - 'f:/boot/grub/grub.cfg -> r:^\s*linux && r:security=apparmor'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:apparmor=1'
-      - 'not f:/boot/grub/grub.cfg -> r:^\s*linux && !r:security=apparmor'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:apparmor=1'
+      - 'f:/boot/grub/grub.cfg -> r:^\s*\t*linux && r:security=apparmor'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:apparmor=1'
+      - 'not f:/boot/grub/grub.cfg -> r:^\s*\t*linux && !r:security=apparmor'
 
   # 1.6.1.3 Ensure all AppArmor Profiles are in enforce or complain mode. (Automated)
   - id: 28535
@@ -1615,7 +1615,7 @@ checks:
     rules:
       - "c:dpkg-query -W -f='${binary:Package}\t${Status}\t${db:Status-Status}\\n' rsync -> r:no packages found matching rsync|deinstall|not-installed"
       - 'c:systemctl is-active rsync" -> r:inactive'
-      - "c:systemctl is-enabled rsync -> r:masked|disabled"
+      - "c:systemctl is-enabled rsync -> r:masked|disabled|^Failed to get unit file state for rsync.service: No such file or directory"
 
   # 2.3.1 Ensure NIS Client is not installed. (Automated)
   - id: 28567
@@ -3819,8 +3819,8 @@ checks:
       - mitre_techniques: ["T1078", "T1078.001", "T1078.002", "T1078.003"]
     condition: all
     rules:
-      - "c:sshd -T -> -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
-      - "c:sshd -T -> -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> n:^clientaliveinterval\\s*\\t*(\\d+) compare > 0"
+      - "c:sshd -T -> n:^clientalivecountmax\\s*\\t*(\\d+) compare > 0"
 
   # 5.3.1 Ensure sudo is installed. (Automated)
   - id: 28654
@@ -4051,7 +4051,7 @@ checks:
     condition: all
     rules:
       - 'f:/etc/pam.d/common-password -> r:^\s*\t*password\s*\t*[success=1\s*\t*default=ignore]\s*\t*pam_unix.so\s*\t*obscure'
-      - 'f:/etc/pam.d/common-password -> n:^\s*\t*use_authtok\s*\t*try_first_pass\s*\t*yescrypt\s*\t*remember=(\d+) compare >= 5'
+      - 'f:/etc/pam.d/common-password -> n:\s*\t*use_authtok\s*\t*try_first_pass\s*\t*yescrypt\s*\t*remember=(\d+) compare >= 5'
 
   # 5.4.4 Ensure password hashing algorithm is up to date with the latest standards. (Automated)
   - id: 28664
@@ -4075,7 +4075,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'not f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:yescrypt|md5|bigcrypt|sha256|sha512|blowfish'
+      - 'not f:/etc/pam.d/common-password -> !r:^\s*\t*# && r:md5|bigcrypt|sha256|sha512|blowfish'
       - 'f:/etc/login.defs -> r:^\s*\t*ENCRYPT_METHOD\s*\t*yescrypt'
 
   # 5.4.5 Ensure all current passwords uses the configured hashing algorithm (Manual) - Not implemented
@@ -4099,7 +4099,7 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
-      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS^\s*\t*(\d+) compare >=1'
+      - 'f:/etc/login.defs -> n:^\s*\t*PASS_MIN_DAYS\s*\t*(\d+) compare >=1'
       - 'f:/etc/shadow -> !r:^\w+:\p: && n:^\w+:\S*:\d*:(\d+): compare < 1'
 
   # 5.5.1.2 Ensure password expiration is 365 days or less. (Automated)
