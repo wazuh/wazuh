@@ -33,7 +33,9 @@ async def delete_agents(
     type: str = None,
     version: str = None,
     older_than: str = None,
-    node_name: str = None,
+    is_connected: bool = None,
+    ip: str = None,
+    os: str = None,
 ) -> ConnexionResponse:
     """Delete all agents or a list of them based on optional criteria.
 
@@ -46,18 +48,23 @@ async def delete_agents(
     agents_list : str
         List of agents IDs. If the 'all' keyword is indicated, all the agents are deleted.
     name : str
-        Filter by agent name.
+        Filter by name.
     group : str
-        Filter by agent group.
+        Filter by group.
     type : str
-        Filter by agents type.
+        Filter by type.
     version : str
-        Filter by agents version.
+        Filter by version.
     older_than : str
-        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
-    node_name : str
-        Filter by node name.
+        Filter out disconnected agents for longer than specified. Time in seconds, '[n_days]d',
+        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the register date.
+    is_connected : bool
+        Agent connection status.
+    ip : str
+        Filter by IP address.
+    os : str
+        Filter by operating system.
+
     Returns
     -------
     ConnexionResponse
@@ -74,7 +81,9 @@ async def delete_agents(
             'type': type,
             'version': version,
             'last_login': older_than,
-            'persistent_connection_node': node_name,
+            'is_connected': is_connected,
+            'ip': ip,
+            'os': os,
         },
     }
 
@@ -102,11 +111,13 @@ async def get_agents(
         type: str = None,
         version: str = None,
         older_than: str = None,
-        node_name: str = None,
         offset: int = 0,
         limit: int = DATABASE_LIMIT,
         select: str = None,
         sort: str = None,
+        is_connected: bool = None,
+        ip: str = None,
+        os: str = None,
 ) -> ConnexionResponse:
     """Get information about all agents or a list of them.
 
@@ -127,8 +138,8 @@ async def get_agents(
     version : str
         Filter by agents version.
     older_than : str
-        Filter out disconnected agents for longer than specified. Time in seconds, ‘[n_days]d’,
-        ‘[n_hours]h’, ‘[n_minutes]m’ or ‘[n_seconds]s’. For never_connected agents, use the register date.
+        Filter out disconnected agents for longer than specified. Time in seconds, '[n_days]d',
+        '[n_hours]h', '[n_minutes]m' or '[n_seconds]s'. For never_connected agents, use the register date.
     node_name : str
         Filter by node name.
     offset : int
@@ -140,6 +151,12 @@ async def get_agents(
     sort : str
         Sort the collection by a field or fields (separated by comma). Use +/- at the beginning to list in
         ascending or descending order.
+    is_connected : bool
+        Agent connection status.
+    ip : str
+        Filter by IP address.
+    os : str
+        Filter by operating system.
 
     Returns
     -------
@@ -157,7 +174,9 @@ async def get_agents(
             'type': type,
             'version': version,
             'last_login': older_than,
-            'persistent_connection_node': node_name,
+            'is_connected': is_connected,
+            'ip': ip,
+            'os': os,
         },
         'offset': offset,
         'limit': limit,

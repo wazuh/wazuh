@@ -326,15 +326,15 @@ async def get_agents(
     agent_list : list
         List of agent UUIDs to filter.
     filters : dict
-        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}.
+        Defines required field filters. Format: {"field1": "value1", "field2": ["value2", "value3"]}.
     offset : int
         First element to return in the collection.
     limit : int
         Maximum number of elements to return. Default: common.DATABASE_LIMIT
     select : dict
-        Select fields to return. Format: {"fields":["field1","field2"]}.
+        Select fields to return. Format: {"fields": ["field1", "field2"]}.
     sort : dict
-        Sorts the items. Format: {"fields":["field1","field2"],"order":"asc|desc"}.
+        Sorts the items. Format: {"fields": ["field1","field2"], "order": "asc|desc"}.
 
     Returns
     -------
@@ -346,8 +346,6 @@ async def get_agents(
         some_msg='Some agents information was not returned',
         none_msg='No agent information was returned'
     )
-    if filters is None:
-        filters = dict()
 
     query = build_agents_query(agent_list, filters)
 
