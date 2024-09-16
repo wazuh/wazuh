@@ -147,6 +147,21 @@ struct UpdaterContext
      *
      */
     int currentOffset {0};
+
+    /**
+     * @brief Construct a new Updater Context object
+     *
+     */
+    UpdaterContext() = default;
+
+    /**
+     * @brief Re initialize the context with the default values.
+     *
+     */
+    void initialize()
+    {
+        *this = UpdaterContext();
+    }
 };
 
 #endif // _UPDATER_CONTEXT_HPP

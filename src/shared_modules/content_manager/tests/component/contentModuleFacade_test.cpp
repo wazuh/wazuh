@@ -372,7 +372,7 @@ TEST_F(ContentModuleFacadeTest,
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         }));
 
     EXPECT_NO_THROW(contentModuleFacade.startScheduling(topicName, interval));

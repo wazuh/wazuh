@@ -171,7 +171,7 @@ public:
         catch (const offset_processing_exception& e)
         {
             logWarn(WM_CONTENTUPDATER, "Offset processing failed. Triggered a snapshot download.");
-            cleanContext();
+            cleanContext(spUpdaterContext);
             runContentUpdate(spUpdaterContext, true);
         }
         catch (const std::exception& e)
@@ -193,11 +193,20 @@ private:
     std::shared_ptr<UpdaterBaseContext> m_spBaseContext;
 
     /**
-     * @brief Clean ContentUpdater persistent data. Useful for cleaning the context when an exception is thrown.
+     * @brief Clean ContentUpdater persistent data and the updater context if provided.
      *
+     * @note Useful for cleaning the contexts when an exception is thrown.
+     *
+     * @param updaterContext Updater context to be re-initialized (optional).
      */
-    void cleanContext() const
+    void cleanContext(std::shared_ptr<UpdaterContext> spUpdaterContext = nullptr) const
     {
+        if (spUpdaterContext)
+        {
+            spUpdaterContext->initialize();
+            spUpdaterContext->spUpdaterBaseContext = m_spBaseContext;
+        }
+
         m_spBaseContext->downloadedFileHash.clear();
     }
 
@@ -287,8 +296,15 @@ private:
             spUpdaterContext->data = std::move(originalData);
         }
 
-        // Run the updater chain
-        m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+        try
+        {
+            // Run the updater chain
+            m_spUpdaterOrchestration->handleRequest(spUpdaterContext);
+        }
+        catch (const std::exception& e)
+        {
+            throw snapshot_processing_exception {e.what()};
+        }
     }
 
     /**

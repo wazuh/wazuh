@@ -182,7 +182,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitRawCompressionTy
         m_parameters,
         m_spStopActionCondition,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -218,7 +218,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
         m_parameters,
         m_spStopActionCondition,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -256,7 +256,7 @@ TEST_F(ActionOrchestratorTest, TestInstantiationAndExecutionWhitXZCompressionTyp
         m_parameters,
         m_spStopActionCondition,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));

@@ -40,7 +40,7 @@ TEST_F(ActionTest, TestInstantiation)
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         }));
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -83,7 +83,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawData)
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -125,7 +125,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForRawDataWithDeleteD
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -167,7 +167,7 @@ TEST_F(ActionTest, TestInstantiationAndStartActionSchedulerForCompressedData)
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -201,7 +201,7 @@ TEST_F(ActionTest, TestInstantiationAndRegisterActionOnDemandForRawData)
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -231,13 +231,13 @@ TEST_F(ActionTest, TestInstantiationOfTwoActionsWithTheSameTopicName)
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
     auto action2 {std::make_shared<Action>(
         topicName,
         parametersWithoutDatabasePath,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {20, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -267,7 +267,7 @@ TEST_F(ActionTest, TestInstantiationAndRunActionOnDemand)
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     EXPECT_TRUE(std::filesystem::exists(outputFolder));
@@ -311,7 +311,7 @@ TEST_F(ActionTest, ActionOnStartExecution)
         topicName,
         m_parameters,
         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-            return {0, "", false};
+            return {10, "", true};
         })};
 
     // Check output folder existence.
@@ -432,7 +432,7 @@ TEST_F(ActionTest, HashOnDemandUpdate)
     auto action {Action(topicName,
                         m_parameters,
                         [](const std::string& msg, std::shared_ptr<ConditionSync> shouldStop) -> FileProcessingResult {
-                            return {0, "", false};
+                            return {10, "1234", true};
                         })};
     action.registerActionOnDemand();
 
