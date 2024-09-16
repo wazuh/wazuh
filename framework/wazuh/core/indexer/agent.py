@@ -1,4 +1,3 @@
-from dataclasses import asdict
 from typing import List, Optional
 
 from opensearchpy import exceptions
@@ -6,7 +5,7 @@ from opensearchpy import exceptions
 from opensearchpy._async.helpers.update_by_query import AsyncUpdateByQuery
 from opensearchpy._async.helpers.search import AsyncSearch
 
-from wazuh.core.indexer.base import BaseIndex, IndexerKey, remove_empty_values
+from wazuh.core.indexer.base import BaseIndex, IndexerKey
 from wazuh.core.indexer.models.agent import Agent
 from wazuh.core.indexer.utils import get_source_items
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
@@ -170,9 +169,7 @@ class AgentsIndex(BaseIndex):
             If no agents exist with the uuid provided.
         """
         try:
-            # Convert to a dictionary removing empty values to avoid updating them
-            agent_dict = asdict(agent, dict_factory=remove_empty_values)
-            body = {IndexerKey.DOC: agent_dict}
+            body = {IndexerKey.DOC: agent.to_dict()}
             await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)

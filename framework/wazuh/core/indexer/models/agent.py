@@ -119,8 +119,8 @@ class Agent:
             The translated data.
         """
         ret_val = {}
-        for k,v in asdict(self, dict_factory=remove_empty_values).items():
+        for k, v in asdict(self, dict_factory=remove_empty_values).items():
             if k == 'groups':
-                v = ','.join(group for group in v)
+                v = ','.join(v)
             ret_val[k] = v
         return ret_val
