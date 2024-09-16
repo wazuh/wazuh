@@ -1577,11 +1577,6 @@ components:
       description: "Agent ID"
       format: uuid7
 
-    AgentUUID:
-      type: string
-      description: "Agent UUID"
-      format: uuid7
-
     AgentIDListAll:
       type: string
       minLength: 3
@@ -5335,7 +5330,7 @@ components:
       description: "Agent ID. All possible values from 001 onwards"
       required: true
       schema:
-        $ref: '#/components/schemas/AgentUUID'
+        $ref: '#/components/schemas/AgentID'
     agent_name:
       in: query
       name: agent_name
@@ -5807,7 +5802,7 @@ components:
       schema:
         type: array
         items:
-          $ref: '#/components/schemas/AgentUUID'
+          $ref: '#/components/schemas/AgentID'
     agents_list_all:
       in: query
       name: agents_list

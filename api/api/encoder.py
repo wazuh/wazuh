@@ -7,12 +7,10 @@ from dataclasses import asdict, is_dataclass
 
 import six
 from connexion.jsonifier import JSONEncoder
-from dataclasses import asdict, is_dataclass
 
 from api.models.base_model_ import Model
 from wazuh.core.indexer.base import remove_empty_values
 from wazuh.core.results import AbstractWazuhResult
-from wazuh.core.indexer.base import remove_empty_values
 
 
 class WazuhAPIJSONEncoder(JSONEncoder):

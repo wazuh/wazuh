@@ -2,9 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import dataclasses
 import json
-from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
@@ -22,10 +20,10 @@ def custom_hook(dct):
 
     if 'key' in dct:
         return {'key': dct['key']}
-    
+
     if 'error' in dct:
         return WazuhResult.decode_json({'result': dct, 'str_priority': 'v2'})
-    
+
     return dct
 
 

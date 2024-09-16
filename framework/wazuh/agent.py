@@ -298,7 +298,7 @@ def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult
     Parameters
     ----------
     agent_list : list, optional
-        List of agents. Default `None`
+        List of agents. Default `None`.
 
     Returns
     -------
@@ -326,7 +326,7 @@ async def get_agents(
     agent_list : list
         List of agent UUIDs to filter.
     filters : dict
-        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}.
     offset : int
         First element to return in the collection.
     limit : int
@@ -466,7 +466,7 @@ async def delete_agents(agent_list: list, filters: Optional[dict] = None,) -> Af
     agent_list : list
         List of agents ID's to be deleted.
     filters : dict
-        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
+        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}.
 
     Returns
     -------
@@ -747,7 +747,7 @@ async def assign_agents_to_group(group_list: list = None, agent_list: list = Non
         for not_found_id in set(agent_list) - set(available_agents):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
-            
+
         await indexer_client.agents.add_agents_to_group(group_name=group_id, agent_ids=agent_list)
 
     result.affected_items.extend(agent_list)
@@ -854,9 +854,9 @@ async def remove_agents_from_group(agent_list: list = None, group_list: list = N
         for not_found_id in set(agent_list) - set(available_agents):
             result.add_failed_item(not_found_id, error=WazuhResourceNotFound(1701))
             agent_list.remove(not_found_id)
-        
+
         await indexer_client.agents.remove_agents_from_group(group_name=group_id, agent_ids=agent_list)
-    
+
     result.affected_items.extend(agent_list)
     result.total_affected_items = len(result.affected_items)
 
