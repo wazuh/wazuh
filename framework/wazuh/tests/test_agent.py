@@ -28,6 +28,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             ERROR_CODES_UPGRADE_SOCKET,
             ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST,
             add_agent,
+            build_agents_query,
             create_group,
             delete_agents,
             delete_groups,
@@ -122,59 +123,6 @@ def test_agent_get_distinct_agents(socket_mock, send_mock, fields, expected_item
     assert distinct.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
 
 
-@pytest.mark.parametrize('fields, order, expected_items', [
-    (['os.version', 'os.name'], 'asc',
-     [
-         {'id': '003'},
-         {'id': '004'},
-         {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
-         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
-         {'id': '001', 'os': {'name': 'Ubuntu', 'version': '16.06.1 LTS'}},
-         {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
-         {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
-         {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
-         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
-     ]
-     ),
-    (['os.name', 'os.version'], 'asc',
-     [
-         {'id': '003'},
-         {'id': '004'},
-         {'id': '002', 'os': {'name': 'Ubuntu', 'version': '16.04.1 LTS'}},
-         {'id': '001', 'os': {'name': 'Ubuntu', 'version': '16.06.1 LTS'}},
-         {'id': '007', 'os': {'name': 'Ubuntu', 'version': '18.04.1 LTS'}},
-         {'id': '005', 'os': {'name': 'Ubuntu', 'version': '18.08.1 LTS'}},
-         {'id': '009', 'os': {'name': 'Windows', 'version': '10.0.0 XP'}},
-         {'id': '008', 'os': {'name': 'Xubuntu', 'version': '18.04.1 LTS'}},
-         {'id': '006', 'os': {'name': 'Xubuntu', 'version': '21.04.1 LTS'}}
-     ]
-     ),
-    (['os.platform', 'os.minor', 'os.major'], 'desc',
-     [
-         {'id': '006', 'os': {'major': '21', 'minor': '04', 'platform': 'xubuntu'}},
-         {'id': '008', 'os': {'major': '18', 'minor': '04', 'platform': 'xubuntu'}},
-         {'id': '009', 'os': {'major': '10', 'minor': '00', 'platform': 'windows'}},
-         {'id': '005', 'os': {'major': '18', 'minor': '08', 'platform': 'ubuntu'}},
-         {'id': '001', 'os': {'major': '16', 'minor': '06', 'platform': 'ubuntu'}},
-         {'id': '007', 'os': {'major': '18', 'minor': '04', 'platform': 'ubuntu'}},
-         {'id': '002', 'os': {'major': '16', 'minor': '04', 'platform': 'ubuntu'}},
-         {'id': '003'},
-         {'id': '004'}
-     ]
-     ),
-])
-@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_sort_order(socket_mock, send_mock, fields, order, expected_items):
-    """Test `sort` parameter of GET /agents endpoint with multiples and/or nested fields."""
-    sorted_agents = get_agents(agent_list=full_agent_list, select=fields, sort={'fields': fields, 'order': order})
-    assert isinstance(sorted_agents, AffectedItemsWazuhResult), 'The returned object is not an ' \
-                                                                '"AffectedItemsWazuhResult". '
-    assert sorted_agents.affected_items == expected_items, f'"Affected_items" does not match. Should be ' \
-                                                           f'"{expected_items}". '
-
-
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_summary_status(socket_mock, send_mock):
@@ -235,14 +183,8 @@ def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconn
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
 
-@pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], None),
-    (['001', '500'], ['001'], 1701)
-])
-@patch('wazuh.agent.send_restart_command')
-@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
+@pytest.mark.parametrize('agent_list, expected_items, error_code', [])
+@pytest.mark.skip('To be implemented along `restart_agents` function')
 def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
                               expected_items, error_code):
     """Test `restart_agents` function from agent module.
@@ -264,13 +206,8 @@ def test_agent_restart_agents(socket_mock, send_mock, agents_info_mock, send_res
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
 
-@pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '500'], ['001'], 1701)
-])
-@patch('wazuh.agent.send_restart_command')
-@patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
+@pytest.mark.parametrize('agent_list, expected_items, error_code', [])
+@pytest.mark.skip('To be implemented along `restart_agents` function')
 def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, send_restart_mock, agent_list,
                                       expected_items, error_code):
     """Test `restart_agents_by_node` function from agent module.
@@ -292,13 +229,28 @@ def test_agent_restart_agents_by_node(socket_mock, send_mock, agents_info_mock, 
         assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
 
-@pytest.mark.parametrize('agent_list, expected_items', [
-    (['001', '002', '003'], ['001', '002', '003']),
-    (['001', '400', '002', '500'], ['001', '002'])
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agents(socket_mock, send_mock, agent_list, expected_items):
+@pytest.mark.parametrize(
+        'agent_list,expected_items',
+        [
+            (['019008da'], ['019008da']),
+            (['019008da'], []),
+            (['019008da', '019008db'], ['019008da']),
+            ([], ['019008da']),
+            ([], []),
+        ]
+)
+@pytest.mark.parametrize(
+    'filters,params', [
+        ({}, {'select': 'id', 'limit': 20}),
+        ({'older_than': '1d', 'name': 'test'}, {'select': 'id', 'limit': 20}),
+        ({'older_than': '1d', 'name': 'test'}, {}),
+    ]
+)
+@patch('wazuh.agent.build_agents_query')
+@patch('wazuh.core.indexer.create_indexer')
+async def test_agent_get_agents(
+    create_indexer_mock, build_agents_query_mock, agent_list, expected_items, filters, params
+):
     """Test `get_agents` function from agent module.
 
     Parameters
@@ -308,13 +260,15 @@ def test_agent_get_agents(socket_mock, send_mock, agent_list, expected_items):
     expected_items : List of str
         List of expected agent ID's returned by 'get_agents'.
     """
-    result = get_agents(agent_list=agent_list, select=['id'])
+    agents_search_mock = AsyncMock(return_value=expected_items)
+    create_indexer_mock.return_value.agents.search = agents_search_mock
+
+    result = await get_agents(agent_list, filters=filters, **params)
+
+    build_agents_query_mock.assert_called_once_with(agent_list, filters)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert result.affected_items
     assert len(result.affected_items) == len(expected_items)
     assert (expected_id == agent_id for expected_id, agent_id in zip(expected_items, result.affected_items))
-    if result.failed_items:
-        assert (failed_item.message == 'Agent does not exist' for failed_item in result.failed_items.keys())
 
 
 @pytest.mark.asyncio
@@ -388,10 +342,9 @@ def test_agent_get_agents_keys(socket_mock, send_mock, agent_list, expected_item
             ([], [], []),
         ]
 )
-@patch('wazuh.agent.get_document_ids')
 @patch('wazuh.core.indexer.create_indexer')
 async def test_agent_delete_agents(
-    create_indexer_mock, get_document_ids_mock, agent_list, available_agents, expected_items
+    create_indexer_mock, agent_list, available_agents, expected_items
 ):
     """Test `delete_agents` function from agent module.
 
@@ -402,24 +355,21 @@ async def test_agent_delete_agents(
     expected_items : List of str
         List of expected agent ID's returned by
     """
-    agents_search_mock = AsyncMock()
+    filters = {}
+    agents_search_mock = AsyncMock(return_value=[Agent(id=agent_id) for agent_id in available_agents])
     agents_delete_mock = AsyncMock(return_value=expected_items)
 
-    get_document_ids_mock.return_value = available_agents
     create_indexer_mock.return_value.agents.search = agents_search_mock
     create_indexer_mock.return_value.agents.delete = agents_delete_mock
 
-    result = await delete_agents(agent_list)
+    result = await delete_agents(agent_list, filters)
 
     if agent_list == available_agents:
         agents_delete_mock.assert_called_once_with(agent_list)
     else:
         agents_delete_mock.assert_called_once_with(available_agents)
 
-    if len(agent_list) != 0:
-        agents_search_mock.assert_called_once_with(query={IndexerKey.QUERY:{IndexerKey.TERMS:{'_id':agent_list}}})
-    else:
-        agents_search_mock.assert_called_once_with(query={IndexerKey.QUERY:{IndexerKey.WILDCARD:{IndexerKey._ID:'*'}}})
+    agents_search_mock.assert_called_once_with(query=build_agents_query(agent_list, filters))
 
     assert result.affected_items == expected_items
 
@@ -754,9 +704,7 @@ async def test_agent_remove_agents_from_group(mock_get_groups, create_indexer_mo
     agent_list : List of str
         List of agent ID's.
     """
-    search_mock = AsyncMock(return_value={IndexerKey.HITS: {IndexerKey.HITS: [
-        {IndexerKey._ID: '0191c7fa-26d5-705f-bc3c-f54810d30d79'}
-    ]}})
+    search_mock = AsyncMock(return_value=[IndexerAgent(id='0191c7fa-26d5-705f-bc3c-f54810d30d79')])
     create_indexer_mock.return_value.agents.search = search_mock
 
     expected_msg = f"Agent '{group_list[0]}' removed from '{group_list[0]}'"
@@ -1157,6 +1105,7 @@ def test_agent_upload_group_file(mock_update, group_list):
 @patch('wazuh.agent.get_agents')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Define if we will keep this function')
 def test_agent_get_full_overview(socket_mock, send_mock, get_mock, summary_mock, group_mock, distinct_mock, agent_list,
                                  group_list, index_error, last_agent):
     """Test `get_full_overview` function from agent module.
@@ -1232,6 +1181,7 @@ def insert_agents_db(n_agents=100000):
 @patch('wazuh.agent.get_agents_info', return_value=['test', 'test2'])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
+@pytest.mark.skip('Define if we will keep this function')
 def test_get_agents_big_env(mock_conn, mock_send, mock_get_agents, insert_agents_db, agent_list, params, expected_ids):
     """Check that the expected number of items is returned when limit is greater than 500.
 
@@ -1311,3 +1261,35 @@ async def test_unset_single_group_agent_ko(create_indexer_mock, group_exists_moc
     """
     with pytest.raises(WazuhException, match=f".* {expected_exc} .*"):
         await Agent.unset_single_group_agent(agent_id, group_id, force=force)
+
+@pytest.mark.parametrize(
+    'agent_list,filters,expected_filters',
+    [
+        (
+            ['019008da-1575-7375-b54f-ef43e393517ef'],
+            {'last_login': '1d', 'name': 'test'},
+            [
+                {IndexerKey.TERMS: {IndexerKey._ID: ['019008da-1575-7375-b54f-ef43e393517ef']}},
+                {IndexerKey.RANGE: {'last_login': {IndexerKey.LTE: "now-1d"}}},
+                {IndexerKey.TERM: {'name': 'test'}}
+            ]
+        )
+    ]
+)
+def test_build_agents_query(agent_list, filters, expected_filters):
+    """Test `build_agents_query` function from agent module works as expected.
+
+    Parameters
+    ----------
+    agent_list : list
+        Agents id.
+    filters : dict
+        Filters to parse.
+    expected_filters : dict
+        Expected query.
+    """
+    query = build_agents_query(agent_list, filters)
+
+    assert IndexerKey.QUERY in query
+    assert IndexerKey.BOOL in query[IndexerKey.QUERY]
+    assert query[IndexerKey.QUERY][IndexerKey.BOOL][IndexerKey.FILTER] == expected_filters

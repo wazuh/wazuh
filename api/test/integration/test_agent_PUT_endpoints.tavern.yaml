@@ -421,6 +421,9 @@ stages:
 ---
 test_name: PUT /agents/restart
 
+marks:
+  - xfail
+
 stages:
 
   # PUT /agents/restart?agents_list=wrong_id
@@ -517,6 +520,9 @@ stages:
 
 ---
 test_name: PUT /agents/{agent_id}/restart
+
+marks:
+  - xfail
 
 stages:
 

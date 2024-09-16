@@ -37,3 +37,15 @@ class TestAgent:
         agent = self.model(id=self.id, name=self.name, raw_key=self.key)
 
         assert agent.check_key(key) == expected
+
+    @pytest.mark.parametrize(
+        'data,expected',
+        [
+            ({'groups': 'default,test'}, {'groups': 'default,test'}),
+            ({'name': 'test'}, {'name': 'test'}),
+        ]
+    )
+    def test_to_dict(self, data: dict, expected):
+        """Check the correct function if `to_dict` method."""
+        agent = Agent(**data)
+        assert agent.to_dict() == expected

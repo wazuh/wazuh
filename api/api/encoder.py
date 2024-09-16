@@ -9,8 +9,8 @@ import six
 from connexion.jsonifier import JSONEncoder
 
 from api.models.base_model_ import Model
-from wazuh.core.results import AbstractWazuhResult
 from wazuh.core.indexer.base import remove_empty_values
+from wazuh.core.results import AbstractWazuhResult
 
 
 class WazuhAPIJSONEncoder(JSONEncoder):

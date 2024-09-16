@@ -36,7 +36,7 @@ class TestAgentIndex:
         client_mock.index.assert_called_once_with(
             index=index_instance.INDEX,
             id=self.create_id,
-            body=asdict(new_agent, dict_factory=remove_empty_values),
+            body=new_agent.to_dict(),
             op_type='create',
             refresh='wait_for'
         )
@@ -64,14 +64,30 @@ class TestAgentIndex:
     async def test_search(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `search` method."""
         query = {'foo': 1, 'bar': 2}
-        search_result = {'baz': 3}
+        select = 'id'
+        exclude = 'key'
+        limit = 10
+        offset = 1
+        sort = 'name'
+        search_result = [{'name': 'test', 'id': '0191dd54-bd16-7025-80e6-ae49bc101c7a'}]
         client_mock.search.return_value = search_result
 
-        result = await index_instance.search(query=query)
+        with mock.patch('wazuh.core.indexer.agent.get_source_items', return_value=search_result):
+            result = await index_instance.search(
+                query=query, select=select, exclude=exclude, limit=limit, offset=offset, sort=sort
+            )
 
-        assert result == search_result
-        client_mock.search.assert_called_once_with(index=index_instance.INDEX, body=query)
-    
+        assert result == [Agent(**item) for item in search_result]
+        client_mock.search.assert_called_once_with(
+            index=index_instance.INDEX,
+            body=query,
+            _source_includes=select,
+            _source_excludes=exclude,
+            size=limit,
+            from_=offset,
+            sort=sort
+        )
+
     async def test_update(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `update` method."""
         uuid = '0191c22a-da10-79bd-9c47-818bc1c03065'
@@ -81,7 +97,7 @@ class TestAgentIndex:
 
         query = {IndexerKey.DOC: {'name': new_name}}
         client_mock.update.assert_called_once_with(index=index_instance.INDEX, id=uuid, body=query)
-    
+
     async def test_delete_group(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `delete_group` method."""
         group_name = 'foo'
@@ -96,17 +112,17 @@ class TestAgentIndex:
                         }
                     }]
                 }
-            }, 
+            },
             'script': {
                 'source': AgentsIndex.REMOVE_GROUP_SCRIPT,
-                'lang': 'painless', 
+                'lang': 'painless',
                 'params': {
                     'group': group_name
                 }
             }
         }
         client_mock.update_by_query.assert_called_once_with(index=[index_instance.INDEX], body=query)
-    
+
     async def test_get_group_agents(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock):
         """Check the correct function of `get_group_agents` method."""
         group_name = 'foo'
@@ -142,7 +158,7 @@ class TestAgentIndex:
             await index_instance.add_agents_to_group(group_name=group_name, agent_ids=agent_ids, override=override)
 
         mock_update.assert_called_once_with(group_name=group_name, agent_ids=agent_ids, override=override)
-    
+
     async def test_remove_agents_from_group(self, index_instance: AgentsIndex):
         """Check the correct function of `remove_agents_from_group` method."""
         group_name = 'foo'
@@ -152,7 +168,7 @@ class TestAgentIndex:
             await index_instance.remove_agents_from_group(group_name=group_name, agent_ids=agent_ids)
 
         mock_update.assert_called_once_with(group_name=group_name, agent_ids=agent_ids, remove=True)
-    
+
     @pytest.mark.parametrize('override', [False, True])
     async def test__update_groups_add(self, index_instance: AgentsIndex, client_mock: mock.AsyncMock, override):
         """Check the correct function of `_update_groups` method."""
@@ -180,10 +196,10 @@ class TestAgentIndex:
                         }
                     }]
                 }
-            }, 
+            },
             'script': {
                 'source': source,
-                'lang': 'painless', 
+                'lang': 'painless',
                 'params': {
                     'group': group_name
                 }
@@ -206,10 +222,10 @@ class TestAgentIndex:
                         }
                     }]
                 }
-            }, 
+            },
             'script': {
                 'source': AgentsIndex.REMOVE_GROUP_SCRIPT,
-                'lang': 'painless', 
+                'lang': 'painless',
                 'params': {
                     'group': group_name
                 }

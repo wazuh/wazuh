@@ -1458,7 +1458,7 @@ components:
         id:
           description: "Agent id"
           type: string
-          format: uuid
+          format: uuid7
         name:
           description: "Agent name"
           type: string
@@ -1467,6 +1467,8 @@ components:
           description: "Agent authentication key"
           type: string
           format: alphanumeric_symbols
+          minLength: 32
+          maxLength: 32
         groups:
           description: "Agent groups"
           type: string
@@ -5856,6 +5858,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    node_name:
+      in: query
+      name: manager
+      description: "Filter by cluster node where agents are connected to"
+      schema:
+        type: string
+        format: alphanumeric
     mitre_mitigation_ids:
       in: query
       name: 'mitigation_ids'
@@ -5907,6 +5916,13 @@ components:
     name:
       in: query
       name: name
+      description: "Filter by name"
+      schema:
+        type: string
+        format: alphanumeric
+    type:
+      in: query
+      name: type
       description: "Filter by name"
       schema:
         type: string
@@ -7285,6 +7301,12 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list_all'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/olderThanParam'
+        - $ref: '#/components/parameters/node_name'
       responses:
         '200':
           description: "Delete agents"
@@ -7331,26 +7353,16 @@ paths:
         - $ref: '#/components/parameters/pretty'
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/agent_group'
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/version'
+        - $ref: '#/components/parameters/olderThanParam'
+        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/statusAgentParam'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/olderThanParam'
-        - $ref: '#/components/parameters/os.platform'
-        - $ref: '#/components/parameters/os.version'
-        - $ref: '#/components/parameters/os.name'
-        - $ref: '#/components/parameters/manager_host'
-        - $ref: '#/components/parameters/version'
-        - $ref: '#/components/parameters/agent_group'
-        - $ref: '#/components/parameters/node_name'
-        - $ref: '#/components/parameters/name'
-        - $ref: '#/components/parameters/ip'
-        - $ref: '#/components/parameters/registerIP'
-        - $ref: '#/components/parameters/group_config_status'
-        - $ref: '#/components/parameters/distinct'
       responses:
         '200':
           description: "List of agents or error description"
@@ -7366,81 +7378,27 @@ paths:
               example:
                 data:
                   affected_items:
-                    - os:
-                        arch: x86_64
-                        codename: Focal Fossa
-                        major: '20'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
-                        version: 20.04.2 LTS
-                      lastKeepAlive: '2021-05-26T12:40:40Z'
-                      id: '001'
-                      dateAdd: 2021-05-26T12:40:08Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
-                      group: [default]
-                      registerIP: any
-                      ip: 172.25.0.6
+                    - id: '019008da-1575-7375-b54f-ef43e393517ef'
                       name: ac7cb188d538
-                      status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v4.3.0
+                      groups: [default]
+                      type: agent
+                      version: v5.0.0
+                      last_login: 2024-05-26T12:40:08Z
                       node_name: worker2
-                      group_config_status: 'synced'
-                      status_code: 0
-                    - os:
-                        arch: x86_64
-                        codename: Focal Fossa
-                        major: '20'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
-                        version: 20.04.2 LTS
-                      lastKeepAlive: '2021-05-26T12:40:40Z'
-                      id: '002'
-                      dateAdd: 2021-05-26T12:40:10Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
-                      group: [default]
-                      registerIP: any
-                      ip: 172.25.0.11
-                      name: 91642a418627
-                      status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v4.3.0
-                      node_name: worker2
-                      group_config_status: 'synced'
-                      status_code: 0
-                    - os:
-                        arch: x86_64
-                        codename: Focal Fossa
-                        major: '20'
-                        minor: '04'
-                        name: Ubuntu
-                        platform: ubuntu
-                        uname: Linux |ac7cb188d538 |5.8.0-45-generic |#51~20.04.1-Ubuntu SMP Tue Feb
-                          23 13:46:31 UTC 2021 |x86_64
-                        version: 20.04.2 LTS
-                      lastKeepAlive: '2021-05-26T12:40:40Z'
-                      id: '003'
-                      dateAdd: 2021-05-26T12:40:10Z
-                      configSum: ab73af41699f13fdd81903b5f23d8d00
-                      manager: wazuh-worker2
-                      group: [default]
-                      registerIP: any
-                      ip: 172.25.0.10
-                      name: a442e15bc84e
-                      status: active
-                      mergedSum: 9a016508cea1e997ab8569f5cfab30f5
-                      version: Wazuh v4.3.0
+                    - id: '019008da-1575-7375-b54f-ef43e393517eg'
+                      name: bc7ch188d538
+                      groups: [default]
+                      type: agent
+                      version: v5.0.0
+                      last_login: 2024-05-26T12:40:08Z
                       node_name: worker1
-                      group_config_status: 'not synced'
-                      status_code: 0
+                    - id: '019008da-1575-7375-b54f-ef43e393517eh'
+                      name: zc7c7188d538
+                      groups: [default]
+                      type: agent
+                      version: v5.0.0
+                      last_login: 2024-05-26T12:40:08Z
+                      node_name: worker2
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
@@ -7697,7 +7655,7 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - "002"
+                      - "0191be8b-dbdd-7ce7-afd2-4d81993f73c4"
                     total_affected_items: 1
                     total_failed_items: 0
                     failed_items: []
@@ -8501,31 +8459,12 @@ paths:
                 example:
                   data:
                     affected_items:
-                      - '001'
-                      - '002'
-                      - '003'
-                      - '004'
-                      - '005'
-                      - '006'
-                      - '007'
-                      - '008'
-                    total_affected_items: 8
-                    total_failed_items: 3
-                    failed_items:
-                      - error:
-                          code: 1707
-                          message: "Cannot send request, agent is not active"
-                          remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/4.10/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/4.10/user-manual/agents/agent-connection.html
-                           to obtain more information on registering and connecting agents"
-                        id:
-                          - '009'
-                          - '010'
-                          - '011'
-                  message: "Restart command was not sent to some agents"
-                  error: 2
-
+                      - '0191be8b-dbdd-7ce7-afd2-4d81993f73c4'
+                      - '0191bed5-688b-7c7c-8a65-564aca95ea0d'
+                      - '0191bed5-90a2-7240-87e2-2399a08c959b'
+                      - '0191bed5-cf10-7492-b69f-6de8ea3e3d59'
+                    total_affected_items: 4
+                    total_failed_items: 0
         '400':
           $ref: '#/components/responses/ResponseError'
         '401':

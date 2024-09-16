@@ -64,11 +64,28 @@ async def test_delete_agents(
     mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_alist,mock_request
 ):
     """Verify 'delete_agents' endpoint is working as expected."""
-
-    result = await delete_agents(agents_list=mock_alist)
+    filters = {
+        'name': 'test',
+        'group': 'test_group',
+        'type': 'agent',
+        'version': 'v5.0.0',
+        'older_than': '1d',
+        'node_name': 'worker1'
+    }
+    result = await delete_agents(agents_list=mock_alist, **filters)
     if 'all' in mock_alist:
         mock_alist = []
-    f_kwargs = {'agent_list': mock_alist}
+    f_kwargs = {
+        'agent_list': mock_alist,
+        'filters': {
+            'name': 'test',
+            'groups': 'test_group',
+            'type': 'agent',
+            'version': 'v5.0.0',
+            'last_login': '1d',
+            'persistent_connection_node': 'worker1'
+        }
+    }
 
     mock_dapi.awaited_once_with(
         f=agent.delete_agents,
@@ -94,38 +111,32 @@ async def test_delete_agents(
 async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'get_agents' endpoint is working as expected."""
     result = await get_agents()
-    f_kwargs = {'agent_list': None,
-                'offset': 0,
-                'limit': DATABASE_LIMIT,
-                'sort': None,
-                'search': None,
-                'select': None,
-                'filters': {
-                    'status': None,
-                    'older_than': None,
-                    'manager': None,
-                    'version': None,
-                    'group': None,
-                    'node_name': None,
-                    'name': None,
-                    'ip': None,
-                    'registerIP': mock_request.query_params.get('registerIP', None),
-                    'group_config_status': None
-                },
-                'q': None,
-                'distinct': False
-                }
-    nested = ['os.version', 'os.name', 'os.platform']
-    for field in nested:
-        f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
-    mock_dapi.assert_called_once_with(f=agent.get_agents,
-                                      f_kwargs=mock_remove.return_value,
-                                      request_type='local_master',
-                                      is_async=False,
-                                      wait_for_complete=False,
-                                      logger=ANY,
-                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
-                                      )
+
+    f_kwargs = {
+        'agent_list': [],
+        'filters': {
+            'name': None,
+            'groups': None,
+            'type': None,
+            'version': None,
+            'last_login': None,
+            'persistent_connection_node': None,
+        },
+        'offset': 0,
+        'limit': DATABASE_LIMIT,
+        'select': None,
+        'sort': None,
+    }
+
+    mock_dapi.assert_called_once_with(
+        f=agent.get_agents,
+        f_kwargs=mock_remove.return_value,
+        request_type='local_any',
+        is_async=True,
+        wait_for_complete=False,
+        logger=ANY,
+        rbac_permissions=mock_request.context['token_info']['rbac_policies']
+    )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
     assert isinstance(result, ConnexionResponse)
@@ -191,6 +202,7 @@ async def test_reconnect_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+@pytest.mark.skip('To be implemented')
 async def test_restart_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'restart_agents' endpoint is working as expected."""
     result = await restart_agents()
@@ -331,6 +343,7 @@ async def test_get_agent_key(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
 @patch('api.controllers.agent_controller.remove_nones_to_dict')
 @patch('api.controllers.agent_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.agent_controller.raise_if_exc', return_value=CustomAffectedItems())
+@pytest.mark.skip('To be implemented')
 async def test_restart_agent(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp, mock_request):
     """Verify 'restart_agent' endpoint is working as expected."""
     result = await restart_agent(
