@@ -99,5 +99,6 @@ jobs:
       # Run fim integration tests.
       - name: Run fim integration tests
         run: |
+          NET START wazuh
           cd C:\wazuh\tests\integration
           python -m pytest --tier 0 --tier 1 test_fim\
