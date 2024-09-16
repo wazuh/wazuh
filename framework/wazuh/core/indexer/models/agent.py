@@ -1,8 +1,10 @@
 import hashlib
 import os
-from dataclasses import InitVar, dataclass
+from dataclasses import asdict, dataclass, InitVar
 from datetime import datetime
 from hmac import compare_digest
+
+from wazuh.core.indexer.base import remove_empty_values
 
 ITERATIONS = 100_000
 HASH_ALGO = 'sha256'
@@ -92,3 +94,18 @@ class Agent:
         stored_key = self.key.encode('latin-1')
         salt, key_hash = stored_key[:16], stored_key[16:]
         return compare_digest(key_hash, _hash_key(key, salt))
+
+    def to_dict(self) -> dict:
+        """Translate the instance to a dictionary ready to be indexed.
+
+        Returns
+        -------
+        dict
+            The translated data.
+        """
+        ret_val = {}
+        for k,v in asdict(self, dict_factory=remove_empty_values).items():
+            if k == 'groups':
+                v = ','.join(group for group in v)
+            ret_val[k] = v
+        return ret_val

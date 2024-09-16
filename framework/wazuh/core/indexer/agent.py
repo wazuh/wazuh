@@ -62,13 +62,13 @@ class AgentsIndex(BaseIndex):
             await self._client.index(
                 index=self.INDEX,
                 id=id,
-                body=asdict(agent, dict_factory=remove_empty_values),
+                body=agent.to_dict(),
                 op_type='create',
                 refresh='wait_for'
             )
         except exceptions.ConflictError:
             raise WazuhError(1708, extra_message=id)
-        
+
         return agent
 
     async def delete(self, ids: List[str]) -> list:
@@ -176,7 +176,7 @@ class AgentsIndex(BaseIndex):
             await self._client.update(index=self.INDEX, id=uuid, body=body)
         except exceptions.NotFoundError:
             raise WazuhResourceNotFound(1701)
-    
+
     # Group queries
 
     async def delete_group(self, group_name: str):
@@ -195,10 +195,10 @@ class AgentsIndex(BaseIndex):
                 params={'group': group_name}
             )
         _ = await query.execute()
-    
+
     async def get_group_agents(self, group_name: str) -> List[Agent]:
         """Get the agents belonging to a specific group.
-        
+
         Parameters
         ----------
         group_name : str
@@ -217,7 +217,7 @@ class AgentsIndex(BaseIndex):
             agents.append(Agent(**hit.to_dict()))
 
         return agents
-    
+
     async def add_agents_to_group(self, group_name: str, agent_ids: List[str], override: bool = False):
         """Add agents to a group.
 
@@ -231,7 +231,7 @@ class AgentsIndex(BaseIndex):
             Replace all groups with the specified one.
         """
         await self._update_groups(group_name=group_name, agent_ids=agent_ids, override=override)
-    
+
     async def remove_agents_from_group(self, group_name: str, agent_ids: List[str]):
         """Remove agent from a group.
 
@@ -243,7 +243,7 @@ class AgentsIndex(BaseIndex):
             Agent IDs.
         """
         await self._update_groups(group_name=group_name, agent_ids=agent_ids, remove=True)
-    
+
     async def _update_groups(self, group_name: str, agent_ids: List[str], remove: bool = False, override: bool = False):
         """Add or remove group from multiple agents.
 
@@ -280,4 +280,3 @@ class AgentsIndex(BaseIndex):
                 params={'group': group_name}
             )
         _ = await query.execute()
-
