@@ -14,6 +14,8 @@
 #include "base/logging.hpp"
 #include "secureCommunication.hpp"
 #include "serverSelector.hpp"
+#include "stringHelper.h"
+#include "timeUtils.hpp"
 #include <fstream>
 
 constexpr auto INDEXER_COLUMN {"indexer"};
@@ -106,7 +108,10 @@ static void builderBulkIndex(std::string& bulkData, std::string_view id, std::st
 IndexerConnector::IndexerConnector(const nlohmann::json& config, const uint32_t& timeout, const uint8_t workingThreads)
 {
     // Get index name.
+    auto currentTime = base::utils::time::getCurrentTimestamp(true);
+    Utils::replaceAll(currentTime, "/", ".");
     m_indexName = config.at("name").get_ref<const std::string&>();
+    Utils::replaceAll(m_indexName, "$(date)", currentTime);
 
     if (base::utils::string::haveUpperCaseCharacters(m_indexName))
     {

@@ -29,9 +29,14 @@ std::string getTimestamp(const std::time_t& time, const bool utc = true)
     ss << std::setfill('0') << std::setw(2) << std::to_string(localTime->tm_sec);
     return ss.str();
 }
-std::string getCurrentTimestamp()
+std::string getCurrentTimestamp(const bool onlyDate = false)
 {
-    return getTimestamp(std::time(nullptr));
+    std::string currentTimestamp {getTimestamp(std::time(nullptr))};
+    if (onlyDate)
+    {
+        currentTimestamp = base::utils::string::split(currentTimestamp, ' ').at(0);
+    }
+    return currentTimestamp;
 }
 
 std::string getCompactTimestamp(const std::time_t& time, const bool utc = true)

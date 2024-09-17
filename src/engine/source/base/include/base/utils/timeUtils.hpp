@@ -19,7 +19,7 @@ namespace base::utils::time
 {
 
 std::string getTimestamp(const time_t& time, bool utc = true);
-std::string getCurrentTimestamp();
+std::string getCurrentTimestamp(const bool onlyDate);
 std::string getCompactTimestamp(const std::time_t& time, bool utc = true);
 std::string getCurrentISO8601();
 std::string timestampToISO8601(const std::string& timestamp);
