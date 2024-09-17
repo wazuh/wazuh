@@ -38,7 +38,7 @@ MAIN_PROCESS = 'wazuh-comms-apid'
 
 
 def create_app(batcher_queue: MuxDemuxQueue) -> FastAPI:
-    """Create a FastAPI application instance and adds middlewares, exception handlers, and routers to it.
+    """Create a FastAPI application instance and add middlewares, exception handlers, and routers to it.
 
     Parameters
     ----------
