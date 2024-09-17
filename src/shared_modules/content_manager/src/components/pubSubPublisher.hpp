@@ -123,8 +123,10 @@ private:
             context.currentOffset = offset;
             logDebug2(WM_CONTENTUPDATER, "Data published");
         }
-
-        logDebug2(WM_CONTENTUPDATER, "No data to publish");
+        else
+        {
+            logDebug2(WM_CONTENTUPDATER, "No data to publish");
+        }
     }
 
 public:
