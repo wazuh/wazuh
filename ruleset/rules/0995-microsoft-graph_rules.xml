@@ -12,7 +12,7 @@
 <group name="ms-graph">
     <!--Add catchall rule -->
     <rule id="99500" level="0">
-        <decoded_as>json</decoded_as>
+        <decoded_as>json-msgraph</decoded_as>
         <field name="integration">ms-graph</field>
         <options>no_full_log</options>
         <description>MS Graph message: Microsoft graph messages grouped.</description>

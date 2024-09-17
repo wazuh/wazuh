@@ -1439,7 +1439,6 @@
                 "type": "keyword"
               },
               "actor": {
-                "type": "nested",
                 "properties": {
                   "@odata.type": {
                     "type": "keyword"
