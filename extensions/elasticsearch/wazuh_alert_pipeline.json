@@ -1,0 +1,54 @@
+{
+  "description": "Pipeline for parsing Wazuh json alerts.",
+  "processors": [{
+    "date": {
+      "field": "timestamp",
+      "target_field": "@timestamp",
+      "formats": ["ISO8601"]
+    }
+  }, {
+    "set": {
+      "field": "_type",
+      "value": "wazuh",
+      "override": true
+    }
+  }, {
+    "set": {
+      "field": "@srcip",
+      "value": "{{data.srcip}}",
+      "if": "ctx?.data?.srcip != null",
+      "override": true
+    }
+  }, {
+    "set": {
+      "field": "@srcip",
+      "value": "{{data.aws.sourceIPAddress}}",
+      "if": "ctx?.data?.aws?.sourceIPAddress != null",
+      "override": true
+    }
+  }, {
+    "geoip": {
+      "field": "@srcip",
+      "target_field": "GeoLocation",
+      "properties": ["country_iso_code", "region_name", "city_name", "location"],
+      "ignore_missing": true
+    }
+  }, {
+    "rename": {
+      "field": "GeoLocation.country_iso_code",
+      "target_field": "GeoLocation.country_name",
+      "ignore_missing": true
+    }
+  }, {
+    "remove": {
+      "field": ["timestamp", "beat", "input_type", "tags", "count", "@version", "@srcip", "log", "offset", "type", "host"],
+      "ignore_missing": true
+    }
+  }],
+  "on_failure" : [{
+    "set" : {
+      "field" : "error.message",
+      "value" : "{{ _ingest.on_failure_message }}"
+    }
+  }]
+}
