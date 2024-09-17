@@ -25,7 +25,7 @@ class Message:
 
 
 class MuxDemuxQueue:
-    """Queue for managing messages between mux and demux components.
+    """Class for managing messages between mux and demux components.
 
     Parameters
     ----------
@@ -62,7 +62,7 @@ class MuxDemuxQueue:
 
     def receive_from_mux(self, block: bool = True) -> Message:
         """Retrieve a message from the mux queue. If the queue
-        is empty and block is False it raise a queue.Empty error.
+        is empty and block is False it raises a queue.Empty error.
 
         Returns
         -------

@@ -5,7 +5,7 @@ from opensearchpy import AsyncOpenSearch
 
 
 class BulkAction(str, Enum):
-    """Enum representing bulk actions for OpenSearch.
+    """Enum representing bulk actions for the Indexer.
 
     Attributes
     ----------
@@ -33,14 +33,14 @@ class BulkAction(str, Enum):
 
 
 class BulkMetadata:
-    """Class to handle metadata for a bulk action in OpenSearch.
+    """Class to handle metadata for a bulk action in the Indexer.
 
     Parameters
     ----------
     index : str
-        Name of the index in OpenSearch.
+        Name of the index in the Indexer.
     doc_id : Optional[str]
-        ID of the document in OpenSearch. Can be None for certain actions.
+        ID of the document in the Indexer. Can be None for certain actions.
     action : BulkAction
         Type of bulk action to perform.
     """
@@ -50,7 +50,7 @@ class BulkMetadata:
         self.action = action
 
     def decode(self) -> Dict[str, Dict[str, str]]:
-        """Decode metadata into a dictionary format for the OpenSearch bulk API.
+        """Decode metadata into a dictionary format for the Indexer bulk API.
 
         Returns
         -------
@@ -61,14 +61,14 @@ class BulkMetadata:
 
 
 class BulkDoc:
-    """Class to represent a bulk document action for OpenSearch.
+    """Class to represent a bulk document action for the Indexer.
 
     Parameters
     ----------
     index : str
-        Name of the index in OpenSearch.
+        Name of the index in the Indexer.
     doc_id : Optional[str]
-        ID of the document in OpenSearch. Can be None for certain actions.
+        ID of the document in the Indexer. Can be None for certain actions.
     action : BulkAction
         Type of bulk action to perform.
     doc : Optional[Any]
@@ -98,9 +98,9 @@ class BulkDoc:
         Parameters
         ----------
         index : str
-            Name of the index in OpenSearch.
+            Name of the index in the Indexer.
         doc_id : Optional[str]
-            ID of the document in OpenSearch.
+            ID of the document in the Indexer.
         doc : Any
             Document content.
 
@@ -118,9 +118,9 @@ class BulkDoc:
         Parameters
         ----------
         index : str
-            Name of the index in OpenSearch.
+            Name of the index in the Indexer.
         doc_id : str
-            ID of the document in OpenSearch.
+            ID of the document in the Indexer.
         doc : Any
             Document content.
 
@@ -138,9 +138,9 @@ class BulkDoc:
         Parameters
         ----------
         index : str
-            Name of the index in OpenSearch.
+            Name of the index in the Indexer.
         doc_id : str
-            ID of the document in OpenSearch.
+            ID of the document in the Indexer.
         doc : Any
             Document content.
 
@@ -158,9 +158,9 @@ class BulkDoc:
         Parameters
         ----------
         index : str
-            Name of the index in OpenSearch.
+            Name of the index in the Indexer.
         doc_id : str
-            ID of the document in OpenSearch.
+            ID of the document in the Indexer.
 
         Returns
         -------
@@ -190,7 +190,7 @@ class MixinBulk:
         Returns
         -------
         Coroutine
-            Coroutine that performs the bulk operation in OpenSearch.
+            Coroutine that performs the bulk operation in the Indexer.
         """
         bulk_docs = []
         for doc in data:

@@ -96,7 +96,7 @@ class Batcher:
                             self.q.send_to_demux(response_msg)
 
                     if not action_found:
-                        logger.error(f"Error processing batcher response, no know action in: {response_item}")
+                        logger.error(f"Error processing batcher response, no known action in: {response_item}")
         except Exception as e:
             tb_str = traceback.format_exception(etype=type(e), value=e, tb=e.__traceback__)
             logger.error(f"Error sending message to buffer: {''.join(tb_str)}")
@@ -112,7 +112,7 @@ class Batcher:
 
     async def run(self):
         """Continuously retrieve messages from the queue and batch them based on the configuration. Handle signals
-        for shutdown and manages the batching logic.
+        for shutdown and manage the batching logic.
 
         Handles:
         - Retrieving messages from the queue.
@@ -175,7 +175,7 @@ class Batcher:
 
 
 class BatcherProcess(Process):
-    """A process that run a Batcher instance. This class is used to execute the Batcher in a separate process.
+    """Class to execute the batching in a separate process.
 
     Parameters
     ----------
