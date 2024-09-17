@@ -1,5 +1,3 @@
-
-
 # Wazuh Open Source Project Security Policy
 
 Version: 2023-06-12
