@@ -153,19 +153,23 @@ public:
 
         try
         {
-            switch (updateData.type)
+            if (UpdateType::OFFSET == updateData.type)
             {
-                case UpdateType::OFFSET: runOffsetUpdate(spUpdaterContext, updateData.offset); break;
-
-                case UpdateType::FILE_HASH: runFileHashUpdate(spUpdaterContext, updateData.fileHash); break;
-
-                case UpdateType::CONTENT: runContentUpdate(spUpdaterContext, updateData.offset == 0); break;
-
+                runOffsetUpdate(spUpdaterContext, updateData.offset);
+            }
+            else if (UpdateType::FILE_HASH == updateData.type)
+            {
+                runFileHashUpdate(spUpdaterContext, updateData.fileHash);
+            }
+            else if (UpdateType::CONTENT == updateData.type)
+            {
+                runContentUpdate(spUpdaterContext, updateData.offset == 0);
+            }
+            else
+            {
                 // LCOV_EXCL_START
-                default:
-                    logDebug1(WM_CONTENTUPDATER, "Invalid update type, the orchestration will be skipped");
-                    break;
-                    // LCOV_EXCL_STOP
+                logDebug1(WM_CONTENTUPDATER, "Invalid update type, the orchestration will be skipped");
+                // LCOV_EXCL_STOP
             }
         }
         catch (const offset_processing_exception& e)
@@ -177,7 +181,7 @@ public:
         catch (const std::exception& e)
         {
             cleanContext();
-            throw std::invalid_argument {"Orchestration run failed: " + std::string {e.what()}};
+            throw std::runtime_error {"Orchestration run failed: " + std::string {e.what()}};
         }
     }
 
@@ -268,13 +272,19 @@ private:
                     .second.ToString());
         }
 
-        // If an offset download is requested and the current offset is '0', a snapshot will be downloaded with
-        // the full content to avoid downloading many offsets at once.
         const auto& contentSource {
             spUpdaterContext->spUpdaterBaseContext->configData.at("contentSource").get_ref<const std::string&>()};
-        if (0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource)
 
+        logDebug2(WM_CONTENTUPDATER,
+                  "Current offset: %d . contentSource %s",
+                  spUpdaterContext->currentOffset,
+                  contentSource.c_str());
+        // Check if the full content download should be triggered
+        // 1. If the current offset is '0' and the content source is 'cti-offset'.
+        // 2. If the offset should be reset.
+        if ((0 == spUpdaterContext->currentOffset && "cti-offset" == contentSource) || resetOffset)
         {
+            logDebug2(WM_CONTENTUPDATER, "Triggering full content download");
             // Copy original data.
             auto originalData = spUpdaterContext->data;
 
@@ -303,7 +313,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            throw snapshot_processing_exception {e.what()};
+            throw offset_processing_exception {e.what()};
         }
     }
 
