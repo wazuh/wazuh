@@ -80,7 +80,7 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
     if agent_list:
         query_filters.append({IndexerKey.TERMS: {IndexerKey._ID: agent_list}})
 
-    if LAST_LOGIN_KEY in filters:
+    if LAST_LOGIN_KEY in filters and filters[LAST_LOGIN_KEY] is not None:
         query_filters.append(
             {IndexerKey.RANGE: {LAST_LOGIN_KEY: {IndexerKey.LTE: f"{IndexerKey.NOW}-{filters[LAST_LOGIN_KEY]}"}}}
         )

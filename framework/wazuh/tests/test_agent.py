@@ -1276,7 +1276,7 @@ async def test_unset_single_group_agent_ko(create_indexer_mock, group_exists_moc
         ),
         (
             ['019008da-1575-7375-b54f-ef43e393517ef'],
-            {'host.ip': '127.0.0.1'},
+            {'name': None, 'last_login': None, 'host.ip': '127.0.0.1'},
             [
                 {IndexerKey.TERMS: {IndexerKey._ID: ['019008da-1575-7375-b54f-ef43e393517ef']}},
                 {IndexerKey.TERM: {'host.ip': '127.0.0.1'}}
