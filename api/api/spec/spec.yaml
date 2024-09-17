@@ -6815,6 +6815,13 @@ components:
       description: "Filter by network dhcp (enabled or disabled)"
       schema:
           $ref: '#/components/schemas/DHCPStatus'
+    os.full:
+      in: query
+      name: os.full
+      description: "Filter by OS"
+      schema:
+        type: string
+        format: alphanumeric_symbols
     os.name:
       in: query
       name: os.name
@@ -7161,6 +7168,12 @@ components:
       schema:
         type: string
         format: xml_filename_path
+    is_connected:
+      in: query
+      name: is_connected
+      description: "Agent connection status"
+      schema:
+        type: boolean
 
 tags:
   - name: API Info
@@ -7306,7 +7319,9 @@ paths:
         - $ref: '#/components/parameters/type'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/olderThanParam'
-        - $ref: '#/components/parameters/node_name'
+        - $ref: '#/components/parameters/is_connected'
+        - $ref: '#/components/parameters/remote.ip'
+        - $ref: '#/components/parameters/os.full'
       responses:
         '200':
           description: "Delete agents"
@@ -7358,11 +7373,13 @@ paths:
         - $ref: '#/components/parameters/type'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/olderThanParam'
-        - $ref: '#/components/parameters/node_name'
         - $ref: '#/components/parameters/offset'
         - $ref: '#/components/parameters/limit'
         - $ref: '#/components/parameters/select'
         - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/is_connected'
+        - $ref: '#/components/parameters/remote.ip'
+        - $ref: '#/components/parameters/os.full'
       responses:
         '200':
           description: "List of agents or error description"
@@ -7384,21 +7401,33 @@ paths:
                       type: agent
                       version: v5.0.0
                       last_login: 2024-05-26T12:40:08Z
-                      node_name: worker2
+                      is_connected: true
+                      host:
+                        ip: 172.25.0.1
+                        os:
+                          full: Ubuntu 24.04.1 LTS (Noble Numbat)
                     - id: '019008da-1575-7375-b54f-ef43e393517eg'
                       name: bc7ch188d538
                       groups: [default]
                       type: agent
                       version: v5.0.0
                       last_login: 2024-05-26T12:40:08Z
-                      node_name: worker1
+                      is_connected: true
+                      host:
+                        ip: 172.25.0.2
+                        os:
+                          full: Ubuntu 24.04.1 LTS (Noble Numbat)
                     - id: '019008da-1575-7375-b54f-ef43e393517eh'
                       name: zc7c7188d538
                       groups: [default]
                       type: agent
                       version: v5.0.0
                       last_login: 2024-05-26T12:40:08Z
-                      node_name: worker2
+                      is_connected: true
+                      host:
+                        ip: 172.25.0.3
+                        os:
+                          full: Ubuntu 24.04.1 LTS (Noble Numbat)
                   total_affected_items: 3
                   total_failed_items: 0
                   failed_items: []
