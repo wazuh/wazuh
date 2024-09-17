@@ -21,7 +21,7 @@ First step is to build the image. You can use the following command:
 
 ``` bash
 export VERSION=20240817-0.dev
-docker build -t engine-container:$VERSION . --no-cache
+docker buildx build -t engine-container:$VERSION . --no-cache
 # Tag the image as latest to use it as the default image (recommended)
 docker tag engine-container:$VERSION engine-container:latest
 ```

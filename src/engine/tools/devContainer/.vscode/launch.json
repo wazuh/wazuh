@@ -1,0 +1,323 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Engine Run",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${env:ENGINE_BUILD}/main",
+            "args": [
+                "server",
+                "--event_queue_tasks",
+                "0",
+                "--event_socket",
+                "/var/ossec/queue/sockets/queue",
+                "--api_socket",
+                "/var/ossec/queue/sockets/engine-api",
+                "--api_queue_tasks",
+                "0",
+                "--server_threads",
+                "1",
+                "--router_threads",
+                "2",
+                "--api_timeout",
+                "3600000",
+                "--queue_flood_file",
+                "",
+                "--no-tzdb_automatic_update",
+                //"--tzdb_automatic_update",
+                "--store_path",
+                "${workspaceFolder}/engine-installed/store",
+                "--kvdb_path",
+                "${workspaceFolder}/engine-installed/kvdb/",
+                "--log_level",
+                "debug",
+                "start"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${env:ENGINE_BUILD}",
+            "environment": [
+                {
+                    "name": "MALLOC_CHECK_",
+                    "value": "2"
+                }
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+            {
+                    "description": "Enable capture SIGINT",
+                    "text": "handle SIGINT print nostop pass",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Muchos caracteres",
+                    "text": "-interpreter-exec console \"set print elements 300\"",
+                    "ignoreFailures": true
+                },
+            ]
+        },
+        /*********************************************************************************
+        *                        Python Tools debug configurations
+        *********************************************************************************/
+        {
+            "name": "Python: engine-health-test init",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "init",
+                "-b", "${env:ENGINE_BUILD}/main",
+                "-r", "${env:ENGINE_RULESET}",
+                "-t", "${env:ENGINE_SRC}/test/health_test/"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-health-test run",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/health_test/engine-health-test/src/health_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "run",
+                "--skip", "wazuh-core"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-helper-test init",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src/helper_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "init",
+                "-b", "${env:ENGINE_BUILD}/main",
+                "--mmdb", "${env:ENGINE_SRC}/test/helper_tests/mmdb/",
+                "--conf", "${env:ENGINE_SRC}/test/helper_tests/configuration_files/general.conf"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-helper-test validate",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src/helper_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "validate",
+                "--input-dir", "${env:ENGINE_SRC}/test/helper_tests/helpers_description/"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-helper-test generate-test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src/helper_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "generate-tests",
+                "--input-dir", "${env:ENGINE_SRC}/test/helper_tests/helpers_description/",
+                "-o", "/tmp/helper_tests/"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-helper-test run",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src/helper_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "run",
+                "--input-dir", "/tmp/helper_tests/"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-helper-test generate-doc",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/helper_tests/engine-helper-test/src/helper_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "generate-doc",
+                "--input-dir", "${env:ENGINE_SRC}/test/helper_tests/helpers_description/",
+                "-o", "/tmp/helper_tests_doc/"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-it setup",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/integration_tests/engine-it/src/integration_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "-t", "${env:ENGINE_SRC}/test/integration_tests",
+                "init",
+                "-b", "${env:ENGINE_BUILD}/main"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-it runner",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/test/integration_tests/engine-it/src/integration_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-e", "${env:TMP_CLEAN_ENV}",
+                "-t", "${env:ENGINE_SRC}/test/integration_tests",
+                "run"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: run IT behave",
+            "cwd": "${env:ENGINE_SRC}/",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "behave",
+            "console": "integratedTerminal",
+            "args": [
+                 // "-e", "/tmp/engine-integration-test",
+                 // "-f","${env:ENGINE_SRC}/test/integration_tests/configuration/features/api.feature"
+                 "${env:ENGINE_SRC}/test/integration_tests/configuration"
+            ],
+            "env": {
+                "WAZUH_DIR": "${env:ENGINE_SRC}/../..",
+                "PYTHONPATH": "${env:ENGINE_SRC}/tools/engine-suite/src:${env:ENGINE_SRC}/tools/api-communication/src/api_communication:${env:ENGINE_SRC}/test/integration_tests/it-utils/src/cli_communication",
+                "ENV_DIR": "/tmp/engine-integration-test",
+                "ENGINE_DIR": "${env:ENGINE_SRC}"
+            },
+            "justMyCode": false
+        },
+        /*********************************************************************************
+        *                        C++ Tools debug configurations
+        *********************************************************************************/
+        {
+            "name": "Engine Run - Itegration test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${env:ENGINE_BUILD}/main",
+            "args": [
+                "--config",
+                //"${env:ENGINE_SRC}/test/integration_tests/configuration_files/general.conf",
+                "/tmp/engine-integration-test/engine/general.conf",
+                "server",
+                "start",
+            ],
+            "stopAtEntry": false,
+            "cwd": "${env:ENGINE_BUILD}",
+            "environment": [
+                {
+                    "name": "MALLOC_CHECK_",
+                    "value": "2"
+                }
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Enable capture SIGINT",
+                    "text": "handle SIGINT print nostop pass",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Muchos caracteres",
+                    "text": "-interpreter-exec console \"set print elements 100\"",
+                    "ignoreFailures": true
+                },
+            ]
+        },
+        /*********************************************************************************
+        *                        C++ Core dump configurations
+        *********************************************************************************/
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "name": "Open a core dump Wazuh-Engine",
+            "program": "${env:ENGINE_BUILD}/main",
+            "coreDumpPath": "${input:coreFileName}",
+            "cwd": "${env:ENGINE_SRC}",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "MIMode": "gdb"
+        },
+        {
+            "type": "cppdbg",
+            "request": "launch",
+            "name": "Open a core dump cpp_test",
+            "program": "${env:ENGINE_BUILD}/test/source/hlp/uhlp_test",
+            "coreDumpPath": "${input:coreFileName}",
+            "cwd": "${env:ENGINE_SRC}",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "MIMode": "gdb"
+        }
+    ],
+    "inputs": [
+        {
+            "id": "coreFileName",
+            "type": "promptString",
+            "description": "Enter core file path"
+        }
+    ]
+}
