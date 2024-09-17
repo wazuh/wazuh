@@ -34,7 +34,7 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     // All servers have their corresponding status the first time
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServer));
     EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
-    EXPECT_FALSE(m_monitoring->isAvailable(hostYellowServer));
+    EXPECT_TRUE(m_monitoring->isAvailable(hostYellowServer));
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));
 
     // Interval to check the health of the servers
@@ -47,7 +47,7 @@ TEST_F(MonitoringTest, TestInstantiationWithValidServers)
     EXPECT_FALSE(m_monitoring->isAvailable(hostRedServer));
 
     // It's false because the yellow server isn't available
-    EXPECT_FALSE(m_monitoring->isAvailable(hostYellowServer));
+    EXPECT_TRUE(m_monitoring->isAvailable(hostYellowServer));
 
     // It's true because the green server is available
     EXPECT_TRUE(m_monitoring->isAvailable(hostGreenServerWithDelay));

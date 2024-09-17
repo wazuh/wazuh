@@ -14,8 +14,6 @@
 
 #include "HTTPRequest.hpp"
 #include "secureCommunication.hpp"
-#include "shared_modules/content_manager/src/dataDecoder.hpp"
-#include "stringHelper.h"
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -24,7 +22,6 @@
 #include <mutex>
 #include <string>
 #include <thread>
-#include <unordered_set>
 #include <vector>
 
 constexpr auto MONITORING_NAME {"monitoring"};
@@ -35,6 +32,7 @@ constexpr auto INTERVAL = 60u;
 // 5 seconds timeout for health check requests
 constexpr auto HEALTH_CHECK_TIMEOUT_MS = 5000u;
 
+// Name of the field that contains the server status
 constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
 
 /**
@@ -43,7 +41,7 @@ constexpr auto SERVER_HEALTH_FIELD_NAME {"status"};
  */
 class Monitoring final
 {
-    std::map<std::string, bool> m_servers;
+    std::map<std::string, bool, std::less<>> m_servers;
     std::thread m_thread;
     std::mutex m_mutex;
     std::condition_variable m_condition;
@@ -55,6 +53,8 @@ class Monitoring final
      *
      * @note It sends a request to the \p serverAddress and update the serverStatus. The \p authentication object is
      * used to provide secure communication.
+     *
+     * @note The serverStatus is updated to true if the server is green or yellow, otherwise it is updated to false.
      *
      * @param serverAddress Server's address.
      * @param authentication Object that provides secure communication.
@@ -93,11 +93,11 @@ class Monitoring final
 
             const auto data = nlohmann::json::parse(response, nullptr, false).at(0);
 
-            // Check if the server is green
-            if (!data.is_discarded() && data.contains(SERVER_HEALTH_FIELD_NAME) &&
-                data.at(SERVER_HEALTH_FIELD_NAME).get_ref<const std::string&>().compare("green") == 0)
+            // Check if the server is green or yellow
+            if (!data.is_discarded() && data.contains(SERVER_HEALTH_FIELD_NAME))
             {
-                serverStatus = true;
+                const auto& serverHealth = data.at(SERVER_HEALTH_FIELD_NAME).get_ref<const std::string&>();
+                serverStatus = serverHealth.compare("green") == 0 || serverHealth.compare("yellow") == 0;
             }
         };
 
