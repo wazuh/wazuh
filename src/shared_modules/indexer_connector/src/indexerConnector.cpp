@@ -287,7 +287,7 @@ void IndexerConnector::diff(const nlohmann::json& responseJson,
 
         HTTPRequest::instance().post(
             RequestParameters {.url = HttpURL(url), .data = bulkData, .secureCommunication = secureCommunication},
-            PostRequestParameters {.onError = onError},
+            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
             ConfigurationParameters {});
     }
 }
