@@ -24,7 +24,6 @@
 #include <thread>
 #include <vector>
 
-constexpr auto MONITORING_NAME {"monitoring"};
 
 // 60 seconds interval for monitoring
 constexpr auto INTERVAL = 60u;
