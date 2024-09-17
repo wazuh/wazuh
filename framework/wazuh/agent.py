@@ -78,7 +78,7 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
 
     query_filters = []
     if agent_list:
-        query_filters.append({IndexerKey.TERMS: {'_id': agent_list}})
+        query_filters.append({IndexerKey.TERMS: {IndexerKey._ID: agent_list}})
 
     if LAST_LOGIN_KEY in filters:
         query_filters.append(
@@ -87,7 +87,8 @@ def build_agents_query(agent_list: list, filters: dict) -> dict:
         filters.pop(LAST_LOGIN_KEY)
 
     for key, value in filters.items():
-        query_filters.append({IndexerKey.TERM: {key: value}})
+        if value is not None:
+            query_filters.append({IndexerKey.TERM: {key: value}})
 
     return {
         IndexerKey.QUERY: {

@@ -1270,8 +1270,24 @@ async def test_unset_single_group_agent_ko(create_indexer_mock, group_exists_moc
             {'last_login': '1d', 'name': 'test'},
             [
                 {IndexerKey.TERMS: {IndexerKey._ID: ['019008da-1575-7375-b54f-ef43e393517ef']}},
-                {IndexerKey.RANGE: {'last_login': {IndexerKey.LTE: "now-1d"}}},
+                {IndexerKey.RANGE: {'last_login': {IndexerKey.LTE: 'now-1d'}}},
                 {IndexerKey.TERM: {'name': 'test'}}
+            ]
+        ),
+        (
+            ['019008da-1575-7375-b54f-ef43e393517ef'],
+            {'host.ip': '127.0.0.1'},
+            [
+                {IndexerKey.TERMS: {IndexerKey._ID: ['019008da-1575-7375-b54f-ef43e393517ef']}},
+                {IndexerKey.TERM: {'host.ip': '127.0.0.1'}}
+            ]
+        ),
+        (
+            [],
+            {'is_connected': True, 'host.os.full': 'Ubuntu 24.04'},
+            [
+                {IndexerKey.TERM: {'is_connected': True}},
+                {IndexerKey.TERM: {'host.os.full': 'Ubuntu 24.04'}}
             ]
         )
     ]
