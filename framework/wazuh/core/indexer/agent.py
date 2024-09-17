@@ -56,7 +56,7 @@ class AgentsIndex(BaseIndex):
         Agent : dict
             The created agent instance.
         """
-        agent = Agent(id=id, raw_key=key, name=name, groups='default' + f',{groups}' if groups else '')
+        agent = Agent(id=id, raw_key=key, name=name, groups='default' + f',{groups}' if groups else None)
         try:
             await self._client.index(
                 index=self.INDEX,
