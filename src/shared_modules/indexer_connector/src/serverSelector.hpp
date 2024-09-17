@@ -25,7 +25,7 @@
 class ServerSelector final : private RoundRobinSelector<std::string>
 {
 private:
-    std::shared_ptr<Monitoring> monitoring;
+    std::shared_ptr<Monitoring> m_monitoring;
 
 public:
     ~ServerSelector() = default;
@@ -35,14 +35,14 @@ public:
      *
      * @param values Servers to be selected.
      * @param timeout Timeout for monitoring.
-     * @param secureCommunication Object that provides secure communication.
+     * @param authentication Object that provides secure communication.
      */
     explicit ServerSelector(const std::vector<std::string>& values,
                             const uint32_t timeout = INTERVAL,
-                            const SecureCommunication& secureCommunication = {})
+                            const SecureCommunication& authentication = {})
         : RoundRobinSelector<std::string>(values)
     {
-        monitoring = std::make_shared<Monitoring>(values, timeout, secureCommunication);
+        m_monitoring = std::make_shared<Monitoring>(values, timeout, authentication);
     }
 
     /**
@@ -55,7 +55,7 @@ public:
         auto initialValue {RoundRobinSelector<std::string>::getNext()};
         auto retValue {initialValue};
 
-        while (!monitoring->isAvailable(retValue))
+        while (!m_monitoring->isAvailable(retValue))
         {
             retValue = RoundRobinSelector<std::string>::getNext();
             if (retValue.compare(initialValue) == 0)
