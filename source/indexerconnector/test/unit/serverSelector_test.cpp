@@ -17,6 +17,96 @@
 #include <string>
 #include <thread>
 
+std::shared_ptr<httprequest::mock::MockHTTPRequest> spHTTPRequest =
+    std::make_shared<httprequest::mock::MockHTTPRequest>();
+
+namespace ServerSelectorTests
+{
+// Generalized lambda for simulating HTTP responses based on server health status
+auto mockHTTPRequestLambda =
+    [](const std::string& greenResponse, const std::string& redResponse, const std::string& yellowResponse)
+{
+    return [greenResponse, redResponse, yellowResponse](RequestParameters requestParameters,
+                                                        PostRequestParameters postRequestParameters,
+                                                        ConfigurationParameters /*configurationParameters*/)
+    {
+        const auto& url = requestParameters.url.url();
+
+        if (url == GREEN_SERVER + "/_cat/health")
+        {
+            postRequestParameters.onSuccess(greenResponse);
+        }
+        else if (url == RED_SERVER + "/_cat/health")
+        {
+            postRequestParameters.onError(redResponse, 200);
+        }
+        else if (url == YELLOW_SERVER + "/_cat/health")
+        {
+            postRequestParameters.onSuccess(yellowResponse);
+        }
+        else
+        {
+            postRequestParameters.onError("Unknown server", 404);
+        }
+    };
+};
+
+// Responses for each server health state
+const auto greenResponse = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                   {"timestamp", "23:51:04"},
+                                                   {"cluster", "wazuh-cluster"},
+                                                   {"status", "green"},
+                                                   {"node.total", "1"},
+                                                   {"node.data", "1"},
+                                                   {"discovered_cluster_manager", "true"},
+                                                   {"shards", "166"},
+                                                   {"pri", "166"},
+                                                   {"relo", "0"},
+                                                   {"init", "0"},
+                                                   {"unassign", "0"},
+                                                   {"pending_tasks", "0"},
+                                                   {"max_task_wait_time", "-"},
+                                                   {"active_shards_percent", "100.0%"}}})
+                               .dump();
+
+const auto redResponse = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                 {"timestamp", "23:51:04"},
+                                                 {"cluster", "wazuh-cluster"},
+                                                 {"status", "red"},
+                                                 {"node.total", "1"},
+                                                 {"node.data", "1"},
+                                                 {"discovered_cluster_manager", "true"},
+                                                 {"shards", "166"},
+                                                 {"pri", "166"},
+                                                 {"relo", "0"},
+                                                 {"init", "0"},
+                                                 {"unassign", "0"},
+                                                 {"pending_tasks", "0"},
+                                                 {"max_task_wait_time", "-"},
+                                                 {"active_shards_percent", "100.0%"}}})
+                             .dump();
+
+const auto yellowResponse = nlohmann::json::array({{{"epoch", "1726271464"},
+                                                    {"timestamp", "23:51:04"},
+                                                    {"cluster", "wazuh-cluster"},
+                                                    {"status", "yellow"},
+                                                    {"node.total", "1"},
+                                                    {"node.data", "1"},
+                                                    {"discovered_cluster_manager", "true"},
+                                                    {"shards", "166"},
+                                                    {"pri", "166"},
+                                                    {"relo", "0"},
+                                                    {"init", "0"},
+                                                    {"unassign", "0"},
+                                                    {"pending_tasks", "0"},
+                                                    {"max_task_wait_time", "-"},
+                                                    {"active_shards_percent", "100.0%"}}})
+                                .dump();
+
+} // namespace ServerSelectorTests
+
+using namespace ServerSelectorTests;
+
 /**
  * @brief Test instantiation with valid servers.
  *
@@ -52,39 +142,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
 {
     // Set up the expectations for the MockHTTPRequest
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(
-            [](RequestParameters requestParameters,
-               PostRequestParameters postRequestParameters,
-               ConfigurationParameters /*configurationParameters*/)
-            {
-                const auto& url = requestParameters.url.url(); // Convert URL to string if needed
-                std::string response;
-
-                if (url == GREEN_SERVER + "/_cat/health?v")
-                {
-                    // Simulate a successful response for the green server
-                    response = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-                               "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-                               "shards_percent\n1725296432\t17:00:32\twazuh-"
-                               "cluster\tgreen\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-                    postRequestParameters.onSuccess(response.c_str());
-                }
-                else if (url == RED_SERVER + "/_cat/health?v")
-                {
-                    // Simulate a failed response for the red server
-                    response = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-                               "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-                               "shards_percent\n1725296432\t17:00:32\twazuh-"
-                               "cluster\tred\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-                    postRequestParameters.onError(response.c_str(), 200);
-                }
-                else
-                {
-                    // Unknown server, simulate an error
-                    postRequestParameters.onError("Unknown server", 404);
-                    return;
-                }
-            }));
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse)));
 
     std::string nextServer;
 
@@ -100,9 +158,6 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeHealthCheck)
     // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, RED_SERVER);
-
-    // Reset the mock
-    spHTTPRequest.reset();
 }
 
 /**
@@ -113,39 +168,7 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
 {
     // Set up the expectations for the MockHTTPRequest
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(
-            [](RequestParameters requestParameters,
-               PostRequestParameters postRequestParameters,
-               ConfigurationParameters /*configurationParameters*/)
-            {
-                const auto& url = requestParameters.url.url(); // Convert URL to string if needed
-                std::string response;
-
-                if (url == GREEN_SERVER + "/_cat/health?v")
-                {
-                    // Simulate a successful response for the green server
-                    response = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-                               "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-                               "shards_percent\n1725296432\t17:00:32\twazuh-"
-                               "cluster\tgreen\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-                    postRequestParameters.onSuccess(response.c_str());
-                }
-                else if (url == RED_SERVER + "/_cat/health?v")
-                {
-                    // Simulate a failed response for the red server
-                    response = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-                               "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-                               "shards_percent\n1725296432\t17:00:32\twazuh-"
-                               "cluster\tred\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-                    postRequestParameters.onError(response.c_str(), 200);
-                }
-                else
-                {
-                    // Unknown server, simulate an error
-                    postRequestParameters.onError("Unknown server", 404);
-                    return;
-                }
-            }));
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse)));
 
     std::string nextServer;
 
@@ -154,22 +177,23 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
         m_servers, MONITORING_HEALTH_CHECK_INTERVAL);
     EXPECT_NO_THROW(m_selector);
 
-    // It doesn't throw an exception because all servers are available before health check
+    // We expect to iterate over the green and yellow server
+
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, GREEN_SERVER);
 
-    // It doesn't throw an exception because all servers are available before health check
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, RED_SERVER);
+    EXPECT_EQ(nextServer, YELLOW_SERVER);
+
+    EXPECT_NO_THROW(nextServer = m_selector->getNext());
+    EXPECT_EQ(nextServer, GREEN_SERVER);
 
     // Interval to check the health of the servers
     std::this_thread::sleep_for(std::chrono::milliseconds(MONITORING_HEALTH_CHECK_INTERVAL * 2));
 
-    // next server will be the green because it's available
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
-    EXPECT_EQ(nextServer, GREEN_SERVER);
+    EXPECT_EQ(nextServer, YELLOW_SERVER);
 
-    // next server will be the green because the red server isn't available
     EXPECT_NO_THROW(nextServer = m_selector->getNext());
     EXPECT_EQ(nextServer, GREEN_SERVER);
 }
@@ -180,45 +204,12 @@ TEST_F(ServerSelectorTest, TestGetNextBeforeAndAfterHealthCheck)
  */
 TEST_F(ServerSelectorTest, TestGextNextWhenThereAreNoAvailableServers)
 {
-
     m_servers.clear();
     m_servers.emplace_back(RED_SERVER);
 
     // Set up the expectations for the MockHTTPRequest
     EXPECT_CALL(*spHTTPRequest, get(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Invoke(
-            [](RequestParameters requestParameters,
-               PostRequestParameters postRequestParameters,
-               ConfigurationParameters /*configurationParameters*/)
-            {
-                const auto& url = requestParameters.url.url(); // Convert URL to string if needed
-                std::string response;
-
-                if (url == GREEN_SERVER + "/_cat/health?v")
-                {
-                    // Simulate a successful response for the green server
-                    response = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-                               "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-                               "shards_percent\n1725296432\t17:00:32\twazuh-"
-                               "cluster\tgreen\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-                    postRequestParameters.onSuccess(response.c_str());
-                }
-                else if (url == RED_SERVER + "/_cat/health?v")
-                {
-                    // Simulate a failed response for the red server
-                    response = "epoch\ttimestamp\tcluster\tstatus\tnode.total\tnode.data\tdiscovered_cluster_"
-                               "manager\tshards\tpri\trelo\tinit\tunassign\tpending_tasks\tmax_task_wait_time\tactive_"
-                               "shards_percent\n1725296432\t17:00:32\twazuh-"
-                               "cluster\tred\t1\t1\ttrue\t47\t47\t0\t0\t0\t0\t-\t100.0%\n";
-                    postRequestParameters.onError(response.c_str(), 200);
-                }
-                else
-                {
-                    // Unknown server, simulate an error
-                    postRequestParameters.onError("Unknown server", 404);
-                    return;
-                }
-            }));
+        .WillRepeatedly(::testing::Invoke(mockHTTPRequestLambda(greenResponse, redResponse, yellowResponse)));
 
     std::string nextServer;
 

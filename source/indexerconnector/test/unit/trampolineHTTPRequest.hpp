@@ -24,8 +24,10 @@ class TrampolineHTTPRequest final : public Singleton<TrampolineHTTPRequest>
 {
 public:
     TrampolineHTTPRequest() {};
+
     virtual ~TrampolineHTTPRequest()
-    { // Reset trampoline
+    {
+        // Reset trampoline
         spHTTPRequest.reset();
     };
 
