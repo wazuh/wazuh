@@ -12884,7 +12884,6 @@ paths:
                     - name: wazuh
                       node_name: master-node
                       node_type: master
-                      key: 9d273b53510fef702b54a92e9cffc82e
                       port: 1516
                       bind_addr: "0.0.0.0"
                       nodes:

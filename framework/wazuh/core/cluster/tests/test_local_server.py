@@ -42,7 +42,7 @@ async def test_LocalServerHandler_connection_made(event_loop):
     logger = logging.getLogger("connection_made")
     with patch.object(logger, "debug") as logger_debug_mock:
         with patch("wazuh.core.cluster.local_server.context_tag", ContextVar("tag", default="")) as mock_contextvar:
-            lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={}, logger=logger)
+            lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, cluster_items={}, logger=logger)
             lsh.connection_made(transport=transport)
             assert isinstance(lsh.name, str)
             assert lsh.transport == transport
@@ -57,7 +57,7 @@ async def test_LocalServerHandler_connection_made(event_loop):
 @patch("wazuh.core.cluster.local_server.server.AbstractServerHandler.process_request")
 async def test_LocalServerHandler_process_request(process_request_mock, event_loop):
     """Check the functions that are executed according to the command received."""
-    lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=None, loop=event_loop, cluster_items={})
     with patch.object(lsh, "get_config") as get_config_mock:
         lsh.process_request(command=b"get_config", data=b"test")
         get_config_mock.assert_called_once()
@@ -86,7 +86,7 @@ async def test_LocalServerHandler_get_config(event_loop):
         def __init__(self):
             self.configuration = {"test": "get_config"}
 
-    lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, cluster_items={})
     assert lsh.get_config() == (b"ok", b'{"test": "get_config"}')
 
 
@@ -103,7 +103,7 @@ async def test_LocalServerHandler_get_node(event_loop):
             self.node = NodeMock()
 
     server_mock = ServerMock()
-    lsh = LocalServerHandler(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=server_mock, loop=event_loop, cluster_items={})
     with patch.object(server_mock.node, "get_node", return_value="test_get_node"):
         assert lsh.get_node() == "test_get_node"
 
@@ -111,7 +111,7 @@ async def test_LocalServerHandler_get_node(event_loop):
 @pytest.mark.asyncio
 async def test_LocalServerHandler_get_nodes(event_loop):
     """Set the behavior of the get_nodes function."""
-    lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=None, loop=event_loop, cluster_items={})
     with pytest.raises(NotImplementedError):
         lsh.get_nodes(filter_nodes=b"a")
 
@@ -119,7 +119,7 @@ async def test_LocalServerHandler_get_nodes(event_loop):
 @pytest.mark.asyncio
 async def test_LocalServerHandler_get_health(event_loop):
     """Set the behavior of the get_health function."""
-    lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=None, loop=event_loop, cluster_items={})
     with pytest.raises(NotImplementedError):
         lsh.get_health(filter_nodes=b"a")
 
@@ -131,7 +131,7 @@ async def test_LocalServerHandler_get_ruleset_hashes(event_loop):
         def __init__(self):
             self.node = MagicMock()
 
-    lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=ServerMock(), loop=event_loop, cluster_items={})
     with patch("wazuh.core.cluster.local_server.cluster.get_ruleset_status",
                return_value={'test_path': 'hash'}) as get_ruleset_status_mock:
         assert lsh.get_ruleset_hashes() == (b'ok', json.dumps({'test_path': 'hash'}).encode())
@@ -141,7 +141,7 @@ async def test_LocalServerHandler_get_ruleset_hashes(event_loop):
 @pytest.mark.asyncio
 async def test_LocalServerHandler_send_file_request(event_loop):
     """Set the behavior of the send_file_request function."""
-    lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=None, loop=event_loop, cluster_items={})
     with pytest.raises(NotImplementedError):
         lsh.send_file_request(path="a", node_name="b")
 
@@ -160,7 +160,7 @@ async def test_LocalServerHandler_get_send_file_response(send_request_mock:Async
 
     future = asyncio.Future(loop=event_loop)
     future.set_result('test_get_send_file_response')
-    lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    lsh = LocalServerHandler(server=None, loop=event_loop, cluster_items={})
     with patch.object(lsh, 'send_res_callback', side_effect=callback_mock) as send_res_callback_mock:
         lsh.get_send_file_response(future=future)
         await wait_callback_called(send_res_callback_mock)
@@ -181,7 +181,7 @@ async def test_LocalServerHandler_send_res_callback(event_loop):
         with patch.object(future, "exception", return_value=exc):
             logger = logging.getLogger("connection_made")
             with patch.object(logger, "error") as logger_error_mock:
-                lsh = LocalServerHandler(server=None, loop=event_loop, fernet_key=None, cluster_items={},
+                lsh = LocalServerHandler(server=None, loop=event_loop, cluster_items={},
                                          logger=logger)
                 lsh.send_res_callback(future=future)
 
@@ -234,7 +234,7 @@ async def test_LocalServer_start(join_mock, gather_mock, event_loop):
     async def create_unix_server_mock(protocol_factory, path):
         return LocalServerMock()
 
-    def handler_class_mock(server=None, loop=None, fernet_key='', logger=None, cluster_items={}):
+    def handler_class_mock(server=None, loop=None, logger=None, cluster_items={}):
         pass
 
     logger = logging.getLogger("connection_made")
@@ -280,7 +280,7 @@ async def test_LocalServerHandlerMaster_process_request(process_request_mock, ev
             self.node = NodeMock()
 
     server_mock = ServerMock()
-    lshm = LocalServerHandlerMaster(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={})
+    lshm = LocalServerHandlerMaster(server=server_mock, loop=event_loop, cluster_items={})
 
     with patch("wazuh.core.cluster.local_server.context_tag", ContextVar("tag", default="")) as mock_contextvar:
         lshm.name = "test1"
@@ -313,7 +313,7 @@ async def test_LocalServerHandlerMaster_get_nodes(event_loop):
         def __init__(self):
             self.node = NodeMock()
 
-    lshm = LocalServerHandlerMaster(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={})
+    lshm = LocalServerHandlerMaster(server=ServerMock(), loop=event_loop, cluster_items={})
     assert lshm.get_nodes(arguments=b"{\"test\": \"a\"}") == (b'ok', b'{"get_node": "a"}')
 
 
@@ -329,7 +329,7 @@ async def test_LocalServerHandlerMaster_get_health(event_loop):
         def __init__(self):
             self.node = NodeMock()
 
-    lshm = LocalServerHandlerMaster(server=ServerMock(), loop=event_loop, fernet_key=None, cluster_items={})
+    lshm = LocalServerHandlerMaster(server=ServerMock(), loop=event_loop, cluster_items={})
     assert lshm.get_health(filter_nodes=b"{\"get_health\": \"a\"}") == (b'ok', b'{"get_health": {"get_health": "a"}}')
 
 
@@ -357,7 +357,7 @@ async def test_LocalServerHandlerMaster_send_file_request(event_loop):
         assert future.result() == 'send_file_return_value'
         
     server_mock = ServerMock()
-    lshm = LocalServerHandlerMaster(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={})
+    lshm = LocalServerHandlerMaster(server=server_mock, loop=event_loop, cluster_items={})
     with pytest.raises(WazuhClusterError, match=".* 3022 .*"):
         lshm.send_file_request(path="/tmp", node_name="no exists")
 
@@ -409,7 +409,7 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
 
     logger = LoggerMock()
     server_mock = ServerMock()
-    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={}, logger=logger)
+    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, cluster_items={}, logger=logger)
 
     with patch("wazuh.core.cluster.local_server.context_tag", ContextVar("tag", default="")) as mock_contextvar:
         lshw.name = "test1"
@@ -432,7 +432,7 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
 @pytest.mark.asyncio
 async def test_LocalServerHandlerWorker_get_nodes(event_loop):
     """Set the behavior of the get_nodes function of the LocalServerHandlerWorker class."""
-    lshw = LocalServerHandlerWorker(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    lshw = LocalServerHandlerWorker(server=None, loop=event_loop, cluster_items={})
     with patch.object(lshw, "send_request_to_master") as send_request_to_master_mock:
         lshw.get_nodes(arguments=b"test_worker_get_nodes")
         send_request_to_master_mock.assert_called_once_with(b"get_nodes", b"test_worker_get_nodes")
@@ -440,7 +440,7 @@ async def test_LocalServerHandlerWorker_get_nodes(event_loop):
 
 def test_LocalServerHandlerWorker_get_health(event_loop):
     """Set the behavior of the get_health function of the LocalServerHandlerWorker class."""
-    lshw = LocalServerHandlerWorker(server=None, loop=event_loop, fernet_key=None, cluster_items={})
+    lshw = LocalServerHandlerWorker(server=None, loop=event_loop, cluster_items={})
     with patch.object(lshw, "send_request_to_master") as send_request_to_master_mock:
         lshw.get_health(filter_nodes=b"test_worker_get_health")
         send_request_to_master_mock.assert_called_once_with(b"get_health", b"test_worker_get_health")
@@ -460,7 +460,7 @@ async def test_LocalServerHandlerWorker_send_request_to_master(event_loop):
 
     ls = LocalServer(node=NodeMock(), performance_test=0, concurrency_test=0,
                     configuration={}, cluster_items={})
-    lshw = LocalServerHandlerWorker(server=ls, loop=event_loop, fernet_key=None, cluster_items={})
+    lshw = LocalServerHandlerWorker(server=ls, loop=event_loop, cluster_items={})
     with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
         lshw.send_request_to_master(command=b"test", arguments=b"raises")
 
@@ -491,7 +491,7 @@ async def test_LocalServerHandlerWorker_get_api_response(event_loop):
         pass
 
     server_mock = ServerMock()
-    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={})
+    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, cluster_items={})
     future = asyncio.Future()
     future.set_result('') 
     with patch.object(lshw, "send_request", side_effect=send_request_mock) as send_request_mock:
@@ -520,7 +520,7 @@ async def test_LocalServerHandlerWorker_send_file_request(create_task_mock, even
             self.node = NodeMock()
 
     server_mock = ServerMock()
-    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, fernet_key=None, cluster_items={})
+    lshw = LocalServerHandlerWorker(server=server_mock, loop=event_loop, cluster_items={})
 
     with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
         lshw.send_file_request(path="/tmp", node_name="worker1")

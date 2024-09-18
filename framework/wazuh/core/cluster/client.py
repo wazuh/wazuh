@@ -97,8 +97,7 @@ class AbstractClientManager:
                 transport, protocol = await self.loop.create_connection(
                     protocol_factory=lambda: self.handler_class(
                         loop=self.loop, on_con_lost=on_con_lost, name=self.name, logger=self.logger, 
-                        fernet_key=self.configuration['key'], cluster_items=self.cluster_items, manager=self, 
-                        **self.extra_args
+                        cluster_items=self.cluster_items, manager=self, **self.extra_args
                         ),
                         host=self.configuration['nodes'][0], port=self.configuration['port'], ssl=ssl_context)
                 self.client = protocol
@@ -128,7 +127,7 @@ class AbstractClient(common.Handler):
     Define a client protocol. Handle connection with server.
     """
 
-    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str, fernet_key: str,
+    def __init__(self, loop: uvloop.EventLoopPolicy, on_con_lost: asyncio.Future, name: str,
                  logger: logging.Logger, manager: AbstractClientManager, cluster_items: Dict, tag: str = "Client"):
         """Class constructor.
 
@@ -138,8 +137,6 @@ class AbstractClient(common.Handler):
             Low-level callback to notify when the connection has ended.
         name : str
             Client's name.
-        fernet_key : str
-            32 length string used as key to initialize cryptography's Fernet.
         logger : Logger object
             Logger to use.
         manager : AbstractClientManager
@@ -149,7 +146,7 @@ class AbstractClient(common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
+        super().__init__(logger=logger, tag=f"{tag} {name}", cluster_items=cluster_items)
         self.loop = loop
         self.server = manager
         self.name = name

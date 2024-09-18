@@ -44,7 +44,6 @@ cluster_items = {'node': 'master-node',
                                           'recalculate_integrity': 0}},
                  "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 
-fernet_key = "0" * 32
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 loop = asyncio.new_event_loop()
 
@@ -59,7 +58,7 @@ def get_master_handler():
                                                        performance_test=False, logger=None,
                                                        concurrency_test=False, file='None', string=20)
 
-    return master.MasterHandler(server=abstract_client, loop=loop, fernet_key=fernet_key, cluster_items=cluster_items)
+    return master.MasterHandler(server=abstract_client, loop=loop, cluster_items=cluster_items)
 
 
 def get_master():

@@ -140,11 +140,14 @@ class LocalClient(client.AbstractClientManager):
         on_con_lost = loop.create_future()
         try:
             self.transport, self.protocol = await loop.create_unix_connection(
-                                             protocol_factory=lambda: LocalClientHandler(loop=loop, on_con_lost=on_con_lost,
-                                                                                         name=self.name, logger=self.logger,
-                                                                                         fernet_key='', manager=self,
-                                                                                         cluster_items=self.cluster_items),
-                                             path=os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
+                                                protocol_factory=lambda: LocalClientHandler(
+                                                    loop=loop, on_con_lost=on_con_lost, name=self.name, 
+                                                    logger=self.logger, manager=self,cluster_items=self.cluster_items
+                                                    ),
+                                                path=os.path.join(
+                                                    common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'
+                                                )
+                                            )
         except (ConnectionRefusedError, FileNotFoundError):
             raise exception.WazuhInternalError(3012)
         except MemoryError:

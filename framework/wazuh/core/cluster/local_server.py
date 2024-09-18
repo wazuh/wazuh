@@ -213,7 +213,6 @@ class LocalServer(server.AbstractServer):
             local_server = await loop.create_unix_server(
                 protocol_factory=lambda: self.handler_class(server=self,
                                                             loop=loop,
-                                                            fernet_key='',
                                                             logger=self.logger,
                                                             cluster_items=self.cluster_items),
                 path=socket_path)

@@ -25,8 +25,6 @@ with patch('wazuh.common.wazuh_uid'):
 
 from wazuh.core.exception import WazuhClusterError
 
-fernet_key = "00000000000000000000000000000000"
-
 cluster_items = {'intervals': {'worker': {'keep_alive': 1, 'max_failed_keepalive_attempts': 0, "connection_retry": 2}}}
 configuration = {"node_name": "manager", "nodes": [0], "port": 1515}
 
@@ -59,7 +57,7 @@ class LoopMock:
 
 
 future_mock = FutureMock()
-abstract_client = client.AbstractClient(loop=None, on_con_lost=future_mock, name="name", fernet_key=fernet_key,
+abstract_client = client.AbstractClient(loop=None, on_con_lost=future_mock, name="name",
                                         logger=None, manager=None, cluster_items=cluster_items)
 with patch("asyncio.get_running_loop"):
     abstract_client_manager = client.AbstractClientManager(configuration=configuration, cluster_items=cluster_items,

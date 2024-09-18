@@ -88,7 +88,6 @@ def check_cluster_config(config):
 
     Following points are checked:
         - Cluster config block is not empty.
-        - len(key) == 32 and only alphanumeric characters are used.
         - node_type is 'master' or 'worker'.
         - Port is an int type.
         - 1024 < port < 65535.
@@ -108,19 +107,13 @@ def check_cluster_config(config):
     iv = InputValidator()
     reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
 
-    if len(config['key']) == 0:
-        raise WazuhError(3004, 'Unspecified key')
-
-    elif not iv.check_name(config['key']) or not iv.check_length(config['key'], 32, eq):
-        raise WazuhError(3004, 'Key must be 32 characters long and only have alphanumeric characters')
-
-    elif config['node_type'] != 'master' and config['node_type'] != 'worker':
+    if config['node_type'] != 'master' and config['node_type'] != 'worker':
         raise WazuhError(3004, f'Invalid node type {config["node_type"]}. Correct values are master and worker')
 
-    elif not isinstance(config['port'], int):
+    if not isinstance(config['port'], int):
         raise WazuhError(3004, "Port has to be an integer.")
 
-    elif not MIN_PORT < config['port'] < MAX_PORT:
+    if not MIN_PORT < config['port'] < MAX_PORT:
         raise WazuhError(3004, f"Port must be higher than {MIN_PORT} and lower than {MAX_PORT}.")
 
     if len(config['nodes']) > 1:

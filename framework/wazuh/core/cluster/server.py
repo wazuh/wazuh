@@ -27,7 +27,7 @@ class AbstractServerHandler(c_common.Handler):
     Define abstract server protocol. Handle communication with a single client.
     """
 
-    def __init__(self, server, loop: asyncio.AbstractEventLoop, fernet_key: str,
+    def __init__(self, server, loop: asyncio.AbstractEventLoop,
                  cluster_items: Dict, logger: logging.Logger = None, tag: str = "Client"):
         """Class constructor.
 
@@ -37,8 +37,6 @@ class AbstractServerHandler(c_common.Handler):
             Abstract server object that created this handler.
         loop : asyncio.AbstractEventLoop
             Asyncio loop.
-        fernet_key : str
-            Key used to encrypt and decrypt messages.
         cluster_items : dict
             Cluster.json object containing cluster internal variables.
         logger : Logger object
@@ -46,7 +44,7 @@ class AbstractServerHandler(c_common.Handler):
         tag : str
             Log tag.
         """
-        super().__init__(fernet_key=fernet_key, logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
+        super().__init__(logger=logger, tag=f"{tag} {str(uuid4().hex[:8])}",
                          cluster_items=cluster_items)
         self.server = server
         self.loop = loop
@@ -540,7 +538,6 @@ class AbstractServer:
         try:
             server = await self.loop.create_server(
                 protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
-                                                            fernet_key=self.configuration['key'],
                                                             cluster_items=self.cluster_items),
                 host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
         except OSError as e:

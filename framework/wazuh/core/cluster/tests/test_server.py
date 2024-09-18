@@ -19,7 +19,6 @@ with patch('wazuh.common.wazuh_uid'):
         from wazuh.core.cluster import common as c_common
         from wazuh.core.exception import WazuhClusterError, WazuhError, WazuhResourceNotFound
 
-fernet_key = "00000000000000000000000000000000"
 asyncio.set_event_loop_policy(EventLoopPolicy())
 
 
@@ -27,7 +26,7 @@ asyncio.set_event_loop_policy(EventLoopPolicy())
 async def test_AbstractServerHandler_init(event_loop):
     """Check the correct initialization of the AbstractServerHandler object."""
     with patch("wazuh.core.cluster.server.context_tag", ContextVar("tag", default="")) as mock_contextvar:
-        abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+        abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                         cluster_items={"test": "server"})
         assert abstract_server_handler.server == "Test"
         assert abstract_server_handler.loop == event_loop
@@ -38,7 +37,7 @@ async def test_AbstractServerHandler_init(event_loop):
         assert abstract_server_handler.ip is None
         assert abstract_server_handler.transport is None
 
-        abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+        abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                         cluster_items={"test": "server"},
                                                         logger=Logger(name="test_logger"),
                                                         tag="NoClient")
@@ -54,7 +53,7 @@ async def test_AbstractServerHandler_init(event_loop):
 @pytest.mark.asyncio
 async def test_AbstractServerHandler_to_dict(event_loop):
     """Check the correct transformation of an AbstractServerHandler to a dict."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                     cluster_items={"test": "server"})
     abstract_server_handler.ip = "111.111.111.111"
     abstract_server_handler.name = "to_dict_testing"
@@ -71,7 +70,7 @@ def test_AbstractServerHandler_connection_made(event_loop):
     logger = Logger("test_connection_made")
     with patch("logging.getLogger", return_value=logger):
         with patch.object(logger, "info") as mock_logger:
-            abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+            abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                             cluster_items={"test": "server"})
             with patch.object(asyncio.Transport, "get_extra_info", get_extra_info):
                 abstract_server_handler.connection_made(transport=transport)
@@ -86,7 +85,7 @@ def test_AbstractServerHandler_connection_made(event_loop):
 @patch("wazuh.core.cluster.common.Handler.process_request")
 async def test_AbstractServerHandler_process_request(mock_process_request, mock_echo_master, mock_hello, event_loop):
     """Check the behavior of the process_request function for the different commands that can be sent to it."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                     cluster_items={"test": "server"})
 
     abstract_server_handler.process_request(command=b"echo-c", data=b"wazuh")
@@ -104,7 +103,7 @@ async def test_AbstractServerHandler_process_request(mock_process_request, mock_
 async def test_AbstractServerHandler_echo_master(event_loop):
     """Check that the echo_master function updates the last_keepalive variable and returns a confirmation message."""
 
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                     cluster_items={"test": "server"})
 
     assert abstract_server_handler.echo_master(data=b"wazuh") == (b"ok-m ", b"wazuh")
@@ -122,7 +121,7 @@ def test_AbstractServerHandler_hello(event_loop):
             self.configuration = {"node_name": "elif_test"}
 
     event_loop.create_task = Mock()
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                     cluster_items={"test": "server"})
     abstract_server_handler.server = ServerMock()
     abstract_server_handler.tag = "FixBehaviour"
@@ -150,7 +149,7 @@ def test_AbstractServerHandler_hello(event_loop):
 @patch("wazuh.core.cluster.common.Handler.process_response")
 async def test_AbstractServerHandler_process_response(process_response_mock, event_loop):
     """Check that the process_response function processes the response according to the command sent."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                     cluster_items={"test": "server"})
     assert abstract_server_handler.process_response(command=b"ok-c", payload=b"test") == \
            b"Successful response from client: test"
@@ -170,7 +169,7 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
 
     logger = Logger("test_connection_made")
     with patch("logging.getLogger", return_value=logger):
-        abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+        abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                         cluster_items={"test": "server"})
         with patch.object(logger, "error") as mock_error_logger:
             abstract_server_handler.connection_lost(exc=None)
@@ -203,7 +202,7 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
 @patch("wazuh.core.cluster.server.functools")
 async def test_AbstractServerHandler_add_request(functools_mock, queue_mock, event_loop):
     """Check that requests are added to asyncio queue with expected parameters."""
-    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+    abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop,
                                                     cluster_items={"test": "server"})
     abstract_server_handler.add_request('test_id', 'test_f', 'test_param', keyword_param='test')
     queue_mock.return_value.put_nowait.assert_called_with({'broadcast_id': 'test_id', 'func': ANY})
@@ -222,7 +221,7 @@ async def test_AbstractServerHandler_broadcast_reader(event_loop):
     server_mock = Mock()
     logger_mock = Mock()
     server_mock.broadcast_results = {'test1': {'worker1': {}}, 'test2': {'worker1': {}}, 'test3': {'worker1': {}}}
-    abstract_server_handler = AbstractServerHandler(server=server_mock, loop=event_loop, fernet_key=fernet_key,
+    abstract_server_handler = AbstractServerHandler(server=server_mock, loop=event_loop,
                                                     cluster_items={"test": "server"}, logger=logger_mock)
     abstract_server_handler.name = 'worker1'
 
@@ -560,7 +559,6 @@ async def test_AbstractServer_start(keepalive_mock, mock_path_join):
         patch.object(ssl_mock, "load_cert_chain") as load_cert_chain_mock:
 
         abstract_server.loop = loop
-        abstract_server.configuration["key"] = fernet_key
         abstract_server.tag = "start_test"
         await abstract_server.start()
         assert mock_contextvar.get() == "start_test"
@@ -607,6 +605,5 @@ async def test_AbstractServer_start_ko(keepalive_mock, set_event_loop_policy_moc
                                                                  }
                                                             },
                                              logger=logger)
-            abstract_server.configuration["key"] = fernet_key
             await abstract_server.start()
             mock_logger.assert_called_once_with("Could not start master: ")

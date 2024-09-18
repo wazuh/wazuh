@@ -50,8 +50,7 @@ def get_worker_handler(loop):
 
     return worker.WorkerHandler(cluster_name='Testing', node_type='master', version='4.0.0',
                                 loop=loop, on_con_lost=None, name='Testing',
-                                fernet_key='01234567891011121314151617181920', logger=logger,
-                                manager=abstract_client, cluster_items=cluster_items)
+                                logger=logger, manager=abstract_client, cluster_items=cluster_items)
 
 
 @pytest.mark.asyncio
