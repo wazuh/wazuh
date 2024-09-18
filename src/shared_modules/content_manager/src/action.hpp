@@ -176,7 +176,10 @@ public:
     void runActionOnDemand(const ActionOrchestrator::UpdateData& updateData)
     {
         logDebug2(WM_CONTENTUPDATER, "Starting on-demand action for '%s'", m_topicName.c_str());
-        runAction(updateData);
+        if (!runActionExclusively(updateData))
+        {
+            logDebug2(WM_CONTENTUPDATER, "Action in progress for '%s', on-demand request ignored", m_topicName.c_str());
+        }
     }
 
     /**

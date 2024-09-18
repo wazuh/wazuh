@@ -12,70 +12,11 @@
 #ifndef _PUB_SUB_PUBLISHER_HPP
 #define _PUB_SUB_PUBLISHER_HPP
 
+#include "pubSubPublisherExceptions.hpp"
 #include "sharedDefs.hpp"
 #include "updaterContext.hpp"
 #include "utils/chainOfResponsability.hpp"
 #include <memory>
-
-/**
- * @brief Identifies an exception when processing offsets.
- *
- */
-class offset_processing_exception : public std::exception
-{
-    const std::string m_errorMessage; ///< Exception message.
-
-public:
-    /**
-     * @brief Class constructor.
-     *
-     * @param errorMessage Exception message.
-     */
-    explicit offset_processing_exception(std::string errorMessage)
-        : m_errorMessage(std::move(errorMessage))
-    {
-    }
-
-    /**
-     * @brief Returns the exception message.
-     *
-     * @return const char* Message.
-     */
-    const char* what() const noexcept override
-    {
-        return m_errorMessage.c_str();
-    }
-};
-
-/**
- * @brief Identifies an exception when processing a snapshot.
- *
- */
-class snapshot_processing_exception : public std::exception
-{
-    const std::string m_errorMessage; ///< Exception message.
-
-public:
-    /**
-     * @brief Class constructor.
-     *
-     * @param errorMessage Exception message.
-     */
-    explicit snapshot_processing_exception(std::string errorMessage)
-        : m_errorMessage(std::move(errorMessage))
-    {
-    }
-
-    /**
-     * @brief Returns the exception message.
-     *
-     * @return const char* Message.
-     */
-    const char* what() const noexcept override
-    {
-        return m_errorMessage.c_str();
-    }
-};
 
 /**
  * @class PubSubPublisher
@@ -112,11 +53,11 @@ private:
                 // If we were processing offsets and it failed, we need to trigger a snapshot to recover
                 if (context.data.at("type") == "offsets")
                 {
-                    throw offset_processing_exception {"Failed to process offsets"};
+                    throw OffsetProcessingException {"Failed to process offsets"};
                 }
 
                 // If we were processing a snapshot and it failed, we need to stop the process
-                throw snapshot_processing_exception {"Failed to process the snapshot"};
+                throw SnapshotProcessingException {"Failed to process the snapshot"};
             }
 
             // Update the offset

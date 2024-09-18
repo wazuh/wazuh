@@ -172,7 +172,7 @@ public:
                 // LCOV_EXCL_STOP
             }
         }
-        catch (const offset_processing_exception& e)
+        catch (const OffsetProcessingException& e)
         {
             logWarn(WM_CONTENTUPDATER, "Offset processing failed. Triggered a snapshot download.");
             cleanContext(spUpdaterContext);
@@ -292,7 +292,7 @@ private:
             {
                 runFullContentDownload(spUpdaterContext);
             }
-            catch (const snapshot_processing_exception& e)
+            catch (const SnapshotProcessingException& e)
             {
                 logWarn(WM_CONTENTUPDATER, "Couldn't run full content download: %s.", e.what());
                 throw;
@@ -313,7 +313,7 @@ private:
         }
         catch (const std::exception& e)
         {
-            throw offset_processing_exception {e.what()};
+            throw OffsetProcessingException {e.what()};
         }
     }
 
