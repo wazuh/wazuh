@@ -13,7 +13,6 @@ Vulnerability detection validation for macOS packages `Mail` and homebrew `brotl
 | Name                     | Version     | Feed | CVE IDs       | Expected      |
 | ------------------------ | ----------- | ---- | ------------- | ------------- |
 | Opera Stable 9.0.5067.29 | 9.0.5067.29 | NVD  | CVE-2008-7297 | No vulnerable |
-| Opera Stable 9.0.5067.29 | 9.0.5067.29 | NVD  | CVE-2010-0653 | Vulnerable    |
 
 ## macOS
 
