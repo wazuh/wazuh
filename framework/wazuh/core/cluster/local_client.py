@@ -125,8 +125,8 @@ class LocalClient(client.AbstractClientManager):
 
     def __init__(self):
         """Class constructor"""
-        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), enable_ssl=False, performance_test=0,
-                         concurrency_test=0, file='', string=0, logger=logging.getLogger(), tag="Local Client",
+        super().__init__(configuration=wazuh.core.cluster.utils.read_config(), performance_test=0, concurrency_test=0,
+                         file='', string=0, logger=logging.getLogger(), tag="Local Client",
                          cluster_items=wazuh.core.cluster.utils.get_cluster_items())
         self.request_result = None
         self.protocol = None

@@ -200,7 +200,7 @@ async def test_LocalServer_init(event_loop):
 
     with patch("asyncio.get_running_loop", return_value=event_loop):
         ls = LocalServer(node=node, performance_test=0, concurrency_test=0,
-                        configuration={}, cluster_items={}, enable_ssl=True)
+                        configuration={}, cluster_items={})
         assert ls.node == node
         assert ls.node.local_server == ls
         assert ls.handler_class == LocalServerHandler
@@ -240,7 +240,7 @@ async def test_LocalServer_start(join_mock, gather_mock, event_loop):
     logger = logging.getLogger("connection_made")
     with patch.object(logger, "error") as logger_error_mock:
         ls = LocalServer(node=NodeMock(), performance_test=0, concurrency_test=0,
-                         configuration={}, cluster_items={}, enable_ssl=True, logger=logger)
+                         configuration={}, cluster_items={}, logger=logger)
 
     with patch.object(ls, "handler_class", handler_class_mock):
         with patch.object(event_loop, "create_unix_server", create_unix_server_mock):
@@ -381,7 +381,7 @@ async def test_LocalServerMaster_init(event_loop):
     node = NodeMock()
     with patch("asyncio.get_running_loop", return_value=event_loop):
         lsm = LocalServerMaster(node=node, performance_test=0, concurrency_test=0,
-                                configuration={}, cluster_items={}, enable_ssl=True)
+                                configuration={}, cluster_items={})
         assert lsm.handler_class == LocalServerHandlerMaster
         assert isinstance(lsm.dapi, dapi.APIRequestQueue)
 
@@ -459,7 +459,7 @@ async def test_LocalServerHandlerWorker_send_request_to_master(event_loop):
             self.client = None
 
     ls = LocalServer(node=NodeMock(), performance_test=0, concurrency_test=0,
-                    configuration={}, cluster_items={}, enable_ssl=True)
+                    configuration={}, cluster_items={})
     lshw = LocalServerHandlerWorker(server=ls, loop=event_loop, fernet_key=None, cluster_items={})
     with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
         lshw.send_request_to_master(command=b"test", arguments=b"raises")
@@ -543,5 +543,5 @@ async def test_LocalServerWorker_init(event_loop):
     node = NodeMock()
     with patch("asyncio.get_running_loop", return_value=event_loop):
         lsw = LocalServerWorker(node=node, performance_test=0, concurrency_test=0,
-                                configuration={}, cluster_items={}, enable_ssl=True)
+                                configuration={}, cluster_items={})
         assert lsw.handler_class == LocalServerHandlerWorker

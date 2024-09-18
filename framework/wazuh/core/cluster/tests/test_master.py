@@ -56,7 +56,7 @@ def get_master_handler():
                                                                       'port': 1111},
                                                        cluster_items={'node': 'master-node',
                                                                       'intervals': {'worker': {'connection_retry': 1}}},
-                                                       enable_ssl=False, performance_test=False, logger=None,
+                                                       performance_test=False, logger=None,
                                                        concurrency_test=False, file='None', string=20)
 
     return master.MasterHandler(server=abstract_client, loop=loop, fernet_key=fernet_key, cluster_items=cluster_items)
@@ -68,7 +68,7 @@ def get_master():
         return master.Master(performance_test=False, concurrency_test=False,
                              configuration={'node_name': 'master', 'nodes': ['master'],
                                             'port': 1111, 'node_type': 'master'},
-                             cluster_items=cluster_items, enable_ssl=False)
+                             cluster_items=cluster_items)
 
 
 # Test ReceiveIntegrityTask class
@@ -1210,8 +1210,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
 
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-                                 cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 cluster_items=cluster_items)
 
     assert master_class.integrity_control == {}
     assert master_class.handler_class == master.MasterHandler
@@ -1227,8 +1226,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     pool_executor_mock.side_effect = FileNotFoundError
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-                                 cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 cluster_items=cluster_items)
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
                                         "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
@@ -1240,8 +1238,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     pool_executor_mock.side_effect = PermissionError
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
-                                 cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 cluster_items=cluster_items)
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
                                         "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
@@ -1259,8 +1256,7 @@ def test_master_to_dict(get_running_loop_mock):
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master"},
-                                 cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 cluster_items=cluster_items)
 
     assert master_class.to_dict() == {
         'info': {'name': master_class.configuration['node_name'], 'type': master_class.configuration['node_type'],
@@ -1329,8 +1325,7 @@ async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master"},
-                                 cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 cluster_items=cluster_items)
 
     class LoggerMock:
         """Auxiliary class."""
@@ -1401,7 +1396,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     master_class = MockMaster(performance_test=False, concurrency_test=False,
                               configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                              'node_type': 'master'},
-                              cluster_items=cluster_items, enable_ssl=False)
+                              cluster_items=cluster_items)
     master_class.clients = {'1': MockDict({'testing': 'dict'})}
 
     assert master_class.get_health({'jey': 'value', 'hoy': 'value'}) == {'n_connected_nodes': 0, 'nodes': {}}
@@ -1420,8 +1415,7 @@ def test_master_get_node(get_running_loop_mock):
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master", "name": "master"},
-                                 cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 cluster_items=cluster_items)
 
     assert master_class.get_node() == {'type': master_class.configuration['node_type'],
                                        'cluster': master_class.configuration['name'],

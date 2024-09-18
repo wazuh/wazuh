@@ -63,8 +63,8 @@ abstract_client = client.AbstractClient(loop=None, on_con_lost=future_mock, name
                                         logger=None, manager=None, cluster_items=cluster_items)
 with patch("asyncio.get_running_loop"):
     abstract_client_manager = client.AbstractClientManager(configuration=configuration, cluster_items=cluster_items,
-                                                           enable_ssl=True, performance_test=10,
-                                                           concurrency_test=10, file="/file/path", string=1000)
+                                                           performance_test=10, concurrency_test=10, file="/file/path",
+                                                           string=1000)
 
 
 # Test AbstractClientManager methods
@@ -75,7 +75,6 @@ def test_acm_init():
     assert abstract_client_manager.name == "manager"
     assert abstract_client_manager.configuration == configuration
     assert abstract_client_manager.cluster_items == cluster_items
-    assert abstract_client_manager.ssl is True
     assert abstract_client_manager.performance_test == 10
     assert abstract_client_manager.concurrency_test == 10
     assert abstract_client_manager.file == "/file/path"
