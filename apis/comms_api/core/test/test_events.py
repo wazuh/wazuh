@@ -20,15 +20,28 @@ async def test_send_stateless_events(events_send_mock):
     events_send_mock.assert_called_once_with(events.events)
 
 
+@pytest.mark.asyncio
 @patch('wazuh.core.indexer.create_indexer', return_value=AsyncMock())
 async def test_create_stateful_events(create_indexer_mock):
     """Check that the `create_stateful_events` function works as expected."""
-    create_indexer_mock.return_value.events.create = AsyncMock()
+    expected = [
+        {
+            '_id': '',
+            'result': 'created',
+            'status': 201,
+        },
+        {
+            '_id': '',
+            'result': 'created',
+            'status': 201,
+        }
+    ]
+    create_indexer_mock.return_value.events.create.return_value = expected
     batcher_queue = AsyncMock()
 
-    events = StatefulEvents(events=[SCAEvent()])
-    await create_stateful_events(events, batcher_queue)
+    events = StatefulEvents(events=[SCAEvent(), SCAEvent()])
+    result = await create_stateful_events(events, batcher_queue)
 
     create_indexer_mock.assert_called_once()
     create_indexer_mock.return_value.events.create.assert_called_once()
-
+    assert result == expected
